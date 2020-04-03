@@ -6,5 +6,4 @@ pub use types::*;
 pub mod system;
 pub mod descriptor;
 pub mod calculator;
-pub mod utils;
 pub mod c_api;

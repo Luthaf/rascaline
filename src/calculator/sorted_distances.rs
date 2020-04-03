@@ -1,66 +1,26 @@
-use ndarray::{Array2, aview1, s};
-use std::sync::{Arc, RwLock};
+use std::collections::HashMap;
+
+use ndarray::{aview0, aview1, s};
 
 use super::Calculator;
 
-use crate::descriptor::{Descriptor, Indexes, AtomIndexes};
+use crate::descriptor::{Descriptor, Indexes, IndexesBuilder, PairSpeciesIdx};
 use crate::system::System;
-use crate::utils::AtomTypeMap;
 
 #[derive(Debug, Clone)]
 #[derive(serde::Deserialize)]
 pub struct SortedDistances {
     cutoff: f64,
     max_neighbors: usize,
-    padding: f64,
-    #[serde(skip)]
-    map: Arc<RwLock<AtomTypeMap>>,
 }
 
-pub struct SortedDistancesFeature {
-    max_neighbors: usize,
-    map: Arc<RwLock<AtomTypeMap>>,
-    indexes: Vec<[usize; 2]>,
-}
-
-impl SortedDistancesFeature {
-    pub fn new(max_neighbors: usize) -> SortedDistancesFeature {
-        SortedDistancesFeature {
-            max_neighbors: max_neighbors,
-            map: Arc::default(),
-            indexes: Vec::new(),
+impl SortedDistances {
+    fn features(&self) -> Indexes {
+        let mut features = IndexesBuilder::new(vec!["neighbor"]);
+        for i in 0..self.max_neighbors {
+            features.add(&[i]);
         }
-    }
-
-    pub fn map(&self) -> Arc<RwLock<AtomTypeMap>> {
-        return Arc::clone(&self.map);
-    }
-}
-
-impl Indexes for SortedDistancesFeature {
-    fn names(&self) -> &[&'static str] {
-        &["α", "neighbor"]
-    }
-
-    fn initialize(&mut self, systems: &[&dyn System]) {
-        self.map.write().expect("poisonned lock").initialize(systems);
-        for alpha in self.map.read().expect("poisonned lock").types() {
-            for i in 0..self.max_neighbors {
-                self.indexes.push([alpha, i]);
-            }
-        }
-    }
-
-    fn count(&self) -> usize {
-        self.indexes.len()
-    }
-
-    fn gradient(&self) -> Option<Box<dyn Indexes>> {
-        None
-    }
-
-    fn value(&self, linear: usize) -> &[usize] {
-        &self.indexes[linear]
+        return features.finish();
     }
 }
 
@@ -69,54 +29,65 @@ impl Calculator for SortedDistances {
         "sorted distances vector".into()
     }
 
-    fn compute(&mut self, systems: &[&dyn System]) -> Descriptor {
-        let features = SortedDistancesFeature::new(self.max_neighbors);
-        self.map = features.map();
-        let environment = AtomIndexes::new();
+    fn compute(&mut self, systems: &mut [Box<dyn System>]) -> Descriptor {
+        // create the Descriptor array
+        let environments = PairSpeciesIdx::new(self.cutoff);
+        let features = self.features();
+        let mut descriptor = Descriptor::new(environments, features, systems);
 
-        let mut descriptor = Descriptor::new(environment, features, systems);
-        let mut values = descriptor.values_mut();
+        descriptor.values.assign(&aview0(&self.cutoff));
 
-        let mut start = 0;
-        let mut stop;
-        let map = self.map.read().expect("poisonned lock");
-        for system in systems {
-            let cell = system.cell();
-            let types = system.types();
-            let positions = system.positions();
-            let nl = system.neighbors(self.cutoff);
+        assert_eq!(descriptor.environments.names(), &["alpha", "beta", "structure", "center"]);
 
-            // Collect all distances in an array of dynamically sized vectors
-            let shape = (system.natoms(), map.count());
-            let mut distances = Array2::from_elem(shape, Vec::new());
-            nl.foreach_pairs(&mut |i, j| {
-                let r = cell.distance(&positions[i], &positions[j]);
-                let ti = map.get(types[i]);
-                let tj = map.get(types[j]);
+        // distance contains a vector of distances vector (one distance vector
+        // for each center) for each pair of species in the systems
+        let mut distances = HashMap::new();
+        let centers = systems.iter().map(|s| s.size()).sum();
+        for idx in &descriptor.environments {
+            let alpha = idx[0];
+            let beta = idx[1];
+            distances.entry((alpha, beta)).or_insert(
+                vec![Vec::with_capacity(self.max_neighbors); centers]
+            );
+        }
 
-                distances[[i, tj]].push(r);
-                distances[[j, ti]].push(r);
+        // Get the first index of the first atom of each system
+        let first_indexes = systems.iter()
+            .scan(0, |acc, system| {
+                *acc = *acc + system.size();
+                Some(*acc)
+            }).collect::<Vec<_>>();
+
+        // Collect all distances around each center in `distances`
+        for (i_system, system) in systems.iter_mut().enumerate() {
+            system.compute_neighbors(self.cutoff);
+            let nl = system.neighbors();
+            let species = system.species();
+            let start = first_indexes[i_system];
+            nl.foreach_pair(&mut |i, j, d| {
+                let distances_vectors = distances.get_mut(&(species[i], species[j])).unwrap();
+                distances_vectors[start + i].push(d);
+
+                let distances_vectors = distances.get_mut(&(species[j], species[i])).unwrap();
+                distances_vectors[start + j].push(d);
             });
+        }
 
-            // Sort, resize to limit to at most `self.max_neighbors` values
-            // and pad if needed
-            for vec in &mut distances {
+        // Sort, resize to limit to at most `self.max_neighbors` values
+        // and pad the distance vectors as needed
+        for (_, vectors) in &mut distances {
+            for vec in vectors {
                 vec.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
-                vec.resize(self.max_neighbors, self.padding);
+                vec.resize(self.max_neighbors, self.cutoff);
             }
+        }
 
-            // Copy the data in the descriptor array
-            stop = start + system.natoms();
-            let data = values.slice_mut(s![start..stop, ..]);
-            let shape = (system.natoms(), map.count(), self.max_neighbors);
-            let mut data = data.into_shape(shape).expect("wrong dimensions");
+        // Copy the data in the descriptor array
+        for (i, (alpha, beta, structure, center)) in descriptor.environments.iter().map(|idx| (idx[0], idx[1], idx[2], idx[3])).enumerate() {
+            let env = first_indexes[structure] + center;
+            let distance_vector = &distances.get(&(alpha, beta)).unwrap()[env];
 
-            for i in 0..system.natoms() {
-                for alpha in map.types() {
-                    data.slice_mut(s![i, alpha, ..]).assign(&aview1(&distances[[i, alpha]]))
-                }
-            }
-            start += stop;
+            descriptor.values.slice_mut(s![i, ..]).assign(&aview1(distance_vector))
         }
 
         return descriptor;

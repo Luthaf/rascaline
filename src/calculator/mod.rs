@@ -5,7 +5,7 @@ pub trait Calculator {
     /// Get the name of this Calculator
     fn name(&self) -> String;
     /// Compute the descriptor for all the given systems
-    fn compute(&mut self, systems: &[&dyn System]) -> Descriptor;
+    fn compute(&mut self, systems: &mut [Box<dyn System>]) -> Descriptor;
 }
 
 mod sorted_distances;

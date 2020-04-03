@@ -24,13 +24,13 @@ endif()
 
 file(GLOB_RECURSE ALL_RUST_SOURCES ${CARGO_ROOT}/src/**.rs)
 add_custom_command(
-    OUTPUT ${PROJECT_BINARY_DIR}/librascaline
+    OUTPUT ${PROJECT_BINARY_DIR}/librascaline.built
     COMMAND cargo build ${CARGO_BUILD_ARG}
-    COMMAND ${CMAKE_COMMAND} -E touch ${PROJECT_BINARY_DIR}/librascaline
+    COMMAND ${CMAKE_COMMAND} -E touch ${PROJECT_BINARY_DIR}/librascaline.built
     WORKING_DIRECTORY ${CARGO_ROOT}
     DEPENDS ${ALL_RUST_SOURCES}
 )
-add_custom_target(ensure-rust-is-built DEPENDS ${PROJECT_BINARY_DIR}/librascaline)
+add_custom_target(ensure-rust-is-built DEPENDS ${PROJECT_BINARY_DIR}/librascaline.built)
 
 add_library(rascaline SHARED IMPORTED)
 target_include_directories(rascaline INTERFACE "${PROJECT_SOURCE_DIR}/../../include/")

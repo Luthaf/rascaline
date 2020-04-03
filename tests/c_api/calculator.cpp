@@ -5,8 +5,7 @@
 
 const char* HYPERS_JSON = R"({
     "cutoff": 3.5,
-    "max_neighbors": 25,
-    "padding": 3.5
+    "max_neighbors": 25
 })";
 
 TEST_CASE("calculator") {
