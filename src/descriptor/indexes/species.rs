@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 use crate::system::System;
 use super::{Indexes, IndexesBuilder, EnvironmentIndexes};
@@ -8,53 +8,31 @@ pub struct StructureSpeciesIdx;
 
 impl EnvironmentIndexes for StructureSpeciesIdx {
     fn indexes(&self, systems: &mut [Box<dyn System>]) -> Indexes {
-        let mut indexes = IndexesBuilder::new(vec!["alpha", "structure"]);
-
-        // List the systems containing a given species. The keys of the map are
-        // species, and the values list of system id containing this species
-        let mut systems_by_species = BTreeMap::new();
+        let mut indexes = IndexesBuilder::new(vec!["structure", "alpha"]);
         for (i_system, system) in systems.iter().enumerate() {
-            let all_species = system.species().iter().collect::<BTreeSet<_>>();
-            for s in all_species {
-                systems_by_species.entry(s).or_insert(vec![]).push(i_system)
+            for &species in system.species().iter().collect::<BTreeSet<_>>() {
+                indexes.add(&[i_system, species]);
             }
         }
-
-        for (&species, systems) in systems_by_species {
-            for i_system in systems {
-                indexes.add(&[species, i_system]);
-            }
-        }
-
         return indexes.finish();
     }
 
     fn with_gradients(&self, systems: &mut [Box<dyn System>]) -> (Indexes, Option<Indexes>) {
-        let indexes = self.indexes(systems);
-
-        let mut values = Vec::new();
-        for linear in 0..indexes.count() {
-            let id = indexes.value(linear);
-            let alpha = id[0];
-            let structure = id[1];
-
-            let system = &systems[structure];
-            // only atoms with the same species participate in the gradient
-            for (atom, &atom_species) in system.species().iter().enumerate() {
-                if alpha == atom_species {
-                    values.push((alpha, structure, atom));
+        let mut gradients = IndexesBuilder::new(vec!["structure", "alpha", "atom", "spatial"]);
+        for (i_system, system) in systems.iter().enumerate() {
+            let species = system.species();
+            for &alpha in species.iter().collect::<BTreeSet<_>>()  {
+                for atom in 0..system.size() {
+                    // only atoms with the same species participate to the gradient
+                    if species[atom] == alpha {
+                        gradients.add(&[i_system, alpha, atom, 0]);
+                        gradients.add(&[i_system, alpha, atom, 1]);
+                        gradients.add(&[i_system, alpha, atom, 2]);
+                    }
                 }
             }
         }
-
-        let mut gradients = IndexesBuilder::new(vec!["spatial", "alpha", "structure", "atom"]);
-        for spatial in 0..3 {
-            for &(alpha, structure, atom) in values.iter() {
-                gradients.add(&[spatial, alpha, structure, atom])
-            }
-        }
-
-        return (indexes, Some(gradients.finish()));
+        return (self.indexes(systems), Some(gradients.finish()));
     }
 }
 
@@ -73,33 +51,24 @@ impl PairSpeciesIdx {
 
 impl EnvironmentIndexes for PairSpeciesIdx {
     fn indexes(&self, systems: &mut [Box<dyn System>]) -> Indexes {
+        // Accumulate indexes in a set first to ensure unicity of the indexes.
+        // Else each neighbors of the same type for a given center would add a
+        // new index for this center
         let mut set = BTreeSet::new();
+        for (i_system, system) in systems.iter_mut().enumerate() {
+            system.compute_neighbors(self.cutoff);
+            let nl = system.neighbors();
+            let species = system.species();
+            nl.foreach_pair(&mut |i, j, _| {
+                let species_i = species[i];
+                let species_j = species[j];
 
-        let all_species = systems.iter().flat_map(|s| s.species().iter().cloned()).collect::<BTreeSet<_>>();
-        for &alpha in all_species.iter() {
-            for &beta in all_species.iter() {
-                for (i_system, system) in systems.iter_mut().enumerate() {
-                    system.compute_neighbors(self.cutoff);
-                    let nl = system.neighbors();
-                    let species = system.species();
-                    nl.foreach_pair(&mut |i, j, _| {
-                        if species[i] == alpha && species[j] == beta {
-                            set.insert([alpha, beta, i_system, i]);
-                            if alpha == beta {
-                                set.insert([alpha, beta, i_system, j]);
-                            }
-                        } else if species[j] == alpha && species[i] == beta {
-                            set.insert([alpha, beta, i_system, j]);
-                            if alpha == beta {
-                                set.insert([alpha, beta, i_system, i]);
-                            }
-                        }
-                    });
-                }
-            }
+                set.insert([i_system, i, species_i, species_j]);
+                set.insert([i_system, j, species_j, species_i]);
+            });
         }
 
-        let mut indexes = IndexesBuilder::new(vec!["alpha", "beta", "structure", "center"]);
+        let mut indexes = IndexesBuilder::new(vec!["structure", "atom", "alpha", "beta"]);
         for idx in set {
             indexes.add(&idx);
         }
@@ -124,11 +93,11 @@ mod tests {
         let systems = &mut test_systems(vec!["methane", "methane", "water"]);
         let indexes = StructureSpeciesIdx.indexes(systems);
         assert_eq!(indexes.count(), 6);
-        assert_eq!(indexes.names(), &["alpha", "structure"]);
+        assert_eq!(indexes.names(), &["structure", "alpha"]);
         assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
-            &[1, 0], &[1, 1], &[1, 2],
-            &[6, 0], &[6, 1],
-            &[123456, 2],
+            &[0, 1], &[0, 6],
+            &[1, 1], &[1, 6],
+            &[2, 1], &[2, 123456],
         ]);
     }
 
@@ -138,11 +107,18 @@ mod tests {
         let (_, gradients) = StructureSpeciesIdx.with_gradients(systems);
         let gradients = gradients.unwrap();
         assert_eq!(gradients.count(), 15);
-        assert_eq!(gradients.names(), &["spatial", "alpha", "structure", "atom"]);
+        assert_eq!(gradients.names(), &["structure", "alpha", "atom", "spatial"]);
+
         assert_eq!(gradients.iter().collect::<Vec<_>>(), vec![
-            &[0, 1, 0, 0], &[0, 1, 1, 1], &[0, 1, 1, 2], &[0, 6, 0, 1], &[0, 123456, 1, 0],
-            &[1, 1, 0, 0], &[1, 1, 1, 1], &[1, 1, 1, 2], &[1, 6, 0, 1], &[1, 123456, 1, 0],
-            &[2, 1, 0, 0], &[2, 1, 1, 1], &[2, 1, 1, 2], &[2, 6, 0, 1], &[2, 123456, 1, 0],
+            // H channel in CH
+            &[0, 1, 0, 0], &[0, 1, 0, 1], &[0, 1, 0, 2],
+            // C channel in CH
+            &[0, 6, 1, 0], &[0, 6, 1, 1], &[0, 6, 1, 2],
+            // H channel in water
+            &[1, 1, 1, 0], &[1, 1, 1, 1], &[1, 1, 1, 2],
+            &[1, 1, 2, 0], &[1, 1, 2, 1], &[1, 1, 2, 2],
+            // O channel in water
+            &[1, 123456, 0, 0], &[1, 123456, 0, 1], &[1, 123456, 0, 2],
         ]);
     }
 
@@ -152,19 +128,20 @@ mod tests {
         let strategy = PairSpeciesIdx::new(2.0);
         let indexes = strategy.indexes(systems);
         assert_eq!(indexes.count(), 7);
-        assert_eq!(indexes.names(), &["alpha", "beta", "structure", "center"]);
+        assert_eq!(indexes.names(), &["structure", "atom", "alpha", "beta"]);
         assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
-            // H-H in water
-            &[1, 1, 1, 1], &[1, 1, 1, 2],
-            // H-C in CH
-            &[1, 6, 0, 0],
-            // H-O in water
-            &[1, 123456, 1, 1], &[1, 123456, 1, 2],
-            // C-H in CH
-            &[6, 1, 0, 1],
-            // O-H in water
-            &[123456, 1, 1, 0],
-
+            // H in CH
+            &[0, 0, 1, 6],
+            // C in CH
+            &[0, 1, 6, 1],
+            // O in water
+            &[1, 0, 123456, 1],
+            // first H in water
+            &[1, 1, 1, 1],
+            &[1, 1, 1, 123456],
+            // second H in water
+            &[1, 2, 1, 1],
+            &[1, 2, 1, 123456],
         ]);
     }
 

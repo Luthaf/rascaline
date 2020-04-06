@@ -46,7 +46,7 @@ impl Descriptor {
             "the given environments indexes do not support gradients"
         );
         // basic sanity check
-        assert!(grad_idx.names()[0] == "spatial", "the first index of gradient should be spatial");
+        assert!(grad_idx.names().last() == Some(&"spatial"), "the last index of gradient should be spatial");
 
         let values = Array2::zeros((env_idx.count(), features.count()));
         let gradient = Array2::zeros((grad_idx.count(), features.count()));

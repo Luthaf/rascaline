@@ -34,61 +34,64 @@ impl Calculator for SortedDistances {
         let environments = PairSpeciesIdx::new(self.cutoff);
         let features = self.features();
         let mut descriptor = Descriptor::new(environments, features, systems);
+        assert_eq!(descriptor.environments.names(), &["structure", "center", "alpha", "beta"]);
 
         descriptor.values.assign(&aview0(&self.cutoff));
 
-        assert_eq!(descriptor.environments.names(), &["alpha", "beta", "structure", "center"]);
-
-        // distance contains a vector of distances vector (one distance vector
-        // for each center) for each pair of species in the systems
-        let mut distances = HashMap::new();
-        let centers = systems.iter().map(|s| s.size()).sum();
-        for idx in &descriptor.environments {
-            let alpha = idx[0];
-            let beta = idx[1];
-            distances.entry((alpha, beta)).or_insert(
-                vec![Vec::with_capacity(self.max_neighbors); centers]
-            );
-        }
-
-        // Get the first index of the first atom of each system
-        let first_indexes = systems.iter()
-            .scan(0, |acc, system| {
-                *acc = *acc + system.size();
-                Some(*acc)
-            }).collect::<Vec<_>>();
-
-        // Collect all distances around each center in `distances`
+        // index of the first entry of descriptor.values corresponding to
+        // the current system
+        let mut current = 0;
         for (i_system, system) in systems.iter_mut().enumerate() {
+            // distance contains a vector of distances vector (one distance
+            // vector for each center) for each pair of species in the system
+            let mut distances = HashMap::new();
+            for idx in &descriptor.environments {
+                let alpha = idx[2];
+                let beta = idx[3];
+                distances.entry((alpha, beta)).or_insert(
+                    vec![Vec::with_capacity(self.max_neighbors); system.size()]
+                );
+            }
+
+            // Collect all distances around each center in `distances`
             system.compute_neighbors(self.cutoff);
             let nl = system.neighbors();
             let species = system.species();
-            let start = first_indexes[i_system];
             nl.foreach_pair(&mut |i, j, d| {
                 let distances_vectors = distances.get_mut(&(species[i], species[j])).unwrap();
-                distances_vectors[start + i].push(d);
+                distances_vectors[i].push(d);
 
                 let distances_vectors = distances.get_mut(&(species[j], species[i])).unwrap();
-                distances_vectors[start + j].push(d);
+                distances_vectors[j].push(d);
             });
-        }
 
-        // Sort, resize to limit to at most `self.max_neighbors` values
-        // and pad the distance vectors as needed
-        for (_, vectors) in &mut distances {
-            for vec in vectors {
-                vec.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
-                vec.resize(self.max_neighbors, self.cutoff);
+            // Sort, resize to limit to at most `self.max_neighbors` values
+            // and pad the distance vectors as needed
+            for (_, vectors) in &mut distances {
+                for vec in vectors {
+                    vec.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+                    vec.resize(self.max_neighbors, self.cutoff);
+                }
+            }
+
+
+            loop {
+                // Copy the data in the descriptor array, until we find the
+                // next system
+                if let &[alpha, beta, structure, center] = descriptor.environments.value(current) {
+                    if structure != i_system {
+                        break;
+                    }
+
+                    let distance_vector = &distances.get(&(alpha, beta)).unwrap()[center];
+                    descriptor.values.slice_mut(s![current, ..]).assign(&aview1(distance_vector))
+                }
+                current += 1;
             }
         }
 
-        // Copy the data in the descriptor array
-        for (i, (alpha, beta, structure, center)) in descriptor.environments.iter().map(|idx| (idx[0], idx[1], idx[2], idx[3])).enumerate() {
-            let env = first_indexes[structure] + center;
-            let distance_vector = &distances.get(&(alpha, beta)).unwrap()[env];
-
-            descriptor.values.slice_mut(s![i, ..]).assign(&aview1(distance_vector))
-        }
+        // did we get everything?
+        assert_eq!(current, descriptor.environments.count());
 
         return descriptor;
     }
