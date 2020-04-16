@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use ndarray::{aview0, aview1, s};
+use ndarray::{aview1, s};
 
 use super::Calculator;
 
@@ -29,14 +29,12 @@ impl Calculator for SortedDistances {
         "sorted distances vector".into()
     }
 
-    fn compute(&mut self, systems: &mut [&mut dyn System]) -> Descriptor {
-        // create the Descriptor array
+    fn compute(&mut self, systems: &mut [&mut dyn System], descriptor: &mut Descriptor) {
+        // setup the descriptor array
         let environments = PairSpeciesIdx::new(self.cutoff);
         let features = self.features();
-        let mut descriptor = Descriptor::new(environments, features, systems);
+        descriptor.prepare(environments, features, systems, self.cutoff);
         assert_eq!(descriptor.environments.names(), &["structure", "center", "alpha", "beta"]);
-
-        descriptor.values.assign(&aview0(&self.cutoff));
 
         // index of the first entry of descriptor.values corresponding to
         // the current system
@@ -74,7 +72,6 @@ impl Calculator for SortedDistances {
                 }
             }
 
-
             loop {
                 // Copy the data in the descriptor array, until we find the
                 // next system
@@ -92,7 +89,5 @@ impl Calculator for SortedDistances {
 
         // did we get everything?
         assert_eq!(current, descriptor.environments.count());
-
-        return descriptor;
     }
 }
