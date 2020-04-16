@@ -56,7 +56,7 @@ impl EnvironmentIndexes for AtomIdx {
         let mut indexes = BTreeSet::new();
         for (i_system, system) in systems.iter_mut().enumerate() {
             system.compute_neighbors(self.cutoff);
-            system.neighbors().foreach_pair(&mut |i, j, _| {
+            system.foreach_pair(&mut |i, j, _| {
                 indexes.insert((i_system, i, j));
                 indexes.insert((i_system, j, i));
             })

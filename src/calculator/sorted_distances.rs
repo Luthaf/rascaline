@@ -53,9 +53,8 @@ impl Calculator for SortedDistances {
 
             // Collect all distances around each center in `distances`
             system.compute_neighbors(self.cutoff);
-            let nl = system.neighbors();
             let species = system.species();
-            nl.foreach_pair(&mut |i, j, d| {
+            system.foreach_pair(&mut |i, j, d| {
                 let distances_vectors = distances.get_mut(&(species[i], species[j])).unwrap();
                 distances_vectors[i].push(d);
 

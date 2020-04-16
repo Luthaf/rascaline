@@ -57,9 +57,8 @@ impl EnvironmentIndexes for PairSpeciesIdx {
         let mut set = BTreeSet::new();
         for (i_system, system) in systems.iter_mut().enumerate() {
             system.compute_neighbors(self.cutoff);
-            let nl = system.neighbors();
             let species = system.species();
-            nl.foreach_pair(&mut |i, j, _| {
+            system.foreach_pair(&mut |i, j, _| {
                 let species_i = species[i];
                 let species_j = species[j];
 

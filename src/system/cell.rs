@@ -32,6 +32,24 @@ pub struct UnitCell {
     shape: CellShape,
 }
 
+impl From<Matrix3> for UnitCell {
+    fn from(matrix: Matrix3) -> UnitCell {
+        assert!(matrix.determinant() > 1e-6, "matrix is not invertible");
+        let mut cell = UnitCell {
+            cell: matrix,
+            inv: matrix.inverse(),
+            shape: CellShape::Triclinic
+        };
+
+        let is_close_90 = |value| f64::abs(value - 90.0) < 1e-3;
+        if is_close_90(cell.alpha()) && is_close_90(cell.beta()) && is_close_90(cell.gamma()) {
+            cell.shape = CellShape::Orthorhombic;
+        }
+
+        return cell;
+    }
+}
+
 impl UnitCell {
     /// Create an infinite unit cell
     pub fn infinite() -> UnitCell {

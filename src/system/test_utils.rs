@@ -1,4 +1,4 @@
-use super::{UnitCell, System, NeighborsList, Vector3D};
+use super::{UnitCell, System, Vector3D};
 
 pub struct CrappyNeighborsList {
     cutoff: f64,
@@ -31,20 +31,6 @@ impl CrappyNeighborsList {
             cutoff: cutoff,
             neighbors: neighbors,
         };
-    }
-}
-
-impl NeighborsList for CrappyNeighborsList {
-    fn size(&self) -> usize {
-        self.neighbors.len()
-    }
-
-    fn foreach_pair(&self, function: &mut dyn FnMut(usize, usize, f64)) {
-        for (i, neighbors) in self.neighbors.iter().enumerate() {
-            for &(j, d) in neighbors {
-                function(i, j, d);
-            }
-        }
     }
 }
 
@@ -83,8 +69,13 @@ impl System for SimpleSystem {
         self.neighbors = Some(CrappyNeighborsList::new(self, cutoff));
     }
 
-    fn neighbors(&self) -> &dyn NeighborsList {
-        return self.neighbors.as_ref().expect("neighbor list is not initialized");
+    fn foreach_pair(&self, function: &mut dyn FnMut(usize, usize, f64)) {
+        let nl = self.neighbors.as_ref().expect("neighbor list is not initialized");
+        for (i, neighbors) in nl.neighbors.iter().enumerate() {
+            for &(j, d) in neighbors {
+                function(i, j, d);
+            }
+        }
     }
 }
 
