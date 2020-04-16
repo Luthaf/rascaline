@@ -88,16 +88,30 @@ impl System for SimpleSystem {
     }
 }
 
-pub fn test_systems(names: Vec<&str>) -> Vec<Box<dyn System>> {
-    return names.iter().map(|&name| {
-        let system = match name {
-            "methane" => Box::new(get_methane()),
-            "water" => Box::new(get_water()),
-            "ch" => Box::new(get_ch()),
+pub struct SimpleSystems {
+    systems: Vec<SimpleSystem>
+}
+
+impl SimpleSystems {
+    pub fn get(&mut self) -> Vec<&mut dyn System> {
+        let mut references = Vec::new();
+        for system in &mut self.systems {
+            references.push(system as &mut dyn System)
+        }
+        return references;
+    }
+}
+
+pub fn test_systems(names: Vec<&str>) -> SimpleSystems {
+    let systems = names.iter().map(|&name| {
+        match name {
+            "methane" => get_methane(),
+            "water" => get_water(),
+            "ch" => get_ch(),
             _ => panic!("unknown test system {}", name)
-        };
-        return system as Box<dyn System>;
+        }
     }).collect();
+    return SimpleSystems{ systems };
 }
 
 fn get_methane() -> SimpleSystem {

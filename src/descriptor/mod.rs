@@ -22,7 +22,7 @@ impl Descriptor {
     pub fn new(
         environments: impl EnvironmentIndexes,
         features: Indexes,
-        systems: &mut [Box<dyn System>]
+        systems: &mut [&mut dyn System]
     ) -> Descriptor {
         let environments = environments.indexes(systems);
         let values = Array2::zeros((environments.count(), features.count()));
@@ -39,7 +39,7 @@ impl Descriptor {
     pub fn with_gradient(
         environments: impl EnvironmentIndexes,
         features: Indexes,
-        systems: &mut [Box<dyn System>]
+        systems: &mut [&mut dyn System]
     ) -> Descriptor {
         let (env_idx, grad_idx) = environments.with_gradients(systems);
         let grad_idx = grad_idx.expect(

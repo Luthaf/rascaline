@@ -114,9 +114,9 @@ impl<'a> IntoIterator for &'a Indexes {
 }
 
 pub trait EnvironmentIndexes {
-    fn indexes(&self, systems: &mut [Box<dyn System>]) -> Indexes;
+    fn indexes(&self, systems: &mut [&mut dyn System]) -> Indexes;
 
-    fn with_gradients(&self, systems: &mut [Box<dyn System>]) -> (Indexes, Option<Indexes>) {
+    fn with_gradients(&self, systems: &mut [&mut dyn System]) -> (Indexes, Option<Indexes>) {
         (self.indexes(systems), None)
     }
 }

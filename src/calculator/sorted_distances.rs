@@ -29,7 +29,7 @@ impl Calculator for SortedDistances {
         "sorted distances vector".into()
     }
 
-    fn compute(&mut self, systems: &mut [Box<dyn System>]) -> Descriptor {
+    fn compute(&mut self, systems: &mut [&mut dyn System]) -> Descriptor {
         // create the Descriptor array
         let environments = PairSpeciesIdx::new(self.cutoff);
         let features = self.features();

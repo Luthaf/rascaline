@@ -6,7 +6,7 @@ use super::{Indexes, IndexesBuilder, EnvironmentIndexes};
 pub struct StructureIdx;
 
 impl EnvironmentIndexes for StructureIdx {
-    fn indexes(&self, systems: &mut [Box<dyn System>]) -> Indexes {
+    fn indexes(&self, systems: &mut [&mut dyn System]) -> Indexes {
         let mut indexes = IndexesBuilder::new(vec!["structure"]);
         for system in 0..systems.len() {
             indexes.add(&[system]);
@@ -14,7 +14,7 @@ impl EnvironmentIndexes for StructureIdx {
         return indexes.finish();
     }
 
-    fn with_gradients(&self, systems: &mut [Box<dyn System>]) -> (Indexes, Option<Indexes>) {
+    fn with_gradients(&self, systems: &mut [&mut dyn System]) -> (Indexes, Option<Indexes>) {
         let mut gradients = IndexesBuilder::new(vec!["structure", "atom", "spatial"]);
         for system in 0..systems.len() {
             for atom in 0..systems[system].size() {
@@ -41,7 +41,7 @@ impl AtomIdx {
 }
 
 impl EnvironmentIndexes for AtomIdx {
-    fn indexes(&self, systems: &mut [Box<dyn System>]) -> Indexes {
+    fn indexes(&self, systems: &mut [&mut dyn System]) -> Indexes {
         let mut indexes = IndexesBuilder::new(vec!["structure", "atom"]);
         for system in 0..systems.len() {
             for atom in 0..systems[system].size() {
@@ -51,7 +51,7 @@ impl EnvironmentIndexes for AtomIdx {
         return indexes.finish();
     }
 
-    fn with_gradients(&self, systems: &mut [Box<dyn System>]) -> (Indexes, Option<Indexes>) {
+    fn with_gradients(&self, systems: &mut [&mut dyn System]) -> (Indexes, Option<Indexes>) {
         // a BTreeSet will yield the indexes in the right order
         let mut indexes = BTreeSet::new();
         for (i_system, system) in systems.iter_mut().enumerate() {
@@ -81,8 +81,8 @@ mod tests {
 
     #[test]
     fn structure() {
-        let systems = &mut test_systems(vec!["methane", "methane", "water"]);
-        let indexes = StructureIdx.indexes(systems);
+        let mut systems = test_systems(vec!["methane", "methane", "water"]);
+        let indexes = StructureIdx.indexes(&mut systems.get());
         assert_eq!(indexes.count(), 3);
         assert_eq!(indexes.names(), &["structure"]);
         assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![&[0], &[1], &[2]]);
@@ -90,9 +90,9 @@ mod tests {
 
     #[test]
     fn structure_gradient() {
-        let systems = &mut test_systems(vec!["methane", "water"]);
+        let mut systems = test_systems(vec!["methane", "water"]);
 
-        let (_, gradients) = StructureIdx.with_gradients(systems);
+        let (_, gradients) = StructureIdx.with_gradients(&mut systems.get());
         let gradients = gradients.unwrap();
         assert_eq!(gradients.count(), 24);
         assert_eq!(gradients.names(), &["structure", "atom", "spatial"]);
@@ -113,9 +113,9 @@ mod tests {
 
     #[test]
     fn atoms() {
-        let systems = &mut test_systems(vec!["methane", "water"]);
+        let mut systems = test_systems(vec!["methane", "water"]);
         let strategy = AtomIdx { cutoff: 2.0 };
-        let indexes = strategy.indexes(systems);
+        let indexes = strategy.indexes(&mut systems.get());
         assert_eq!(indexes.count(), 8);
         assert_eq!(indexes.names(), &["structure", "atom"]);
         assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
@@ -126,9 +126,9 @@ mod tests {
 
     #[test]
     fn atom_gradients() {
-        let systems = &mut test_systems(vec!["methane"]);
+        let mut systems = test_systems(vec!["methane"]);
         let strategy = AtomIdx { cutoff: 1.5 };
-        let (_, gradients) = strategy.with_gradients(systems);
+        let (_, gradients) = strategy.with_gradients(&mut systems.get());
         let gradients = gradients.unwrap();
 
         assert_eq!(gradients.count(), 24);
