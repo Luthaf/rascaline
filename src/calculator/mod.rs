@@ -10,3 +10,6 @@ pub trait Calculator {
 
 mod sorted_distances;
 pub use self::sorted_distances::SortedDistances;
+
+mod dummy_calculator;
+pub use self::dummy_calculator::DummyCalculator;

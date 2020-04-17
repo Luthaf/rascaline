@@ -1,3 +1,5 @@
+use std::ffi::CString;
+
 use crate::system::System;
 
 mod environments;
@@ -35,7 +37,9 @@ impl IndexesBuilder {
 
     pub fn finish(self) -> Indexes {
         Indexes {
-            names: self.names,
+            names: self.names.into_iter()
+                .map(|s| CString::new(s).expect("invalid C string"))
+                .collect(),
             values: self.values,
         }
     }
@@ -43,8 +47,9 @@ impl IndexesBuilder {
 
 #[derive(Clone, Debug)]
 pub struct Indexes {
-    /// Names of the indexes
-    names: Vec<&'static str>,
+    /// Names of the indexes, stored as C strings for easier integration
+    /// with the C API
+    names: Vec<CString>,
     /// Values of the indexes, as a linearized 2D array
     values: Vec<usize>,
 }
@@ -56,13 +61,22 @@ impl Indexes {
     }
 
     /// Names of the indexes
-    pub fn names(&self) -> &[&str] {
+    pub fn names(&self) -> Vec<&str> {
+        self.names.iter().map(|s| s.to_str().expect("invalid UTF8")).collect()
+    }
+
+    /// Names of the indexes as C-compatible (null terminated) strings
+    pub fn c_names(&self) -> &[CString] {
         &self.names
     }
 
     /// How many entries of indexes do we have
     pub fn count(&self) -> usize {
-        self.values.len() / self.size()
+        if self.size() == 0 {
+            return 0;
+        } else {
+            return self.values.len() / self.size();
+        }
     }
 
     /// Get the value of the indexes at the given `linear` index

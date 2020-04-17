@@ -8,7 +8,31 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+typedef enum {
+  RASCAL_INDEXES_FEATURES = 0,
+  RASCAL_INDEXES_ENVIRONMENTS = 1,
+  RASCAL_INDEXES_GRADIENTS = 2,
+} rascal_indexes;
+
 typedef struct rascal_calculator_t rascal_calculator_t;
+
+typedef struct rascal_descriptor_t rascal_descriptor_t;
+
+typedef void (*pair_callback)(void*, uintptr_t, uintptr_t, double);
+
+typedef struct {
+  /*
+   User-provided data should be stored here, it will be passed as the
+   first parameter to all function pointers
+   */
+  void *user_data;
+  void (*size)(const void *user_data, uintptr_t *size);
+  void (*species)(const void *user_data, const uintptr_t **species);
+  void (*positions)(const void *user_data, const double **positions);
+  void (*cell)(const void *user_data, double *cell);
+  void (*compute_neighbors)(void *user_data, double cutoff);
+  void (*foreach_pair)(const void *user_data, void *callback_data, pair_callback callback);
+} rascal_system_t;
 
 #ifdef __cplusplus
 extern "C" {
@@ -16,9 +40,39 @@ extern "C" {
 
 rascal_calculator_t *rascal_calculator(const char *name, const char *parameters);
 
+void rascal_calculator_compute(rascal_calculator_t *calculator,
+                               rascal_descriptor_t *descriptor,
+                               rascal_system_t *systems,
+                               uintptr_t count);
+
 void rascal_calculator_free(rascal_calculator_t *calculator);
 
 void rascal_calculator_name(const rascal_calculator_t *calculator, char *name, uintptr_t bufflen);
+
+rascal_descriptor_t *rascal_descriptor(void);
+
+void rascal_descriptor_free(rascal_descriptor_t *descriptor);
+
+void rascal_descriptor_gradients(const rascal_descriptor_t *descriptor,
+                                 const double **data,
+                                 uintptr_t *environments,
+                                 uintptr_t *features);
+
+void rascal_descriptor_indexes(const rascal_descriptor_t *descriptor,
+                               rascal_indexes indexes,
+                               const uintptr_t **values,
+                               uintptr_t *size,
+                               uintptr_t *count);
+
+void rascal_descriptor_indexes_names(const rascal_descriptor_t *descriptor,
+                                     rascal_indexes indexes,
+                                     const char **names,
+                                     uintptr_t size);
+
+void rascal_descriptor_values(const rascal_descriptor_t *descriptor,
+                              const double **data,
+                              uintptr_t *environments,
+                              uintptr_t *features);
 
 #ifdef __cplusplus
 } // extern "C"

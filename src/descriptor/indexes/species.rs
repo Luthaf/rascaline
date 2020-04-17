@@ -74,7 +74,7 @@ impl EnvironmentIndexes for PairSpeciesIdx {
         return indexes.finish();
     }
 
-    fn with_gradients(&self, systems: &mut [&mut dyn System]) -> (Indexes, Option<Indexes>) {
+    fn with_gradients(&self, _systems: &mut [&mut dyn System]) -> (Indexes, Option<Indexes>) {
         // this needs to deal with cutoff to only include atoms inside the
         // cutoff sphere
         unimplemented!()

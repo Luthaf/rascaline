@@ -3,6 +3,9 @@ use std::collections::BTreeMap;
 use crate::calculator::Calculator;
 use crate::calculator::SortedDistances;
 
+
+use crate::calculator::DummyCalculator;
+
 type CalculatorCreator = fn(&str) -> Result<Box<dyn Calculator>, serde_json::Error>;
 
 macro_rules! add_calculator {
@@ -19,6 +22,7 @@ macro_rules! add_calculator {
 lazy_static::lazy_static!{
     pub static ref REGISTERED_CALCULATORS: BTreeMap<&'static str, CalculatorCreator> = {
         let mut map = BTreeMap::new();
+        add_calculator!(map, "dummy_calculator", DummyCalculator);
         add_calculator!(map, "sorted_distances", SortedDistances);
         return map;
     };
