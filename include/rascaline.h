@@ -18,7 +18,11 @@ typedef struct rascal_calculator_t rascal_calculator_t;
 
 typedef struct rascal_descriptor_t rascal_descriptor_t;
 
-typedef void (*pair_callback)(void*, uintptr_t, uintptr_t, double);
+typedef struct {
+  uintptr_t first;
+  uintptr_t second;
+  double distance;
+} Pair;
 
 typedef struct {
   /*
@@ -31,7 +35,7 @@ typedef struct {
   void (*positions)(const void *user_data, const double **positions);
   void (*cell)(const void *user_data, double *cell);
   void (*compute_neighbors)(void *user_data, double cutoff);
-  void (*foreach_pair)(const void *user_data, void *callback_data, pair_callback callback);
+  void (*pairs)(const void *user_data, const Pair **pairs, uintptr_t *count);
 } rascal_system_t;
 
 #ifdef __cplusplus

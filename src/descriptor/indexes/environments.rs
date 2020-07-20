@@ -56,10 +56,10 @@ impl EnvironmentIndexes for AtomIdx {
         let mut indexes = BTreeSet::new();
         for (i_system, system) in systems.iter_mut().enumerate() {
             system.compute_neighbors(self.cutoff);
-            system.foreach_pair(&mut |i, j, _| {
-                indexes.insert((i_system, i, j));
-                indexes.insert((i_system, j, i));
-            })
+            for pair in system.pairs() {
+                indexes.insert((i_system, pair.first, pair.second));
+                indexes.insert((i_system, pair.second, pair.first)); 
+            }
         }
 
         let mut gradients = IndexesBuilder::new(vec!["structure", "atom", "neighbor", "spatial"]);

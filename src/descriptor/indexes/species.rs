@@ -3,7 +3,6 @@ use std::collections::BTreeSet;
 use crate::system::System;
 use super::{Indexes, IndexesBuilder, EnvironmentIndexes};
 
-
 pub struct StructureSpeciesIdx;
 
 impl EnvironmentIndexes for StructureSpeciesIdx {
@@ -58,13 +57,13 @@ impl EnvironmentIndexes for PairSpeciesIdx {
         for (i_system, system) in systems.iter_mut().enumerate() {
             system.compute_neighbors(self.cutoff);
             let species = system.species();
-            system.foreach_pair(&mut |i, j, _| {
-                let species_i = species[i];
-                let species_j = species[j];
+            for pair in system.pairs() {
+                let species_first = species[pair.first];
+                let species_second = species[pair.second];
 
-                set.insert([i_system, i, species_i, species_j]);
-                set.insert([i_system, j, species_j, species_i]);
-            });
+                set.insert([i_system, pair.first, species_first, species_second]);
+                set.insert([i_system, pair.second, species_second, species_first]);
+            };
         }
 
         let mut indexes = IndexesBuilder::new(vec!["structure", "atom", "alpha", "beta"]);

@@ -14,6 +14,7 @@ pub struct DummyCalculator {
 
 impl Calculator for DummyCalculator {
     fn name(&self) -> String {
+        // abusing the name as description
         format!("dummy test calculator with cutoff: {} - delta: {} - name: {} - gradients: {}",
             self.cutoff, self.delta, self.name, self.gradients
         )

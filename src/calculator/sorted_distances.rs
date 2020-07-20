@@ -54,13 +54,17 @@ impl Calculator for SortedDistances {
             // Collect all distances around each center in `distances`
             system.compute_neighbors(self.cutoff);
             let species = system.species();
-            system.foreach_pair(&mut |i, j, d| {
+            for pair in system.pairs() {
+                let i = pair.first;
+                let j = pair.second;
+                let d = pair.distance;
+
                 let distances_vectors = distances.get_mut(&(species[i], species[j])).unwrap();
                 distances_vectors[i].push(d);
 
                 let distances_vectors = distances.get_mut(&(species[j], species[i])).unwrap();
                 distances_vectors[j].push(d);
-            });
+            }
 
             // Sort, resize to limit to at most `self.max_neighbors` values
             // and pad the distance vectors as needed

@@ -1,8 +1,8 @@
-use super::{UnitCell, System, Vector3D};
+use super::{UnitCell, System, Vector3D, Pair};
 
 pub struct CrappyNeighborsList {
     cutoff: f64,
-    neighbors: Vec<Vec<(usize, f64)>>,
+    pairs: Vec<Pair>,
 }
 
 impl CrappyNeighborsList {
@@ -12,16 +12,16 @@ impl CrappyNeighborsList {
         let natoms = system.size();
         let positions = system.positions();
 
-        let mut neighbors = vec![Vec::new(); natoms];
+        let mut pairs = vec![];
         // crappy implementation, looping over all atoms in the system
         for i in 0..natoms {
             for j in (i + 1)..natoms {
                 let d2 = cell.distance2(&positions[i], &positions[j]);
                 if d2 < cutoff2 {
                     if i < j {
-                        neighbors[i].push((j, d2.sqrt()));
+                        pairs.push(Pair{ first: i, second: j, distance: d2.sqrt()});
                     } else {
-                        neighbors[j].push((i, d2.sqrt()));
+                        pairs.push(Pair{ first: j, second: i, distance: d2.sqrt()});
                     }
                 }
             }
@@ -29,7 +29,7 @@ impl CrappyNeighborsList {
 
         return CrappyNeighborsList {
             cutoff: cutoff,
-            neighbors: neighbors,
+            pairs: pairs,
         };
     }
 }
@@ -69,13 +69,8 @@ impl System for SimpleSystem {
         self.neighbors = Some(CrappyNeighborsList::new(self, cutoff));
     }
 
-    fn foreach_pair(&self, function: &mut dyn FnMut(usize, usize, f64)) {
-        let nl = self.neighbors.as_ref().expect("neighbor list is not initialized");
-        for (i, neighbors) in nl.neighbors.iter().enumerate() {
-            for &(j, d) in neighbors {
-                function(i, j, d);
-            }
-        }
+    fn pairs(&self) -> &[Pair] {
+        &self.neighbors.as_ref().expect("neighbor list is not initialized").pairs
     }
 }
 
