@@ -15,4 +15,10 @@ fn main() {
         .generate()
         .expect("Unable to generate bindings")
         .write_to_file("include/rascaline.h");
+    
+    for entry in glob::glob("src/**/*.rs").unwrap() {
+        if let Ok(path) = entry {
+            println!("cargo:rerun-if-changed={}", path.display());
+        }
+    }
 }

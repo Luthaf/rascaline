@@ -19,3 +19,4 @@ approx = "*"
 
 [build-dependencies]
 cbindgen = "*"
+glob = "*"
