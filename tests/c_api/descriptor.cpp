@@ -23,7 +23,7 @@ TEST_CASE("rascal_descriptor_t") {
         uintptr_t count = 0;
         uintptr_t size = 0;
 
-        rascal_descriptor_indexes(descriptor, RASCAL_INDEXES_FEATURES, &data, &size, &count);
+        rascal_descriptor_indexes(descriptor, RASCAL_INDEXES_FEATURES, &data, &count, &size);
         CHECK(data == nullptr);
         CHECK(count == 0);
         CHECK(size == 0);
@@ -34,7 +34,7 @@ TEST_CASE("rascal_descriptor_t") {
         CHECK(names[1] == nullptr);
 
         compute_descriptor(descriptor);
-        rascal_descriptor_indexes(descriptor, RASCAL_INDEXES_FEATURES, &data, &size, &count);
+        rascal_descriptor_indexes(descriptor, RASCAL_INDEXES_FEATURES, &data, &count, &size);
         CHECK(data != nullptr);
         CHECK(count == 2);
         CHECK(size == 2);
@@ -45,8 +45,8 @@ TEST_CASE("rascal_descriptor_t") {
         CHECK(data[1 * size + 1] == 1);
 
         rascal_descriptor_indexes_names(descriptor, RASCAL_INDEXES_FEATURES, names, 2);
-        CHECK(names[0] == std::string("index + delta"));
-        CHECK(names[1] == std::string("x + y + z"));
+        CHECK(names[0] == std::string("index_delta"));
+        CHECK(names[1] == std::string("x_y_z"));
 
         rascal_descriptor_free(descriptor);
     }
@@ -59,7 +59,7 @@ TEST_CASE("rascal_descriptor_t") {
         uintptr_t count = 0;
         uintptr_t size = 0;
 
-        rascal_descriptor_indexes(descriptor, RASCAL_INDEXES_ENVIRONMENTS, &data, &size, &count);
+        rascal_descriptor_indexes(descriptor, RASCAL_INDEXES_ENVIRONMENTS, &data, &count, &size);
         CHECK(data == nullptr);
         CHECK(count == 0);
         CHECK(size == 0);
@@ -71,7 +71,7 @@ TEST_CASE("rascal_descriptor_t") {
 
 
         compute_descriptor(descriptor);
-        rascal_descriptor_indexes(descriptor, RASCAL_INDEXES_ENVIRONMENTS, &data, &size, &count);
+        rascal_descriptor_indexes(descriptor, RASCAL_INDEXES_ENVIRONMENTS, &data, &count, &size);
         CHECK(data != nullptr);
         CHECK(count == 4);
         CHECK(size == 2);

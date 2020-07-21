@@ -18,6 +18,11 @@ pub struct IndexesBuilder {
 impl IndexesBuilder {
     /// Create a new empty `IndexesBuilder` with the given `names`
     pub fn new(names: Vec<&'static str>) -> IndexesBuilder {
+        for name in &names {
+            if !is_valid_ident(name) {
+                panic!("All indexes names must be valid identifiers, '{}' is not", name);
+            }
+        }
         IndexesBuilder {
             names: names,
             values: Vec::new(),
@@ -43,6 +48,26 @@ impl IndexesBuilder {
             values: self.values,
         }
     }
+}
+
+fn is_valid_ident(name: &str) -> bool {
+    if name.is_empty() {
+        return false;
+    }
+
+    for (i, c) in name.chars().enumerate() {
+        if i == 0 {
+            if c.is_ascii_digit() {
+                return false;
+            }
+        }
+
+        if !(c.is_ascii_alphanumeric() || c == '_') {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 #[derive(Clone, Debug)]

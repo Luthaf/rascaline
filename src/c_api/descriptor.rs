@@ -92,8 +92,8 @@ pub unsafe extern fn rascal_descriptor_indexes(
     descriptor: *const rascal_descriptor_t,
     indexes: rascal_indexes,
     values: *mut *const usize,
-    size: *mut usize,
     count: *mut usize,
+    size: *mut usize,
 ) {
     assert!(!descriptor.is_null());
     assert!(!values.is_null());

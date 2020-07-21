@@ -21,7 +21,7 @@ impl Calculator for DummyCalculator {
     }
 
     fn compute(&mut self, systems: &mut [&mut dyn System], descriptor: &mut Descriptor) {
-        let mut features = IndexesBuilder::new(vec!["index + delta", "x + y + z"]);
+        let mut features = IndexesBuilder::new(vec!["index_delta", "x_y_z"]);
         features.add(&[1, 0]);
         features.add(&[0, 1]);
         let features = features.finish();
@@ -38,6 +38,8 @@ impl Calculator for DummyCalculator {
                 descriptor.values[[i, 0]] = (atom + self.delta) as f64;
                 let position = systems[structure].positions()[atom];
                 descriptor.values[[i, 1]] = position[0] + position[1] + position[2];
+            } else {
+                unreachable!();
             }
         }
 

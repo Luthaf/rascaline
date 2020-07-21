@@ -22,7 +22,7 @@ typedef struct {
   uintptr_t first;
   uintptr_t second;
   double distance;
-} Pair;
+} rascal_pair_t;
 
 typedef struct {
   /*
@@ -35,7 +35,7 @@ typedef struct {
   void (*positions)(const void *user_data, const double **positions);
   void (*cell)(const void *user_data, double *cell);
   void (*compute_neighbors)(void *user_data, double cutoff);
-  void (*pairs)(const void *user_data, const Pair **pairs, uintptr_t *count);
+  void (*pairs)(const void *user_data, const rascal_pair_t **pairs, uintptr_t *count);
 } rascal_system_t;
 
 #ifdef __cplusplus
@@ -65,8 +65,8 @@ void rascal_descriptor_gradients(const rascal_descriptor_t *descriptor,
 void rascal_descriptor_indexes(const rascal_descriptor_t *descriptor,
                                rascal_indexes indexes,
                                const uintptr_t **values,
-                               uintptr_t *size,
-                               uintptr_t *count);
+                               uintptr_t *count,
+                               uintptr_t *size);
 
 void rascal_descriptor_indexes_names(const rascal_descriptor_t *descriptor,
                                      rascal_indexes indexes,
