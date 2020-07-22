@@ -14,8 +14,8 @@ pub struct Descriptor {
     pub environments: Indexes,
     pub features: Indexes,
     /// Gradients of the descriptor with respect to one atomic position
-    pub gradient: Option<Array2<f64>>,
-    pub grad_envs: Option<Indexes>,
+    pub gradients: Option<Array2<f64>>,
+    pub gradients_indexes: Option<Indexes>,
 }
 
 fn resize_array(array: &mut Array2<f64>, shape: (usize, usize)) {
@@ -38,8 +38,8 @@ impl Descriptor {
             values: Array2::zeros((0, 0)),
             environments: indexes.clone(),
             features: indexes,
-            gradient: None,
-            grad_envs: None,
+            gradients: None,
+            gradients_indexes: None,
         }
     }
 
@@ -58,12 +58,11 @@ impl Descriptor {
         resize_array(&mut self.values, shape);
         self.values.assign(&aview0(&initial));
 
-        self.gradient = None;
-        self.grad_envs = None;
+        self.gradients = None;
+        self.gradients_indexes = None;
     }
 
-    // TODO: pub(crate)
-    pub fn prepare_gradients(
+    pub(crate) fn prepare_gradients(
         &mut self,
         environments: impl EnvironmentIndexes,
         features: Indexes,
@@ -75,29 +74,27 @@ impl Descriptor {
             "the given environments indexes do not support gradients"
         );
         // basic sanity check
-        assert!(grad_idx.names().last() == Some(&"spatial"), "the last index of gradient should be spatial");
+        assert_eq!(grad_idx.names().last(), Some(&"spatial"), "the last index of gradient should be spatial");
 
         self.environments = env_idx;
         self.features = features;
 
-        // resize the 'values' array if needed,
-        // and set the requested initial value
+        // resize the 'values' array if needed, and set the requested initial value
         let shape = (self.environments.count(), self.features.count());
         resize_array(&mut self.values, shape);
         self.values.assign(&aview0(&initial));
 
         let shape = (grad_idx.count(), self.features.count());
-        self.grad_envs = Some(grad_idx);
+        self.gradients_indexes = Some(grad_idx);
 
-        if let Some(array) = &mut self.gradient {
-            // resize the 'gradient' array if needed,
-            // and set the requested initial value
+        if let Some(array) = &mut self.gradients {
+            // resize the 'gradient' array if needed, and set the requested initial value
             resize_array(array, shape);
             array.assign(&aview0(&initial));
         } else {
             // create a new gradient array
             let array = Array2::from_elem(shape, initial);
-            self.gradient = Some(array);
+            self.gradients = Some(array);
         }
     }
 }

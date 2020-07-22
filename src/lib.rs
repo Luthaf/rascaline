@@ -10,3 +10,4 @@ pub mod c_api;
 
 pub use system::System;
 pub use calculator::Calculator;
+pub use descriptor::Descriptor;

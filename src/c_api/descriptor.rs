@@ -59,7 +59,7 @@ pub unsafe extern fn rascal_descriptor_gradients(descriptor: *const rascal_descr
     assert!(!environments.is_null());
     assert!(!features.is_null());
 
-    match &(*descriptor).gradient {
+    match &(*descriptor).gradients {
         Some(array) => {
             if array.is_empty() {
                 *data = std::ptr::null();
@@ -104,7 +104,7 @@ pub unsafe extern fn rascal_descriptor_indexes(
         rascal_indexes::RASCAL_INDEXES_FEATURES => &(*descriptor).features,
         rascal_indexes::RASCAL_INDEXES_ENVIRONMENTS => &(*descriptor).environments,
         rascal_indexes::RASCAL_INDEXES_GRADIENTS => {
-            if let Some(indexes) = &(*descriptor).grad_envs {
+            if let Some(indexes) = &(*descriptor).gradients_indexes {
                 indexes
             } else {
                 *values = std::ptr::null();
@@ -139,7 +139,7 @@ pub unsafe extern fn rascal_descriptor_indexes_names(
         rascal_indexes::RASCAL_INDEXES_FEATURES => &(*descriptor).features,
         rascal_indexes::RASCAL_INDEXES_ENVIRONMENTS => &(*descriptor).environments,
         rascal_indexes::RASCAL_INDEXES_GRADIENTS => {
-            if let Some(indexes) = &(*descriptor).grad_envs {
+            if let Some(indexes) = &(*descriptor).gradients_indexes {
                 indexes
             } else {
                 for i in 0..size {
