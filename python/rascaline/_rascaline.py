@@ -24,6 +24,13 @@ class rascal_indexes(enum.Enum):
     RASCAL_INDEXES_GRADIENTS = 2
 
 
+class rascal_status_t(enum.Enum):
+    RASCAL_SUCCESS = 0
+    RASCAL_INVALID_PARAMETER_ERROR = 1
+    RASCAL_JSON_ERROR = 2
+    RASCAL_INTERNAL_PANIC = 255
+
+
 class rascal_calculator_t(ctypes.Structure):
     pass
 
@@ -53,6 +60,7 @@ class rascal_system_t(ctypes.Structure):
 
 
 def setup_functions(lib):
+    from .status import _check_rascal_status_t
 
     lib.rascal_calculator.argtypes = [
         ctypes.c_char_p,
@@ -66,19 +74,19 @@ def setup_functions(lib):
         POINTER(rascal_system_t),
         c_uintptr_t
     ]
-    lib.rascal_calculator_compute.restype = None
+    lib.rascal_calculator_compute.restype = _check_rascal_status_t
 
     lib.rascal_calculator_free.argtypes = [
         POINTER(rascal_calculator_t)
     ]
-    lib.rascal_calculator_free.restype = None
+    lib.rascal_calculator_free.restype = _check_rascal_status_t
 
     lib.rascal_calculator_name.argtypes = [
         POINTER(rascal_calculator_t),
         ctypes.c_char_p,
         c_uintptr_t
     ]
-    lib.rascal_calculator_name.restype = None
+    lib.rascal_calculator_name.restype = _check_rascal_status_t
 
     lib.rascal_descriptor.argtypes = [
         
@@ -88,7 +96,7 @@ def setup_functions(lib):
     lib.rascal_descriptor_free.argtypes = [
         POINTER(rascal_descriptor_t)
     ]
-    lib.rascal_descriptor_free.restype = None
+    lib.rascal_descriptor_free.restype = _check_rascal_status_t
 
     lib.rascal_descriptor_gradients.argtypes = [
         POINTER(rascal_descriptor_t),
@@ -96,7 +104,7 @@ def setup_functions(lib):
         POINTER(c_uintptr_t),
         POINTER(c_uintptr_t)
     ]
-    lib.rascal_descriptor_gradients.restype = None
+    lib.rascal_descriptor_gradients.restype = _check_rascal_status_t
 
     lib.rascal_descriptor_indexes.argtypes = [
         POINTER(rascal_descriptor_t),
@@ -105,7 +113,7 @@ def setup_functions(lib):
         POINTER(c_uintptr_t),
         POINTER(c_uintptr_t)
     ]
-    lib.rascal_descriptor_indexes.restype = None
+    lib.rascal_descriptor_indexes.restype = _check_rascal_status_t
 
     lib.rascal_descriptor_indexes_names.argtypes = [
         POINTER(rascal_descriptor_t),
@@ -113,7 +121,7 @@ def setup_functions(lib):
         POINTER(ctypes.c_char_p),
         c_uintptr_t
     ]
-    lib.rascal_descriptor_indexes_names.restype = None
+    lib.rascal_descriptor_indexes_names.restype = _check_rascal_status_t
 
     lib.rascal_descriptor_values.argtypes = [
         POINTER(rascal_descriptor_t),
@@ -121,4 +129,9 @@ def setup_functions(lib):
         POINTER(c_uintptr_t),
         POINTER(c_uintptr_t)
     ]
-    lib.rascal_descriptor_values.restype = None
+    lib.rascal_descriptor_values.restype = _check_rascal_status_t
+
+    lib.rascal_last_error.argtypes = [
+        
+    ]
+    lib.rascal_last_error.restype = ctypes.c_char_p

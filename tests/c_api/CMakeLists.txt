@@ -4,6 +4,10 @@ project(rascaline-capi-tests CXX)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# make sure assert works in tests
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -UNDEBUG")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -UNDEBUG")
+
 if("${CMAKE_BUILD_TYPE}" STREQUAL "" AND "${CMAKE_CONFIGURATION_TYPES}" STREQUAL "")
     message(STATUS "Setting build type to 'debug' as none was specified.")
     set(CMAKE_BUILD_TYPE "debug" CACHE STRING "" FORCE)

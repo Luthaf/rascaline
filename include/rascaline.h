@@ -108,6 +108,11 @@ rascal_status_t rascal_descriptor_values(const rascal_descriptor_t *descriptor,
                                          uintptr_t *environments,
                                          uintptr_t *features);
 
+/*
+ Get the last error message that was sent on the current thread
+ */
+const char *rascal_last_error(void);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif // __cplusplus

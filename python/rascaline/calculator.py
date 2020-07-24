@@ -4,6 +4,7 @@ import ctypes
 
 from ._rascaline import rascal_system_t
 from .clib import _get_library
+from .status import _check_rascal_pointer
 from .descriptor import Descriptor
 
 
@@ -14,11 +15,7 @@ class CalculatorBase:
         self._as_parameter_ = self._lib.rascal_calculator(
             __rascal__name.encode("utf8"), parameters
         )
-        try:
-            self._as_parameter_.contents
-        except ValueError:
-            # TODO: better error message
-            raise Exception("Got a NULL pointer")
+        _check_rascal_pointer(self._as_parameter_)
 
     def __del__(self):
         self._lib.rascal_calculator_free(self)

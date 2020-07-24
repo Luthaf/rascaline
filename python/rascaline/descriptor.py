@@ -5,17 +5,14 @@ from ctypes import c_double, c_char_p, POINTER
 
 from ._rascaline import c_uintptr_t, rascal_indexes
 from .clib import _get_library
+from .status import _check_rascal_pointer
 
 
 class Descriptor:
     def __init__(self):
         self._lib = _get_library()
         self._as_parameter_ = self._lib.rascal_descriptor()
-        try:
-            self._as_parameter_.contents
-        except ValueError:
-            # TODO: better error message
-            raise Exception("Got a NULL pointer")
+        _check_rascal_pointer(self._as_parameter_)
 
     def __del__(self):
         self._lib.rascal_descriptor_free(self)

@@ -159,16 +159,23 @@ def generate_structs(file, structs):
 
 def generate_functions(file, functions):
     file.write(f"\n\ndef setup_functions(lib):\n")
+    file.write("    from .status import _check_rascal_status_t\n")
+
     for function in functions:
         file.write(f"\n    lib.{function.name}.argtypes = [\n        ")
         args = [type_to_ctypes(arg) for arg in function.args]
+
+        # functions taking void parameter in C don't have any parameter
         if args == ["None"]:
             args = []
         file.write(",\n        ".join(args))
         file.write("\n    ]\n")
-        file.write(
-            f"    lib.{function.name}.restype = {type_to_ctypes(function.restype)}\n"
-        )
+
+        restype = type_to_ctypes(function.restype)
+        if restype == "rascal_status_t":
+            restype = "_check_rascal_status_t"
+
+        file.write(f"    lib.{function.name}.restype = {restype}\n")
 
 
 def generate_declarations():
