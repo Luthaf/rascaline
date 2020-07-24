@@ -5,10 +5,10 @@
 #include "helpers.hpp"
 
 const char* HYPERS_JSON = R"({
-    "cutoff": 3.5,
+    "cutoff": 3.0,
     "delta": 5,
     "name": "bar",
-    "gradients": false
+    "gradients": true
 })";
 
 static rascal_system_t simple_system();
@@ -135,7 +135,83 @@ TEST_CASE("rascal_descriptor_t") {
         CHECK_SUCCESS(rascal_descriptor_free(descriptor));
     }
 
-    // TODO: get the gradients
+    SECTION("gradient indexes") {
+        auto* descriptor = rascal_descriptor();
+        REQUIRE(descriptor != nullptr);
+
+        const uintptr_t* data = nullptr;
+        uintptr_t count = 0;
+        uintptr_t size = 0;
+
+        CHECK_SUCCESS(rascal_descriptor_indexes(
+            descriptor, RASCAL_INDEXES_GRADIENTS, &data, &count, &size
+        ));
+        CHECK(data == nullptr);
+        CHECK(count == 0);
+        CHECK(size == 0);
+
+        const char* names[4] = {"foo", "bar", "fizz", "buzz"};
+        rascal_descriptor_indexes_names(descriptor, RASCAL_INDEXES_GRADIENTS, names, 4);
+        CHECK(names[0] == nullptr);
+        CHECK(names[1] == nullptr);
+        CHECK(names[2] == nullptr);
+        CHECK(names[3] == nullptr);
+
+
+        compute_descriptor(descriptor);
+        CHECK_SUCCESS(rascal_descriptor_indexes(
+            descriptor, RASCAL_INDEXES_GRADIENTS, &data, &count, &size
+        ));
+        CHECK(data != nullptr);
+        CHECK(count == 18);
+        CHECK(size == 4);
+
+        auto expected = std::vector<double> {
+            // structure, atom, neighbor atom, spatial
+            /* x */ 0, 0, 1, 0, /* y */ 0, 0, 1, 1, /* z */ 0, 0, 1, 2,
+            /* x */ 0, 1, 0, 0, /* y */ 0, 1, 0, 1, /* z */ 0, 1, 0, 2,
+            /* x */ 0, 1, 2, 0, /* y */ 0, 1, 2, 1, /* z */ 0, 1, 2, 2,
+            /* x */ 0, 2, 1, 0, /* y */ 0, 2, 1, 1, /* z */ 0, 2, 1, 2,
+            /* x */ 0, 2, 3, 0, /* y */ 0, 2, 3, 1, /* z */ 0, 2, 3, 2,
+            /* x */ 0, 3, 2, 0, /* y */ 0, 3, 2, 1, /* z */ 0, 3, 2, 2,
+        };
+
+        CHECK(std::vector<double>(data, data + (count * size)) == expected);
+
+        CHECK_SUCCESS(rascal_descriptor_indexes_names(
+            descriptor, RASCAL_INDEXES_GRADIENTS, names, 4
+        ));
+        CHECK(names[0] == std::string("structure"));
+        CHECK(names[1] == std::string("atom"));
+        CHECK(names[2] == std::string("neighbor"));
+        CHECK(names[3] == std::string("spatial"));
+
+        rascal_descriptor_free(descriptor);
+    }
+
+    SECTION("gradient values") {
+        auto* descriptor = rascal_descriptor();
+        REQUIRE(descriptor != nullptr);
+
+        const double* data = nullptr;
+        uintptr_t shape[2] = {0};
+        CHECK_SUCCESS(rascal_descriptor_gradients(descriptor, &data, &shape[0], &shape[1]));
+        CHECK(data == nullptr);
+        CHECK(shape[0] == 0);
+        CHECK(shape[1] == 0);
+
+        compute_descriptor(descriptor);
+        CHECK_SUCCESS(rascal_descriptor_gradients(descriptor, &data, &shape[0], &shape[1]));
+        CHECK(shape[0] == 18);
+        CHECK(shape[1] == 2);
+
+        for (size_t i=0; i<shape[0]; i++) {
+            CHECK(data[i * shape[1] + 0] == 0);
+            CHECK(data[i * shape[1] + 1] == 1);
+        }
+
+        CHECK_SUCCESS(rascal_descriptor_free(descriptor));
+    }
 }
 
 void compute_descriptor(rascal_descriptor_t* descriptor) {
@@ -179,7 +255,21 @@ rascal_system_t simple_system() {
         std::memcpy(cell, CELL, sizeof(CELL));
     };
 
-    // TODO: compute_neighbors and foreach_pair
+    // basic compute_neighbors, always returning the same pairs
+    system.compute_neighbors = [](void* _, double cutoff){
+        assert(cutoff > 1.73205080756887729352 && cutoff < 3.46410161513775458704);
+    };
+
+    system.pairs = [](const void* _, const rascal_pair_t** pairs, uintptr_t* count){
+        static rascal_pair_t PAIRS[] = {
+            {0, 1, 1.73205080756887729352},
+            {1, 2, 1.73205080756887729352},
+            {2, 3, 1.73205080756887729352},
+        };
+
+        *pairs = PAIRS;
+        *count = 3;
+    };
 
     return system;
 }
