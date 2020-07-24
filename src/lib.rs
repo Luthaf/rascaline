@@ -3,6 +3,9 @@
 pub mod types;
 pub use types::*;
 
+mod errors;
+pub use self::errors::Error;
+
 pub mod system;
 pub mod descriptor;
 pub mod calculator;

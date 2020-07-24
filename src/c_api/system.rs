@@ -32,6 +32,7 @@ impl System for rascal_system_t {
         let function = self.species.expect("rascal_system_t.species is NULL");
         unsafe {
             function(self.user_data, &mut ptr);
+            // TODO: check if ptr.is_null() and error in some way?
             return std::slice::from_raw_parts(ptr, self.size());
         }
     }
@@ -75,4 +76,3 @@ impl System for rascal_system_t {
         }
     }
 }
-

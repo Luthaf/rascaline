@@ -18,7 +18,8 @@ TEST_CASE("calculator name") {
     REQUIRE(calculator != nullptr);
 
     char buffer[256] = {0};
-    rascal_calculator_name(calculator, buffer, sizeof(buffer));
+    auto status = rascal_calculator_name(calculator, buffer, sizeof(buffer));
+    CHECK(status == RASCAL_SUCCESS);
     CHECK(buffer == std::string("dummy test calculator with cutoff: 3.5 - delta: 25 - name: bar - gradients: false"));
 
     rascal_calculator_free(calculator);

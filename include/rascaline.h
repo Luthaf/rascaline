@@ -14,8 +14,36 @@ typedef enum {
   RASCAL_INDEXES_GRADIENTS = 2,
 } rascal_indexes;
 
+/*
+ Status type returned by all functions in the C API.
+ */
+typedef enum {
+  /*
+   The function succeeded
+   */
+  RASCAL_SUCCESS = 0,
+  /*
+   A function got an invalid parameter
+   */
+  RASCAL_INVALID_PARAMETER_ERROR = 1,
+  /*
+   There was an error reading or writting JSON
+   */
+  RASCAL_JSON_ERROR = 2,
+  /*
+   There was an internal error (rust panic)
+   */
+  RASCAL_INTERNAL_PANIC = 255,
+} rascal_status_t;
+
+/*
+ Opaque type representing a Calculator
+ */
 typedef struct rascal_calculator_t rascal_calculator_t;
 
+/*
+ Opaque type representing a Descriptor
+ */
 typedef struct rascal_descriptor_t rascal_descriptor_t;
 
 typedef struct {
@@ -44,39 +72,41 @@ extern "C" {
 
 rascal_calculator_t *rascal_calculator(const char *name, const char *parameters);
 
-void rascal_calculator_compute(rascal_calculator_t *calculator,
-                               rascal_descriptor_t *descriptor,
-                               rascal_system_t *systems,
-                               uintptr_t count);
+rascal_status_t rascal_calculator_compute(rascal_calculator_t *calculator,
+                                          rascal_descriptor_t *descriptor,
+                                          rascal_system_t *systems,
+                                          uintptr_t count);
 
-void rascal_calculator_free(rascal_calculator_t *calculator);
+rascal_status_t rascal_calculator_free(rascal_calculator_t *calculator);
 
-void rascal_calculator_name(const rascal_calculator_t *calculator, char *name, uintptr_t bufflen);
+rascal_status_t rascal_calculator_name(const rascal_calculator_t *calculator,
+                                       char *name,
+                                       uintptr_t bufflen);
 
 rascal_descriptor_t *rascal_descriptor(void);
 
-void rascal_descriptor_free(rascal_descriptor_t *descriptor);
+rascal_status_t rascal_descriptor_free(rascal_descriptor_t *descriptor);
 
-void rascal_descriptor_gradients(const rascal_descriptor_t *descriptor,
-                                 const double **data,
-                                 uintptr_t *environments,
-                                 uintptr_t *features);
+rascal_status_t rascal_descriptor_gradients(const rascal_descriptor_t *descriptor,
+                                            const double **data,
+                                            uintptr_t *environments,
+                                            uintptr_t *features);
 
-void rascal_descriptor_indexes(const rascal_descriptor_t *descriptor,
-                               rascal_indexes indexes,
-                               const uintptr_t **values,
-                               uintptr_t *count,
-                               uintptr_t *size);
+rascal_status_t rascal_descriptor_indexes(const rascal_descriptor_t *descriptor,
+                                          rascal_indexes indexes,
+                                          const uintptr_t **values,
+                                          uintptr_t *count,
+                                          uintptr_t *size);
 
-void rascal_descriptor_indexes_names(const rascal_descriptor_t *descriptor,
-                                     rascal_indexes indexes,
-                                     const char **names,
-                                     uintptr_t size);
+rascal_status_t rascal_descriptor_indexes_names(const rascal_descriptor_t *descriptor,
+                                                rascal_indexes indexes,
+                                                const char **names,
+                                                uintptr_t size);
 
-void rascal_descriptor_values(const rascal_descriptor_t *descriptor,
-                              const double **data,
-                              uintptr_t *environments,
-                              uintptr_t *features);
+rascal_status_t rascal_descriptor_values(const rascal_descriptor_t *descriptor,
+                                         const double **data,
+                                         uintptr_t *environments,
+                                         uintptr_t *features);
 
 #ifdef __cplusplus
 } // extern "C"

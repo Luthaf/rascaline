@@ -1,7 +1,11 @@
 use crate::system::System;
 use crate::descriptor::Descriptor;
 
-pub trait Calculator {
+/// TODO: docs
+///
+/// `std::panic::RefUnwindSafe` is a required super-trait to enable passing
+/// calculators across the C API.
+pub trait Calculator: std::panic::RefUnwindSafe {
     /// Get the name of this Calculator
     fn name(&self) -> String;
     /// Compute the descriptor for all the given systems and store it in `descriptor`

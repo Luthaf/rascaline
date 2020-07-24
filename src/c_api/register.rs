@@ -1,20 +1,19 @@
 use std::collections::BTreeMap;
 
+use crate::Error;
 use crate::calculator::Calculator;
 use crate::calculator::SortedDistances;
 
 
 use crate::calculator::DummyCalculator;
 
-type CalculatorCreator = fn(&str) -> Result<Box<dyn Calculator>, serde_json::Error>;
+type CalculatorCreator = fn(&str) -> Result<Box<dyn Calculator>, Error>;
 
 macro_rules! add_calculator {
     ($map :expr, $name :literal, $type :ty) => (
         $map.insert($name, (|json| {
-            match serde_json::from_str::<$type>(json) {
-                Ok(value) => Ok(Box::new(value)),
-                Err(e) => Err(e)
-            }
+            let value = serde_json::from_str::<$type>(json)?;
+            Ok(Box::new(value))
         }) as CalculatorCreator);
     );
 }

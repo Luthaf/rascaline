@@ -2,6 +2,7 @@
 
 #include "rascaline.h"
 #include "catch.hpp"
+#include "helpers.hpp"
 
 const char* HYPERS_JSON = R"({
     "cutoff": 3.5,
@@ -23,18 +24,24 @@ TEST_CASE("rascal_descriptor_t") {
         uintptr_t count = 0;
         uintptr_t size = 0;
 
-        rascal_descriptor_indexes(descriptor, RASCAL_INDEXES_FEATURES, &data, &count, &size);
+        CHECK_SUCCESS(rascal_descriptor_indexes(
+            descriptor, RASCAL_INDEXES_FEATURES, &data, &count, &size
+        ));
         CHECK(data == nullptr);
         CHECK(count == 0);
         CHECK(size == 0);
 
         const char* names[2] = {"foo", "bar"};
-        rascal_descriptor_indexes_names(descriptor, RASCAL_INDEXES_FEATURES, names, 2);
+        CHECK_SUCCESS(rascal_descriptor_indexes_names(
+            descriptor, RASCAL_INDEXES_FEATURES, names, 2
+        ));
         CHECK(names[0] == nullptr);
         CHECK(names[1] == nullptr);
 
         compute_descriptor(descriptor);
-        rascal_descriptor_indexes(descriptor, RASCAL_INDEXES_FEATURES, &data, &count, &size);
+        CHECK_SUCCESS(rascal_descriptor_indexes(
+            descriptor, RASCAL_INDEXES_FEATURES, &data, &count, &size
+        ));
         CHECK(data != nullptr);
         CHECK(count == 2);
         CHECK(size == 2);
@@ -44,7 +51,9 @@ TEST_CASE("rascal_descriptor_t") {
         CHECK(data[1 * size + 0] == 0);
         CHECK(data[1 * size + 1] == 1);
 
-        rascal_descriptor_indexes_names(descriptor, RASCAL_INDEXES_FEATURES, names, 2);
+        CHECK_SUCCESS(rascal_descriptor_indexes_names(
+            descriptor, RASCAL_INDEXES_FEATURES, names, 2
+        ));
         CHECK(names[0] == std::string("index_delta"));
         CHECK(names[1] == std::string("x_y_z"));
 
@@ -59,7 +68,9 @@ TEST_CASE("rascal_descriptor_t") {
         uintptr_t count = 0;
         uintptr_t size = 0;
 
-        rascal_descriptor_indexes(descriptor, RASCAL_INDEXES_ENVIRONMENTS, &data, &count, &size);
+        CHECK_SUCCESS(rascal_descriptor_indexes(
+            descriptor, RASCAL_INDEXES_ENVIRONMENTS, &data, &count, &size
+        ));
         CHECK(data == nullptr);
         CHECK(count == 0);
         CHECK(size == 0);
@@ -71,7 +82,9 @@ TEST_CASE("rascal_descriptor_t") {
 
 
         compute_descriptor(descriptor);
-        rascal_descriptor_indexes(descriptor, RASCAL_INDEXES_ENVIRONMENTS, &data, &count, &size);
+        CHECK_SUCCESS(rascal_descriptor_indexes(
+            descriptor, RASCAL_INDEXES_ENVIRONMENTS, &data, &count, &size
+        ));
         CHECK(data != nullptr);
         CHECK(count == 4);
         CHECK(size == 2);
@@ -82,7 +95,9 @@ TEST_CASE("rascal_descriptor_t") {
             CHECK(data[i * size + 1] == i);
         }
 
-        rascal_descriptor_indexes_names(descriptor, RASCAL_INDEXES_ENVIRONMENTS, names, 2);
+        CHECK_SUCCESS(rascal_descriptor_indexes_names(
+            descriptor, RASCAL_INDEXES_ENVIRONMENTS, names, 2
+        ));
         CHECK(names[0] == std::string("structure"));
         CHECK(names[1] == std::string("atom"));
 
@@ -95,13 +110,13 @@ TEST_CASE("rascal_descriptor_t") {
 
         const double* data = nullptr;
         uintptr_t shape[2] = {0};
-        rascal_descriptor_values(descriptor, &data, &shape[0], &shape[1]);
+        CHECK_SUCCESS(rascal_descriptor_values(descriptor, &data, &shape[0], &shape[1]));
         CHECK(data == nullptr);
         CHECK(shape[0] == 0);
         CHECK(shape[1] == 0);
 
         compute_descriptor(descriptor);
-        rascal_descriptor_values(descriptor, &data, &shape[0], &shape[1]);
+        CHECK_SUCCESS(rascal_descriptor_values(descriptor, &data, &shape[0], &shape[1]));
         CHECK(shape[0] == 4);
         CHECK(shape[1] == 2);
 
@@ -117,7 +132,7 @@ TEST_CASE("rascal_descriptor_t") {
         CHECK(data[3 * shape[1] + 0] == 8);
         CHECK(data[3 * shape[1] + 1] == 9);
 
-        rascal_descriptor_free(descriptor);
+        CHECK_SUCCESS(rascal_descriptor_free(descriptor));
     }
 
     // TODO: get the gradients
@@ -125,9 +140,10 @@ TEST_CASE("rascal_descriptor_t") {
 
 void compute_descriptor(rascal_descriptor_t* descriptor) {
     auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);
+    REQUIRE(calculator);
     auto system = simple_system();
-    rascal_calculator_compute(calculator, descriptor, &system, 1);
-    rascal_calculator_free(calculator);
+    CHECK_SUCCESS(rascal_calculator_compute(calculator, descriptor, &system, 1));
+    CHECK_SUCCESS(rascal_calculator_free(calculator));
 }
 
 
