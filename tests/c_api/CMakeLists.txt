@@ -16,33 +16,7 @@ else()
     string(TOLOWER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE)
 endif()
 
-set(CARGO_ROOT "${PROJECT_SOURCE_DIR}/../../")
-
-if ("${CMAKE_BUILD_TYPE}" STREQUAL "debug")
-    set(CARGO_BUILD_ARG "")
-elseif("${CMAKE_BUILD_TYPE}" STREQUAL "release")
-    set(CARGO_BUILD_ARG "--release")
-else()
-    message(FATAL_ERROR "unsuported CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
-endif()
-
-file(GLOB_RECURSE ALL_RUST_SOURCES ${CARGO_ROOT}/src/**.rs)
-add_custom_command(
-    OUTPUT ${PROJECT_BINARY_DIR}/librascaline.built
-    COMMAND cargo build ${CARGO_BUILD_ARG}
-    COMMAND ${CMAKE_COMMAND} -E touch ${PROJECT_BINARY_DIR}/librascaline.built
-    WORKING_DIRECTORY ${CARGO_ROOT}
-    DEPENDS ${ALL_RUST_SOURCES}
-)
-add_custom_target(ensure-rust-is-built DEPENDS ${PROJECT_BINARY_DIR}/librascaline.built)
-
-add_library(rascaline SHARED IMPORTED)
-target_include_directories(rascaline INTERFACE "${PROJECT_SOURCE_DIR}/../../include/")
-
-set_target_properties(rascaline
-    PROPERTIES IMPORTED_LOCATION
-    "${CARGO_ROOT}/target/${CMAKE_BUILD_TYPE}/${CMAKE_SHARED_LIBRARY_PREFIX}rascaline${CMAKE_SHARED_LIBRARY_SUFFIX}"
-)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../.. ${CMAKE_CURRENT_BINARY_DIR}/rascaline)
 
 add_library(catch STATIC external/catch.cpp)
 target_include_directories(catch PUBLIC external)
