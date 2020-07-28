@@ -80,7 +80,7 @@ pub unsafe extern fn rascal_calculator_name(
 ) -> rascal_status_t {
     catch_unwind(|| {
         check_pointers!(calculator, name);
-        copy_str_to_c(&(*calculator).name(), name, bufflen);
+        copy_str_to_c(&(*calculator).name(), name, bufflen)?;
         Ok(())
     })
 }
@@ -93,7 +93,7 @@ pub unsafe extern fn rascal_calculator_parameters(
 ) -> rascal_status_t {
     catch_unwind(|| {
         check_pointers!(calculator, parameters);
-        copy_str_to_c(&(*calculator).parameters()?, parameters, bufflen);
+        copy_str_to_c(&(*calculator).parameters()?, parameters, bufflen)?;
         Ok(())
     })
 }

@@ -1,8 +1,19 @@
 use std::os::raw::c_char;
 
-pub unsafe fn copy_str_to_c(string: &str, name: *mut c_char, bufflen: usize) {
-    let size = std::cmp::min(string.len(), bufflen - 1);
-    std::ptr::copy(string.as_ptr(), name as *mut u8, size);
+use crate::Error;
+
+pub unsafe fn copy_str_to_c(string: &str, buffer: *mut c_char, buflen: usize) -> Result<(), Error> {
+    let size = std::cmp::min(string.len(), buflen - 1);
+    println!("Rust: {} {}", size, buflen);
+    if size < string.len() {
+        return Err(Error::InvalidParameter(format!(
+            "string buffer is not big enough: got space for {} characters, but we need to write {}",
+            size, string.len()
+        )))
+    }
+
+    std::ptr::copy(string.as_ptr(), buffer as *mut u8, size);
     // NULL-terminate the string
-    name.add(size).write(0);
+    buffer.add(size).write(0);
+    Ok(())
 }

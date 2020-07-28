@@ -2,10 +2,30 @@
 import json
 import ctypes
 
-from ._rascaline import rascal_system_t
+from ._rascaline import rascal_system_t, rascal_status_t
 from .clib import _get_library
-from .status import _check_rascal_pointer
+from .status import _check_rascal_pointer, RascalError
 from .descriptor import Descriptor
+
+
+def _call_with_growing_buffer(callback, initial=1024):
+    bufflen = initial
+
+    while True:
+        buffer = ctypes.create_string_buffer(bufflen)
+        try:
+            callback(buffer, bufflen)
+            break
+        except RascalError as e:
+            if (
+                e.status == rascal_status_t.RASCAL_INVALID_PARAMETER_ERROR.value
+                and "string buffer is not big enough" in e.args[0]
+            ):
+                # grow the buffer and retry
+                bufflen *= 2
+            else:
+                raise
+    return buffer.value.decode("utf8")
 
 
 class CalculatorBase:
@@ -23,16 +43,18 @@ class CalculatorBase:
 
     @property
     def name(self):
-        bufflen = 1024
-        buffer = ctypes.create_string_buffer(bufflen)
-        self._lib.rascal_calculator_name(self, buffer, bufflen)
-        return buffer.value.decode("utf8")
+        return _call_with_growing_buffer(
+            lambda buffer, bufflen: self._lib.rascal_calculator_name(
+                self, buffer, bufflen
+            )
+        )
 
     def parameters(self):
-        bufflen = 1024
-        buffer = ctypes.create_string_buffer(bufflen)
-        self._lib.rascal_calculator_parameters(self, buffer, bufflen)
-        return buffer.value.decode("utf8")
+        return _call_with_growing_buffer(
+            lambda buffer, bufflen: self._lib.rascal_calculator_parameters(
+                self, buffer, bufflen
+            )
+        )
 
     def compute(self, systems, descriptor=None):
         if descriptor is None:

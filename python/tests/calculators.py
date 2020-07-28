@@ -14,6 +14,15 @@ class TestDummyCalculator(unittest.TestCase):
             " - name: foo - gradients: true",
         )
 
+        # very long name, checking that we can pass large string back and forth
+        name = "abc" * 2048
+        calculator = DummyCalculator(cutoff=3.2, delta=12, name=name, gradients=True)
+        self.assertEqual(
+            calculator.name,
+            "dummy test calculator with cutoff: 3.2 - delta: 12"
+            f" - name: {name} - gradients: true",
+        )
+
     def test_parameters(self):
         calculator = DummyCalculator(cutoff=3.2, delta=12, name="foo", gradients=True)
         self.assertEqual(

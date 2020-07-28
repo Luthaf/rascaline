@@ -8,7 +8,7 @@ pub enum Error {
     /// Error while serializing/deserializing data
     JSON(serde_json::Error),
     /// Error used when a panic was catched
-    Panic(String)
+    Panic(String),
 }
 
 impl std::fmt::Display for Error {
