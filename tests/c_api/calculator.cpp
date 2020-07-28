@@ -21,6 +21,23 @@ TEST_CASE("calculator name") {
     rascal_calculator_free(calculator);
 }
 
+TEST_CASE("calculator parameters") {
+    const char *HYPERS_JSON = R"({
+    "cutoff": 3.5,
+    "delta": 25,
+    "name": "bar",
+    "gradients": false
+    })";
+    auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);
+    REQUIRE(calculator != nullptr);
+
+    char buffer[256] = {0};
+    CHECK_SUCCESS(rascal_calculator_parameters(calculator, buffer, sizeof(buffer)));
+    CHECK(buffer == std::string(R"({"cutoff":3.5,"delta":25,"name":"bar","gradients":false})"));
+
+    rascal_calculator_free(calculator);
+}
+
 TEST_CASE("calculator creation error") {
     const char *HYPERS_JSON = R"({
     "cutoff": "22",

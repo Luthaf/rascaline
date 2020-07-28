@@ -86,6 +86,19 @@ pub unsafe extern fn rascal_calculator_name(
 }
 
 #[no_mangle]
+pub unsafe extern fn rascal_calculator_parameters(
+    calculator: *const rascal_calculator_t,
+    parameters: *mut c_char,
+    bufflen: usize
+) -> rascal_status_t {
+    catch_unwind(|| {
+        check_pointers!(calculator, parameters);
+        copy_str_to_c(&(*calculator).parameters()?, parameters, bufflen);
+        Ok(())
+    })
+}
+
+#[no_mangle]
 pub unsafe extern fn rascal_calculator_compute(
     calculator: *mut rascal_calculator_t,
     descriptor: *mut rascal_descriptor_t,

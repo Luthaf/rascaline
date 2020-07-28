@@ -6,9 +6,10 @@ use super::Calculator;
 
 use crate::descriptor::{Descriptor, Indexes, IndexesBuilder, PairSpeciesIdx};
 use crate::system::System;
+use crate::Error;
 
 #[derive(Debug, Clone)]
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 pub struct SortedDistances {
     cutoff: f64,
     max_neighbors: usize,
@@ -27,6 +28,10 @@ impl SortedDistances {
 impl Calculator for SortedDistances {
     fn name(&self) -> String {
         "sorted distances vector".into()
+    }
+
+    fn parameters(&self) -> Result<String, Error> {
+        Ok(serde_json::to_string(self)?)
     }
 
     fn compute(&mut self, systems: &mut [&mut dyn System], descriptor: &mut Descriptor) {

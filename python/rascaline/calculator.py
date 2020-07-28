@@ -28,6 +28,12 @@ class CalculatorBase:
         self._lib.rascal_calculator_name(self, buffer, bufflen)
         return buffer.value.decode("utf8")
 
+    def parameters(self):
+        bufflen = 1024
+        buffer = ctypes.create_string_buffer(bufflen)
+        self._lib.rascal_calculator_parameters(self, buffer, bufflen)
+        return buffer.value.decode("utf8")
+
     def compute(self, systems, descriptor=None):
         if descriptor is None:
             descriptor = Descriptor()

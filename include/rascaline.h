@@ -83,6 +83,10 @@ rascal_status_t rascal_calculator_name(const rascal_calculator_t *calculator,
                                        char *name,
                                        uintptr_t bufflen);
 
+rascal_status_t rascal_calculator_parameters(const rascal_calculator_t *calculator,
+                                             char *parameters,
+                                             uintptr_t bufflen);
+
 rascal_descriptor_t *rascal_descriptor(void);
 
 rascal_status_t rascal_descriptor_free(rascal_descriptor_t *descriptor);

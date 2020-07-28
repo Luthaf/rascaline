@@ -2,15 +2,16 @@ use super::Calculator;
 
 use crate::descriptor::{Descriptor, IndexesBuilder, AtomIdx};
 use crate::system::System;
+use crate::Error;
 
 /// A stupid calculator implementation used to test the API, and API binding to
-/// C/Python/etc. 
+/// C/Python/etc.
 ///
 /// The calculator has two features: one containing the atom index +
 /// `self.delta`, and the other one containg `x + y + z`.
 #[doc(hidden)]
 #[derive(Debug, Clone)]
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 pub struct DummyCalculator {
     /// Spherical cutoff to use for atomic environments
     pub cutoff: f64,
@@ -28,6 +29,10 @@ impl Calculator for DummyCalculator {
         format!("dummy test calculator with cutoff: {} - delta: {} - name: {} - gradients: {}",
             self.cutoff, self.delta, self.name, self.gradients
         )
+    }
+
+    fn parameters(&self) -> Result<String, Error> {
+        Ok(serde_json::to_string(self)?)
     }
 
     fn compute(&mut self, systems: &mut [&mut dyn System], descriptor: &mut Descriptor) {
@@ -94,7 +99,7 @@ mod tests {
         };
 
         assert_eq!(
-            calculator.name(), 
+            calculator.name(),
             "dummy test calculator with cutoff: 1.4 - delta: 9 - name: a long name - gradients: false"
         );
     }
