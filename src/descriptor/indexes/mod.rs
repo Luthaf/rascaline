@@ -1,4 +1,5 @@
 use std::ffi::CString;
+use std::collections::BTreeSet;
 
 use crate::system::System;
 
@@ -10,21 +11,26 @@ pub use self::species::{StructureSpeciesIdx, PairSpeciesIdx};
 
 pub struct IndexesBuilder {
     /// Names of the indexes
-    names: Vec<&'static str>,
-    /// Values of the indexes, as a linearized 2D array
+    names: Vec<String>,
+    /// Values of the indexes, as a linearized 2D array in row-major order
     values: Vec<usize>,
 }
 
 impl IndexesBuilder {
     /// Create a new empty `IndexesBuilder` with the given `names`
-    pub fn new(names: Vec<&'static str>) -> IndexesBuilder {
+    pub fn new(names: Vec<&str>) -> IndexesBuilder {
         for name in &names {
             if !is_valid_ident(name) {
-                panic!("All indexes names must be valid identifiers, '{}' is not", name);
+                panic!("all indexes names must be valid identifiers, '{}' is not", name);
             }
         }
+
+        if names.iter().collect::<BTreeSet<_>>().len() != names.len() {
+            panic!("invalid indexes: the same name is used multiple times");
+        }
+
         IndexesBuilder {
-            names: names,
+            names: names.into_iter().map(|s| s.into()).collect(),
             values: Vec::new(),
         }
     }
@@ -37,6 +43,14 @@ impl IndexesBuilder {
     /// Add a single entry with the given `values` for this set of indexes
     pub fn add(&mut self, values: &[usize]) {
         assert_eq!(self.size(), values.len());
+        for chunk in self.values.chunks_exact(self.size()) {
+            if chunk == values {
+                panic!(
+                    "can not have the same index value multiple time: [{}] is already present",
+                    values.iter().map(|i| i.to_string()).collect::<Vec<_>>().join(", ")
+                );
+            }
+        }
         self.values.extend(values);
     }
 
@@ -75,7 +89,7 @@ pub struct Indexes {
     /// Names of the indexes, stored as C strings for easier integration
     /// with the C API
     names: Vec<CString>,
-    /// Values of the indexes, as a linearized 2D array
+    /// Values of the indexes, as a linearized 2D array in row-major order
     values: Vec<usize>,
 }
 
@@ -102,13 +116,6 @@ impl Indexes {
         } else {
             return self.values.len() / self.size();
         }
-    }
-
-    /// Get the value of the indexes at the given `linear` index
-    pub fn value(&self, linear: usize) -> &[usize] {
-        let start = linear * self.size();
-        let stop = (linear + 1) * self.size();
-        &self.values[start..stop]
     }
 
     pub fn iter(&self) -> Iter {
@@ -152,6 +159,15 @@ impl<'a> IntoIterator for &'a Indexes {
     }
 }
 
+impl std::ops::Index<usize> for Indexes {
+    type Output = [usize];
+    fn index(&self, i: usize) -> &[usize] {
+        let start = i * self.size();
+        let stop = (i + 1) * self.size();
+        &self.values[start..stop]
+    }
+}
+
 pub trait EnvironmentIndexes {
     fn indexes(&self, systems: &mut [&mut dyn System]) -> Indexes;
 
@@ -169,16 +185,16 @@ mod tests {
         let mut builder = IndexesBuilder::new(vec!["foo", "bar"]);
         builder.add(&[2, 3]);
         builder.add(&[1, 2]);
-        builder.add(&[2, 3]);
+        builder.add(&[4, 3]);
 
         let idx = builder.finish();
         assert_eq!(idx.names(), &["foo", "bar"]);
         assert_eq!(idx.size(), 2);
         assert_eq!(idx.count(), 3);
 
-        assert_eq!(idx.value(0), &[2, 3]);
-        assert_eq!(idx.value(1), &[1, 2]);
-        assert_eq!(idx.value(2), &[2, 3]);
+        assert_eq!(idx[0], [2, 3]);
+        assert_eq!(idx[1], [1, 2]);
+        assert_eq!(idx[2], [4, 3]);
     }
 
     #[test]
@@ -186,7 +202,7 @@ mod tests {
         let mut builder = IndexesBuilder::new(vec!["foo", "bar"]);
         builder.add(&[2, 3]);
         builder.add(&[1, 2]);
-        builder.add(&[2, 3]);
+        builder.add(&[4, 3]);
 
         let idx = builder.finish();
         let mut iter = idx.iter();
@@ -194,7 +210,27 @@ mod tests {
 
         assert_eq!(iter.next().unwrap(), &[2, 3]);
         assert_eq!(iter.next().unwrap(), &[1, 2]);
-        assert_eq!(iter.next().unwrap(), &[2, 3]);
+        assert_eq!(iter.next().unwrap(), &[4, 3]);
         assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    #[should_panic(expected = "all indexes names must be valid identifiers, \'33 bar\' is not")]
+    fn invalid_index_name() {
+        let _ = IndexesBuilder::new(vec!["foo", "33 bar"]);
+    }
+
+    #[test]
+    #[should_panic(expected = "invalid indexes: the same name is used multiple times")]
+    fn duplicated_index_name() {
+        let _ = IndexesBuilder::new(vec!["foo", "bar", "foo"]);
+    }
+
+    #[test]
+    #[should_panic(expected = "can not have the same index value multiple time: [0, 1] is already present")]
+    fn duplicated_index_value() {
+        let mut builder = IndexesBuilder::new(vec!["foo", "bar"]);
+        builder.add(&[0, 1]);
+        builder.add(&[0, 1]);
     }
 }

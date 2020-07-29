@@ -133,7 +133,7 @@ pub unsafe extern fn rascal_descriptor_indexes(
         *size = indexes.size();
         *count = indexes.count();
         if *count != 0 {
-            *values = &indexes.value(0)[0];
+            *values = &indexes[0][0];
         } else {
             *values = std::ptr::null();
         }

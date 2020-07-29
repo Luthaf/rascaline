@@ -83,7 +83,7 @@ impl Calculator for SortedDistances {
             loop {
                 // Copy the data in the descriptor array, until we find the
                 // next system
-                if let &[structure, center, alpha, beta] = descriptor.environments.value(current) {
+                if let [structure, center, alpha, beta] = descriptor.environments[current] {
                     if structure != i_system {
                         break;
                     }
