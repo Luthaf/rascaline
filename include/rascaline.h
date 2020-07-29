@@ -1,8 +1,6 @@
 #ifndef RASCALINE_H
 #define RASCALINE_H
 
-/* Generated with cbindgen:0.13.1 */
-
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
