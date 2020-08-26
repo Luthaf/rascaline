@@ -24,6 +24,8 @@ pub enum rascal_status_t {
     RASCAL_INVALID_PARAMETER_ERROR = 1,
     /// There was an error reading or writting JSON
     RASCAL_JSON_ERROR = 2,
+    /// A string contains non-utf8 data
+    RASCAL_UTF8_ERROR = 3,
     /// There was an internal error (rust panic)
     RASCAL_INTERNAL_PANIC = 255,
 }
@@ -36,6 +38,7 @@ impl From<Error> for rascal_status_t {
         match error {
             Error::InvalidParameter(_) => rascal_status_t::RASCAL_INVALID_PARAMETER_ERROR,
             Error::JSON(_) => rascal_status_t::RASCAL_JSON_ERROR,
+            Error::Utf8(_) => rascal_status_t::RASCAL_UTF8_ERROR,
             Error::Panic(_) => rascal_status_t::RASCAL_INTERNAL_PANIC,
         }
     }

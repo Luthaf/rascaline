@@ -1,5 +1,6 @@
 use std::ops::{Deref, DerefMut};
 use std::os::raw::c_char;
+use std::ffi::CStr;
 
 use crate::descriptor::Descriptor;
 use super::{catch_unwind, rascal_status_t};
@@ -182,6 +183,19 @@ pub unsafe extern fn rascal_descriptor_indexes_names(
             }
         }
 
+        Ok(())
+    })
+}
+
+#[no_mangle]
+pub unsafe extern fn rascal_descriptor_densify(
+    descriptor: *mut rascal_descriptor_t,
+    variable: *const c_char,
+) -> rascal_status_t {
+    catch_unwind(|| {
+        check_pointers!(descriptor, variable);
+        let variable = CStr::from_ptr(variable).to_str()?;
+        (*descriptor).densify(variable);
         Ok(())
     })
 }

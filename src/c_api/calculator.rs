@@ -34,19 +34,19 @@ pub unsafe extern fn rascal_calculator(name: *const c_char, parameters: *const c
     let unwind_wrapper = std::panic::AssertUnwindSafe(&mut raw);
     let status = catch_unwind(move || {
         check_pointers!(name, parameters);
-        let name = CStr::from_ptr(name);
+        let name = CStr::from_ptr(name).to_str()?;
 
-        let creator = match REGISTERED_CALCULATORS.get(&*name.to_string_lossy()) {
+        let creator = match REGISTERED_CALCULATORS.get(name) {
             Some(creator) => creator,
             None => {
                 return Err(Error::InvalidParameter(
-                    format!("unknwon calculator with name '{}'", name.to_string_lossy())
+                    format!("unknwon calculator with name '{}'", name)
                 ));
             }
         };
 
-        let parameters = CStr::from_ptr(parameters);
-        let calculator = creator(&*parameters.to_string_lossy())?;
+        let parameters = CStr::from_ptr(parameters).to_str()?;
+        let calculator = creator(parameters)?;
         let boxed = Box::new(rascal_calculator_t(calculator));
 
         *unwind_wrapper.0 = Box::into_raw(boxed);

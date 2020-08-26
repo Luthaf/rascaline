@@ -112,3 +112,16 @@ class TestDummyDescriptor(unittest.TestCase):
         self.assertEqual(len(features), 2)
         self.assertEqual(features[0], (1, 0))
         self.assertEqual(features[1], (0, 1))
+
+    def test_densify(self):
+        system = TestSystem()
+        calculator = DummyCalculator(cutoff=3.2, delta=12, name="", gradients=True)
+        descriptor = calculator.compute(system)
+
+        self.assertEqual(descriptor.values.shape, (4, 2))
+        self.assertEqual(descriptor.gradients.shape, (18, 2))
+
+        descriptor.densify("atom")
+
+        self.assertEqual(descriptor.values.shape, (1, 8))
+        self.assertEqual(descriptor.gradients.shape, (12, 8))

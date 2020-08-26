@@ -69,6 +69,9 @@ class Descriptor:
     def gradients_environments(self):
         return self._indexes(rascal_indexes.RASCAL_INDEXES_GRADIENTS, "GradientIndex")
 
+    def densify(self, variable):
+        self._lib.rascal_descriptor_densify(self, variable.encode("utf8"))
+
 
 def np_array_view(ptr, shape, dtype):
     assert len(shape) == 2

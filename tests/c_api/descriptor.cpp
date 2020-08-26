@@ -212,6 +212,37 @@ TEST_CASE("rascal_descriptor_t") {
 
         CHECK_SUCCESS(rascal_descriptor_free(descriptor));
     }
+
+    SECTION("densify") {
+        auto* descriptor = rascal_descriptor();
+        REQUIRE(descriptor != nullptr);
+
+        compute_descriptor(descriptor);
+
+        const double* data = nullptr;
+        uintptr_t environments = 0;
+        uintptr_t features = 0;
+        CHECK_SUCCESS(rascal_descriptor_values(
+            descriptor, &data, &environments, &features
+        ));
+        CHECK(data != nullptr);
+        CHECK(environments == 4);
+        CHECK(features == 2);
+
+        CHECK_SUCCESS(rascal_descriptor_densify(descriptor, "atom"));
+
+        CHECK_SUCCESS(rascal_descriptor_values(
+            descriptor, &data, &environments, &features
+        ));
+        CHECK(data != nullptr);
+        CHECK(environments == 1);
+        CHECK(features == 8);
+
+        compute_descriptor(descriptor);
+        CHECK(rascal_descriptor_densify(descriptor, "not there") != RASCAL_SUCCESS);
+
+        rascal_descriptor_free(descriptor);
+    }
 }
 
 void compute_descriptor(rascal_descriptor_t* descriptor) {

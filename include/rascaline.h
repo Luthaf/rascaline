@@ -29,6 +29,10 @@ typedef enum {
    */
   RASCAL_JSON_ERROR = 2,
   /*
+   A string contains non-utf8 data
+   */
+  RASCAL_UTF8_ERROR = 3,
+  /*
    There was an internal error (rust panic)
    */
   RASCAL_INTERNAL_PANIC = 255,
@@ -86,6 +90,8 @@ rascal_status_t rascal_calculator_parameters(const rascal_calculator_t *calculat
                                              uintptr_t bufflen);
 
 rascal_descriptor_t *rascal_descriptor(void);
+
+rascal_status_t rascal_descriptor_densify(rascal_descriptor_t *descriptor, const char *variable);
 
 rascal_status_t rascal_descriptor_free(rascal_descriptor_t *descriptor);
 

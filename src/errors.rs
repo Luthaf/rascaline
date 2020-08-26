@@ -1,4 +1,4 @@
-
+use std::str::Utf8Error;
 
 #[non_exhaustive]
 #[derive(Debug)]
@@ -7,6 +7,8 @@ pub enum Error {
     InvalidParameter(String),
     /// Error while serializing/deserializing data
     JSON(serde_json::Error),
+    /// Error due to C strings containing non-utf8 data
+    Utf8(Utf8Error),
     /// Error used when a panic was catched
     Panic(String),
 }
@@ -16,6 +18,7 @@ impl std::fmt::Display for Error {
         match self {
             Error::InvalidParameter(e) => write!(f, "invalid parameter: {}", e),
             Error::JSON(e) => write!(f, "json error: {}", e),
+            Error::Utf8(e) => write!(f, "utf8 decoding error: {}", e),
             Error::Panic(e) => write!(f, "internal error: {}", e),
         }
     }
@@ -26,6 +29,7 @@ impl std::error::Error for Error {
         match self {
             Error::InvalidParameter(_) => None,
             Error::JSON(e) => Some(e),
+            Error::Utf8(e) => Some(e),
             Error::Panic(_) => None,
         }
     }
@@ -34,6 +38,12 @@ impl std::error::Error for Error {
 impl From<serde_json::Error> for Error {
     fn from(error: serde_json::Error) -> Error {
         Error::JSON(error)
+    }
+}
+
+impl From<Utf8Error> for Error {
+    fn from(error: Utf8Error) -> Error {
+        Error::Utf8(error)
     }
 }
 

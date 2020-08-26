@@ -28,6 +28,7 @@ class rascal_status_t(enum.Enum):
     RASCAL_SUCCESS = 0
     RASCAL_INVALID_PARAMETER_ERROR = 1
     RASCAL_JSON_ERROR = 2
+    RASCAL_UTF8_ERROR = 3
     RASCAL_INTERNAL_PANIC = 255
 
 
@@ -99,6 +100,12 @@ def setup_functions(lib):
         
     ]
     lib.rascal_descriptor.restype = POINTER(rascal_descriptor_t)
+
+    lib.rascal_descriptor_densify.argtypes = [
+        POINTER(rascal_descriptor_t),
+        ctypes.c_char_p
+    ]
+    lib.rascal_descriptor_densify.restype = _check_rascal_status_t
 
     lib.rascal_descriptor_free.argtypes = [
         POINTER(rascal_descriptor_t)
