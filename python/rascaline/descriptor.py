@@ -38,12 +38,11 @@ class Descriptor:
             data, (environments.value, features.value), dtype=np.float64
         )
 
-    def _indexes(self, kind, kind_name):
+    def _indexes(self, kind):
         count = c_uintptr_t()
         size = c_uintptr_t()
         data = POINTER(c_uintptr_t)()
         self._lib.rascal_descriptor_indexes(self, kind.value, data, count, size)
-        data = np_array_view(data, (count.value, size.value), dtype=np.uintp)
 
         if count.value == 0:
             return []
@@ -52,22 +51,20 @@ class Descriptor:
         names = StringArray()
         self._lib.rascal_descriptor_indexes_names(self, kind.value, names, size)
 
-        TupleType = namedtuple(kind_name, map(lambda n: n.decode("utf8"), names))
-        return [TupleType(*values) for values in data]
+        dtype = [(name, np.uintp) for name in map(lambda n: n.decode("utf8"), names)]
+        return np_array_view(data, (count.value, size.value), dtype=dtype)
 
     @property
     def environments(self):
-        return self._indexes(
-            rascal_indexes.RASCAL_INDEXES_ENVIRONMENTS, "EnvironmentIndex"
-        )
+        return self._indexes(rascal_indexes.RASCAL_INDEXES_ENVIRONMENTS)
 
     @property
     def features(self):
-        return self._indexes(rascal_indexes.RASCAL_INDEXES_FEATURES, "FeatureIndex")
+        return self._indexes(rascal_indexes.RASCAL_INDEXES_FEATURES)
 
     @property
     def gradients_environments(self):
-        return self._indexes(rascal_indexes.RASCAL_INDEXES_GRADIENTS, "GradientIndex")
+        return self._indexes(rascal_indexes.RASCAL_INDEXES_GRADIENTS)
 
     def densify(self, variable):
         self._lib.rascal_descriptor_densify(self, variable.encode("utf8"))
@@ -76,7 +73,15 @@ class Descriptor:
 def np_array_view(ptr, shape, dtype):
     assert len(shape) == 2
     if shape[0] != 0 and shape[1] != 0:
-        return np.ctypeslib.as_array(ptr, shape=shape)
+        array = np.ctypeslib.as_array(ptr, shape=shape)
+        array.flags.writeable = False
+        if isinstance(dtype, list):
+            # view the array as a numpy structured array containing multiple
+            # entries
+            assert len(dtype) == shape[1]
+            return array.view(dtype=dtype).reshape((shape[0],))
+        else:
+            return array
     else:
         data = np.array([], dtype=dtype)
         return data.reshape(shape)

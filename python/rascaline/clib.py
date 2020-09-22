@@ -37,7 +37,7 @@ def _lib_path():
             _check_dll(path)
         return path
 
-    raise ImportError("Could not find rascaline DLL at " + path)
+    raise ImportError("Could not find rascaline shared library at " + path)
 
 
 def _check_dll(path):
