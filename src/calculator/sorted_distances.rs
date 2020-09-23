@@ -35,6 +35,10 @@ impl Calculator for SortedDistances {
     }
 
     fn compute(&mut self, systems: &mut [&mut dyn System], descriptor: &mut Descriptor) {
+        if self.cutoff <= 0.0 || !self.cutoff.is_finite() {
+            panic!("invalid cutoff value ({}) for {}", self.cutoff, self.name())
+        }
+
         // setup the descriptor array
         let environments = PairSpeciesIdx::new(self.cutoff);
         let features = self.features();
@@ -81,6 +85,10 @@ impl Calculator for SortedDistances {
             }
 
             loop {
+                if current == descriptor.environments.count() {
+                    break;
+                }
+
                 // Copy the data in the descriptor array, until we find the
                 // next system
                 if let [structure, center, alpha, beta] = descriptor.environments[current] {
@@ -99,5 +107,71 @@ impl Calculator for SortedDistances {
 
         // did we get everything?
         assert_eq!(current, descriptor.environments.count());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::system::test_systems;
+    use crate::Descriptor;
+
+    use ndarray::{s, aview1};
+
+    use super::*;
+
+    #[test]
+    #[should_panic = "invalid cutoff value (-1.5) for sorted distances vector"]
+    fn bad_cutoff_1() {
+        let mut calculator = SortedDistances {
+            cutoff: -1.5,
+            max_neighbors: 3,
+        };
+        let mut systems = test_systems(vec!["water"]);
+        let mut descriptor = Descriptor::new();
+        calculator.compute(&mut systems.get(), &mut descriptor);
+    }
+
+    #[test]
+    #[should_panic = "invalid cutoff value (0) for sorted distances vector"]
+    fn bad_cutoff_2() {
+        let mut calculator = SortedDistances {
+            cutoff: 0.0,
+            max_neighbors: 3,
+        };
+        let mut systems = test_systems(vec!["water"]);
+        let mut descriptor = Descriptor::new();
+        calculator.compute(&mut systems.get(), &mut descriptor);
+    }
+
+    #[test]
+    fn name() {
+        let calculator = SortedDistances {
+            cutoff: 1.5,
+            max_neighbors: 3,
+        };
+
+        assert_eq!(calculator.name(), "sorted distances vector");
+    }
+
+    #[test]
+    fn values() {
+        let mut calculator = SortedDistances {
+            cutoff: 1.5,
+            max_neighbors: 3,
+        };
+
+        let mut systems = test_systems(vec!["water"]);
+        let mut descriptor = Descriptor::new();
+        calculator.compute(&mut systems.get(), &mut descriptor);
+
+        assert_eq!(descriptor.values.slice(s![0, ..]), aview1(&[0.957897074324794, 0.957897074324794, 1.5]));
+        assert_eq!(descriptor.values.slice(s![1, ..]), aview1(&[0.957897074324794, 1.5, 1.5]));
+        assert_eq!(descriptor.values.slice(s![2, ..]), aview1(&[0.957897074324794, 1.5, 1.5]));
+    }
+
+    #[test]
+    #[ignore]
+    fn gradients() {
+        unimplemented!()
     }
 }
