@@ -99,7 +99,7 @@ TEST_CASE("rascal_descriptor_t") {
             descriptor, RASCAL_INDEXES_ENVIRONMENTS, names, 2
         ));
         CHECK(names[0] == std::string("structure"));
-        CHECK(names[1] == std::string("atom"));
+        CHECK(names[1] == std::string("center"));
 
         rascal_descriptor_free(descriptor);
     }
@@ -182,7 +182,7 @@ TEST_CASE("rascal_descriptor_t") {
             descriptor, RASCAL_INDEXES_GRADIENTS, names, 4
         ));
         CHECK(names[0] == std::string("structure"));
-        CHECK(names[1] == std::string("atom"));
+        CHECK(names[1] == std::string("center"));
         CHECK(names[2] == std::string("neighbor"));
         CHECK(names[3] == std::string("spatial"));
 
@@ -229,7 +229,7 @@ TEST_CASE("rascal_descriptor_t") {
         CHECK(environments == 4);
         CHECK(features == 2);
 
-        CHECK_SUCCESS(rascal_descriptor_densify(descriptor, "atom"));
+        CHECK_SUCCESS(rascal_descriptor_densify(descriptor, "center"));
 
         CHECK_SUCCESS(rascal_descriptor_values(
             descriptor, &data, &environments, &features

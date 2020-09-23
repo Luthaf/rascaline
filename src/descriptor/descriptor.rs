@@ -230,7 +230,7 @@ fn remove_from_indexes(indexes: &Indexes, variable: &str) -> RemovedResult {
 mod tests {
     use super::*;
     use crate::system::test_systems;
-    use crate::descriptor::indexes::StructureSpeciesIdx;
+    use crate::descriptor::indexes::StructureSpeciesEnvironment;
     use ndarray::array;
 
     #[test]
@@ -250,7 +250,7 @@ mod tests {
         let features = features.finish();
 
         let mut descriptor = Descriptor::new();
-        descriptor.prepare_gradients(StructureSpeciesIdx, features, &mut systems.get(), 0.0);
+        descriptor.prepare_gradients(StructureSpeciesEnvironment, features, &mut systems.get(), 0.0);
 
         assert_eq!(descriptor.values.shape(), [4, 3]);
         assert_eq!(descriptor.environments.names(), ["structure", "alpha"]);

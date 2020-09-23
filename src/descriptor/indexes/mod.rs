@@ -4,10 +4,10 @@ use std::collections::BTreeSet;
 use crate::system::System;
 
 mod environments;
-pub use self::environments::{StructureIdx, AtomIdx};
+pub use self::environments::{StructureEnvironment, AtomEnvironment};
 
 mod species;
-pub use self::species::{StructureSpeciesIdx, PairSpeciesIdx};
+pub use self::species::{StructureSpeciesEnvironment, AtomSpeciesEnvironment};
 
 pub struct IndexesBuilder {
     /// Names of the indexes

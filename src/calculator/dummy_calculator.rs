@@ -1,6 +1,6 @@
 use super::Calculator;
 
-use crate::descriptor::{Descriptor, IndexesBuilder, AtomIdx};
+use crate::descriptor::{Descriptor, IndexesBuilder, AtomEnvironment};
 use crate::system::System;
 use crate::Error;
 
@@ -41,14 +41,14 @@ impl Calculator for DummyCalculator {
         features.add(&[0, 1]);
         let features = features.finish();
 
-        let environments = AtomIdx::new(3.0);
+        let environments = AtomEnvironment::new(3.0);
         if self.gradients {
             descriptor.prepare_gradients(environments, features, systems, 0.0);
         } else {
             descriptor.prepare(environments, features, systems, 0.0);
         }
 
-        assert_eq!(descriptor.environments.names(), ["structure", "atom"]);
+        assert_eq!(descriptor.environments.names(), ["structure", "center"]);
         for (i, indexes) in descriptor.environments.iter().enumerate() {
             let mut current_structure = 0;
             let mut positions = systems[current_structure].positions();
@@ -70,7 +70,7 @@ impl Calculator for DummyCalculator {
             let gradients = descriptor.gradients.as_mut().expect("missing gradient values");
             let gradients_indexes = descriptor.gradients_indexes.as_ref().expect("missing gradient index");
 
-            assert_eq!(gradients_indexes.names(), ["structure", "atom", "neighbor", "spatial"]);
+            assert_eq!(gradients_indexes.names(), ["structure", "center", "neighbor", "spatial"]);
 
             for i in 0..gradients_indexes.count() {
                 gradients[[i, 0]] = 0.0;

@@ -75,7 +75,7 @@ class TestDummyDescriptor(unittest.TestCase):
             environments[0] = (3, 4)
 
         self.assertTrue(np.all(environments["structure"] == [0, 0, 0, 0]))
-        self.assertTrue(np.all(environments["atom"] == [0, 1, 2, 3]))
+        self.assertTrue(np.all(environments["center"] == [0, 1, 2, 3]))
 
         # view & reshape for easier direct comparison of values
         # numpy only consider structured arrays to be equal if they have
@@ -104,7 +104,7 @@ class TestDummyDescriptor(unittest.TestCase):
         self.assertTrue(np.all(gradients_environments["structure"] == expected))
 
         expected = [0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3]
-        self.assertTrue(np.all(gradients_environments["atom"] == expected))
+        self.assertTrue(np.all(gradients_environments["center"] == expected))
 
         expected = [1, 1, 1, 0, 0, 0, 2, 2, 2, 1, 1, 1, 3, 3, 3, 2, 2, 2]
         self.assertTrue(np.all(gradients_environments["neighbor"] == expected))
@@ -165,7 +165,7 @@ class TestDummyDescriptor(unittest.TestCase):
         self.assertEqual(descriptor.values.shape, (4, 2))
         self.assertEqual(descriptor.gradients.shape, (18, 2))
 
-        descriptor.densify("atom")
+        descriptor.densify("center")
 
         self.assertEqual(descriptor.values.shape, (1, 8))
         self.assertEqual(descriptor.gradients.shape, (12, 8))

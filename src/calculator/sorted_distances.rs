@@ -4,7 +4,7 @@ use ndarray::{aview1, s};
 
 use super::Calculator;
 
-use crate::descriptor::{Descriptor, Indexes, IndexesBuilder, PairSpeciesIdx};
+use crate::descriptor::{Descriptor, Indexes, IndexesBuilder, AtomSpeciesEnvironment};
 use crate::system::System;
 use crate::Error;
 
@@ -40,10 +40,10 @@ impl Calculator for SortedDistances {
         }
 
         // setup the descriptor array
-        let environments = PairSpeciesIdx::new(self.cutoff);
+        let environments = AtomSpeciesEnvironment::new(self.cutoff);
         let features = self.features();
         descriptor.prepare(environments, features, systems, self.cutoff);
-        assert_eq!(descriptor.environments.names(), &["structure", "atom", "alpha", "beta"]);
+        assert_eq!(descriptor.environments.names(), &["structure", "center", "alpha", "beta"]);
 
         // index of the first entry of descriptor.values corresponding to
         // the current system
@@ -97,7 +97,7 @@ impl Calculator for SortedDistances {
                     }
 
                     let distance_vector = &distances.get(&(alpha, beta)).unwrap()[center];
-                    descriptor.values.slice_mut(s![current, ..]).assign(&aview1(distance_vector))
+                    descriptor.values.slice_mut(s![current, ..]).assign(&aview1(distance_vector));
                 } else {
                     unreachable!();
                 }

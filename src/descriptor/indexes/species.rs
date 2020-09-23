@@ -3,9 +3,16 @@ use std::collections::BTreeSet;
 use crate::system::System;
 use super::{Indexes, IndexesBuilder, EnvironmentIndexes};
 
-pub struct StructureSpeciesIdx;
+/// `StructureSpeciesEnvironment` is used to represents environments corresponding to
+/// full structures, where each chemical species is represented separatedly.
+///
+/// The base set of indexes contains `structure` and `alpha` (i.e. chemical
+/// species); the  gradient indexes also contains the `atom` inside the
+/// structure with respect to which the gradient is taken and the `spatial`
+/// (i.e. x/y/z) index.
+pub struct StructureSpeciesEnvironment;
 
-impl EnvironmentIndexes for StructureSpeciesIdx {
+impl EnvironmentIndexes for StructureSpeciesEnvironment {
     fn indexes(&self, systems: &mut [&mut dyn System]) -> Indexes {
         let mut indexes = IndexesBuilder::new(vec!["structure", "alpha"]);
         for (i_system, system) in systems.iter().enumerate() {
@@ -35,24 +42,33 @@ impl EnvironmentIndexes for StructureSpeciesIdx {
     }
 }
 
-pub struct PairSpeciesIdx {
+/// `AtomSpeciesEnvironment` is used to represents atom-centered environments, where
+/// each atom in a structure is described with a feature vector based on other
+/// atoms inside a sphere centered on the central atom. These environments
+/// include chemical species information.
+///
+/// The base set of indexes contains `structure`, `center` (i.e. central atom
+/// index inside the structure), `alpha` (specie of the central atom) and `beta`
+/// (species of the neighboring atom); the gradient indexes also contains the
+/// `neighbor` inside the spherical cutoff with respect to which the gradient is
+/// taken and the `spatial` (i.e x/y/z) index.
+pub struct AtomSpeciesEnvironment {
     cutoff: f64,
 }
 
-impl PairSpeciesIdx {
-    pub fn new(cutoff: f64) -> PairSpeciesIdx {
-        assert!(cutoff > 0.0, "cutoff must be positive for PairSpeciesIdx");
-        PairSpeciesIdx {
-            cutoff: cutoff
-        }
+impl AtomSpeciesEnvironment {
+    /// Create a nex `AtomSpeciesEnvironment` with the goven `cutoff`
+    pub fn new(cutoff: f64) -> AtomSpeciesEnvironment {
+        assert!(cutoff > 0.0 && cutoff.is_finite(), "cutoff must be positive for AtomSpeciesEnvironment");
+        AtomSpeciesEnvironment { cutoff }
     }
 }
 
-impl EnvironmentIndexes for PairSpeciesIdx {
+impl EnvironmentIndexes for AtomSpeciesEnvironment {
     fn indexes(&self, systems: &mut [&mut dyn System]) -> Indexes {
-        // Accumulate indexes in a set first to ensure unicity of the indexes.
-        // Else each neighbors of the same type for a given center would add a
-        // new index for this center
+        // Accumulate indexes in a set first to ensure unicity of the indexes
+        // even if their are multiple neighbors of the same specie around a
+        // given center
         let mut set = BTreeSet::new();
         for (i_system, system) in systems.iter_mut().enumerate() {
             system.compute_neighbors(self.cutoff);
@@ -66,17 +82,48 @@ impl EnvironmentIndexes for PairSpeciesIdx {
             };
         }
 
-        let mut indexes = IndexesBuilder::new(vec!["structure", "atom", "alpha", "beta"]);
+        let mut indexes = IndexesBuilder::new(vec!["structure", "center", "alpha", "beta"]);
         for idx in set {
             indexes.add(&idx);
         }
         return indexes.finish();
     }
 
-    fn with_gradients(&self, _systems: &mut [&mut dyn System]) -> (Indexes, Option<Indexes>) {
-        // this needs to deal with cutoff to only include atoms inside the
-        // cutoff sphere
-        unimplemented!()
+    fn with_gradients(&self, systems: &mut [&mut dyn System]) -> (Indexes, Option<Indexes>) {
+        // Accumulate indexes in a set first to ensure unicity of the indexes
+        // even if their are multiple neighbors of the same specie around a
+        // given center
+        let mut idx_set = BTreeSet::new();
+        let mut grad_set = BTreeSet::new();
+        for (i_system, system) in systems.iter_mut().enumerate() {
+            system.compute_neighbors(self.cutoff);
+            let species = system.species();
+            for pair in system.pairs() {
+                let species_first = species[pair.first];
+                let species_second = species[pair.second];
+
+                idx_set.insert([i_system, pair.first, species_first, species_second]);
+                idx_set.insert([i_system, pair.second, species_second, species_first]);
+
+                for spatial in 0..3 {
+                    grad_set.insert([i_system, pair.first, species_first, species_second, pair.second, spatial]);
+                    grad_set.insert([i_system, pair.second, species_second, species_first, pair.first, spatial]);
+                }
+            };
+        }
+
+
+        let mut indexes = IndexesBuilder::new(vec!["structure", "center", "alpha", "beta"]);
+        for idx in idx_set {
+            indexes.add(&idx);
+        }
+
+        let mut gradients = IndexesBuilder::new(vec!["structure", "center", "alpha", "beta", "neighbor", "spatial"]);
+        for idx in grad_set {
+            gradients.add(&idx);
+        }
+
+        return (indexes.finish(), Some(gradients.finish()));
     }
 }
 
@@ -89,7 +136,7 @@ mod tests {
     #[test]
     fn structure() {
         let mut systems = test_systems(vec!["methane", "methane", "water"]);
-        let indexes = StructureSpeciesIdx.indexes(&mut systems.get());
+        let indexes = StructureSpeciesEnvironment.indexes(&mut systems.get());
         assert_eq!(indexes.count(), 6);
         assert_eq!(indexes.names(), &["structure", "alpha"]);
         assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
@@ -102,7 +149,7 @@ mod tests {
     #[test]
     fn structure_gradient() {
         let mut systems = test_systems(vec!["ch", "water"]);
-        let (_, gradients) = StructureSpeciesIdx.with_gradients(&mut systems.get());
+        let (_, gradients) = StructureSpeciesEnvironment.with_gradients(&mut systems.get());
         let gradients = gradients.unwrap();
         assert_eq!(gradients.count(), 15);
         assert_eq!(gradients.names(), &["structure", "alpha", "atom", "spatial"]);
@@ -121,12 +168,12 @@ mod tests {
     }
 
     #[test]
-    fn pairs() {
+    fn atoms() {
         let mut systems = test_systems(vec!["ch", "water"]);
-        let strategy = PairSpeciesIdx::new(2.0);
+        let strategy = AtomSpeciesEnvironment::new(2.0);
         let indexes = strategy.indexes(&mut systems.get());
         assert_eq!(indexes.count(), 7);
-        assert_eq!(indexes.names(), &["structure", "atom", "alpha", "beta"]);
+        assert_eq!(indexes.names(), &["structure", "center", "alpha", "beta"]);
         assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
             // H in CH
             &[0, 0, 1, 6],
@@ -144,8 +191,30 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
-    fn pairs_gradient() {
-        todo!()
+    fn atoms_gradient() {
+        let mut systems = test_systems(vec!["ch", "water"]);
+        let strategy = AtomSpeciesEnvironment::new(2.0);
+        let (_, gradients) = strategy.with_gradients(&mut systems.get());
+        let gradients = gradients.unwrap();
+
+        assert_eq!(gradients.count(), 24);
+        assert_eq!(gradients.names(), &["structure", "center", "alpha", "beta", "neighbor", "spatial"]);
+        assert_eq!(gradients.iter().collect::<Vec<_>>(), vec![
+            // H-C channel in CH
+            &[0, 0, 1, 6, 1, 0], &[0, 0, 1, 6, 1, 1], &[0, 0, 1, 6, 1, 2],
+            // C-H channel in CH
+            &[0, 1, 6, 1, 0, 0], &[0, 1, 6, 1, 0, 1], &[0, 1, 6, 1, 0, 2],
+            // O-H channel in water
+            &[1, 0, 123456, 1, 1, 0], &[1, 0, 123456, 1, 1, 1], &[1, 0, 123456, 1, 1, 2],
+            &[1, 0, 123456, 1, 2, 0], &[1, 0, 123456, 1, 2, 1], &[1, 0, 123456, 1, 2, 2],
+            // H-H channel in water, 1st atom
+            &[1, 1, 1, 1, 2, 0], &[1, 1, 1, 1, 2, 1], &[1, 1, 1, 1, 2, 2],
+            // H-O channel in water, 1st atom
+            &[1, 1, 1, 123456, 0, 0], &[1, 1, 1, 123456, 0, 1], &[1, 1, 1, 123456, 0, 2],
+            // H-H channel in water, 2nd atom
+            &[1, 2, 1, 1, 1, 0], &[1, 2, 1, 1, 1, 1], &[1, 2, 1, 1, 1, 2],
+            // H-O channel in water, 2nd atom
+            &[1, 2, 1, 123456, 0, 0], &[1, 2, 1, 123456, 0, 1], &[1, 2, 1, 123456, 0, 2],
+        ]);
     }
 }
