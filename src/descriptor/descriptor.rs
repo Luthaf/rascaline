@@ -233,14 +233,7 @@ mod tests {
     use crate::descriptor::indexes::StructureSpeciesEnvironment;
     use ndarray::array;
 
-    #[test]
-    #[ignore]
-    fn prepare() {
-        todo!()
-    }
-
-    #[test]
-    fn densify() {
+    fn do_prepare(gradients: bool) -> Descriptor {
         let mut systems = test_systems(vec!["water", "ch"]);
 
         let mut features = IndexesBuilder::new(vec!["foo", "bar", "baz"]);
@@ -250,19 +243,40 @@ mod tests {
         let features = features.finish();
 
         let mut descriptor = Descriptor::new();
-        descriptor.prepare_gradients(StructureSpeciesEnvironment, features, &mut systems.get(), 0.0);
+        if gradients {
+            descriptor.prepare_gradients(StructureSpeciesEnvironment, features, &mut systems.get(), 0.0);
+        } else {
+            descriptor.prepare(StructureSpeciesEnvironment, features, &mut systems.get(), 0.0);
+        }
+
+        return descriptor;
+    }
+
+    #[test]
+    fn prepare() {
+        let descriptor = do_prepare(false);
 
         assert_eq!(descriptor.values.shape(), [4, 3]);
+
         assert_eq!(descriptor.environments.names(), ["structure", "alpha"]);
         assert_eq!(descriptor.environments[0], [0, 1]);
         assert_eq!(descriptor.environments[1], [0, 123456]);
         assert_eq!(descriptor.environments[2], [1, 1]);
         assert_eq!(descriptor.environments[3], [1, 6]);
 
-        let gradients = descriptor.gradients.as_mut().unwrap();
+        assert!(descriptor.gradients.is_none());
+    }
+
+    #[test]
+    fn prepare_gradients() {
+        let descriptor = do_prepare(true);
+
+        let gradients = descriptor.gradients.unwrap();
         assert_eq!(gradients.shape(), [15, 3]);
+
         let gradients_indexes = descriptor.gradients_indexes.as_ref().unwrap();
         assert_eq!(gradients_indexes.names(), ["structure", "alpha", "atom", "spatial"]);
+
         // use a loop to simplify checking the spatial dimension
         let expected = [[0, 1, 1], [0, 1, 2], [0, 123456, 0], [1, 1, 0], [1, 6, 1]];
         for (i, &value) in expected.iter().enumerate() {
@@ -275,6 +289,12 @@ mod tests {
             assert_eq!(gradients_indexes[3 * i + 2][..3], value);
             assert_eq!(gradients_indexes[3 * i + 2][3], 2);
         }
+    }
+
+    #[test]
+    fn densify() {
+        let mut descriptor = do_prepare(true);
+        // environment indexes are checked in the tests above
 
         descriptor.values.assign(&array![
             [1.0, 2.0, 3.0],
@@ -283,6 +303,7 @@ mod tests {
             [10.0, 11.0, 12.0],
         ]);
 
+        let gradients = descriptor.gradients.as_mut().unwrap();
         gradients.assign(&array![
             [1.0, 2.0, 3.0], [0.1, 0.2, 0.3], [-1.0, -2.0, -3.0],
             [4.0, 5.0, 6.0], [0.4, 0.5, 0.6], [-4.0, -5.0, -6.0],

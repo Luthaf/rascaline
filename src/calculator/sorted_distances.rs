@@ -164,6 +164,8 @@ mod tests {
         let mut descriptor = Descriptor::new();
         calculator.compute(&mut systems.get(), &mut descriptor);
 
+        assert_eq!(descriptor.values.shape(), [3, 3]);
+
         assert_eq!(descriptor.values.slice(s![0, ..]), aview1(&[0.957897074324794, 0.957897074324794, 1.5]));
         assert_eq!(descriptor.values.slice(s![1, ..]), aview1(&[0.957897074324794, 1.5, 1.5]));
         assert_eq!(descriptor.values.slice(s![2, ..]), aview1(&[0.957897074324794, 1.5, 1.5]));
