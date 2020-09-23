@@ -50,18 +50,18 @@ TEST_CASE("calculator name") {
 
 TEST_CASE("calculator parameters") {
     SECTION("dummy_calculator") {
-        const char* HYPERS_JSON = R"({
+        std::string HYPERS_JSON = R"({
             "cutoff": 3.5,
             "delta": 25,
             "name": "bar",
             "gradients": false
         })";
-        auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);
+        auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON.c_str());
         REQUIRE(calculator != nullptr);
 
         char buffer[256] = {0};
         CHECK_SUCCESS(rascal_calculator_parameters(calculator, buffer, sizeof(buffer)));
-        CHECK(buffer == std::string(R"({"cutoff":3.5,"delta":25,"name":"bar","gradients":false})"));
+        CHECK(buffer == HYPERS_JSON);
 
         rascal_calculator_free(calculator);
     }
@@ -82,9 +82,7 @@ TEST_CASE("calculator parameters") {
         CHECK(status == RASCAL_INVALID_PARAMETER_ERROR);
 
         CHECK_SUCCESS(rascal_calculator_parameters(calculator, buffer, 4096));
-        std::string expected = "{\"cutoff\":3.5,\"delta\":25,";
-        expected += "\"name\":\"" + name + "\",\"gradients\":false}";
-        CHECK(buffer == expected);
+        CHECK(buffer == HYPERS_JSON);
 
         delete[] buffer;
 

@@ -1,8 +1,7 @@
-use super::Calculator;
+use super::CalculatorBase;
 
 use crate::descriptor::{Descriptor, IndexesBuilder, AtomEnvironment};
 use crate::system::System;
-use crate::Error;
 
 /// A stupid calculator implementation used to test the API, and API binding to
 /// C/Python/etc.
@@ -23,16 +22,12 @@ pub struct DummyCalculator {
     pub gradients: bool,
 }
 
-impl Calculator for DummyCalculator {
+impl CalculatorBase for DummyCalculator {
     fn name(&self) -> String {
         // abusing the name as description
         format!("dummy test calculator with cutoff: {} - delta: {} - name: {} - gradients: {}",
             self.cutoff, self.delta, self.name, self.gradients
         )
-    }
-
-    fn parameters(&self) -> Result<String, Error> {
-        Ok(serde_json::to_string(self)?)
     }
 
     fn compute(&mut self, systems: &mut [&mut dyn System], descriptor: &mut Descriptor) {

@@ -2,9 +2,8 @@ use std::os::raw::c_char;
 use std::ffi::CStr;
 use std::ops::{Deref, DerefMut};
 
-use crate::{Calculator, System, Error};
+use crate::{Calculator, System};
 
-use super::REGISTERED_CALCULATORS;
 use super::utils::copy_str_to_c;
 use super::{catch_unwind, rascal_status_t};
 
@@ -12,19 +11,19 @@ use super::descriptor::rascal_descriptor_t;
 use super::system::rascal_system_t;
 
 /// Opaque type representing a Calculator
-#[repr(C)]
-pub struct rascal_calculator_t(Box<dyn Calculator>);
+#[allow(non_camel_case_types)]
+pub struct rascal_calculator_t(Calculator);
 
 impl Deref for rascal_calculator_t {
-    type Target = dyn Calculator;
+    type Target = Calculator;
     fn deref(&self) -> &Self::Target {
-        &*self.0
+        &self.0
     }
 }
 
 impl DerefMut for rascal_calculator_t {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut *self.0
+        &mut self.0
     }
 }
 
@@ -35,18 +34,8 @@ pub unsafe extern fn rascal_calculator(name: *const c_char, parameters: *const c
     let status = catch_unwind(move || {
         check_pointers!(name, parameters);
         let name = CStr::from_ptr(name).to_str()?;
-
-        let creator = match REGISTERED_CALCULATORS.get(name) {
-            Some(creator) => creator,
-            None => {
-                return Err(Error::InvalidParameter(
-                    format!("unknwon calculator with name '{}'", name)
-                ));
-            }
-        };
-
         let parameters = CStr::from_ptr(parameters).to_str()?;
-        let calculator = creator(parameters)?;
+        let calculator = Calculator::new(name, parameters.to_owned())?;
         let boxed = Box::new(rascal_calculator_t(calculator));
 
         *unwind_wrapper.0 = Box::into_raw(boxed);
@@ -93,7 +82,7 @@ pub unsafe extern fn rascal_calculator_parameters(
 ) -> rascal_status_t {
     catch_unwind(|| {
         check_pointers!(calculator, parameters);
-        copy_str_to_c(&(*calculator).parameters()?, parameters, bufflen)?;
+        copy_str_to_c(&(*calculator).parameters(), parameters, bufflen)?;
         Ok(())
     })
 }

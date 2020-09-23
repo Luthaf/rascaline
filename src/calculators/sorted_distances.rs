@@ -2,11 +2,10 @@ use std::collections::HashMap;
 
 use ndarray::{aview1, s};
 
-use super::Calculator;
+use super::CalculatorBase;
 
 use crate::descriptor::{Descriptor, Indexes, IndexesBuilder, AtomSpeciesEnvironment};
 use crate::system::System;
-use crate::Error;
 
 #[derive(Debug, Clone)]
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -25,13 +24,9 @@ impl SortedDistances {
     }
 }
 
-impl Calculator for SortedDistances {
+impl CalculatorBase for SortedDistances {
     fn name(&self) -> String {
         "sorted distances vector".into()
-    }
-
-    fn parameters(&self) -> Result<String, Error> {
-        Ok(serde_json::to_string(self)?)
     }
 
     fn compute(&mut self, systems: &mut [&mut dyn System], descriptor: &mut Descriptor) {
