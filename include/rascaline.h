@@ -79,6 +79,15 @@ rascal_status_t rascal_calculator_compute(rascal_calculator_t *calculator,
                                           rascal_system_t *systems,
                                           uintptr_t count);
 
+rascal_status_t rascal_calculator_compute_partial(rascal_calculator_t *calculator,
+                                                  rascal_descriptor_t *descriptor,
+                                                  rascal_system_t *systems,
+                                                  uintptr_t systems_count,
+                                                  const uintptr_t *samples,
+                                                  uintptr_t samples_count,
+                                                  const uintptr_t *features,
+                                                  uintptr_t features_count);
+
 rascal_status_t rascal_calculator_free(rascal_calculator_t *calculator);
 
 rascal_status_t rascal_calculator_name(const rascal_calculator_t *calculator,

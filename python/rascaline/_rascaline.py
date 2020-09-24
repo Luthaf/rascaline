@@ -77,6 +77,18 @@ def setup_functions(lib):
     ]
     lib.rascal_calculator_compute.restype = _check_rascal_status_t
 
+    lib.rascal_calculator_compute_partial.argtypes = [
+        POINTER(rascal_calculator_t),
+        POINTER(rascal_descriptor_t),
+        POINTER(rascal_system_t),
+        c_uintptr_t,
+        POINTER(c_uintptr_t),
+        c_uintptr_t,
+        POINTER(c_uintptr_t),
+        c_uintptr_t
+    ]
+    lib.rascal_calculator_compute_partial.restype = _check_rascal_status_t
+
     lib.rascal_calculator_free.argtypes = [
         POINTER(rascal_calculator_t)
     ]

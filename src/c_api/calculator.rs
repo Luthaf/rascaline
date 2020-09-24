@@ -113,3 +113,47 @@ pub unsafe extern fn rascal_calculator_compute(
         Ok(())
     })
 }
+
+#[no_mangle]
+pub unsafe extern fn rascal_calculator_compute_partial(
+    calculator: *mut rascal_calculator_t,
+    descriptor: *mut rascal_descriptor_t,
+    systems: *mut rascal_system_t,
+    systems_count: usize,
+    samples: *const usize,
+    samples_count: usize,
+    features: *const usize,
+    features_count: usize,
+) -> rascal_status_t {
+    catch_unwind(|| {
+        if systems_count == 0 {
+            // TODO: warning
+            return Ok(());
+        }
+        check_pointers!(calculator, descriptor, systems);
+
+
+        let samples = if samples.is_null() {
+            None
+        } else {
+            Some(std::slice::from_raw_parts(samples, samples_count))
+        };
+
+        let features = if features.is_null() {
+            None
+        } else {
+            Some(std::slice::from_raw_parts(features, features_count))
+        };
+
+        // Create a Vec<&mut dyn System> from the passed systems
+        let systems = std::slice::from_raw_parts_mut(systems, systems_count);
+        let mut references = Vec::new();
+        for system in systems {
+            references.push(system as &mut dyn System);
+        }
+
+        (*calculator).compute_partial_capi(&mut references, &mut *descriptor, samples, features)?;
+
+        Ok(())
+    })
+}

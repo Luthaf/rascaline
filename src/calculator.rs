@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::descriptor::{Descriptor, Indexes};
+use crate::descriptor::{Descriptor, Indexes, IndexesBuilder};
 use crate::system::System;
 use crate::Error;
 
@@ -94,6 +94,61 @@ impl Calculator {
         }
 
         self.implementation.compute(systems, descriptor);
+    }
+
+    pub(crate) fn compute_partial_capi(
+        &mut self,
+        systems: &mut [&mut dyn System],
+        descriptor: &mut Descriptor,
+        samples: Option<&[usize]>,
+        features: Option<&[usize]>
+    ) -> Result<(), Error> {
+        let samples = if let Some(list) = samples {
+            // TODO: a simpler way to get names directly instead of building the
+            // full indexes just to get names ...
+            let environments = self.implementation.environments();
+            let default = environments.indexes(systems);
+            let mut builder = IndexesBuilder::new(default.names());
+
+            if list.len() % builder.size() != 0 {
+                return Err(Error::InvalidParameter(format!(
+                    "wrong size for partial samples list, expected a multiple of {}, got {}",
+                    builder.size(), list.len()
+                )))
+            }
+
+            for chunk in list.chunks(builder.size()) {
+                builder.add(chunk);
+            }
+            Some(builder.finish())
+        } else {
+            None
+        };
+
+        let features = if let Some(list) = features {
+            // TODO: a simpler way to get names directly instead of building the
+            // full indexes just to get names ...
+            let default = self.implementation.features();
+            let mut builder = IndexesBuilder::new(default.names());
+
+            if list.len() % builder.size() != 0 {
+                return Err(Error::InvalidParameter(format!(
+                    "wrong size for partial features list, expected a multiple of {}, got {}",
+                    builder.size(), list.len()
+                )))
+            }
+
+            for chunk in list.chunks(builder.size()) {
+                builder.add(chunk);
+            }
+            Some(builder.finish())
+        } else {
+            None
+        };
+
+        self.compute_partial(systems, descriptor, samples, features);
+
+        return Ok(());
     }
 }
 

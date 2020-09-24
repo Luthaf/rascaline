@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 import json
 import ctypes
+import numpy as np
 
-from ._rascaline import rascal_system_t, rascal_status_t
+from ._rascaline import rascal_system_t, rascal_status_t, c_uintptr_t
 from .clib import _get_library
 from .status import _check_rascal_pointer, RascalError
 from .descriptor import Descriptor
@@ -26,6 +27,14 @@ def _call_with_growing_buffer(callback, initial=1024):
             else:
                 raise
     return buffer.value.decode("utf8")
+
+
+def _check_selected_indexes(indexes, kind):
+    if len(indexes.shape) != 2:
+        raise ValueError(f"selected {kind} array must be a two-dimensional array")
+
+    if np.can_cast(indexes.dtype, np.uintp, 'safe'):
+        raise ValueError(f"selected {kind} array must contain integer values")
 
 
 class CalculatorBase:
@@ -67,6 +76,53 @@ class CalculatorBase:
             *list(s._as_rascal_system_t() for s in systems)
         )
         self._lib.rascal_calculator_compute(self, descriptor, c_systems, len(systems))
+        return descriptor
+
+    def compute_partial(self, systems, descriptor=None, samples=None, features=None):
+        if descriptor is None:
+            descriptor = Descriptor()
+
+        if not isinstance(systems, list):
+            systems = [systems]
+
+        c_systems = (rascal_system_t * len(systems))(
+            *list(s._as_rascal_system_t() for s in systems)
+        )
+
+        if samples is not None:
+            samples = np.array(samples)
+            if samples.dtype.fields is not None:
+                # convert structured array back to uintptr_t array
+                size = len(samples)
+                samples = samples.view(dtype=np.uintp).reshape((size, -1))
+            else:
+                _check_selected_indexes(samples, "samples")
+                samples = np.array(samples, dtype=np.uintp)
+
+        if features is not None:
+            features = np.array(features)
+            if features.dtype.fields is not None:
+                # convert structured array back to uintptr_t array
+                size = len(features)
+                features = features.view(dtype=np.uintp).reshape((size, -1))
+            else:
+                _check_selected_indexes(features, "features")
+                features = np.array(features, dtype=np.uintp)
+
+        samples_count = 0 if samples is None else samples.size
+        features_count = 0 if features is None else features.size
+
+        ptr_type = ctypes.POINTER(c_uintptr_t)
+        self._lib.rascal_calculator_compute_partial(
+            self,
+            descriptor,
+            c_systems,
+            len(systems),
+            samples.ctypes.data_as(ptr_type) if samples is not None else None,
+            samples_count,
+            features.ctypes.data_as(ptr_type) if features is not None else None,
+            features_count,
+        )
         return descriptor
 
 

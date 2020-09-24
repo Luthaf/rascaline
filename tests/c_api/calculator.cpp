@@ -1,8 +1,18 @@
+#include <vector>
 #include <string>
 
 #include "rascaline.h"
 #include "catch.hpp"
 #include "helpers.hpp"
+
+static void check_indexes(
+    rascal_descriptor_t* descriptor,
+    rascal_indexes kind,
+    std::vector<std::string> names,
+    std::vector<uintptr_t> values,
+    uintptr_t count,
+    uintptr_t size
+);
 
 TEST_CASE("calculator name") {
     SECTION("dummy_calculator") {
@@ -90,7 +100,7 @@ TEST_CASE("calculator parameters") {
     }
 }
 
-TEST_CASE("calculator creation error") {
+TEST_CASE("calculator creation errors") {
     const char* HYPERS_JSON = R"({
         "cutoff": "532",
         "delta": 25,
@@ -100,5 +110,209 @@ TEST_CASE("calculator creation error") {
     auto *calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);
     CHECK(calculator == nullptr);
 
-    CHECK(rascal_last_error() == std::string("json error: invalid type: string \"532\", expected f64 at line 2 column 23"));
+    CHECK(std::string(rascal_last_error()) == "json error: invalid type: string \"532\", expected f64 at line 2 column 23");
+}
+
+TEST_CASE("Compute descriptor") {
+    const char* HYPERS_JSON = R"({
+        "cutoff": 3.0,
+        "delta": 4,
+        "name": "",
+        "gradients": true
+    })";
+
+    auto* descriptor = rascal_descriptor();
+    REQUIRE(descriptor != nullptr);
+    auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);
+    REQUIRE(calculator != nullptr);
+
+    SECTION("Full compute") {
+        auto system = simple_system();
+        CHECK_SUCCESS(rascal_calculator_compute(calculator, descriptor, &system, 1));
+
+        auto expected = std::vector<uintptr_t>{
+            0, 0, /**/ 0, 1, /**/ 0, 2, /**/ 0, 3,
+        };
+        check_indexes(descriptor, RASCAL_INDEXES_ENVIRONMENTS, {"structure", "center"}, expected, 4, 2);
+
+        expected = std::vector<uintptr_t>{
+            1, 0, /**/ 0, 1
+        };
+        check_indexes(descriptor, RASCAL_INDEXES_FEATURES, {"index_delta", "x_y_z"}, expected, 2, 2);
+
+        const double* data = nullptr;
+        uintptr_t shape[2] = {0};
+        CHECK_SUCCESS(rascal_descriptor_values(descriptor, &data, &shape[0], &shape[1]));
+
+        CHECK(shape[0] == 4);
+        CHECK(shape[1] == 2);
+        auto expected_data = std::vector<double>{
+            4, 0, /**/ 5, 3, /**/ 6, 6, /**/ 7, 9,
+        };
+        for (size_t i=0; i<shape[0]; i++) {
+            for (size_t j=0; j<shape[1]; j++) {
+                CHECK(data[i * shape[1] + j] == expected_data[i * shape[1] + j]);
+            }
+        }
+
+        CHECK_SUCCESS(rascal_descriptor_gradients(descriptor, &data, &shape[0], &shape[1]));
+        CHECK(shape[0] == 18);
+        CHECK(shape[1] == 2);
+        expected_data = std::vector<double>{
+            0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1,
+            0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1,
+            0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1,
+        };
+        for (size_t i=0; i<shape[0]; i++) {
+            for (size_t j=0; j<shape[1]; j++) {
+                CHECK(data[i * shape[1] + j] == expected_data[i * shape[1] + j]);
+            }
+        }
+    }
+
+    SECTION("Partial compute -- samples") {
+        auto system = simple_system();
+
+        auto samples = std::vector<uintptr_t>{
+            0, 1, /**/ 0, 3,
+        };
+        CHECK_SUCCESS(rascal_calculator_compute_partial(
+            calculator, descriptor, &system, 1, samples.data(), samples.size(), nullptr, 0
+        ));
+
+        check_indexes(descriptor, RASCAL_INDEXES_ENVIRONMENTS, {"structure", "center"}, samples, 2, 2);
+
+        auto expected = std::vector<uintptr_t>{
+            1, 0, /**/ 0, 1
+        };
+        check_indexes(descriptor, RASCAL_INDEXES_FEATURES, {"index_delta", "x_y_z"}, expected, 2, 2);
+
+        const double* data = nullptr;
+        uintptr_t shape[2] = {0};
+        CHECK_SUCCESS(rascal_descriptor_values(descriptor, &data, &shape[0], &shape[1]));
+
+        CHECK(shape[0] == 2);
+        CHECK(shape[1] == 2);
+
+        auto expected_data = std::vector<double>{
+            5, 3, /**/ 7, 9,
+        };
+        for (size_t i=0; i<shape[0]; i++) {
+            for (size_t j=0; j<shape[1]; j++) {
+                CHECK(data[i * shape[1] + j] == expected_data[i * shape[1] + j]);
+            }
+        }
+
+        CHECK_SUCCESS(rascal_descriptor_gradients(descriptor, &data, &shape[0], &shape[1]));
+        CHECK(shape[0] == 9);
+        CHECK(shape[1] == 2);
+        expected_data = std::vector<double>{
+            0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1,
+            0, 1, /**/ 0, 1, /**/ 0, 1,
+        };
+        for (size_t i=0; i<shape[0]; i++) {
+            for (size_t j=0; j<shape[1]; j++) {
+                CHECK(data[i * shape[1] + j] == expected_data[i * shape[1] + j]);
+            }
+        }
+    }
+
+    SECTION("Partial compute -- features") {
+        auto system = simple_system();
+
+        auto features = std::vector<uintptr_t>{
+            0, 1,
+        };
+        CHECK_SUCCESS(rascal_calculator_compute_partial(
+            calculator, descriptor, &system, 1, nullptr, 0, features.data(), features.size()
+        ));
+
+        auto expected = std::vector<uintptr_t>{
+            0, 0, /**/ 0, 1, /**/ 0, 2, /**/ 0, 3,
+        };
+        check_indexes(descriptor, RASCAL_INDEXES_ENVIRONMENTS, {"structure", "center"}, expected, 4, 2);
+
+        check_indexes(descriptor, RASCAL_INDEXES_FEATURES, {"index_delta", "x_y_z"}, features, 1, 2);
+
+        const double* data = nullptr;
+        uintptr_t shape[2] = {0};
+        CHECK_SUCCESS(rascal_descriptor_values(descriptor, &data, &shape[0], &shape[1]));
+
+        CHECK(shape[0] == 4);
+        CHECK(shape[1] == 1);
+
+        auto expected_data = std::vector<double>{
+            0, /**/ 3, /**/ 6, /**/ 9,
+        };
+        for (size_t i=0; i<shape[0]; i++) {
+            for (size_t j=0; j<shape[1]; j++) {
+                CHECK(data[i * shape[1] + j] == expected_data[i * shape[1] + j]);
+            }
+        }
+
+        CHECK_SUCCESS(rascal_descriptor_gradients(descriptor, &data, &shape[0], &shape[1]));
+        CHECK(shape[0] == 18);
+        CHECK(shape[1] == 1);
+        expected_data = std::vector<double>(18, 1.0);
+        for (size_t i=0; i<shape[0]; i++) {
+            for (size_t j=0; j<shape[1]; j++) {
+                CHECK(data[i * shape[1] + j] == expected_data[i * shape[1] + j]);
+            }
+        }
+    }
+
+    SECTION("Partial compute -- errors") {
+        auto system = simple_system();
+
+        auto samples = std::vector<uintptr_t>{0, 1, 3};
+        auto status = rascal_calculator_compute_partial(
+            calculator, descriptor, &system, 1, samples.data(), samples.size(), nullptr, 0
+        );
+        CHECK(status != RASCAL_SUCCESS);
+        CHECK(std::string(rascal_last_error()) == "invalid parameter: wrong size for partial samples list, expected a multiple of 2, got 3");
+
+        auto features = std::vector<uintptr_t>{0, 1, 3};
+        status = rascal_calculator_compute_partial(
+            calculator, descriptor, &system, 1, nullptr, 0, features.data(), features.size()
+        );
+        CHECK(status != RASCAL_SUCCESS);
+        CHECK(std::string(rascal_last_error()) == "invalid parameter: wrong size for partial features list, expected a multiple of 2, got 3");
+    }
+
+    rascal_calculator_free(calculator);
+    rascal_descriptor_free(descriptor);
+}
+
+void check_indexes(
+    rascal_descriptor_t* descriptor,
+    rascal_indexes kind,
+    std::vector<std::string> names,
+    std::vector<uintptr_t> values,
+    uintptr_t count,
+    uintptr_t size
+) {
+    const uintptr_t* actual_values = nullptr;
+    uintptr_t actual_count = 0;
+    uintptr_t actual_size = 0;
+
+    CHECK_SUCCESS(rascal_descriptor_indexes(
+        descriptor, kind, &actual_values, &actual_count, &actual_size
+    ));
+    CHECK(actual_values != nullptr);
+    CHECK(actual_count == count);
+    CHECK(actual_size == size);
+
+    for (size_t i=0; i<count; i++) {
+        for (size_t j=0; j<size; j++) {
+            CHECK(actual_values[i * size + j] == values[i * size + j]);
+        }
+    }
+
+    const char** actual_names = static_cast<const char**>(std::malloc(actual_size * sizeof(const char*)));
+    rascal_descriptor_indexes_names(descriptor, kind, actual_names, actual_size);
+
+    for (size_t i=0; i<size; i++) {
+        CHECK(actual_names[i] == names[i]);
+    }
+    std::free(actual_names);
 }
