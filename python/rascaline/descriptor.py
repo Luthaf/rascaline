@@ -34,6 +34,10 @@ class Descriptor:
         features = c_uintptr_t()
         data = POINTER(c_double)()
         self._lib.rascal_descriptor_gradients(self, data, environments, features)
+
+        if not data:
+            return None
+
         return np_array_view(
             data, (environments.value, features.value), dtype=np.float64
         )

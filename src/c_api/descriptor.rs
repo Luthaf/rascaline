@@ -76,12 +76,7 @@ pub unsafe extern fn rascal_descriptor_gradients(
 
         match &(*descriptor).gradients {
             Some(array) => {
-                if array.is_empty() {
-                    *data = std::ptr::null();
-                } else {
-                    *data = array.as_ptr();
-                }
-
+                *data = array.as_ptr();
                 let shape = array.shape();
                 *environments = shape[0];
                 *features = shape[1];

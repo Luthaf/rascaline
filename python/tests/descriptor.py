@@ -6,7 +6,7 @@ import rascaline
 from rascaline import Descriptor
 from rascaline.calculator import DummyCalculator
 
-from test_systems import TestSystem
+from test_systems import TestSystem, EmptySystem
 
 
 class TestEmptyDescriptor(unittest.TestCase):
@@ -16,7 +16,7 @@ class TestEmptyDescriptor(unittest.TestCase):
 
     def test_gradients(self):
         descriptor = Descriptor()
-        self.assertEqual(descriptor.gradients.shape, (0, 0))
+        self.assertEqual(descriptor.gradients, None)
 
     def test_environments(self):
         descriptor = Descriptor()
@@ -47,13 +47,20 @@ class TestDummyDescriptor(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "assignment destination is read-only"):
             values[0] = (3, 4)
 
+        self.assertEqual(descriptor.gradients, None)
+
     def test_gradients(self):
         system = TestSystem()
         calculator = DummyCalculator(cutoff=3.2, delta=12, name="", gradients=False)
         descriptor = calculator.compute(system)
-        self.assertEqual(descriptor.gradients.shape, (0, 0))
+        self.assertEqual(descriptor.gradients, None)
 
+        system = EmptySystem()
         calculator = DummyCalculator(cutoff=3.2, delta=12, name="", gradients=True)
+        descriptor = calculator.compute(system)
+        self.assertEqual(descriptor.gradients.shape, (0, 2))
+
+        system = TestSystem()
         descriptor = calculator.compute(system)
         gradients = descriptor.gradients
         self.assertEqual(gradients.shape, (18, 2))

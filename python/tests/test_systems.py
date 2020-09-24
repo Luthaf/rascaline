@@ -20,3 +20,23 @@ class TestSystem(SystemBase):
 
     def pairs(self):
         return [(0, 1, 1.0), (1, 2, 1.0), (2, 3, 1.0)]
+
+
+class EmptySystem(SystemBase):
+    def size(self):
+        return 0
+
+    def species(self):
+        return []
+
+    def positions(self):
+        return []
+
+    def cell(self):
+        return []
+
+    def compute_neighbors(self, cutoff):
+        return
+
+    def pairs(self):
+        return []
