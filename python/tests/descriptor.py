@@ -39,10 +39,10 @@ class TestDummyDescriptor(unittest.TestCase):
 
         values = descriptor.values
         self.assertEqual(values.shape, (4, 2))
-        self.assertTrue(np.all(values[0] == (12, 0)))
-        self.assertTrue(np.all(values[1] == (13, 1)))
-        self.assertTrue(np.all(values[2] == (14, 2)))
-        self.assertTrue(np.all(values[3] == (15, 3)))
+        self.assertTrue(np.all(values[0] == (12, 1)))
+        self.assertTrue(np.all(values[1] == (13, 3)))
+        self.assertTrue(np.all(values[2] == (14, 6)))
+        self.assertTrue(np.all(values[3] == (15, 5)))
 
         with self.assertRaisesRegex(ValueError, "assignment destination is read-only"):
             values[0] = (3, 4)

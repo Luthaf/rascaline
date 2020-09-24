@@ -123,16 +123,16 @@ TEST_CASE("rascal_descriptor_t") {
         CHECK(shape[1] == 2);
 
         CHECK(data[0 * shape[1] + 0] == 5);
-        CHECK(data[0 * shape[1] + 1] == 0);
+        CHECK(data[0 * shape[1] + 1] == 3);
 
         CHECK(data[1 * shape[1] + 0] == 6);
-        CHECK(data[1 * shape[1] + 1] == 3);
+        CHECK(data[1 * shape[1] + 1] == 9);
 
         CHECK(data[2 * shape[1] + 0] == 7);
-        CHECK(data[2 * shape[1] + 1] == 6);
+        CHECK(data[2 * shape[1] + 1] == 18);
 
         CHECK(data[3 * shape[1] + 0] == 8);
-        CHECK(data[3 * shape[1] + 1] == 9);
+        CHECK(data[3 * shape[1] + 1] == 15);
 
         CHECK_SUCCESS(rascal_descriptor_free(descriptor));
     }

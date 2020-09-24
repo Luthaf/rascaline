@@ -48,10 +48,10 @@ class TestDummyCalculator(unittest.TestCase):
 
         values = descriptor.values
         self.assertEqual(values.shape, (4, 2))
-        self.assertTrue(np.all(values[0] == (2, 0)))
-        self.assertTrue(np.all(values[1] == (3, 1)))
-        self.assertTrue(np.all(values[2] == (4, 2)))
-        self.assertTrue(np.all(values[3] == (5, 3)))
+        self.assertTrue(np.all(values[0] == (2, 1)))
+        self.assertTrue(np.all(values[1] == (3, 3)))
+        self.assertTrue(np.all(values[2] == (4, 6)))
+        self.assertTrue(np.all(values[3] == (5, 5)))
 
         gradients = descriptor.gradients
         self.assertEqual(gradients.shape, (18, 2))
@@ -69,8 +69,8 @@ class TestDummyCalculator(unittest.TestCase):
 
         values = descriptor.values
         self.assertEqual(values.shape, (2, 2))
-        self.assertTrue(np.all(values[0] == (2, 0)))
-        self.assertTrue(np.all(values[1] == (4, 2)))
+        self.assertTrue(np.all(values[0] == (2, 1)))
+        self.assertTrue(np.all(values[1] == (4, 6)))
 
         gradients = descriptor.gradients
         self.assertEqual(gradients.shape, (9, 2))
@@ -84,9 +84,9 @@ class TestDummyCalculator(unittest.TestCase):
 
         values = descriptor.values
         self.assertEqual(values.shape, (3, 2))
-        self.assertTrue(np.all(values[0] == (2, 0)))
-        self.assertTrue(np.all(values[1] == (5, 3)))
-        self.assertTrue(np.all(values[2] == (3, 1)))
+        self.assertTrue(np.all(values[0] == (2, 1)))
+        self.assertTrue(np.all(values[1] == (5, 5)))
+        self.assertTrue(np.all(values[2] == (3, 3)))
 
         gradients = descriptor.gradients
         self.assertEqual(gradients.shape, (12, 2))
@@ -104,10 +104,10 @@ class TestDummyCalculator(unittest.TestCase):
 
         values = descriptor.values
         self.assertEqual(values.shape, (4, 1))
-        self.assertTrue(np.all(values[0] == [0]))
-        self.assertTrue(np.all(values[1] == [1]))
-        self.assertTrue(np.all(values[2] == [2]))
-        self.assertTrue(np.all(values[3] == [3]))
+        self.assertTrue(np.all(values[0] == [1]))
+        self.assertTrue(np.all(values[1] == [3]))
+        self.assertTrue(np.all(values[2] == [6]))
+        self.assertTrue(np.all(values[3] == [5]))
 
         gradients = descriptor.gradients
         self.assertEqual(gradients.shape, (18, 1))

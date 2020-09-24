@@ -147,7 +147,7 @@ TEST_CASE("Compute descriptor") {
         CHECK(shape[0] == 4);
         CHECK(shape[1] == 2);
         auto expected_data = std::vector<double>{
-            4, 0, /**/ 5, 3, /**/ 6, 6, /**/ 7, 9,
+            4, 3, /**/ 5, 9, /**/ 6, 18, /**/ 7, 15,
         };
         for (size_t i=0; i<shape[0]; i++) {
             for (size_t j=0; j<shape[1]; j++) {
@@ -195,7 +195,7 @@ TEST_CASE("Compute descriptor") {
         CHECK(shape[1] == 2);
 
         auto expected_data = std::vector<double>{
-            5, 3, /**/ 7, 9,
+            5, 9, /**/ 7, 15,
         };
         for (size_t i=0; i<shape[0]; i++) {
             for (size_t j=0; j<shape[1]; j++) {
@@ -242,7 +242,7 @@ TEST_CASE("Compute descriptor") {
         CHECK(shape[1] == 1);
 
         auto expected_data = std::vector<double>{
-            0, /**/ 3, /**/ 6, /**/ 9,
+            3, /**/ 9, /**/ 18, /**/ 15,
         };
         for (size_t i=0; i<shape[0]; i++) {
             for (size_t j=0; j<shape[1]; j++) {

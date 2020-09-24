@@ -65,24 +65,30 @@ impl CalculatorBase for DummyCalculator {
 
     fn compute(&mut self, systems: &mut [&mut dyn System], descriptor: &mut Descriptor) {
         for (i_sample, indexes) in descriptor.environments.iter().enumerate() {
-            let mut current_structure = 0;
-            let mut positions = systems[current_structure].positions();
-            if let &[structure, atom] = indexes {
-                if structure != current_structure {
-                    current_structure = structure;
-                    positions = systems[current_structure].positions();
-                }
+            let i_system = indexes[0];
+            let center = indexes[1];
 
-                for (i_feature, feature) in descriptor.features.iter().enumerate() {
-                    if feature[0] == 1 {
-                        descriptor.values[[i_sample, i_feature]] = atom as f64 + self.delta as f64;
-                    } else if feature[1] == 1 {
-                        let position = positions[atom];
-                        descriptor.values[[i_sample, i_feature]] = position[0] + position[1] + position[2];
+            for (i_feature, feature) in descriptor.features.iter().enumerate() {
+                if feature[0] == 1 {
+                    descriptor.values[[i_sample, i_feature]] = center as f64 + self.delta as f64;
+                } else if feature[1] == 1 {
+                    let system = &mut systems[i_system];
+                    system.compute_neighbors(self.cutoff);
+
+                    let positions = system.positions();
+                    let mut sum = positions[center][0] + positions[center][1] + positions[center][2];
+                    for pair in system.pairs() {
+                        if pair.first == center {
+                            sum += positions[pair.second][0] + positions[pair.second][1] + positions[pair.second][2];
+                        }
+
+                        if pair.second == center {
+                            sum += positions[pair.first][0] + positions[pair.first][1] + positions[pair.first][2];
+                        }
                     }
+
+                    descriptor.values[[i_sample, i_feature]] = sum;
                 }
-            } else {
-                panic!("got a bad environment indexes");
             }
         }
 
@@ -131,7 +137,7 @@ mod tests {
     #[test]
     fn values() {
         let mut calculator = Calculator::new("dummy_calculator", "{
-            \"cutoff\": 3.5,
+            \"cutoff\": 1.0,
             \"delta\": 9,
             \"name\": \"\",
             \"gradients\": false
@@ -142,7 +148,7 @@ mod tests {
         calculator.compute(&mut systems.get(), &mut descriptor);
 
         assert_eq!(descriptor.values.shape(), [3, 2]);
-        assert_eq!(descriptor.values.slice(s![0, ..]), aview1(&[9.0, 0.0]));
+        assert_eq!(descriptor.values.slice(s![0, ..]), aview1(&[9.0, -1.1778999999999997]));
         assert_eq!(descriptor.values.slice(s![1, ..]), aview1(&[10.0, 0.16649999999999998]));
         assert_eq!(descriptor.values.slice(s![2, ..]), aview1(&[11.0, -1.3443999999999998]));
     }
@@ -150,7 +156,7 @@ mod tests {
     #[test]
     fn gradients() {
         let mut calculator = Calculator::new("dummy_calculator", "{
-            \"cutoff\": 3.5,
+            \"cutoff\": 1.0,
             \"delta\": 0,
             \"name\": \"\",
             \"gradients\": true
@@ -161,9 +167,7 @@ mod tests {
         calculator.compute(&mut systems.get(), &mut descriptor);
 
         let gradients = descriptor.gradients.unwrap();
-        assert_eq!(gradients.shape(), [18, 2]);
-        // 1 (structure) * 3 (centers) * 2 (neighbor per center) * 3 (spatial)
-        assert_eq!(descriptor.gradients_indexes.unwrap().count(), 1 * 3 * 2 * 3);
+        assert_eq!(gradients.shape(), [12, 2]);
         for i in 0..gradients.shape()[0] {
             assert_eq!(gradients.slice(s![i, ..]), aview1(&[0.0, 1.0]));
         }
@@ -172,7 +176,7 @@ mod tests {
     #[test]
     fn compute_partial() {
         let mut calculator = Calculator::new("dummy_calculator", "{
-            \"cutoff\": 3.5,
+            \"cutoff\": 1.0,
             \"delta\": 9,
             \"name\": \"\",
             \"gradients\": true
@@ -194,12 +198,12 @@ mod tests {
         calculator.compute_partial(&mut systems.get(), &mut descriptor, None, Some(features.finish()));
 
         assert_eq!(descriptor.values.shape(), [3, 1]);
-        assert_eq!(descriptor.values.slice(s![0, ..]), aview1(&[0.0]));
+        assert_eq!(descriptor.values.slice(s![0, ..]), aview1(&[-1.1778999999999997]));
         assert_eq!(descriptor.values.slice(s![1, ..]), aview1(&[0.16649999999999998]));
         assert_eq!(descriptor.values.slice(s![2, ..]), aview1(&[-1.3443999999999998]));
 
         let gradients = descriptor.gradients.unwrap();
-        assert_eq!(gradients.shape(), [18, 1]);
+        assert_eq!(gradients.shape(), [12, 1]);
         for i in 0..gradients.shape()[0] {
             assert_eq!(gradients.slice(s![i, ..]), aview1(&[1.0]));
         }
