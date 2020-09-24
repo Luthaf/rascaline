@@ -1,4 +1,4 @@
-use crate::descriptor::Descriptor;
+use crate::descriptor::{Descriptor, Indexes, EnvironmentIndexes};
 use crate::system::System;
 
 /// TODO: docs
@@ -8,7 +8,31 @@ use crate::system::System;
 pub trait CalculatorBase: std::panic::RefUnwindSafe {
     /// Get the name of this Calculator
     fn name(&self) -> String;
-    /// Compute the descriptor for all the given systems and store it in `descriptor`
+
+    /// Get the default set of features for this Calculator
+    fn features(&self) -> Indexes;
+    /// Get the default set of environments for this Calculator
+    fn environments(&self) -> Box<dyn EnvironmentIndexes>;
+    /// Does this environment compute gradients?
+    fn compute_gradients(&self) -> bool;
+
+    /// Check that the given indexes are valid feature indexes for this
+    /// Calculator. This is used by `Calculator::compute_partial` to ensure
+    /// only valid features are requested
+    fn check_features(&self, indexes: &Indexes);
+    /// Check that the given indexes are valid environment indexes for this
+    /// Calculator. This is used by `Calculator::compute_partial` to ensure
+    /// only valid environments are requested
+    fn check_environments(&self, indexes: &Indexes, systems: &mut [&mut dyn System]);
+
+    /// Core implementation of the descriptor.
+    ///
+    /// This function should compute the descriptor only for environments in
+    /// `descriptor.environments` and computing only features in
+    /// `descriptor.features`. By default, these would correspond to the
+    /// environments and features coming from `Descriptor::environments` and
+    /// `Descriptor::features` respectively; but this can be overriden to only
+    /// compute them on a subset though `Descriptor::compute_partial`.
     fn compute(&mut self, systems: &mut [&mut dyn System], descriptor: &mut Descriptor);
 }
 

@@ -42,7 +42,10 @@ impl IndexesBuilder {
 
     /// Add a single entry with the given `values` for this set of indexes
     pub fn add(&mut self, values: &[usize]) {
-        assert_eq!(self.size(), values.len());
+        assert_eq!(
+            self.size(), values.len(),
+            "wrong size for added index: got {}, but expected {}", values.len(), self.size()
+        );
         for chunk in self.values.chunks_exact(self.size()) {
             if chunk == values {
                 panic!(
@@ -125,6 +128,20 @@ impl Indexes {
             values: &self.values
         };
     }
+
+    pub fn contains(&self, value: &[usize]) -> bool {
+        if value.len() != self.size() {
+            return false;
+        }
+
+        for v in self.iter() {
+            if v == value {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }
 
 pub struct Iter<'a> {
@@ -172,7 +189,14 @@ pub trait EnvironmentIndexes {
     fn indexes(&self, systems: &mut [&mut dyn System]) -> Indexes;
 
     fn with_gradients(&self, systems: &mut [&mut dyn System]) -> (Indexes, Option<Indexes>) {
-        (self.indexes(systems), None)
+        let indexes = self.indexes(systems);
+        let gradients = self.gradients_for(systems, &indexes);
+        return (indexes, gradients);
+    }
+
+    #[allow(unused_variables)]
+    fn gradients_for(&self, systems: &mut [&mut dyn System], samples: &Indexes) -> Option<Indexes> {
+        None
     }
 }
 

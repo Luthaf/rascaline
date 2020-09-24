@@ -23,22 +23,27 @@ impl EnvironmentIndexes for StructureSpeciesEnvironment {
         return indexes.finish();
     }
 
-    fn with_gradients(&self, systems: &mut [&mut dyn System]) -> (Indexes, Option<Indexes>) {
+    fn gradients_for(&self, systems: &mut [&mut dyn System], samples: &Indexes) -> Option<Indexes> {
+        assert_eq!(samples.names(), ["structure", "alpha"]);
+
         let mut gradients = IndexesBuilder::new(vec!["structure", "alpha", "atom", "spatial"]);
-        for (i_system, system) in systems.iter().enumerate() {
+        for value in samples.iter() {
+            let i_system = value[0];
+            let alpha = value[1];
+
+            let system = &systems[i_system];
             let species = system.species();
-            for &alpha in species.iter().collect::<BTreeSet<_>>()  {
-                for atom in 0..system.size() {
-                    // only atoms with the same species participate to the gradient
-                    if species[atom] == alpha {
-                        gradients.add(&[i_system, alpha, atom, 0]);
-                        gradients.add(&[i_system, alpha, atom, 1]);
-                        gradients.add(&[i_system, alpha, atom, 2]);
-                    }
+            for atom in 0..system.size() {
+                // only atoms with the same species participate to the gradient
+                if species[atom] == alpha {
+                    gradients.add(&[i_system, alpha, atom, 0]);
+                    gradients.add(&[i_system, alpha, atom, 1]);
+                    gradients.add(&[i_system, alpha, atom, 2]);
                 }
             }
         }
-        return (self.indexes(systems), Some(gradients.finish()));
+
+        return Some(gradients.finish());
     }
 }
 
@@ -89,41 +94,46 @@ impl EnvironmentIndexes for AtomSpeciesEnvironment {
         return indexes.finish();
     }
 
-    fn with_gradients(&self, systems: &mut [&mut dyn System]) -> (Indexes, Option<Indexes>) {
-        // Accumulate indexes in a set first to ensure unicity of the indexes
-        // even if their are multiple neighbors of the same specie around a
-        // given center
-        let mut idx_set = BTreeSet::new();
-        let mut grad_set = BTreeSet::new();
-        for (i_system, system) in systems.iter_mut().enumerate() {
+    fn gradients_for(&self, systems: &mut [&mut dyn System], samples: &Indexes) -> Option<Indexes> {
+        assert_eq!(samples.names(), ["structure", "center", "alpha", "beta"]);
+
+        let requested_systems = samples.iter().map(|v| v[0]).collect::<BTreeSet<_>>();
+
+        let mut set = BTreeSet::new();
+        for i_system in requested_systems {
+            let system = &mut systems[i_system];
             system.compute_neighbors(self.cutoff);
             let species = system.species();
+
+            let requested_centers = samples.iter()
+                .filter(|v| v[0] == i_system)
+                .map(|v| v[1])
+                .collect::<Vec<_>>();
+
             for pair in system.pairs() {
                 let species_first = species[pair.first];
                 let species_second = species[pair.second];
 
-                idx_set.insert([i_system, pair.first, species_first, species_second]);
-                idx_set.insert([i_system, pair.second, species_second, species_first]);
-
-                for spatial in 0..3 {
-                    grad_set.insert([i_system, pair.first, species_first, species_second, pair.second, spatial]);
-                    grad_set.insert([i_system, pair.second, species_second, species_first, pair.first, spatial]);
+                if requested_centers.contains(&pair.first) {
+                    set.insert([i_system, pair.first, species_first, species_second, pair.second, 0]);
+                    set.insert([i_system, pair.first, species_first, species_second, pair.second, 1]);
+                    set.insert([i_system, pair.first, species_first, species_second, pair.second, 2]);
                 }
-            };
-        }
 
-
-        let mut indexes = IndexesBuilder::new(vec!["structure", "center", "alpha", "beta"]);
-        for idx in idx_set {
-            indexes.add(&idx);
+                if requested_centers.contains(&pair.second) {
+                    set.insert([i_system, pair.second, species_second, species_first, pair.first, 0]);
+                    set.insert([i_system, pair.second, species_second, species_first, pair.first, 1]);
+                    set.insert([i_system, pair.second, species_second, species_first, pair.first, 2]);
+                }
+            }
         }
 
         let mut gradients = IndexesBuilder::new(vec!["structure", "center", "alpha", "beta", "neighbor", "spatial"]);
-        for idx in grad_set {
+        for idx in set {
             gradients.add(&idx);
         }
 
-        return (indexes.finish(), Some(gradients.finish()));
+        return Some(gradients.finish());
     }
 }
 

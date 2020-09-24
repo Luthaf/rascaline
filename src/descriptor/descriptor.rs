@@ -1,11 +1,9 @@
 use std::collections::BTreeMap;
 use indexmap::set::IndexSet;
 
-use ndarray::{Array2, aview0, s};
+use ndarray::{Array2, s};
 
-use crate::system::System;
 use super::{Indexes, IndexesBuilder};
-use super::EnvironmentIndexes;
 
 pub struct Descriptor {
     /// An array of environments.count() by features.count() values
@@ -31,17 +29,15 @@ impl Descriptor {
 
     pub(crate) fn prepare(
         &mut self,
-        environments: impl EnvironmentIndexes,
+        environments: Indexes,
         features: Indexes,
-        systems: &mut [&mut dyn System],
-        initial: f64,
     ) {
-        self.environments = environments.indexes(systems);
+        self.environments = environments;
         self.features = features;
 
         // resize the 'values' array if needed, and set the requested initial value
         let shape = (self.environments.count(), self.features.count());
-        resize_and_reset(&mut self.values, shape, initial);
+        resize_and_reset(&mut self.values, shape);
 
         self.gradients = None;
         self.gradients_indexes = None;
@@ -49,34 +45,29 @@ impl Descriptor {
 
     pub(crate) fn prepare_gradients(
         &mut self,
-        environments: impl EnvironmentIndexes,
+        environments: Indexes,
+        gradients: Indexes,
         features: Indexes,
-        systems: &mut [&mut dyn System],
-        initial: f64,
     ) {
-        let (env_idx, grad_idx) = environments.with_gradients(systems);
-        let grad_idx = grad_idx.expect(
-            "the given environments indexes do not support gradients"
-        );
         // basic sanity check
-        assert_eq!(grad_idx.names().last(), Some(&"spatial"), "the last index of gradient should be spatial");
+        assert_eq!(gradients.names().last(), Some(&"spatial"), "the last index of gradient should be spatial");
 
-        self.environments = env_idx;
+        self.environments = environments;
         self.features = features;
 
         // resize the 'values' array if needed, and set the requested initial value
         let shape = (self.environments.count(), self.features.count());
-        resize_and_reset(&mut self.values, shape, initial);
+        resize_and_reset(&mut self.values, shape);
 
-        let shape = (grad_idx.count(), self.features.count());
-        self.gradients_indexes = Some(grad_idx);
+        let shape = (gradients.count(), self.features.count());
+        self.gradients_indexes = Some(gradients);
 
         if let Some(array) = &mut self.gradients {
             // resize the 'gradient' array if needed, and set the requested initial value
-            resize_and_reset(array, shape, initial);
+            resize_and_reset(array, shape);
         } else {
             // create a new gradient array
-            let array = Array2::from_elem(shape, initial);
+            let array = Array2::from_elem(shape, 0.0);
             self.gradients = Some(array);
         }
     }
@@ -138,7 +129,7 @@ impl Descriptor {
     }
 }
 
-fn resize_and_reset(array: &mut Array2<f64>, shape: (usize, usize), initial: f64) {
+fn resize_and_reset(array: &mut Array2<f64>, shape: (usize, usize)) {
     // extract data by replacing array with a temporary value
     let mut tmp = Array2::zeros((0, 0));
     std::mem::swap(array, &mut tmp);
@@ -146,9 +137,7 @@ fn resize_and_reset(array: &mut Array2<f64>, shape: (usize, usize), initial: f64
     let mut data = tmp.into_raw_vec();
     data.resize(shape.0 * shape.1, 0.0);
 
-    // replace the temporary value with the updated array
-    let mut values = Array2::from_shape_vec(shape, data).expect("wrong array shape");
-    values.assign(&aview0(&initial));
+    let values = Array2::from_shape_vec(shape, data).expect("wrong array shape");
     let _ = std::mem::replace(array, values);
 }
 
@@ -230,7 +219,7 @@ fn remove_from_indexes(indexes: &Indexes, variable: &str) -> RemovedResult {
 mod tests {
     use super::*;
     use crate::system::test_systems;
-    use crate::descriptor::indexes::StructureSpeciesEnvironment;
+    use crate::descriptor::indexes::{StructureSpeciesEnvironment, EnvironmentIndexes};
     use ndarray::array;
 
     fn do_prepare(gradients: bool) -> Descriptor {
@@ -242,11 +231,16 @@ mod tests {
         features.add(&[1, 0, 2]);
         let features = features.finish();
 
+        let environments = StructureSpeciesEnvironment;
+
         let mut descriptor = Descriptor::new();
         if gradients {
-            descriptor.prepare_gradients(StructureSpeciesEnvironment, features, &mut systems.get(), 0.0);
+            let (environments, gradients) = environments.with_gradients(&mut systems.get());
+            let gradients = gradients.unwrap();
+            descriptor.prepare_gradients(environments, gradients, features);
         } else {
-            descriptor.prepare(StructureSpeciesEnvironment, features, &mut systems.get(), 0.0);
+            let environments = environments.indexes(&mut systems.get());
+            descriptor.prepare(environments, features);
         }
 
         return descriptor;

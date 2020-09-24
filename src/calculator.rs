@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::descriptor::Descriptor;
+use crate::descriptor::{Descriptor, Indexes};
 use crate::system::System;
 use crate::Error;
 
@@ -41,8 +41,58 @@ impl Calculator {
         &self.parameters
     }
 
-    /// Compute the descriptor for all the given systems and store it in `descriptor`
+    /// Compute the descriptor for all the given `systems` and store it in
+    /// `descriptor`
+    ///
+    /// This function computes the full descriptor, using all samples and all
+    /// features.
     pub fn compute(&mut self, systems: &mut [&mut dyn System], descriptor: &mut Descriptor) {
+        let features = self.implementation.features();
+        let environments = self.implementation.environments();
+        if self.implementation.compute_gradients() {
+            let (environments, gradients) = environments.with_gradients(systems);
+            let gradients = gradients.expect("this environments definition do not support gradients");
+            descriptor.prepare_gradients(environments, gradients, features);
+        } else {
+            let environments = environments.indexes(systems);
+            descriptor.prepare(environments, features);
+        }
+
+        self.implementation.compute(systems, descriptor);
+    }
+
+    /// Compute the descriptor only for the selected samples (all samples if
+    /// `None`) and selected features (all features if `None`).
+    pub fn compute_partial(
+        &mut self,
+        systems: &mut [&mut dyn System],
+        descriptor: &mut Descriptor,
+        samples: Option<Indexes>,
+        features: Option<Indexes>
+    ) {
+        let features = if let Some(features) = features {
+            self.implementation.check_features(&features);
+            features
+        } else {
+            self.implementation.features()
+        };
+
+        let environments = self.implementation.environments();
+        let (samples, gradients) = if let Some(samples) = samples {
+            self.implementation.check_environments(&samples, systems);
+            let gradients = environments.gradients_for(systems, &samples);
+            (samples, gradients)
+        } else {
+            environments.with_gradients(systems)
+        };
+
+        if self.implementation.compute_gradients() {
+            let gradients = gradients.expect("this environments definition do not support gradients");
+            descriptor.prepare_gradients(samples, gradients, features);
+        } else {
+            descriptor.prepare(samples, features);
+        }
+
         self.implementation.compute(systems, descriptor);
     }
 }

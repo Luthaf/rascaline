@@ -23,16 +23,20 @@ impl EnvironmentIndexes for StructureEnvironment {
         return indexes.finish();
     }
 
-    fn with_gradients(&self, systems: &mut [&mut dyn System]) -> (Indexes, Option<Indexes>) {
+    fn gradients_for(&self, systems: &mut [&mut dyn System], samples: &Indexes) -> Option<Indexes> {
+        assert_eq!(samples.names(), ["structure"]);
+
         let mut gradients = IndexesBuilder::new(vec!["structure", "atom", "spatial"]);
-        for system in 0..systems.len() {
+        for value in samples.iter() {
+            let system = value[0];
             for atom in 0..systems[system].size() {
                 gradients.add(&[system, atom, 0]);
                 gradients.add(&[system, atom, 1]);
                 gradients.add(&[system, atom, 2]);
             }
         }
-        return (self.indexes(systems), Some(gradients.finish()));
+
+        Some(gradients.finish())
     }
 }
 
@@ -70,14 +74,29 @@ impl EnvironmentIndexes for AtomEnvironment {
         return indexes.finish();
     }
 
-    fn with_gradients(&self, systems: &mut [&mut dyn System]) -> (Indexes, Option<Indexes>) {
+    fn gradients_for(&self, systems: &mut [&mut dyn System], samples: &Indexes) -> Option<Indexes> {
+        assert_eq!(samples.names(), ["structure", "center"]);
+        let requested_systems = samples.iter().map(|v| v[0]).collect::<BTreeSet<_>>();
+
         // a BTreeSet will yield the indexes in the right order
         let mut indexes = BTreeSet::new();
-        for (i_system, system) in systems.iter_mut().enumerate() {
+        for i_system in requested_systems {
+            let system = &mut systems[i_system];
             system.compute_neighbors(self.cutoff);
+
+            let requested_centers = samples.iter()
+                .filter(|v| v[0] == i_system)
+                .map(|v| v[1])
+                .collect::<Vec<_>>();
+
             for pair in system.pairs() {
-                indexes.insert((i_system, pair.first, pair.second));
-                indexes.insert((i_system, pair.second, pair.first));
+                if requested_centers.contains(&pair.first) {
+                    indexes.insert((i_system, pair.first, pair.second));
+                }
+
+                if requested_centers.contains(&pair.second) {
+                    indexes.insert((i_system, pair.second, pair.first));
+                }
             }
         }
 
@@ -88,7 +107,7 @@ impl EnvironmentIndexes for AtomEnvironment {
             gradients.add(&[structure, atom, neighbor, 2]);
         }
 
-        return (self.indexes(systems), Some(gradients.finish()));
+        return Some(gradients.finish());
     }
 }
 

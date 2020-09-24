@@ -4,7 +4,8 @@ use ndarray::{aview1, s};
 
 use super::CalculatorBase;
 
-use crate::descriptor::{Descriptor, Indexes, IndexesBuilder, AtomSpeciesEnvironment};
+use crate::descriptor::Descriptor;
+use crate::descriptor::{Indexes, IndexesBuilder, EnvironmentIndexes, AtomSpeciesEnvironment};
 use crate::system::System;
 
 #[derive(Debug, Clone)]
@@ -14,7 +15,11 @@ pub struct SortedDistances {
     max_neighbors: usize,
 }
 
-impl SortedDistances {
+impl CalculatorBase for SortedDistances {
+    fn name(&self) -> String {
+        "sorted distances vector".into()
+    }
+
     fn features(&self) -> Indexes {
         let mut features = IndexesBuilder::new(vec!["neighbor"]);
         for i in 0..self.max_neighbors {
@@ -22,23 +27,41 @@ impl SortedDistances {
         }
         return features.finish();
     }
-}
 
-impl CalculatorBase for SortedDistances {
-    fn name(&self) -> String {
-        "sorted distances vector".into()
+    fn environments(&self) -> Box<dyn EnvironmentIndexes> {
+        Box::new(AtomSpeciesEnvironment::new(self.cutoff))
+    }
+
+    fn compute_gradients(&self) -> bool {
+        false
+    }
+
+    fn check_features(&self, indexes: &Indexes) {
+        assert_eq!(indexes.names(), &["neighbor"]);
+        for value in indexes.iter() {
+            assert!(value[0] < self.max_neighbors);
+        }
+    }
+
+    fn check_environments(&self, indexes: &Indexes, systems: &mut [&mut dyn System]) {
+        assert_eq!(indexes.names(), &["structure", "center", "alpha", "beta"]);
+        // This could be made much faster by not recomputing the full list of
+        // potential environments
+        let allowed = self.environments().indexes(systems);
+        for value in indexes.iter() {
+            assert!(allowed.contains(value), "{:?} is not a valid environment", value);
+        }
     }
 
     fn compute(&mut self, systems: &mut [&mut dyn System], descriptor: &mut Descriptor) {
-        if self.cutoff <= 0.0 || !self.cutoff.is_finite() {
-            panic!("invalid cutoff value ({}) for {}", self.cutoff, self.name())
+        let all_features = descriptor.features.count() == self.max_neighbors;
+        let mut requested_features = Vec::new();
+        if !all_features {
+            for feature in descriptor.features.iter() {
+                let neighbor = feature[0];
+                requested_features.push(neighbor);
+            }
         }
-
-        // setup the descriptor array
-        let environments = AtomSpeciesEnvironment::new(self.cutoff);
-        let features = self.features();
-        descriptor.prepare(environments, features, systems, self.cutoff);
-        assert_eq!(descriptor.environments.names(), &["structure", "center", "alpha", "beta"]);
 
         // index of the first entry of descriptor.values corresponding to
         // the current system
@@ -63,11 +86,13 @@ impl CalculatorBase for SortedDistances {
                 let j = pair.second;
                 let d = pair.distance;
 
-                let distances_vectors = distances.get_mut(&(species[i], species[j])).unwrap();
-                distances_vectors[i].push(d);
+                if let Some(distances) = distances.get_mut(&(species[i], species[j])) {
+                    distances[i].push(d);
+                }
 
-                let distances_vectors = distances.get_mut(&(species[j], species[i])).unwrap();
-                distances_vectors[j].push(d);
+                if let Some(distances) = distances.get_mut(&(species[j], species[i])) {
+                    distances[j].push(d);
+                }
             }
 
             // Sort, resize to limit to at most `self.max_neighbors` values
@@ -92,7 +117,14 @@ impl CalculatorBase for SortedDistances {
                     }
 
                     let distance_vector = &distances.get(&(alpha, beta)).unwrap()[center];
-                    descriptor.values.slice_mut(s![current, ..]).assign(&aview1(distance_vector));
+                    if all_features {
+                        descriptor.values.slice_mut(s![current, ..]).assign(&aview1(distance_vector));
+                    } else {
+                        // Only assign the requested values
+                        for (i, &neighbor) in requested_features.iter().enumerate() {
+                            descriptor.values[[current, i]] = distance_vector[neighbor];
+                        }
+                    }
                 } else {
                     unreachable!();
                 }
@@ -100,7 +132,7 @@ impl CalculatorBase for SortedDistances {
             }
         }
 
-        // did we get everything?
+        // sanity check: did we get all environment in the above loop?
         assert_eq!(current, descriptor.environments.count());
     }
 }
@@ -108,52 +140,27 @@ impl CalculatorBase for SortedDistances {
 #[cfg(test)]
 mod tests {
     use crate::system::test_systems;
-    use crate::Descriptor;
+    use crate::{Descriptor, Calculator};
+    use crate::descriptor::IndexesBuilder;
 
     use ndarray::{s, aview1};
 
-    use super::*;
-
-    #[test]
-    #[should_panic = "invalid cutoff value (-1.5) for sorted distances vector"]
-    fn bad_cutoff_1() {
-        let mut calculator = SortedDistances {
-            cutoff: -1.5,
-            max_neighbors: 3,
-        };
-        let mut systems = test_systems(vec!["water"]);
-        let mut descriptor = Descriptor::new();
-        calculator.compute(&mut systems.get(), &mut descriptor);
-    }
-
-    #[test]
-    #[should_panic = "invalid cutoff value (0) for sorted distances vector"]
-    fn bad_cutoff_2() {
-        let mut calculator = SortedDistances {
-            cutoff: 0.0,
-            max_neighbors: 3,
-        };
-        let mut systems = test_systems(vec!["water"]);
-        let mut descriptor = Descriptor::new();
-        calculator.compute(&mut systems.get(), &mut descriptor);
-    }
-
     #[test]
     fn name() {
-        let calculator = SortedDistances {
-            cutoff: 1.5,
-            max_neighbors: 3,
-        };
+        let calculator = Calculator::new("sorted_distances", "{
+            \"cutoff\": 1.5,
+            \"max_neighbors\": 3
+        }".to_owned()).unwrap();
 
         assert_eq!(calculator.name(), "sorted distances vector");
     }
 
     #[test]
     fn values() {
-        let mut calculator = SortedDistances {
-            cutoff: 1.5,
-            max_neighbors: 3,
-        };
+        let mut calculator = Calculator::new("sorted_distances", "{
+            \"cutoff\": 1.5,
+            \"max_neighbors\": 3
+        }".to_owned()).unwrap();
 
         let mut systems = test_systems(vec!["water"]);
         let mut descriptor = Descriptor::new();
@@ -170,5 +177,33 @@ mod tests {
     #[ignore]
     fn gradients() {
         unimplemented!()
+    }
+
+    #[test]
+    fn compute_partial() {
+        let mut calculator = Calculator::new("sorted_distances", "{
+            \"cutoff\": 1.5,
+            \"max_neighbors\": 3
+        }".to_owned()).unwrap();
+
+        let mut systems = test_systems(vec!["water"]);
+        let mut descriptor = Descriptor::new();
+
+        let mut samples = IndexesBuilder::new(vec!["structure", "center", "alpha", "beta"]);
+        samples.add(&[0, 1, 1, 123456]);
+        calculator.compute_partial(&mut systems.get(), &mut descriptor, Some(samples.finish()), None);
+
+        assert_eq!(descriptor.values.shape(), [1, 3]);
+        assert_eq!(descriptor.values.slice(s![0, ..]), aview1(&[0.957897074324794, 1.5, 1.5]));
+
+        let mut features = IndexesBuilder::new(vec!["neighbor"]);
+        features.add(&[0]);
+        features.add(&[2]);
+        calculator.compute_partial(&mut systems.get(), &mut descriptor, None, Some(features.finish()));
+
+        assert_eq!(descriptor.values.shape(), [3, 2]);
+        assert_eq!(descriptor.values.slice(s![0, ..]), aview1(&[0.957897074324794, 1.5]));
+        assert_eq!(descriptor.values.slice(s![1, ..]), aview1(&[0.957897074324794, 1.5]));
+        assert_eq!(descriptor.values.slice(s![2, ..]), aview1(&[0.957897074324794, 1.5]));
     }
 }
