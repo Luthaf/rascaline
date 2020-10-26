@@ -72,37 +72,19 @@ typedef struct {
 extern "C" {
 #endif // __cplusplus
 
-rascal_calculator_t *rascal_calculator(const char *name, const char *parameters);
-
-rascal_status_t rascal_calculator_compute(rascal_calculator_t *calculator,
-                                          rascal_descriptor_t *descriptor,
-                                          rascal_system_t *systems,
-                                          uintptr_t count);
-
-rascal_status_t rascal_calculator_compute_partial(rascal_calculator_t *calculator,
-                                                  rascal_descriptor_t *descriptor,
-                                                  rascal_system_t *systems,
-                                                  uintptr_t systems_count,
-                                                  const uintptr_t *samples,
-                                                  uintptr_t samples_count,
-                                                  const uintptr_t *features,
-                                                  uintptr_t features_count);
-
-rascal_status_t rascal_calculator_free(rascal_calculator_t *calculator);
-
-rascal_status_t rascal_calculator_name(const rascal_calculator_t *calculator,
-                                       char *name,
-                                       uintptr_t bufflen);
-
-rascal_status_t rascal_calculator_parameters(const rascal_calculator_t *calculator,
-                                             char *parameters,
-                                             uintptr_t bufflen);
+/*
+ Get the last error message that was sent on the current thread
+ */
+const char *rascal_last_error(void);
 
 rascal_descriptor_t *rascal_descriptor(void);
 
-rascal_status_t rascal_descriptor_densify(rascal_descriptor_t *descriptor, const char *variable);
-
 rascal_status_t rascal_descriptor_free(rascal_descriptor_t *descriptor);
+
+rascal_status_t rascal_descriptor_values(const rascal_descriptor_t *descriptor,
+                                         const double **data,
+                                         uintptr_t *environments,
+                                         uintptr_t *features);
 
 rascal_status_t rascal_descriptor_gradients(const rascal_descriptor_t *descriptor,
                                             const double **data,
@@ -120,15 +102,33 @@ rascal_status_t rascal_descriptor_indexes_names(const rascal_descriptor_t *descr
                                                 const char **names,
                                                 uintptr_t size);
 
-rascal_status_t rascal_descriptor_values(const rascal_descriptor_t *descriptor,
-                                         const double **data,
-                                         uintptr_t *environments,
-                                         uintptr_t *features);
+rascal_status_t rascal_descriptor_densify(rascal_descriptor_t *descriptor, const char *variable);
 
-/*
- Get the last error message that was sent on the current thread
- */
-const char *rascal_last_error(void);
+rascal_calculator_t *rascal_calculator(const char *name, const char *parameters);
+
+rascal_status_t rascal_calculator_free(rascal_calculator_t *calculator);
+
+rascal_status_t rascal_calculator_name(const rascal_calculator_t *calculator,
+                                       char *name,
+                                       uintptr_t bufflen);
+
+rascal_status_t rascal_calculator_parameters(const rascal_calculator_t *calculator,
+                                             char *parameters,
+                                             uintptr_t bufflen);
+
+rascal_status_t rascal_calculator_compute(rascal_calculator_t *calculator,
+                                          rascal_descriptor_t *descriptor,
+                                          rascal_system_t *systems,
+                                          uintptr_t count);
+
+rascal_status_t rascal_calculator_compute_partial(rascal_calculator_t *calculator,
+                                                  rascal_descriptor_t *descriptor,
+                                                  rascal_system_t *systems,
+                                                  uintptr_t systems_count,
+                                                  const uintptr_t *samples,
+                                                  uintptr_t samples_count,
+                                                  const uintptr_t *features,
+                                                  uintptr_t features_count);
 
 #ifdef __cplusplus
 } // extern "C"

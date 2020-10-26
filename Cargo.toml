@@ -8,16 +8,16 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-ndarray = "*"
+ndarray = "0.13"
 lazy_static = "1"
 serde = { version = "1", features = ["derive"] }
-serde_json = "*"
-num-traits = "*"
-indexmap = "*"
+serde_json = "1"
+num-traits = "0.2"
+indexmap = "1.6"
 
 [dev-dependencies]
-approx = "*"
+approx = "0.4"
 
 [build-dependencies]
-cbindgen = "*"
-glob = "*"
+cbindgen = "0.15"
+glob = "0.3"
