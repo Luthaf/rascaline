@@ -5,8 +5,8 @@ cmake_minimum_required(VERSION 3.6)
 project(rascaline NONE)
 
 if("${CMAKE_BUILD_TYPE}" STREQUAL "" AND "${CMAKE_CONFIGURATION_TYPES}" STREQUAL "")
-    message(STATUS "Setting build type to 'debug' as none was specified.")
-    set(CMAKE_BUILD_TYPE "debug" CACHE STRING "" FORCE)
+    message(STATUS "Setting build type to 'release' as none was specified.")
+    set(CMAKE_BUILD_TYPE "release" CACHE STRING "" FORCE)
     set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS debug release relwithdebinfo minsizerel)
 endif()
 

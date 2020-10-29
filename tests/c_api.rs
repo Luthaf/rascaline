@@ -1,5 +1,5 @@
-use std::process::Command;
 use std::path::PathBuf;
+use std::process::Command;
 
 fn build_root() -> PathBuf {
     let mut root = PathBuf::from(file!());
@@ -14,9 +14,18 @@ fn check_c_api() {
     let root = build_root();
     std::fs::create_dir_all(&root).expect("failed to create build dir");
 
+    // assume that debug assertion means that we are building the code in
+    // debug mode, even if that could be not true in some cases
+    let build_type = if cfg!(debug_assertions) {
+        "debug"
+    } else {
+        "release"
+    };
+
     let mut cmake_config = Command::new("cmake");
     cmake_config.current_dir(&root);
     cmake_config.arg("..");
+    cmake_config.arg(format!("-DCMAKE_BUILD_TYPE={}", build_type));
     let status = cmake_config.status().expect("failed to configure cmake");
     assert!(status.success());
 
@@ -25,7 +34,7 @@ fn check_c_api() {
     cmake_build.arg("--build");
     cmake_build.arg(".");
     cmake_build.arg("--config");
-    cmake_build.arg("Release");
+    cmake_build.arg(build_type);
     let status = cmake_build.status().expect("failed to build C++ code");
     assert!(status.success());
 
@@ -33,7 +42,7 @@ fn check_c_api() {
     ctest.current_dir(&root);
     ctest.arg("--output-on-failure");
     ctest.arg("--C");
-    ctest.arg("Release");
+    ctest.arg(build_type);
     let status = ctest.status().expect("failed to run tests");
     assert!(status.success());
 }

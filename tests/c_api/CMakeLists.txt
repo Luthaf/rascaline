@@ -9,8 +9,8 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -UNDEBUG")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -UNDEBUG")
 
 if("${CMAKE_BUILD_TYPE}" STREQUAL "" AND "${CMAKE_CONFIGURATION_TYPES}" STREQUAL "")
-    message(STATUS "Setting build type to 'debug' as none was specified.")
-    set(CMAKE_BUILD_TYPE "debug" CACHE STRING "" FORCE)
+    message(STATUS "Setting build type to 'release' as none was specified.")
+    set(CMAKE_BUILD_TYPE "release" CACHE STRING "" FORCE)
     set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS release debug)
 else()
     string(TOLOWER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE)
@@ -35,5 +35,5 @@ foreach(_file_ ${ALL_TESTS})
     target_link_libraries(${_name_} rascaline catch tests_helpers)
     add_test(${_name_} ${_name_})
 
-    # TODO: add support for running tests using valgrind 
+    # TODO: add support for running tests using valgrind
 endforeach()

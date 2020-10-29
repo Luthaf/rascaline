@@ -11,8 +11,10 @@ legacy_tox_ini = """
 [tox]
 
 [testenv]
-# use develop install to avoid rebuilding the world
-usedevelop = True
+# skip install to avoid rebuilding the world, do the install with setup.py
+# instead of pip below
+skip_install = True
+passenv = RASCALINE_BUILD_TYPE
 
 deps =
     discover

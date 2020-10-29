@@ -8,3 +8,5 @@ rm -rf $ROOT/.tox
 
 rm -rf $ROOT/python/*.egg-info
 rm -rf $ROOT/python/*/__pycache__
+
+rm -rf $ROOT/tests/c_api/build
