@@ -23,6 +23,7 @@ impl DerefMut for rascal_descriptor_t {
 }
 
 #[no_mangle]
+#[allow(clippy::module_name_repetitions)]
 pub unsafe extern fn rascal_descriptor() -> *mut rascal_descriptor_t {
     let descriptor = Box::new(rascal_descriptor_t(Descriptor::new()));
     return Box::into_raw(descriptor);
@@ -128,10 +129,10 @@ pub unsafe extern fn rascal_descriptor_indexes(
 
         *size = indexes.size();
         *count = indexes.count();
-        if *count != 0 {
-            *values = &indexes[0][0];
-        } else {
+        if *count == 0 {
             *values = std::ptr::null();
+        } else {
+            *values = &indexes[0][0];
         }
 
         Ok(())

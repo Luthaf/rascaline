@@ -329,6 +329,7 @@ impl Default for Vector3D {
 }
 
 #[cfg(test)]
+#[allow(clippy::op_ref)]
 mod tests {
     use crate::{Matrix3, Vector3D};
     use std::f64;
@@ -445,18 +446,18 @@ mod tests {
         let _ = b * &a;
         let _ = b * &mut a;
 
-        let mut b = 1.5;
-        let c = a * b;
-        assert_eq!(c, Vector3D::new(3.0, 5.25, 7.199999999999999));
+        let mut c = 1.5;
+        let d = a * c;
+        assert_eq!(d, Vector3D::new(3.0, 5.25, 7.199999999999999));
 
-        a *= b;
+        a *= c;
         assert_eq!(a, Vector3D::new(3.0, 5.25, 7.199999999999999));
 
         // Just checking that everything compile
-        let _ = &a * b;
-        let _ = &mut a * b;
-        a *= &b;
-        a *= &mut b;
+        let _ = &a * c;
+        let _ = &mut a * c;
+        a *= &c;
+        a *= &mut c;
         let _ = a;
     }
 

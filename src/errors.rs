@@ -9,7 +9,7 @@ pub enum Error {
     JSON(serde_json::Error),
     /// Error due to C strings containing non-utf8 data
     Utf8(Utf8Error),
-    /// Error used when a panic was catched
+    /// Error used when a panic was caught
     Panic(String),
 }
 
@@ -27,10 +27,9 @@ impl std::fmt::Display for Error {
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Error::InvalidParameter(_) => None,
+            Error::InvalidParameter(_) | Error::Panic(_) => None,
             Error::JSON(e) => Some(e),
             Error::Utf8(e) => Some(e),
-            Error::Panic(_) => None,
         }
     }
 }
@@ -51,10 +50,10 @@ impl From<Utf8Error> for Error {
 // Box<dyn Any + Send + 'static> is the error type in std::panic::catch_unwind
 impl From<Box<dyn std::any::Any + Send + 'static>> for Error {
     fn from(error: Box<dyn std::any::Any + Send + 'static>) -> Error {
-        if let Some(message) = error.downcast_ref::<String>() {
-            Error::Panic(message.clone())
-        } else {
-            Error::Panic("panic message is not a string, something is very wrong".into())
-        }
+        let message = error.downcast_ref::<String>()
+            .cloned()
+            .unwrap_or_else(|| "panic message is not a string, something is very wrong".into());
+
+        Error::Panic(message)
     }
 }

@@ -6,12 +6,13 @@ use crate::{Matrix3, Vector3D};
 /// The shape of a cell determine how we will be able to compute the periodic
 /// boundaries condition.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[allow(clippy::module_name_repetitions)]
 pub enum CellShape {
     /// Infinite unit cell, with no boundaries
     Infinite,
     /// Orthorhombic unit cell, with cuboid shape
     Orthorhombic,
-    /// Triclinic unit cell, with arbitrary parallelepipedic shape
+    /// Triclinic unit cell, with arbitrary parallelepiped shape
     Triclinic,
 }
 
@@ -22,6 +23,7 @@ pub enum CellShape {
 ///
 /// [CellShape]: enum.CellShape.html
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[allow(clippy::module_name_repetitions)]
 pub struct UnitCell {
     /// Unit cell matrix
     cell: Matrix3,
@@ -119,7 +121,7 @@ impl UnitCell {
     /// the cell)
     pub fn a(&self) -> f64 {
         match self.shape {
-            CellShape::Triclinic => self.vect_a().norm(),
+            CellShape::Triclinic => self.a_vector().norm(),
             CellShape::Orthorhombic | CellShape::Infinite => self.cell[0][0],
         }
     }
@@ -128,7 +130,7 @@ impl UnitCell {
     /// the cell)
     pub fn b(&self) -> f64 {
         match self.shape {
-            CellShape::Triclinic => self.vect_b().norm(),
+            CellShape::Triclinic => self.b_vector().norm(),
             CellShape::Orthorhombic | CellShape::Infinite => self.cell[1][1],
         }
     }
@@ -137,7 +139,7 @@ impl UnitCell {
     /// the cell)
     pub fn c(&self) -> f64 {
         match self.shape {
-            CellShape::Triclinic => self.vect_c().norm(),
+            CellShape::Triclinic => self.c_vector().norm(),
             CellShape::Orthorhombic | CellShape::Infinite => self.cell[2][2],
         }
     }
@@ -148,7 +150,7 @@ impl UnitCell {
             return Vector3D::new(f64::INFINITY, f64::INFINITY, f64::INFINITY);
         }
 
-        let (a, b, c) = (self.vect_a(), self.vect_b(), self.vect_c());
+        let (a, b, c) = (self.a_vector(), self.b_vector(), self.c_vector());
         // Plans normal vectors
         let na = (b ^ c).normalized();
         let nb = (c ^ a).normalized();
@@ -161,8 +163,8 @@ impl UnitCell {
     pub fn alpha(&self) -> f64 {
         match self.shape {
             CellShape::Triclinic => {
-                let b = self.vect_b();
-                let c = self.vect_c();
+                let b = self.b_vector();
+                let c = self.c_vector();
                 angle(b, c).to_degrees()
             }
             CellShape::Orthorhombic | CellShape::Infinite => 90.0,
@@ -173,8 +175,8 @@ impl UnitCell {
     pub fn beta(&self) -> f64 {
         match self.shape {
             CellShape::Triclinic => {
-                let a = self.vect_a();
-                let c = self.vect_c();
+                let a = self.a_vector();
+                let c = self.c_vector();
                 angle(a, c).to_degrees()
             }
             CellShape::Orthorhombic | CellShape::Infinite => 90.0,
@@ -185,8 +187,8 @@ impl UnitCell {
     pub fn gamma(&self) -> f64 {
         match self.shape {
             CellShape::Triclinic => {
-                let a = self.vect_a();
-                let b = self.vect_b();
+                let a = self.a_vector();
+                let b = self.b_vector();
                 angle(a, b).to_degrees()
             }
             CellShape::Orthorhombic | CellShape::Infinite => 90.0,
@@ -200,9 +202,9 @@ impl UnitCell {
             CellShape::Orthorhombic => self.a() * self.b() * self.c(),
             CellShape::Triclinic => {
                 // The volume is the mixed product of the three cell vectors
-                let a = self.vect_a();
-                let b = self.vect_b();
-                let c = self.vect_c();
+                let a = self.a_vector();
+                let b = self.b_vector();
+                let c = self.c_vector();
                 a * (b ^ c)
             }
         };
@@ -237,7 +239,7 @@ impl UnitCell {
     }
 
     /// Get the first vector of the cell
-    fn vect_a(&self) -> Vector3D {
+    fn a_vector(&self) -> Vector3D {
         let x = self.cell[0][0];
         let y = self.cell[1][0];
         let z = self.cell[2][0];
@@ -245,7 +247,7 @@ impl UnitCell {
     }
 
     /// Get the second vector of the cell
-    fn vect_b(&self) -> Vector3D {
+    fn b_vector(&self) -> Vector3D {
         let x = self.cell[0][1];
         let y = self.cell[1][1];
         let z = self.cell[2][1];
@@ -253,7 +255,7 @@ impl UnitCell {
     }
 
     /// Get the third vector of the cell
-    fn vect_c(&self) -> Vector3D {
+    fn c_vector(&self) -> Vector3D {
         let x = self.cell[0][2];
         let y = self.cell[1][2];
         let z = self.cell[2][2];
@@ -465,9 +467,9 @@ mod tests {
         assert_eq!(cell.shape(), CellShape::Infinite);
         assert!(cell.is_infinite());
 
-        assert_eq!(cell.vect_a(), Vector3D::zero());
-        assert_eq!(cell.vect_b(), Vector3D::zero());
-        assert_eq!(cell.vect_c(), Vector3D::zero());
+        assert_eq!(cell.a_vector(), Vector3D::zero());
+        assert_eq!(cell.b_vector(), Vector3D::zero());
+        assert_eq!(cell.c_vector(), Vector3D::zero());
 
         assert_eq!(cell.a(), 0.0);
         assert_eq!(cell.b(), 0.0);
@@ -486,9 +488,9 @@ mod tests {
         assert_eq!(cell.shape(), CellShape::Orthorhombic);
         assert!(!cell.is_infinite());
 
-        assert_eq!(cell.vect_a(), Vector3D::new(3.0, 0.0, 0.0));
-        assert_eq!(cell.vect_b(), Vector3D::new(0.0, 3.0, 0.0));
-        assert_eq!(cell.vect_c(), Vector3D::new(0.0, 0.0, 3.0));
+        assert_eq!(cell.a_vector(), Vector3D::new(3.0, 0.0, 0.0));
+        assert_eq!(cell.b_vector(), Vector3D::new(0.0, 3.0, 0.0));
+        assert_eq!(cell.c_vector(), Vector3D::new(0.0, 0.0, 3.0));
 
         assert_eq!(cell.a(), 3.0);
         assert_eq!(cell.b(), 3.0);
@@ -507,9 +509,9 @@ mod tests {
         assert_eq!(cell.shape(), CellShape::Orthorhombic);
         assert!(!cell.is_infinite());
 
-        assert_eq!(cell.vect_a(), Vector3D::new(3.0, 0.0, 0.0));
-        assert_eq!(cell.vect_b(), Vector3D::new(0.0, 4.0, 0.0));
-        assert_eq!(cell.vect_c(), Vector3D::new(0.0, 0.0, 5.0));
+        assert_eq!(cell.a_vector(), Vector3D::new(3.0, 0.0, 0.0));
+        assert_eq!(cell.b_vector(), Vector3D::new(0.0, 4.0, 0.0));
+        assert_eq!(cell.c_vector(), Vector3D::new(0.0, 0.0, 5.0));
 
         assert_eq!(cell.a(), 3.0);
         assert_eq!(cell.b(), 4.0);
@@ -528,8 +530,8 @@ mod tests {
         assert_eq!(cell.shape(), CellShape::Triclinic);
         assert!(!cell.is_infinite());
 
-        assert_eq!(cell.vect_a(), Vector3D::new(3.0, 0.0, 0.0));
-        assert_eq!(cell.vect_b()[2], 0.0);
+        assert_eq!(cell.a_vector(), Vector3D::new(3.0, 0.0, 0.0));
+        assert_eq!(cell.b_vector()[2], 0.0);
 
         assert_eq!(cell.a(), 3.0);
         assert_eq!(cell.b(), 4.0);
@@ -748,6 +750,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::many_single_char_names)]
     fn dihedral_derivatives() {
         const EPS: f64 = 1e-6;
         let cell = UnitCell::infinite();

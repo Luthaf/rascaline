@@ -28,6 +28,7 @@ impl DerefMut for rascal_calculator_t {
 }
 
 #[no_mangle]
+#[allow(clippy::module_name_repetitions)]
 pub unsafe extern fn rascal_calculator(name: *const c_char, parameters: *const c_char) -> *mut rascal_calculator_t {
     let mut raw = std::ptr::null_mut();
     let unwind_wrapper = std::panic::AssertUnwindSafe(&mut raw);

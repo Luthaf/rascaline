@@ -15,6 +15,10 @@ pub struct Descriptor {
     pub gradients_indexes: Option<Indexes>,
 }
 
+impl Default for Descriptor {
+    fn default() -> Self { Self::new() }
+}
+
 impl Descriptor {
     pub fn new() -> Descriptor {
         let indexes = IndexesBuilder::new(vec![]).finish();
@@ -59,15 +63,15 @@ impl Descriptor {
         let shape = (self.environments.count(), self.features.count());
         resize_and_reset(&mut self.values, shape);
 
-        let shape = (gradients.count(), self.features.count());
+        let gradient_shape = (gradients.count(), self.features.count());
         self.gradients_indexes = Some(gradients);
 
         if let Some(array) = &mut self.gradients {
             // resize the 'gradient' array if needed, and set the requested initial value
-            resize_and_reset(array, shape);
+            resize_and_reset(array, gradient_shape);
         } else {
             // create a new gradient array
-            let array = Array2::from_elem(shape, 0.0);
+            let array = Array2::from_elem(gradient_shape, 0.0);
             self.gradients = Some(array);
         }
     }
@@ -223,7 +227,7 @@ mod tests {
     use ndarray::array;
 
     fn do_prepare(gradients: bool) -> Descriptor {
-        let mut systems = test_systems(vec!["water", "ch"]);
+        let mut systems = test_systems(&["water", "CH"]);
 
         let mut features = IndexesBuilder::new(vec!["foo", "bar", "baz"]);
         features.add(&[0, 1, 0]);

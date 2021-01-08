@@ -67,6 +67,7 @@ use crate::Vector3D;
 /// ]));
 /// ```
 #[derive(Copy, Clone, Debug, PartialEq)]
+#[allow(clippy::module_name_repetitions)]
 pub struct Matrix3([[f64; 3]; 3]);
 
 impl Matrix3 {
@@ -208,18 +209,18 @@ impl Matrix3 {
     /// equals zero.
     pub fn inverse(&self) -> Matrix3 {
         let determinant = self.determinant();
-        assert!(determinant.abs() > 1e-30, "The matrix is not inversible!");
-        let invdet = 1.0 / determinant;
+        assert!(determinant.abs() > 1e-30, "The matrix is not invertible!");
+        let inverse_determinant = 1.0 / determinant;
         let mut res = Matrix3::zero();
-        res[0][0] = (self[1][1] * self[2][2] - self[2][1] * self[1][2]) * invdet;
-        res[0][1] = (self[0][2] * self[2][1] - self[0][1] * self[2][2]) * invdet;
-        res[0][2] = (self[0][1] * self[1][2] - self[0][2] * self[1][1]) * invdet;
-        res[1][0] = (self[1][2] * self[2][0] - self[1][0] * self[2][2]) * invdet;
-        res[1][1] = (self[0][0] * self[2][2] - self[0][2] * self[2][0]) * invdet;
-        res[1][2] = (self[1][0] * self[0][2] - self[0][0] * self[1][2]) * invdet;
-        res[2][0] = (self[1][0] * self[2][1] - self[2][0] * self[1][1]) * invdet;
-        res[2][1] = (self[2][0] * self[0][1] - self[0][0] * self[2][1]) * invdet;
-        res[2][2] = (self[0][0] * self[1][1] - self[1][0] * self[0][1]) * invdet;
+        res[0][0] = (self[1][1] * self[2][2] - self[2][1] * self[1][2]) * inverse_determinant;
+        res[0][1] = (self[0][2] * self[2][1] - self[0][1] * self[2][2]) * inverse_determinant;
+        res[0][2] = (self[0][1] * self[1][2] - self[0][2] * self[1][1]) * inverse_determinant;
+        res[1][0] = (self[1][2] * self[2][0] - self[1][0] * self[2][2]) * inverse_determinant;
+        res[1][1] = (self[0][0] * self[2][2] - self[0][2] * self[2][0]) * inverse_determinant;
+        res[1][2] = (self[1][0] * self[0][2] - self[0][0] * self[1][2]) * inverse_determinant;
+        res[2][0] = (self[1][0] * self[2][1] - self[2][0] * self[1][1]) * inverse_determinant;
+        res[2][1] = (self[2][0] * self[0][1] - self[0][0] * self[2][1]) * inverse_determinant;
+        res[2][2] = (self[0][0] * self[1][1] - self[1][0] * self[0][1]) * inverse_determinant;
         return res;
     }
 

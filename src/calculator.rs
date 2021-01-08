@@ -17,7 +17,7 @@ impl Calculator {
             Some(creator) => creator,
             None => {
                 return Err(Error::InvalidParameter(
-                    format!("unknwon calculator with name '{}'", name)
+                    format!("unknown calculator with name '{}'", name)
                 ));
             }
         };
@@ -70,12 +70,8 @@ impl Calculator {
         samples: Option<Indexes>,
         features: Option<Indexes>
     ) {
-        let features = if let Some(features) = features {
-            self.implementation.check_features(&features);
-            features
-        } else {
-            self.implementation.features()
-        };
+        let features = features.unwrap_or_else(|| self.implementation.features());
+        self.implementation.check_features(&features);
 
         let environments = self.implementation.environments();
         let (samples, gradients) = if let Some(samples) = samples {

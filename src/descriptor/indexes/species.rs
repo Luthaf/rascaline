@@ -4,7 +4,7 @@ use crate::system::System;
 use super::{Indexes, IndexesBuilder, EnvironmentIndexes};
 
 /// `StructureSpeciesEnvironment` is used to represents environments corresponding to
-/// full structures, where each chemical species is represented separatedly.
+/// full structures, where each chemical species is represented separately.
 ///
 /// The base set of indexes contains `structure` and `alpha` (i.e. chemical
 /// species); the  gradient indexes also contains the `atom` inside the
@@ -33,12 +33,12 @@ impl EnvironmentIndexes for StructureSpeciesEnvironment {
 
             let system = &systems[i_system];
             let species = system.species();
-            for atom in 0..system.size() {
+            for (i_atom, &species) in species.iter().enumerate() {
                 // only atoms with the same species participate to the gradient
-                if species[atom] == alpha {
-                    gradients.add(&[i_system, alpha, atom, 0]);
-                    gradients.add(&[i_system, alpha, atom, 1]);
-                    gradients.add(&[i_system, alpha, atom, 2]);
+                if species == alpha {
+                    gradients.add(&[i_system, alpha, i_atom, 0]);
+                    gradients.add(&[i_system, alpha, i_atom, 1]);
+                    gradients.add(&[i_system, alpha, i_atom, 2]);
                 }
             }
         }
@@ -101,13 +101,18 @@ impl EnvironmentIndexes for AtomSpeciesEnvironment {
 
         let mut set = BTreeSet::new();
         for i_system in requested_systems {
-            let system = &mut systems[i_system];
+            let system = &mut *systems[i_system];
             system.compute_neighbors(self.cutoff);
             let species = system.species();
 
             let requested_centers = samples.iter()
-                .filter(|v| v[0] == i_system)
-                .map(|v| v[1])
+                .filter_map(|sample| {
+                    if sample[0] == i_system {
+                        Some(sample[1])
+                    } else {
+                        None
+                    }
+                })
                 .collect::<Vec<_>>();
 
             for pair in system.pairs() {
@@ -145,7 +150,7 @@ mod tests {
 
     #[test]
     fn structure() {
-        let mut systems = test_systems(vec!["methane", "methane", "water"]);
+        let mut systems = test_systems(&["methane", "methane", "water"]);
         let indexes = StructureSpeciesEnvironment.indexes(&mut systems.get());
         assert_eq!(indexes.count(), 6);
         assert_eq!(indexes.names(), &["structure", "alpha"]);
@@ -158,7 +163,7 @@ mod tests {
 
     #[test]
     fn structure_gradient() {
-        let mut systems = test_systems(vec!["ch", "water"]);
+        let mut systems = test_systems(&["CH", "water"]);
         let (_, gradients) = StructureSpeciesEnvironment.with_gradients(&mut systems.get());
         let gradients = gradients.unwrap();
         assert_eq!(gradients.count(), 15);
@@ -179,7 +184,7 @@ mod tests {
 
     #[test]
     fn atoms() {
-        let mut systems = test_systems(vec!["ch", "water"]);
+        let mut systems = test_systems(&["CH", "water"]);
         let strategy = AtomSpeciesEnvironment::new(2.0);
         let indexes = strategy.indexes(&mut systems.get());
         assert_eq!(indexes.count(), 7);
@@ -202,7 +207,7 @@ mod tests {
 
     #[test]
     fn atoms_gradient() {
-        let mut systems = test_systems(vec!["ch", "water"]);
+        let mut systems = test_systems(&["CH", "water"]);
         let strategy = AtomSpeciesEnvironment::new(2.0);
         let (_, gradients) = strategy.with_gradients(&mut systems.get());
         let gradients = gradients.unwrap();

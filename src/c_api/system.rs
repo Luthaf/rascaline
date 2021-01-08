@@ -43,9 +43,7 @@ impl System for rascal_system_t {
         unsafe {
             function(self.user_data, &mut ptr);
             let slice = std::slice::from_raw_parts(ptr as *const [f64; 3], self.size());
-            // transmuting from &[[f64; 3]] to &[Vector3D] is safe since
-            // Vector3D is repr(transparent)
-            return std::mem::transmute(slice);
+            return &*(slice as *const [[f64; 3]] as *const [Vector3D]);
         }
     }
 

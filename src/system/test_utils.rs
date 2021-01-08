@@ -88,12 +88,12 @@ impl SimpleSystems {
     }
 }
 
-pub fn test_systems(names: Vec<&str>) -> SimpleSystems {
+pub fn test_systems(names: &[&str]) -> SimpleSystems {
     let systems = names.iter().map(|&name| {
         match name {
             "methane" => get_methane(),
             "water" => get_water(),
-            "ch" => get_ch(),
+            "CH" => get_ch(),
             _ => panic!("unknown test system {}", name)
         }
     }).collect();

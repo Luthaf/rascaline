@@ -9,6 +9,7 @@ pub use self::environments::{StructureEnvironment, AtomEnvironment};
 mod species;
 pub use self::species::{StructureSpeciesEnvironment, AtomSpeciesEnvironment};
 
+#[allow(clippy::module_name_repetitions)]
 pub struct IndexesBuilder {
     /// Names of the indexes
     names: Vec<String>,
@@ -73,10 +74,8 @@ fn is_valid_ident(name: &str) -> bool {
     }
 
     for (i, c) in name.chars().enumerate() {
-        if i == 0 {
-            if c.is_ascii_digit() {
-                return false;
-            }
+        if i == 0 && c.is_ascii_digit() {
+            return false;
         }
 
         if !(c.is_ascii_alphanumeric() || c == '_') {
@@ -152,7 +151,7 @@ pub struct Iter<'a> {
 impl<'a> Iterator for Iter<'a> {
     type Item = &'a[usize];
     fn next(&mut self) -> Option<Self::Item> {
-        if self.values.len() == 0 {
+        if self.values.is_empty() {
             return None
         } else {
             let (value, rest) = self.values.split_at(self.size);
@@ -185,6 +184,7 @@ impl std::ops::Index<usize> for Indexes {
     }
 }
 
+#[allow(clippy::module_name_repetitions)]
 pub trait EnvironmentIndexes {
     fn indexes(&self, systems: &mut [&mut dyn System]) -> Indexes;
 

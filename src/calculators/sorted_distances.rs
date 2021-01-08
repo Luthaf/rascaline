@@ -73,8 +73,8 @@ impl CalculatorBase for SortedDistances {
             for idx in &descriptor.environments {
                 let alpha = idx[2];
                 let beta = idx[3];
-                distances.entry((alpha, beta)).or_insert(
-                    vec![Vec::with_capacity(self.max_neighbors); system.size()]
+                distances.entry((alpha, beta)).or_insert_with(
+                    || vec![Vec::with_capacity(self.max_neighbors); system.size()]
                 );
             }
 
@@ -97,7 +97,7 @@ impl CalculatorBase for SortedDistances {
 
             // Sort, resize to limit to at most `self.max_neighbors` values
             // and pad the distance vectors as needed
-            for (_, vectors) in &mut distances {
+            for vectors in distances.iter_mut().map(|(_, vectors)| vectors) {
                 for vec in vectors {
                     vec.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
                     vec.resize(self.max_neighbors, self.cutoff);
@@ -162,7 +162,7 @@ mod tests {
             \"max_neighbors\": 3
         }".to_owned()).unwrap();
 
-        let mut systems = test_systems(vec!["water"]);
+        let mut systems = test_systems(&["water"]);
         let mut descriptor = Descriptor::new();
         calculator.compute(&mut systems.get(), &mut descriptor);
 
@@ -186,7 +186,7 @@ mod tests {
             \"max_neighbors\": 3
         }".to_owned()).unwrap();
 
-        let mut systems = test_systems(vec!["water"]);
+        let mut systems = test_systems(&["water"]);
         let mut descriptor = Descriptor::new();
 
         let mut samples = IndexesBuilder::new(vec!["structure", "center", "alpha", "beta"]);

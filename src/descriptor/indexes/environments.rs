@@ -66,9 +66,9 @@ impl AtomEnvironment {
 impl EnvironmentIndexes for AtomEnvironment {
     fn indexes(&self, systems: &mut [&mut dyn System]) -> Indexes {
         let mut indexes = IndexesBuilder::new(vec!["structure", "center"]);
-        for system in 0..systems.len() {
-            for center in 0..systems[system].size() {
-                indexes.add(&[system, center]);
+        for (i_system, system) in systems.iter().enumerate() {
+            for center in 0..system.size() {
+                indexes.add(&[i_system, center]);
             }
         }
         return indexes.finish();
@@ -81,12 +81,17 @@ impl EnvironmentIndexes for AtomEnvironment {
         // a BTreeSet will yield the indexes in the right order
         let mut indexes = BTreeSet::new();
         for i_system in requested_systems {
-            let system = &mut systems[i_system];
+            let system = &mut *systems[i_system];
             system.compute_neighbors(self.cutoff);
 
             let requested_centers = samples.iter()
-                .filter(|v| v[0] == i_system)
-                .map(|v| v[1])
+                .filter_map(|sample| {
+                    if sample[0] == i_system {
+                        Some(sample[1])
+                    } else {
+                        None
+                    }
+                })
                 .collect::<Vec<_>>();
 
             for pair in system.pairs() {
@@ -119,7 +124,7 @@ mod tests {
 
     #[test]
     fn structure() {
-        let mut systems = test_systems(vec!["methane", "methane", "water"]);
+        let mut systems = test_systems(&["methane", "methane", "water"]);
         let indexes = StructureEnvironment.indexes(&mut systems.get());
         assert_eq!(indexes.count(), 3);
         assert_eq!(indexes.names(), &["structure"]);
@@ -128,7 +133,7 @@ mod tests {
 
     #[test]
     fn structure_gradient() {
-        let mut systems = test_systems(vec!["methane", "water"]);
+        let mut systems = test_systems(&["methane", "water"]);
 
         let (_, gradients) = StructureEnvironment.with_gradients(&mut systems.get());
         let gradients = gradients.unwrap();
@@ -151,7 +156,7 @@ mod tests {
 
     #[test]
     fn atoms() {
-        let mut systems = test_systems(vec!["methane", "water"]);
+        let mut systems = test_systems(&["methane", "water"]);
         let strategy = AtomEnvironment { cutoff: 2.0 };
         let indexes = strategy.indexes(&mut systems.get());
         assert_eq!(indexes.count(), 8);
@@ -164,7 +169,7 @@ mod tests {
 
     #[test]
     fn atom_gradients() {
-        let mut systems = test_systems(vec!["methane"]);
+        let mut systems = test_systems(&["methane"]);
         let strategy = AtomEnvironment { cutoff: 1.5 };
         let (_, gradients) = strategy.with_gradients(&mut systems.get());
         let gradients = gradients.unwrap();

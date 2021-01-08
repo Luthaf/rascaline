@@ -8,7 +8,7 @@ use crate::system::System;
 /// C/Python/etc.
 ///
 /// The calculator has two features: one containing the atom index +
-/// `self.delta`, and the other one containg `x + y + z`.
+/// `self.delta`, and the other one containing `x + y + z`.
 #[doc(hidden)]
 #[derive(Debug, Clone)]
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -63,6 +63,7 @@ impl CalculatorBase for DummyCalculator {
         }
     }
 
+    #[allow(clippy::clippy::cast_precision_loss)]
     fn compute(&mut self, systems: &mut [&mut dyn System], descriptor: &mut Descriptor) {
         for (i_sample, indexes) in descriptor.environments.iter().enumerate() {
             let i_system = indexes[0];
@@ -72,7 +73,7 @@ impl CalculatorBase for DummyCalculator {
                 if feature[0] == 1 {
                     descriptor.values[[i_sample, i_feature]] = center as f64 + self.delta as f64;
                 } else if feature[1] == 1 {
-                    let system = &mut systems[i_system];
+                    let system = &mut *systems[i_system];
                     system.compute_neighbors(self.cutoff);
 
                     let positions = system.positions();
@@ -143,7 +144,7 @@ mod tests {
             \"gradients\": false
         }".to_owned()).unwrap();
 
-        let mut systems = test_systems(vec!["water"]);
+        let mut systems = test_systems(&["water"]);
         let mut descriptor = Descriptor::new();
         calculator.compute(&mut systems.get(), &mut descriptor);
 
@@ -162,7 +163,7 @@ mod tests {
             \"gradients\": true
         }".to_owned()).unwrap();
 
-        let mut systems = test_systems(vec!["water"]);
+        let mut systems = test_systems(&["water"]);
         let mut descriptor = Descriptor::new();
         calculator.compute(&mut systems.get(), &mut descriptor);
 
@@ -182,7 +183,7 @@ mod tests {
             \"gradients\": true
         }".to_owned()).unwrap();
 
-        let mut systems = test_systems(vec!["water"]);
+        let mut systems = test_systems(&["water"]);
         let mut descriptor = Descriptor::new();
 
         let mut samples = IndexesBuilder::new(vec!["structure", "center"]);
@@ -191,7 +192,6 @@ mod tests {
 
         assert_eq!(descriptor.values.shape(), [1, 2]);
         assert_eq!(descriptor.values.slice(s![0, ..]), aview1(&[10.0, 0.16649999999999998]));
-
 
         let mut features = IndexesBuilder::new(vec!["index_delta", "x_y_z"]);
         features.add(&[0, 1]);
