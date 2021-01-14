@@ -31,7 +31,7 @@ pub trait CalculatorBase: std::panic::RefUnwindSafe {
     /// `descriptor.environments` and computing only features in
     /// `descriptor.features`. By default, these would correspond to the
     /// environments and features coming from `Descriptor::environments` and
-    /// `Descriptor::features` respectively; but this can be overriden to only
+    /// `Descriptor::features` respectively; but this can be overridden to only
     /// compute them on a subset though `Descriptor::compute_partial`.
     fn compute(&mut self, systems: &mut [&mut dyn System], descriptor: &mut Descriptor);
 }
@@ -41,3 +41,5 @@ pub use self::sorted_distances::SortedDistances;
 
 mod dummy_calculator;
 pub use self::dummy_calculator::DummyCalculator;
+
+mod soap;

@@ -14,9 +14,13 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 num-traits = "0.2"
 indexmap = "1.6"
+special = "0.8"
+log = "0.4"
 
 [dev-dependencies]
 approx = "0.4"
+# TODO: this is licensed under GPL-v3
+GSL = "3.0"
 
 [build-dependencies]
 cbindgen = "0.15"
