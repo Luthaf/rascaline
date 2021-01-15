@@ -5,7 +5,8 @@ use ndarray::{aview1, s};
 use super::CalculatorBase;
 
 use crate::descriptor::Descriptor;
-use crate::descriptor::{Indexes, IndexesBuilder, EnvironmentIndexes, AtomSpeciesEnvironment};
+use crate::descriptor::{Indexes, IndexesBuilder, IndexValue};
+use crate::descriptor::{EnvironmentIndexes, AtomSpeciesEnvironment};
 use crate::system::System;
 
 #[derive(Debug, Clone)]
@@ -23,7 +24,7 @@ impl CalculatorBase for SortedDistances {
     fn features(&self) -> Indexes {
         let mut features = IndexesBuilder::new(vec!["neighbor"]);
         for i in 0..self.max_neighbors {
-            features.add(&[i]);
+            features.add(&[IndexValue::from(i)]);
         }
         return features.finish();
     }
@@ -39,7 +40,7 @@ impl CalculatorBase for SortedDistances {
     fn check_features(&self, indexes: &Indexes) {
         assert_eq!(indexes.names(), &["neighbor"]);
         for value in indexes.iter() {
-            assert!(value[0] < self.max_neighbors);
+            assert!(value[0].usize() < self.max_neighbors);
         }
     }
 
@@ -71,8 +72,8 @@ impl CalculatorBase for SortedDistances {
             // vector for each center) for each pair of species in the system
             let mut distances = HashMap::new();
             for idx in &descriptor.environments {
-                let alpha = idx[2];
-                let beta = idx[3];
+                let alpha = idx[2].usize();
+                let beta = idx[3].usize();
                 distances.entry((alpha, beta)).or_insert_with(
                     || vec![Vec::with_capacity(self.max_neighbors); system.size()]
                 );
@@ -112,17 +113,17 @@ impl CalculatorBase for SortedDistances {
                 // Copy the data in the descriptor array, until we find the
                 // next system
                 if let [structure, center, alpha, beta] = descriptor.environments[current] {
-                    if structure != i_system {
+                    if structure.usize() != i_system {
                         break;
                     }
 
-                    let distance_vector = &distances.get(&(alpha, beta)).unwrap()[center];
+                    let distance_vector = &distances.get(&(alpha.usize(), beta.usize())).unwrap()[center.usize()];
                     if all_features {
                         descriptor.values.slice_mut(s![current, ..]).assign(&aview1(distance_vector));
                     } else {
                         // Only assign the requested values
                         for (i, &neighbor) in requested_features.iter().enumerate() {
-                            descriptor.values[[current, i]] = distance_vector[neighbor];
+                            descriptor.values[[current, i]] = distance_vector[neighbor.usize()];
                         }
                     }
                 } else {
@@ -141,7 +142,7 @@ impl CalculatorBase for SortedDistances {
 mod tests {
     use crate::system::test_systems;
     use crate::{Descriptor, Calculator};
-    use crate::descriptor::IndexesBuilder;
+    use crate::descriptor::{IndexesBuilder, IndexValue};
 
     use ndarray::{s, aview1};
 
@@ -190,15 +191,18 @@ mod tests {
         let mut descriptor = Descriptor::new();
 
         let mut samples = IndexesBuilder::new(vec!["structure", "center", "alpha", "beta"]);
-        samples.add(&[0, 1, 1, 123456]);
+        samples.add(&[
+            IndexValue::from(0_usize), IndexValue::from(1_usize),
+            IndexValue::from(1_usize), IndexValue::from(123456_usize)
+        ]);
         calculator.compute_partial(&mut systems.get(), &mut descriptor, Some(samples.finish()), None);
 
         assert_eq!(descriptor.values.shape(), [1, 3]);
         assert_eq!(descriptor.values.slice(s![0, ..]), aview1(&[0.957897074324794, 1.5, 1.5]));
 
         let mut features = IndexesBuilder::new(vec!["neighbor"]);
-        features.add(&[0]);
-        features.add(&[2]);
+        features.add(&[IndexValue::from(0_usize)]);
+        features.add(&[IndexValue::from(2_usize)]);
         calculator.compute_partial(&mut systems.get(), &mut descriptor, None, Some(features.finish()));
 
         assert_eq!(descriptor.values.shape(), [3, 2]);

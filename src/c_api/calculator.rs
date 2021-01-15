@@ -3,6 +3,7 @@ use std::ffi::CStr;
 use std::ops::{Deref, DerefMut};
 
 use crate::{Calculator, System};
+use crate::descriptor::IndexValue;
 
 use super::utils::copy_str_to_c;
 use super::{catch_unwind, rascal_status_t};
@@ -121,9 +122,9 @@ pub unsafe extern fn rascal_calculator_compute_partial(
     descriptor: *mut rascal_descriptor_t,
     systems: *mut rascal_system_t,
     systems_count: usize,
-    samples: *const usize,
+    samples: *const f64,
     samples_count: usize,
-    features: *const usize,
+    features: *const f64,
     features_count: usize,
 ) -> rascal_status_t {
     catch_unwind(|| {
@@ -137,12 +138,14 @@ pub unsafe extern fn rascal_calculator_compute_partial(
         let samples = if samples.is_null() {
             None
         } else {
+            let samples = samples as *const IndexValue;
             Some(std::slice::from_raw_parts(samples, samples_count))
         };
 
         let features = if features.is_null() {
             None
         } else {
+            let features = features as *const IndexValue;
             Some(std::slice::from_raw_parts(features, features_count))
         };
 

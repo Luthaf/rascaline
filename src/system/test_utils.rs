@@ -59,7 +59,7 @@ impl System for SimpleSystem {
     }
 
     fn compute_neighbors(&mut self, cutoff: f64) {
-        // re-use precompute NL is possible
+        // re-use already computed NL is possible
         if let Some(ref nl) = self.neighbors {
             if nl.cutoff == cutoff {
                 return;

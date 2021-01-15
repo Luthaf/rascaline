@@ -93,7 +93,7 @@ rascal_status_t rascal_descriptor_gradients(const rascal_descriptor_t *descripto
 
 rascal_status_t rascal_descriptor_indexes(const rascal_descriptor_t *descriptor,
                                           rascal_indexes indexes,
-                                          const uintptr_t **values,
+                                          const double **values,
                                           uintptr_t *count,
                                           uintptr_t *size);
 
@@ -125,9 +125,9 @@ rascal_status_t rascal_calculator_compute_partial(rascal_calculator_t *calculato
                                                   rascal_descriptor_t *descriptor,
                                                   rascal_system_t *systems,
                                                   uintptr_t systems_count,
-                                                  const uintptr_t *samples,
+                                                  const double *samples,
                                                   uintptr_t samples_count,
-                                                  const uintptr_t *features,
+                                                  const double *features,
                                                   uintptr_t features_count);
 
 #ifdef __cplusplus

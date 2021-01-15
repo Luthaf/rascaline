@@ -105,7 +105,7 @@ pub enum rascal_indexes {
 pub unsafe extern fn rascal_descriptor_indexes(
     descriptor: *const rascal_descriptor_t,
     indexes: rascal_indexes,
-    values: *mut *const usize,
+    values: *mut *const f64,
     count: *mut usize,
     size: *mut usize,
 ) -> rascal_status_t {
@@ -132,7 +132,7 @@ pub unsafe extern fn rascal_descriptor_indexes(
         if *count == 0 {
             *values = std::ptr::null();
         } else {
-            *values = &indexes[0][0];
+            *values = &indexes[0][0] as *const _ as *const f64;
         }
 
         Ok(())

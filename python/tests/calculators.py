@@ -77,8 +77,7 @@ class TestDummyCalculator(unittest.TestCase):
         for i in range(gradients.shape[0]):
             self.assertTrue(np.all(gradients[i] == (0, 1)))
 
-
-        # Manually constructing the selected samples
+        #  Manually constructing the selected samples
         samples = [(0, 0), (0, 3), (0, 1)]
         descriptor = calculator.compute_partial(system, samples=samples)
 
@@ -115,7 +114,7 @@ class TestDummyCalculator(unittest.TestCase):
             self.assertTrue(np.all(gradients[i] == [1]))
 
         # Manually constructing the selected features
-        features = [[1, 0]]
+        features = [[1, 0, 1.2]]
         descriptor = calculator.compute_partial(system, features=features)
 
         values = descriptor.values

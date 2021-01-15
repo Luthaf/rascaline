@@ -22,7 +22,7 @@ TEST_CASE("rascal_descriptor_t") {
         auto* descriptor = rascal_descriptor();
         REQUIRE(descriptor != nullptr);
 
-        const uintptr_t* data = nullptr;
+        const double* data = nullptr;
         uintptr_t count = 0;
         uintptr_t size = 0;
 
@@ -46,12 +46,14 @@ TEST_CASE("rascal_descriptor_t") {
         ));
         CHECK(data != nullptr);
         CHECK(count == 2);
-        CHECK(size == 2);
+        CHECK(size == 3);
 
         CHECK(data[0 * size + 0] == 1);
         CHECK(data[0 * size + 1] == 0);
+        CHECK(data[0 * size + 2] == 1.2);
         CHECK(data[1 * size + 0] == 0);
         CHECK(data[1 * size + 1] == 1);
+        CHECK(data[1 * size + 2] == 3.2);
 
         CHECK_SUCCESS(rascal_descriptor_indexes_names(
             descriptor, RASCAL_INDEXES_FEATURES, names, 2
@@ -66,7 +68,7 @@ TEST_CASE("rascal_descriptor_t") {
         auto* descriptor = rascal_descriptor();
         REQUIRE(descriptor != nullptr);
 
-        const uintptr_t* data = nullptr;
+        const double* data = nullptr;
         uintptr_t count = 0;
         uintptr_t size = 0;
 
@@ -141,7 +143,7 @@ TEST_CASE("rascal_descriptor_t") {
         auto* descriptor = rascal_descriptor();
         REQUIRE(descriptor != nullptr);
 
-        const uintptr_t* data = nullptr;
+        const double* data = nullptr;
         uintptr_t count = 0;
         uintptr_t size = 0;
 

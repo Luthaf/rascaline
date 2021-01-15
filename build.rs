@@ -1,7 +1,7 @@
 fn main() {
     let crate_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
 
-    cbindgen::Builder::new()
+    let result = cbindgen::Builder::new()
         .with_crate(crate_dir)
         .with_config(cbindgen::Config {
             language: cbindgen::Language::C,
@@ -14,12 +14,16 @@ fn main() {
         })
         .rename_item("Pair", "rascal_pair_t")
         .generate()
-        .expect("Unable to generate bindings")
-        .write_to_file("include/rascaline.h");
+        .map(|data| {
+            data.write_to_file("include/rascaline.h");
+        });
 
-    for entry in glob::glob("src/**/*.rs").unwrap() {
-        if let Ok(path) = entry {
-            println!("cargo:rerun-if-changed={}", path.display());
+    // if not ok, rerun the build script unconditionally
+    if result.is_ok() {
+        for entry in glob::glob("src/**/*.rs").unwrap() {
+            if let Ok(path) = entry {
+                println!("cargo:rerun-if-changed={}", path.display());
+            }
         }
     }
 }

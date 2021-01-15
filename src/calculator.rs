@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::descriptor::{Descriptor, Indexes, IndexesBuilder};
+use crate::descriptor::{Descriptor, Indexes, IndexValue, IndexesBuilder};
 use crate::system::System;
 use crate::Error;
 
@@ -96,8 +96,8 @@ impl Calculator {
         &mut self,
         systems: &mut [&mut dyn System],
         descriptor: &mut Descriptor,
-        samples: Option<&[usize]>,
-        features: Option<&[usize]>
+        samples: Option<&[IndexValue]>,
+        features: Option<&[IndexValue]>
     ) -> Result<(), Error> {
         let samples = if let Some(list) = samples {
             // TODO: a simpler way to get names directly instead of building the

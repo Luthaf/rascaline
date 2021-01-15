@@ -3,7 +3,7 @@ use indexmap::set::IndexSet;
 
 use ndarray::{Array2, s};
 
-use super::{Indexes, IndexesBuilder};
+use super::{Indexes, IndexesBuilder, IndexValue};
 
 pub struct Descriptor {
     /// An array of environments.count() by features.count() values
@@ -101,7 +101,7 @@ impl Descriptor {
             }
         }
         let new_features = new_features.finish();
-        let old_feature_size = self.features.size();
+        let old_feature_size = self.features.count();
 
         // copy values as needed
         let mut new_values = Array2::zeros((new_environments.indexes.count(), new_features.count()));
@@ -162,7 +162,7 @@ struct RemovedResult {
     ///
     /// This needs to be a IndexSet to keep the same order as in the initial
     /// Indexes.
-    new_features: IndexSet<usize>,
+    new_features: IndexSet<IndexValue>,
     /// Mapping from the updated index to the original position in Indexes
     mapping: BTreeMap<DensifiedIndex, usize>,
 }
@@ -230,9 +230,9 @@ mod tests {
         let mut systems = test_systems(&["water", "CH"]);
 
         let mut features = IndexesBuilder::new(vec!["foo", "bar", "baz"]);
-        features.add(&[0, 1, 0]);
-        features.add(&[4, 2, 3]);
-        features.add(&[1, 0, 2]);
+        features.add(&[IndexValue::from(0_usize), IndexValue::from(1_isize), IndexValue::from(0.3)]);
+        features.add(&[IndexValue::from(4_usize), IndexValue::from(2_isize), IndexValue::from(3.3)]);
+        features.add(&[IndexValue::from(1_usize), IndexValue::from(0_isize), IndexValue::from(2.3)]);
         let features = features.finish();
 
         let environments = StructureSpeciesEnvironment;
@@ -250,6 +250,13 @@ mod tests {
         return descriptor;
     }
 
+    /// Convenience macro to create IndexValue
+    macro_rules! v {
+        ($value: expr) => {
+            crate::descriptor::indexes::IndexValue::from($value as f64)
+        };
+    }
+
     #[test]
     fn prepare() {
         let descriptor = do_prepare(false);
@@ -257,10 +264,10 @@ mod tests {
         assert_eq!(descriptor.values.shape(), [4, 3]);
 
         assert_eq!(descriptor.environments.names(), ["structure", "alpha"]);
-        assert_eq!(descriptor.environments[0], [0, 1]);
-        assert_eq!(descriptor.environments[1], [0, 123456]);
-        assert_eq!(descriptor.environments[2], [1, 1]);
-        assert_eq!(descriptor.environments[3], [1, 6]);
+        assert_eq!(descriptor.environments[0], [v!(0), v!(1)]);
+        assert_eq!(descriptor.environments[1], [v!(0), v!(123456)]);
+        assert_eq!(descriptor.environments[2], [v!(1), v!(1)]);
+        assert_eq!(descriptor.environments[3], [v!(1), v!(6)]);
 
         assert!(descriptor.gradients.is_none());
     }
@@ -276,16 +283,22 @@ mod tests {
         assert_eq!(gradients_indexes.names(), ["structure", "alpha", "atom", "spatial"]);
 
         // use a loop to simplify checking the spatial dimension
-        let expected = [[0, 1, 1], [0, 1, 2], [0, 123456, 0], [1, 1, 0], [1, 6, 1]];
+        let expected = [
+            [v!(0), v!(1), v!(1)],
+            [v!(0), v!(1), v!(2)],
+            [v!(0), v!(123456), v!(0)],
+            [v!(1), v!(1), v!(0)],
+            [v!(1), v!(6), v!(1)]
+        ];
         for (i, &value) in expected.iter().enumerate() {
             assert_eq!(gradients_indexes[3 * i][..3], value);
-            assert_eq!(gradients_indexes[3 * i][3], 0);
+            assert_eq!(gradients_indexes[3 * i][3], v!(0));
 
             assert_eq!(gradients_indexes[3 * i + 1][..3], value);
-            assert_eq!(gradients_indexes[3 * i + 1][3], 1);
+            assert_eq!(gradients_indexes[3 * i + 1][3], v!(1));
 
             assert_eq!(gradients_indexes[3 * i + 2][..3], value);
-            assert_eq!(gradients_indexes[3 * i + 2][3], 2);
+            assert_eq!(gradients_indexes[3 * i + 2][3], v!(2));
         }
     }
 
@@ -315,8 +328,8 @@ mod tests {
 
         assert_eq!(descriptor.values.shape(), [2, 9]);
         assert_eq!(descriptor.environments.names(), ["structure"]);
-        assert_eq!(descriptor.environments[0], [0]);
-        assert_eq!(descriptor.environments[1], [1]);
+        assert_eq!(descriptor.environments[0], [v!(0)]);
+        assert_eq!(descriptor.environments[1], [v!(1)]);
 
         assert_eq!(descriptor.values, array![
             [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 0.0, 0.0, 0.0],
@@ -328,16 +341,22 @@ mod tests {
         let gradients_indexes = descriptor.gradients_indexes.as_ref().unwrap();
         assert_eq!(gradients_indexes.names(), ["structure", "atom", "spatial"]);
         // use a loop to simplify checking the spatial dimension
-        let expected = [[0, 1], [0, 2], [0, 0], [1, 0], [1, 1]];
+        let expected = [
+            [v!(0), v!(1)],
+            [v!(0), v!(2)],
+            [v!(0), v!(0)],
+            [v!(1), v!(0)],
+            [v!(1), v!(1)]
+        ];
         for (i, &value) in expected.iter().enumerate() {
             assert_eq!(gradients_indexes[3 * i][..2], value);
-            assert_eq!(gradients_indexes[3 * i][2], 0);
+            assert_eq!(gradients_indexes[3 * i][2], v!(0));
 
             assert_eq!(gradients_indexes[3 * i + 1][..2], value);
-            assert_eq!(gradients_indexes[3 * i + 1][2], 1);
+            assert_eq!(gradients_indexes[3 * i + 1][2], v!(1));
 
             assert_eq!(gradients_indexes[3 * i + 2][..2], value);
-            assert_eq!(gradients_indexes[3 * i + 2][2], 2);
+            assert_eq!(gradients_indexes[3 * i + 2][2], v!(2));
         }
 
         assert_eq!(*gradients, array![

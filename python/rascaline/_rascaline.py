@@ -63,31 +63,65 @@ class rascal_system_t(ctypes.Structure):
 def setup_functions(lib):
     from .status import _check_rascal_status_t
 
+    lib.rascal_last_error.argtypes = [
+        
+    ]
+    lib.rascal_last_error.restype = ctypes.c_char_p
+
+    lib.rascal_descriptor.argtypes = [
+        
+    ]
+    lib.rascal_descriptor.restype = POINTER(rascal_descriptor_t)
+
+    lib.rascal_descriptor_free.argtypes = [
+        POINTER(rascal_descriptor_t)
+    ]
+    lib.rascal_descriptor_free.restype = _check_rascal_status_t
+
+    lib.rascal_descriptor_values.argtypes = [
+        POINTER(rascal_descriptor_t),
+        POINTER(POINTER(ctypes.c_double)),
+        POINTER(c_uintptr_t),
+        POINTER(c_uintptr_t)
+    ]
+    lib.rascal_descriptor_values.restype = _check_rascal_status_t
+
+    lib.rascal_descriptor_gradients.argtypes = [
+        POINTER(rascal_descriptor_t),
+        POINTER(POINTER(ctypes.c_double)),
+        POINTER(c_uintptr_t),
+        POINTER(c_uintptr_t)
+    ]
+    lib.rascal_descriptor_gradients.restype = _check_rascal_status_t
+
+    lib.rascal_descriptor_indexes.argtypes = [
+        POINTER(rascal_descriptor_t),
+        ctypes.c_int,
+        POINTER(POINTER(ctypes.c_double)),
+        POINTER(c_uintptr_t),
+        POINTER(c_uintptr_t)
+    ]
+    lib.rascal_descriptor_indexes.restype = _check_rascal_status_t
+
+    lib.rascal_descriptor_indexes_names.argtypes = [
+        POINTER(rascal_descriptor_t),
+        ctypes.c_int,
+        POINTER(ctypes.c_char_p),
+        c_uintptr_t
+    ]
+    lib.rascal_descriptor_indexes_names.restype = _check_rascal_status_t
+
+    lib.rascal_descriptor_densify.argtypes = [
+        POINTER(rascal_descriptor_t),
+        ctypes.c_char_p
+    ]
+    lib.rascal_descriptor_densify.restype = _check_rascal_status_t
+
     lib.rascal_calculator.argtypes = [
         ctypes.c_char_p,
         ctypes.c_char_p
     ]
     lib.rascal_calculator.restype = POINTER(rascal_calculator_t)
-
-    lib.rascal_calculator_compute.argtypes = [
-        POINTER(rascal_calculator_t),
-        POINTER(rascal_descriptor_t),
-        POINTER(rascal_system_t),
-        c_uintptr_t
-    ]
-    lib.rascal_calculator_compute.restype = _check_rascal_status_t
-
-    lib.rascal_calculator_compute_partial.argtypes = [
-        POINTER(rascal_calculator_t),
-        POINTER(rascal_descriptor_t),
-        POINTER(rascal_system_t),
-        c_uintptr_t,
-        POINTER(c_uintptr_t),
-        c_uintptr_t,
-        POINTER(c_uintptr_t),
-        c_uintptr_t
-    ]
-    lib.rascal_calculator_compute_partial.restype = _check_rascal_status_t
 
     lib.rascal_calculator_free.argtypes = [
         POINTER(rascal_calculator_t)
@@ -108,56 +142,22 @@ def setup_functions(lib):
     ]
     lib.rascal_calculator_parameters.restype = _check_rascal_status_t
 
-    lib.rascal_descriptor.argtypes = [
-        
-    ]
-    lib.rascal_descriptor.restype = POINTER(rascal_descriptor_t)
-
-    lib.rascal_descriptor_densify.argtypes = [
+    lib.rascal_calculator_compute.argtypes = [
+        POINTER(rascal_calculator_t),
         POINTER(rascal_descriptor_t),
-        ctypes.c_char_p
-    ]
-    lib.rascal_descriptor_densify.restype = _check_rascal_status_t
-
-    lib.rascal_descriptor_free.argtypes = [
-        POINTER(rascal_descriptor_t)
-    ]
-    lib.rascal_descriptor_free.restype = _check_rascal_status_t
-
-    lib.rascal_descriptor_gradients.argtypes = [
-        POINTER(rascal_descriptor_t),
-        POINTER(POINTER(ctypes.c_double)),
-        POINTER(c_uintptr_t),
-        POINTER(c_uintptr_t)
-    ]
-    lib.rascal_descriptor_gradients.restype = _check_rascal_status_t
-
-    lib.rascal_descriptor_indexes.argtypes = [
-        POINTER(rascal_descriptor_t),
-        ctypes.c_int,
-        POINTER(POINTER(c_uintptr_t)),
-        POINTER(c_uintptr_t),
-        POINTER(c_uintptr_t)
-    ]
-    lib.rascal_descriptor_indexes.restype = _check_rascal_status_t
-
-    lib.rascal_descriptor_indexes_names.argtypes = [
-        POINTER(rascal_descriptor_t),
-        ctypes.c_int,
-        POINTER(ctypes.c_char_p),
+        POINTER(rascal_system_t),
         c_uintptr_t
     ]
-    lib.rascal_descriptor_indexes_names.restype = _check_rascal_status_t
+    lib.rascal_calculator_compute.restype = _check_rascal_status_t
 
-    lib.rascal_descriptor_values.argtypes = [
+    lib.rascal_calculator_compute_partial.argtypes = [
+        POINTER(rascal_calculator_t),
         POINTER(rascal_descriptor_t),
-        POINTER(POINTER(ctypes.c_double)),
-        POINTER(c_uintptr_t),
-        POINTER(c_uintptr_t)
+        POINTER(rascal_system_t),
+        c_uintptr_t,
+        POINTER(ctypes.c_double),
+        c_uintptr_t,
+        POINTER(ctypes.c_double),
+        c_uintptr_t
     ]
-    lib.rascal_descriptor_values.restype = _check_rascal_status_t
-
-    lib.rascal_last_error.argtypes = [
-        
-    ]
-    lib.rascal_last_error.restype = ctypes.c_char_p
+    lib.rascal_calculator_compute_partial.restype = _check_rascal_status_t

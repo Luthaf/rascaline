@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use crate::system::System;
-use super::{Indexes, IndexesBuilder, EnvironmentIndexes};
+use super::{Indexes, IndexesBuilder, EnvironmentIndexes, IndexValue};
 
 /// `StructureEnvironment` is used to represents environments corresponding to full
 /// structures, each structure being described by a single features vector.
@@ -18,7 +18,7 @@ impl EnvironmentIndexes for StructureEnvironment {
     fn indexes(&self, systems: &mut [&mut dyn System]) -> Indexes {
         let mut indexes = IndexesBuilder::new(vec!["structure"]);
         for system in 0..systems.len() {
-            indexes.add(&[system]);
+            indexes.add(&[IndexValue::from(system)]);
         }
         return indexes.finish();
     }
@@ -29,10 +29,10 @@ impl EnvironmentIndexes for StructureEnvironment {
         let mut gradients = IndexesBuilder::new(vec!["structure", "atom", "spatial"]);
         for value in samples.iter() {
             let system = value[0];
-            for atom in 0..systems[system].size() {
-                gradients.add(&[system, atom, 0]);
-                gradients.add(&[system, atom, 1]);
-                gradients.add(&[system, atom, 2]);
+            for atom in 0..systems[system.usize()].size() {
+                gradients.add(&[system, IndexValue::from(atom), IndexValue::from(0_usize)]);
+                gradients.add(&[system, IndexValue::from(atom), IndexValue::from(1_usize)]);
+                gradients.add(&[system, IndexValue::from(atom), IndexValue::from(2_usize)]);
             }
         }
 
@@ -68,7 +68,7 @@ impl EnvironmentIndexes for AtomEnvironment {
         let mut indexes = IndexesBuilder::new(vec!["structure", "center"]);
         for (i_system, system) in systems.iter().enumerate() {
             for center in 0..system.size() {
-                indexes.add(&[i_system, center]);
+                indexes.add(&[IndexValue::from(i_system), IndexValue::from(center)]);
             }
         }
         return indexes.finish();
@@ -81,7 +81,7 @@ impl EnvironmentIndexes for AtomEnvironment {
         // a BTreeSet will yield the indexes in the right order
         let mut indexes = BTreeSet::new();
         for i_system in requested_systems {
-            let system = &mut *systems[i_system];
+            let system = &mut *systems[i_system.usize()];
             system.compute_neighbors(self.cutoff);
 
             let requested_centers = samples.iter()
@@ -95,11 +95,11 @@ impl EnvironmentIndexes for AtomEnvironment {
                 .collect::<Vec<_>>();
 
             for pair in system.pairs() {
-                if requested_centers.contains(&pair.first) {
+                if requested_centers.contains(&IndexValue::from(pair.first)) {
                     indexes.insert((i_system, pair.first, pair.second));
                 }
 
-                if requested_centers.contains(&pair.second) {
+                if requested_centers.contains(&IndexValue::from(pair.second)) {
                     indexes.insert((i_system, pair.second, pair.first));
                 }
             }
@@ -107,9 +107,11 @@ impl EnvironmentIndexes for AtomEnvironment {
 
         let mut gradients = IndexesBuilder::new(vec!["structure", "center", "neighbor", "spatial"]);
         for (structure, atom, neighbor) in indexes {
-            gradients.add(&[structure, atom, neighbor, 0]);
-            gradients.add(&[structure, atom, neighbor, 1]);
-            gradients.add(&[structure, atom, neighbor, 2]);
+            let atom = IndexValue::from(atom);
+            let neighbor = IndexValue::from(neighbor);
+            gradients.add(&[structure, atom, neighbor, IndexValue::from(0_usize)]);
+            gradients.add(&[structure, atom, neighbor, IndexValue::from(1_usize)]);
+            gradients.add(&[structure, atom, neighbor, IndexValue::from(2_usize)]);
         }
 
         return Some(gradients.finish());
@@ -122,13 +124,20 @@ mod tests {
     use super::*;
     use crate::system::test_systems;
 
+    /// Convenience macro to create IndexValue
+    macro_rules! v {
+        ($value: expr) => {
+            crate::descriptor::indexes::IndexValue::from($value as f64)
+        };
+    }
+
     #[test]
     fn structure() {
         let mut systems = test_systems(&["methane", "methane", "water"]);
         let indexes = StructureEnvironment.indexes(&mut systems.get());
         assert_eq!(indexes.count(), 3);
         assert_eq!(indexes.names(), &["structure"]);
-        assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![&[0], &[1], &[2]]);
+        assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![&[v!(0)], &[v!(1)], &[v!(2)]]);
     }
 
     #[test]
@@ -141,15 +150,15 @@ mod tests {
         assert_eq!(gradients.names(), &["structure", "atom", "spatial"]);
         assert_eq!(gradients.iter().collect::<Vec<_>>(), vec![
             // methane
-            &[0, 0, 0], &[0, 0, 1], &[0, 0, 2],
-            &[0, 1, 0], &[0, 1, 1], &[0, 1, 2],
-            &[0, 2, 0], &[0, 2, 1], &[0, 2, 2],
-            &[0, 3, 0], &[0, 3, 1], &[0, 3, 2],
-            &[0, 4, 0], &[0, 4, 1], &[0, 4, 2],
+            &[v!(0), v!(0), v!(0)], &[v!(0), v!(0), v!(1)], &[v!(0), v!(0), v!(2)],
+            &[v!(0), v!(1), v!(0)], &[v!(0), v!(1), v!(1)], &[v!(0), v!(1), v!(2)],
+            &[v!(0), v!(2), v!(0)], &[v!(0), v!(2), v!(1)], &[v!(0), v!(2), v!(2)],
+            &[v!(0), v!(3), v!(0)], &[v!(0), v!(3), v!(1)], &[v!(0), v!(3), v!(2)],
+            &[v!(0), v!(4), v!(0)], &[v!(0), v!(4), v!(1)], &[v!(0), v!(4), v!(2)],
             // water
-            &[1, 0, 0], &[1, 0, 1], &[1, 0, 2],
-            &[1, 1, 0], &[1, 1, 1], &[1, 1, 2],
-            &[1, 2, 0], &[1, 2, 1], &[1, 2, 2],
+            &[v!(1), v!(0), v!(0)], &[v!(1), v!(0), v!(1)], &[v!(1), v!(0), v!(2)],
+            &[v!(1), v!(1), v!(0)], &[v!(1), v!(1), v!(1)], &[v!(1), v!(1), v!(2)],
+            &[v!(1), v!(2), v!(0)], &[v!(1), v!(2), v!(1)], &[v!(1), v!(2), v!(2)],
         ]);
     }
 
@@ -162,8 +171,8 @@ mod tests {
         assert_eq!(indexes.count(), 8);
         assert_eq!(indexes.names(), &["structure", "center"]);
         assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
-            &[0, 0], &[0, 1], &[0, 2], &[0, 3], &[0, 4],
-            &[1, 0], &[1, 1], &[1, 2],
+            &[v!(0), v!(0)], &[v!(0), v!(1)], &[v!(0), v!(2)], &[v!(0), v!(3)], &[v!(0), v!(4)],
+            &[v!(1), v!(0)], &[v!(1), v!(1)], &[v!(1), v!(2)],
         ]);
     }
 
@@ -179,15 +188,37 @@ mod tests {
         assert_eq!(gradients.iter().collect::<Vec<_>>(), vec![
             // Only C-H neighbors are within 1.3 A
             // C center
-            &[0, 0, 1, 0], &[0, 0, 1, 1], &[0, 0, 1, 2],
-            &[0, 0, 2, 0], &[0, 0, 2, 1], &[0, 0, 2, 2],
-            &[0, 0, 3, 0], &[0, 0, 3, 1], &[0, 0, 3, 2],
-            &[0, 0, 4, 0], &[0, 0, 4, 1], &[0, 0, 4, 2],
+            &[v!(0), v!(0), v!(1), v!(0)],
+            &[v!(0), v!(0), v!(1), v!(1)],
+            &[v!(0), v!(0), v!(1), v!(2)],
+
+            &[v!(0), v!(0), v!(2), v!(0)],
+            &[v!(0), v!(0), v!(2), v!(1)],
+            &[v!(0), v!(0), v!(2), v!(2)],
+
+            &[v!(0), v!(0), v!(3), v!(0)],
+            &[v!(0), v!(0), v!(3), v!(1)],
+            &[v!(0), v!(0), v!(3), v!(2)],
+
+            &[v!(0), v!(0), v!(4), v!(0)],
+            &[v!(0), v!(0), v!(4), v!(1)],
+            &[v!(0), v!(0), v!(4), v!(2)],
             // H centers
-            &[0, 1, 0, 0], &[0, 1, 0, 1], &[0, 1, 0, 2],
-            &[0, 2, 0, 0], &[0, 2, 0, 1], &[0, 2, 0, 2],
-            &[0, 3, 0, 0], &[0, 3, 0, 1], &[0, 3, 0, 2],
-            &[0, 4, 0, 0], &[0, 4, 0, 1], &[0, 4, 0, 2],
+            &[v!(0), v!(1), v!(0), v!(0)],
+            &[v!(0), v!(1), v!(0), v!(1)],
+            &[v!(0), v!(1), v!(0), v!(2)],
+
+            &[v!(0), v!(2), v!(0), v!(0)],
+            &[v!(0), v!(2), v!(0), v!(1)],
+            &[v!(0), v!(2), v!(0), v!(2)],
+
+            &[v!(0), v!(3), v!(0), v!(0)],
+            &[v!(0), v!(3), v!(0), v!(1)],
+            &[v!(0), v!(3), v!(0), v!(2)],
+
+            &[v!(0), v!(4), v!(0), v!(0)],
+            &[v!(0), v!(4), v!(0), v!(1)],
+            &[v!(0), v!(4), v!(0), v!(2)],
         ]);
     }
 }

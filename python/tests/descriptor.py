@@ -2,7 +2,6 @@
 import unittest
 import numpy as np
 
-import rascaline
 from rascaline import Descriptor
 from rascaline.calculator import DummyCalculator
 
@@ -87,7 +86,9 @@ class TestDummyDescriptor(unittest.TestCase):
         # view & reshape for easier direct comparison of values
         # numpy only consider structured arrays to be equal if they have
         # the same dtype
-        environments = environments.view(dtype=np.uintp).reshape((environments.shape[0], -1))
+        environments = environments.view(dtype=np.float64).reshape(
+            (environments.shape[0], -1)
+        )
         self.assertTrue(np.all(environments[0] == [0, 0]))
         self.assertTrue(np.all(environments[1] == [0, 1]))
         self.assertTrue(np.all(environments[2] == [0, 2]))
@@ -122,18 +123,20 @@ class TestDummyDescriptor(unittest.TestCase):
         # view & reshape for easier direct comparison of values
         # numpy only consider structured arrays to be equal if they have
         # the same dtype
-        gradients_environments = gradients_environments.view(dtype=np.uintp).reshape((gradients_environments.shape[0], -1))
+        gradients_environments = gradients_environments.view(dtype=np.float64).reshape(
+            (gradients_environments.shape[0], -1)
+        )
 
-        self.assertTrue(np.all(gradients_environments[0]  == [0, 0, 1, 0]))
-        self.assertTrue(np.all(gradients_environments[1]  == [0, 0, 1, 1]))
-        self.assertTrue(np.all(gradients_environments[2]  == [0, 0, 1, 2]))
-        self.assertTrue(np.all(gradients_environments[3]  == [0, 1, 0, 0]))
-        self.assertTrue(np.all(gradients_environments[4]  == [0, 1, 0, 1]))
-        self.assertTrue(np.all(gradients_environments[5]  == [0, 1, 0, 2]))
-        self.assertTrue(np.all(gradients_environments[6]  == [0, 1, 2, 0]))
-        self.assertTrue(np.all(gradients_environments[7]  == [0, 1, 2, 1]))
-        self.assertTrue(np.all(gradients_environments[8]  == [0, 1, 2, 2]))
-        self.assertTrue(np.all(gradients_environments[9]  == [0, 2, 1, 0]))
+        self.assertTrue(np.all(gradients_environments[0] == [0, 0, 1, 0]))
+        self.assertTrue(np.all(gradients_environments[1] == [0, 0, 1, 1]))
+        self.assertTrue(np.all(gradients_environments[2] == [0, 0, 1, 2]))
+        self.assertTrue(np.all(gradients_environments[3] == [0, 1, 0, 0]))
+        self.assertTrue(np.all(gradients_environments[4] == [0, 1, 0, 1]))
+        self.assertTrue(np.all(gradients_environments[5] == [0, 1, 0, 2]))
+        self.assertTrue(np.all(gradients_environments[6] == [0, 1, 2, 0]))
+        self.assertTrue(np.all(gradients_environments[7] == [0, 1, 2, 1]))
+        self.assertTrue(np.all(gradients_environments[8] == [0, 1, 2, 2]))
+        self.assertTrue(np.all(gradients_environments[9] == [0, 2, 1, 0]))
         self.assertTrue(np.all(gradients_environments[10] == [0, 2, 1, 1]))
         self.assertTrue(np.all(gradients_environments[11] == [0, 2, 1, 2]))
         self.assertTrue(np.all(gradients_environments[12] == [0, 2, 3, 0]))
@@ -160,9 +163,9 @@ class TestDummyDescriptor(unittest.TestCase):
         # view & reshape for easier direct comparison of values
         # numpy only consider structured arrays to be equal if they have
         # the same dtype
-        features = features.view(dtype=np.uintp).reshape((features.shape[0], -1))
-        self.assertTrue(np.all(features[0] == [1, 0]))
-        self.assertTrue(np.all(features[1] == [0, 1]))
+        features = features.view(dtype=np.float64).reshape((features.shape[0], -1))
+        self.assertTrue(np.all(features[0] == [1, 0, 1.2]))
+        self.assertTrue(np.all(features[1] == [0, 1, 3.2]))
 
     def test_densify(self):
         system = TestSystem()

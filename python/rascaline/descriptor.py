@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from collections import namedtuple
 import numpy as np
 from ctypes import c_double, c_char_p, POINTER
 
@@ -45,7 +44,7 @@ class Descriptor:
     def _indexes(self, kind):
         count = c_uintptr_t()
         size = c_uintptr_t()
-        data = POINTER(c_uintptr_t)()
+        data = POINTER(c_double)()
         self._lib.rascal_descriptor_indexes(self, kind.value, data, count, size)
 
         if count.value == 0:
@@ -55,7 +54,7 @@ class Descriptor:
         names = StringArray()
         self._lib.rascal_descriptor_indexes_names(self, kind.value, names, size)
 
-        dtype = [(name, np.uintp) for name in map(lambda n: n.decode("utf8"), names)]
+        dtype = [(name, np.float64) for name in map(lambda n: n.decode("utf8"), names)]
         return np_array_view(data, (count.value, size.value), dtype=dtype)
 
     @property

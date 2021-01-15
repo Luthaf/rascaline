@@ -3,7 +3,7 @@ import json
 import ctypes
 import numpy as np
 
-from ._rascaline import rascal_system_t, rascal_status_t, c_uintptr_t
+from ._rascaline import rascal_system_t, rascal_status_t
 from .clib import _get_library
 from .status import _check_rascal_pointer, RascalError
 from .descriptor import Descriptor
@@ -33,8 +33,8 @@ def _check_selected_indexes(indexes, kind):
     if len(indexes.shape) != 2:
         raise ValueError(f"selected {kind} array must be a two-dimensional array")
 
-    if np.can_cast(indexes.dtype, np.uintp, 'safe'):
-        raise ValueError(f"selected {kind} array must contain integer values")
+    if not np.can_cast(indexes.dtype, np.float64, "safe"):
+        raise ValueError(f"selected {kind} array must contain float64 values")
 
 
 class CalculatorBase:
@@ -92,27 +92,27 @@ class CalculatorBase:
         if samples is not None:
             samples = np.array(samples)
             if samples.dtype.fields is not None:
-                # convert structured array back to uintptr_t array
+                # convert structured array back to float64 array
                 size = len(samples)
-                samples = samples.view(dtype=np.uintp).reshape((size, -1))
+                samples = samples.view(dtype=np.float64).reshape((size, -1))
             else:
                 _check_selected_indexes(samples, "samples")
-                samples = np.array(samples, dtype=np.uintp)
+                samples = np.array(samples, dtype=np.float64)
 
         if features is not None:
             features = np.array(features)
             if features.dtype.fields is not None:
-                # convert structured array back to uintptr_t array
+                # convert structured array back to float64 array
                 size = len(features)
-                features = features.view(dtype=np.uintp).reshape((size, -1))
+                features = features.view(dtype=np.float64).reshape((size, -1))
             else:
                 _check_selected_indexes(features, "features")
-                features = np.array(features, dtype=np.uintp)
+                features = np.array(features, dtype=np.float64)
 
         samples_count = 0 if samples is None else samples.size
         features_count = 0 if features is None else features.size
 
-        ptr_type = ctypes.POINTER(c_uintptr_t)
+        ptr_type = ctypes.POINTER(ctypes.c_double)
         self._lib.rascal_calculator_compute_partial(
             self,
             descriptor,

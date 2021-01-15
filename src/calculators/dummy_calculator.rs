@@ -1,7 +1,7 @@
 use super::CalculatorBase;
 
 use crate::descriptor::Descriptor;
-use crate::descriptor::{IndexesBuilder, Indexes, EnvironmentIndexes, AtomEnvironment};
+use crate::descriptor::{IndexesBuilder, Indexes, IndexValue, EnvironmentIndexes, AtomEnvironment};
 use crate::system::System;
 
 /// A stupid calculator implementation used to test the API, and API binding to
@@ -32,9 +32,9 @@ impl CalculatorBase for DummyCalculator {
     }
 
     fn features(&self) -> Indexes {
-        let mut features = IndexesBuilder::new(vec!["index_delta", "x_y_z"]);
-        features.add(&[1, 0]);
-        features.add(&[0, 1]);
+        let mut features = IndexesBuilder::new(vec!["index_delta", "x_y_z", "float"]);
+        features.add(&[IndexValue::from(1_usize), IndexValue::from(0_isize), IndexValue::from(1.2)]);
+        features.add(&[IndexValue::from(0_usize), IndexValue::from(1_isize), IndexValue::from(3.2)]);
         features.finish()
     }
 
@@ -47,9 +47,11 @@ impl CalculatorBase for DummyCalculator {
     }
 
     fn check_features(&self, indexes: &Indexes) {
-        assert_eq!(indexes.names(), &["index_delta", "x_y_z"]);
+        assert_eq!(indexes.names(), &["index_delta", "x_y_z", "float"]);
+        let first = [IndexValue::from(1_usize), IndexValue::from(0_isize), IndexValue::from(1.2)];
+        let second = [IndexValue::from(0_usize), IndexValue::from(1_isize), IndexValue::from(3.2)];
         for value in indexes.iter() {
-            assert!(value == [0, 1] || value == [1, 0]);
+            assert!(value == first || value == second);
         }
     }
 
@@ -66,13 +68,13 @@ impl CalculatorBase for DummyCalculator {
     #[allow(clippy::clippy::cast_precision_loss)]
     fn compute(&mut self, systems: &mut [&mut dyn System], descriptor: &mut Descriptor) {
         for (i_sample, indexes) in descriptor.environments.iter().enumerate() {
-            let i_system = indexes[0];
-            let center = indexes[1];
+            let i_system = indexes[0].usize();
+            let center = indexes[1].usize();
 
             for (i_feature, feature) in descriptor.features.iter().enumerate() {
-                if feature[0] == 1 {
+                if feature[0].isize() == 1 {
                     descriptor.values[[i_sample, i_feature]] = center as f64 + self.delta as f64;
-                } else if feature[1] == 1 {
+                } else if feature[1].isize() == 1 {
                     let system = &mut *systems[i_system];
                     system.compute_neighbors(self.cutoff);
 
@@ -101,9 +103,9 @@ impl CalculatorBase for DummyCalculator {
 
             for i_grad in 0..gradients_indexes.count() {
                 for (i_feature, feature) in descriptor.features.iter().enumerate() {
-                    if feature[0] == 1 {
+                    if feature[0].isize() == 1 {
                         gradients[[i_grad, i_feature]] = 0.0;
-                    } else if feature[1] == 1 {
+                    } else if feature[1].isize() == 1 {
                         gradients[[i_grad, i_feature]] = 1.0;
                     }
                 }
@@ -116,7 +118,7 @@ impl CalculatorBase for DummyCalculator {
 mod tests {
     use crate::system::test_systems;
     use crate::{Descriptor, Calculator};
-    use crate::descriptor::IndexesBuilder;
+    use crate::descriptor::{IndexesBuilder, IndexValue};
 
     use ndarray::{s, aview1};
 
@@ -187,14 +189,14 @@ mod tests {
         let mut descriptor = Descriptor::new();
 
         let mut samples = IndexesBuilder::new(vec!["structure", "center"]);
-        samples.add(&[0, 1]);
+        samples.add(&[IndexValue::from(0_usize), IndexValue::from(1_usize)]);
         calculator.compute_partial(&mut systems.get(), &mut descriptor, Some(samples.finish()), None);
 
         assert_eq!(descriptor.values.shape(), [1, 2]);
         assert_eq!(descriptor.values.slice(s![0, ..]), aview1(&[10.0, 0.16649999999999998]));
 
-        let mut features = IndexesBuilder::new(vec!["index_delta", "x_y_z"]);
-        features.add(&[0, 1]);
+        let mut features = IndexesBuilder::new(vec!["index_delta", "x_y_z", "float"]);
+        features.add(&[IndexValue::from(0_usize), IndexValue::from(1_isize), IndexValue::from(3.2)]);
         calculator.compute_partial(&mut systems.get(), &mut descriptor, None, Some(features.finish()));
 
         assert_eq!(descriptor.values.shape(), [3, 1]);
