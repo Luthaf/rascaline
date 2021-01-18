@@ -43,3 +43,4 @@ mod dummy_calculator;
 pub use self::dummy_calculator::DummyCalculator;
 
 mod soap;
+pub use self::soap::{SphericalExpansion, SphericalExpansionParameters};

@@ -208,18 +208,24 @@ impl Indexes {
         };
     }
 
+    /// Check whether the given `value` is part of this set of indexes
     pub fn contains(&self, value: &[IndexValue]) -> bool {
+        self.position(value).is_some()
+    }
+
+    /// Get the position of the given value on this set of indexes, or None.
+    pub fn position(&self, value: &[IndexValue]) -> Option<usize> {
         if value.len() != self.size() {
-            return false;
+            return None;
         }
 
-        for v in self.iter() {
+        for (i, v) in self.iter().enumerate() {
             if v == value {
-                return true;
+                return Some(i);
             }
         }
 
-        return false;
+        return None;
     }
 }
 

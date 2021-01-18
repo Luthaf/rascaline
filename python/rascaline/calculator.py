@@ -141,3 +141,24 @@ class SortedDistances(CalculatorBase):
     def __init__(self, cutoff, max_neighbors):
         parameters = {"cutoff": cutoff, "max_neighbors": max_neighbors}
         super().__init__("sorted_distances", **parameters)
+
+
+class SphericalExpansion(CalculatorBase):
+    def __init__(
+        self,
+        cutoff,
+        max_radial,
+        max_angular,
+        atomic_gaussian_width,
+        radial_basis,
+        gradients,
+    ):
+        parameters = {
+            "cutoff": cutoff,
+            "max_radial": max_radial,
+            "max_angular": max_angular,
+            "atomic_gaussian_width": atomic_gaussian_width,
+            "radial_basis": radial_basis,
+            "gradients": gradients,
+        }
+        super().__init__("spherical_expansion", **parameters)
