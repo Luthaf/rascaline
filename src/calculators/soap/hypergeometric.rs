@@ -11,18 +11,15 @@
 //! This code was originally written by Félix Musil @ COSMO/EPFL
 
 use ndarray::{Array2, ArrayViewMut2, Axis, azip};
-use special::Gamma;
 use log::warn;
 
-// convenience function to be called as `gamma(x)` instead of `x.gamma()`
-fn gamma(x: f64) -> f64 {
-    x.gamma()
-}
+use crate::math::gamma;
 
 // The precision up to which we converge our implementation of the G function
 const HYPERGEOMETRIC_PRECISION: f64 = 1e-13;
 
 /// Compute 2F0 as a the corresponding series truncated to the first n terms.
+#[derive(Debug, Clone)]
 struct Series2F0 {
     coefficients: Vec<f64>,
 }
@@ -80,6 +77,7 @@ impl Series2F0 {
 }
 
 /// Compute 1F1 as a the corresponding series truncated to the first n terms.
+#[derive(Debug, Clone)]
 struct Series1F1 {
     coefficients: Vec<f64>,
 }
@@ -155,6 +153,7 @@ impl Series1F1 {
 /// Compute G using the direct sum for 1F1
 ///
 /// `1F1(a, b, z) = \sum_{j=0}^{\infty} \frac{(a)_j}{(b)_jj!} z^{j}`
+#[derive(Debug, Clone)]
 struct HyperGeometricSeries {
     /// First parameter to the 1F1 function
     a: f64,
@@ -211,6 +210,7 @@ impl HyperGeometricSeries {
 /// `1F1(a,b,z) \sim \exp{z} z^{a-b} \frac{\Gamma{b}}{\Gamma{a}} 2F0(a, b, z)`
 ///
 /// where `2F0(a, b, z) = \sum_{j=0}^{\infty} \frac{(b-a)_j(1-a)_j}{j!} z^{-j}`
+#[derive(Debug, Clone)]
 struct HyperGeometricAsymptotic {
     /// First parameter to the 1F1 function
     a: f64,
@@ -266,6 +266,7 @@ impl HyperGeometricAsymptotic {
 
 /// Switch between the asymptotic expansion or the series implementations of our
 /// hypergeometric function G(z) depending on the arguments domains.
+#[derive(Debug, Clone)]
 pub struct HyperGeometric {
     /// when a == b, 1F1 is an exponential, so we use a fast path in this case
     is_exponential: bool,
@@ -419,6 +420,7 @@ impl HyperGeometric {
 ///
 /// `G(a, b, z) = \frac{\Gamma(a)}{\Gamma(b)} * \exp{-\alpha r_{ij}^2} 1F1(a, b,
 /// z)`
+#[derive(Debug, Clone)]
 pub struct HyperGeometricSphericalExpansion {
     /// n_max parameter
     max_radial: usize,
@@ -430,8 +432,8 @@ pub struct HyperGeometricSphericalExpansion {
 
 #[derive(Debug, Clone, Copy)]
 pub struct HyperGeometricParameters<'a> {
-    atomic_gaussian_constant: f64,
-    gto_gaussian_constants: &'a [f64],
+    pub atomic_gaussian_constant: f64,
+    pub gto_gaussian_constants: &'a [f64],
 }
 
 impl HyperGeometricSphericalExpansion {
