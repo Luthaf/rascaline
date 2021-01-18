@@ -213,7 +213,7 @@ mod tests {
             // first H in water
             &[v!(1), v!(1), v!(1), v!(1)],
             &[v!(1), v!(1), v!(1), v!(123456)],
-            // // second H in water
+            // second H in water
             &[v!(1), v!(2), v!(1), v!(1)],
             &[v!(1), v!(2), v!(1), v!(123456)],
         ]);

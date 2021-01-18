@@ -130,7 +130,8 @@ mod tests {
     mod gto {
         use approx::assert_relative_eq;
 
-        use super::super::*;
+        use super::super::{GTO, GTOParameters, RadialIntegral};
+        use ndarray::Array2;
 
         #[test]
         #[should_panic = "max_radial must be at least 1"]

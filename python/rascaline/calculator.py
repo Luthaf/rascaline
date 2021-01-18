@@ -162,6 +162,7 @@ class SphericalExpansion(CalculatorBase):
         atomic_gaussian_width,
         radial_basis,
         gradients,
+        cutoff_function,
     ):
         parameters = {
             "cutoff": cutoff,
@@ -170,5 +171,6 @@ class SphericalExpansion(CalculatorBase):
             "atomic_gaussian_width": atomic_gaussian_width,
             "radial_basis": radial_basis,
             "gradients": gradients,
+            "cutoff_function": cutoff_function,
         }
         super().__init__("spherical_expansion", **parameters)

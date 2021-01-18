@@ -98,6 +98,7 @@ impl std::fmt::Debug for LegendreArray {
 /// array[[9, 7]] = 1.0;
 /// ```
 #[derive(Clone)]
+#[allow(clippy::module_name_repetitions)]
 pub struct SphericalHarmonicsArray {
     max_angular: isize,
     data: Vec<f64>,
@@ -472,6 +473,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::similar_names)]
     fn finite_differences() {
         let mut directions = [
             Vector3D::new(1.0, 0.0, 0.0),

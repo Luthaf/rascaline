@@ -16,6 +16,55 @@ pub enum RadialBasis {
     GTO,
 }
 
+/// Possible values for the smoothing cutoff function
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+pub enum CutoffFunction {
+    /// Step function, 1 if `r < r_cut` and 0 if `r >= r_cut`
+    Step,
+    /// Shifted cosine switching function
+    /// f(r) = 1/2 * (1 + cos(\pi (r - r_cut + width) / width ))
+    ShiftedCosine {
+        width: f64,
+    },
+}
+
+impl CutoffFunction {
+    /// Evaluate the cutoff function at the distance `r` for the given `cutoff`
+    pub fn compute(&self, r: f64, cutoff: f64) -> f64 {
+        match self {
+            CutoffFunction::Step => {
+                if r >= cutoff { 0.0 } else { 1.0 }
+            },
+            CutoffFunction::ShiftedCosine { width } => {
+                if r <= (cutoff - width) {
+                    1.0
+                } else if r >= cutoff {
+                    0.0
+                } else {
+                    let s = std::f64::consts::PI * (r - cutoff + width) / width;
+                    0.5 * (1. + f64::cos(s))
+                }
+            }
+        }
+    }
+
+    /// Evaluate the derivative of the cutoff function at the distance `r` for the
+    /// given `cutoff`
+    pub fn derivative(&self, r: f64, cutoff: f64) -> f64 {
+        match self {
+            CutoffFunction::Step => 0.0,
+            CutoffFunction::ShiftedCosine { width } => {
+                if r <= (cutoff - width) || r >= cutoff {
+                    0.0
+                } else {
+                    let s = std::f64::consts::PI * (r - cutoff + width) / width;
+                    return -0.5 * std::f64::consts::PI * f64::sin(s) / width;
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 #[allow(clippy::module_name_repetitions)]
 pub struct SphericalExpansionParameters {
@@ -31,6 +80,8 @@ pub struct SphericalExpansionParameters {
     pub gradients: bool,
     /// radial basis to use for the radial integral
     pub radial_basis: RadialBasis,
+    /// cutoff function used to smooth the behavior around the cutoff radius
+    pub cutoff_function: CutoffFunction,
 }
 
 pub struct SphericalExpansion {
@@ -144,6 +195,7 @@ impl CalculatorBase for SphericalExpansion {
         }
     }
 
+    #[allow(clippy::similar_names, clippy::too_many_lines)]
     fn compute(&mut self, systems: &mut [&mut dyn System], descriptor: &mut Descriptor) {
         assert_eq!(descriptor.environments.names(), &["structure", "center", "alpha", "beta"]);
         assert_eq!(descriptor.features.names(), &["n", "l", "m"]);
@@ -182,12 +234,14 @@ impl CalculatorBase for SphericalExpansion {
                         sign * direction, &mut self.sph_values, self.sph_gradients.as_mut()
                     );
 
+                    let f_cut = self.parameters.cutoff_function.compute(distance, self.parameters.cutoff);
+
                     for (i_feature, feature) in descriptor.features.iter().enumerate() {
                         let n = feature[0].usize();
                         let l = feature[1].usize();
                         let m = feature[1].isize();
 
-                        let n_l_m_value = self.ri_values[[n, l]] * self.sph_values[[l as isize, m]];
+                        let n_l_m_value = f_cut * self.ri_values[[n, l]] * self.sph_values[[l as isize, m]];
                         descriptor.values[[i_env, i_feature]] += sign.powi(l as i32) * n_l_m_value;
                         if let Some(other_env_i) = other_env_i {
                             descriptor.values[[other_env_i, i_feature]] += (-sign).powi(l as i32) * n_l_m_value;
@@ -224,6 +278,8 @@ impl CalculatorBase for SphericalExpansion {
                     };
 
                     if self.parameters.gradients {
+                        let f_cut_grad = self.parameters.cutoff_function.derivative(distance, self.parameters.cutoff);
+
                         let dr_dx = pair.vector[0] / distance;
                         let dr_dy = pair.vector[1] / distance;
                         let dr_dz = pair.vector[2] / distance;
@@ -239,9 +295,25 @@ impl CalculatorBase for SphericalExpansion {
                             let l = feature[1].usize();
                             let m = feature[1].isize();
 
-                            let grad_x = ri_gradients[[n, l]] * dr_dx * self.sph_values[[l as isize, m]] + self.ri_values[[n, l]] * sph_gradients[0][[l as isize, m]];
-                            let grad_y = ri_gradients[[n, l]] * dr_dy * self.sph_values[[l as isize, m]] + self.ri_values[[n, l]] * sph_gradients[1][[l as isize, m]];
-                            let grad_z = ri_gradients[[n, l]] * dr_dz * self.sph_values[[l as isize, m]] + self.ri_values[[n, l]] * sph_gradients[2][[l as isize, m]];
+                            let sph_value = self.sph_values[[l as isize, m]];
+                            let sph_grad_x = sph_gradients[0][[l as isize, m]];
+                            let sph_grad_y = sph_gradients[1][[l as isize, m]];
+                            let sph_grad_z = sph_gradients[2][[l as isize, m]];
+
+                            let ri_value = self.ri_values[[n, l]];
+                            let ri_grad = ri_gradients[[n, l]];
+
+                            let grad_x = f_cut_grad * dr_dx * ri_value * sph_value
+                                       + f_cut * ri_grad * dr_dx * sph_value
+                                       + f_cut * ri_value * sph_grad_x;
+
+                            let grad_y = f_cut_grad * dr_dy * ri_value * sph_value
+                                       + f_cut * ri_grad * dr_dy * sph_value
+                                       + f_cut * ri_value * sph_grad_y;
+
+                            let grad_z = f_cut_grad * dr_dz * ri_value * sph_value
+                                       + f_cut * ri_grad * dr_dz * sph_value
+                                       + f_cut * ri_value * sph_grad_z;
 
                             // assumes that the three spatial derivative are one after the other
                             gradients[[center_grad_i, i_feature]] += sign.powi(l as i32) * grad_x;
@@ -262,7 +334,6 @@ impl CalculatorBase for SphericalExpansion {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
     fn tests() {

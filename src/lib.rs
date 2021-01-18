@@ -7,7 +7,7 @@
 #![allow(clippy::comparison_chain)]
 
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
-#![allow(clippy::cast_possible_wrap, clippy::cast_lossless)]
+#![allow(clippy::cast_possible_wrap, clippy::cast_lossless, clippy::cast_sign_loss)]
 
 // Tests lints
 #![cfg_attr(test, allow(clippy::float_cmp))]
