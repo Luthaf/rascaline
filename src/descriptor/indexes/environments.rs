@@ -3,15 +3,15 @@ use std::collections::BTreeSet;
 use crate::system::System;
 use super::{Indexes, IndexesBuilder, EnvironmentIndexes, IndexValue};
 
-/// `StructureEnvironment` is used to represents environments corresponding to full
-/// structures, each structure being described by a single features vector.
+/// `StructureEnvironment` is used to represents environments corresponding to
+/// full structures, each structure being described by a single features vector.
 ///
-/// It does not contain any chemical species information, for this
-/// you should use `StructureSpeciesEnvironment`.
+/// It does not contain any chemical species information, for this you should
+/// use `StructureSpeciesEnvironment`.
 ///
 /// The base set of indexes contains only the `structure` index; the  gradient
-/// indexes also contains the `atom` inside the structure with respect to
-/// which the gradient is taken and the `spatial` (i.e. x/y/z) index.
+/// indexes also contains the `atom` inside the structure with respect to which
+/// the gradient is taken and the `spatial` (i.e. x/y/z) index.
 pub struct StructureEnvironment;
 
 impl EnvironmentIndexes for StructureEnvironment {
@@ -40,17 +40,17 @@ impl EnvironmentIndexes for StructureEnvironment {
     }
 }
 
-/// `AtomEnvironment` is used to represents atom-centered environments, where each atom
-/// in a structure is described with a feature vector based on other atoms
-/// inside a sphere centered on the central atom.
+/// `AtomEnvironment` is used to represents atom-centered environments, where
+/// each atom in a structure is described with a feature vector based on other
+/// atoms inside a sphere centered on the central atom.
 ///
-/// This type of indexes does not contain any chemical species information,
-/// for this you should use `AtomSpeciesEnvironment`.
+/// This type of indexes does not contain any chemical species information, for
+/// this you should use `AtomSpeciesEnvironment`.
 ///
-/// The base set of indexes contains `structure` and `center` (i.e. central
-/// atom index inside the structure); the gradient indexes also contains the
-/// `neighbor` inside the spherical cutoff with respect to which the gradient
-/// is taken and the `spatial` (i.e x/y/z) index.
+/// The base set of indexes contains `structure` and `center` (i.e. central atom
+/// index inside the structure); the gradient indexes also contains the
+/// `neighbor` inside the spherical cutoff with respect to which the gradient is
+/// taken and the `spatial` (i.e x/y/z) index.
 pub struct AtomEnvironment {
     cutoff: f64,
 }

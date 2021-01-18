@@ -3,8 +3,9 @@ use std::collections::BTreeSet;
 use crate::system::System;
 use super::{EnvironmentIndexes, Indexes, IndexesBuilder, IndexValue};
 
-/// `StructureSpeciesEnvironment` is used to represents environments corresponding to
-/// full structures, where each chemical species is represented separately.
+/// `StructureSpeciesEnvironment` is used to represents environments
+/// corresponding to full structures, where each chemical species is represented
+/// separately.
 ///
 /// The base set of indexes contains `structure` and `alpha` (i.e. chemical
 /// species); the  gradient indexes also contains the `atom` inside the
@@ -49,9 +50,9 @@ impl EnvironmentIndexes for StructureSpeciesEnvironment {
     }
 }
 
-/// `AtomSpeciesEnvironment` is used to represents atom-centered environments, where
-/// each atom in a structure is described with a feature vector based on other
-/// atoms inside a sphere centered on the central atom. These environments
+/// `AtomSpeciesEnvironment` is used to represents atom-centered environments,
+/// where each atom in a structure is described with a feature vector based on
+/// other atoms inside a sphere centered on the central atom. These environments
 /// include chemical species information.
 ///
 /// The base set of indexes contains `structure`, `center` (i.e. central atom
