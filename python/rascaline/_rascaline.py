@@ -44,7 +44,7 @@ class rascal_pair_t(ctypes.Structure):
     _fields_ = [
         ("first", c_uintptr_t),
         ("second", c_uintptr_t),
-        ("distance", ctypes.c_double),
+        ("vector", ctypes.c_double * 3),
     ]
 
 

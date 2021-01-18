@@ -48,10 +48,23 @@ typedef struct rascal_calculator_t rascal_calculator_t;
  */
 typedef struct rascal_descriptor_t rascal_descriptor_t;
 
+/*
+ Pair of atoms coming from a neighbor list
+ */
 typedef struct {
+  /*
+   index of the first atom in the pair
+   */
   uintptr_t first;
+  /*
+   index of the second atom in the pair
+   */
   uintptr_t second;
-  double distance;
+  /*
+   vector from the first atom to the second atom, wrapped inside the unit
+   cell as required
+   */
+  double vector[3];
 } rascal_pair_t;
 
 typedef struct {

@@ -42,9 +42,9 @@ rascal_system_t simple_system() {
 
     system.pairs = [](const void* _, const rascal_pair_t** pairs, uintptr_t* count){
         static rascal_pair_t PAIRS[] = {
-            {0, 1, 1.73205080756887729352},
-            {1, 2, 1.73205080756887729352},
-            {2, 3, 1.73205080756887729352},
+            {0, 1, {1, 1, 1}},
+            {1, 2, {1, 1, 1}},
+            {2, 3, {1, 1, 1}},
         };
 
         *pairs = PAIRS;

@@ -3,6 +3,17 @@ use std::os::raw::c_void;
 use crate::types::{Vector3D, Matrix3};
 use crate::system::{System, Pair, UnitCell};
 
+/// Pair of atoms coming from a neighbor list
+#[repr(C)]
+pub struct rascal_pair_t {
+    /// index of the first atom in the pair
+    pub first: usize,
+    /// index of the second atom in the pair
+    pub second: usize,
+    /// vector from the first atom to the second atom, wrapped inside the unit
+    /// cell as required
+    pub vector: [f64; 3],
+}
 
 #[repr(C)]
 pub struct rascal_system_t {
@@ -14,7 +25,7 @@ pub struct rascal_system_t {
     positions: Option<unsafe extern fn(user_data: *const c_void, positions: *mut *const f64)>,
     cell: Option<unsafe extern fn(user_data: *const c_void, cell: *mut f64)>,
     compute_neighbors: Option<unsafe extern fn(user_data: *mut c_void, cutoff: f64)>,
-    pairs: Option<unsafe extern fn(user_data: *const c_void, pairs: *mut *const Pair, count: *mut usize)>,
+    pairs: Option<unsafe extern fn(user_data: *const c_void, pairs: *mut *const rascal_pair_t, count: *mut usize)>,
 }
 
 impl System for rascal_system_t {
@@ -70,7 +81,7 @@ impl System for rascal_system_t {
         let mut count = 0;
         unsafe {
             function(self.user_data, &mut ptr, &mut count);
-            return std::slice::from_raw_parts(ptr, count);
+            return std::slice::from_raw_parts(ptr as *const Pair, count);
         }
     }
 }

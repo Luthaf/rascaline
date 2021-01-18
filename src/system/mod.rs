@@ -8,12 +8,19 @@ mod test_utils;
 #[cfg(test)]
 pub use self::test_utils::test_systems;
 
+/// Pair of atoms coming from a neighbor list.
+// WARNING: any change to this definition MUST be reflected in rascal_pair_t as
+// well
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct Pair {
+    /// index of the first atom in the pair
     pub first: usize,
+    /// index of the second atom in the pair
     pub second: usize,
-    pub distance: f64,
+    /// vector from the first atom to the second atom, wrapped inside the unit
+    /// cell as required
+    pub vector: Vector3D,
 }
 
 pub trait System {

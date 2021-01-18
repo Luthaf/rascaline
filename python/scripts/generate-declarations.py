@@ -133,6 +133,13 @@ def type_to_ctypes(type, ndpointer=False):
         if isinstance(type, c_ast.TypeDecl):
             assert len(type.type.names) == 1
             return c_type_name(type.type.names[0])
+        if isinstance(type, c_ast.ArrayDecl):
+            if isinstance(type.dim, c_ast.Constant):
+                size = type.dim.value
+            else:
+                raise Exception("dynamically sized arrays are not supported")
+
+            return f"{type_to_ctypes(type.type)} * {size}"
 
     raise Exception("Unknown type")
 

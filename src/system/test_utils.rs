@@ -16,12 +16,13 @@ impl CrappyNeighborsList {
         // crappy implementation, looping over all atoms in the system
         for i in 0..natoms {
             for j in (i + 1)..natoms {
-                let d2 = cell.distance2(&positions[i], &positions[j]);
-                if d2 < cutoff2 {
+                let mut vector = positions[j] - positions[i];
+                cell.vector_image(&mut vector);
+                if vector.norm2() < cutoff2 {
                     if i < j {
-                        pairs.push(Pair{ first: i, second: j, distance: d2.sqrt()});
+                        pairs.push(Pair{ first: i, second: j, vector: vector});
                     } else {
-                        pairs.push(Pair{ first: j, second: i, distance: d2.sqrt()});
+                        pairs.push(Pair{ first: j, second: i, vector: -vector});
                     }
                 }
             }

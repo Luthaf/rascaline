@@ -12,7 +12,6 @@ fn main() {
             documentation_style: cbindgen::DocumentationStyle::C,
             ..Default::default()
         })
-        .rename_item("Pair", "rascal_pair_t")
         .generate()
         .map(|data| {
             data.write_to_file("include/rascaline.h");
