@@ -7,6 +7,7 @@ from ._rascaline import rascal_system_t, rascal_status_t
 from .clib import _get_library
 from .status import _check_rascal_pointer, RascalError
 from .descriptor import Descriptor
+from .systems import wrap_system
 
 
 def _call_with_growing_buffer(callback, initial=1024):
@@ -35,6 +36,23 @@ def _check_selected_indexes(indexes, kind):
 
     if not np.can_cast(indexes.dtype, np.float64, "safe"):
         raise ValueError(f"selected {kind} array must contain float64 values")
+
+
+def _is_iterable(object):
+    try:
+        for e in object:
+            pass
+        return True
+    except TypeError:
+        return False
+
+
+def _convert_systems(systems):
+    try:
+        return (rascal_system_t * 1)(wrap_system(systems)._as_rascal_system_t())
+    except TypeError:
+        # try iterating over the systems
+        return (rascal_system_t * len(systems))(*list(wrap_system(s) for s in systems))
 
 
 class CalculatorBase:
@@ -69,25 +87,15 @@ class CalculatorBase:
         if descriptor is None:
             descriptor = Descriptor()
 
-        if not isinstance(systems, list):
-            systems = [systems]
-
-        c_systems = (rascal_system_t * len(systems))(
-            *list(s._as_rascal_system_t() for s in systems)
+        c_systems = _convert_systems(systems)
+        self._lib.rascal_calculator_compute(
+            self, descriptor, c_systems, c_systems._length_
         )
-        self._lib.rascal_calculator_compute(self, descriptor, c_systems, len(systems))
         return descriptor
 
     def compute_partial(self, systems, descriptor=None, samples=None, features=None):
         if descriptor is None:
             descriptor = Descriptor()
-
-        if not isinstance(systems, list):
-            systems = [systems]
-
-        c_systems = (rascal_system_t * len(systems))(
-            *list(s._as_rascal_system_t() for s in systems)
-        )
 
         if samples is not None:
             samples = np.array(samples)
@@ -113,11 +121,13 @@ class CalculatorBase:
         features_count = 0 if features is None else features.size
 
         ptr_type = ctypes.POINTER(ctypes.c_double)
+
+        c_systems = _convert_systems(systems)
         self._lib.rascal_calculator_compute_partial(
             self,
             descriptor,
             c_systems,
-            len(systems),
+            c_systems._length_,
             samples.ctypes.data_as(ptr_type) if samples is not None else None,
             samples_count,
             features.ctypes.data_as(ptr_type) if features is not None else None,

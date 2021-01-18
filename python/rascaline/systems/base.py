@@ -3,7 +3,7 @@ import numpy as np
 import ctypes
 from ctypes import POINTER, pointer, c_void_p, c_double
 
-from ._rascaline import rascal_system_t, rascal_pair_t, c_uintptr_t
+from .._rascaline import rascal_system_t, rascal_pair_t, c_uintptr_t
 
 
 class SystemBase:
@@ -40,7 +40,7 @@ class SystemBase:
     def cell(self):
         raise NotImplementedError("System.cell method is not implemented")
 
-    def compute_neighbors(self):
+    def compute_neighbors(self, cutoff):
         raise NotImplementedError("System.compute_neighbors method is not implemented")
 
     def pairs(self):

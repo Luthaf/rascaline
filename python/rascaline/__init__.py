@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from .descriptor import Descriptor
-from .system import SystemBase
+from .systems import SystemBase
 from .calculator import CalculatorBase
 from .calculator import SortedDistances
 from .status import RascalError

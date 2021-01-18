@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+"""
+Implementation of very basis systems for tests
+"""
+
 from rascaline import SystemBase
 
 
@@ -37,7 +41,7 @@ class EmptySystem(SystemBase):
         return []
 
     def cell(self):
-        return []
+        return [0, 0, 0, 0, 0, 0, 0, 0, 0]
 
     def compute_neighbors(self, cutoff):
         return

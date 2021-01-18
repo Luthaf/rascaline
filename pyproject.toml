@@ -10,9 +10,21 @@ build-backend = "setuptools.build_meta"
 legacy_tox_ini = """
 [tox]
 
-[testenv]
+[testenv:all]
 # skip install to avoid rebuilding the world, do the install with setup.py
 # instead of pip below
+skip_install = True
+passenv = RASCALINE_BUILD_TYPE
+
+deps =
+    discover
+    ase
+
+commands =
+    python setup.py --quiet install
+    discover -p "*.py" -s python/tests
+
+[testenv:no-ase]
 skip_install = True
 passenv = RASCALINE_BUILD_TYPE
 
