@@ -61,14 +61,31 @@ impl EnvironmentIndexes for StructureSpeciesEnvironment {
 /// `neighbor` inside the spherical cutoff with respect to which the gradient is
 /// taken and the `spatial` (i.e x/y/z) index.
 pub struct AtomSpeciesEnvironment {
+    /// spherical cutoff radius used to construct the atom-centered environments
     cutoff: f64,
+    /// Is the central atom considered to be its own neighbor?
+    self_contribution: bool,
 }
 
 impl AtomSpeciesEnvironment {
-    /// Create a nex `AtomSpeciesEnvironment` with the given `cutoff`
+    /// Create a new `AtomSpeciesEnvironment` with the given `cutoff`, excluding
+    /// self contributions.
     pub fn new(cutoff: f64) -> AtomSpeciesEnvironment {
         assert!(cutoff > 0.0 && cutoff.is_finite(), "cutoff must be positive for AtomSpeciesEnvironment");
-        AtomSpeciesEnvironment { cutoff }
+        AtomSpeciesEnvironment {
+            cutoff: cutoff,
+            self_contribution: false,
+        }
+    }
+
+    /// Create a new `AtomSpeciesEnvironment` with the given `cutoff`, including
+    /// self contributions.
+    pub fn with_self_contribution(cutoff: f64) -> AtomSpeciesEnvironment {
+        assert!(cutoff > 0.0 && cutoff.is_finite(), "cutoff must be positive for AtomSpeciesEnvironment");
+        AtomSpeciesEnvironment {
+            cutoff: cutoff,
+            self_contribution: true,
+        }
     }
 }
 
@@ -88,6 +105,12 @@ impl EnvironmentIndexes for AtomSpeciesEnvironment {
                 set.insert((i_system, pair.first, species_first, species_second));
                 set.insert((i_system, pair.second, species_second, species_first));
             };
+
+            if self.self_contribution {
+                for (center, &species) in species.iter().enumerate() {
+                    set.insert((i_system, center, species, species));
+                }
+            }
         }
 
         let mut indexes = IndexesBuilder::new(vec!["structure", "center", "alpha", "beta"]);
@@ -216,6 +239,46 @@ mod tests {
             // second H in water
             &[v!(1), v!(2), v!(1), v!(1)],
             &[v!(1), v!(2), v!(1), v!(123456)],
+        ]);
+    }
+
+    #[test]
+    fn atoms_self_contribution() {
+        let mut systems = test_systems(&["CH"]);
+        let strategy = AtomSpeciesEnvironment::new(2.0);
+        let indexes = strategy.indexes(&mut systems.get());
+        assert_eq!(indexes.count(), 2);
+        assert_eq!(indexes.names(), &["structure", "center", "alpha", "beta"]);
+        assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
+            // H in CH
+            &[v!(0), v!(0), v!(1), v!(6)],
+            // C in CH
+            &[v!(0), v!(1), v!(6), v!(1)],
+        ]);
+
+        let strategy = AtomSpeciesEnvironment::with_self_contribution(2.0);
+        let indexes = strategy.indexes(&mut systems.get());
+        assert_eq!(indexes.count(), 4);
+        assert_eq!(indexes.names(), &["structure", "center", "alpha", "beta"]);
+        assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
+            // H in CH
+            &[v!(0), v!(0), v!(1), v!(1)],
+            &[v!(0), v!(0), v!(1), v!(6)],
+            // C in CH
+            &[v!(0), v!(1), v!(6), v!(1)],
+            &[v!(0), v!(1), v!(6), v!(6)],
+        ]);
+
+        // we get entries even without proper neighbors
+        let strategy = AtomSpeciesEnvironment::with_self_contribution(1.0);
+        let indexes = strategy.indexes(&mut systems.get());
+        assert_eq!(indexes.count(), 2);
+        assert_eq!(indexes.names(), &["structure", "center", "alpha", "beta"]);
+        assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
+            // H in CH
+            &[v!(0), v!(0), v!(1), v!(1)],
+            // C in CH
+            &[v!(0), v!(1), v!(6), v!(6)],
         ]);
     }
 

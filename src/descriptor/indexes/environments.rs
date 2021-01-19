@@ -52,6 +52,7 @@ impl EnvironmentIndexes for StructureEnvironment {
 /// `neighbor` inside the spherical cutoff with respect to which the gradient is
 /// taken and the `spatial` (i.e x/y/z) index.
 pub struct AtomEnvironment {
+    /// spherical cutoff radius used to construct the atom-centered environments
     cutoff: f64,
 }
 

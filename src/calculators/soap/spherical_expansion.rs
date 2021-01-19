@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use ndarray::Array2;
 
-use crate::descriptor::Descriptor;
+use crate::{Vector3D, descriptor::Descriptor};
 use crate::descriptor::{IndexesBuilder, IndexValue, Indexes, EnvironmentIndexes, AtomSpeciesEnvironment};
 use crate::system::System;
 
@@ -166,7 +166,7 @@ impl CalculatorBase for SphericalExpansion {
     }
 
     fn environments(&self) -> Box<dyn EnvironmentIndexes> {
-        Box::new(AtomSpeciesEnvironment::new(self.parameters.cutoff))
+        Box::new(AtomSpeciesEnvironment::with_self_contribution(self.parameters.cutoff))
     }
 
     fn compute_gradients(&self) -> bool {
@@ -200,6 +200,10 @@ impl CalculatorBase for SphericalExpansion {
         assert_eq!(descriptor.environments.names(), &["structure", "center", "alpha", "beta"]);
         assert_eq!(descriptor.features.names(), &["n", "l", "m"]);
 
+        // keep a list of pairs for which everything have already been
+        // computed
+        let mut already_computed_pairs = BTreeSet::new();
+
         for (i_env, requested_env) in descriptor.environments.iter().enumerate() {
             let i_system = requested_env[0];
             let center = requested_env[1].usize();
@@ -209,31 +213,48 @@ impl CalculatorBase for SphericalExpansion {
             let system = &mut *systems[i_system.usize()];
             system.compute_neighbors(self.parameters.cutoff);
 
-            // keep a list of pairs for which everything have already been
-            // computed
-            let mut already_computed_pairs = BTreeSet::new();
+            // self-contributions
+            if alpha == beta && already_computed_pairs.insert((center, center)) {
+                self.radial_integral.compute(0.0, self.ri_values.view_mut(), None);
+
+                self.spherical_harmonics.compute(
+                    Vector3D::new(0.0, 0.0, 1.0), &mut self.sph_values, None
+                );
+                let f_cut = self.parameters.cutoff_function.compute(0.0, self.parameters.cutoff);
+
+                for (i_feature, feature) in descriptor.features.iter().enumerate() {
+                    let n = feature[0].usize();
+                    let l = feature[1].usize();
+                    let m = feature[1].isize();
+
+                    let n_l_m_value = f_cut * self.ri_values[[n, l]] * self.sph_values[[l as isize, m]];
+                    descriptor.values[[i_env, i_feature]] += n_l_m_value;
+                }
+            }
 
             // TODO: add a system.pairs_with(center) function instead of
             // searching through all pairs at all time
             for pair in system.pairs() {
                 if (pair.first == center || pair.second == center) && already_computed_pairs.insert((pair.first, pair.second)) {
-                    let distance = pair.vector.norm();
-                    let direction = pair.vector / distance;
-
+                    // we store the result for center -> neighbor in env_i, this
+                    // code check where to store the result for neighbor ->
+                    // center.
                     let (other_env_i, sign) = if center == pair.first {
                         (descriptor.environments.position(&[i_system, IndexValue::from(pair.second), beta, alpha]), 1.0)
                     } else {
                         (descriptor.environments.position(&[i_system, IndexValue::from(pair.first), beta, alpha]), -1.0)
                     };
 
+                    let distance = pair.vector.norm();
+                    let direction = sign * pair.vector / distance;
+
                     self.radial_integral.compute(
                         distance, self.ri_values.view_mut(), self.ri_gradients.as_mut().map(|o| o.view_mut())
                     );
 
                     self.spherical_harmonics.compute(
-                        sign * direction, &mut self.sph_values, self.sph_gradients.as_mut()
+                        direction, &mut self.sph_values, self.sph_gradients.as_mut()
                     );
-
                     let f_cut = self.parameters.cutoff_function.compute(distance, self.parameters.cutoff);
 
                     for (i_feature, feature) in descriptor.features.iter().enumerate() {
