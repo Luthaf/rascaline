@@ -7,6 +7,36 @@ from .clib import _get_library
 from .status import _check_rascal_pointer
 
 
+class Indexes(np.ndarray):
+    """
+    Small wrapper around `numpy.ndarray` that adds a `names` attribute
+    containing the names of the indexes.
+    """
+
+    def __new__(cls, ptr, shape, names):
+        assert len(shape) == 2
+        assert len(names) == shape[1]
+
+        dtype = [(name, np.float64) for name in names]
+        if ptr is not None:
+            array = np.ctypeslib.as_array(ptr, shape=shape)
+            array.flags.writeable = False
+            # view the array as a numpy structured array containing multiple
+            # entries
+            array = array.view(dtype=dtype).reshape((shape[0],))
+        else:
+            array = np.array([], dtype=dtype)
+
+        obj = array.view(cls)
+        obj.names = tuple(names)
+        return obj
+
+    def __array_finalize__(self, obj):
+        if obj is None:
+            return
+        self.names = getattr(obj, "names", tuple())
+
+
 class Descriptor:
     def __init__(self):
         self._lib = _get_library()
@@ -47,15 +77,14 @@ class Descriptor:
         data = POINTER(c_double)()
         self._lib.rascal_descriptor_indexes(self, kind.value, data, count, size)
 
-        if count.value == 0:
-            return []
-
         StringArray = c_char_p * size.value
         names = StringArray()
         self._lib.rascal_descriptor_indexes_names(self, kind.value, names, size)
+        names = list(map(lambda n: n.decode("utf8"), names))
 
-        dtype = [(name, np.float64) for name in map(lambda n: n.decode("utf8"), names)]
-        return np_array_view(data, (count.value, size.value), dtype=dtype)
+        shape = (count.value, size.value)
+        ptr = data if count.value != 0 else None
+        return Indexes(ptr=ptr, shape=shape, names=names)
 
     @property
     def environments(self):
@@ -78,13 +107,7 @@ def np_array_view(ptr, shape, dtype):
     if shape[0] != 0 and shape[1] != 0:
         array = np.ctypeslib.as_array(ptr, shape=shape)
         array.flags.writeable = False
-        if isinstance(dtype, list):
-            # view the array as a numpy structured array containing multiple
-            # entries
-            assert len(dtype) == shape[1]
-            return array.view(dtype=dtype).reshape((shape[0],))
-        else:
-            return array
+        return array
     else:
         data = np.array([], dtype=dtype)
         return data.reshape(shape)
