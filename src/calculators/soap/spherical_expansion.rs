@@ -213,9 +213,12 @@ impl CalculatorBase for SphericalExpansion {
             let system = &mut *systems[i_system.usize()];
             system.compute_neighbors(self.parameters.cutoff);
             let species = system.species();
+            assert_eq!(species[center], alpha.usize());
 
             // self-contributions
             if alpha == beta && already_computed_pairs.insert((center, center)) {
+                // TODO: cache self contribution, they only depend on the
+                // gaussian atomic width
                 self.radial_integral.compute(0.0, self.ri_values.view_mut(), None);
 
                 self.spherical_harmonics.compute(
@@ -276,7 +279,7 @@ impl CalculatorBase for SphericalExpansion {
                 for (i_feature, feature) in descriptor.features.iter().enumerate() {
                     let n = feature[0].usize();
                     let l = feature[1].usize();
-                    let m = feature[1].isize();
+                    let m = feature[2].isize();
 
                     let n_l_m_value = f_cut * self.ri_values[[n, l]] * self.sph_values[[l as isize, m]];
                     descriptor.values[[i_env, i_feature]] += sign.powi(l as i32) * n_l_m_value;

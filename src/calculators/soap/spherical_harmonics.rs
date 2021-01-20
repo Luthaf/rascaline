@@ -305,7 +305,7 @@ impl SphericalHarmonics {
         }
 
         for l in 0..(self.max_angular + 1) {
-            values[[l as isize, 0]] = 0.5 * SQRT_2 * self.legendre_polynomials[[l, 0]];
+            values[[l as isize, 0]] = self.legendre_polynomials[[l, 0]] / SQRT_2;
         }
 
         if let Some(ref mut gradients) = gradients {
