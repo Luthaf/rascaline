@@ -19,6 +19,7 @@ if HAVE_ASE:
                 raise Exception("this class expects ASE.Atoms objects")
             self._atoms = atoms
             self._pairs = []
+            self._last_cutoff = None
 
         def size(self):
             return len(self._atoms)
@@ -33,6 +34,9 @@ if HAVE_ASE:
             return np.concatenate(self._atoms.cell[:, :])
 
         def compute_neighbors(self, cutoff):
+            if self._last_cutoff == cutoff:
+                return
+
             self._pairs = []
 
             nl_result = neighborlist.neighbor_list("ijD", self._atoms, cutoff)
