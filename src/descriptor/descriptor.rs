@@ -263,7 +263,7 @@ mod tests {
 
         assert_eq!(descriptor.values.shape(), [4, 3]);
 
-        assert_eq!(descriptor.environments.names(), ["structure", "alpha"]);
+        assert_eq!(descriptor.environments.names(), ["structure", "species"]);
         assert_eq!(descriptor.environments[0], [v!(0), v!(1)]);
         assert_eq!(descriptor.environments[1], [v!(0), v!(123456)]);
         assert_eq!(descriptor.environments[2], [v!(1), v!(1)]);
@@ -280,7 +280,7 @@ mod tests {
         assert_eq!(gradients.shape(), [15, 3]);
 
         let gradients_indexes = descriptor.gradients_indexes.as_ref().unwrap();
-        assert_eq!(gradients_indexes.names(), ["structure", "alpha", "atom", "spatial"]);
+        assert_eq!(gradients_indexes.names(), ["structure", "species", "atom", "spatial"]);
 
         // use a loop to simplify checking the spatial dimension
         let expected = [
@@ -324,7 +324,7 @@ mod tests {
         ]);
 
         // where the magic happens
-        descriptor.densify("alpha");
+        descriptor.densify("species");
 
         assert_eq!(descriptor.values.shape(), [2, 9]);
         assert_eq!(descriptor.environments.names(), ["structure"]);

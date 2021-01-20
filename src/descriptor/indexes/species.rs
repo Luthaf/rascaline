@@ -7,15 +7,14 @@ use super::{EnvironmentIndexes, Indexes, IndexesBuilder, IndexValue};
 /// corresponding to full structures, where each chemical species is represented
 /// separately.
 ///
-/// The base set of indexes contains `structure` and `alpha` (i.e. chemical
-/// species); the  gradient indexes also contains the `atom` inside the
-/// structure with respect to which the gradient is taken and the `spatial`
-/// (i.e. x/y/z) index.
+/// The base set of indexes contains `structure` and `species` the  gradient
+/// indexes also contains the `atom` inside the structure with respect to which
+/// the gradient is taken and the `spatial` (i.e. x/y/z) index.
 pub struct StructureSpeciesEnvironment;
 
 impl EnvironmentIndexes for StructureSpeciesEnvironment {
     fn indexes(&self, systems: &mut [&mut dyn System]) -> Indexes {
-        let mut indexes = IndexesBuilder::new(vec!["structure", "alpha"]);
+        let mut indexes = IndexesBuilder::new(vec!["structure", "species"]);
         for (i_system, system) in systems.iter().enumerate() {
             for &species in system.species().iter().collect::<BTreeSet<_>>() {
                 indexes.add(&[
@@ -27,9 +26,9 @@ impl EnvironmentIndexes for StructureSpeciesEnvironment {
     }
 
     fn gradients_for(&self, systems: &mut [&mut dyn System], samples: &Indexes) -> Option<Indexes> {
-        assert_eq!(samples.names(), ["structure", "alpha"]);
+        assert_eq!(samples.names(), ["structure", "species"]);
 
-        let mut gradients = IndexesBuilder::new(vec!["structure", "alpha", "atom", "spatial"]);
+        let mut gradients = IndexesBuilder::new(vec!["structure", "species", "atom", "spatial"]);
         for value in samples.iter() {
             let i_system = value[0];
             let alpha = value[1];
@@ -113,7 +112,7 @@ impl EnvironmentIndexes for AtomSpeciesEnvironment {
             }
         }
 
-        let mut indexes = IndexesBuilder::new(vec!["structure", "center", "alpha", "beta"]);
+        let mut indexes = IndexesBuilder::new(vec!["structure", "center", "species_center", "species_neighbor"]);
         for (s, c, a, b) in set {
             indexes.add(&[
                 IndexValue::from(s), IndexValue::from(c), IndexValue::from(a), IndexValue::from(b)
@@ -123,7 +122,7 @@ impl EnvironmentIndexes for AtomSpeciesEnvironment {
     }
 
     fn gradients_for(&self, systems: &mut [&mut dyn System], samples: &Indexes) -> Option<Indexes> {
-        assert_eq!(samples.names(), ["structure", "center", "alpha", "beta"]);
+        assert_eq!(samples.names(), ["structure", "center", "species_center", "species_neighbor"]);
 
         let requested_systems = samples.iter().map(|v| v[0]).collect::<BTreeSet<_>>();
 
@@ -155,9 +154,19 @@ impl EnvironmentIndexes for AtomSpeciesEnvironment {
                     set.insert((i_system, pair.second, species_second, species_first, pair.first));
                 }
             }
+
+            // FIXME: this will always be 0, but is required for Descriptor.densify
+            if self.self_contribution {
+                for (center, &species) in species.iter().enumerate() {
+                    set.insert((i_system, center, species, species, center));
+                }
+            }
         }
 
-        let mut gradients = IndexesBuilder::new(vec!["structure", "center", "alpha", "beta", "neighbor", "spatial"]);
+        let mut gradients = IndexesBuilder::new(vec![
+            "structure", "center", "species_center", "species_neighbor",
+            "neighbor", "spatial"
+        ]);
         for (system, c, a, b, n) in set {
             let center = IndexValue::from(c);
             let alpha = IndexValue::from(a);
@@ -190,7 +199,7 @@ mod tests {
         let mut systems = test_systems(&["methane", "methane", "water"]);
         let indexes = StructureSpeciesEnvironment.indexes(&mut systems.get());
         assert_eq!(indexes.count(), 6);
-        assert_eq!(indexes.names(), &["structure", "alpha"]);
+        assert_eq!(indexes.names(), &["structure", "species"]);
         assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
             &[v!(0), v!(1)], &[v!(0), v!(6)],
             &[v!(1), v!(1)], &[v!(1), v!(6)],
@@ -204,7 +213,7 @@ mod tests {
         let (_, gradients) = StructureSpeciesEnvironment.with_gradients(&mut systems.get());
         let gradients = gradients.unwrap();
         assert_eq!(gradients.count(), 15);
-        assert_eq!(gradients.names(), &["structure", "alpha", "atom", "spatial"]);
+        assert_eq!(gradients.names(), &["structure", "species", "atom", "spatial"]);
 
         assert_eq!(gradients.iter().collect::<Vec<_>>(), vec![
             // H channel in CH
@@ -225,7 +234,7 @@ mod tests {
         let strategy = AtomSpeciesEnvironment::new(2.0);
         let indexes = strategy.indexes(&mut systems.get());
         assert_eq!(indexes.count(), 7);
-        assert_eq!(indexes.names(), &["structure", "center", "alpha", "beta"]);
+        assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor"]);
         assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
             // H in CH
             &[v!(0), v!(0), v!(1), v!(6)],
@@ -248,7 +257,7 @@ mod tests {
         let strategy = AtomSpeciesEnvironment::new(2.0);
         let indexes = strategy.indexes(&mut systems.get());
         assert_eq!(indexes.count(), 2);
-        assert_eq!(indexes.names(), &["structure", "center", "alpha", "beta"]);
+        assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor"]);
         assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
             // H in CH
             &[v!(0), v!(0), v!(1), v!(6)],
@@ -259,7 +268,7 @@ mod tests {
         let strategy = AtomSpeciesEnvironment::with_self_contribution(2.0);
         let indexes = strategy.indexes(&mut systems.get());
         assert_eq!(indexes.count(), 4);
-        assert_eq!(indexes.names(), &["structure", "center", "alpha", "beta"]);
+        assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor"]);
         assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
             // H in CH
             &[v!(0), v!(0), v!(1), v!(1)],
@@ -273,7 +282,7 @@ mod tests {
         let strategy = AtomSpeciesEnvironment::with_self_contribution(1.0);
         let indexes = strategy.indexes(&mut systems.get());
         assert_eq!(indexes.count(), 2);
-        assert_eq!(indexes.names(), &["structure", "center", "alpha", "beta"]);
+        assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor"]);
         assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
             // H in CH
             &[v!(0), v!(0), v!(1), v!(1)],
@@ -290,7 +299,7 @@ mod tests {
         let gradients = gradients.unwrap();
 
         assert_eq!(gradients.count(), 24);
-        assert_eq!(gradients.names(), &["structure", "center", "alpha", "beta", "neighbor", "spatial"]);
+        assert_eq!(gradients.names(), &["structure", "center", "species_center", "species_neighbor", "neighbor", "spatial"]);
         assert_eq!(gradients.iter().collect::<Vec<_>>(), vec![
             // H-C channel in CH
             &[v!(0), v!(0), v!(1), v!(6), v!(1), v!(0)],

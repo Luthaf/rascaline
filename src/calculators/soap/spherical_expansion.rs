@@ -186,7 +186,7 @@ impl CalculatorBase for SphericalExpansion {
     }
 
     fn check_environments(&self, indexes: &Indexes, systems: &mut [&mut dyn System]) {
-        assert_eq!(indexes.names(), &["structure", "center", "alpha", "beta"]);
+        assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor"]);
         // This could be made much faster by not recomputing the full list of
         // potential environments
         let allowed = self.environments().indexes(systems);
@@ -197,7 +197,7 @@ impl CalculatorBase for SphericalExpansion {
 
     #[allow(clippy::similar_names, clippy::too_many_lines)]
     fn compute(&mut self, systems: &mut [&mut dyn System], descriptor: &mut Descriptor) {
-        assert_eq!(descriptor.environments.names(), &["structure", "center", "alpha", "beta"]);
+        assert_eq!(descriptor.environments.names(), &["structure", "center", "species_center", "species_neighbor"]);
         assert_eq!(descriptor.features.names(), &["n", "l", "m"]);
 
         // keep a list of pairs for which everything have already been

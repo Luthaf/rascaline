@@ -45,7 +45,7 @@ impl CalculatorBase for SortedDistances {
     }
 
     fn check_environments(&self, indexes: &Indexes, systems: &mut [&mut dyn System]) {
-        assert_eq!(indexes.names(), &["structure", "center", "alpha", "beta"]);
+        assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor"]);
         // This could be made much faster by not recomputing the full list of
         // potential environments
         let allowed = self.environments().indexes(systems);
@@ -190,7 +190,7 @@ mod tests {
         let mut systems = test_systems(&["water"]);
         let mut descriptor = Descriptor::new();
 
-        let mut samples = IndexesBuilder::new(vec!["structure", "center", "alpha", "beta"]);
+        let mut samples = IndexesBuilder::new(vec!["structure", "center", "species_center", "species_neighbor"]);
         samples.add(&[
             IndexValue::from(0_usize), IndexValue::from(1_usize),
             IndexValue::from(1_usize), IndexValue::from(123456_usize)
