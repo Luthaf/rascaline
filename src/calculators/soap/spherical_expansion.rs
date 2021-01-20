@@ -212,6 +212,7 @@ impl CalculatorBase for SphericalExpansion {
 
             let system = &mut *systems[i_system.usize()];
             system.compute_neighbors(self.parameters.cutoff);
+            let species = system.species();
 
             // self-contributions
             if alpha == beta && already_computed_pairs.insert((center, center)) {
@@ -235,117 +236,119 @@ impl CalculatorBase for SphericalExpansion {
             // TODO: add a system.pairs_with(center) function instead of
             // searching through all pairs at all time
             for pair in system.pairs() {
-                if (pair.first == center || pair.second == center) && already_computed_pairs.insert((pair.first, pair.second)) {
-                    // we store the result for center -> neighbor in env_i, this
-                    // code check where to store the result for neighbor ->
-                    // center.
-                    let (other_env_i, sign) = if center == pair.first {
-                        (descriptor.environments.position(&[i_system, IndexValue::from(pair.second), beta, alpha]), 1.0)
-                    } else {
-                        (descriptor.environments.position(&[i_system, IndexValue::from(pair.first), beta, alpha]), -1.0)
-                    };
+                if pair.first != center && pair.second != center {
+                    continue;
+                }
 
-                    let distance = pair.vector.norm();
-                    let direction = sign * pair.vector / distance;
+                let (neighbor, sign) = if center == pair.first {
+                    (pair.second, 1.0)
+                } else {
+                    (pair.first, -1.0)
+                };
 
-                    self.radial_integral.compute(
-                        distance, self.ri_values.view_mut(), self.ri_gradients.as_mut().map(|o| o.view_mut())
-                    );
+                if species[neighbor] != beta.usize() {
+                    continue;
+                }
 
-                    self.spherical_harmonics.compute(
-                        direction, &mut self.sph_values, self.sph_gradients.as_mut()
-                    );
-                    let f_cut = self.parameters.cutoff_function.compute(distance, self.parameters.cutoff);
+                if !already_computed_pairs.insert((pair.first, pair.second)) {
+                    continue;
+                }
+
+                // we store the result for center -> neighbor in env_i, this
+                // code check where to store the result for neighbor ->
+                // center.
+                let other_env_i = descriptor.environments.position(
+                    &[i_system, IndexValue::from(neighbor), beta, alpha]
+                );
+
+                let distance = pair.vector.norm();
+                let direction = sign * pair.vector / distance;
+
+                self.radial_integral.compute(
+                    distance, self.ri_values.view_mut(), self.ri_gradients.as_mut().map(|o| o.view_mut())
+                );
+
+                self.spherical_harmonics.compute(
+                    direction, &mut self.sph_values, self.sph_gradients.as_mut()
+                );
+                let f_cut = self.parameters.cutoff_function.compute(distance, self.parameters.cutoff);
+
+                for (i_feature, feature) in descriptor.features.iter().enumerate() {
+                    let n = feature[0].usize();
+                    let l = feature[1].usize();
+                    let m = feature[1].isize();
+
+                    let n_l_m_value = f_cut * self.ri_values[[n, l]] * self.sph_values[[l as isize, m]];
+                    descriptor.values[[i_env, i_feature]] += sign.powi(l as i32) * n_l_m_value;
+                    if let Some(other_env_i) = other_env_i {
+                        descriptor.values[[other_env_i, i_feature]] += (-sign).powi(l as i32) * n_l_m_value;
+                    }
+                }
+
+                // get the indexes where to store the gradient for this
+                // specific pair, if any
+                let (center_grad_i, neighbor_grad_i) = if let Some(ref indexes) = descriptor.gradients_indexes {
+                    assert!(self.parameters.gradients);
+                    let center_grad = indexes.position(&[
+                        i_system, IndexValue::from(center), alpha, beta,
+                        IndexValue::from(neighbor), IndexValue::from(0_usize)
+                    ]);
+                    let neighbor_grad = indexes.position(&[
+                        i_system, IndexValue::from(neighbor), beta, alpha,
+                        IndexValue::from(center), IndexValue::from(0_usize)
+                    ]);
+                    (center_grad, neighbor_grad)
+                } else {
+                    (None, None)
+                };
+
+                if self.parameters.gradients {
+                    let f_cut_grad = self.parameters.cutoff_function.derivative(distance, self.parameters.cutoff);
+
+                    let dr_dx = pair.vector[0] / distance;
+                    let dr_dy = pair.vector[1] / distance;
+                    let dr_dz = pair.vector[2] / distance;
+
+                    let gradients = descriptor.gradients.as_mut().expect("missing storage for gradients");
+                    let center_grad_i = center_grad_i.expect("missing storage for gradient");
+                    let neighbor_grad_i = neighbor_grad_i.expect("missing storage for gradient");
+                    let ri_gradients = self.ri_gradients.as_ref().expect("missing radial integral gradients");
+                    let sph_gradients = self.sph_gradients.as_ref().expect("missing spherical harmonics gradients");
 
                     for (i_feature, feature) in descriptor.features.iter().enumerate() {
                         let n = feature[0].usize();
                         let l = feature[1].usize();
                         let m = feature[1].isize();
 
-                        let n_l_m_value = f_cut * self.ri_values[[n, l]] * self.sph_values[[l as isize, m]];
-                        descriptor.values[[i_env, i_feature]] += sign.powi(l as i32) * n_l_m_value;
-                        if let Some(other_env_i) = other_env_i {
-                            descriptor.values[[other_env_i, i_feature]] += (-sign).powi(l as i32) * n_l_m_value;
-                        }
-                    }
+                        let sph_value = self.sph_values[[l as isize, m]];
+                        let sph_grad_x = sph_gradients[0][[l as isize, m]];
+                        let sph_grad_y = sph_gradients[1][[l as isize, m]];
+                        let sph_grad_z = sph_gradients[2][[l as isize, m]];
 
-                    // get the indexes where to store the gradient for this
-                    // specific pair, if any
-                    let (center_grad_i, neighbor_grad_i) = if let Some(ref indexes) = descriptor.gradients_indexes {
-                        assert!(self.parameters.gradients);
-                        if center == pair.first {
-                            let center_grad = indexes.position(&[
-                                i_system, IndexValue::from(pair.first), alpha, beta,
-                                IndexValue::from(pair.second), IndexValue::from(0_usize)
-                            ]);
-                            let neighbor_grad = indexes.position(&[
-                                i_system, IndexValue::from(pair.second), beta, alpha,
-                                IndexValue::from(pair.first), IndexValue::from(0_usize)
-                            ]);
-                            (center_grad, neighbor_grad)
-                        } else {
-                            let center_grad = indexes.position(&[
-                                i_system, IndexValue::from(pair.second), alpha, beta,
-                                IndexValue::from(pair.first), IndexValue::from(0_usize)
-                            ]);
-                            let neighbor_grad = indexes.position(&[
-                                i_system, IndexValue::from(pair.first), beta, alpha,
-                                IndexValue::from(pair.second), IndexValue::from(0_usize)
-                            ]);
-                            (center_grad, neighbor_grad)
-                        }
-                    } else {
-                        (None, None)
-                    };
+                        let ri_value = self.ri_values[[n, l]];
+                        let ri_grad = ri_gradients[[n, l]];
 
-                    if self.parameters.gradients {
-                        let f_cut_grad = self.parameters.cutoff_function.derivative(distance, self.parameters.cutoff);
+                        let grad_x = f_cut_grad * dr_dx * ri_value * sph_value
+                                    + f_cut * ri_grad * dr_dx * sph_value
+                                    + f_cut * ri_value * sph_grad_x;
 
-                        let dr_dx = pair.vector[0] / distance;
-                        let dr_dy = pair.vector[1] / distance;
-                        let dr_dz = pair.vector[2] / distance;
+                        let grad_y = f_cut_grad * dr_dy * ri_value * sph_value
+                                    + f_cut * ri_grad * dr_dy * sph_value
+                                    + f_cut * ri_value * sph_grad_y;
 
-                        let gradients = descriptor.gradients.as_mut().expect("missing storage for gradients");
-                        let center_grad_i = center_grad_i.expect("missing storage for gradient");
-                        let neighbor_grad_i = neighbor_grad_i.expect("missing storage for gradient");
-                        let ri_gradients = self.ri_gradients.as_ref().expect("missing radial integral gradients");
-                        let sph_gradients = self.sph_gradients.as_ref().expect("missing spherical harmonics gradients");
+                        let grad_z = f_cut_grad * dr_dz * ri_value * sph_value
+                                    + f_cut * ri_grad * dr_dz * sph_value
+                                    + f_cut * ri_value * sph_grad_z;
 
-                        for (i_feature, feature) in descriptor.features.iter().enumerate() {
-                            let n = feature[0].usize();
-                            let l = feature[1].usize();
-                            let m = feature[1].isize();
+                        // assumes that the three spatial derivative are one after the other
+                        gradients[[center_grad_i, i_feature]] += sign.powi(l as i32) * grad_x;
+                        gradients[[neighbor_grad_i, i_feature]] += (-sign).powi(l as i32) * grad_x;
 
-                            let sph_value = self.sph_values[[l as isize, m]];
-                            let sph_grad_x = sph_gradients[0][[l as isize, m]];
-                            let sph_grad_y = sph_gradients[1][[l as isize, m]];
-                            let sph_grad_z = sph_gradients[2][[l as isize, m]];
+                        gradients[[center_grad_i + 1, i_feature]] += sign.powi(l as i32) * grad_y;
+                        gradients[[neighbor_grad_i + 1, i_feature]] += (-sign).powi(l as i32) * grad_y;
 
-                            let ri_value = self.ri_values[[n, l]];
-                            let ri_grad = ri_gradients[[n, l]];
-
-                            let grad_x = f_cut_grad * dr_dx * ri_value * sph_value
-                                       + f_cut * ri_grad * dr_dx * sph_value
-                                       + f_cut * ri_value * sph_grad_x;
-
-                            let grad_y = f_cut_grad * dr_dy * ri_value * sph_value
-                                       + f_cut * ri_grad * dr_dy * sph_value
-                                       + f_cut * ri_value * sph_grad_y;
-
-                            let grad_z = f_cut_grad * dr_dz * ri_value * sph_value
-                                       + f_cut * ri_grad * dr_dz * sph_value
-                                       + f_cut * ri_value * sph_grad_z;
-
-                            // assumes that the three spatial derivative are one after the other
-                            gradients[[center_grad_i, i_feature]] += sign.powi(l as i32) * grad_x;
-                            gradients[[neighbor_grad_i, i_feature]] += (-sign).powi(l as i32) * grad_x;
-
-                            gradients[[center_grad_i + 1, i_feature]] += sign.powi(l as i32) * grad_y;
-                            gradients[[neighbor_grad_i + 1, i_feature]] += (-sign).powi(l as i32) * grad_y;
-
-                            gradients[[center_grad_i + 2, i_feature]] += sign.powi(l as i32) * grad_z;
-                            gradients[[neighbor_grad_i + 2, i_feature]] += (-sign).powi(l as i32) * grad_z;
-                        }
+                        gradients[[center_grad_i + 2, i_feature]] += sign.powi(l as i32) * grad_z;
+                        gradients[[neighbor_grad_i + 2, i_feature]] += (-sign).powi(l as i32) * grad_z;
                     }
                 }
             }
