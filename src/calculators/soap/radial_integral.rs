@@ -212,14 +212,10 @@ impl RadialIntegral for GTO {
             grad_factors *= &values;
             *gradients += &grad_factors;
 
-            // do `gradients = self.gto_orthonormalization * gradients` without
-            // introducing a temporary matrix
-            gradients.t().dot(&self.gto_orthonormalization.t());
+            gradients.assign(&self.gto_orthonormalization.dot(&*gradients));
         }
 
-        // do `values = self.gto_orthonormalization * values` without
-        // introducing a temporary matrix
-        values.t().dot(&self.gto_orthonormalization.t());
+        values.assign(&self.gto_orthonormalization.dot(&values));
     }
 }
 
@@ -288,11 +284,11 @@ mod tests {
 
         #[test]
         fn gto_finite_differences() {
-            let max_radial = 10;
-            let max_angular = 4;
+            let max_radial = 8;
+            let max_angular = 8;
             let gto = GTO::new(GTOParameters {
-                max_radial: 10,
-                max_angular: 4,
+                max_radial: max_radial,
+                max_angular: max_angular,
                 cutoff: 5.0,
                 atomic_gaussian_width: 0.5,
             });
