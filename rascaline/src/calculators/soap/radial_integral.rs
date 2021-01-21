@@ -9,8 +9,8 @@ use super::{HyperGeometricSphericalExpansion, HyperGeometricParameters};
 const PI_TO_THREE_HALF: f64 = 15.503138340149908;
 
 pub trait RadialIntegral: std::panic::RefUnwindSafe {
-    /// Compute the radial integral for a single atomic distance `rij` and store
-    /// the resulting data in the `max_radial x max_angular` array `values`. If
+    /// Compute the radial integral for a single atomic `distance` and store the
+    /// resulting data in the `max_radial x max_angular` array `values`. If
     /// `gradients` is `Some`, also compute and store gradients.
     fn compute(&self, rij: f64, values: ArrayViewMut2<f64>, gradients: Option<ArrayViewMut2<f64>>);
 }
@@ -176,7 +176,12 @@ impl GTO {
 }
 
 impl RadialIntegral for GTO {
-    fn compute(&self, rij: f64, mut values: ArrayViewMut2<f64>, mut gradients: Option<ArrayViewMut2<f64>>) {
+    fn compute(
+        &self,
+        distance: f64,
+        mut values: ArrayViewMut2<f64>,
+        mut gradients: Option<ArrayViewMut2<f64>>
+    ) {
         assert_eq!(values.shape(), [self.parameters.max_radial, self.parameters.max_angular + 1]);
 
         if let Some(ref gradients) = gradients {
@@ -187,35 +192,42 @@ impl RadialIntegral for GTO {
             atomic_gaussian_constant: self.atomic_gaussian_constant,
             gto_gaussian_constants: &self.gto_gaussian_constants,
         };
-        self.hypergeometric.compute(rij, hyperg_parameters, values.view_mut(), gradients.as_mut().map(|g| g.view_mut()));
+        self.hypergeometric.compute(distance, hyperg_parameters, values.view_mut(), gradients.as_mut().map(|g| g.view_mut()));
 
-        // TODO: check with a loop instead of allocating memory
-        let mut factors = Array2::from_elem((self.parameters.max_radial, self.parameters.max_angular + 1), 0.0);
-        let mut grad_factors = Array2::from_elem((self.parameters.max_radial, self.parameters.max_angular + 1), 0.0);
         let c = self.atomic_gaussian_constant;
         for n in 0..self.parameters.max_radial {
             let gto_constant = self.gto_gaussian_constants[n];
+            let c_rij = c * distance;
+            // `(c * rij)^l`
+            let mut c_rij_l = 1.0;
+
             for l in 0..(self.parameters.max_angular + 1) {
                 let n_l_3_over_2 = 0.5 * (n + l) as f64 + 1.5;
-                let c_l_rij_l = c.powi(l as i32) * rij.powi(l as i32);
                 let c_dn = (c + gto_constant).powf(-n_l_3_over_2);
+                let factor = c_rij_l * c_dn;
+                c_rij_l *= c_rij;
 
-                factors[[n, l]] = c_l_rij_l * c_dn;
-                grad_factors[[n, l]] = l as f64 / rij;
+                values[[n, l]] *= factor;
+                if let Some(ref mut gradients) = gradients {
+                    gradients[[n, l]] *= factor;
+                    gradients[[n, l]] += values[[n, l]] * l as f64 / distance;
+                }
             }
         }
 
-        values *= &factors;
-
+        // TODO: this takes 2/3 of the time spend in this method, corresponding
+        // to the performance difference with librascal.
+        //
+        // We could use the same trick as librascal, i.e. orthonormalize the
+        // full spherical expansion coefficients instead of single radial
+        // integral evaluation, but this requires computing all n/l/m
+        // coefficients all the time, forbidding partial feature evaluation.
+        //
+        // Alternatively, we could use splined GTO and be happy.
+        values.assign(&self.gto_orthonormalization.dot(&values));
         if let Some(ref mut gradients) = gradients {
-            *gradients *= &factors;
-            grad_factors *= &values;
-            *gradients += &grad_factors;
-
             gradients.assign(&self.gto_orthonormalization.dot(&*gradients));
         }
-
-        values.assign(&self.gto_orthonormalization.dot(&values));
     }
 }
 

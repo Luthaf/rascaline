@@ -16,7 +16,7 @@ fn gto_radial_integral(c: &mut Criterion) {
                 cutoff: 4.5,
                 atomic_gaussian_width: 0.5,
             };
-            let ri: Box<dyn RadialIntegral> = Box::new(GTO::new(parameters));
+            let gto: Box<dyn RadialIntegral> = Box::new(GTO::new(parameters));
             let mut values = Array2::from_elem((max_radial, max_angular + 1), 0.0);
 
             // multiple random values spanning the whole range [0, cutoff)
@@ -29,7 +29,7 @@ fn gto_radial_integral(c: &mut Criterion) {
                 let start = std::time::Instant::now();
                 for _ in 0..repeat {
                     for &distance in &distances {
-                        ri.compute(distance, values.view_mut(), None)
+                        gto.compute(distance, values.view_mut(), None)
                     }
                 }
                 start.elapsed() / distances.len() as u32
@@ -50,7 +50,7 @@ fn gto_radial_integral_gradient(c: &mut Criterion) {
                 cutoff: 4.5,
                 atomic_gaussian_width: 0.5,
             };
-            let ri: Box<dyn RadialIntegral> = Box::new(GTO::new(parameters));
+            let gto: Box<dyn RadialIntegral> = Box::new(GTO::new(parameters));
             let mut values = Array2::from_elem((max_radial, max_angular + 1), 0.0);
             let mut gradient = Array2::from_elem((max_radial, max_angular + 1), 0.0);
 
@@ -64,7 +64,7 @@ fn gto_radial_integral_gradient(c: &mut Criterion) {
                 let start = std::time::Instant::now();
                 for _ in 0..repeat {
                     for &distance in &distances {
-                        ri.compute(distance, values.view_mut(), Some(gradient.view_mut()))
+                        gto.compute(distance, values.view_mut(), Some(gradient.view_mut()))
                     }
                 }
                 start.elapsed() / distances.len() as u32
