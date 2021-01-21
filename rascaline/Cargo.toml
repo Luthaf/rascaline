@@ -4,6 +4,14 @@ version = "0.1.0"
 authors = ["Luthaf <luthaf@luthaf.fr>"]
 edition = "2018"
 
+[[bench]]
+name = "spherical-harmonics"
+harness = false
+
+[[bench]]
+name = "soap-radial-integral"
+harness = false
+
 [dependencies]
 ndarray = "0.13"
 nalgebra = "0.24"
@@ -19,3 +27,4 @@ log = "0.4"
 approx = "0.4"
 # TODO: this is licensed under GPL-v3
 GSL = "3.0"
+criterion = "0.3"
