@@ -3,11 +3,11 @@ use std::cell::RefCell;
 use std::os::raw::c_char;
 use std::ffi::CString;
 
-use crate::Error;
+use rascaline::Error;
 
 // Save the last error message in thread local storage.
 //
-// This is marginally better than a standare global static value because it
+// This is marginally better than a standard global static value because it
 // allow multiple threads to each have separate errors conditions.
 thread_local! {
     pub static LAST_ERROR_MESSAGE: RefCell<CString> = RefCell::new(CString::new("").expect("invalid C string"));
@@ -22,10 +22,12 @@ pub enum rascal_status_t {
     RASCAL_SUCCESS = 0,
     /// A function got an invalid parameter
     RASCAL_INVALID_PARAMETER_ERROR = 1,
-    /// There was an error reading or writting JSON
+    /// There was an error reading or writing JSON
     RASCAL_JSON_ERROR = 2,
     /// A string contains non-utf8 data
     RASCAL_UTF8_ERROR = 3,
+    /// There was an error of unknown kind
+    RASCAL_UNKNOWN_ERROR = 254,
     /// There was an internal error (rust panic)
     RASCAL_INTERNAL_PANIC = 255,
 }
@@ -40,6 +42,7 @@ impl From<Error> for rascal_status_t {
             Error::JSON(_) => rascal_status_t::RASCAL_JSON_ERROR,
             Error::Utf8(_) => rascal_status_t::RASCAL_UTF8_ERROR,
             Error::Panic(_) => rascal_status_t::RASCAL_INTERNAL_PANIC,
+            _ => rascal_status_t::RASCAL_UNKNOWN_ERROR,
         }
     }
 }
@@ -59,7 +62,7 @@ pub fn catch_unwind<F>(function: F) -> rascal_status_t where F: FnOnce() -> Resu
 macro_rules! check_pointers {
     ($pointer: ident) => {
         if $pointer.is_null() {
-            return Err($crate::Error::InvalidParameter(
+            return Err(rascaline::Error::InvalidParameter(
                 format!("got invalid NULL pointer for {}", stringify!($pointer))
             ));
         }

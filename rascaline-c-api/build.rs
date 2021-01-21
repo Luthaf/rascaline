@@ -14,7 +14,7 @@ fn main() {
         })
         .generate()
         .map(|data| {
-            data.write_to_file("include/rascaline.h");
+            data.write_to_file("rascaline.h");
         });
 
     // if not ok, rerun the build script unconditionally

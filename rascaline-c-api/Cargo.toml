@@ -1,0 +1,16 @@
+[package]
+name = "rascaline-c-api"
+version = "0.1.0"
+authors = ["Luthaf <luthaf@luthaf.fr>"]
+edition = "2018"
+
+[lib]
+name = "rascaline"
+crate-type = ["cdylib"]
+
+[dependencies]
+rascaline = {path = "../rascaline", version = "0.1.0"}
+
+[build-dependencies]
+cbindgen = "0.15"
+glob = "0.3"

@@ -1,28 +1,6 @@
-[package]
-name = "rascaline"
-version = "0.1.0"
-authors = ["Luthaf <luthaf@luthaf.fr>"]
-edition = "2018"
+[workspace]
 
-[lib]
-crate-type = ["cdylib"]
-
-[dependencies]
-ndarray = "0.13"
-nalgebra = "0.24"
-lazy_static = "1"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-num-traits = "0.2"
-indexmap = "1.6"
-special = "0.8"
-log = "0.4"
-
-[dev-dependencies]
-approx = "0.4"
-# TODO: this is licensed under GPL-v3
-GSL = "3.0"
-
-[build-dependencies]
-cbindgen = "0.15"
-glob = "0.3"
+members = [
+    "rascaline",
+    "rascaline-c-api",
+]

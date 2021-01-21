@@ -363,6 +363,7 @@ impl CalculatorBase for SphericalExpansion {
 mod tests {
 
     #[test]
+    #[ignore]
     fn tests() {
         todo!()
     }

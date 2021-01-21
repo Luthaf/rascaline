@@ -2,7 +2,7 @@ use std::ops::{Deref, DerefMut};
 use std::os::raw::c_char;
 use std::ffi::CStr;
 
-use crate::descriptor::Descriptor;
+use rascaline::Descriptor;
 use super::{catch_unwind, rascal_status_t};
 
 /// Opaque type representing a Descriptor

@@ -42,5 +42,5 @@ pub use self::sorted_distances::SortedDistances;
 mod dummy_calculator;
 pub use self::dummy_calculator::DummyCalculator;
 
-mod soap;
+pub mod soap;
 pub use self::soap::{SphericalExpansion, SphericalExpansionParameters};

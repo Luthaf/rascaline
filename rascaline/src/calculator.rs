@@ -92,7 +92,7 @@ impl Calculator {
         self.implementation.compute(systems, descriptor);
     }
 
-    pub(crate) fn compute_partial_capi(
+    pub fn compute_partial_capi(
         &mut self,
         systems: &mut [&mut dyn System],
         descriptor: &mut Descriptor,

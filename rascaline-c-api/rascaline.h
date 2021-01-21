@@ -25,13 +25,17 @@ typedef enum {
    */
   RASCAL_INVALID_PARAMETER_ERROR = 1,
   /*
-   There was an error reading or writting JSON
+   There was an error reading or writing JSON
    */
   RASCAL_JSON_ERROR = 2,
   /*
    A string contains non-utf8 data
    */
   RASCAL_UTF8_ERROR = 3,
+  /*
+   There was an error of unknown kind
+   */
+  RASCAL_UNKNOWN_ERROR = 254,
   /*
    There was an internal error (rust panic)
    */

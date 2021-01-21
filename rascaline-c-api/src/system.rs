@@ -1,7 +1,7 @@
 use std::os::raw::c_void;
 
-use crate::types::{Vector3D, Matrix3};
-use crate::system::{System, Pair, UnitCell};
+use rascaline::types::{Vector3D, Matrix3};
+use rascaline::system::{System, Pair, UnitCell};
 
 /// Pair of atoms coming from a neighbor list
 #[repr(C)]

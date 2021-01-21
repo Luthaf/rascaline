@@ -3,10 +3,8 @@ use std::process::Command;
 
 #[test]
 fn check_python() {
-    let mut root = PathBuf::from(file!());
+    let mut root = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
     root.pop();
-    root.pop();
-    root.push("python");
 
     let mut tox = Command::new("tox");
     tox.arg("--");

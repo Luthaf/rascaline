@@ -2,8 +2,8 @@ use std::os::raw::c_char;
 use std::ffi::CStr;
 use std::ops::{Deref, DerefMut};
 
-use crate::{Calculator, System};
-use crate::descriptor::IndexValue;
+use rascaline::{Calculator, System};
+use rascaline::descriptor::IndexValue;
 
 use super::utils::copy_str_to_c;
 use super::{catch_unwind, rascal_status_t};

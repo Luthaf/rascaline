@@ -8,7 +8,7 @@ from pycparser import c_ast, parse_file
 ROOT = os.path.dirname(__file__)
 FAKE_INCLUDES = os.path.join(ROOT, "include")
 RASCALINE_HEADER = os.path.relpath(
-    os.path.join(ROOT, "..", "..", "include", "rascaline.h")
+    os.path.join(ROOT, "..", "..", "rascaline-c-api", "rascaline.h")
 )
 
 

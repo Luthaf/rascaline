@@ -55,22 +55,33 @@ if (${CARGO_VERSION} VERSION_LESS ${REQUIRED_RUST_VERSION})
     )
 endif()
 
-set(CARGO_ROOT "${PROJECT_SOURCE_DIR}")
-file(GLOB_RECURSE ALL_RUST_SOURCES ${CARGO_ROOT}/src/**.rs)
+file(GLOB_RECURSE ALL_RUST_SOURCES
+    ${PROJECT_SOURCE_DIR}/Cargo.toml
+
+    ${PROJECT_SOURCE_DIR}/rascaline/Cargo.toml
+    ${PROJECT_SOURCE_DIR}/rascaline/src/**.rs
+
+    ${PROJECT_SOURCE_DIR}/rascaline-c-api/Cargo.toml
+    ${PROJECT_SOURCE_DIR}/rascaline-c-api/build.rs
+    ${PROJECT_SOURCE_DIR}/rascaline-c-api/src/**.rs
+)
 add_custom_command(
     OUTPUT ${PROJECT_BINARY_DIR}/rascaline.built
-    COMMAND cargo build ${CARGO_BUILD_ARG}
+    COMMAND cargo build -p rascaline-c-api ${CARGO_BUILD_ARG}
     COMMAND ${CMAKE_COMMAND} -E touch ${PROJECT_BINARY_DIR}/rascaline.built
-    WORKING_DIRECTORY ${CARGO_ROOT}
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     DEPENDS ${ALL_RUST_SOURCES}
 )
 add_custom_target(ensure-rust-is-built DEPENDS ${PROJECT_BINARY_DIR}/rascaline.built)
 
-set(RASCALINE_LOCATION "${CARGO_ROOT}/target/${CARGO_BUILD_TYPE}/${CMAKE_SHARED_LIBRARY_PREFIX}rascaline${CMAKE_SHARED_LIBRARY_SUFFIX}")
+set(RASCALINE_LOCATION "${PROJECT_SOURCE_DIR}/target/${CARGO_BUILD_TYPE}/${CMAKE_SHARED_LIBRARY_PREFIX}rascaline${CMAKE_SHARED_LIBRARY_SUFFIX}")
 add_library(rascaline SHARED IMPORTED GLOBAL)
-target_include_directories(rascaline INTERFACE "${PROJECT_SOURCE_DIR}/include/")
+
+set(RASCALINE_HEADER "${PROJECT_SOURCE_DIR}/rascaline-c-api/rascaline.h")
+get_filename_component(RASCALINE_INCLUDE_DIR ${RASCALINE_HEADER} DIRECTORY)
+target_include_directories(rascaline INTERFACE ${RASCALINE_INCLUDE_DIR})
 
 set_target_properties(rascaline PROPERTIES IMPORTED_LOCATION ${RASCALINE_LOCATION})
 
 install(FILES ${RASCALINE_LOCATION} DESTINATION lib/)
-install(FILES "${PROJECT_SOURCE_DIR}/include/rascaline.h" DESTINATION include/)
+install(FILES ${RASCALINE_HEADER} DESTINATION include/)

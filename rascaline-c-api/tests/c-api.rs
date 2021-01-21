@@ -1,18 +1,14 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-fn build_root() -> PathBuf {
-    let mut root = PathBuf::from(file!());
-    root.pop();
-    root.push("c_api");
-    root.push("build");
-    return root;
-}
 
 #[test]
 fn check_c_api() {
-    let root = build_root();
-    std::fs::create_dir_all(&root).expect("failed to create build dir");
+    let mut build_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
+    build_dir.push("tests");
+    build_dir.push("c-api");
+    build_dir.push("build");
+    std::fs::create_dir_all(&build_dir).expect("failed to create build dir");
 
     // assume that debug assertion means that we are building the code in
     // debug mode, even if that could be not true in some cases
@@ -23,14 +19,14 @@ fn check_c_api() {
     };
 
     let mut cmake_config = Command::new("cmake");
-    cmake_config.current_dir(&root);
+    cmake_config.current_dir(&build_dir);
     cmake_config.arg("..");
     cmake_config.arg(format!("-DCMAKE_BUILD_TYPE={}", build_type));
     let status = cmake_config.status().expect("failed to configure cmake");
     assert!(status.success());
 
     let mut cmake_build = Command::new("cmake");
-    cmake_build.current_dir(&root);
+    cmake_build.current_dir(&build_dir);
     cmake_build.arg("--build");
     cmake_build.arg(".");
     cmake_build.arg("--config");
@@ -39,7 +35,7 @@ fn check_c_api() {
     assert!(status.success());
 
     let mut ctest = Command::new("ctest");
-    ctest.current_dir(&root);
+    ctest.current_dir(&build_dir);
     ctest.arg("--output-on-failure");
     ctest.arg("--C");
     ctest.arg(build_type);

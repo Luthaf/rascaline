@@ -21,12 +21,12 @@ mod errors;
 pub use self::errors::Error;
 
 pub mod system;
-pub mod descriptor;
-pub mod calculator;
-pub mod c_api;
-
-mod calculators;
-
 pub use system::System;
-pub use calculator::Calculator;
+
+pub mod descriptor;
 pub use descriptor::Descriptor;
+
+mod calculator;
+pub use calculator::Calculator;
+
+pub mod calculators;
