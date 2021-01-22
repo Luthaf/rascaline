@@ -3,6 +3,9 @@ use crate::Vector3D;
 mod cell;
 pub use self::cell::UnitCell;
 
+mod simple_system;
+pub use self::simple_system::SimpleSystem;
+
 #[cfg(test)]
 mod test_utils;
 #[cfg(test)]

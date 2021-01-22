@@ -21,7 +21,7 @@ mod errors;
 pub use self::errors::Error;
 
 pub mod system;
-pub use system::System;
+pub use system::{System, SimpleSystem};
 
 pub mod descriptor;
 pub use descriptor::Descriptor;

@@ -1,79 +1,5 @@
-use super::{UnitCell, System, Vector3D, Pair};
-
-pub struct CrappyNeighborsList {
-    cutoff: f64,
-    pairs: Vec<Pair>,
-}
-
-impl CrappyNeighborsList {
-    pub fn new<S: System + ?Sized>(system: &S, cutoff: f64) -> CrappyNeighborsList {
-        let cutoff2 = cutoff * cutoff;
-        let cell = system.cell();
-        let natoms = system.size();
-        let positions = system.positions();
-
-        let mut pairs = vec![];
-        // crappy implementation, looping over all atoms in the system
-        for i in 0..natoms {
-            for j in (i + 1)..natoms {
-                let mut vector = positions[j] - positions[i];
-                cell.vector_image(&mut vector);
-                if vector.norm2() < cutoff2 {
-                    if i < j {
-                        pairs.push(Pair{ first: i, second: j, vector: vector});
-                    } else {
-                        pairs.push(Pair{ first: j, second: i, vector: -vector});
-                    }
-                }
-            }
-        }
-
-        return CrappyNeighborsList {
-            cutoff: cutoff,
-            pairs: pairs,
-        };
-    }
-}
-
-struct SimpleSystem {
-    cell: UnitCell,
-    species: Vec<usize>,
-    positions: Vec<Vector3D>,
-    neighbors: Option<CrappyNeighborsList>,
-}
-
-impl System for SimpleSystem {
-    fn size(&self) -> usize {
-        self.species.len()
-    }
-
-    fn positions(&self) -> &[Vector3D] {
-        &self.positions
-    }
-
-    fn species(&self) -> &[usize] {
-        &self.species
-    }
-
-    fn cell(&self) -> UnitCell {
-        self.cell
-    }
-
-    fn compute_neighbors(&mut self, cutoff: f64) {
-        // re-use already computed NL is possible
-        if let Some(ref nl) = self.neighbors {
-            if nl.cutoff == cutoff {
-                return;
-            }
-        }
-
-        self.neighbors = Some(CrappyNeighborsList::new(self, cutoff));
-    }
-
-    fn pairs(&self) -> &[Pair] {
-        &self.neighbors.as_ref().expect("neighbor list is not initialized").pairs
-    }
-}
+use crate::{System, Vector3D};
+use super::{UnitCell, SimpleSystem};
 
 pub struct SimpleSystems {
     systems: Vec<SimpleSystem>
@@ -102,41 +28,28 @@ pub fn test_systems(names: &[&str]) -> SimpleSystems {
 }
 
 fn get_methane() -> SimpleSystem {
-    let positions = vec![
-        Vector3D::new(0.0, 0.0, 0.0),
-        Vector3D::new(0.5288, 0.1610, 0.9359),
-        Vector3D::new(0.2051, 0.8240, -0.6786),
-        Vector3D::new(0.3345, -0.9314, -0.4496),
-        Vector3D::new(-1.0685, -0.0537, 0.1921),
-    ];
-    SimpleSystem {
-        cell: UnitCell::cubic(10.0),
-        positions: positions,
-        species: vec![6, 1, 1, 1, 1],
-        neighbors: None,
-    }
+    SimpleSystem::from_xyz(UnitCell::cubic(10.0), "5
+
+        C 5.0000 5.0000 5.0000
+        H 5.5288 5.1610 5.9359
+        H 5.2051 5.8240 4.3214
+        H 5.3345 4.0686 4.5504
+        H 3.9315 4.9463 5.1921"
+    )
 }
 
 fn get_water() -> SimpleSystem {
-    let positions = vec![
-        Vector3D::new(0.0, 0.0, 0.0),
-        Vector3D::new(0.0, 0.75545, -0.58895),
-        Vector3D::new(0.0, -0.75545, -0.58895),
-    ];
-    SimpleSystem {
-        cell: UnitCell::cubic(10.0),
-        positions: positions,
-        // species do not have to be atomic number
-        species: vec![123456, 1, 1],
-        neighbors: None,
-    }
+    let mut system = SimpleSystem::new(UnitCell::cubic(10.0));
+    // species do not have to be atomic number
+    system.add_atom(123456, Vector3D::new(0.0, 0.0, 0.0));
+    system.add_atom(1, Vector3D::new(0.0, 0.75545, -0.58895));
+    system.add_atom(1, Vector3D::new(0.0, -0.75545, -0.58895));
+    return system;
 }
 
 fn get_ch() -> SimpleSystem {
-    SimpleSystem {
-        cell: UnitCell::cubic(10.0),
-        positions: vec![Vector3D::new(0.0, 0.0, 0.0), Vector3D::new(0.0, 1.2, 0.0)],
-        species: vec![1, 6],
-        neighbors: None,
-    }
+    let mut system = SimpleSystem::new(UnitCell::cubic(10.0));
+    system.add_atom(1, Vector3D::new(0.0, 0.0, 0.0));
+    system.add_atom(6, Vector3D::new(0.0, 1.2, 0.0));
+    return system;
 }
