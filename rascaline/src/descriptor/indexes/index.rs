@@ -5,11 +5,11 @@ use crate::system::System;
 
 /// Biggest integer value such that all integer values up to it can be stored in
 /// a f64 value.
-const MAX_SAFE_INTEGER: isize = 9007199254740991;
+const MAX_SAFE_INTEGER: i64 = 9007199254740991;
 
 /// Smallest integer value such that all integers value between it and zero can
 /// be stored in a f64 value.
-const MIN_SAFE_INTEGER: isize = -9007199254740991;
+const MIN_SAFE_INTEGER: i64 = -9007199254740991;
 
 
 #[derive(Clone, Copy, PartialEq)]
@@ -66,7 +66,7 @@ impl From<usize> for IndexValue {
 
 impl From<isize> for IndexValue {
     fn from(value: isize) -> IndexValue {
-        assert!(MIN_SAFE_INTEGER < value && value < MAX_SAFE_INTEGER);
+        assert!(MIN_SAFE_INTEGER < (value as i64) && (value as i64) < MAX_SAFE_INTEGER);
         IndexValue(value as f64)
     }
 }
