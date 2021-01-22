@@ -144,7 +144,7 @@ impl GTO {
             if eigen.eigenvalues[n] <= 0.0 {
                 panic!(
                     "radial overlap matrix is singular, try with a lower \
-                    max_angular (current value is {})", parameters.max_angular
+                    max_radial (current value is {})", parameters.max_radial
                 );
             }
             eigen.eigenvalues[n] = 1.0 / f64::sqrt(eigen.eigenvalues[n]);
@@ -182,10 +182,19 @@ impl RadialIntegral for GTO {
         mut values: ArrayViewMut2<f64>,
         mut gradients: Option<ArrayViewMut2<f64>>
     ) {
-        assert_eq!(values.shape(), [self.parameters.max_radial, self.parameters.max_angular + 1]);
+        let expected_shape = [self.parameters.max_radial, self.parameters.max_angular + 1];
+        assert_eq!(
+            values.shape(), expected_shape,
+            "wrong size for values array, expected [{}, {}] but got [{}, {}]",
+            expected_shape[0], expected_shape[1], values.shape()[0], values.shape()[1]
+        );
 
         if let Some(ref gradients) = gradients {
-            assert_eq!(gradients.shape(), [self.parameters.max_radial, self.parameters.max_angular + 1]);
+            assert_eq!(
+                gradients.shape(), expected_shape,
+                "wrong size for gradients array, expected [{}, {}] but got [{}, {}]",
+                expected_shape[0], expected_shape[1], gradients.shape()[0], gradients.shape()[1]
+            );
         }
 
         let hyperg_parameters = HyperGeometricParameters {
@@ -263,7 +272,7 @@ mod tests {
 
         #[test]
         #[should_panic = "cutoff must be a positive number"]
-        fn infiniye_cutoff() {
+        fn infinite_cutoff() {
             GTO::new(GTOParameters {
                 max_radial: 10,
                 max_angular: 4,
@@ -292,6 +301,46 @@ mod tests {
                 cutoff: 3.0,
                 atomic_gaussian_width: f64::INFINITY,
             });
+        }
+
+        #[test]
+        #[should_panic = "radial overlap matrix is singular, try with a lower max_radial (current value is 30)"]
+        fn ill_conditioned_orthonormalization() {
+            GTO::new(GTOParameters {
+                max_radial: 30,
+                max_angular: 3,
+                cutoff: 5.0,
+                atomic_gaussian_width: 0.5,
+            });
+        }
+
+        #[test]
+        #[should_panic = "wrong size for values array, expected [2, 4] but got [2, 3]"]
+        fn values_array_size() {
+            let gto = GTO::new(GTOParameters {
+                max_radial: 2,
+                max_angular: 3,
+                cutoff: 5.0,
+                atomic_gaussian_width: 0.5,
+            });
+            let mut values = Array2::from_elem((2, 3), 0.0);
+
+            gto.compute(1.0, values.view_mut(), None);
+        }
+
+        #[test]
+        #[should_panic = "wrong size for gradients array, expected [2, 4] but got [2, 3]"]
+        fn gradient_array_size() {
+            let gto = GTO::new(GTOParameters {
+                max_radial: 2,
+                max_angular: 3,
+                cutoff: 5.0,
+                atomic_gaussian_width: 0.5,
+            });
+            let mut values = Array2::from_elem((2, 4), 0.0);
+            let mut gradients = Array2::from_elem((2, 3), 0.0);
+
+            gto.compute(1.0, values.view_mut(), Some(gradients.view_mut()));
         }
 
         #[test]

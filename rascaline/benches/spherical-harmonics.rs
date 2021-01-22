@@ -10,7 +10,7 @@ fn spherical_harmonics(c: &mut Criterion) {
     for &max_angular in black_box(&[1, 3, 5, 7, 13, 17, 21, 25]) {
         let mut values = SphericalHarmonicsArray::new(max_angular);
         let mut sph = SphericalHarmonics::new(max_angular);
-        let directions = [
+        let mut directions = [
             // randomly generated directions
             Vector3D::new(-0.762711, -0.145476, -0.630166),
             Vector3D::new(-0.291615, -0.637339, -0.713274),
@@ -27,6 +27,10 @@ fn spherical_harmonics(c: &mut Criterion) {
             Vector3D::new(0.0, 1.0, 0.0),
             Vector3D::new(1.0, 0.0, 0.0),
         ];
+
+        for d in &mut directions {
+            *d /= d.norm();
+        }
 
         group.bench_function(&format!("l_max = {}", max_angular), |b| b.iter_custom(|repeat| {
             let start = std::time::Instant::now();
@@ -52,7 +56,7 @@ fn spherical_harmonics_with_gradients(c: &mut Criterion) {
             SphericalHarmonicsArray::new(max_angular),
         ];
         let mut sph = SphericalHarmonics::new(max_angular);
-        let directions = [
+        let mut directions = [
             // randomly generated directions
             Vector3D::new(-0.762711, -0.145476, -0.630166),
             Vector3D::new(-0.291615, -0.637339, -0.713274),
@@ -69,6 +73,10 @@ fn spherical_harmonics_with_gradients(c: &mut Criterion) {
             Vector3D::new(0.0, 1.0, 0.0),
             Vector3D::new(1.0, 0.0, 0.0),
         ];
+
+        for d in &mut directions {
+            *d /= d.norm();
+        }
 
         group.bench_function(&format!("l_max = {}", max_angular), |b| b.iter_custom(|repeat| {
             let start = std::time::Instant::now();

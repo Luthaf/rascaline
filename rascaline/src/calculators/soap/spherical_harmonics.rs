@@ -15,7 +15,7 @@ const SQRT_3_OVER_2: f64 = 1.224744871391589;
 /// implements `Index<[usize; 2]>` and `IndexMut<[usize; 2]>` to allow writing
 /// code like
 ///
-/// ```
+/// ```ignore
 /// let mut array = LegendreArray::new(8);
 /// array[[6, 3]] = 3.0;
 ///
@@ -87,15 +87,17 @@ impl std::fmt::Debug for LegendreArray {
 /// code like
 ///
 /// ```
+/// # use rascaline::calculators::soap::SphericalHarmonicsArray;
 /// let mut array = SphericalHarmonicsArray::new(8);
 /// array[[6, 3]] = 3.0;
 /// array[[6, -3]] = -3.0;
 ///
-/// // this is an error m > l
-/// array[[6, 7]] = 1.0;
-/// array[[6, -7]] = 1.0;
+/// // this is an error |m| > l
+/// // array[[6, 7]] = 1.0;
+/// // array[[6, -7]] = 1.0;
+///
 /// // this is an error l > l_max
-/// array[[9, 7]] = 1.0;
+/// // array[[9, 7]] = 1.0;
 /// ```
 #[derive(Clone)]
 #[allow(clippy::module_name_repetitions)]
@@ -182,6 +184,8 @@ pub struct SphericalHarmonics {
 }
 
 impl SphericalHarmonics {
+    /// Build a new `SphericalHarmonics` calculator with the given `l_max`, and
+    /// pre-compute all required quantities
     pub fn new(max_angular: usize) -> SphericalHarmonics {
         let mut coefficient_a = LegendreArray::new(max_angular);
         let mut coefficient_b = LegendreArray::new(max_angular);
@@ -205,6 +209,8 @@ impl SphericalHarmonics {
         }
     }
 
+    /// Evaluate the Legendre polynomials at `cos(θ)`, and fill
+    /// `self.legendre_polynomials` with the resulting values
     fn compute_legendre_polynomials(&mut self, cos_theta: f64, sin_theta: f64) {
         let mut value = SQRT_1_OVER_4PI;
         self.legendre_polynomials[[0, 0]] = value;
@@ -230,6 +236,9 @@ impl SphericalHarmonics {
         }
     }
 
+    /// Compute factors required for the derivatives of spherical harmonics at
+    /// `cos(θ)`, and fill `self.delta_legendre_polynomials` and
+    /// `self.legendre_over_theta` with the values.
     fn compute_derivative_factors(&mut self, cos_theta: f64, sin_theta: f64) {
         // delta_legendre_polynomials
         let compute_delta_legendre = |l, m, p_m_l_minus_1, p_m_l_plus_1| {
@@ -284,10 +293,24 @@ impl SphericalHarmonics {
         values: &mut SphericalHarmonicsArray,
         mut gradients: Option<&mut [SphericalHarmonicsArray; 3]>
     ) {
-        debug_assert!(
+        assert!(
             (direction.norm2() - 1.0).abs() < 1e-9,
-            "expected the direction vector to be normalized"
+            "expected the direction vector to be normalized in spherical harmonics"
         );
+        assert_eq!(
+            values.max_angular as usize, self.max_angular,
+            "wrong size for the values array, expected max_angular to be {}, got {}",
+            self.max_angular, values.max_angular,
+        );
+        if let Some(ref gradients) = gradients {
+            for i in 0..3 {
+                assert_eq!(
+                    gradients[i].max_angular as usize, self.max_angular,
+                    "wrong size for one gradient array, expected max_angular to be {}, got {}",
+                    self.max_angular, gradients[i].max_angular,
+                );
+            }
+        }
 
         let sqrt_xy = f64::hypot(direction[0], direction[1]);
         let cos_theta = direction[2];
@@ -347,6 +370,7 @@ impl SphericalHarmonics {
             if let Some(ref mut gradients) = gradients {
                 // gradients for m ≠ 0
                 for l in m..(self.max_angular + 1) {
+                    // ∆P_l^m = sqrt((l + m) * (l - m + 1)) * L_l^{m - 1} - sqrt((l - m) * (l + m + 1)) * P_l^{m + 1}
                     let delta_p_lm = self.delta_legendre_polynomials[[l, m]];
 
                     let sin_m_phi_delta_p_lm = sin_m_phi * delta_p_lm;
@@ -542,6 +566,43 @@ mod tests {
                     )
                 }
             }
+        }
+    }
+
+    mod bad {
+        use super::super::{SphericalHarmonics, SphericalHarmonicsArray};
+        use crate::Vector3D;
+
+        #[test]
+        #[should_panic = "wrong size for the values array, expected max_angular to be 3, got 5"]
+        fn value_array_size() {
+            let mut spherical_harmonics = SphericalHarmonics::new(3);
+            let mut values = SphericalHarmonicsArray::new(5);
+
+            spherical_harmonics.compute(Vector3D::new(1.0, 0.0, 0.0), &mut values, None);
+        }
+
+        #[test]
+        #[should_panic = "wrong size for one gradient array, expected max_angular to be 3, got 5"]
+        fn gradient_array_size() {
+            let mut spherical_harmonics = SphericalHarmonics::new(3);
+            let mut values = SphericalHarmonicsArray::new(3);
+            let mut gradients = [
+                SphericalHarmonicsArray::new(5),
+                SphericalHarmonicsArray::new(5),
+                SphericalHarmonicsArray::new(5),
+            ];
+
+            spherical_harmonics.compute(Vector3D::new(1.0, 0.0, 0.0), &mut values, Some(&mut gradients));
+        }
+
+        #[test]
+        #[should_panic = "expected the direction vector to be normalized"]
+        fn non_normalized_direction() {
+            let mut spherical_harmonics = SphericalHarmonics::new(3);
+            let mut values = SphericalHarmonicsArray::new(3);
+
+            spherical_harmonics.compute(Vector3D::new(1.0, 1.0, 1.0), &mut values, None);
         }
     }
 }
