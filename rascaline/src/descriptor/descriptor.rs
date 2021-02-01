@@ -141,7 +141,8 @@ fn resize_and_reset(array: &mut Array2<f64>, shape: (usize, usize)) {
     let mut data = tmp.into_raw_vec();
     data.resize(shape.0 * shape.1, 0.0);
 
-    let values = Array2::from_shape_vec(shape, data).expect("wrong array shape");
+    let mut values = Array2::from_shape_vec(shape, data).expect("wrong array shape");
+    values.fill(0.0);
     let _ = std::mem::replace(array, values);
 }
 
