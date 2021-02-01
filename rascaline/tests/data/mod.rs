@@ -38,7 +38,7 @@ pub fn load_input(path: &str) -> (Vec<SimpleSystem>, HyperParameters) {
         systems.push(simple_system);
     }
 
-    return (systems, parameters);
+    (systems, parameters)
 }
 
 fn read_cell(cell: &Value) -> UnitCell {
@@ -65,5 +65,5 @@ pub fn load_expected_values(path: &str) -> Array2<f64> {
         GzDecoder::new(file),
     );
 
-    return Array2::<f64>::read_npy(reader).expect("");
+    Array2::<f64>::read_npy(reader).expect("")
 }

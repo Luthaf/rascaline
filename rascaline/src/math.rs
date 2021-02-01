@@ -26,7 +26,7 @@ const GAMMA_DK: &[f64] = &[
 /// Approximation", Glendon Ralph Pugh, 2004 p. 116.
 ///
 /// This code was extracted from statrs, which is © 2016 Michael Ma, distributed
-/// under MIT license. Cf https://github.com/boxtown/statrs/blob/c5536a8c916852259832b2064a9b845b68751c8f/src/function/gamma.rs
+/// under MIT license. Cf <https://github.com/boxtown/statrs/blob/c5536a8c916852259832b2064a9b845b68751c8f/src/function/gamma.rs>
 /// for the original code
 pub fn gamma(x: f64) -> f64 {
     if x < 0.5 {
