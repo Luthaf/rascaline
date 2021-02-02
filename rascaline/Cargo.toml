@@ -13,7 +13,7 @@ name = "soap-radial-integral"
 harness = false
 
 [dependencies]
-ndarray = "0.14"
+ndarray = {version = "0.14", features = ["approx"]}
 nalgebra = "0.24"
 lazy_static = "1"
 serde = { version = "1", features = ["derive"] }

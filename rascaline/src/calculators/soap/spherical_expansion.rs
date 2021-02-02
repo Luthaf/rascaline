@@ -2,9 +2,8 @@ use std::collections::BTreeSet;
 
 use ndarray::Array2;
 
-use crate::{Vector3D, descriptor::Descriptor};
 use crate::descriptor::{IndexesBuilder, IndexValue, Indexes, EnvironmentIndexes, AtomSpeciesEnvironment};
-use crate::system::System;
+use crate::{Descriptor, System, Vector3D};
 
 use super::super::CalculatorBase;
 use super::{GTO, GTOParameters, RadialIntegral};
@@ -138,6 +137,34 @@ impl SphericalExpansion {
             ri_gradients: ri_gradients,
         }
     }
+
+    fn do_self_contributions(&mut self, descriptor: &mut Descriptor) {
+        // keep a list of centers which have already been computed
+        for (i_env, requested_env) in descriptor.environments.iter().enumerate() {
+            let alpha = requested_env[2];
+            let beta = requested_env[3];
+
+            if alpha == beta {
+                // TODO: cache self contribution, they only depend on the
+                // gaussian atomic width
+                self.radial_integral.compute(0.0, self.ri_values.view_mut(), None);
+
+                self.spherical_harmonics.compute(
+                    Vector3D::new(0.0, 0.0, 1.0), &mut self.sph_values, None
+                );
+                let f_cut = self.parameters.cutoff_function.compute(0.0, self.parameters.cutoff);
+
+                for (i_feature, feature) in descriptor.features.iter().enumerate() {
+                    let n = feature[0].usize();
+                    let l = feature[1].usize();
+                    let m = feature[1].isize();
+
+                    let n_l_m_value = f_cut * self.ri_values[[n, l]] * self.sph_values[[l as isize, m]];
+                    descriptor.values[[i_env, i_feature]] += n_l_m_value;
+                }
+            }
+        }
+    }
 }
 
 impl std::fmt::Debug for SphericalExpansion {
@@ -195,10 +222,12 @@ impl CalculatorBase for SphericalExpansion {
         }
     }
 
-    #[allow(clippy::similar_names, clippy::too_many_lines)]
+    #[allow(clippy::similar_names, clippy::too_many_lines, clippy::identity_op)]
     fn compute(&mut self, systems: &mut [&mut dyn System], descriptor: &mut Descriptor) {
         assert_eq!(descriptor.environments.names(), &["structure", "center", "species_center", "species_neighbor"]);
         assert_eq!(descriptor.features.names(), &["n", "l", "m"]);
+
+        self.do_self_contributions(descriptor);
 
         // keep a list of pairs for which everything have already been
         // computed
@@ -213,28 +242,6 @@ impl CalculatorBase for SphericalExpansion {
             let system = &mut *systems[i_system.usize()];
             system.compute_neighbors(self.parameters.cutoff);
             let species = system.species();
-            assert_eq!(species[center], alpha.usize());
-
-            // self-contributions
-            if alpha == beta && already_computed_pairs.insert((center, center)) {
-                // TODO: cache self contribution, they only depend on the
-                // gaussian atomic width
-                self.radial_integral.compute(0.0, self.ri_values.view_mut(), None);
-
-                self.spherical_harmonics.compute(
-                    Vector3D::new(0.0, 0.0, 1.0), &mut self.sph_values, None
-                );
-                let f_cut = self.parameters.cutoff_function.compute(0.0, self.parameters.cutoff);
-
-                for (i_feature, feature) in descriptor.features.iter().enumerate() {
-                    let n = feature[0].usize();
-                    let l = feature[1].usize();
-                    let m = feature[1].isize();
-
-                    let n_l_m_value = f_cut * self.ri_values[[n, l]] * self.sph_values[[l as isize, m]];
-                    descriptor.values[[i_env, i_feature]] += n_l_m_value;
-                }
-            }
 
             // TODO: add a system.pairs_with(center) function instead of
             // searching through all pairs at all time
@@ -257,9 +264,9 @@ impl CalculatorBase for SphericalExpansion {
                     continue;
                 }
 
-                // we store the result for center -> neighbor in env_i, this
-                // code check where to store the result for neighbor ->
-                // center.
+                // we store the result for the center--neighbor pair in env_i,
+                // this code check where (it can not be part of the requested
+                // envs) to store the result for the neighbor--center pair.
                 let other_env_i = descriptor.environments.position(
                     &[i_system, IndexValue::from(neighbor), beta, alpha]
                 );
@@ -282,30 +289,33 @@ impl CalculatorBase for SphericalExpansion {
                     let m = feature[2].isize();
 
                     let n_l_m_value = f_cut * self.ri_values[[n, l]] * self.sph_values[[l as isize, m]];
+
                     descriptor.values[[i_env, i_feature]] += sign.powi(l as i32) * n_l_m_value;
                     if let Some(other_env_i) = other_env_i {
+                        // Use the fact that `se[n, l, m](-r) = (-1)^l se[n, l, m](r)`
+                        // where se === spherical_expansion.
                         descriptor.values[[other_env_i, i_feature]] += (-sign).powi(l as i32) * n_l_m_value;
                     }
                 }
 
-                // get the indexes where to store the gradient for this
-                // specific pair, if any
-                let (center_grad_i, neighbor_grad_i) = if let Some(ref indexes) = descriptor.gradients_indexes {
-                    assert!(self.parameters.gradients);
-                    let center_grad = indexes.position(&[
-                        i_system, IndexValue::from(center), alpha, beta,
-                        IndexValue::from(neighbor), IndexValue::from(0_usize)
-                    ]);
-                    let neighbor_grad = indexes.position(&[
-                        i_system, IndexValue::from(neighbor), beta, alpha,
-                        IndexValue::from(center), IndexValue::from(0_usize)
-                    ]);
-                    (center_grad, neighbor_grad)
-                } else {
-                    (None, None)
-                };
-
                 if self.parameters.gradients {
+                    // get the indexes where to store the gradient for this
+                    // specific pair, if any
+                    let (center_grad_i, neighbor_grad_i) = if let Some(ref gradients_indexes) = descriptor.gradients_indexes {
+                        assert!(self.parameters.gradients);
+                        let center_grad = gradients_indexes.position(&[
+                            i_system, IndexValue::from(center), alpha, beta,
+                            IndexValue::from(neighbor), IndexValue::from(0_usize)
+                        ]);
+                        let neighbor_grad = gradients_indexes.position(&[
+                            i_system, IndexValue::from(neighbor), beta, alpha,
+                            IndexValue::from(center), IndexValue::from(0_usize)
+                        ]);
+                        (center_grad, neighbor_grad)
+                    } else {
+                        (None, None)
+                    };
+
                     let f_cut_grad = self.parameters.cutoff_function.derivative(distance, self.parameters.cutoff);
 
                     let dr_dx = pair.vector[0] / distance;
@@ -321,7 +331,7 @@ impl CalculatorBase for SphericalExpansion {
                     for (i_feature, feature) in descriptor.features.iter().enumerate() {
                         let n = feature[0].usize();
                         let l = feature[1].usize();
-                        let m = feature[1].isize();
+                        let m = feature[2].isize();
 
                         let sph_value = self.sph_values[[l as isize, m]];
                         let sph_grad_x = sph_gradients[0][[l as isize, m]];
@@ -333,25 +343,29 @@ impl CalculatorBase for SphericalExpansion {
 
                         let grad_x = f_cut_grad * dr_dx * ri_value * sph_value
                                     + f_cut * ri_grad * dr_dx * sph_value
-                                    + f_cut * ri_value * sph_grad_x;
+                                    + f_cut * ri_value * sph_grad_x / distance;
 
                         let grad_y = f_cut_grad * dr_dy * ri_value * sph_value
                                     + f_cut * ri_grad * dr_dy * sph_value
-                                    + f_cut * ri_value * sph_grad_y;
+                                    + f_cut * ri_value * sph_grad_y / distance;
 
                         let grad_z = f_cut_grad * dr_dz * ri_value * sph_value
                                     + f_cut * ri_grad * dr_dz * sph_value
-                                    + f_cut * ri_value * sph_grad_z;
+                                    + f_cut * ri_value * sph_grad_z / distance;
 
-                        // assumes that the three spatial derivative are one after the other
-                        gradients[[center_grad_i, i_feature]] += sign.powi(l as i32) * grad_x;
-                        gradients[[neighbor_grad_i, i_feature]] += (-sign).powi(l as i32) * grad_x;
+                        let sign_pow_l = sign.powi(l as i32 + 1);
+                        // assumes that the three spatial derivative are stored
+                        // one after the other
+                        gradients[[center_grad_i + 0, i_feature]] += sign_pow_l * grad_x;
+                        gradients[[center_grad_i + 1, i_feature]] += sign_pow_l * grad_y;
+                        gradients[[center_grad_i + 2, i_feature]] += sign_pow_l * grad_z;
 
-                        gradients[[center_grad_i + 1, i_feature]] += sign.powi(l as i32) * grad_y;
-                        gradients[[neighbor_grad_i + 1, i_feature]] += (-sign).powi(l as i32) * grad_y;
-
-                        gradients[[center_grad_i + 2, i_feature]] += sign.powi(l as i32) * grad_z;
-                        gradients[[neighbor_grad_i + 2, i_feature]] += (-sign).powi(l as i32) * grad_z;
+                        // Use the fact that `se[n, l, m](-r) = (-1)^(l+1) se[n, l, m](r)`
+                        // where se === spherical_expansion.
+                        let m_sign_pow_l = (-sign).powi(l as i32 + 1);
+                        gradients[[neighbor_grad_i + 0, i_feature]] += m_sign_pow_l * grad_x;
+                        gradients[[neighbor_grad_i + 1, i_feature]] += m_sign_pow_l * grad_y;
+                        gradients[[neighbor_grad_i + 2, i_feature]] += m_sign_pow_l * grad_z;
                     }
                 }
             }
@@ -361,10 +375,173 @@ impl CalculatorBase for SphericalExpansion {
 
 #[cfg(test)]
 mod tests {
+    use crate::system::test_systems;
+    use crate::descriptor::IndexValue;
+    use crate::{Descriptor, Calculator, System};
+
+    use approx::assert_relative_eq;
+    use ndarray::s;
+
+    fn hyperparameters(gradients: bool) -> String {
+        format!("{{
+            \"atomic_gaussian_width\": 0.3,
+            \"cutoff\": 3.5,
+            \"cutoff_function\": {{
+              \"ShiftedCosine\": {{
+                \"width\": 0.5
+              }}
+            }},
+            \"gradients\": {},
+            \"max_radial\": 6,
+            \"max_angular\": 6,
+            \"radial_basis\": \"GTO\"
+        }}", gradients)
+    }
 
     #[test]
-    #[ignore]
-    fn tests() {
-        todo!()
+    fn values() {
+        let mut calculator = Calculator::new(
+            "spherical_expansion",
+            hyperparameters(false)
+        ).unwrap();
+
+        let mut systems = test_systems(&["water"]);
+        let mut descriptor = Descriptor::new();
+        calculator.compute(&mut systems.get(), &mut descriptor);
+
+        assert_eq!(descriptor.environments.names(), ["structure", "center", "species_center", "species_neighbor"]);
+        assert_eq!(descriptor.features.names(), ["n", "l", "m"]);
+
+        let mut index = 0;
+        for n in 0..6_usize {
+            for l in 0..=6_isize {
+                for m in -l..=l {
+                    let expected = [IndexValue::from(n), IndexValue::from(l), IndexValue::from(m)];
+                    assert_eq!(descriptor.features[index], expected);
+                    index += 1;
+                }
+            }
+        }
+
+        // exact values for spherical expansion are regression-tested in
+        // `rascaline/tests/spherical-expansion.rs`
+    }
+
+    #[test]
+    fn finite_differences() {
+        let mut calculator = Calculator::new(
+            "spherical_expansion",
+            hyperparameters(true)
+        ).unwrap();
+
+        let mut systems = test_systems(&["water"]);
+        let mut reference = Descriptor::new();
+        calculator.compute(&mut systems.get(), &mut reference);
+
+        // exact gradients for spherical expansion are regression-tested in
+        // `rascaline/tests/spherical-expansion.rs`
+
+        let gradients_indexes = reference.gradients_indexes.as_ref().unwrap();
+        assert_eq!(
+            gradients_indexes.names(),
+            ["structure", "center", "species_center", "species_neighbor", "neighbor", "spatial"]
+        );
+
+        // get the list of modified gradient environments when moving atom_i
+        let modified_indexes = |atom_i: usize, spatial_index: usize| {
+            let mut results = Vec::new();
+            for (env_i, env) in gradients_indexes.iter().enumerate() {
+                let center = env[1];
+                let neighbor = env[4];
+                let spatial = env[5];
+                if center.usize() != atom_i && neighbor.usize() == atom_i && spatial.usize() == spatial_index {
+                    results.push((env_i, &env[..4]));
+                }
+            }
+            return results;
+        };
+
+        let delta = 1e-9;
+        let gradients = reference.gradients.as_ref().unwrap();
+        for atom_i in 0..systems.systems[0].size() {
+            for spatial in 0..3 {
+                systems.systems[0].positions_mut()[atom_i][spatial] += delta;
+
+                let mut updated = Descriptor::new();
+                calculator.compute(&mut systems.get(), &mut updated);
+
+                for (grad_i, env) in modified_indexes(atom_i, spatial) {
+                    let env_i = reference.environments.position(env).expect(
+                        "missing environment in reference values"
+                    );
+                    assert_eq!(updated.environments.position(env).unwrap(), env_i);
+
+                    let value = reference.values.slice(s![env_i, ..]);
+                    let value_delta = updated.values.slice(s![env_i, ..]);
+                    let gradient = gradients.slice(s![grad_i, ..]);
+
+                    assert_eq!(value.shape(), value_delta.shape());
+                    assert_eq!(value.shape(), gradient.shape());
+
+                    let mut finite_difference = value_delta.to_owned().clone();
+                    finite_difference -= &value;
+                    finite_difference /= delta;
+
+                    assert_relative_eq!(
+                        finite_difference, gradient,
+                        epsilon=1e-9,
+                        max_relative=5e-4,
+                    );
+                }
+
+                systems.systems[0].positions_mut()[atom_i][spatial] -= delta;
+            }
+        }
+    }
+
+    mod cutoff_function {
+        use super::super::CutoffFunction;
+
+        #[test]
+        fn step() {
+            let function = CutoffFunction::Step;
+            let cutoff = 4.0;
+
+            assert_eq!(function.compute(2.0, cutoff), 1.0);
+            assert_eq!(function.compute(5.0, cutoff), 0.0);
+        }
+
+        #[test]
+        fn step_gradient() {
+            let function = CutoffFunction::Step;
+            let cutoff = 4.0;
+
+            assert_eq!(function.derivative(2.0, cutoff), 0.0);
+            assert_eq!(function.derivative(5.0, cutoff), 0.0);
+        }
+
+        #[test]
+        fn shifted_cosine() {
+            let function = CutoffFunction::ShiftedCosine { width: 0.5 };
+            let cutoff = 4.0;
+
+            assert_eq!(function.compute(2.0, cutoff), 1.0);
+            assert_eq!(function.compute(3.5, cutoff), 1.0);
+            assert_eq!(function.compute(3.8, cutoff), 0.34549150281252683);
+            assert_eq!(function.compute(4.0, cutoff), 0.0);
+            assert_eq!(function.compute(5.0, cutoff), 0.0);
+        }
+
+        #[test]
+        fn shifted_cosine_gradient() {
+            let function = CutoffFunction::ShiftedCosine { width: 0.5 };
+            let cutoff = 4.0;
+
+            assert_eq!(function.derivative(2.0, cutoff), 0.0);
+            assert_eq!(function.derivative(3.5, cutoff), 0.0);
+            assert_eq!(function.derivative(3.8, cutoff), -2.987832164741557);
+            assert_eq!(function.derivative(4.0, cutoff), 0.0);
+            assert_eq!(function.derivative(5.0, cutoff), 0.0);
+        }
     }
 }

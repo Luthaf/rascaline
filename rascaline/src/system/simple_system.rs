@@ -90,6 +90,13 @@ impl SimpleSystem {
         self.species.push(species);
         self.positions.push(position);
     }
+
+    #[cfg(test)]
+    pub(crate) fn positions_mut(&mut self) -> &mut [Vector3D] {
+        // any position access invalidates the neighbor list
+        self.neighbors = None;
+        return &mut self.positions;
+    }
 }
 
 static ATOMIC_NAMES: [&str; 118] = [

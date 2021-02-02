@@ -2,7 +2,7 @@ use crate::{System, Vector3D};
 use super::{UnitCell, SimpleSystem};
 
 pub struct SimpleSystems {
-    systems: Vec<SimpleSystem>
+    pub(crate) systems: Vec<SimpleSystem>
 }
 
 impl SimpleSystems {
