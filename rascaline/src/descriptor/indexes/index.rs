@@ -166,13 +166,36 @@ fn is_valid_ident(name: &str) -> bool {
     return true;
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, PartialEq)]
 pub struct Indexes {
     /// Names of the indexes, stored as C strings for easier integration
     /// with the C API
     names: Vec<CString>,
     /// Values of the indexes, as a linearized 2D array in row-major order
     values: Vec<IndexValue>,
+}
+
+impl std::fmt::Debug for Indexes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Indexes{{")?;
+        writeln!(f, "    {}", self.names().join(", "))?;
+
+        let widths = self.names().iter().map(|s| s.len()).collect::<Vec<_>>();
+        for values in self {
+            write!(f, "    ")?;
+            for (value, width) in values.iter().zip(&widths) {
+                if value.f64() % 1.0 == 0.0 {
+                    write!(f, "{:^width$}  ", value.isize(), width=width)?;
+                } else {
+                    write!(f, "{:.width$}  ", value.f64(), width=width - 2)?;
+                }
+            }
+            writeln!(f)?;
+        }
+
+        writeln!(f, "}}")?;
+        Ok(())
+    }
 }
 
 impl Indexes {
