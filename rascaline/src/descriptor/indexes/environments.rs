@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use indexmap::IndexSet;
 
 use crate::system::System;
 use super::{Indexes, IndexesBuilder, EnvironmentIndexes, IndexValue};
@@ -77,30 +77,21 @@ impl EnvironmentIndexes for AtomEnvironment {
 
     fn gradients_for(&self, systems: &mut [&mut dyn System], samples: &Indexes) -> Option<Indexes> {
         assert_eq!(samples.names(), ["structure", "center"]);
-        let requested_systems = samples.iter().map(|v| v[0]).collect::<BTreeSet<_>>();
 
-        // a BTreeSet will yield the indexes in the right order
-        let mut indexes = BTreeSet::new();
-        for i_system in requested_systems {
+        // We need IndexSet to yield the indexes in the right order, i.e. the
+        // order corresponding to whatever was passed in sample
+        let mut indexes = IndexSet::new();
+        for requested in samples {
+            let i_system = requested[0];
+            let center = requested[1].usize();
             let system = &mut *systems[i_system.usize()];
             system.compute_neighbors(self.cutoff);
 
-            let requested_centers = samples.iter()
-                .filter_map(|sample| {
-                    if sample[0] == i_system {
-                        Some(sample[1])
-                    } else {
-                        None
-                    }
-                })
-                .collect::<Vec<_>>();
-
+            // TODO: System::pairs_with(center)
             for pair in system.pairs() {
-                if requested_centers.contains(&IndexValue::from(pair.first)) {
+                if pair.first == center {
                     indexes.insert((i_system, pair.first, pair.second));
-                }
-
-                if requested_centers.contains(&IndexValue::from(pair.second)) {
+                } else if pair.second == center {
                     indexes.insert((i_system, pair.second, pair.first));
                 }
             }
@@ -163,6 +154,28 @@ mod tests {
         ]);
     }
 
+    #[test]
+    fn partial_structure_gradient() {
+        let mut indexes = IndexesBuilder::new(vec!["structure"]);
+        indexes.add(&[v!(2)]);
+        indexes.add(&[v!(0)]);
+
+        let mut systems = test_systems(&["water", "methane", "water", "methane"]);
+        let gradients = StructureEnvironment.gradients_for(&mut systems.get(), &indexes.finish());
+        let gradients = gradients.unwrap();
+
+        assert_eq!(gradients.names(), &["structure", "atom", "spatial"]);
+        assert_eq!(gradients.iter().collect::<Vec<_>>(), vec![
+            // water #2
+            &[v!(2), v!(0), v!(0)], &[v!(2), v!(0), v!(1)], &[v!(2), v!(0), v!(2)],
+            &[v!(2), v!(1), v!(0)], &[v!(2), v!(1), v!(1)], &[v!(2), v!(1), v!(2)],
+            &[v!(2), v!(2), v!(0)], &[v!(2), v!(2), v!(1)], &[v!(2), v!(2), v!(2)],
+            // water #1
+            &[v!(0), v!(0), v!(0)], &[v!(0), v!(0), v!(1)], &[v!(0), v!(0), v!(2)],
+            &[v!(0), v!(1), v!(0)], &[v!(0), v!(1), v!(1)], &[v!(0), v!(1), v!(2)],
+            &[v!(0), v!(2), v!(0)], &[v!(0), v!(2), v!(1)], &[v!(0), v!(2), v!(2)],
+        ]);
+    }
 
     #[test]
     fn atoms() {
@@ -220,6 +233,43 @@ mod tests {
             &[v!(0), v!(4), v!(0), v!(0)],
             &[v!(0), v!(4), v!(0), v!(1)],
             &[v!(0), v!(4), v!(0), v!(2)],
+        ]);
+    }
+
+    #[test]
+    fn partial_atom_gradient() {
+        let mut indexes = IndexesBuilder::new(vec!["structure", "center"]);
+        // out of order values to ensure the gradients are also out of order
+        indexes.add(&[v!(0), v!(2)]);
+        indexes.add(&[v!(0), v!(0)]);
+
+        let mut systems = test_systems(&["methane"]);
+        let strategy = AtomEnvironment { cutoff: 1.5 };
+        let gradients = strategy.gradients_for(&mut systems.get(), &indexes.finish());
+        let gradients = gradients.unwrap();
+
+        assert_eq!(gradients.names(), &["structure", "center", "neighbor", "spatial"]);
+        assert_eq!(gradients.iter().collect::<Vec<_>>(), vec![
+            // H centers
+            &[v!(0), v!(2), v!(0), v!(0)],
+            &[v!(0), v!(2), v!(0), v!(1)],
+            &[v!(0), v!(2), v!(0), v!(2)],
+            // C center
+            &[v!(0), v!(0), v!(1), v!(0)],
+            &[v!(0), v!(0), v!(1), v!(1)],
+            &[v!(0), v!(0), v!(1), v!(2)],
+
+            &[v!(0), v!(0), v!(2), v!(0)],
+            &[v!(0), v!(0), v!(2), v!(1)],
+            &[v!(0), v!(0), v!(2), v!(2)],
+
+            &[v!(0), v!(0), v!(3), v!(0)],
+            &[v!(0), v!(0), v!(3), v!(1)],
+            &[v!(0), v!(0), v!(3), v!(2)],
+
+            &[v!(0), v!(0), v!(4), v!(0)],
+            &[v!(0), v!(0), v!(4), v!(1)],
+            &[v!(0), v!(0), v!(4), v!(2)],
         ]);
     }
 }

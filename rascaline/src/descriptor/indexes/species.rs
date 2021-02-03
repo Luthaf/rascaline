@@ -1,4 +1,5 @@
 use std::collections::BTreeSet;
+use indexmap::IndexSet;
 
 use crate::system::System;
 use super::{EnvironmentIndexes, Indexes, IndexesBuilder, IndexValue};
@@ -124,41 +125,33 @@ impl EnvironmentIndexes for AtomSpeciesEnvironment {
     fn gradients_for(&self, systems: &mut [&mut dyn System], samples: &Indexes) -> Option<Indexes> {
         assert_eq!(samples.names(), ["structure", "center", "species_center", "species_neighbor"]);
 
-        let requested_systems = samples.iter().map(|v| v[0]).collect::<BTreeSet<_>>();
+        // We need IndexSet to yield the indexes in the right order, i.e. the
+        // order corresponding to whatever was passed in sample
+        let mut indexes = IndexSet::new();
+        for requested in samples {
+            let i_system = requested[0];
+            let center = requested[1].usize();
+            let species_neighbor = requested[3].usize();
 
-        let mut set = BTreeSet::new();
-        for i_system in requested_systems {
             let system = &mut *systems[i_system.usize()];
             system.compute_neighbors(self.cutoff);
+
             let species = system.species();
 
-            let requested_centers = samples.iter()
-                .filter_map(|sample| {
-                    if sample[0] == i_system {
-                        Some(sample[1])
-                    } else {
-                        None
-                    }
-                })
-                .collect::<Vec<_>>();
+            // FIXME: this will always be 0, but is required for Descriptor.densify
+            if self.self_contribution && species[center] == species_neighbor {
+                indexes.insert((i_system, center, species_neighbor, species_neighbor, center));
+            }
 
+            // TODO: System::pairs_with(center)
             for pair in system.pairs() {
                 let species_first = species[pair.first];
                 let species_second = species[pair.second];
 
-                if requested_centers.contains(&IndexValue::from(pair.first)) {
-                    set.insert((i_system, pair.first, species_first, species_second, pair.second));
-                }
-
-                if requested_centers.contains(&IndexValue::from(pair.first)) {
-                    set.insert((i_system, pair.second, species_second, species_first, pair.first));
-                }
-            }
-
-            // FIXME: this will always be 0, but is required for Descriptor.densify
-            if self.self_contribution {
-                for (center, &species) in species.iter().enumerate() {
-                    set.insert((i_system, center, species, species, center));
+                if pair.first == center && species_second == species_neighbor {
+                    indexes.insert((i_system, pair.first, species_first, species_second, pair.second));
+                } else if pair.second == center && species_first == species_neighbor {
+                    indexes.insert((i_system, pair.second, species_second, species_first, pair.first));
                 }
             }
         }
@@ -167,7 +160,7 @@ impl EnvironmentIndexes for AtomSpeciesEnvironment {
             "structure", "center", "species_center", "species_neighbor",
             "neighbor", "spatial"
         ]);
-        for (system, c, a, b, n) in set {
+        for (system, c, a, b, n) in indexes {
             let center = IndexValue::from(c);
             let alpha = IndexValue::from(a);
             let beta = IndexValue::from(b);
@@ -225,6 +218,29 @@ mod tests {
             &[v!(1), v!(1), v!(2), v!(0)], &[v!(1), v!(1), v!(2), v!(1)], &[v!(1), v!(1), v!(2), v!(2)],
             // O channel in water
             &[v!(1), v!(123456), v!(0), v!(0)], &[v!(1), v!(123456), v!(0), v!(1)], &[v!(1), v!(123456), v!(0), v!(2)],
+        ]);
+    }
+
+    #[test]
+    fn partial_structure_gradient() {
+        let mut indexes = IndexesBuilder::new(vec!["structure", "species"]);
+        indexes.add(&[v!(2), v!(1)]);
+        indexes.add(&[v!(0), v!(6)]);
+
+        let mut systems = test_systems(&["CH", "water", "CH"]);
+        let gradients = StructureSpeciesEnvironment.gradients_for(&mut systems.get(), &indexes.finish());
+        let gradients = gradients.unwrap();
+        assert_eq!(gradients.names(), &["structure", "species", "atom", "spatial"]);
+
+        assert_eq!(gradients.iter().collect::<Vec<_>>(), vec![
+            // H channel in CH #2
+            &[v!(2), v!(1), v!(0), v!(0)],
+            &[v!(2), v!(1), v!(0), v!(1)],
+            &[v!(2), v!(1), v!(0), v!(2)],
+            // C channel in CH #1
+            &[v!(0), v!(6), v!(1), v!(0)],
+            &[v!(0), v!(6), v!(1), v!(1)],
+            &[v!(0), v!(6), v!(1), v!(2)],
         ]);
     }
 
@@ -332,6 +348,38 @@ mod tests {
             &[v!(1), v!(2), v!(1), v!(123456), v!(0), v!(0)],
             &[v!(1), v!(2), v!(1), v!(123456), v!(0), v!(1)],
             &[v!(1), v!(2), v!(1), v!(123456), v!(0), v!(2)],
+        ]);
+    }
+
+    #[test]
+    fn partial_atoms_gradient() {
+        let mut indexes = IndexesBuilder::new(vec!["structure", "center", "species_center", "species_neighbor"]);
+        indexes.add(&[v!(1), v!(0), v!(123456), v!(1)]);
+        indexes.add(&[v!(0), v!(0), v!(1), v!(6)]);
+        indexes.add(&[v!(1), v!(1), v!(1), v!(1)]);
+
+        let mut systems = test_systems(&["CH", "water"]);
+        let strategy = AtomSpeciesEnvironment::new(2.0);
+        let gradients = strategy.gradients_for(&mut systems.get(), &indexes.finish());
+        let gradients = gradients.unwrap();
+
+        assert_eq!(gradients.names(), &["structure", "center", "species_center", "species_neighbor", "neighbor", "spatial"]);
+        assert_eq!(gradients.iter().collect::<Vec<_>>(), vec![
+            // O-H channel in water
+            &[v!(1), v!(0), v!(123456), v!(1), v!(1), v!(0)],
+            &[v!(1), v!(0), v!(123456), v!(1), v!(1), v!(1)],
+            &[v!(1), v!(0), v!(123456), v!(1), v!(1), v!(2)],
+            &[v!(1), v!(0), v!(123456), v!(1), v!(2), v!(0)],
+            &[v!(1), v!(0), v!(123456), v!(1), v!(2), v!(1)],
+            &[v!(1), v!(0), v!(123456), v!(1), v!(2), v!(2)],
+            // H-C channel in CH
+            &[v!(0), v!(0), v!(1), v!(6), v!(1), v!(0)],
+            &[v!(0), v!(0), v!(1), v!(6), v!(1), v!(1)],
+            &[v!(0), v!(0), v!(1), v!(6), v!(1), v!(2)],
+            // H-H channel in water, 1st atom
+            &[v!(1), v!(1), v!(1), v!(1), v!(2), v!(0)],
+            &[v!(1), v!(1), v!(1), v!(1), v!(2), v!(1)],
+            &[v!(1), v!(1), v!(1), v!(1), v!(2), v!(2)],
         ]);
     }
 }
