@@ -3,6 +3,7 @@ use std::collections::BTreeSet;
 use ndarray::Array2;
 
 use crate::descriptor::{IndexesBuilder, IndexValue, Indexes, EnvironmentIndexes, AtomSpeciesEnvironment};
+use crate::system::Pair;
 use crate::{Descriptor, System, Vector3D};
 
 use super::super::CalculatorBase;
@@ -201,6 +202,7 @@ impl CalculatorBase for SphericalExpansion {
     }
 
     fn check_features(&self, indexes: &Indexes) {
+        // TODO check for duplicated features?
         assert_eq!(indexes.names(), &["n", "l", "m"]);
         for value in indexes {
             let n = value[0].usize();
@@ -213,6 +215,7 @@ impl CalculatorBase for SphericalExpansion {
     }
 
     fn check_environments(&self, indexes: &Indexes, systems: &mut [&mut dyn System]) {
+        // TODO: check for duplicated environments?
         assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor"]);
         // This could be made much faster by not recomputing the full list of
         // potential environments
@@ -229,9 +232,8 @@ impl CalculatorBase for SphericalExpansion {
 
         self.do_self_contributions(descriptor);
 
-        // keep a list of pairs for which everything have already been
-        // computed
-        let mut already_computed_pairs = BTreeSet::new();
+        // keep the set of pairs already seen for each system
+        let mut already_computed_pairs = vec![BTreeSet::new(); systems.len()];
 
         for (i_env, requested_env) in descriptor.environments.iter().enumerate() {
             let i_system = requested_env[0];
@@ -260,7 +262,7 @@ impl CalculatorBase for SphericalExpansion {
                     continue;
                 }
 
-                if !already_computed_pairs.insert((pair.first, pair.second)) {
+                if !already_computed_pairs[i_system.usize()].insert(sort_pair(&pair)) {
                     continue;
                 }
 
@@ -289,12 +291,11 @@ impl CalculatorBase for SphericalExpansion {
                     let m = feature[2].isize();
 
                     let n_l_m_value = f_cut * self.ri_values[[n, l]] * self.sph_values[[l as isize, m]];
-
-                    descriptor.values[[i_env, i_feature]] += sign.powi(l as i32) * n_l_m_value;
+                    descriptor.values[[i_env, i_feature]] += n_l_m_value;
                     if let Some(other_env_i) = other_env_i {
                         // Use the fact that `se[n, l, m](-r) = (-1)^l se[n, l, m](r)`
                         // where se === spherical_expansion.
-                        descriptor.values[[other_env_i, i_feature]] += (-sign).powi(l as i32) * n_l_m_value;
+                        descriptor.values[[other_env_i, i_feature]] += f64::powi(-1.0, l as i32) * n_l_m_value;
                     }
                 }
 
@@ -318,13 +319,12 @@ impl CalculatorBase for SphericalExpansion {
 
                     let f_cut_grad = self.parameters.cutoff_function.derivative(distance, self.parameters.cutoff);
 
-                    let dr_dx = pair.vector[0] / distance;
-                    let dr_dy = pair.vector[1] / distance;
-                    let dr_dz = pair.vector[2] / distance;
+                    let dr_dx = sign * pair.vector[0] / distance;
+                    let dr_dy = sign * pair.vector[1] / distance;
+                    let dr_dz = sign * pair.vector[2] / distance;
 
                     let gradients = descriptor.gradients.as_mut().expect("missing storage for gradients");
                     let center_grad_i = center_grad_i.expect("missing storage for gradient");
-                    let neighbor_grad_i = neighbor_grad_i.expect("missing storage for gradient");
                     let ri_gradients = self.ri_gradients.as_ref().expect("missing radial integral gradients");
                     let sph_gradients = self.sph_gradients.as_ref().expect("missing spherical harmonics gradients");
 
@@ -353,19 +353,20 @@ impl CalculatorBase for SphericalExpansion {
                                     + f_cut * ri_grad * dr_dz * sph_value
                                     + f_cut * ri_value * sph_grad_z / distance;
 
-                        let sign_pow_l = sign.powi(l as i32 + 1);
                         // assumes that the three spatial derivative are stored
                         // one after the other
-                        gradients[[center_grad_i + 0, i_feature]] += sign_pow_l * grad_x;
-                        gradients[[center_grad_i + 1, i_feature]] += sign_pow_l * grad_y;
-                        gradients[[center_grad_i + 2, i_feature]] += sign_pow_l * grad_z;
+                        gradients[[center_grad_i + 0, i_feature]] += grad_x;
+                        gradients[[center_grad_i + 1, i_feature]] += grad_y;
+                        gradients[[center_grad_i + 2, i_feature]] += grad_z;
 
-                        // Use the fact that `se[n, l, m](-r) = (-1)^(l+1) se[n, l, m](r)`
-                        // where se === spherical_expansion.
-                        let m_sign_pow_l = (-sign).powi(l as i32 + 1);
-                        gradients[[neighbor_grad_i + 0, i_feature]] += m_sign_pow_l * grad_x;
-                        gradients[[neighbor_grad_i + 1, i_feature]] += m_sign_pow_l * grad_y;
-                        gradients[[neighbor_grad_i + 2, i_feature]] += m_sign_pow_l * grad_z;
+                        if let Some(neighbor_grad_i) = neighbor_grad_i {
+                            // Use the fact that `grad se[n, l, m](-r) = (-1)^(l + 1) grad se[n, l, m](r)`
+                            // where se === spherical_expansion.
+                            let parity = f64::powi(-1.0, l as i32 + 1);
+                            gradients[[neighbor_grad_i + 0, i_feature]] = parity * grad_x;
+                            gradients[[neighbor_grad_i + 1, i_feature]] = parity * grad_y;
+                            gradients[[neighbor_grad_i + 2, i_feature]] = parity * grad_z;
+                        }
                     }
                 }
             }
@@ -373,14 +374,29 @@ impl CalculatorBase for SphericalExpansion {
     }
 }
 
+fn sort_pair(pair: &Pair) -> (usize, usize) {
+    if pair.first <= pair.second {
+        (pair.first, pair.second)
+    } else {
+        (pair.second, pair.first)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::system::test_systems;
-    use crate::descriptor::IndexValue;
+    use crate::descriptor::{IndexValue, IndexesBuilder};
     use crate::{Descriptor, Calculator, System};
 
     use approx::assert_relative_eq;
     use ndarray::s;
+
+    /// Convenience macro to create IndexValue
+    macro_rules! v {
+        ($value: expr) => {
+            crate::descriptor::IndexValue::from($value as f64)
+        };
+    }
 
     fn hyperparameters(gradients: bool) -> String {
         format!("{{
@@ -495,6 +511,103 @@ mod tests {
                 }
 
                 systems.systems[0].positions_mut()[atom_i][spatial] -= delta;
+            }
+        }
+    }
+
+    #[test]
+    fn compute_partial() {
+        let mut calculator = Calculator::new(
+            "spherical_expansion",
+            hyperparameters(true),
+        ).unwrap();
+
+        let mut systems = test_systems(&["water", "methane"]);
+        let mut full = Descriptor::new();
+        calculator.compute(&mut systems.get(), &mut full);
+
+        // all features, all environments
+        let mut partial = Descriptor::new();
+        calculator.compute_partial(&mut systems.get(), &mut partial, None, None);
+
+        assert_eq!(full.environments, partial.environments);
+        assert_eq!(full.features, partial.features);
+        assert_eq!(full.values, partial.values);
+        assert_eq!(full.gradients_indexes, partial.gradients_indexes);
+        assert_eq!(full.gradients, partial.gradients);
+
+        // partial set of features, all environments
+        let mut features = IndexesBuilder::new(vec!["n", "l", "m"]);
+        features.add(&[v!(0), v!(1), v!(0)]);
+        features.add(&[v!(3), v!(6), v!(-5)]);
+        features.add(&[v!(2), v!(3), v!(2)]);
+        features.add(&[v!(1), v!(4), v!(4)]);
+        features.add(&[v!(5), v!(2), v!(0)]);
+        features.add(&[v!(1), v!(1), v!(-1)]);
+        let features = features.finish();
+        calculator.compute_partial(&mut systems.get(), &mut partial, None, Some(features.clone()));
+
+        assert_eq!(full.environments, partial.environments);
+        for (partial_i, feature) in features.iter().enumerate() {
+            let index = full.features.position(feature).unwrap();
+            assert_eq!(
+                full.values.slice(s![.., index]),
+                partial.values.slice(s![.., partial_i])
+            );
+
+            assert_eq!(
+                full.gradients.as_ref().unwrap().slice(s![.., index]),
+                partial.gradients.as_ref().unwrap().slice(s![.., partial_i])
+            );
+        }
+
+        // all features, partial set of environments
+        let mut environments = IndexesBuilder::new(vec!["structure", "center", "species_center", "species_neighbor"]);
+        environments.add(&[v!(0), v!(1), v!(1), v!(1)]);
+        environments.add(&[v!(0), v!(2), v!(1), v!(123456)]);
+        environments.add(&[v!(1), v!(0), v!(6), v!(1)]);
+        environments.add(&[v!(1), v!(2), v!(1), v!(1)]);
+        let environments = environments.finish();
+        calculator.compute_partial(&mut systems.get(), &mut partial, Some(environments.clone()), None);
+
+        assert_eq!(full.features, partial.features);
+        for (partial_i, environment) in environments.iter().enumerate() {
+            let index = full.environments.position(environment).unwrap();
+            assert_eq!(
+                full.values.slice(s![index, ..]),
+                partial.values.slice(s![partial_i, ..])
+            );
+
+        }
+        for (partial_i, environment) in partial.gradients_indexes.as_ref().unwrap().iter().enumerate() {
+            let index = full.gradients_indexes.as_ref().unwrap().position(environment).unwrap();
+            assert_eq!(
+                full.gradients.as_ref().unwrap().slice(s![index, ..]),
+                partial.gradients.as_ref().unwrap().slice(s![partial_i, ..])
+            );
+        }
+
+        // partial set of features, partial set of environments
+        calculator.compute_partial(&mut systems.get(), &mut partial, Some(environments.clone()), Some(features.clone()));
+        for (env_i, environment) in environments.iter().enumerate() {
+            for (feature_i, feature) in features.iter().enumerate() {
+                let full_env = full.environments.position(environment).unwrap();
+                let full_feature = full.features.position(feature).unwrap();
+                assert_eq!(
+                    full.values[[full_env, full_feature]],
+                    partial.values[[env_i, feature_i]]
+                );
+            }
+        }
+
+        for (env_i, environment) in partial.gradients_indexes.as_ref().unwrap().iter().enumerate() {
+            for (feature_i, feature) in features.iter().enumerate() {
+                let full_env = full.gradients_indexes.as_ref().unwrap().position(environment).unwrap();
+                let full_feature = full.features.position(feature).unwrap();
+                assert_eq!(
+                    full.gradients.as_ref().unwrap()[[full_env, full_feature]],
+                    partial.gradients.as_ref().unwrap()[[env_i, feature_i]]
+                );
             }
         }
     }
