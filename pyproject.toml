@@ -14,7 +14,10 @@ legacy_tox_ini = """
 # skip install to avoid rebuilding the world, do the install with setup.py
 # instead of pip below
 skip_install = True
-passenv = RASCALINE_BUILD_TYPE
+passenv =
+    RASCALINE_BUILD_TYPE
+    RUSTUP_HOME
+    CARGO_HOME
 
 deps =
     discover
@@ -27,7 +30,10 @@ commands =
 
 [testenv:no-ase]
 skip_install = True
-passenv = RASCALINE_BUILD_TYPE
+passenv =
+    RASCALINE_BUILD_TYPE
+    RUSTUP_HOME
+    CARGO_HOME
 
 deps =
     discover
