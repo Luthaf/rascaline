@@ -1,6 +1,6 @@
 # Basic CMake integration for rascaline. To be used with `add_subdirectory`
 
-cmake_minimum_required(VERSION 3.6)
+cmake_minimum_required(VERSION 3.11)
 
 project(rascaline NONE)
 
@@ -46,12 +46,12 @@ if(CARGO_STATUS AND NOT CARGO_STATUS EQUAL 0)
     )
 endif()
 
-set(REQUIRED_RUST_VERSION "1.43.0")
+set(REQUIRED_RUST_VERSION "1.48.0")
 string(REGEX REPLACE "cargo ([0-9]+\\.[0-9]+\\.[0-9]+) .*" "\\1" CARGO_VERSION ${CARGO_VERSION})
 if (${CARGO_VERSION} VERSION_LESS ${REQUIRED_RUST_VERSION})
     message(FATAL_ERROR
-        "your Rust installation is too old (version ${CARGO_VERSION}), at least \
-        ${REQUIRED_RUST_VERSION} is required"
+        "your Rust installation is too old (you have version ${CARGO_VERSION}), \
+        at least ${REQUIRED_RUST_VERSION} is required"
     )
 endif()
 
