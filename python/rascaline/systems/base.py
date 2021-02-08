@@ -81,8 +81,15 @@ def _cell_cb(user_data, data):
     cell = np.array(self.cell(), dtype=c_double)
     assert len(cell) == 9
 
-    data[0] = cell.ctypes.data
-    self._keepalive["cell"] = cell
+    data[0] = cell[0]
+    data[1] = cell[1]
+    data[2] = cell[2]
+    data[3] = cell[3]
+    data[4] = cell[4]
+    data[5] = cell[5]
+    data[6] = cell[6]
+    data[7] = cell[7]
+    data[8] = cell[8]
 
 
 def _compute_neighbors_cb(user_data, cutoff):

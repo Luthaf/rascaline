@@ -34,7 +34,6 @@ if HAVE_ASE:
             self.assertTrue(np.all(system.species() == [6, 8, 8]))
             self.assertTrue(np.all(system.positions() == positions))
             self.assertTrue(np.all(system.cell() == [0, 0, 0, 0, 0, 0, 0, 0, 0]))
-            self.assertTrue(np.all(system.cell() == [0, 0, 0, 0, 0, 0, 0, 0, 0]))
 
         def test_neighbors(self):
             positions = [

@@ -65,7 +65,12 @@ impl System for rascal_system_t {
             function(self.user_data, &mut value[0][0]);
             std::mem::transmute(value)
         };
-        return UnitCell::from(matrix);
+
+        if matrix == Matrix3::zero() {
+            return UnitCell::infinite();
+        } else {
+            return UnitCell::from(matrix);
+        }
     }
 
     fn compute_neighbors(&mut self, cutoff: f64) {
