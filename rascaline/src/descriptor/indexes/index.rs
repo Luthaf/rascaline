@@ -295,6 +295,8 @@ impl std::ops::Index<usize> for Indexes {
 
 #[allow(clippy::module_name_repetitions)]
 pub trait EnvironmentIndexes {
+    fn names(&self) -> Vec<&str>;
+
     fn indexes(&self, systems: &mut [&mut dyn System]) -> Indexes;
 
     fn with_gradients(&self, systems: &mut [&mut dyn System]) -> (Indexes, Option<Indexes>) {

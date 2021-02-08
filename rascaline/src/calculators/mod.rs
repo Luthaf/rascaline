@@ -9,8 +9,11 @@ pub trait CalculatorBase: std::panic::RefUnwindSafe {
     /// Get the name of this Calculator
     fn name(&self) -> String;
 
+    /// Get the names of features for this Calculator
+    fn features_names(&self) -> Vec<&str>;
     /// Get the default set of features for this Calculator
     fn features(&self) -> Indexes;
+
     /// Get the default set of environments for this Calculator
     fn environments(&self) -> Box<dyn EnvironmentIndexes>;
     /// Does this environment compute gradients?

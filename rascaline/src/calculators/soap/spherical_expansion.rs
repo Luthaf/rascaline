@@ -179,8 +179,12 @@ impl CalculatorBase for SphericalExpansion {
         "spherical expansion".into()
     }
 
+    fn features_names(&self) -> Vec<&str> {
+        vec!["n", "l", "m"]
+    }
+
     fn features(&self) -> Indexes {
-        let mut features = IndexesBuilder::new(vec!["n", "l", "m"]);
+        let mut features = IndexesBuilder::new(self.features_names());
         for n in 0..(self.parameters.max_radial as isize) {
             for l in 0..((self.parameters.max_angular + 1) as isize) {
                 for m in -l..=l {
@@ -387,6 +391,7 @@ mod tests {
     use crate::system::test_systems;
     use crate::descriptor::{IndexValue, IndexesBuilder};
     use crate::{Descriptor, Calculator, System};
+    use crate::{CalculationOptions, SelectedIndexes};
 
     use approx::assert_relative_eq;
     use ndarray::s;
@@ -423,7 +428,7 @@ mod tests {
 
         let mut systems = test_systems(&["water"]);
         let mut descriptor = Descriptor::new();
-        calculator.compute(&mut systems.get(), &mut descriptor);
+        calculator.compute(&mut systems.get(), &mut descriptor, Default::default()).unwrap();
 
         assert_eq!(descriptor.environments.names(), ["structure", "center", "species_center", "species_neighbor"]);
         assert_eq!(descriptor.features.names(), ["n", "l", "m"]);
@@ -452,7 +457,7 @@ mod tests {
 
         let mut systems = test_systems(&["water"]);
         let mut reference = Descriptor::new();
-        calculator.compute(&mut systems.get(), &mut reference);
+        calculator.compute(&mut systems.get(), &mut reference, Default::default()).unwrap();
 
         // exact gradients for spherical expansion are regression-tested in
         // `rascaline/tests/spherical-expansion.rs`
@@ -484,7 +489,7 @@ mod tests {
                 systems.systems[0].positions_mut()[atom_i][spatial] += delta;
 
                 let mut updated = Descriptor::new();
-                calculator.compute(&mut systems.get(), &mut updated);
+                calculator.compute(&mut systems.get(), &mut updated, Default::default()).unwrap();
 
                 for (grad_i, env) in modified_indexes(atom_i, spatial) {
                     let env_i = reference.environments.position(env).expect(
@@ -524,17 +529,7 @@ mod tests {
 
         let mut systems = test_systems(&["water", "methane"]);
         let mut full = Descriptor::new();
-        calculator.compute(&mut systems.get(), &mut full);
-
-        // all features, all environments
-        let mut partial = Descriptor::new();
-        calculator.compute_partial(&mut systems.get(), &mut partial, None, None);
-
-        assert_eq!(full.environments, partial.environments);
-        assert_eq!(full.features, partial.features);
-        assert_eq!(full.values, partial.values);
-        assert_eq!(full.gradients_indexes, partial.gradients_indexes);
-        assert_eq!(full.gradients, partial.gradients);
+        calculator.compute(&mut systems.get(), &mut full, Default::default()).unwrap();
 
         // partial set of features, all environments
         let mut features = IndexesBuilder::new(vec!["n", "l", "m"]);
@@ -545,7 +540,14 @@ mod tests {
         features.add(&[v!(5), v!(2), v!(0)]);
         features.add(&[v!(1), v!(1), v!(-1)]);
         let features = features.finish();
-        calculator.compute_partial(&mut systems.get(), &mut partial, None, Some(features.clone()));
+
+        let mut partial = Descriptor::new();
+        let options = CalculationOptions {
+            selected_samples: SelectedIndexes::All,
+            selected_features: SelectedIndexes::Some(features.clone()),
+            ..Default::default()
+        };
+        calculator.compute(&mut systems.get(), &mut partial, options).unwrap();
 
         assert_eq!(full.environments, partial.environments);
         for (partial_i, feature) in features.iter().enumerate() {
@@ -568,7 +570,13 @@ mod tests {
         environments.add(&[v!(1), v!(0), v!(6), v!(1)]);
         environments.add(&[v!(1), v!(2), v!(1), v!(1)]);
         let environments = environments.finish();
-        calculator.compute_partial(&mut systems.get(), &mut partial, Some(environments.clone()), None);
+
+        let options = CalculationOptions {
+            selected_samples: SelectedIndexes::Some(environments.clone()),
+            selected_features: SelectedIndexes::All,
+            ..Default::default()
+        };
+        calculator.compute(&mut systems.get(), &mut partial, options).unwrap();
 
         assert_eq!(full.features, partial.features);
         for (partial_i, environment) in environments.iter().enumerate() {
@@ -588,7 +596,12 @@ mod tests {
         }
 
         // partial set of features, partial set of environments
-        calculator.compute_partial(&mut systems.get(), &mut partial, Some(environments.clone()), Some(features.clone()));
+        let options = CalculationOptions {
+            selected_samples: SelectedIndexes::Some(environments.clone()),
+            selected_features: SelectedIndexes::Some(features.clone()),
+            ..Default::default()
+        };
+        calculator.compute(&mut systems.get(), &mut partial, options).unwrap();
         for (env_i, environment) in environments.iter().enumerate() {
             for (feature_i, feature) in features.iter().enumerate() {
                 let full_env = full.environments.position(environment).unwrap();

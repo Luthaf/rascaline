@@ -8,6 +8,7 @@
 
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 #![allow(clippy::cast_possible_wrap, clippy::cast_lossless, clippy::cast_sign_loss)]
+#![allow(clippy::default_trait_access)]
 
 // Tests lints
 #![cfg_attr(test, allow(clippy::float_cmp))]
@@ -27,6 +28,6 @@ pub mod descriptor;
 pub use descriptor::Descriptor;
 
 mod calculator;
-pub use calculator::Calculator;
+pub use calculator::{Calculator, CalculationOptions, SelectedIndexes};
 
 pub mod calculators;

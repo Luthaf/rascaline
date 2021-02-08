@@ -21,8 +21,12 @@ impl CalculatorBase for SortedDistances {
         "sorted distances vector".into()
     }
 
+    fn features_names(&self) -> Vec<&str> {
+        vec!["neighbor"]
+    }
+
     fn features(&self) -> Indexes {
-        let mut features = IndexesBuilder::new(vec!["neighbor"]);
+        let mut features = IndexesBuilder::new(self.features_names());
         for i in 0..self.max_neighbors {
             features.add(&[IndexValue::from(i)]);
         }
@@ -142,6 +146,7 @@ impl CalculatorBase for SortedDistances {
 mod tests {
     use crate::system::test_systems;
     use crate::{Descriptor, Calculator};
+    use crate::{CalculationOptions, SelectedIndexes};
     use crate::descriptor::{IndexesBuilder, IndexValue};
 
     use ndarray::{s, aview1};
@@ -165,7 +170,7 @@ mod tests {
 
         let mut systems = test_systems(&["water"]);
         let mut descriptor = Descriptor::new();
-        calculator.compute(&mut systems.get(), &mut descriptor);
+        calculator.compute(&mut systems.get(), &mut descriptor, Default::default()).unwrap();
 
         assert_eq!(descriptor.values.shape(), [3, 3]);
 
@@ -195,7 +200,12 @@ mod tests {
             IndexValue::from(0_usize), IndexValue::from(1_usize),
             IndexValue::from(1_usize), IndexValue::from(123456_usize)
         ]);
-        calculator.compute_partial(&mut systems.get(), &mut descriptor, Some(samples.finish()), None);
+        let options = CalculationOptions {
+            selected_samples: SelectedIndexes::Some(samples.finish()),
+            selected_features: SelectedIndexes::All,
+            ..Default::default()
+        };
+        calculator.compute(&mut systems.get(), &mut descriptor, options).unwrap();
 
         assert_eq!(descriptor.values.shape(), [1, 3]);
         assert_eq!(descriptor.values.slice(s![0, ..]), aview1(&[0.957897074324794, 1.5, 1.5]));
@@ -203,7 +213,13 @@ mod tests {
         let mut features = IndexesBuilder::new(vec!["neighbor"]);
         features.add(&[IndexValue::from(0_usize)]);
         features.add(&[IndexValue::from(2_usize)]);
-        calculator.compute_partial(&mut systems.get(), &mut descriptor, None, Some(features.finish()));
+
+        let options = CalculationOptions {
+            selected_samples: SelectedIndexes::All,
+            selected_features: SelectedIndexes::Some(features.finish()),
+            ..Default::default()
+        };
+        calculator.compute(&mut systems.get(), &mut descriptor, options).unwrap();
 
         assert_eq!(descriptor.values.shape(), [3, 2]);
         assert_eq!(descriptor.values.slice(s![0, ..]), aview1(&[0.957897074324794, 1.5]));

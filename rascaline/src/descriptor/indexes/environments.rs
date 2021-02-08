@@ -15,8 +15,12 @@ use super::{Indexes, IndexesBuilder, EnvironmentIndexes, IndexValue};
 pub struct StructureEnvironment;
 
 impl EnvironmentIndexes for StructureEnvironment {
+    fn names(&self) -> Vec<&str> {
+        vec!["structure"]
+    }
+
     fn indexes(&self, systems: &mut [&mut dyn System]) -> Indexes {
-        let mut indexes = IndexesBuilder::new(vec!["structure"]);
+        let mut indexes = IndexesBuilder::new(self.names());
         for system in 0..systems.len() {
             indexes.add(&[IndexValue::from(system)]);
         }
@@ -24,7 +28,7 @@ impl EnvironmentIndexes for StructureEnvironment {
     }
 
     fn gradients_for(&self, systems: &mut [&mut dyn System], samples: &Indexes) -> Option<Indexes> {
-        assert_eq!(samples.names(), ["structure"]);
+        assert_eq!(samples.names(), self.names());
 
         let mut gradients = IndexesBuilder::new(vec!["structure", "atom", "spatial"]);
         for value in samples.iter() {
@@ -65,8 +69,12 @@ impl AtomEnvironment {
 }
 
 impl EnvironmentIndexes for AtomEnvironment {
+    fn names(&self) -> Vec<&str> {
+        vec!["structure", "center"]
+    }
+
     fn indexes(&self, systems: &mut [&mut dyn System]) -> Indexes {
-        let mut indexes = IndexesBuilder::new(vec!["structure", "center"]);
+        let mut indexes = IndexesBuilder::new(self.names());
         for (i_system, system) in systems.iter().enumerate() {
             for center in 0..system.size() {
                 indexes.add(&[IndexValue::from(i_system), IndexValue::from(center)]);
@@ -76,7 +84,7 @@ impl EnvironmentIndexes for AtomEnvironment {
     }
 
     fn gradients_for(&self, systems: &mut [&mut dyn System], samples: &Indexes) -> Option<Indexes> {
-        assert_eq!(samples.names(), ["structure", "center"]);
+        assert_eq!(samples.names(), self.names());
 
         // We need IndexSet to yield the indexes in the right order, i.e. the
         // order corresponding to whatever was passed in sample

@@ -2,7 +2,7 @@ use std::os::raw::c_char;
 use std::ffi::CStr;
 use std::ops::{Deref, DerefMut};
 
-use rascaline::{Calculator, System};
+use rascaline::{Calculator, System, CalculationOptions, SelectedIndexes};
 use rascaline::descriptor::IndexValue;
 
 use super::utils::copy_str_to_c;
@@ -89,43 +89,66 @@ pub unsafe extern fn rascal_calculator_parameters(
     })
 }
 
+#[repr(C)]
+pub struct rascal_calculation_options_t {
+    /// Copy the data from systems into native `SimpleSystem`. This can be
+    /// faster than having to cross the FFI boundary too often.
+    use_native_system: bool,
+    /// List of samples on which to run the calculation. Use `NULL` to run the
+    /// calculation on all samples.
+    selected_samples: *const f64,
+    /// If selected_samples is not `NULL`, this should be set to the size of the
+    /// selected_samples array
+    selected_samples_count: usize,
+    /// List of features on which to run the calculation. Use `NULL` to run the
+    /// calculation on all features.
+    selected_features: *const f64,
+    /// If selected_features is not `NULL`, this should be set to the size of the
+    /// selected_features array
+    selected_features_count: usize,
+}
+
+impl<'a> From<&'a rascal_calculation_options_t> for CalculationOptions<'a> {
+    fn from(options: &'a rascal_calculation_options_t) -> CalculationOptions {
+        let selected_samples = if options.selected_samples.is_null() {
+            SelectedIndexes::All
+        } else {
+            let slice = unsafe {
+                std::slice::from_raw_parts(
+                    options.selected_samples as *const IndexValue,
+                    options.selected_samples_count
+                )
+            };
+            SelectedIndexes::FromC(slice)
+        };
+
+        let selected_features = if options.selected_features.is_null() {
+            SelectedIndexes::All
+        } else {
+            let slice = unsafe {
+                std::slice::from_raw_parts(
+                    options.selected_features as *const IndexValue,
+                    options.selected_features_count
+                )
+            };
+            SelectedIndexes::FromC(slice)
+        };
+
+        CalculationOptions {
+            use_native_system: options.use_native_system,
+            selected_samples: selected_samples,
+            selected_features: selected_features,
+        }
+    }
+}
+
 #[no_mangle]
 pub unsafe extern fn rascal_calculator_compute(
     calculator: *mut rascal_calculator_t,
     descriptor: *mut rascal_descriptor_t,
     systems: *mut rascal_system_t,
-    count: usize
-) -> rascal_status_t {
-    catch_unwind(|| {
-        if count == 0 {
-            // TODO: warning
-            return Ok(());
-        }
-        check_pointers!(calculator, descriptor, systems);
-
-        // Create a Vec<&mut dyn System> from the passed systems
-        let systems = std::slice::from_raw_parts_mut(systems, count);
-        let mut references = Vec::new();
-        for system in systems {
-            references.push(system as &mut dyn System);
-        }
-
-        (*calculator).compute(&mut references, &mut *descriptor);
-
-        Ok(())
-    })
-}
-
-#[no_mangle]
-pub unsafe extern fn rascal_calculator_compute_partial(
-    calculator: *mut rascal_calculator_t,
-    descriptor: *mut rascal_descriptor_t,
-    systems: *mut rascal_system_t,
     systems_count: usize,
-    samples: *const f64,
-    samples_count: usize,
-    features: *const f64,
-    features_count: usize,
+    options: rascal_calculation_options_t,
 ) -> rascal_status_t {
     catch_unwind(|| {
         if systems_count == 0 {
@@ -134,21 +157,6 @@ pub unsafe extern fn rascal_calculator_compute_partial(
         }
         check_pointers!(calculator, descriptor, systems);
 
-
-        let samples = if samples.is_null() {
-            None
-        } else {
-            let samples = samples as *const IndexValue;
-            Some(std::slice::from_raw_parts(samples, samples_count))
-        };
-
-        let features = if features.is_null() {
-            None
-        } else {
-            let features = features as *const IndexValue;
-            Some(std::slice::from_raw_parts(features, features_count))
-        };
-
         // Create a Vec<&mut dyn System> from the passed systems
         let systems = std::slice::from_raw_parts_mut(systems, systems_count);
         let mut references = Vec::new();
@@ -156,8 +164,7 @@ pub unsafe extern fn rascal_calculator_compute_partial(
             references.push(system as &mut dyn System);
         }
 
-        (*calculator).compute_partial_capi(&mut references, &mut *descriptor, samples, features)?;
-
-        Ok(())
+        let options = (&options).into();
+        (*calculator).compute(&mut references, &mut *descriptor, options)
     })
 }

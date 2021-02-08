@@ -85,6 +85,34 @@ typedef struct {
   void (*pairs)(const void *user_data, const rascal_pair_t **pairs, uintptr_t *count);
 } rascal_system_t;
 
+typedef struct {
+  /*
+   Copy the data from systems into native `SimpleSystem`. This can be
+   faster than having to cross the FFI boundary too often.
+   */
+  bool use_native_system;
+  /*
+   List of samples on which to run the calculation. Use `NULL` to run the
+   calculation on all samples.
+   */
+  const double *selected_samples;
+  /*
+   If selected_samples is not `NULL`, this should be set to the size of the
+   selected_samples array
+   */
+  uintptr_t selected_samples_count;
+  /*
+   List of features on which to run the calculation. Use `NULL` to run the
+   calculation on all features.
+   */
+  const double *selected_features;
+  /*
+   If selected_features is not `NULL`, this should be set to the size of the
+   selected_features array
+   */
+  uintptr_t selected_features_count;
+} rascal_calculation_options_t;
+
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
@@ -136,16 +164,8 @@ rascal_status_t rascal_calculator_parameters(const rascal_calculator_t *calculat
 rascal_status_t rascal_calculator_compute(rascal_calculator_t *calculator,
                                           rascal_descriptor_t *descriptor,
                                           rascal_system_t *systems,
-                                          uintptr_t count);
-
-rascal_status_t rascal_calculator_compute_partial(rascal_calculator_t *calculator,
-                                                  rascal_descriptor_t *descriptor,
-                                                  rascal_system_t *systems,
-                                                  uintptr_t systems_count,
-                                                  const double *samples,
-                                                  uintptr_t samples_count,
-                                                  const double *features,
-                                                  uintptr_t features_count);
+                                          uintptr_t systems_count,
+                                          rascal_calculation_options_t options);
 
 #ifdef __cplusplus
 } // extern "C"

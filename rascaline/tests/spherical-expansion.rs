@@ -10,7 +10,8 @@ fn spherical_expansion() {
 
     let mut descriptor = Descriptor::new();
     let mut calculator = Calculator::new("spherical_expansion", parameters).unwrap();
-    calculator.compute(&mut systems, &mut descriptor);
+    calculator.compute(&mut systems, &mut descriptor, Default::default())
+        .expect("failed to run calculation");
 
     let expected = data::load_expected_values("spherical-expansion-values.npy.gz");
 

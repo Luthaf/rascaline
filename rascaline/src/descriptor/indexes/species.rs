@@ -14,8 +14,12 @@ use super::{EnvironmentIndexes, Indexes, IndexesBuilder, IndexValue};
 pub struct StructureSpeciesEnvironment;
 
 impl EnvironmentIndexes for StructureSpeciesEnvironment {
+    fn names(&self) -> Vec<&str> {
+        vec!["structure", "species"]
+    }
+
     fn indexes(&self, systems: &mut [&mut dyn System]) -> Indexes {
-        let mut indexes = IndexesBuilder::new(vec!["structure", "species"]);
+        let mut indexes = IndexesBuilder::new(self.names());
         for (i_system, system) in systems.iter().enumerate() {
             for &species in system.species().iter().collect::<BTreeSet<_>>() {
                 indexes.add(&[
@@ -27,7 +31,7 @@ impl EnvironmentIndexes for StructureSpeciesEnvironment {
     }
 
     fn gradients_for(&self, systems: &mut [&mut dyn System], samples: &Indexes) -> Option<Indexes> {
-        assert_eq!(samples.names(), ["structure", "species"]);
+        assert_eq!(samples.names(), self.names());
 
         let mut gradients = IndexesBuilder::new(vec!["structure", "species", "atom", "spatial"]);
         for value in samples.iter() {
@@ -90,6 +94,10 @@ impl AtomSpeciesEnvironment {
 }
 
 impl EnvironmentIndexes for AtomSpeciesEnvironment {
+    fn names(&self) -> Vec<&str> {
+        vec!["structure", "center", "species_center", "species_neighbor"]
+    }
+
     fn indexes(&self, systems: &mut [&mut dyn System]) -> Indexes {
         // Accumulate indexes in a set first to ensure uniqueness of the indexes
         // even if their are multiple neighbors of the same specie around a
@@ -113,7 +121,7 @@ impl EnvironmentIndexes for AtomSpeciesEnvironment {
             }
         }
 
-        let mut indexes = IndexesBuilder::new(vec!["structure", "center", "species_center", "species_neighbor"]);
+        let mut indexes = IndexesBuilder::new(self.names());
         for (s, c, a, b) in set {
             indexes.add(&[
                 IndexValue::from(s), IndexValue::from(c), IndexValue::from(a), IndexValue::from(b)
@@ -123,7 +131,7 @@ impl EnvironmentIndexes for AtomSpeciesEnvironment {
     }
 
     fn gradients_for(&self, systems: &mut [&mut dyn System], samples: &Indexes) -> Option<Indexes> {
-        assert_eq!(samples.names(), ["structure", "center", "species_center", "species_neighbor"]);
+        assert_eq!(samples.names(), self.names());
 
         // We need IndexSet to yield the indexes in the right order, i.e. the
         // order corresponding to whatever was passed in sample

@@ -61,6 +61,16 @@ class rascal_system_t(ctypes.Structure):
     ]
 
 
+class rascal_calculation_options_t(ctypes.Structure):
+    _fields_ = [
+        ("use_native_system", ctypes.c_bool),
+        ("selected_samples", POINTER(ctypes.c_double)),
+        ("selected_samples_count", c_uintptr_t),
+        ("selected_features", POINTER(ctypes.c_double)),
+        ("selected_features_count", c_uintptr_t),
+    ]
+
+
 def setup_functions(lib):
     from .status import _check_rascal_status_t
 
@@ -147,18 +157,7 @@ def setup_functions(lib):
         POINTER(rascal_calculator_t),
         POINTER(rascal_descriptor_t),
         POINTER(rascal_system_t),
-        c_uintptr_t
+        c_uintptr_t,
+        rascal_calculation_options_t
     ]
     lib.rascal_calculator_compute.restype = _check_rascal_status_t
-
-    lib.rascal_calculator_compute_partial.argtypes = [
-        POINTER(rascal_calculator_t),
-        POINTER(rascal_descriptor_t),
-        POINTER(rascal_system_t),
-        c_uintptr_t,
-        POINTER(ctypes.c_double),
-        c_uintptr_t,
-        POINTER(ctypes.c_double),
-        c_uintptr_t
-    ]
-    lib.rascal_calculator_compute_partial.restype = _check_rascal_status_t

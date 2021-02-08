@@ -65,7 +65,7 @@ class TestDummyCalculator(unittest.TestCase):
 
         # From a selection scheme, using numpy array indexing
         samples = descriptor.environments[[0, 2]]
-        descriptor = calculator.compute_partial(system, samples=samples)
+        descriptor = calculator.compute(system, selected_samples=samples)
 
         values = descriptor.values
         self.assertEqual(values.shape, (2, 2))
@@ -79,7 +79,7 @@ class TestDummyCalculator(unittest.TestCase):
 
         #  Manually constructing the selected samples
         samples = [(0, 0), (0, 3), (0, 1)]
-        descriptor = calculator.compute_partial(system, samples=samples)
+        descriptor = calculator.compute(system, selected_samples=samples)
 
         values = descriptor.values
         self.assertEqual(values.shape, (3, 2))
@@ -99,7 +99,7 @@ class TestDummyCalculator(unittest.TestCase):
 
         # From a selection scheme, using numpy array indexing
         features = descriptor.features[[1]]
-        descriptor = calculator.compute_partial(system, features=features)
+        descriptor = calculator.compute(system, selected_features=features)
 
         values = descriptor.values
         self.assertEqual(values.shape, (4, 1))
@@ -115,7 +115,7 @@ class TestDummyCalculator(unittest.TestCase):
 
         # Manually constructing the selected features
         features = [[1, 0, 1.2]]
-        descriptor = calculator.compute_partial(system, features=features)
+        descriptor = calculator.compute(system, selected_features=features)
 
         values = descriptor.values
         self.assertEqual(values.shape, (4, 1))

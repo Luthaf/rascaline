@@ -128,7 +128,17 @@ TEST_CASE("Compute descriptor") {
 
     SECTION("Full compute") {
         auto system = simple_system();
-        CHECK_SUCCESS(rascal_calculator_compute(calculator, descriptor, &system, 1));
+
+        auto options = rascal_calculation_options_t {
+            /* use_native_system */ false,
+            /* selected_samples */ nullptr,
+            /* selected_samples_count */ 0,
+            /* selected_features */ nullptr,
+            /* selected_features_count */ 0,
+        };
+        CHECK_SUCCESS(rascal_calculator_compute(
+            calculator, descriptor, &system, 1, options
+        ));
 
         auto expected = std::vector<double>{
             0, 0, /**/ 0, 1, /**/ 0, 2, /**/ 0, 3,
@@ -176,8 +186,16 @@ TEST_CASE("Compute descriptor") {
         auto samples = std::vector<double>{
             0, 1, /**/ 0, 3,
         };
-        CHECK_SUCCESS(rascal_calculator_compute_partial(
-            calculator, descriptor, &system, 1, samples.data(), samples.size(), nullptr, 0
+
+        auto options = rascal_calculation_options_t {
+            /* use_native_system */ false,
+            /* selected_samples */ samples.data(),
+            /* selected_samples_count */ samples.size(),
+            /* selected_features */ nullptr,
+            /* selected_features_count */ 0,
+        };
+        CHECK_SUCCESS(rascal_calculator_compute(
+            calculator, descriptor, &system, 1, options
         ));
 
         check_indexes(descriptor, RASCAL_INDEXES_ENVIRONMENTS, {"structure", "center"}, samples, 2, 2);
@@ -223,8 +241,15 @@ TEST_CASE("Compute descriptor") {
         auto features = std::vector<double>{
             0, 1, 3.2,
         };
-        CHECK_SUCCESS(rascal_calculator_compute_partial(
-            calculator, descriptor, &system, 1, nullptr, 0, features.data(), features.size()
+        auto options = rascal_calculation_options_t {
+            /* use_native_system */ false,
+            /* selected_samples */ nullptr,
+            /* selected_samples_count */ 0,
+            /* selected_features */ features.data(),
+            /* selected_features_count */ features.size(),
+        };
+        CHECK_SUCCESS(rascal_calculator_compute(
+            calculator, descriptor, &system, 1, options
         ));
 
         auto expected = std::vector<double>{
@@ -265,15 +290,29 @@ TEST_CASE("Compute descriptor") {
         auto system = simple_system();
 
         auto samples = std::vector<double>{0, 1, 3};
-        auto status = rascal_calculator_compute_partial(
-            calculator, descriptor, &system, 1, samples.data(), samples.size(), nullptr, 0
+        auto options = rascal_calculation_options_t {
+            /* use_native_system */ false,
+            /* selected_samples */ samples.data(),
+            /* selected_samples_count */ samples.size(),
+            /* selected_features */ nullptr,
+            /* selected_features_count */ 0,
+        };
+        auto status = rascal_calculator_compute(
+            calculator, descriptor, &system, 1, options
         );
         CHECK(status != RASCAL_SUCCESS);
         CHECK(std::string(rascal_last_error()) == "invalid parameter: wrong size for partial samples list, expected a multiple of 2, got 3");
 
         auto features = std::vector<double>{0, 1, 3.2, 1};
-        status = rascal_calculator_compute_partial(
-            calculator, descriptor, &system, 1, nullptr, 0, features.data(), features.size()
+        options = rascal_calculation_options_t {
+            /* use_native_system */ false,
+            /* selected_samples */ nullptr,
+            /* selected_samples_count */ 0,
+            /* selected_features */ features.data(),
+            /* selected_features_count */ features.size(),
+        };
+        status = rascal_calculator_compute(
+            calculator, descriptor, &system, 1, options
         );
         CHECK(status != RASCAL_SUCCESS);
         CHECK(std::string(rascal_last_error()) == "invalid parameter: wrong size for partial features list, expected a multiple of 3, got 4");
@@ -298,7 +337,7 @@ void check_indexes(
     CHECK_SUCCESS(rascal_descriptor_indexes(
         descriptor, kind, &actual_values, &actual_count, &actual_size
     ));
-    CHECK(actual_values != nullptr);
+    REQUIRE(actual_values != nullptr);
     CHECK(actual_count == count);
     CHECK(actual_size == size);
 

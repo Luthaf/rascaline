@@ -3,7 +3,7 @@ import json
 import ctypes
 import numpy as np
 
-from ._rascaline import rascal_system_t, rascal_status_t
+from ._rascaline import rascal_system_t, rascal_status_t, rascal_calculation_options_t
 from .clib import _get_library
 from .status import _check_rascal_pointer, RascalError
 from .descriptor import Descriptor
@@ -55,6 +55,59 @@ def _convert_systems(systems):
         return (rascal_system_t * len(systems))(*list(wrap_system(s) for s in systems))
 
 
+def _options_to_c(options):
+    known_options = [
+        "use_native_system",
+        "selected_samples",
+        "selected_features",
+    ]
+    for option in options.keys():
+        if option not in known_options:
+            raise Exception(f"unknown option '{option}' passed to compute")
+
+    samples = options.get("selected_samples")
+    if samples is not None:
+        samples = np.array(samples)
+        if samples.dtype.fields is not None:
+            # convert structured array back to float64 array
+            size = len(samples)
+            samples = samples.view(dtype=np.float64).reshape((size, -1))
+        else:
+            _check_selected_indexes(samples, "samples")
+            samples = np.array(samples, dtype=np.float64)
+
+    features = options.get("selected_features")
+    if features is not None:
+        features = np.array(features)
+        if features.dtype.fields is not None:
+            # convert structured array back to float64 array
+            size = len(features)
+            features = features.view(dtype=np.float64).reshape((size, -1))
+        else:
+            _check_selected_indexes(features, "features")
+            features = np.array(features, dtype=np.float64)
+
+    ptr_double = ctypes.POINTER(ctypes.c_double)
+    c_options = rascal_calculation_options_t()
+    c_options.use_native_system = bool(options.get("use_native_system", False))
+
+    if samples is None:
+        c_options.selected_samples = None
+        c_options.selected_samples_count = 0
+    else:
+        c_options.selected_samples = samples.ctypes.data_as(ptr_double)
+        c_options.selected_samples_count = samples.size
+
+    if features is None:
+        c_options.selected_features = None
+        c_options.selected_features_count = 0
+    else:
+        c_options.selected_features = features.ctypes.data_as(ptr_double)
+        c_options.selected_features_count = features.size
+
+    return c_options
+
+
 class CalculatorBase:
     def __init__(self, __rascal__name, **kwargs):
         self._lib = _get_library()
@@ -83,55 +136,13 @@ class CalculatorBase:
             )
         )
 
-    def compute(self, systems, descriptor=None):
+    def compute(self, systems, descriptor=None, **kwargs):
         if descriptor is None:
             descriptor = Descriptor()
 
         c_systems = _convert_systems(systems)
         self._lib.rascal_calculator_compute(
-            self, descriptor, c_systems, c_systems._length_
-        )
-        return descriptor
-
-    def compute_partial(self, systems, descriptor=None, samples=None, features=None):
-        if descriptor is None:
-            descriptor = Descriptor()
-
-        if samples is not None:
-            samples = np.array(samples)
-            if samples.dtype.fields is not None:
-                # convert structured array back to float64 array
-                size = len(samples)
-                samples = samples.view(dtype=np.float64).reshape((size, -1))
-            else:
-                _check_selected_indexes(samples, "samples")
-                samples = np.array(samples, dtype=np.float64)
-
-        if features is not None:
-            features = np.array(features)
-            if features.dtype.fields is not None:
-                # convert structured array back to float64 array
-                size = len(features)
-                features = features.view(dtype=np.float64).reshape((size, -1))
-            else:
-                _check_selected_indexes(features, "features")
-                features = np.array(features, dtype=np.float64)
-
-        samples_count = 0 if samples is None else samples.size
-        features_count = 0 if features is None else features.size
-
-        ptr_type = ctypes.POINTER(ctypes.c_double)
-
-        c_systems = _convert_systems(systems)
-        self._lib.rascal_calculator_compute_partial(
-            self,
-            descriptor,
-            c_systems,
-            c_systems._length_,
-            samples.ctypes.data_as(ptr_type) if samples is not None else None,
-            samples_count,
-            features.ctypes.data_as(ptr_type) if features is not None else None,
-            features_count,
+            self, descriptor, c_systems, c_systems._length_, _options_to_c(kwargs)
         )
         return descriptor
 

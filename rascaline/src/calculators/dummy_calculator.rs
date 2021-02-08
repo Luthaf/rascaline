@@ -31,8 +31,12 @@ impl CalculatorBase for DummyCalculator {
         )
     }
 
+    fn features_names(&self) -> Vec<&str> {
+        vec!["index_delta", "x_y_z", "float"]
+    }
+
     fn features(&self) -> Indexes {
-        let mut features = IndexesBuilder::new(vec!["index_delta", "x_y_z", "float"]);
+        let mut features = IndexesBuilder::new(self.features_names());
         features.add(&[IndexValue::from(1_usize), IndexValue::from(0_isize), IndexValue::from(1.2)]);
         features.add(&[IndexValue::from(0_usize), IndexValue::from(1_isize), IndexValue::from(3.2)]);
         features.finish()
@@ -118,6 +122,7 @@ impl CalculatorBase for DummyCalculator {
 mod tests {
     use crate::system::test_systems;
     use crate::{Descriptor, Calculator};
+    use crate::{CalculationOptions, SelectedIndexes};
     use crate::descriptor::{IndexesBuilder, IndexValue};
 
     use ndarray::{s, aview1};
@@ -148,7 +153,7 @@ mod tests {
 
         let mut systems = test_systems(&["water"]);
         let mut descriptor = Descriptor::new();
-        calculator.compute(&mut systems.get(), &mut descriptor);
+        calculator.compute(&mut systems.get(), &mut descriptor, Default::default()).unwrap();
 
         assert_eq!(descriptor.values.shape(), [3, 2]);
         assert_eq!(descriptor.values.slice(s![0, ..]), aview1(&[9.0, -1.1778999999999997]));
@@ -167,7 +172,7 @@ mod tests {
 
         let mut systems = test_systems(&["water"]);
         let mut descriptor = Descriptor::new();
-        calculator.compute(&mut systems.get(), &mut descriptor);
+        calculator.compute(&mut systems.get(), &mut descriptor, Default::default()).unwrap();
 
         let gradients = descriptor.gradients.unwrap();
         assert_eq!(gradients.shape(), [12, 2]);
@@ -190,14 +195,25 @@ mod tests {
 
         let mut samples = IndexesBuilder::new(vec!["structure", "center"]);
         samples.add(&[IndexValue::from(0_usize), IndexValue::from(1_usize)]);
-        calculator.compute_partial(&mut systems.get(), &mut descriptor, Some(samples.finish()), None);
+
+        let options = CalculationOptions {
+            selected_samples: SelectedIndexes::Some(samples.finish()),
+            selected_features: SelectedIndexes::All,
+            ..Default::default()
+        };
+        calculator.compute(&mut systems.get(), &mut descriptor, options).unwrap();
 
         assert_eq!(descriptor.values.shape(), [1, 2]);
         assert_eq!(descriptor.values.slice(s![0, ..]), aview1(&[10.0, 0.16649999999999998]));
 
         let mut features = IndexesBuilder::new(vec!["index_delta", "x_y_z", "float"]);
         features.add(&[IndexValue::from(0_usize), IndexValue::from(1_isize), IndexValue::from(3.2)]);
-        calculator.compute_partial(&mut systems.get(), &mut descriptor, None, Some(features.finish()));
+        let options = CalculationOptions {
+            selected_samples: SelectedIndexes::All,
+            selected_features: SelectedIndexes::Some(features.finish()),
+            ..Default::default()
+        };
+        calculator.compute(&mut systems.get(), &mut descriptor, options).unwrap();
 
         assert_eq!(descriptor.values.shape(), [3, 1]);
         assert_eq!(descriptor.values.slice(s![0, ..]), aview1(&[-1.1778999999999997]));
