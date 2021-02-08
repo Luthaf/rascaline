@@ -50,9 +50,13 @@ impl From<Utf8Error> for Error {
 // Box<dyn Any + Send + 'static> is the error type in std::panic::catch_unwind
 impl From<Box<dyn std::any::Any + Send + 'static>> for Error {
     fn from(error: Box<dyn std::any::Any + Send + 'static>) -> Error {
-        let message = error.downcast_ref::<String>()
-            .cloned()
-            .unwrap_or_else(|| "panic message is not a string, something is very wrong".into());
+        let message = if let Some(message) = error.downcast_ref::<String>() {
+            message.clone()
+        } else if let Some(message) = error.downcast_ref::<&str>() {
+            (*message).to_owned()
+        } else {
+            panic!("panic message is not a string, something is very wrong")
+        };
 
         Error::Panic(message)
     }
