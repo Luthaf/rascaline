@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-typedef enum {
+typedef enum rascal_indexes {
   RASCAL_INDEXES_FEATURES = 0,
   RASCAL_INDEXES_ENVIRONMENTS = 1,
   RASCAL_INDEXES_GRADIENTS = 2,
@@ -15,7 +15,7 @@ typedef enum {
 /*
  Status type returned by all functions in the C API.
  */
-typedef enum {
+typedef enum rascal_status_t {
   /*
    The function succeeded
    */
@@ -55,7 +55,7 @@ typedef struct rascal_descriptor_t rascal_descriptor_t;
 /*
  Pair of atoms coming from a neighbor list
  */
-typedef struct {
+typedef struct rascal_pair_t {
   /*
    index of the first atom in the pair
    */
@@ -71,7 +71,7 @@ typedef struct {
   double vector[3];
 } rascal_pair_t;
 
-typedef struct {
+typedef struct rascal_system_t {
   /*
    User-provided data should be stored here, it will be passed as the
    first parameter to all function pointers
@@ -82,10 +82,10 @@ typedef struct {
   void (*positions)(const void *user_data, const double **positions);
   void (*cell)(const void *user_data, double *cell);
   void (*compute_neighbors)(void *user_data, double cutoff);
-  void (*pairs)(const void *user_data, const rascal_pair_t **pairs, uintptr_t *count);
+  void (*pairs)(const void *user_data, const struct rascal_pair_t **pairs, uintptr_t *count);
 } rascal_system_t;
 
-typedef struct {
+typedef struct rascal_calculation_options_t {
   /*
    Copy the data from systems into native `SimpleSystem`. This can be
    faster than having to cross the FFI boundary too often.
@@ -122,50 +122,51 @@ extern "C" {
  */
 const char *rascal_last_error(void);
 
-rascal_descriptor_t *rascal_descriptor(void);
+struct rascal_descriptor_t *rascal_descriptor(void);
 
-rascal_status_t rascal_descriptor_free(rascal_descriptor_t *descriptor);
+enum rascal_status_t rascal_descriptor_free(struct rascal_descriptor_t *descriptor);
 
-rascal_status_t rascal_descriptor_values(const rascal_descriptor_t *descriptor,
-                                         const double **data,
-                                         uintptr_t *environments,
-                                         uintptr_t *features);
+enum rascal_status_t rascal_descriptor_values(const struct rascal_descriptor_t *descriptor,
+                                              const double **data,
+                                              uintptr_t *environments,
+                                              uintptr_t *features);
 
-rascal_status_t rascal_descriptor_gradients(const rascal_descriptor_t *descriptor,
-                                            const double **data,
-                                            uintptr_t *environments,
-                                            uintptr_t *features);
+enum rascal_status_t rascal_descriptor_gradients(const struct rascal_descriptor_t *descriptor,
+                                                 const double **data,
+                                                 uintptr_t *environments,
+                                                 uintptr_t *features);
 
-rascal_status_t rascal_descriptor_indexes(const rascal_descriptor_t *descriptor,
-                                          rascal_indexes indexes,
-                                          const double **values,
-                                          uintptr_t *count,
-                                          uintptr_t *size);
+enum rascal_status_t rascal_descriptor_indexes(const struct rascal_descriptor_t *descriptor,
+                                               enum rascal_indexes indexes,
+                                               const double **values,
+                                               uintptr_t *count,
+                                               uintptr_t *size);
 
-rascal_status_t rascal_descriptor_indexes_names(const rascal_descriptor_t *descriptor,
-                                                rascal_indexes indexes,
-                                                const char **names,
-                                                uintptr_t size);
+enum rascal_status_t rascal_descriptor_indexes_names(const struct rascal_descriptor_t *descriptor,
+                                                     enum rascal_indexes indexes,
+                                                     const char **names,
+                                                     uintptr_t size);
 
-rascal_status_t rascal_descriptor_densify(rascal_descriptor_t *descriptor, const char *variable);
+enum rascal_status_t rascal_descriptor_densify(struct rascal_descriptor_t *descriptor,
+                                               const char *variable);
 
-rascal_calculator_t *rascal_calculator(const char *name, const char *parameters);
+struct rascal_calculator_t *rascal_calculator(const char *name, const char *parameters);
 
-rascal_status_t rascal_calculator_free(rascal_calculator_t *calculator);
+enum rascal_status_t rascal_calculator_free(struct rascal_calculator_t *calculator);
 
-rascal_status_t rascal_calculator_name(const rascal_calculator_t *calculator,
-                                       char *name,
-                                       uintptr_t bufflen);
+enum rascal_status_t rascal_calculator_name(const struct rascal_calculator_t *calculator,
+                                            char *name,
+                                            uintptr_t bufflen);
 
-rascal_status_t rascal_calculator_parameters(const rascal_calculator_t *calculator,
-                                             char *parameters,
-                                             uintptr_t bufflen);
+enum rascal_status_t rascal_calculator_parameters(const struct rascal_calculator_t *calculator,
+                                                  char *parameters,
+                                                  uintptr_t bufflen);
 
-rascal_status_t rascal_calculator_compute(rascal_calculator_t *calculator,
-                                          rascal_descriptor_t *descriptor,
-                                          rascal_system_t *systems,
-                                          uintptr_t systems_count,
-                                          rascal_calculation_options_t options);
+enum rascal_status_t rascal_calculator_compute(struct rascal_calculator_t *calculator,
+                                               struct rascal_descriptor_t *descriptor,
+                                               struct rascal_system_t *systems,
+                                               uintptr_t systems_count,
+                                               struct rascal_calculation_options_t options);
 
 #ifdef __cplusplus
 } // extern "C"

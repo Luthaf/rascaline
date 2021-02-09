@@ -12,5 +12,5 @@ crate-type = ["cdylib"]
 rascaline = {path = "../rascaline", version = "0.1.0"}
 
 [build-dependencies]
-cbindgen = "0.15"
+cbindgen = "0.17"
 glob = "0.3"
