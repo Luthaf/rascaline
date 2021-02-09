@@ -4,7 +4,7 @@ use rascaline::calculators::soap::{SphericalHarmonics, SphericalHarmonicsArray};
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 
 fn spherical_harmonics(c: &mut Criterion) {
-    let mut group = c.benchmark_group("spherical harmonics");
+    let mut group = c.benchmark_group("spherical harmonics (per neighbor)");
     group.noise_threshold(0.05);
 
     for &max_angular in black_box(&[1, 3, 5, 7, 13, 17, 21, 25]) {
@@ -45,7 +45,7 @@ fn spherical_harmonics(c: &mut Criterion) {
 }
 
 fn spherical_harmonics_with_gradients(c: &mut Criterion) {
-    let mut group = c.benchmark_group("spherical harmonics with gradients");
+    let mut group = c.benchmark_group("spherical harmonics with gradients (per neighbor)");
     group.noise_threshold(0.05);
 
     for &max_angular in black_box(&[1, 3, 5, 7, 13, 17, 21, 25]) {

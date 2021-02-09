@@ -31,7 +31,7 @@ impl Descriptor {
         }
     }
 
-    pub(crate) fn prepare(
+    pub fn prepare(
         &mut self,
         environments: Indexes,
         features: Indexes,
@@ -47,7 +47,7 @@ impl Descriptor {
         self.gradients_indexes = None;
     }
 
-    pub(crate) fn prepare_gradients(
+    pub fn prepare_gradients(
         &mut self,
         environments: Indexes,
         gradients: Indexes,

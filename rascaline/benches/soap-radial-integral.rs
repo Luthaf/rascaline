@@ -5,7 +5,7 @@ use ndarray::Array2;
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 
 fn gto_radial_integral(c: &mut Criterion) {
-    let mut group = c.benchmark_group("GTO");
+    let mut group = c.benchmark_group("GTO radial integral (per neighbor)");
     group.noise_threshold(0.05);
 
     for &max_radial in black_box(&[2, 8, 14]) {
@@ -39,7 +39,7 @@ fn gto_radial_integral(c: &mut Criterion) {
 }
 
 fn gto_radial_integral_gradient(c: &mut Criterion) {
-    let mut group = c.benchmark_group("GTO with gradients");
+    let mut group = c.benchmark_group("GTO radial integral with gradients (per neighbor)");
     group.noise_threshold(0.05);
 
     for &max_radial in black_box(&[2, 8, 14]) {

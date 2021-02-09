@@ -12,6 +12,10 @@ harness = false
 name = "soap-radial-integral"
 harness = false
 
+[[bench]]
+name = "spherical-expansion"
+harness = false
+
 [dependencies]
 ndarray = {version = "0.14", features = ["approx"]}
 nalgebra = "0.24"
