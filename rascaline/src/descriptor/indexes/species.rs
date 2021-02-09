@@ -151,8 +151,7 @@ impl EnvironmentIndexes for AtomSpeciesEnvironment {
                 indexes.insert((i_system, center, species_neighbor, species_neighbor, center));
             }
 
-            // TODO: System::pairs_with(center)
-            for pair in system.pairs() {
+            for pair in system.pairs_containing(center) {
                 let species_first = species[pair.first];
                 let species_second = species[pair.second];
 

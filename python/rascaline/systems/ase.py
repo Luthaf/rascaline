@@ -19,6 +19,7 @@ if HAVE_ASE:
                 raise Exception("this class expects ASE.Atoms objects")
             self._atoms = atoms
             self._pairs = []
+            self._pairs_by_center = []
             self._last_cutoff = None
 
         def size(self):
@@ -47,8 +48,16 @@ if HAVE_ASE:
                     continue
                 self._pairs.append((i, j, D))
 
+            self._pairs_by_center = [[]] * self.size()
+            for (i, j, D) in self._pairs:
+                self._pairs_by_center[i].append((i, j, D))
+                self._pairs_by_center[j].append((i, j, D))
+
         def pairs(self):
             return self._pairs
+
+        def pairs_containing(self, center):
+            return self._pairs_by_center[center]
 
 
 else:

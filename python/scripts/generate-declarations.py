@@ -98,11 +98,22 @@ def c_type_name(name):
         return "ctypes.c_" + name
 
 
+def _typedecl_name(type):
+    assert isinstance(type, c_ast.TypeDecl)
+    if isinstance(type.type, c_ast.Struct):
+        return type.type.name
+    elif isinstance(type.type, c_ast.Enum):
+        return type.type.name
+    else:
+        assert len(type.type.names) == 1
+        return type.type.names[0]
+
+
 def type_to_ctypes(type, ndpointer=False):
     if isinstance(type, c_ast.PtrDecl):
         if isinstance(type.type, c_ast.PtrDecl):
             if isinstance(type.type.type, c_ast.TypeDecl):
-                name = type.type.type.type.names[0]
+                name = _typedecl_name(type.type.type)
                 if name == "char":
                     return "POINTER(ctypes.c_char_p)"
 
@@ -113,8 +124,7 @@ def type_to_ctypes(type, ndpointer=False):
                     return f"POINTER(POINTER({name}))"
 
         elif isinstance(type.type, c_ast.TypeDecl):
-            assert len(type.type.type.names) == 1
-            name = type.type.type.names[0]
+            name = _typedecl_name(type.type)
             if name == "void":
                 return "ctypes.c_void_p"
             elif name == "char":
@@ -131,8 +141,7 @@ def type_to_ctypes(type, ndpointer=False):
     else:
         # not a pointer
         if isinstance(type, c_ast.TypeDecl):
-            assert len(type.type.names) == 1
-            return c_type_name(type.type.names[0])
+            return c_type_name(_typedecl_name(type))
         if isinstance(type, c_ast.ArrayDecl):
             if isinstance(type.dim, c_ast.Constant):
                 size = type.dim.value

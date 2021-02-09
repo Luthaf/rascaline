@@ -29,6 +29,28 @@ class TestSystem(SystemBase):
             (2, 3, (0.0, 0.0, 1.0)),
         ]
 
+    def pairs_containing(self, center):
+        if center == 0:
+            return [
+                (0, 1, (0.0, 0.0, 1.0)),
+            ]
+        elif center == 1:
+            return [
+                (0, 1, (0.0, 0.0, 1.0)),
+                (1, 2, (0.0, 0.0, 1.0)),
+            ]
+        elif center == 2:
+            return [
+                (1, 2, (0.0, 0.0, 1.0)),
+                (2, 3, (0.0, 0.0, 1.0)),
+            ]
+        elif center == 3:
+            return [
+                (2, 3, (0.0, 0.0, 1.0)),
+            ]
+        else:
+            raise Exception("got invalid center")
+
 
 class EmptySystem(SystemBase):
     def size(self):

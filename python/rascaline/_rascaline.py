@@ -58,6 +58,7 @@ class rascal_system_t(ctypes.Structure):
         ("cell", CFUNCTYPE(None, ctypes.c_void_p, POINTER(ctypes.c_double))),
         ("compute_neighbors", CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_double)),
         ("pairs", CFUNCTYPE(None, ctypes.c_void_p, POINTER(ndpointer(rascal_pair_t, flags='C_CONTIGUOUS')), POINTER(c_uintptr_t))),
+        ("pairs_containing", CFUNCTYPE(None, ctypes.c_void_p, c_uintptr_t, POINTER(ndpointer(rascal_pair_t, flags='C_CONTIGUOUS')), POINTER(c_uintptr_t))),
     ]
 
 

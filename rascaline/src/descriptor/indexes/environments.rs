@@ -95,8 +95,7 @@ impl EnvironmentIndexes for AtomEnvironment {
             let system = &mut *systems[i_system.usize()];
             system.compute_neighbors(self.cutoff);
 
-            // TODO: System::pairs_with(center)
-            for pair in system.pairs() {
+            for pair in system.pairs_containing(center) {
                 if pair.first == center {
                     indexes.insert((i_system, pair.first, pair.second));
                 } else if pair.second == center {

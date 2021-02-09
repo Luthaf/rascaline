@@ -1,6 +1,8 @@
 #include <cstring>
 #include <cassert>
 
+#include <stdexcept>
+
 #include "helpers.hpp"
 
 rascal_system_t simple_system() {
@@ -49,6 +51,42 @@ rascal_system_t simple_system() {
 
         *pairs = PAIRS;
         *count = 3;
+    };
+
+    system.pairs_containing = [](const void* _, uintptr_t center, const rascal_pair_t** pairs, uintptr_t* count){
+        static rascal_pair_t PAIRS_0[] = {
+            {0, 1, {1, 1, 1}},
+        };
+
+        static rascal_pair_t PAIRS_1[] = {
+            {0, 1, {1, 1, 1}},
+            {1, 2, {1, 1, 1}},
+        };
+
+        static rascal_pair_t PAIRS_2[] = {
+            {1, 2, {1, 1, 1}},
+            {2, 3, {1, 1, 1}},
+        };
+
+        static rascal_pair_t PAIRS_3[] = {
+            {2, 3, {1, 1, 1}},
+        };
+
+        if (center == 0) {
+            *pairs = PAIRS_0;
+            *count = 1;
+        } else if (center == 1) {
+            *pairs = PAIRS_1;
+            *count = 2;
+        } else if (center == 2) {
+            *pairs = PAIRS_2;
+            *count = 2;
+        } else if (center == 3) {
+            *pairs = PAIRS_3;
+            *count = 1;
+        } else {
+            throw std::runtime_error("got invalid center atom");
+        }
     };
 
     return system;

@@ -3,6 +3,7 @@ use super::{UnitCell, System, Vector3D, Pair};
 struct CrappyNeighborsList {
     cutoff: f64,
     pairs: Vec<Pair>,
+    pairs_by_center: Vec<Vec<Pair>>,
 }
 
 impl CrappyNeighborsList {
@@ -12,7 +13,7 @@ impl CrappyNeighborsList {
         let natoms = system.size();
         let positions = system.positions();
 
-        let mut pairs = vec![];
+        let mut pairs = Vec::new();
         // crappy O(n^2) implementation, looping over all atoms in the system
         for i in 0..natoms {
             for j in (i + 1)..natoms {
@@ -28,9 +29,16 @@ impl CrappyNeighborsList {
             }
         }
 
+        let mut pairs_by_center = vec![Vec::new(); natoms];
+        for pair in &pairs {
+            pairs_by_center[pair.first].push(*pair);
+            pairs_by_center[pair.second].push(*pair);
+        }
+
         return CrappyNeighborsList {
             cutoff: cutoff,
             pairs: pairs,
+            pairs_by_center: pairs_by_center,
         };
     }
 }
@@ -153,6 +161,10 @@ impl System for SimpleSystem {
 
     fn pairs(&self) -> &[Pair] {
         &self.neighbors.as_ref().expect("neighbor list is not initialized").pairs
+    }
+
+    fn pairs_containing(&self, center: usize) -> &[Pair] {
+        &self.neighbors.as_ref().expect("neighbor list is not initialized").pairs_by_center[center]
     }
 }
 

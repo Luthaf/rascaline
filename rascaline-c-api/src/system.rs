@@ -11,21 +11,56 @@ pub struct rascal_pair_t {
     /// index of the second atom in the pair
     pub second: usize,
     /// vector from the first atom to the second atom, wrapped inside the unit
-    /// cell as required
+    /// cell as required by periodic boundary conditions.
     pub vector: [f64; 3],
 }
 
+/// A `rascal_system_t` deals with the storage of atoms and related information,
+/// as well as the computation of neighbor lists. This structures allow to
+/// implement the rust `System` trait using function pointer.
 #[repr(C)]
 pub struct rascal_system_t {
     /// User-provided data should be stored here, it will be passed as the
-    /// first parameter to all function pointers
+    /// first parameter to all function pointers below.
     user_data: *mut c_void,
+    /// This function should set `*size` to the number of atoms in this system
     size: Option<unsafe extern fn(user_data: *const c_void, size: *mut usize)>,
+    /// This function should set `*species` to a pointer to the first element of
+    /// a contiguous array containing the atomic species. Each different atomic
+    /// species should be identified with a different value. These values are
+    /// usually the atomic number, but don't have to be.
     species: Option<unsafe extern fn(user_data: *const c_void, species: *mut *const usize)>,
+    /// This function should set `*positions` to a pointer to the first element
+    /// of a contiguous array containing the atomic cartesian coordinates.
+    /// `positions[0], positions[1], positions[2]` must contain the x, y, z
+    /// cartesian coordinates of the first atom, and so on.
     positions: Option<unsafe extern fn(user_data: *const c_void, positions: *mut *const f64)>,
+    /// This function should write the unit cell matrix in `cell`, which have
+    /// space for 9 values.
     cell: Option<unsafe extern fn(user_data: *const c_void, cell: *mut f64)>,
+    /// This function should compute the neighbor list with the given cutoff,
+    /// and store it for later access using `pairs` or `pairs_containing`.
     compute_neighbors: Option<unsafe extern fn(user_data: *mut c_void, cutoff: f64)>,
+    /// This function should set `*pairs` to a pointer to the first element of a
+    /// contiguous array containing all pairs in this system; and `*count` to
+    /// the size of the array/the number of pairs.
+    ///
+    /// This list of pair should only contain each pair once (and not twice as
+    /// `i-j` and `j-i`), should not contain self pairs (`i-i`); and should only
+    /// contains pairs where the distance between atoms is actually bellow the
+    /// cutoff passed in the last call to `compute_neighbors`. This function is
+    /// only valid to call after a call to `compute_neighbors`.
     pairs: Option<unsafe extern fn(user_data: *const c_void, pairs: *mut *const rascal_pair_t, count: *mut usize)>,
+    /// This function should set `*pairs` to a pointer to the first element of a
+    /// contiguous array containing all pairs in this system containing the atom
+    /// with index `center`; and `*count` to the size of the array/the number of
+    /// pairs.
+    ///
+    /// The same restrictions on the list of pairs as `rascal_system_t::pairs`
+    /// applies, with the additional condition that the pair `i-j` should be
+    /// included both in the return of `pairs_containing(i)` and
+    /// `pairs_containing(j)`.
+    pairs_containing: Option<unsafe extern fn(user_data: *const c_void, center: usize, pairs: *mut *const rascal_pair_t, count: *mut usize)>,
 }
 
 impl System for rascal_system_t {
@@ -86,6 +121,16 @@ impl System for rascal_system_t {
         let mut count = 0;
         unsafe {
             function(self.user_data, &mut ptr, &mut count);
+            return std::slice::from_raw_parts(ptr as *const Pair, count);
+        }
+    }
+
+    fn pairs_containing(&self, center: usize) -> &[Pair] {
+        let function = self.pairs_containing.expect("rascal_system_t.pairs_containing is NULL");
+        let mut ptr = std::ptr::null();
+        let mut count = 0;
+        unsafe {
+            function(self.user_data, center, &mut ptr, &mut count);
             return std::slice::from_raw_parts(ptr as *const Pair, count);
         }
     }

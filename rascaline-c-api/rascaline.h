@@ -66,23 +66,74 @@ typedef struct rascal_pair_t {
   uintptr_t second;
   /*
    vector from the first atom to the second atom, wrapped inside the unit
-   cell as required
+   cell as required by periodic boundary conditions.
    */
   double vector[3];
 } rascal_pair_t;
 
+/*
+ A `rascal_system_t` deals with the storage of atoms and related information,
+ as well as the computation of neighbor lists. This structures allow to
+ implement the rust `System` trait using function pointer.
+ */
 typedef struct rascal_system_t {
   /*
    User-provided data should be stored here, it will be passed as the
-   first parameter to all function pointers
+   first parameter to all function pointers below.
    */
   void *user_data;
+  /*
+   This function should set `*size` to the number of atoms in this system
+   */
   void (*size)(const void *user_data, uintptr_t *size);
+  /*
+   This function should set `*species` to a pointer to the first element of
+   a contiguous array containing the atomic species. Each different atomic
+   species should be identified with a different value. These values are
+   usually the atomic number, but don't have to be.
+   */
   void (*species)(const void *user_data, const uintptr_t **species);
+  /*
+   This function should set `*positions` to a pointer to the first element
+   of a contiguous array containing the atomic cartesian coordinates.
+   `positions[0], positions[1], positions[2]` must contain the x, y, z
+   cartesian coordinates of the first atom, and so on.
+   */
   void (*positions)(const void *user_data, const double **positions);
+  /*
+   This function should write the unit cell matrix in `cell`, which have
+   space for 9 values.
+   */
   void (*cell)(const void *user_data, double *cell);
+  /*
+   This function should compute the neighbor list with the given cutoff,
+   and store it for later access using `pairs` or `pairs_containing`.
+   */
   void (*compute_neighbors)(void *user_data, double cutoff);
+  /*
+   This function should set `*pairs` to a pointer to the first element of a
+   contiguous array containing all pairs in this system; and `*count` to
+   the size of the array/the number of pairs.
+
+   This list of pair should only contain each pair once (and not twice as
+   `i-j` and `j-i`), should not contain self pairs (`i-i`); and should only
+   contains pairs where the distance between atoms is actually bellow the
+   cutoff passed in the last call to `compute_neighbors`. This function is
+   only valid to call after a call to `compute_neighbors`.
+   */
   void (*pairs)(const void *user_data, const struct rascal_pair_t **pairs, uintptr_t *count);
+  /*
+   This function should set `*pairs` to a pointer to the first element of a
+   contiguous array containing all pairs in this system containing the atom
+   with index `center`; and `*count` to the size of the array/the number of
+   pairs.
+
+   The same restrictions on the list of pairs as `rascal_system_t::pairs`
+   applies, with the additional condition that the pair `i-j` should be
+   included both in the return of `pairs_containing(i)` and
+   `pairs_containing(j)`.
+   */
+  void (*pairs_containing)(const void *user_data, uintptr_t center, const struct rascal_pair_t **pairs, uintptr_t *count);
 } rascal_system_t;
 
 typedef struct rascal_calculation_options_t {

@@ -249,13 +249,7 @@ impl CalculatorBase for SphericalExpansion {
             system.compute_neighbors(self.parameters.cutoff);
             let species = system.species();
 
-            // TODO: add a system.pairs_with(center) function instead of
-            // searching through all pairs at all time
-            for pair in system.pairs() {
-                if pair.first != center && pair.second != center {
-                    continue;
-                }
-
+            for pair in system.pairs_containing(center) {
                 let (neighbor, sign) = if center == pair.first {
                     (pair.second, 1.0)
                 } else {

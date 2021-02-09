@@ -25,6 +25,9 @@ class SystemBase:
             _compute_neighbors_cb
         )
         self._c_struct.pairs = self._c_struct.pairs.__class__(_pairs_cb)
+        self._c_struct.pairs_containing = self._c_struct.pairs_containing.__class__(
+            _pairs_containing_cb
+        )
 
         return self._c_struct
 
@@ -45,6 +48,9 @@ class SystemBase:
 
     def pairs(self):
         raise NotImplementedError("System.pairs method is not implemented")
+
+    def pairs_containing(self, center):
+        raise NotImplementedError("System.pairs_containing method is not implemented")
 
 
 def _get_self(ptr):
@@ -105,3 +111,13 @@ def _pairs_cb(user_data, data, count):
     count[0] = c_uintptr_t(len(pairs))
     data[0] = pairs.ctypes.data
     self._keepalive["pairs"] = pairs
+
+
+def _pairs_containing_cb(user_data, center, data, count):
+    self = _get_self(user_data)
+
+    pairs = np.array(self.pairs_containing(center), dtype=rascal_pair_t)
+
+    count[0] = c_uintptr_t(len(pairs))
+    data[0] = pairs.ctypes.data
+    self._keepalive["pairs_containing"] = pairs
