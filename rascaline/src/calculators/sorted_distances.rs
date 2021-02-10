@@ -58,7 +58,7 @@ impl CalculatorBase for SortedDistances {
     }
 
     fn check_features(&self, indexes: &Indexes) {
-        assert_eq!(indexes.names(), &["neighbor"]);
+        assert_eq!(indexes.names(), self.features_names());
         for value in indexes.iter() {
             assert!(value[0].usize() < self.max_neighbors);
         }

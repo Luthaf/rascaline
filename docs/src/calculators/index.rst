@@ -16,4 +16,5 @@ documented as a `JSON schema`_, and rendered in the pages below.
     :maxdepth: 1
 
     spherical-expansion
+    soap-power-spectrum
     sorted-distances

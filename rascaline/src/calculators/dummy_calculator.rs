@@ -55,7 +55,7 @@ impl CalculatorBase for DummyCalculator {
     }
 
     fn check_features(&self, indexes: &Indexes) {
-        assert_eq!(indexes.names(), &["index_delta", "x_y_z", "float"]);
+        assert_eq!(indexes.names(), self.features_names());
         let first = [IndexValue::from(1_usize), IndexValue::from(0_isize), IndexValue::from(1.2)];
         let second = [IndexValue::from(0_usize), IndexValue::from(1_isize), IndexValue::from(3.2)];
         for value in indexes.iter() {

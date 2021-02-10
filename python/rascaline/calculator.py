@@ -278,3 +278,26 @@ class SphericalExpansion(CalculatorBase):
             "cutoff_function": cutoff_function,
         }
         super().__init__("spherical_expansion", parameters)
+
+
+class SoapPowerSpectrum(CalculatorBase):
+    def __init__(
+        self,
+        cutoff,
+        max_radial,
+        max_angular,
+        atomic_gaussian_width,
+        radial_basis,
+        gradients,
+        cutoff_function,
+    ):
+        parameters = {
+            "cutoff": cutoff,
+            "max_radial": max_radial,
+            "max_angular": max_angular,
+            "atomic_gaussian_width": atomic_gaussian_width,
+            "radial_basis": radial_basis,
+            "gradients": gradients,
+            "cutoff_function": cutoff_function,
+        }
+        super().__init__("soap_power_spectrum", parameters)
