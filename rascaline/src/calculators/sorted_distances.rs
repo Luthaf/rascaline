@@ -21,6 +21,10 @@ impl CalculatorBase for SortedDistances {
         "sorted distances vector".into()
     }
 
+    fn get_parameters(&self) -> String {
+        serde_json::to_string(self).expect("failed to serialize to JSON")
+    }
+
     fn features_names(&self) -> Vec<&str> {
         vec!["neighbor"]
     }
@@ -149,24 +153,29 @@ mod tests {
     use crate::{CalculationOptions, SelectedIndexes};
     use crate::descriptor::{IndexesBuilder, IndexValue};
 
+    use super::super::CalculatorBase;
+
     use ndarray::{s, aview1};
 
+    use super::SortedDistances;
+
     #[test]
-    fn name() {
-        let calculator = Calculator::new("sorted_distances", "{
-            \"cutoff\": 1.5,
-            \"max_neighbors\": 3
-        }".to_owned()).unwrap();
+    fn name_and_parameters() {
+        let calculator = Calculator::from(Box::new(SortedDistances{
+            cutoff: 1.5,
+            max_neighbors: 3,
+        }) as Box<dyn CalculatorBase>);
 
         assert_eq!(calculator.name(), "sorted distances vector");
+        assert_eq!(calculator.parameters(), "{\"cutoff\":1.5,\"max_neighbors\":3}");
     }
 
     #[test]
     fn values() {
-        let mut calculator = Calculator::new("sorted_distances", "{
-            \"cutoff\": 1.5,
-            \"max_neighbors\": 3
-        }".to_owned()).unwrap();
+        let mut calculator = Calculator::from(Box::new(SortedDistances{
+            cutoff: 1.5,
+            max_neighbors: 3,
+        }) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
         let mut descriptor = Descriptor::new();
@@ -187,10 +196,10 @@ mod tests {
 
     #[test]
     fn compute_partial() {
-        let mut calculator = Calculator::new("sorted_distances", "{
-            \"cutoff\": 1.5,
-            \"max_neighbors\": 3
-        }".to_owned()).unwrap();
+        let mut calculator = Calculator::from(Box::new(SortedDistances{
+            cutoff: 1.5,
+            max_neighbors: 3,
+        }) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
         let mut descriptor = Descriptor::new();

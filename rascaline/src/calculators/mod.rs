@@ -9,6 +9,9 @@ pub trait CalculatorBase: std::panic::RefUnwindSafe {
     /// Get the name of this Calculator
     fn name(&self) -> String;
 
+    /// Get the parameters used to create this Calculator as a JSON string
+    fn get_parameters(&self) -> String;
+
     /// Get the names of features for this Calculator
     fn features_names(&self) -> Vec<&str>;
     /// Get the default set of features for this Calculator

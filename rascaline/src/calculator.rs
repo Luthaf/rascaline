@@ -103,6 +103,16 @@ impl<'a> Default for CalculationOptions<'a> {
     }
 }
 
+impl From<Box<dyn CalculatorBase>> for Calculator {
+    fn from(implementation: Box<dyn CalculatorBase>) -> Calculator {
+        let parameters = implementation.get_parameters();
+        Calculator {
+            implementation: implementation,
+            parameters: parameters,
+        }
+    }
+}
+
 impl Calculator {
     pub fn new(name: &str, parameters: String) -> Result<Calculator, Error> {
         let creator = match REGISTERED_CALCULATORS.get(name) {

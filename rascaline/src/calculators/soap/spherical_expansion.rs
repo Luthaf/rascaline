@@ -179,6 +179,10 @@ impl CalculatorBase for SphericalExpansion {
         "spherical expansion".into()
     }
 
+    fn get_parameters(&self) -> String {
+        serde_json::to_string(&self.parameters).expect("failed to serialize to JSON")
+    }
+
     fn features_names(&self) -> Vec<&str> {
         vec!["n", "l", "m"]
     }
@@ -390,6 +394,10 @@ mod tests {
     use approx::assert_relative_eq;
     use ndarray::s;
 
+    use super::{SphericalExpansion, SphericalExpansionParameters};
+    use super::{CutoffFunction, RadialBasis};
+    use super::super::super::CalculatorBase;
+
     /// Convenience macro to create IndexValue
     macro_rules! v {
         ($value: expr) => {
@@ -397,28 +405,23 @@ mod tests {
         };
     }
 
-    fn hyperparameters(gradients: bool) -> String {
-        format!("{{
-            \"atomic_gaussian_width\": 0.3,
-            \"cutoff\": 3.5,
-            \"cutoff_function\": {{
-              \"ShiftedCosine\": {{
-                \"width\": 0.5
-              }}
-            }},
-            \"gradients\": {},
-            \"max_radial\": 6,
-            \"max_angular\": 6,
-            \"radial_basis\": \"GTO\"
-        }}", gradients)
+    fn parameters(gradients: bool) -> SphericalExpansionParameters {
+        SphericalExpansionParameters {
+            atomic_gaussian_width: 0.3,
+            cutoff: 3.5,
+            cutoff_function: CutoffFunction::ShiftedCosine { width: 0.5 },
+            gradients: gradients,
+            max_radial: 6,
+            max_angular: 6,
+            radial_basis: RadialBasis::GTO
+        }
     }
 
     #[test]
     fn values() {
-        let mut calculator = Calculator::new(
-            "spherical_expansion",
-            hyperparameters(false)
-        ).unwrap();
+        let mut calculator = Calculator::from(Box::new(SphericalExpansion::new(
+            parameters(false)
+        )) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
         let mut descriptor = Descriptor::new();
@@ -444,10 +447,9 @@ mod tests {
 
     #[test]
     fn finite_differences() {
-        let mut calculator = Calculator::new(
-            "spherical_expansion",
-            hyperparameters(true)
-        ).unwrap();
+        let mut calculator = Calculator::from(Box::new(SphericalExpansion::new(
+            parameters(true)
+        )) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
         let mut reference = Descriptor::new();
@@ -516,10 +518,9 @@ mod tests {
 
     #[test]
     fn compute_partial() {
-        let mut calculator = Calculator::new(
-            "spherical_expansion",
-            hyperparameters(true),
-        ).unwrap();
+        let mut calculator = Calculator::from(Box::new(SphericalExpansion::new(
+            parameters(true)
+        )) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water", "methane"]);
         let mut full = Descriptor::new();

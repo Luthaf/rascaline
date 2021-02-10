@@ -31,6 +31,10 @@ impl CalculatorBase for DummyCalculator {
         )
     }
 
+    fn get_parameters(&self) -> String {
+        serde_json::to_string(self).expect("failed to serialize to JSON")
+    }
+
     fn features_names(&self) -> Vec<&str> {
         vec!["index_delta", "x_y_z", "float"]
     }
@@ -127,29 +131,37 @@ mod tests {
 
     use ndarray::{s, aview1};
 
+    use super::DummyCalculator;
+    use super::super::CalculatorBase;
+
     #[test]
-    fn name() {
-        let calculator = Calculator::new("dummy_calculator", "{
-            \"cutoff\": 1.4,
-            \"delta\": 9,
-            \"name\": \"a long name\",
-            \"gradients\": false
-        }".to_owned()).unwrap();
+    fn name_and_parameters() {
+        let calculator = Calculator::from(Box::new(DummyCalculator{
+            cutoff: 1.4,
+            delta: 9,
+            name: "a long name".into(),
+            gradients: false,
+        }) as Box<dyn CalculatorBase>);
 
         assert_eq!(
             calculator.name(),
             "dummy test calculator with cutoff: 1.4 - delta: 9 - name: a long name - gradients: false"
         );
+
+        assert_eq!(
+            calculator.parameters(),
+            "{\"cutoff\":1.4,\"delta\":9,\"name\":\"a long name\",\"gradients\":false}"
+        );
     }
 
     #[test]
     fn values() {
-        let mut calculator = Calculator::new("dummy_calculator", "{
-            \"cutoff\": 1.0,
-            \"delta\": 9,
-            \"name\": \"\",
-            \"gradients\": false
-        }".to_owned()).unwrap();
+        let mut calculator = Calculator::from(Box::new(DummyCalculator{
+            cutoff: 1.0,
+            delta: 9,
+            name: "".into(),
+            gradients: false,
+        }) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
         let mut descriptor = Descriptor::new();
@@ -163,12 +175,12 @@ mod tests {
 
     #[test]
     fn gradients() {
-        let mut calculator = Calculator::new("dummy_calculator", "{
-            \"cutoff\": 1.0,
-            \"delta\": 0,
-            \"name\": \"\",
-            \"gradients\": true
-        }".to_owned()).unwrap();
+        let mut calculator = Calculator::from(Box::new(DummyCalculator{
+            cutoff: 1.0,
+            delta: 9,
+            name: "".into(),
+            gradients: true,
+        }) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
         let mut descriptor = Descriptor::new();
@@ -183,12 +195,12 @@ mod tests {
 
     #[test]
     fn compute_partial() {
-        let mut calculator = Calculator::new("dummy_calculator", "{
-            \"cutoff\": 1.0,
-            \"delta\": 9,
-            \"name\": \"\",
-            \"gradients\": true
-        }".to_owned()).unwrap();
+        let mut calculator = Calculator::from(Box::new(DummyCalculator{
+            cutoff: 1.0,
+            delta: 9,
+            name: "".into(),
+            gradients: true,
+        }) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
         let mut descriptor = Descriptor::new();
