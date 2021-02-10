@@ -6,3 +6,4 @@ pub use self::environments::{StructureEnvironment, AtomEnvironment};
 
 mod species;
 pub use self::species::{StructureSpeciesEnvironment, AtomSpeciesEnvironment};
+pub use self::species::{ThreeBodiesSpeciesEnvironment};

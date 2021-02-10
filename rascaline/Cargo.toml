@@ -25,6 +25,7 @@ serde_json = "1"
 num-traits = "0.2"
 indexmap = "1.6"
 log = "0.4"
+itertools = "0.10"
 
 [dev-dependencies]
 approx = "0.4"
