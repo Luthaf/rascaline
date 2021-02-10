@@ -242,8 +242,19 @@ impl EnvironmentIndexes for ThreeBodiesSpeciesEnvironment {
             }
 
             if self.self_contribution {
-                for (center, &species) in species.iter().enumerate() {
-                    set.insert((i_system, center, species, species, species));
+                for (center, &species_center) in species.iter().enumerate() {
+                    set.insert((i_system, center, species_center, species_center, species_center));
+
+                    for pair in system.pairs_containing(center) {
+                        let neighbor = if pair.first == center {
+                            pair.second
+                        } else {
+                            pair.first
+                        };
+
+                        let (species_1, species_2) = sort_pair(species_center, species[neighbor]);
+                        set.insert((i_system, center, species_center, species_1, species_2));
+                    }
                 }
             }
         }
@@ -575,22 +586,25 @@ mod tests {
         // Only include O-H neighbors
         let strategy = ThreeBodiesSpeciesEnvironment::with_self_contribution(1.2);
         let indexes = strategy.indexes(&mut systems.get());
-        assert_eq!(indexes.count(), 6);
+        assert_eq!(indexes.count(), 9);
         assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor_1", "species_neighbor_2"]);
         assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
             // H-O-H
             &[v!(0), v!(0), v!(123456), v!(1), v!(1)],
+            &[v!(0), v!(0), v!(123456), v!(1), v!(123456)],
             // O-O-O
             &[v!(0), v!(0), v!(123456), v!(123456), v!(123456)],
             // first H in water
             // H-H-H
             &[v!(0), v!(1), v!(1), v!(1), v!(1)],
             // O-H-O
+            &[v!(0), v!(1), v!(1), v!(1), v!(123456)],
             &[v!(0), v!(1), v!(1), v!(123456), v!(123456)],
             // second H in water
             // H-H-H
             &[v!(0), v!(2), v!(1), v!(1), v!(1)],
             // O-H-O
+            &[v!(0), v!(2), v!(1), v!(1), v!(123456)],
             &[v!(0), v!(2), v!(1), v!(123456), v!(123456)],
         ]);
     }

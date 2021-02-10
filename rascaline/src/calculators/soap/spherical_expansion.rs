@@ -13,7 +13,7 @@ use super::{SplinedRadialIntegral, SplinedRIParameters};
 
 use super::{SphericalHarmonics, SphericalHarmonicsArray};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 #[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 /// Radial basis that can be used in the spherical expansion
 pub enum RadialBasis {
@@ -69,7 +69,7 @@ impl RadialBasis {
 }
 
 /// Possible values for the smoothing cutoff function
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 #[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 pub enum CutoffFunction {
     /// Step function, 1 if `r < cutoff` and 0 if `r >= cutoff`
@@ -121,12 +121,13 @@ impl CutoffFunction {
 #[derive(Debug, Clone)]
 #[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 #[allow(clippy::module_name_repetitions)]
-/// Parameters for Spherical expansion calculator. The spherical expansion is at
-/// the core of representations in the SOAP (Smooth Overlap of Atomic Positions)
-/// family. See [this review article](https://doi.org/10.1063/1.5090481) for
-/// more information on the SOAP representation, and [this
-/// paper](https://doi.org/10.1063/5.0044689) for information on how it is
-/// implemented in rascaline.
+/// Parameters for spherical expansion calculator.
+///
+/// The spherical expansion is at the core of representations in the SOAP
+/// (Smooth Overlap of Atomic Positions) family. See [this review
+/// article](https://doi.org/10.1063/1.5090481) for more information on the SOAP
+/// representation, and [this paper](https://doi.org/10.1063/5.0044689) for
+/// information on how it is implemented in rascaline.
 pub struct SphericalExpansionParameters {
     /// Spherical cutoff to use for atomic environments
     pub cutoff: f64,
@@ -259,11 +260,11 @@ impl CalculatorBase for SphericalExpansion {
     }
 
     fn check_features(&self, indexes: &Indexes) {
-        assert_eq!(indexes.names(), &["n", "l", "m"]);
+        assert_eq!(indexes.names(), self.features_names());
         for value in indexes {
             let n = value[0].usize();
-            let l = value[0].isize();
-            let m = value[0].isize();
+            let l = value[1].isize();
+            let m = value[2].isize();
             assert!(n < self.parameters.max_radial);
             assert!(l <= self.parameters.max_angular as isize);
             assert!(-l <= m && m <= l);
