@@ -147,12 +147,6 @@ impl EnvironmentIndexes for AtomSpeciesEnvironment {
             system.compute_neighbors(self.cutoff);
 
             let species = system.species();
-
-            // FIXME: this will always be 0, but is required for Descriptor.densify
-            if self.self_contribution && species[center] == species_neighbor {
-                indexes.insert((i_system, center, species_neighbor, species_neighbor, center));
-            }
-
             for pair in system.pairs_containing(center) {
                 let species_first = species[pair.first];
                 let species_second = species[pair.second];
@@ -280,19 +274,11 @@ impl EnvironmentIndexes for ThreeBodiesSpeciesEnvironment {
         for requested in samples {
             let i_system = requested[0];
             let center = requested[1].usize();
-            let species_neighbor_1 = requested[3].usize();
-            let species_neighbor_2 = requested[4].usize();
 
             let system = &mut *systems[i_system.usize()];
             system.compute_neighbors(self.cutoff);
 
             let species = system.species();
-
-            // FIXME: this will always be 0, but is required for Descriptor.densify
-            if self.self_contribution && species[center] == species_neighbor_1 && species[center] == species_neighbor_2 {
-                indexes.insert((i_system, center, species_neighbor_1, species_neighbor_1, species_neighbor_1, center));
-            }
-
             for (i, j) in triplets_around(&*system, center) {
                 let (species_1, species_2) = sort_pair(species[i], species[j]);
                 indexes.insert((i_system, center, species[center], species_1, species_2, i));

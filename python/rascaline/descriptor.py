@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-from ctypes import c_double, c_char_p, POINTER
+from ctypes import c_double, c_char_p, POINTER, ARRAY
 
 from ._rascaline import c_uintptr_t, rascal_indexes
 from .clib import _get_library
@@ -98,8 +98,14 @@ class Descriptor:
     def gradients_environments(self):
         return self._indexes(rascal_indexes.RASCAL_INDEXES_GRADIENTS)
 
-    def densify(self, variable):
-        self._lib.rascal_descriptor_densify(self, variable.encode("utf8"))
+    def densify(self, variables):
+        if isinstance(variables, str):
+            variables = [variables]
+
+        c_variables = ARRAY(c_char_p, len(variables))()
+        for i, v in enumerate(variables):
+            c_variables[i] = v.encode("utf8")
+        self._lib.rascal_descriptor_densify(self, c_variables, c_variables._length_)
 
 
 def np_array_view(ptr, shape, dtype):

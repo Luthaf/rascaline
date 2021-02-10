@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use indexmap::set::IndexSet;
 
+use itertools::Itertools;
 use ndarray::{Array2, s};
 
 use super::{Indexes, IndexesBuilder, IndexValue};
@@ -76,26 +77,34 @@ impl Descriptor {
         }
     }
 
-    pub fn densify(&mut self, variable: &str) {
-        let new_environments = remove_from_indexes(&self.environments, variable);
+    pub fn densify(&mut self, variables: Vec<&str>) {
+        if variables.is_empty() {
+            return;
+        }
 
+        let new_environments = remove_from_indexes(&self.environments, &variables);
         let new_gradients = self.gradients_indexes.as_ref().map(|indexes| {
-            let gradients = remove_from_indexes(indexes, variable);
+            let gradients = remove_from_indexes(indexes, &variables);
 
             if gradients.new_features != new_environments.new_features {
-                panic!("gradient indexes contains a different values for {} than the environment indexes", variable);
+                let name = if variables.len() == 1 {
+                    variables[0].to_owned()
+                } else {
+                    format!("({})", variables.join(", "))
+                };
+                panic!("gradient indexes contains different values for {} than the environment indexes", name);
             }
 
             return gradients;
         });
 
         // new feature indexes, add `variable` in the front
-        let mut feature_names = vec![variable];
+        let mut feature_names = variables;
         feature_names.extend(self.features.names());
         let mut new_features = IndexesBuilder::new(feature_names);
         for new in new_environments.new_features {
             for feature in self.features.iter() {
-                let mut cleaned = vec![new];
+                let mut cleaned = new.clone();
                 cleaned.extend(feature);
                 new_features.add(&cleaned);
             }
@@ -146,7 +155,7 @@ fn resize_and_reset(array: &mut Array2<f64>, shape: (usize, usize)) {
     let _ = std::mem::replace(array, values);
 }
 
-/// Representation of an environment/gradient index after densification
+/// Representation of an environment/gradient index after a call to `densify`
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 struct DensifiedIndex {
     /// Index of the new environment/gradient in the value/gradients array
@@ -155,29 +164,32 @@ struct DensifiedIndex {
     feature_block: usize,
 }
 
-/// Results of moving a given variable from Indexes
+/// Results of removing a set of variables from Indexes
 struct RemovedResult {
-    /// New Indexes, without the variable
+    /// New Indexes, without the variables
     indexes: Indexes,
-    /// Values taken by the variable in the original Index
+    /// Values taken by the variables in the original Index
     ///
     /// This needs to be a IndexSet to keep the same order as in the initial
     /// Indexes.
-    new_features: IndexSet<IndexValue>,
-    /// Mapping from the updated index to the original position in Indexes
+    new_features: IndexSet<Vec<IndexValue>>,
+    /// Mapping from the updated index to the original position
     mapping: BTreeMap<DensifiedIndex, usize>,
 }
 
-/// Remove the given `variable` from the `indexes`, returning the updated
-/// `indexes` and a set of all the values taken by the removed one.
-fn remove_from_indexes(indexes: &Indexes, variable: &str) -> RemovedResult {
-    let variable_i = match indexes.names().iter().position(|&name| name == variable) {
-        Some(index) => index,
-        None => panic!(
-            "can not densify along '{}' which is not present in the environments: [{}]",
-            variable, indexes.names().join(", ")
-        )
-    };
+/// Remove the given `variables` from the `indexes`, returning the updated
+/// `indexes` and a set of all the values taken by the removed variables.
+fn remove_from_indexes(indexes: &Indexes, variables: &[&str]) -> RemovedResult {
+    let variable_indexes = variables.iter()
+        .map(|v| {
+            indexes.names()
+                .iter()
+                .position(|name| name == v)
+                .unwrap_or_else(|| panic!(
+                    "can not densify along '{}' which is not present in the environments: [{}]",
+                    v, indexes.names().join(", ")
+                ))
+        }).collect::<Vec<_>>();
 
     let mut mapping = BTreeMap::new();
 
@@ -187,16 +199,24 @@ fn remove_from_indexes(indexes: &Indexes, variable: &str) -> RemovedResult {
     let mut new_indexes = IndexSet::new();
     let mut new_features = IndexSet::new();
     for (old, index) in indexes.iter().enumerate() {
-        new_features.insert(index[variable_i]);
+        let mut new_feature = Vec::new();
+        for &i in &variable_indexes {
+            new_feature.push(index[i]);
+        }
+        new_features.insert(new_feature.clone());
 
-        let mut cleaned = index[0..variable_i].to_vec();
-        cleaned.extend(&index[(variable_i + 1)..]);
-        new_indexes.insert(cleaned);
+        let mut new_index = index.to_vec();
+        // sort and reverse the indexes to ensure the all the calls to `remove`
+        // are valid
+        for &i in variable_indexes.iter().sorted().rev() {
+            new_index.remove(i);
+        }
+        new_indexes.insert(new_index);
 
         let densified = DensifiedIndex{
             environment: new_indexes.len() - 1,
             feature_block: new_features.iter()
-                .position(|&f| f == index[variable_i])
+                .position(|feature| feature == &new_feature)
                 .expect("missing feature that was just added"),
         };
         mapping.insert(densified, old);
@@ -204,7 +224,7 @@ fn remove_from_indexes(indexes: &Indexes, variable: &str) -> RemovedResult {
 
     let names = indexes.names()
         .iter()
-        .filter(|&&name| name != variable)
+        .filter(|&name| !variables.contains(name))
         .cloned()
         .collect();
     let mut builder = IndexesBuilder::new(names);
@@ -224,43 +244,33 @@ fn remove_from_indexes(indexes: &Indexes, variable: &str) -> RemovedResult {
 mod tests {
     use super::*;
     use crate::system::test_systems;
-    use crate::descriptor::indexes::{StructureSpeciesEnvironment, EnvironmentIndexes};
+    use crate::descriptor::{AtomSpeciesEnvironment, StructureSpeciesEnvironment, EnvironmentIndexes};
     use ndarray::array;
 
-    fn do_prepare(gradients: bool) -> Descriptor {
-        let mut systems = test_systems(&["water", "CH"]);
-
+    fn dummy_features() -> Indexes {
         let mut features = IndexesBuilder::new(vec!["foo", "bar", "baz"]);
         features.add(&[IndexValue::from(0_usize), IndexValue::from(1_isize), IndexValue::from(0.3)]);
         features.add(&[IndexValue::from(4_usize), IndexValue::from(2_isize), IndexValue::from(3.3)]);
         features.add(&[IndexValue::from(1_usize), IndexValue::from(0_isize), IndexValue::from(2.3)]);
-        let features = features.finish();
-
-        let environments = StructureSpeciesEnvironment;
-
-        let mut descriptor = Descriptor::new();
-        if gradients {
-            let (environments, gradients) = environments.with_gradients(&mut systems.get());
-            let gradients = gradients.unwrap();
-            descriptor.prepare_gradients(environments, gradients, features);
-        } else {
-            let environments = environments.indexes(&mut systems.get());
-            descriptor.prepare(environments, features);
-        }
-
-        return descriptor;
+        return features.finish();
     }
 
     /// Convenience macro to create IndexValue
     macro_rules! v {
         ($value: expr) => {
-            crate::descriptor::indexes::IndexValue::from($value as f64)
+        crate::descriptor::indexes::IndexValue::from($value as f64)
         };
     }
 
     #[test]
     fn prepare() {
-        let descriptor = do_prepare(false);
+        let mut descriptor = Descriptor::new();
+
+        let mut systems = test_systems(&["water", "CH"]);
+        let features = dummy_features();
+        let environments = StructureSpeciesEnvironment.indexes(&mut systems.get());
+        descriptor.prepare(environments, features);
+
 
         assert_eq!(descriptor.values.shape(), [4, 3]);
 
@@ -275,7 +285,12 @@ mod tests {
 
     #[test]
     fn prepare_gradients() {
-        let descriptor = do_prepare(true);
+        let mut descriptor = Descriptor::new();
+
+        let mut systems = test_systems(&["water", "CH"]);
+        let features = dummy_features();
+        let (environments, gradients) = StructureSpeciesEnvironment.with_gradients(&mut systems.get());
+        descriptor.prepare_gradients(environments, gradients.unwrap(), features);
 
         let gradients = descriptor.gradients.unwrap();
         assert_eq!(gradients.shape(), [15, 3]);
@@ -283,7 +298,6 @@ mod tests {
         let gradients_indexes = descriptor.gradients_indexes.as_ref().unwrap();
         assert_eq!(gradients_indexes.names(), ["structure", "species", "atom", "spatial"]);
 
-        // use a loop to simplify checking the spatial dimension
         let expected = [
             [v!(0), v!(1), v!(1)],
             [v!(0), v!(1), v!(2)],
@@ -291,6 +305,7 @@ mod tests {
             [v!(1), v!(1), v!(0)],
             [v!(1), v!(6), v!(1)]
         ];
+        // use a loop to simplify checking the spatial dimension
         for (i, &value) in expected.iter().enumerate() {
             assert_eq!(gradients_indexes[3 * i][..3], value);
             assert_eq!(gradients_indexes[3 * i][3], v!(0));
@@ -304,9 +319,13 @@ mod tests {
     }
 
     #[test]
-    fn densify() {
-        let mut descriptor = do_prepare(true);
-        // environment indexes are checked in the tests above
+    fn densify_single_variable() {
+        let mut descriptor = Descriptor::new();
+
+        let mut systems = test_systems(&["water", "CH"]);
+        let features = dummy_features();
+        let (environments, gradients) = StructureSpeciesEnvironment.with_gradients(&mut systems.get());
+        descriptor.prepare_gradients(environments, gradients.unwrap(), features);
 
         descriptor.values.assign(&array![
             [1.0, 2.0, 3.0],
@@ -325,7 +344,7 @@ mod tests {
         ]);
 
         // where the magic happens
-        descriptor.densify("species");
+        descriptor.densify(vec!["species"]);
 
         assert_eq!(descriptor.values.shape(), [2, 9]);
         assert_eq!(descriptor.environments.names(), ["structure"]);
@@ -333,15 +352,15 @@ mod tests {
         assert_eq!(descriptor.environments[1], [v!(1)]);
 
         assert_eq!(descriptor.values, array![
-            [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 0.0, 0.0, 0.0],
-            [7.0, 8.0, 9.0, 0.0, 0.0, 0.0, 10.0, 11.0, 12.0],
+            [1.0, 2.0, 3.0, /**/ 4.0, 5.0, 6.0, /**/ 0.0, 0.0, 0.0],
+            [7.0, 8.0, 9.0, /**/ 0.0, 0.0, 0.0, /**/ 10.0, 11.0, 12.0],
         ]);
 
         let gradients = descriptor.gradients.as_ref().unwrap();
         assert_eq!(gradients.shape(), [15, 9]);
         let gradients_indexes = descriptor.gradients_indexes.as_ref().unwrap();
         assert_eq!(gradients_indexes.names(), ["structure", "atom", "spatial"]);
-        // use a loop to simplify checking the spatial dimension
+
         let expected = [
             [v!(0), v!(1)],
             [v!(0), v!(2)],
@@ -349,6 +368,7 @@ mod tests {
             [v!(1), v!(0)],
             [v!(1), v!(1)]
         ];
+        // use a loop to simplify checking the spatial dimension
         for (i, &value) in expected.iter().enumerate() {
             assert_eq!(gradients_indexes[3 * i][..2], value);
             assert_eq!(gradients_indexes[3 * i][2], v!(0));
@@ -376,6 +396,125 @@ mod tests {
             [/*H*/ 0.0, 0.0, 0.0,       /*O*/ 0.0, 0.0, 0.0,    /*C*/ 13.0, 14.0, 15.0],
             [/*H*/ 0.0, 0.0, 0.0,       /*O*/ 0.0, 0.0, 0.0,    /*C*/ 0.13, 0.14, 0.15],
             [/*H*/ 0.0, 0.0, 0.0,       /*O*/ 0.0, 0.0, 0.0,    /*C*/ -13.0, -14.0, -15.0],
+        ]);
+    }
+    #[test]
+    fn densify_multiple_variables() {
+        let mut descriptor = Descriptor::new();
+
+        let mut systems = test_systems(&["water", "CH"]);
+        let features = dummy_features();
+        let (environments, gradients) = AtomSpeciesEnvironment::new(3.0).with_gradients(&mut systems.get());
+        descriptor.prepare_gradients(environments, gradients.unwrap(), features);
+
+        descriptor.values.assign(&array![
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+            [10.0, 11.0, 12.0],
+            [13.0, 14.0, 15.0],
+            [16.0, 17.0, 18.0],
+            [19.0, 20.0, 21.0],
+        ]);
+
+        let gradients = descriptor.gradients.as_mut().unwrap();
+        gradients.assign(&array![
+            [1.0, 2.0, 3.0], [0.1, 0.2, 0.3], [-1.0, -2.0, -3.0],
+            [4.0, 5.0, 6.0], [0.4, 0.5, 0.6], [-4.0, -5.0, -6.0],
+            [7.0, 8.0, 9.0], [0.7, 0.8, 0.9], [-7.0, -8.0, -9.0],
+            [10.0, 11.0, 12.0], [0.10, 0.11, 0.12], [-10.0, -11.0, -12.0],
+            [13.0, 14.0, 15.0], [0.13, 0.14, 0.15], [-13.0, -14.0, -15.0],
+            [16.0, 17.0, 18.0], [0.16, 0.17, 0.18], [-16.0, -17.0, -18.0],
+            [19.0, 20.0, 21.0], [0.19, 0.20, 0.21], [-19.0, -20.0, -21.0],
+            [22.0, 23.0, 24.0], [0.22, 0.23, 0.24], [-22.0, -23.0, -24.0],
+        ]);
+
+        // where the magic happens
+        descriptor.densify(vec!["species_center", "species_neighbor"]);
+
+        assert_eq!(descriptor.values.shape(), [5, 15]);
+        assert_eq!(descriptor.environments.names(), ["structure", "center"]);
+        assert_eq!(descriptor.environments[0], [v!(0), v!(0)]);
+        assert_eq!(descriptor.environments[1], [v!(0), v!(1)]);
+        assert_eq!(descriptor.environments[2], [v!(0), v!(2)]);
+        assert_eq!(descriptor.environments[3], [v!(1), v!(0)]);
+        assert_eq!(descriptor.environments[4], [v!(1), v!(1)]);
+
+        assert_eq!(descriptor.values, array![
+            /*    O-H             H-H                 H-O                  H-C                C-H     */
+            // O in water
+            [1.0, 2.0, 3.0,   0.0, 0.0, 0.0,      0.0, 0.0, 0.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
+            // H in water
+            [0.0, 0.0, 0.0,   4.0, 5.0, 6.0,      7.0, 8.0, 9.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
+            // H in water
+            [0.0, 0.0, 0.0,   10.0, 11.0, 12.0,   13.0, 14.0, 15.0,   0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
+            // H in CH
+            [0.0, 0.0, 0.0,   0.0, 0.0, 0.0,      0.0, 0.0, 0.0,      16.0, 17.0, 18.0,  0.0, 0.0, 0.0],
+            // C in CH
+            [0.0, 0.0, 0.0,   0.0, 0.0, 0.0,      0.0, 0.0, 0.0,      0.0, 0.0, 0.0,     19.0, 20.0, 21.0],
+        ]);
+
+        let gradients = descriptor.gradients.as_ref().unwrap();
+        assert_eq!(gradients.shape(), [24, 15]);
+        let gradients_indexes = descriptor.gradients_indexes.as_ref().unwrap();
+        assert_eq!(gradients_indexes.names(), ["structure", "center", "neighbor", "spatial"]);
+
+        let expected = [
+            [v!(0), v!(0), v!(1)],
+            [v!(0), v!(0), v!(2)],
+            [v!(0), v!(1), v!(2)],
+            [v!(0), v!(1), v!(0)],
+            [v!(0), v!(2), v!(1)],
+            [v!(0), v!(2), v!(0)],
+            [v!(1), v!(0), v!(1)],
+            [v!(1), v!(1), v!(0)]
+        ];
+        // use a loop to simplify checking the spatial dimension
+        for (i, &value) in expected.iter().enumerate() {
+            assert_eq!(gradients_indexes[3 * i][..3], value);
+            assert_eq!(gradients_indexes[3 * i][3], v!(0));
+
+            assert_eq!(gradients_indexes[3 * i + 1][..3], value);
+            assert_eq!(gradients_indexes[3 * i + 1][3], v!(1));
+
+            assert_eq!(gradients_indexes[3 * i + 2][..3], value);
+            assert_eq!(gradients_indexes[3 * i + 2][3], v!(2));
+        }
+
+        assert_eq!(*gradients, array![
+            /*    O-H                H-H                   H-O                H-C                C-H     */
+            // O in water, 1rst H neighbor
+            [1.0, 2.0, 3.0,      0.0, 0.0, 0.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
+            [0.1, 0.2, 0.3,      0.0, 0.0, 0.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
+            [-1.0, -2.0, -3.0,   0.0, 0.0, 0.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
+            // O in water, 2nd H neighbor
+            [4.0, 5.0, 6.0,      0.0, 0.0, 0.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
+            [0.4, 0.5, 0.6,      0.0, 0.0, 0.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
+            [-4.0, -5.0, -6.0,   0.0, 0.0, 0.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
+            // 1rst H in water, H neighbor
+            [0.0, 0.0, 0.0,      7.0, 8.0, 9.0,     0.0, 0.0, 0.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0,      0.7, 0.8, 0.9,     0.0, 0.0, 0.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0,    -7.0, -8.0, -9.0,    0.0, 0.0, 0.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
+            // 1rst H in water, O neighbor
+            [0.0, 0.0, 0.0,     0.0, 0.0, 0.0,      10.0, 11.0, 12.0,   0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0,     0.0, 0.0, 0.0,      0.10, 0.11, 0.12,   0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0,     0.0, 0.0, 0.0,    -10.0, -11.0, -12.0,  0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
+            // 2nd H in water, H neighbor
+            [0.0, 0.0, 0.0,   13.0, 14.0, 15.0,     0.0, 0.0, 0.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0,   0.13, 0.14, 0.15,     0.0, 0.0, 0.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0,  -13.0, -14.0, -15.0,   0.0, 0.0, 0.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
+            // 2nd H in water, O neighbor
+            [0.0, 0.0, 0.0,     0.0, 0.0, 0.0,    16.0, 17.0, 18.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0,     0.0, 0.0, 0.0,    0.16, 0.17, 0.18,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0,     0.0, 0.0, 0.0,   -16.0, -17.0, -18.0,    0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
+            // H in CH
+            [0.0, 0.0, 0.0,     0.0, 0.0, 0.0,      0.0, 0.0, 0.0,    19.0, 20.0, 21.0,     0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0,     0.0, 0.0, 0.0,      0.0, 0.0, 0.0,    0.19, 0.20, 0.21,     0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0,     0.0, 0.0, 0.0,      0.0, 0.0, 0.0,   -19.0, -20.0, -21.0,   0.0, 0.0, 0.0],
+            // C in CH
+            [0.0, 0.0, 0.0,     0.0, 0.0, 0.0,      0.0, 0.0, 0.0,    0.0, 0.0, 0.0,    22.0, 23.0, 24.0],
+            [0.0, 0.0, 0.0,     0.0, 0.0, 0.0,      0.0, 0.0, 0.0,    0.0, 0.0, 0.0,    0.22, 0.23, 0.24],
+            [0.0, 0.0, 0.0,     0.0, 0.0, 0.0,      0.0, 0.0, 0.0,    0.0, 0.0, 0.0,   -22.0, -23.0, -24.0],
         ]);
     }
 }

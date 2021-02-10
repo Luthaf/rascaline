@@ -125,7 +125,8 @@ def setup_functions(lib):
 
     lib.rascal_descriptor_densify.argtypes = [
         POINTER(rascal_descriptor_t),
-        ctypes.c_char_p
+        POINTER(ctypes.c_char_p),
+        c_uintptr_t
     ]
     lib.rascal_descriptor_densify.restype = _check_rascal_status_t
 

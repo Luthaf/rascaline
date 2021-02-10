@@ -186,12 +186,18 @@ pub unsafe extern fn rascal_descriptor_indexes_names(
 #[no_mangle]
 pub unsafe extern fn rascal_descriptor_densify(
     descriptor: *mut rascal_descriptor_t,
-    variable: *const c_char,
+    variables: *const *const c_char,
+    count: usize,
 ) -> rascal_status_t {
     catch_unwind(|| {
-        check_pointers!(descriptor, variable);
-        let variable = CStr::from_ptr(variable).to_str()?;
-        (*descriptor).densify(variable);
+        check_pointers!(descriptor, variables);
+        let mut rust_variables = Vec::new();
+        for &variable in std::slice::from_raw_parts(variables, count) {
+            check_pointers!(variable);
+            let variable = CStr::from_ptr(variable).to_str()?;
+            rust_variables.push(variable);
+        }
+        (*descriptor).densify(rust_variables);
         Ok(())
     })
 }

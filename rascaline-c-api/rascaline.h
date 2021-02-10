@@ -199,7 +199,8 @@ enum rascal_status_t rascal_descriptor_indexes_names(const struct rascal_descrip
                                                      uintptr_t size);
 
 enum rascal_status_t rascal_descriptor_densify(struct rascal_descriptor_t *descriptor,
-                                               const char *variable);
+                                               const char *const *variables,
+                                               uintptr_t count);
 
 struct rascal_calculator_t *rascal_calculator(const char *name, const char *parameters);
 
