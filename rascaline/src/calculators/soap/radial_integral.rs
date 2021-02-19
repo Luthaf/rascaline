@@ -369,7 +369,7 @@ mod tests {
                 for l in 0..(max_angular + 1) {
                     assert_relative_eq!(
                         finite_differences[[n, l]], gradients[[n, l]],
-                        epsilon=1e-5, max_relative=1e-5
+                        epsilon=1e-5, max_relative=5e-5
                     );
                 }
             }

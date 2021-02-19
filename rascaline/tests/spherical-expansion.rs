@@ -19,7 +19,7 @@ fn spherical_expansion() {
 
     for i in 0..expected.nrows() {
         for j in 0..expected.ncols() {
-            assert_relative_eq!(descriptor.values[[i, j]], expected[[i, j]]);
+            assert_relative_eq!(descriptor.values[[i, j]], expected[[i, j]], max_relative=1e-12);
         }
     }
 }
