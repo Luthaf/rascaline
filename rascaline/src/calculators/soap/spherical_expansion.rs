@@ -257,6 +257,7 @@ impl CalculatorBase for SphericalExpansion {
                 let (neighbor, sign) = if center == pair.first {
                     (pair.second, 1.0)
                 } else {
+                    assert_eq!(center, pair.second, "system.pairs_containing is broken");
                     (pair.first, -1.0)
                 };
 
@@ -326,7 +327,7 @@ impl CalculatorBase for SphericalExpansion {
                     let dr_dz = sign * pair.vector[2] / distance;
 
                     let gradients = descriptor.gradients.as_mut().expect("missing storage for gradients");
-                    let center_grad_i = center_grad_i.expect("missing storage for gradient");
+                    let center_grad_i = center_grad_i.expect("missing storage for gradient of this center");
                     let ri_gradients = self.ri_gradients.as_ref().expect("missing radial integral gradients");
                     let sph_gradients = self.sph_gradients.as_ref().expect("missing spherical harmonics gradients");
 

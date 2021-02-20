@@ -48,7 +48,10 @@ if HAVE_ASE:
                     continue
                 self._pairs.append((i, j, D))
 
-            self._pairs_by_center = [[]] * self.size()
+            self._pairs_by_center = []
+            for _ in range(self.size()):
+                self._pairs_by_center.append([])
+
             for (i, j, D) in self._pairs:
                 self._pairs_by_center[i].append((i, j, D))
                 self._pairs_by_center[j].append((i, j, D))

@@ -118,6 +118,7 @@ impl SphericalHarmonicsArray {
     }
 
     #[inline]
+    #[allow(clippy::suspicious_operation_groupings)]
     fn linear_index(&self, index: [isize; 2]) -> usize {
         let [l, m] = index;
         debug_assert!(l <= self.max_angular && -l <= m && m <= l);
