@@ -103,9 +103,9 @@ impl System for rascal_system_t {
 
         if matrix == Matrix3::zero() {
             return UnitCell::infinite();
-        } else {
-            return UnitCell::from(matrix);
         }
+
+        return UnitCell::from(matrix);
     }
 
     fn compute_neighbors(&mut self, cutoff: f64) {

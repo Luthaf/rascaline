@@ -30,8 +30,8 @@ fn spherical_expansion(c: &mut Criterion) {
     for &max_radial in black_box(&[2, 8, 14]) {
         for &max_angular in black_box(&[1, 7, 15]) {
             let parameters = SphericalExpansionParameters {
-                max_radial: max_radial,
-                max_angular: max_angular,
+                max_radial,
+                max_angular,
                 cutoff: 4.5,
                 atomic_gaussian_width: 0.5,
                 gradients: false,
@@ -67,8 +67,8 @@ fn spherical_expansion_gradients(c: &mut Criterion) {
     for &max_radial in black_box(&[2, 8, 14]) {
         for &max_angular in black_box(&[1, 7, 15]) {
             let parameters = SphericalExpansionParameters {
-                max_radial: max_radial,
-                max_angular: max_angular,
+                max_radial,
+                max_angular,
                 cutoff: 4.5,
                 atomic_gaussian_width: 0.5,
                 gradients: true,

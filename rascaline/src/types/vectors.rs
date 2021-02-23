@@ -527,9 +527,9 @@ mod tests {
     fn index() {
         let mut a = Vector3D::new(2.1, 3.5, 4.8);
 
-        assert_eq!(a[0], a[0]);
-        assert_eq!(a[1], a[1]);
-        assert_eq!(a[2], a[2]);
+        assert_eq!(a[0], 2.1);
+        assert_eq!(a[1], 3.5);
+        assert_eq!(a[2], 4.8);
 
         a[0] = 1.0;
         a[1] = 1.0;

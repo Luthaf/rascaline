@@ -84,10 +84,10 @@ pub unsafe extern fn rascal_last_error() -> *const c_char {
         Ok(())
     });
 
-    if status == rascal_status_t::RASCAL_SUCCESS {
-        return result;
-    } else {
+    if status != rascal_status_t::RASCAL_SUCCESS {
         eprintln!("ERROR: unable to get last error message!");
         return std::ptr::null();
     }
+
+    return result;
 }

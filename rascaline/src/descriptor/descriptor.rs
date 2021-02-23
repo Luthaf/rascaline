@@ -152,7 +152,7 @@ fn resize_and_reset(array: &mut Array2<f64>, shape: (usize, usize)) {
 
     let mut values = Array2::from_shape_vec(shape, data).expect("wrong array shape");
     values.fill(0.0);
-    let _ = std::mem::replace(array, values);
+    let _replaced = std::mem::replace(array, values);
 }
 
 /// Representation of an environment/gradient index after a call to `densify`
