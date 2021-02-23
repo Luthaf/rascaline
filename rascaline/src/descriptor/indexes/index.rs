@@ -218,9 +218,9 @@ impl Indexes {
     pub fn count(&self) -> usize {
         if self.size() == 0 {
             return 0;
-        } else {
-            return self.values.len() / self.size();
         }
+
+        return self.values.len() / self.size();
     }
 
     pub fn iter(&self) -> Iter {
@@ -262,11 +262,11 @@ impl<'a> Iterator for Iter<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         if self.values.is_empty() {
             return None
-        } else {
-            let (value, rest) = self.values.split_at(self.size);
-            self.values = rest;
-            return Some(value);
         }
+
+        let (value, rest) = self.values.split_at(self.size);
+        self.values = rest;
+        return Some(value);
     }
 }
 

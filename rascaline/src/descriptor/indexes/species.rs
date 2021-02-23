@@ -309,7 +309,7 @@ impl EnvironmentIndexes for ThreeBodiesSpeciesEnvironment {
 }
 
 /// Build the list of triplet i-center-j
-fn triplets_around<'a>(system: &'a dyn System, center: usize) -> impl Iterator<Item=(usize, usize)> + 'a {
+fn triplets_around(system: &dyn System, center: usize) -> impl Iterator<Item=(usize, usize)> + '_ {
     let pairs = system.pairs_containing(center);
 
     return pairs.iter().cartesian_product(pairs).map(move |(first_pair, second_pair)| {

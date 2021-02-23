@@ -44,11 +44,11 @@ pub unsafe extern fn rascal_calculator(name: *const c_char, parameters: *const c
         Ok(())
     });
 
-    if status == rascal_status_t::RASCAL_SUCCESS {
-        return raw;
-    } else {
+    if status != rascal_status_t::RASCAL_SUCCESS {
         return std::ptr::null_mut();
     }
+
+    return raw;
 }
 
 #[no_mangle]
