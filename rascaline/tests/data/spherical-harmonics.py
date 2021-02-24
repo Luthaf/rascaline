@@ -44,7 +44,7 @@ directions = [
 ]
 
 parameters = {
-    "max_angular": 3,
+    "max_angular": 25,
     "directions": directions,
 }
 values = spherical_harmonics(**parameters)

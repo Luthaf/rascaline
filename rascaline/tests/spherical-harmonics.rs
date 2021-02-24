@@ -33,7 +33,7 @@ fn spherical_harmonics() {
             for (i_m, m) in (-l..=l).enumerate() {
                 assert_relative_eq!(
                     values[[l, m]], expected[[i_direction, l as usize, i_m]],
-                    max_relative=1e-11
+                    epsilon=1e-11, max_relative=1e-11
                 );
             }
         }
