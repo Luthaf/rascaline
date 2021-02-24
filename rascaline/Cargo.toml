@@ -29,8 +29,6 @@ itertools = "0.10"
 
 [dev-dependencies]
 approx = "0.4"
-# TODO: this is licensed under GPL-v3
-GSL = "3.0"
 criterion = "0.3"
 glob = "0.3"
 ndarray-npy = "0.7"

@@ -1,20 +1,29 @@
 import io
+import os
 import ase
 import math
 import gzip
 import json
 import numpy as np
 
+ROOT = os.path.abspath(os.path.dirname(__file__))
 
-def save_input(path, frames, hyperparameters):
+
+def save_calculator_input(path, frames, hyperparameters):
     frames = validate_frames(frames)
+    save_json(
+        path,
+        {
+            "systems": [frame_to_json(f) for f in frames],
+            "hyperparameters": hyperparameters,
+        },
+    )
 
-    with open(f"{path}-input.json", "w") as fd:
+
+def save_json(path, data):
+    with open(os.path.join(ROOT, "generated", f"{path}-input.json"), "w") as fd:
         json.dump(
-            {
-                "systems": [frame_to_json(f) for f in frames],
-                "hyperparameters": hyperparameters,
-            },
+            data,
             fd,
             sort_keys=True,
             indent=2,
@@ -51,10 +60,8 @@ def save_numpy_array(path, array, digits=10):
     The array values are also rounded to ``digits`` significant digits to remove
     small differences related to floating point environments.
     """
-    array = np.copy(array)
-    for i in range(array.shape[0]):
-        for j in range(array.shape[1]):
-            array[i, j] = signif(array[i, j], digits)
+    if digits is not None:
+        array = np.vectorize(lambda x: signif(x, digits))(array)
 
     buffer = io.BytesIO()
     with gzip.GzipFile(filename="", fileobj=buffer, mode="wb", mtime=0) as fd:
@@ -65,7 +72,7 @@ def save_numpy_array(path, array, digits=10):
     view = buffer.getbuffer()
     view[9] = 0xFF
 
-    with open(f"{path}.npy.gz", "wb") as fd:
+    with open(os.path.join(ROOT, "generated", f"{path}.npy.gz"), "wb") as fd:
         fd.write(view)
 
 

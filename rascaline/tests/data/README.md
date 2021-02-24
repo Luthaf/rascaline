@@ -17,7 +17,7 @@ python3 -m venv .regtests-pyvenv
 source .regtests-pyvenv/bin/activate
 pip install --upgrade pip
 pip install ../../../
-pip install ase
+pip install -r requirements.txt
 
 python <specific-script-here>.py
 ```
