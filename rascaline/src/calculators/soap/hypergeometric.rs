@@ -9,6 +9,7 @@
 //! expansion when using GTO radial basis.
 //!
 //! This code was originally written by Félix Musil @ COSMO/EPFL
+use std::f64;
 
 use ndarray::{Array2, ArrayViewMut2, Axis, azip};
 use log::warn;

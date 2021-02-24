@@ -1,5 +1,6 @@
 #![allow(clippy::range_plus_one)]
 
+use std::f64;
 use std::f64::consts::SQRT_2;
 
 use crate::Vector3D;

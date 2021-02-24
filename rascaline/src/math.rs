@@ -1,4 +1,5 @@
 #![allow(clippy::excessive_precision)]
+use std::f64;
 
 /// Auxiliary variable when evaluating the `gamma` function
 const GAMMA_R: f64 = 10.900511;
