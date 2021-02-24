@@ -1,3 +1,5 @@
+use std::f64;
+
 use ndarray::{Array2, ArrayViewMut2};
 
 use nalgebra as na;
@@ -276,7 +278,7 @@ mod tests {
             GTO::new(GTOParameters {
                 max_radial: 10,
                 max_angular: 4,
-                cutoff: f64::INFINITY,
+                cutoff: std::f64::INFINITY,
                 atomic_gaussian_width: 0.5
             });
         }
@@ -299,7 +301,7 @@ mod tests {
                 max_radial: 10,
                 max_angular: 4,
                 cutoff: 3.0,
-                atomic_gaussian_width: f64::INFINITY,
+                atomic_gaussian_width: std::f64::INFINITY,
             });
         }
 
