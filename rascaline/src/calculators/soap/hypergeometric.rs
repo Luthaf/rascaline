@@ -390,27 +390,6 @@ impl HyperGeometric {
 
         return result;
     }
-
-    /// Compute 1F1 itself, used in tests to check that this part of the
-    /// implementation is correct
-    #[cfg(test)]
-    fn compute_1f1(&self, z: f64) -> f64 {
-        let result;
-        if self.is_exponential {
-            result = f64::exp(z);
-        } else if z > self.switching_point {
-            result = self.asymptotic.compute_1f1(z);
-        } else {
-            result = self.series.compute_1f1(z);
-        }
-
-        debug_assert!(
-            result.is_finite(),
-            "HyperGeometric overflowed with z={}", z
-        );
-
-        return result;
-    }
 }
 
 /// Computes the G function and its derivative for all possible values of `l <
@@ -626,68 +605,6 @@ mod tests {
     use super::*;
     use approx::assert_relative_eq;
 
-    #[test]
-    fn hyp1f1_vs_gsl() {
-        let all_z_values = [
-            1e-3, 1e-2, 1e-1, 1.0, 10.0, 20.0, 30.0, 50.0, 80.0, 100.0, 200.0, 500.0, 600.0
-        ];
-
-        for n in 0..20 {
-            for l in 0..20 {
-                let a = (n + l + 3) as f64 / 2.0;
-                let b = l as f64 + 1.5;
-
-                let hyper = HyperGeometric::new(a, b);
-                for &z in &all_z_values {
-                    let gsl_value = rgsl::hypergeometric::hyperg_1F1(a, b, z);
-                    let hyper_value = hyper.compute_1f1(z);
-
-                    assert_relative_eq!(
-                        gsl_value, hyper_value,
-                        epsilon=HYPERGEOMETRIC_PRECISION,
-                        max_relative=1e1 * HYPERGEOMETRIC_PRECISION
-                    );
-                }
-            }
-        }
-    }
-
-    fn gsl_hypergeometric(
-        max_radial: usize,
-        max_angular: usize,
-        parameters: HyperGeometricParameters,
-        rij: f64
-    ) -> (Array2<f64>, Array2<f64>) {
-        use rgsl::hypergeometric::hyperg_1F1;
-        use rgsl::gamma_beta::gamma::gamma;
-
-        let mut values = Array2::from_elem((max_radial, max_angular + 1), 0.0);
-        let mut gradients = Array2::from_elem((max_radial, max_angular + 1), 0.0);
-        for n in 0..max_radial {
-            for l in 0..(max_angular + 1) {
-                let a = (n + l + 3) as f64 / 2.0;
-                let b = l as f64 + 1.5;
-                let c = parameters.atomic_gaussian_constant;
-                let d = parameters.gto_gaussian_constants[n];
-
-                let z = c * c * rij * rij / (c + d);
-                if z < 600.0 {
-                    values[[n, l]] = gamma(a) / gamma(b) * f64::exp(-c * rij * rij) * hyperg_1F1(a, b, z);
-
-                    let grad = 2.0 * a * c * c * rij / (b * (c + d)) * gamma(a) / gamma(b) * f64::exp(-c * rij * rij) * hyperg_1F1(a + 1.0, b + 1.0, z);
-                    gradients[[n, l]] = grad - 2.0 * c * rij * values[[n, l]];
-                } else {
-                    // exp overflows while computing hyperg_1F1 in gsl, the
-                    // corresponding value should be close to 0.0
-                    values[[n, l]] = f64::NAN;
-                    gradients[[n, l]] = f64::NAN;
-                }
-            }
-        }
-
-        return (values, gradients);
-    }
-
     fn gto_gaussian_constants(max_radial: usize, cutoff: f64) -> Vec<f64> {
         let mut constants = Vec::new();
         for n in 0..max_radial {
@@ -698,91 +615,31 @@ mod tests {
     }
 
     #[test]
-    fn hypergeometric_vs_gsl() {
-        // this test goes to extreme values for most parameters, to check that we
-        // can compute our hypergeometric function everywhere
-        for &max_radial in &[0, 1, 2, 5, 6, 8, 9, 12, 15, 18, 19] {
-            for &max_angular in &[0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 12, 15, 18, 19] {
-                let hyper = HyperGeometricSphericalExpansion::new(max_radial, max_angular);
-                let mut values = Array2::from_elem((max_radial, max_angular + 1), 0.0);
-                let mut gradients = Array2::from_elem((max_radial, max_angular + 1), 0.0);
-
-                for atomic_gaussian_width in &[0.1, 0.3, 0.5, 0.8, 1.0, 2.0, 3.0, 5.0, 10.0] {
-                    for &cutoff in &[1.0, 2.0, 3.0, 5.0, 6.0, 20.0] {
-                        let parameters = HyperGeometricParameters {
-                            atomic_gaussian_constant: 1.0 / (2.0 * atomic_gaussian_width * atomic_gaussian_width),
-                            gto_gaussian_constants: &gto_gaussian_constants(max_radial, cutoff),
-                        };
-
-                        for &rij in &[0.1, 0.2, 0.3, 0.5, 0.8, 1.0, 1.5, 2.0, 2.5, 4.0, 5.0, 7.0, 10.0] {
-                            if rij > cutoff {
-                                continue;
-                            }
-
-                            hyper.compute(rij, parameters, values.view_mut(), Some(gradients.view_mut()));
-                            let (gsl_values, gsl_gradients) = gsl_hypergeometric(max_radial, max_angular, parameters, rij);
-
-                            for n in 0..max_radial {
-                                for l in 0..(max_angular + 1) {
-                                    if gsl_values[[n, l]].is_nan() {
-                                        continue;
-                                    }
-
-                                    assert_relative_eq!(
-                                        gsl_values[[n, l]], values[[n, l]],
-                                        epsilon=HYPERGEOMETRIC_PRECISION,
-                                        max_relative=1e2 * HYPERGEOMETRIC_PRECISION
-                                    );
-
-                                    assert_relative_eq!(
-                                        gsl_gradients[[n, l]], gradients[[n, l]],
-                                        epsilon=HYPERGEOMETRIC_PRECISION,
-                                        // This is still 1e-7, but the precision
-                                        // goes down a lot for gradients. I don't
-                                        // know why.
-                                        max_relative=1e6 * HYPERGEOMETRIC_PRECISION
-                                    );
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    #[test]
     fn finite_differences() {
         let delta = 1e-9;
 
-        for &max_radial in &[0, 1, 2, 5, 6, 8, 9, 12] {
-            for &max_angular in &[0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 12] {
+        for &max_radial in &[1, 2, 8, 12] {
+            for &max_angular in &[0, 2, 8, 12] {
                 let hyper = HyperGeometricSphericalExpansion::new(max_radial, max_angular);
                 let mut values = Array2::from_elem((max_radial, max_angular + 1), 0.0);
                 let mut values_delta = Array2::from_elem((max_radial, max_angular + 1), 0.0);
                 let mut gradients = Array2::from_elem((max_radial, max_angular + 1), 0.0);
 
-                for atomic_gaussian_width in &[0.2, 0.3, 0.5, 0.8, 1.0, 2.0, 3.0] {
+                for atomic_gaussian_width in &[0.2, 0.3, 0.5, 3.0] {
                     let parameters = HyperGeometricParameters {
                         atomic_gaussian_constant: 1.0 / (2.0 * atomic_gaussian_width * atomic_gaussian_width),
                         gto_gaussian_constants: &gto_gaussian_constants(max_radial, 3.5),
                     };
 
-                    for &rij in &[0.2, 0.3, 0.5, 0.8, 1.0, 1.5, 2.0, 2.5, 4.0, 5.0, 7.0, 10.0] {
+                    for &rij in &[0.2, 0.8, 1.5, 4.0, 10.0] {
                         hyper.compute(rij, parameters, values.view_mut(), Some(gradients.view_mut()));
                         hyper.compute(rij + delta, parameters, values_delta.view_mut(), None);
 
                         let finite_difference = (values_delta.clone() - values.clone()) / delta;
 
-                        for n in 0..max_radial {
-                            for l in 0..(max_angular + 1) {
-                                assert_relative_eq!(
-                                    gradients[[n, l]], finite_difference[[n, l]],
-                                    epsilon=delta,
-                                    max_relative=2e-3,
-                                );
-                            }
-                        }
+                        assert_relative_eq!(
+                            gradients, finite_difference, epsilon=delta, max_relative=2e-3,
+                        );
                     }
                 }
             }

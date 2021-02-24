@@ -329,6 +329,7 @@ impl SphericalHarmonics {
         }
 
         for l in 0..(self.max_angular + 1) {
+            // compute values for m = 0 first
             values[[l as isize, 0]] = self.legendre_polynomials[[l, 0]] / SQRT_2;
         }
 
@@ -349,6 +350,7 @@ impl SphericalHarmonics {
             }
         }
 
+        // use a recurrence relation for sin(m ϕ) and cos(m ϕ) for m ≠ 0
         let mut cos_1 = 1.0;
         let mut cos_2 = cos_phi;
         let mut sin_1 = 0.0;
@@ -405,7 +407,6 @@ mod tests {
     use std::collections::HashSet;
 
     use approx::assert_relative_eq;
-    use rgsl::legendre::associated_polynomials::legendre_sphPlm;
     use super::*;
 
     #[test]
@@ -444,57 +445,6 @@ mod tests {
 
         assert_eq!(count, set.len());
         assert_eq!(array.data.len(), set.len());
-    }
-
-    #[allow(clippy::cast_possible_truncation, clippy::cast_lossless)]
-    fn spherical_gsl(l: isize, m: isize, cos_theta: f64, phi: f64) -> f64 {
-        let l = l as i32;
-        let m = m as i32;
-        if m == 0 {
-            legendre_sphPlm(l, 0, cos_theta) / SQRT_2
-        } else if m < 0 {
-            legendre_sphPlm(l, -m, cos_theta) * f64::sin(-m as f64 * phi)
-        } else {
-            legendre_sphPlm(l, m, cos_theta) * f64::cos(m as f64 * phi)
-        }
-    }
-
-    #[test]
-    fn spherical_harmonics_vs_gsl() {
-        let mut directions = [
-            Vector3D::new(1.0, 0.0, 0.0),
-            Vector3D::new(0.0, 1.0, 0.0),
-            Vector3D::new(0.0, 0.0, 1.0),
-            Vector3D::new(1.0, 1.0, 1.0),
-            Vector3D::new(1.0, -3.0, 9.0),
-            Vector3D::new(1.0, 8.0, 12.0),
-            Vector3D::new(-452.0, 825.0, 22.0),
-        ];
-
-        for d in &mut directions {
-            *d /= d.norm();
-        }
-
-        let max_angular = 25;
-        let mut spherical_harmonics = SphericalHarmonics::new(max_angular);
-        let mut values = SphericalHarmonicsArray::new(max_angular);
-
-        for &d in &directions {
-            spherical_harmonics.compute(d, &mut values, None);
-
-            let cos_theta = d[2];
-            let phi = f64::atan2(d[1], d[0]);
-
-            for l in 0..(max_angular as isize + 1) {
-                for m in -l..(l + 1) {
-                    let gsl_value = spherical_gsl(l, m, cos_theta, phi);
-                    assert_relative_eq!(
-                        values[[l, m]], gsl_value,
-                        epsilon=1e-12, max_relative=1e-12
-                    )
-                }
-            }
-        }
     }
 
     #[test]

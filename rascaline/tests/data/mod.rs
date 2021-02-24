@@ -1,5 +1,6 @@
+#![allow(dead_code)]
+
 use serde_json::Value;
-use ndarray::Array2;
 use ndarray_npy::ReadNpyExt;
 use flate2::read::GzDecoder;
 
@@ -8,8 +9,8 @@ use rascaline::system::UnitCell;
 
 type HyperParameters = String;
 
-pub fn load_input(path: &str) -> (Vec<SimpleSystem>, HyperParameters) {
-    let json = std::fs::read_to_string(&format!("tests/data/{}", path))
+pub fn load_calculator_input(path: &str) -> (Vec<SimpleSystem>, HyperParameters) {
+    let json = std::fs::read_to_string(&format!("tests/data/generated/{}", path))
         .expect("failed to read input file");
 
     let data: Value = serde_json::from_str(&json).expect("failed to parse JSON");
@@ -56,14 +57,9 @@ fn read_cell(cell: &Value) -> UnitCell {
     }
 }
 
-pub fn load_expected_values(path: &str) -> Array2<f64> {
-    let file = std::fs::File::open(&format!("tests/data/{}", path))
+pub fn load_expected_values<T: ReadNpyExt>(path: &str) -> T {
+    let file = std::fs::File::open(&format!("tests/data/generated/{}", path))
         .expect("failed to open file");
 
-    let reader = std::io::BufReader::with_capacity(
-        128 * 1024,
-        GzDecoder::new(file),
-    );
-
-    Array2::<f64>::read_npy(reader).expect("")
+    T::read_npy(GzDecoder::new(file)).expect("failed to convert data to ndarray")
 }

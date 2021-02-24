@@ -2,7 +2,7 @@ import ase
 
 from rascaline.calculator import SphericalExpansion
 
-from save_data import save_input, save_numpy_array
+from save_data import save_calculator_input, save_numpy_array
 
 frame = ase.Atoms(
     "CHOC4H2",
@@ -37,5 +37,5 @@ hyperparameters = {
 calculator = SphericalExpansion(**hyperparameters)
 descriptor = calculator.compute(frame, use_native_system=True)
 
-save_input("spherical-expansion-values", frame, hyperparameters)
+save_calculator_input("spherical-expansion-values", frame, hyperparameters)
 save_numpy_array("spherical-expansion-values", descriptor.values)
