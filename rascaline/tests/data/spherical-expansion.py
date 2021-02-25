@@ -39,3 +39,14 @@ descriptor = calculator.compute(frame, use_native_system=True)
 
 save_calculator_input("spherical-expansion-values", frame, hyperparameters)
 save_numpy_array("spherical-expansion-values", descriptor.values)
+
+# Use less values for gradients to keep the file size low
+hyperparameters["max_radial"] = 4
+hyperparameters["max_angular"] = 4
+hyperparameters["gradients"] = True
+
+calculator = SphericalExpansion(**hyperparameters)
+descriptor = calculator.compute(frame, use_native_system=True)
+
+save_calculator_input("spherical-expansion-gradients", frame, hyperparameters)
+save_numpy_array("spherical-expansion-gradients", descriptor.gradients)
