@@ -148,12 +148,30 @@ impl Calculator {
     ///
     /// This function computes the full descriptor, using all samples and all
     /// features.
+    #[allow(clippy::shadow_unrelated)]
     pub fn compute(
         &mut self,
         systems: &mut [&mut dyn System],
         descriptor: &mut Descriptor,
         options: CalculationOptions,
     ) -> Result<(), Error> {
+        let mut native_systems;
+        let mut references = Vec::with_capacity(systems.len());
+
+        if options.use_native_system {
+            native_systems = to_native_systems(systems);
+            for system in &mut native_systems {
+                references.push(system as &mut dyn System);
+            }
+        } else {
+            for system in systems {
+                // re-borrow every system to ensure the lifetime matches with
+                // the native_system case
+                references.push(&mut **system);
+            }
+        }
+        let systems = &mut references;
+
         let features = options.selected_features.into_features(&*self.implementation)?;
         let samples = options.selected_samples.into_samples(&*self.implementation, systems)?;
 
@@ -167,18 +185,7 @@ impl Calculator {
             descriptor.prepare(samples, features);
         }
 
-        if options.use_native_system {
-            let mut native_systems = to_native_systems(systems);
-            let mut references = Vec::with_capacity(systems.len());
-            for system in &mut native_systems {
-                references.push(system as &mut dyn System);
-            }
-
-            self.implementation.compute(&mut references, descriptor);
-        } else {
-            self.implementation.compute(systems, descriptor);
-        }
-
+        self.implementation.compute(systems, descriptor);
         return Ok(());
     }
 }
