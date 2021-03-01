@@ -4,11 +4,15 @@ use std::process::Command;
 
 #[test]
 fn check_c_api() {
-    let mut build_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
-    build_dir.push("tests");
-    build_dir.push("c-api");
-    build_dir.push("build");
+    let cargo_manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
+    let mut build_dir = PathBuf::from(&cargo_manifest_dir);
+    build_dir.push("target");
+    build_dir.push("rascaline-c-api-build");
     std::fs::create_dir_all(&build_dir).expect("failed to create build dir");
+
+    let mut source_dir = cargo_manifest_dir;
+    source_dir.push("tests");
+    source_dir.push("c-api");
 
     // assume that debug assertion means that we are building the code in
     // debug mode, even if that could be not true in some cases
@@ -20,7 +24,7 @@ fn check_c_api() {
 
     let mut cmake_config = Command::new("cmake");
     cmake_config.current_dir(&build_dir);
-    cmake_config.arg("..");
+    cmake_config.arg(&source_dir);
     cmake_config.arg(format!("-DCMAKE_BUILD_TYPE={}", build_type));
     let status = cmake_config.status().expect("failed to configure cmake");
     assert!(status.success());

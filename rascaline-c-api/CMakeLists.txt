@@ -1,8 +1,13 @@
-# Basic CMake integration for rascaline. To be used with `add_subdirectory`
-
+# Basic CMake integration for rascaline.
 cmake_minimum_required(VERSION 3.10)
 
-project(rascaline NONE)
+file(STRINGS "Cargo.toml" CARGO_TOML_CONTENT)
+string(REGEX REPLACE ".*version = \"([0-9]+\\.[0-9]+\\.[0-9]+)\".*" "\\1" RASCALINE_VERSION ${CARGO_TOML_CONTENT})
+
+project(rascaline
+    VERSION ${RASCALINE_VERSION}
+    LANGUAGES C
+)
 
 if("${CMAKE_BUILD_TYPE}" STREQUAL "" AND "${CMAKE_CONFIGURATION_TYPES}" STREQUAL "")
     message(STATUS "Setting build type to 'release' as none was specified.")
@@ -65,26 +70,49 @@ file(GLOB_RECURSE ALL_RUST_SOURCES
     ${PROJECT_SOURCE_DIR}/rascaline-c-api/build.rs
     ${PROJECT_SOURCE_DIR}/rascaline-c-api/src/**.rs
 )
-add_custom_command(
-    OUTPUT ${PROJECT_BINARY_DIR}/rascaline.built
+
+set(RASCALINE_LOCATION "${PROJECT_SOURCE_DIR}/../target/${CARGO_BUILD_TYPE}/${CMAKE_SHARED_LIBRARY_PREFIX}rascaline${CMAKE_SHARED_LIBRARY_SUFFIX}")
+get_filename_component(RASCALINE_LIB_NAME ${RASCALINE_LOCATION} NAME)
+
+add_custom_target(cargo-build-rascaline ALL
     COMMAND cargo build -p rascaline-c-api ${CARGO_BUILD_ARG}
-    COMMAND ${CMAKE_COMMAND} -E touch ${PROJECT_BINARY_DIR}/rascaline.built
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     DEPENDS ${ALL_RUST_SOURCES}
 )
-add_custom_target(ensure-rust-is-built ALL
-    DEPENDS ${PROJECT_BINARY_DIR}/rascaline.built
-)
 
-set(RASCALINE_LOCATION "${PROJECT_SOURCE_DIR}/target/${CARGO_BUILD_TYPE}/${CMAKE_SHARED_LIBRARY_PREFIX}rascaline${CMAKE_SHARED_LIBRARY_SUFFIX}")
 add_library(rascaline SHARED IMPORTED GLOBAL)
-
-set(RASCALINE_HEADER "${PROJECT_SOURCE_DIR}/rascaline-c-api/rascaline.h")
+add_dependencies(rascaline cargo-build-rascaline)
+set(RASCALINE_HEADER "${PROJECT_SOURCE_DIR}/rascaline.h")
 get_filename_component(RASCALINE_INCLUDE_DIR ${RASCALINE_HEADER} DIRECTORY)
 set_target_properties(rascaline PROPERTIES
     IMPORTED_LOCATION ${RASCALINE_LOCATION}
     INTERFACE_INCLUDE_DIRECTORIES ${RASCALINE_INCLUDE_DIR}
 )
 
-install(FILES ${RASCALINE_LOCATION} DESTINATION lib/)
-install(FILES ${RASCALINE_HEADER} DESTINATION include/)
+#------------------------------------------------------------------------------#
+# Installation configuration
+#------------------------------------------------------------------------------#
+
+set(LIB_INSTALL_DIR "lib" CACHE PATH "Path relative to CMAKE_INSTALL_PREFIX where to install libraries")
+set(INCLUDE_INSTALL_DIR "include" CACHE PATH "Path relative to CMAKE_INSTALL_PREFIX where to install headers")
+
+include(CMakePackageConfigHelpers)
+configure_package_config_file(
+    "${PROJECT_SOURCE_DIR}/cmake/rascaline-config.in.cmake"
+    "${PROJECT_BINARY_DIR}/rascaline-config.cmake"
+    INSTALL_DESTINATION ${LIB_INSTALL_DIR}/cmake/rascaline
+)
+
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/rascaline-config-version.in.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/rascaline-config-version.cmake"
+    @ONLY
+)
+
+install(FILES ${RASCALINE_HEADER} DESTINATION ${INCLUDE_INSTALL_DIR})
+install(FILES ${RASCALINE_LOCATION} DESTINATION ${LIB_INSTALL_DIR})
+install(FILES
+    ${PROJECT_BINARY_DIR}/rascaline-config-version.cmake
+    ${PROJECT_BINARY_DIR}/rascaline-config.cmake
+    DESTINATION ${LIB_INSTALL_DIR}/cmake/chemfiles
+)
