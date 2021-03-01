@@ -1,6 +1,6 @@
 # Basic CMake integration for rascaline. To be used with `add_subdirectory`
 
-cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.10)
 
 project(rascaline NONE)
 
@@ -47,7 +47,7 @@ if(CARGO_STATUS AND NOT CARGO_STATUS EQUAL 0)
 endif()
 
 set(REQUIRED_RUST_VERSION "1.42.0")
-string(REGEX REPLACE "cargo ([0-9]+\\.[0-9]+\\.[0-9]+) .*" "\\1" CARGO_VERSION ${CARGO_VERSION})
+string(REGEX REPLACE "cargo ([0-9]+\\.[0-9]+\\.[0-9]+).*" "\\1" CARGO_VERSION ${CARGO_VERSION})
 if (${CARGO_VERSION} VERSION_LESS ${REQUIRED_RUST_VERSION})
     message(FATAL_ERROR
         "your Rust installation is too old (you have version ${CARGO_VERSION}), \
@@ -72,16 +72,19 @@ add_custom_command(
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     DEPENDS ${ALL_RUST_SOURCES}
 )
-add_custom_target(ensure-rust-is-built DEPENDS ${PROJECT_BINARY_DIR}/rascaline.built)
+add_custom_target(ensure-rust-is-built ALL
+    DEPENDS ${PROJECT_BINARY_DIR}/rascaline.built
+)
 
 set(RASCALINE_LOCATION "${PROJECT_SOURCE_DIR}/target/${CARGO_BUILD_TYPE}/${CMAKE_SHARED_LIBRARY_PREFIX}rascaline${CMAKE_SHARED_LIBRARY_SUFFIX}")
 add_library(rascaline SHARED IMPORTED GLOBAL)
 
 set(RASCALINE_HEADER "${PROJECT_SOURCE_DIR}/rascaline-c-api/rascaline.h")
 get_filename_component(RASCALINE_INCLUDE_DIR ${RASCALINE_HEADER} DIRECTORY)
-target_include_directories(rascaline INTERFACE ${RASCALINE_INCLUDE_DIR})
-
-set_target_properties(rascaline PROPERTIES IMPORTED_LOCATION ${RASCALINE_LOCATION})
+set_target_properties(rascaline PROPERTIES
+    IMPORTED_LOCATION ${RASCALINE_LOCATION}
+    INTERFACE_INCLUDE_DIRECTORIES ${RASCALINE_INCLUDE_DIR}
+)
 
 install(FILES ${RASCALINE_LOCATION} DESTINATION lib/)
 install(FILES ${RASCALINE_HEADER} DESTINATION include/)
