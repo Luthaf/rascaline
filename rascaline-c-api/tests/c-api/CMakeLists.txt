@@ -1,4 +1,6 @@
-cmake_minimum_required(VERSION 3.6)
+cmake_minimum_required(VERSION 3.10)
+
+message(STATUS "Running CMake version ${CMAKE_VERSION}")
 
 project(rascaline-capi-tests CXX)
 set(CMAKE_CXX_STANDARD 11)
