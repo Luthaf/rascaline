@@ -282,6 +282,7 @@ impl CalculatorBase for SphericalExpansion {
     }
 
     #[allow(clippy::similar_names, clippy::too_many_lines, clippy::identity_op)]
+    #[time_graph::instrument(name = "SphericalExpansion::compute")]
     fn compute(&mut self, systems: &mut [&mut dyn System], descriptor: &mut Descriptor) {
         assert_eq!(descriptor.environments.names(), &["structure", "center", "species_center", "species_neighbor"]);
         assert_eq!(descriptor.features.names(), &["n", "l", "m"]);

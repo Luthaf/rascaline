@@ -20,6 +20,7 @@ impl EnvironmentIndexes for StructureSpeciesEnvironment {
         vec!["structure", "species"]
     }
 
+    #[time_graph::instrument(name = "StructureSpeciesEnvironment::indexes")]
     fn indexes(&self, systems: &mut [&mut dyn System]) -> Indexes {
         let mut indexes = IndexesBuilder::new(self.names());
         for (i_system, system) in systems.iter().enumerate() {
@@ -32,6 +33,7 @@ impl EnvironmentIndexes for StructureSpeciesEnvironment {
         return indexes.finish();
     }
 
+    #[time_graph::instrument(name = "StructureSpeciesEnvironment::gradients_for")]
     fn gradients_for(&self, systems: &mut [&mut dyn System], samples: &Indexes) -> Option<Indexes> {
         assert_eq!(samples.names(), self.names());
 
@@ -100,6 +102,7 @@ impl EnvironmentIndexes for AtomSpeciesEnvironment {
         vec!["structure", "center", "species_center", "species_neighbor"]
     }
 
+    #[time_graph::instrument(name = "AtomSpeciesEnvironment::indexes")]
     fn indexes(&self, systems: &mut [&mut dyn System]) -> Indexes {
         // Accumulate indexes in a set first to ensure uniqueness of the indexes
         // even if their are multiple neighbors of the same specie around a
@@ -132,6 +135,7 @@ impl EnvironmentIndexes for AtomSpeciesEnvironment {
         return indexes.finish();
     }
 
+    #[time_graph::instrument(name = "AtomSpeciesEnvironment::gradients_for")]
     fn gradients_for(&self, systems: &mut [&mut dyn System], samples: &Indexes) -> Option<Indexes> {
         assert_eq!(samples.names(), self.names());
 
@@ -221,6 +225,7 @@ impl EnvironmentIndexes for ThreeBodiesSpeciesEnvironment {
         vec!["structure", "center", "species_center", "species_neighbor_1", "species_neighbor_2"]
     }
 
+    #[time_graph::instrument(name = "ThreeBodiesSpeciesEnvironment::indexes")]
     fn indexes(&self, systems: &mut [&mut dyn System]) -> Indexes {
         // Accumulate indexes in a set first to ensure uniqueness of the indexes
         // even if their are multiple neighbors of the same specie around a
@@ -272,6 +277,7 @@ impl EnvironmentIndexes for ThreeBodiesSpeciesEnvironment {
         return indexes.finish();
     }
 
+    #[time_graph::instrument(name = "ThreeBodiesSpeciesEnvironment::gradients_for")]
     fn gradients_for(&self, systems: &mut [&mut dyn System], samples: &Indexes) -> Option<Indexes> {
         assert_eq!(samples.names(), self.names());
 

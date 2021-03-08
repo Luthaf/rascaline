@@ -8,6 +8,7 @@ struct CrappyNeighborsList {
 }
 
 impl CrappyNeighborsList {
+    #[time_graph::instrument(name = "neighbor list")]
     pub fn new<S: System + ?Sized>(system: &S, cutoff: f64) -> CrappyNeighborsList {
         let cutoff2 = cutoff * cutoff;
         let cell = system.cell();

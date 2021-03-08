@@ -178,6 +178,7 @@ impl SplinedRadialIntegral {
 }
 
 impl RadialIntegral for SplinedRadialIntegral {
+    #[time_graph::instrument(name = "splined radial integral")]
     fn compute(&self, x: f64, values: ArrayViewMut2<f64>, gradients: Option<ArrayViewMut2<f64>>) {
         // notation in this function follows
         // https://en.wikipedia.org/wiki/Cubic_Hermite_spline
