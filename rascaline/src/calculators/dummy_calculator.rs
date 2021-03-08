@@ -74,6 +74,7 @@ impl CalculatorBase for DummyCalculator {
     }
 
     #[allow(clippy::clippy::cast_precision_loss)]
+    #[time_graph::instrument(name = "DummyCalculator::compute")]
     fn compute(&mut self, systems: &mut [&mut dyn System], descriptor: &mut Descriptor) {
         for (i_sample, indexes) in descriptor.environments.iter().enumerate() {
             let i_system = indexes[0].usize();

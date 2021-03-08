@@ -74,6 +74,7 @@ impl CalculatorBase for SortedDistances {
         }
     }
 
+    #[time_graph::instrument(name = "SortedDistances::compute")]
     fn compute(&mut self, systems: &mut [&mut dyn System], descriptor: &mut Descriptor) {
         let all_features = descriptor.features.count() == self.max_neighbors;
         let mut requested_features = Vec::new();

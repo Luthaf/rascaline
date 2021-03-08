@@ -156,6 +156,7 @@ impl Calculator {
     /// This function computes the full descriptor, using all samples and all
     /// features.
     #[allow(clippy::shadow_unrelated)]
+    #[time_graph::instrument(name = "Calculator::compute")]
     pub fn compute(
         &mut self,
         systems: &mut [&mut dyn System],

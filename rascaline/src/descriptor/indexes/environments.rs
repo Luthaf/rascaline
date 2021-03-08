@@ -19,6 +19,7 @@ impl EnvironmentIndexes for StructureEnvironment {
         vec!["structure"]
     }
 
+    #[time_graph::instrument(name = "StructureEnvironment::indexes")]
     fn indexes(&self, systems: &mut [&mut dyn System]) -> Indexes {
         let mut indexes = IndexesBuilder::new(self.names());
         for system in 0..systems.len() {
@@ -27,6 +28,7 @@ impl EnvironmentIndexes for StructureEnvironment {
         return indexes.finish();
     }
 
+    #[time_graph::instrument(name = "StructureEnvironment::gradients_for")]
     fn gradients_for(&self, systems: &mut [&mut dyn System], samples: &Indexes) -> Option<Indexes> {
         assert_eq!(samples.names(), self.names());
 
@@ -73,6 +75,7 @@ impl EnvironmentIndexes for AtomEnvironment {
         vec!["structure", "center"]
     }
 
+    #[time_graph::instrument(name = "AtomEnvironment::indexes")]
     fn indexes(&self, systems: &mut [&mut dyn System]) -> Indexes {
         let mut indexes = IndexesBuilder::new(self.names());
         for (i_system, system) in systems.iter().enumerate() {
@@ -83,6 +86,7 @@ impl EnvironmentIndexes for AtomEnvironment {
         return indexes.finish();
     }
 
+    #[time_graph::instrument(name = "AtomEnvironment::gradients_for")]
     fn gradients_for(&self, systems: &mut [&mut dyn System], samples: &Indexes) -> Option<Indexes> {
         assert_eq!(samples.names(), self.names());
 

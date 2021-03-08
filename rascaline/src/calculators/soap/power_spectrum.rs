@@ -189,6 +189,7 @@ impl CalculatorBase for SoapPowerSpectrum {
         }
     }
 
+    #[time_graph::instrument(name = "SoapPowerSpectrum::compute")]
     fn compute(&mut self, systems: &mut [&mut dyn System], descriptor: &mut Descriptor) {
         assert_eq!(descriptor.environments.names(), self.environments().names());
         assert_eq!(descriptor.features.names(), self.features_names());
