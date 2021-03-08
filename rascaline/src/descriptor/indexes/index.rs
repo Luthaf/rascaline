@@ -1,5 +1,8 @@
 use std::ffi::CString;
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
+use std::hash::BuildHasherDefault;
+
+use twox_hash::XxHash64;
 
 use crate::system::System;
 
@@ -126,25 +129,41 @@ impl IndexesBuilder {
             "wrong size for added index: got {}, but expected {}", values.len(), self.size()
         );
 
-        for chunk in self.values.chunks_exact(self.size()) {
-            if chunk == values {
-                panic!(
-                    "can not have the same index value multiple time: [{}] is already present",
-                    values.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(", ")
-                );
-            }
-        }
-
         self.values.extend(values);
     }
 
     pub fn finish(self) -> Indexes {
-        Indexes {
-            names: self.names.into_iter()
-                .map(|s| CString::new(s).expect("invalid C string"))
-                .collect(),
-            values: self.values,
+        if self.names.is_empty() {
+            assert!(self.values.is_empty());
+            return Indexes {
+                names: Vec::new(),
+                values: Vec::new(),
+                positions: Default::default(),
+            }
         }
+
+        let mut positions: HashMap<_, _, BuildHasherDefault<XxHash64>> = Default::default();
+        for (position, chunk) in self.values.chunks_exact(self.names.len()).enumerate() {
+            let existing = positions.insert(chunk.to_vec(), position);
+
+            if let Some(existing) = existing {
+                let chunk_display = chunk.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(", ");
+                panic!(
+                    "can not have the same index value multiple time: [{}] is already present at position {}",
+                    chunk_display, existing
+                );
+            }
+        };
+
+        let names = self.names.into_iter()
+            .map(|s| CString::new(s).expect("invalid C string"))
+            .collect();
+
+        return Indexes {
+            names: names,
+            values: self.values,
+            positions: positions,
+        };
     }
 }
 
@@ -173,6 +192,11 @@ pub struct Indexes {
     names: Vec<CString>,
     /// Values of the indexes, as a linearized 2D array in row-major order
     values: Vec<IndexValue>,
+    /// Store the position of all the known indexes, for faster access later.
+    /// This uses `XxHash64` instead of the default hasher in std since
+    /// `XxHash64` is much faster and we don't need the cryptographic strength
+    /// hash from std.
+    positions: HashMap<Vec<IndexValue>, usize, BuildHasherDefault<XxHash64>>,
 }
 
 impl std::fmt::Debug for Indexes {
@@ -242,13 +266,7 @@ impl Indexes {
             return None;
         }
 
-        for (i, v) in self.iter().enumerate() {
-            if v == value {
-                return Some(i);
-            }
-        }
-
-        return None;
+        self.positions.get(value).cloned()
     }
 }
 
@@ -362,10 +380,11 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "can not have the same index value multiple time: [0, 1] is already present")]
+    #[should_panic(expected = "can not have the same index value multiple time: [0, 1] is already present at position 0")]
     fn duplicated_index_value() {
         let mut builder = IndexesBuilder::new(vec!["foo", "bar"]);
         builder.add(&[IndexValue::from(0_usize), IndexValue::from(1_usize)]);
         builder.add(&[IndexValue::from(0_usize), IndexValue::from(1_usize)]);
+        builder.finish();
     }
 }
