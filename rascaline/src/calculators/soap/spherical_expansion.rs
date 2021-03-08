@@ -13,6 +13,16 @@ use super::{SplinedRadialIntegral, SplinedRIParameters};
 
 use super::{SphericalHarmonics, SphericalHarmonicsArray};
 
+/// Specialized function to compute (-1)^l. Using this instead of
+/// `f64::powi(-1.0, l as i32)` shaves 10% of the computational time
+fn m_1_pow(l: usize) -> f64 {
+    if l % 2 == 0 {
+        1.0
+    } else {
+        -1.0
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 #[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 /// Radial basis that can be used in the spherical expansion
@@ -347,7 +357,7 @@ impl CalculatorBase for SphericalExpansion {
                     if let Some(other_env_i) = other_env_i {
                         // Use the fact that `se[n, l, m](-r) = (-1)^l se[n, l, m](r)`
                         // where se === spherical_expansion.
-                        descriptor.values[[other_env_i, i_feature]] += f64::powi(-1.0, l as i32) * n_l_m_value;
+                        descriptor.values[[other_env_i, i_feature]] += m_1_pow(l) * n_l_m_value;
                     }
                 }
 
@@ -414,7 +424,7 @@ impl CalculatorBase for SphericalExpansion {
                         if let Some(neighbor_grad_i) = neighbor_grad_i {
                             // Use the fact that `grad se[n, l, m](-r) = (-1)^(l + 1) grad se[n, l, m](r)`
                             // where se === spherical_expansion.
-                            let parity = f64::powi(-1.0, l as i32 + 1);
+                            let parity = m_1_pow(l + 1);
                             gradients[[neighbor_grad_i + 0, i_feature]] = parity * grad_x;
                             gradients[[neighbor_grad_i + 1, i_feature]] = parity * grad_y;
                             gradients[[neighbor_grad_i + 2, i_feature]] = parity * grad_z;

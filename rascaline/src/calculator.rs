@@ -12,6 +12,7 @@ pub struct Calculator {
 }
 
 /// List of pre-selected indexes on which the user wants to run a calculation
+#[derive(Clone, Debug)]
 pub enum SelectedIndexes<'a> {
     /// Default, all indexes
     All,
