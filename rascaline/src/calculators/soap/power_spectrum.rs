@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 
 use crate::{CalculationOptions, Calculator, SelectedIndexes, descriptor::{AtomSpeciesEnvironment, EnvironmentIndexes, IndexValue, Indexes, IndexesBuilder}};
 use crate::descriptor::ThreeBodiesSpeciesEnvironment;
@@ -206,6 +206,24 @@ impl CalculatorBase for SoapPowerSpectrum {
             options,
         ).expect("failed to compute spherical expansion");
 
+        // Find out where feature blocks of the spherical expansion are located
+        let mut feature_block_starts = HashMap::new();
+        for feature in descriptor.features.iter() {
+            let n1 = feature[0];
+            let n2 = feature[1];
+            let l = feature[2].isize();
+
+            let feature_start_n1 = self.spherical_expansion.features.position(
+                &[n1, IndexValue::from(l), IndexValue::from(-l)]
+            ).expect("missing feature in spherical expansion");
+            let feature_start_n2 = self.spherical_expansion.features.position(
+                &[n2, IndexValue::from(l), IndexValue::from(-l)]
+            ).expect("missing feature in spherical expansion");
+
+            feature_block_starts.insert((n1, l), feature_start_n1);
+            feature_block_starts.insert((n2, l), feature_start_n2);
+        }
+
         for (environment_i, environment) in descriptor.environments.iter().enumerate() {
             let structure = environment[0];
             let center = environment[1];
@@ -225,14 +243,9 @@ impl CalculatorBase for SoapPowerSpectrum {
                 let n2 = feature[1];
                 let l = feature[2].isize();
 
-                let feature_start_n1 = self.spherical_expansion.features.position(
-                    &[n1, IndexValue::from(l), IndexValue::from(-l)]
-                ).expect("missing feature in spherical expansion");
-                let feature_start_n2 = self.spherical_expansion.features.position(
-                    &[n2, IndexValue::from(l), IndexValue::from(-l)]
-                ).expect("missing feature in spherical expansion");
+                let feature_start_n1 = feature_block_starts[&(n1, l)];
+                let feature_start_n2 = feature_block_starts[&(n2, l)];
 
-                let values = &self.spherical_expansion.values;
                 let mut sum = 0.0;
                 for (index_m, m) in (-l..=l).enumerate() {
                     let feature_1 = feature_start_n1 + index_m;
@@ -242,7 +255,10 @@ impl CalculatorBase for SoapPowerSpectrum {
                     debug_assert_eq!(self.spherical_expansion.features[feature_1][2].isize(), m);
                     debug_assert_eq!(self.spherical_expansion.features[feature_2][2].isize(), m);
 
-                    sum += values[[neighbor_1, feature_1]] * values[[neighbor_2, feature_2]];
+                    unsafe {
+                        sum += self.spherical_expansion.values.uget([neighbor_1, feature_1])
+                             * self.spherical_expansion.values.uget([neighbor_2, feature_2]);
+                    }
                 }
 
                 if species_neighbor_1 != species_neighbor_2 {
