@@ -73,8 +73,19 @@ typedef struct rascal_pair_t {
 
 /*
  A `rascal_system_t` deals with the storage of atoms and related information,
- as well as the computation of neighbor lists. This structures allow to
- implement the rust `System` trait using function pointer.
+ as well as the computation of neighbor lists.
+
+ This struct contains a manual implementation of a virtual table, allowing to
+ implement the rust `System` trait in C and other languages. Speaking in Rust
+ terms, `user_data` contains a pointer (analog to `Box<Self>`) to the struct
+ implementing the `System` trait; and then there is one function pointers
+ (`Option<unsafe extern fn(XXX)>`) for each function in the `System` trait.
+
+ A new implementation of the System trait can then be created in any language
+ supporting a C API (meaning any language for our purposes); by correctly
+ setting `user_data` to the actual data storage, and setting all function
+ pointers to the correct functions. For an example of code doing this, see
+ the `SystemBase` class in the Python interface to rascaline.
  */
 typedef struct rascal_system_t {
   /*
