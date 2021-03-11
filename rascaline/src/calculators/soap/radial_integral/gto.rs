@@ -6,19 +6,15 @@ use nalgebra as na;
 use nalgebra::linalg::SymmetricEigen;
 
 use crate::math::gamma;
+
+use super::RadialIntegral;
 use super::{HyperGeometricSphericalExpansion, HyperGeometricParameters};
 
 const PI_TO_THREE_HALF: f64 = 15.503138340149908;
 
-pub trait RadialIntegral: std::panic::RefUnwindSafe {
-    /// Compute the radial integral for a single atomic `distance` and store the
-    /// resulting data in the `max_radial x max_angular` array `values`. If
-    /// `gradients` is `Some`, also compute and store gradients.
-    fn compute(&self, rij: f64, values: ArrayViewMut2<f64>, gradients: Option<ArrayViewMut2<f64>>);
-}
-
 /// Parameters controlling GTO radial basis
 #[derive(Debug, Clone, Copy)]
+#[allow(clippy::module_name_repetitions)]
 pub struct GtoParameters {
     /// Number of radial components
     pub max_radial: usize,

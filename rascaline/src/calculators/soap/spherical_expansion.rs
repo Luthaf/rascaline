@@ -7,7 +7,9 @@ use crate::system::Pair;
 use crate::{Descriptor, System, Vector3D};
 
 use super::super::CalculatorBase;
-use super::{GtoRadialIntegral, GtoParameters, RadialIntegral};
+use super::RadialIntegral;
+use super::{GtoRadialIntegral, GtoParameters};
+
 use super::{SphericalHarmonics, SphericalHarmonicsArray};
 
 #[derive(Debug, Clone)]
