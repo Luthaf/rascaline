@@ -147,7 +147,7 @@ impl SphericalExpansion {
 
             if alpha == beta {
                 // TODO: cache self contribution, they only depend on the
-                // gaussian atomic width
+                // gaussian atomic width.
                 self.radial_integral.compute(0.0, self.ri_values.view_mut(), None);
 
                 self.spherical_harmonics.compute(
@@ -158,7 +158,7 @@ impl SphericalExpansion {
                 for (i_feature, feature) in descriptor.features.iter().enumerate() {
                     let n = feature[0].usize();
                     let l = feature[1].usize();
-                    let m = feature[1].isize();
+                    let m = feature[2].isize();
 
                     let n_l_m_value = f_cut * self.ri_values[[n, l]] * self.sph_values[[l as isize, m]];
                     descriptor.values[[i_env, i_feature]] += n_l_m_value;
