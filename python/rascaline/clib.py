@@ -1,6 +1,8 @@
 # -* coding: utf-8 -*
 import os
 import sys
+import warnings
+import ctypes
 from ctypes import cdll
 
 from ._rascaline import setup_functions
@@ -15,7 +17,31 @@ class RascalFinder(object):
             path = _lib_path()
             self._cache = cdll.LoadLibrary(path)
             setup_functions(self._cache)
+            _set_default_logging_callback()
         return self._cache
+
+def _set_default_logging_callback():
+    set_logging_callback(print)
+
+def set_logging_callback(function):
+    """
+    Call `function` on every warning event. The callback should take a string
+    message and return nothing.
+
+    By default, warnings are send to thon `warnings` module.
+    """
+
+    def callback(message):
+        try:
+            function(message.decode("utf8"))
+        except Exception as e:
+            message = "exception raised in logging callback: {}".format(e)
+            warnings.warn(message, ResourceWarning)
+
+    global _CURRENT_CALLBACK
+    _CURRENT_CALLBACK = ctypes.CFUNCTYPE(None, ctypes.c_char_p)(callback)
+
+    _get_library().rascal_set_logging_callback(_CURRENT_CALLBACK)
 
 
 def _lib_path():
