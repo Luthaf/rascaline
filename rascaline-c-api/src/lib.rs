@@ -16,12 +16,12 @@ pub mod system;
 pub mod descriptor;
 pub mod calculator;
 
-pub type LoggingCallback = Option<unsafe extern fn(message: *const std::os::raw::c_char)>;
+//pub type LoggingCallback = Option<unsafe extern fn(message: *const std::os::raw::c_char)>;
 
-static mut GLOBAL_CALLBACK: LoggingCallback = None;
+static mut GLOBAL_CALLBACK: Option<unsafe extern fn(message: *const std::os::raw::c_char)> = None;
 
 #[no_mangle]
-pub unsafe extern fn rascal_set_logging_callback(callback: LoggingCallback) {
+pub unsafe extern fn rascal_set_logging_callback(callback: Option<unsafe extern fn(message: *const std::os::raw::c_char)>) {
     GLOBAL_CALLBACK = callback;
 }
 

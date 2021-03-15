@@ -77,7 +77,7 @@ def setup_functions(lib):
     from .status import _check_rascal_status_t
 
     lib.rascal_set_logging_callback.argtypes = [
-        ctypes.c_LoggingCallback
+        CFUNCTYPE(None, ctypes.c_char_p)
     ]
     lib.rascal_set_logging_callback.restype = None
 
