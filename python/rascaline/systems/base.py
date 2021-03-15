@@ -8,7 +8,7 @@ from .._rascaline import rascal_system_t, rascal_pair_t, c_uintptr_t
 
 class SystemBase:
     """
-    Base class implementing the `System` trait in rascaline. Developers should
+    Base class implementing the ``System`` trait in rascaline. Developers should
     implement this class to add new kinds of system that work with rascaline.
 
     Most users should use one of the already provided implementation, such as
@@ -22,8 +22,8 @@ class SystemBase:
 
     def _as_rascal_system_t(self):
         """
-        Convert a child instance of `SystemBase` to a C compatible
-        `rascal_system_t`.
+        Convert a child instance of :py:class:`SystemBase` to a C compatible
+        ``rascal_system_t``.
         """
         struct = rascal_system_t()
         self._keepalive["c_struct"] = struct
@@ -32,7 +32,7 @@ class SystemBase:
         struct.user_data = ctypes.cast(pointer(ctypes.py_object(self)), c_void_p)
 
         def get_self(ptr):
-            """Extract `self` from a pointer to the PyObject"""
+            """Extract ``self`` from a pointer to the PyObject"""
             self = ctypes.cast(ptr, POINTER(ctypes.py_object)).contents.value
             assert isinstance(self, SystemBase)
             return self
@@ -40,7 +40,7 @@ class SystemBase:
         def rascal_system_size(user_data, size):
             """
             Implementation of ``rascal_system_t::size`` using
-            ``SystemBase.size``.
+            :py:func:`SystemBase.size`.
             """
             size[0] = get_self(user_data).size()
 
@@ -50,7 +50,7 @@ class SystemBase:
         def rascal_system_species(user_data, data):
             """
             Implementation of ``rascal_system_t::species`` using
-            ``SystemBase.species``.
+            :py:func:`SystemBase.species`.
             """
             self = get_self(user_data)
 
@@ -63,7 +63,7 @@ class SystemBase:
         def rascal_system_positions(user_data, data):
             """
             Implementation of ``rascal_system_t::positions`` using
-            ``SystemBase.positions``.
+            :py:func:`SystemBase.positions`.
             """
             self = get_self(user_data)
             positions = np.array(self.positions(), dtype=c_double)
@@ -79,7 +79,7 @@ class SystemBase:
         def rascal_system_cell(user_data, data):
             """
             Implementation of ``rascal_system_t::cell`` using
-            ``SystemBase.cell``.
+            :py:func:`SystemBase.cell`.
             """
             self = get_self(user_data)
             cell = np.array(self.cell(), dtype=c_double)
@@ -103,7 +103,7 @@ class SystemBase:
         def rascal_system_compute_neighbors(user_data, cutoff):
             """
             Implementation of ``rascal_system_t::compute_neighbors`` using
-            ``SystemBase.compute_neighbors``.
+            :py:func:`SystemBase.compute_neighbors`.
             """
             self = get_self(user_data)
             self.compute_neighbors(cutoff)
@@ -115,7 +115,7 @@ class SystemBase:
         def rascal_system_pairs(user_data, data, count):
             """
             Implementation of ``rascal_system_t::pairs`` using
-            ``SystemBase.pairs``.
+            :py:func:`SystemBase.pairs`.
             """
             self = get_self(user_data)
 
@@ -130,7 +130,7 @@ class SystemBase:
         def rascal_system_pairs_containing(user_data, center, data, count):
             """
             Implementation of ``rascal_system_t::pairs_containing`` using
-            ``SystemBase.pairs_containing``.
+            :py:func:`SystemBase.pairs_containing`.
             """
             self = get_self(user_data)
 
@@ -178,8 +178,8 @@ class SystemBase:
     def compute_neighbors(self, cutoff):
         """
         Compute the neighbor list with the given ``cutoff``, and store it for
-        later access using :py:`SystemBase.pairs` or
-        :py:`SystemBase.pairs_containing`.
+        later access using :py:func:`SystemBase.pairs` or
+        :py:func:`SystemBase.pairs_containing`.
         """
         raise NotImplementedError("System.compute_neighbors method is not implemented")
 
@@ -194,9 +194,9 @@ class SystemBase:
         The list of pair should only contain each pair once (and not twice as
         `i-j` and `j-i`), should not contain self pairs (`i-i`); and should only
         contains pairs where the distance between atoms is actually bellow the
-        cutoff passed in the last call to :py:`SystemBase.compute_neighbors`.
-        This function is only valid to call after a call to
-        :py:`SystemBase.compute_neighbors`.
+        cutoff passed in the last call to
+        :py:func:`SystemBase.compute_neighbors`. This function is only valid to
+        call after a call to :py:func:`SystemBase.compute_neighbors`.
         """
         raise NotImplementedError("System.pairs method is not implemented")
 
@@ -205,10 +205,10 @@ class SystemBase:
         Get all neighbor pairs in this system containing the atom with index
         ``center``.
 
-        The same restrictions on the list of pairs as :py:`SystemBase.pairs`
-        applies, with the additional condition that the pair `i-j` should be
-        included both in the list returned by
-        :py:`SystemBase.pairs_containing(i)` and
-        :py:`SystemBase.pairs_containing(j)`.
+        The same restrictions on the list of pairs as
+        :py:func:`SystemBase.pairs` applies, with the additional condition that
+        the pair `i-j` should be included both in the list returned by
+        :py:func:`SystemBase.pairs_containing(i)` and
+        :py:func:`SystemBase.pairs_containing(j)`.
         """
         raise NotImplementedError("System.pairs_containing method is not implemented")
