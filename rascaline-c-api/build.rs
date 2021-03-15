@@ -9,7 +9,7 @@ fn main() {
             include_guard: Some("RASCALINE_H".into()),
             include_version: false,
             documentation: true,
-            documentation_style: cbindgen::DocumentationStyle::C,
+            documentation_style: cbindgen::DocumentationStyle::Doxy,
             ..Default::default()
         })
         .generate()

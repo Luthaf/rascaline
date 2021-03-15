@@ -1,0 +1,7 @@
+Architecture
+============
+
+Code organization
+-----------------
+
+TODO
