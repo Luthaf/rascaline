@@ -79,6 +79,8 @@ typedef struct rascal_calculator_t rascal_calculator_t;
  */
 typedef struct rascal_descriptor_t rascal_descriptor_t;
 
+typedef void (*RascalLoggingCallback)(const char *message);
+
 /**
  * Status type returned by all functions in the C API.
  *
@@ -235,7 +237,7 @@ typedef struct rascal_calculation_options_t {
 extern "C" {
 #endif // __cplusplus
 
-void rascal_set_logging_callback(void (*callback)(const char *message));
+void rascal_set_logging_callback(RascalLoggingCallback callback);
 
 /**
  * Get the last error message that was created on the current thread.
