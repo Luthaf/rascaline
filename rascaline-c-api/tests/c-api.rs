@@ -1,9 +1,13 @@
 use std::path::PathBuf;
 use std::process::Command;
 
+mod utils;
 
 #[test]
 fn check_c_api() {
+    utils::check_command_exists("cmake");
+    utils::check_command_exists("ctest");
+
     let cargo_manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
     let mut build_dir = PathBuf::from(&cargo_manifest_dir);
     build_dir.push("target");
