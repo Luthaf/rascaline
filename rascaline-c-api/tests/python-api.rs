@@ -1,8 +1,12 @@
 use std::path::PathBuf;
 use std::process::Command;
 
+mod utils;
+
 #[test]
 fn check_python() {
+    utils::check_command_exists("tox");
+
     let mut root = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
     root.pop();
 
