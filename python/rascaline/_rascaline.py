@@ -76,6 +76,11 @@ class rascal_calculation_options_t(ctypes.Structure):
 def setup_functions(lib):
     from .status import _check_rascal_status_t
 
+    lib.rascal_set_logging_callback.argtypes = [
+        ctypes.c_LoggingCallback
+    ]
+    lib.rascal_set_logging_callback.restype = None
+
     lib.rascal_last_error.argtypes = [
         
     ]

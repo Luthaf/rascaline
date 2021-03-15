@@ -15,3 +15,22 @@ pub use self::status::{RASCAL_INTERNAL_ERROR};
 pub mod system;
 pub mod descriptor;
 pub mod calculator;
+
+pub type LoggingCallback = Option<unsafe extern fn(message: *const std::os::raw::c_char)>;
+
+static mut GLOBAL_CALLBACK: LoggingCallback = None;
+
+#[no_mangle]
+pub unsafe extern fn rascal_set_logging_callback(callback: LoggingCallback) {
+    GLOBAL_CALLBACK = callback;
+}
+
+
+//use std::sync::Mutex;
+//
+//static mut GLOBAL_CALLBACK: Mutex<LoggingCallback> = Mutex::new(None);
+//
+//unsafe extern fn set_logging_callback(callback: LoggingCallback) {
+//    let mut data = GLOBAL_CALLBACK.lock().unwrap();
+//    *data  = callback;
+//}

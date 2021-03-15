@@ -31,25 +31,3 @@ mod calculator;
 pub use calculator::{Calculator, CalculationOptions, SelectedIndexes};
 
 pub mod calculators;
-
-type LoggingCallback = Option<unsafe extern fn(message: *const char)>;
-//type LoggingCallback = Option<unsafe extern fn(message: *const char)>;
-
-static mut GLOBAL_CALLBACK: LoggingCallback = None;
-
-unsafe extern fn rascal_set_logging_callback(callback: LoggingCallback) {
-    GLOBAL_CALLBACK = callback;
-}
-
-
-//use std::sync::Mutex;
-//
-//static mut GLOBAL_CALLBACK: Mutex<LoggingCallback> = Mutex::new(None);
-//
-//unsafe extern fn set_logging_callback(callback: LoggingCallback) {
-//    let mut data = GLOBAL_CALLBACK.lock().unwrap();
-//    *data  = callback;
-//}
-
-// TODO: add a redirect from log to the logging callback, converting from Rust 
-// &str to NULL terminated *const c_char

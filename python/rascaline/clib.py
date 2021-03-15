@@ -7,7 +7,6 @@ from ctypes import cdll
 
 from ._rascaline import setup_functions
 
-
 class RascalFinder(object):
     def __init__(self):
         self._cache = None
@@ -21,15 +20,17 @@ class RascalFinder(object):
         return self._cache
 
 def _set_default_logging_callback():
+    '''
+    Default logging function. For now print is used.
+    '''
     set_logging_callback(print)
 
 def set_logging_callback(function):
-    """
-    Call `function` on every warning event. The callback should take a string
+    '''
+    Call `function` on every logging event. The callback should take a string
     message and return nothing.
 
-    By default, warnings are send to thon `warnings` module.
-    """
+    '''
 
     def callback(message):
         try:
@@ -101,3 +102,4 @@ def _check_dll(path):
 
 
 _get_library = RascalFinder()
+_CURRENT_CALLBACK = None
