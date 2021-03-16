@@ -1,5 +1,5 @@
-Systems
-=======
+Defining systems
+================
 
 .. doxygenstruct:: rascal_system_t
     :members:

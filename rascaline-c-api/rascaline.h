@@ -6,9 +6,22 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+/**
+ * The different kinds of indexes that can exist on a `rascal_descriptor_t`
+ */
 typedef enum rascal_indexes {
+  /**
+   * The feature index, describing the features of the representation
+   */
   RASCAL_INDEXES_FEATURES = 0,
+  /**
+   * The samples index, describing different samples in the representation
+   */
   RASCAL_INDEXES_ENVIRONMENTS = 1,
+  /**
+   * The gradient index, describing the gradients of samples in the
+   * representation with respect to other atoms
+   */
   RASCAL_INDEXES_GRADIENTS = 2,
 } rascal_indexes;
 
@@ -43,7 +56,7 @@ typedef enum rascal_status_t {
 } rascal_status_t;
 
 /**
- * Opaque type representing a Calculator
+ * Opaque type representing a `Calculator`
  */
 typedef struct rascal_calculator_t rascal_calculator_t;
 
@@ -147,6 +160,9 @@ typedef struct rascal_system_t {
   void (*pairs_containing)(const void *user_data, uintptr_t center, const struct rascal_pair_t **pairs, uintptr_t *count);
 } rascal_system_t;
 
+/**
+ * Options that can be set to change how a calculator operates.
+ */
 typedef struct rascal_calculation_options_t {
   /**
    * Copy the data from systems into native `SimpleSystem`. This can be
@@ -155,7 +171,10 @@ typedef struct rascal_calculation_options_t {
   bool use_native_system;
   /**
    * List of samples on which to run the calculation. Use `NULL` to run the
-   * calculation on all samples.
+   * calculation on all samples. The samples must be represented as a
+   * row-major array, containing values similar to the samples index of a
+   * descriptor. If necessary, gradients samples will be derived from the
+   * values given in selected_samples.
    */
   const double *selected_samples;
   /**
@@ -165,7 +184,9 @@ typedef struct rascal_calculation_options_t {
   uintptr_t selected_samples_count;
   /**
    * List of features on which to run the calculation. Use `NULL` to run the
-   * calculation on all features.
+   * calculation on all features. The features must be represented as a
+   * row-major array, containing values similar to the features index of a
+   * descriptor.
    */
   const double *selected_features;
   /**
@@ -180,30 +201,149 @@ extern "C" {
 #endif // __cplusplus
 
 /**
- * Get the last error message that was sent on the current thread
+ * Get the last error message that was created on the current thread.
+ *
+ * @returns the last error message, as a NULL-terminated string
  */
 const char *rascal_last_error(void);
 
+/**
+ * Create a new empty descriptor.
+ *
+ * All memory allocated by this function can be released using
+ * `rascal_descriptor_free`.
+ *
+ * @returns A pointer to the newly allocated descriptor, or a `NULL` pointer in
+ *          case of error. In case of error, you can use `rascal_last_error()`
+ *          to get the error message.
+ */
 struct rascal_descriptor_t *rascal_descriptor(void);
 
+/**
+ * Free the memory associated with a `descriptor` previously created with
+ * `rascal_descriptor`.
+ *
+ * If `descriptor` is `NULL`, this function does nothing.
+ *
+ * @param descriptor pointer to an existing descriptor, or `NULL`
+ *
+ * @returns The status code of this operation. If the status is not
+ *          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the
+ *          full error message.
+ */
 enum rascal_status_t rascal_descriptor_free(struct rascal_descriptor_t *descriptor);
 
+/**
+ * Get the values stored inside this descriptor after a call to
+ * `rascal_calculator_compute`.
+ *
+ * This function sets `*data` to a **read only** pointer containing the address
+ * of first element of the 2D array containing the values, `*samples` to the
+ * size of the first axis of this array and `*features` to the size of the
+ * second axis of the array. The array is stored using a row-major layout.
+ *
+ * @param descriptor pointer to an existing descriptor
+ * @param data pointer to a pointer to a double, will be set to the address of
+ *             the first element in the values array
+ * @param samples pointer to a single integer, will be set to the first
+ *                dimension of the values array
+ * @param features pointer to a single integer, will be set to the second
+ *                 dimension of the values array
+ *
+ * @returns The status code of this operation. If the status is not
+ *          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the full
+ *          error message.
+ */
 enum rascal_status_t rascal_descriptor_values(const struct rascal_descriptor_t *descriptor,
                                               const double **data,
-                                              uintptr_t *environments,
+                                              uintptr_t *samples,
                                               uintptr_t *features);
 
+/**
+ * Get the gradients stored inside this descriptor after a call to
+ * `rascal_calculator_compute`, if any.
+ *
+ * This function sets `*data` to to a **read only** pointer containing the
+ * address of the first element of the 2D array containing the gradients,
+ * `*gradient_samples` to the size of the first axis of this array and
+ * `*features` to the size of the second axis of the array. The array is stored
+ * using a row-major layout.
+ *
+ * If this descriptor does not contain gradient data, `*data` is set to `NULL`,
+ * while `*gradient_samples` and `*features` are set to 0.
+ *
+ * @param descriptor pointer to an existing descriptor
+ * @param data pointer to a pointer to a double, will be set to the address of
+ *             the first element in the gradients array
+ * @param gradient_samples pointer to a single integer, will be set to the first
+ *                         dimension of the gradients array
+ * @param features pointer to a single integer, will be set to the second
+ *                 dimension of the gradients array
+ *
+ * @returns The status code of this operation. If the status is not
+ *          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the full
+ *          error message.
+ */
 enum rascal_status_t rascal_descriptor_gradients(const struct rascal_descriptor_t *descriptor,
                                                  const double **data,
-                                                 uintptr_t *environments,
+                                                 uintptr_t *gradient_samples,
                                                  uintptr_t *features);
 
+/**
+ * Get the values associated with one of the `indexes` in the given
+ * `descriptor`.
+ *
+ * This function sets `*data` to to a **read only** pointer containing the
+ * address of the first element of the 2D array containing the index values,
+ * `*count` to the number of indexes (first dimension of the array) and `*size`
+ * to the size of each index (second dimension of the array). The array is
+ * stored using a row-major layout.
+ *
+ * If this `descriptor` does not contain gradient data, and `indexes` is
+ * `RASCAL_INDEXES_GRADIENTS`, `*data` is set to `NULL`, while
+ * `*count` and `*size` are set to 0.
+ *
+ * @param descriptor pointer to an existing descriptor
+ * @param indexes type of indexes requested
+ * @param data pointer to a pointer to a double, will be set to the address of
+ *             the first element in the index array
+ * @param count pointer to a single integer, will be set to the number of
+ *              index values
+ * @param size pointer to a single integer, will be set to the size of each
+ *              index value
+ *
+ * @returns The status code of this operation. If the status is not
+ *          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the full
+ *          error message.
+ */
 enum rascal_status_t rascal_descriptor_indexes(const struct rascal_descriptor_t *descriptor,
                                                enum rascal_indexes indexes,
-                                               const double **values,
+                                               const double **data,
                                                uintptr_t *count,
                                                uintptr_t *size);
 
+/**
+ * Get the names associated with one of the `indexes` in the given
+ * `descriptor`.
+ *
+ * If this `descriptor` does not contain gradient data, and `indexes` is
+ * `RASCAL_INDEXES_GRADIENTS`, each pointer in `*names` is set to `NULL`.
+ *
+ * The `size` value should correspond to the value set by
+ * `rascal_descriptor_indexes` in the `size` parameter.
+ *
+ * @param descriptor pointer to an existing descriptor
+ * @param indexes type of indexes requested
+ * @param names pointer to the first element of an array of `const char*`
+ *              that will be filled with **read only** pointers to the index
+ *              names
+ * @param size size of the `names` array, i.e. number of elements inside
+ *             the array
+ *
+ * @returns The status code of this operation. If the status is not
+ *          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the full
+ *          error message.
+ */
 enum rascal_status_t rascal_descriptor_indexes_names(const struct rascal_descriptor_t *descriptor,
                                                      enum rascal_indexes indexes,
                                                      const char **names,
@@ -213,18 +353,99 @@ enum rascal_status_t rascal_descriptor_densify(struct rascal_descriptor_t *descr
                                                const char *const *variables,
                                                uintptr_t count);
 
+/**
+ * Create a new calculator with the given `name` and `parameters`.
+ *
+ * @verbatim embed:rst:leading-asterisk
+ *
+ * The list of available calculators and the corresponding parameters are in
+ * the :ref:`main documentation <calculators-list>`. The ``parameters`` should
+ * be formatted as JSON, according to the requested calculator schema.
+ *
+ * @endverbatim
+ *
+ * All memory allocated by this function can be released using
+ * `rascal_calculator_free`.
+ *
+ * @param name name of the calculator as a NULL-terminated string
+ * @param parameters hyper-parameters of the calculator, JSON-formatted in a
+ *                   NULL-terminated string
+ *
+ * @returns A pointer to the newly allocated calculator, or a `NULL` pointer in
+ *          case of error. In case of error, you can use `rascal_last_error()`
+ *          to get the error message.
+ */
 struct rascal_calculator_t *rascal_calculator(const char *name, const char *parameters);
 
+/**
+ * Free the memory associated with a `calculator` previously created with
+ * `rascal_calculator`.
+ *
+ * If `calculator` is `NULL`, this function does nothing.
+ *
+ * @param calculator pointer to an existing calculator, or `NULL`
+ *
+ * @returns The status code of this operation. If the status is not
+ *          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the
+ *          full error message.
+ */
 enum rascal_status_t rascal_calculator_free(struct rascal_calculator_t *calculator);
 
+/**
+ * Get a copy of the name of this calculator in the `name` buffer of size
+ * `bufflen`.
+ *
+ *`name` will be NULL-terminated by this function. If the buffer is too small
+ * to fit the whole name, this function will return
+ * `RASCAL_INVALID_PARAMETER_ERROR`
+ *
+ * @param calculator pointer to an existing calculator
+ * @param name string buffer to fill with the calculator name
+ * @param bufflen number of characters available in the buffer
+ *
+ * @returns The status code of this operation. If the status is not
+ *          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the full
+ *          error message.
+ */
 enum rascal_status_t rascal_calculator_name(const struct rascal_calculator_t *calculator,
                                             char *name,
                                             uintptr_t bufflen);
 
+/**
+ * Get a copy of the parameters used to create this calculator in the
+ * `parameters` buffer of size `bufflen`.
+ *
+ * `parameters` will be NULL-terminated by this function. If the buffer is too
+ * small to fit the whole name, this function will return
+ * `RASCAL_INVALID_PARAMETER_ERROR`.
+ *
+ * @param calculator pointer to an existing calculator
+ * @param parameters string buffer to fill with the parameters used to create
+ *                   this calculator
+ * @param bufflen number of characters available in the buffer
+ *
+ * @returns The status code of this operation. If the status is not
+ *          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the full
+ *          error message.
+ */
 enum rascal_status_t rascal_calculator_parameters(const struct rascal_calculator_t *calculator,
                                                   char *parameters,
                                                   uintptr_t bufflen);
 
+/**
+ * Run a calculation with the given `calculator` on the given `systems`,
+ * storing the resulting data in the `descriptor`.
+ *
+ * @param calculator pointer to an existing calculator
+ * @param descriptor pointer to an existing descriptor for data storage
+ * @param systems pointer to an array of systems implementation
+ * @param systems_count number of systems in `systems`
+ * @param options options for this calculation
+ *
+ * @returns The status code of this operation. If the status is not
+ *          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the full
+ *          error message.
+ */
 enum rascal_status_t rascal_calculator_compute(struct rascal_calculator_t *calculator,
                                                struct rascal_descriptor_t *descriptor,
                                                struct rascal_system_t *systems,

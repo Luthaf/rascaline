@@ -1,3 +1,5 @@
+.. _calculators-list:
+
 Implemented calculators
 =======================
 
