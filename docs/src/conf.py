@@ -53,6 +53,8 @@ build_doxygen_docs()
 
 # -- General configuration ---------------------------------------------------
 
+needs_sphinx = "3.5.0"
+
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
@@ -75,6 +77,9 @@ breathe_projects = {
     "rascaline": os.path.join(ROOT, "docs", "build", "doxygen", "xml"),
 }
 breathe_default_project = "rascaline"
+breathe_domain_by_extension = {
+    "h": "c",
+}
 
 
 # -- Options for HTML output -------------------------------------------------

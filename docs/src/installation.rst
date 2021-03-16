@@ -9,6 +9,8 @@ to use it from.
     Rascaline is still as the proof of concept stage. You should not use it for
     anything important.
 
+.. _install-python-lib:
+
 Installing the Python module
 ----------------------------
 
@@ -16,6 +18,7 @@ Installing the Python module
 
     pip install git+https://github.com/Luthaf/rascaline.git
 
+.. _install-c-lib:
 
 Installing the C library
 ------------------------

@@ -78,7 +78,7 @@ impl CutoffFunction {
 /// the core of representations in the SOAP (Smooth Overlap of Atomic Positions)
 /// family. See [this review article](https://doi.org/10.1063/1.5090481) for
 /// more information on the SOAP representation, and [this
-/// paper](https://arxiv.org/abs/2101.08814) for information on how it is
+/// paper](https://doi.org/10.1063/5.0044689) for information on how it is
 /// implemented in rascaline.
 pub struct SphericalExpansionParameters {
     /// Spherical cutoff to use for atomic environments

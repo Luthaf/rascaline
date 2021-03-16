@@ -114,6 +114,15 @@ impl From<Box<dyn CalculatorBase>> for Calculator {
 }
 
 impl Calculator {
+    /// Create a new calculator with the given `name` and `parameters`.
+    ///
+    /// The list of available calculators and the corresponding parameters are
+    /// in the main documentation. The `parameters` should be formatted as JSON.
+    ///
+    /// # Errors
+    ///
+    /// This function returns an error if there is no registered calculator with
+    /// the given `name`, or if the parameters are invalid for this calculator.
     pub fn new(name: &str, parameters: String) -> Result<Calculator, Error> {
         let creator = match REGISTERED_CALCULATORS.get(name) {
             Some(creator) => creator,
@@ -130,15 +139,13 @@ impl Calculator {
         })
     }
 
-    /// Get the name associated with this Calculator
+    /// Get the name of this calculator
     pub fn name(&self) -> String {
         self.implementation.name()
     }
 
-    /// Get the parameters used to create this Calculator in a string.
-    ///
-    /// Currently the string is formatted as JSON, but this could change in the
-    /// future.
+    /// Get the parameters used to create this calculator in a string, formatted
+    /// as JSON.
     pub fn parameters(&self) -> &str {
         &self.parameters
     }

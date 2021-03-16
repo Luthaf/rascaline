@@ -72,7 +72,9 @@ macro_rules! check_pointers {
     }
 }
 
-/// Get the last error message that was sent on the current thread
+/// Get the last error message that was created on the current thread.
+///
+/// @returns the last error message, as a NULL-terminated string
 #[no_mangle]
 pub unsafe extern fn rascal_last_error() -> *const c_char {
     let mut result = std::ptr::null();
