@@ -7,6 +7,7 @@ import subprocess
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 sys.path.append(os.path.join(ROOT, "python"))
+sys.path.append(os.path.join(ROOT, "docs", "extensions"))
 
 # -- Project information -----------------------------------------------------
 
@@ -36,12 +37,17 @@ def build_cargo_docs():
     )
 
 
+def extract_json_schema():
+    subprocess.run(["cargo", "run", "--package", "rascaline-json-schema"])
+
+
 def build_doxygen_docs():
     # we need to run a build to make sure the header is up to date
     subprocess.run(["cargo", "build"])
     subprocess.run(["doxygen", "Doxyfile"], cwd=os.path.join(ROOT, "docs"))
 
 
+extract_json_schema()
 build_cargo_docs()
 build_doxygen_docs()
 
@@ -53,6 +59,7 @@ build_doxygen_docs()
 extensions = [
     "sphinx.ext.autodoc",
     "breathe",
+    "rascaline_json_schema",
 ]
 
 # Add any paths that contain templates here, relative to this directory.

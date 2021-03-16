@@ -11,7 +11,7 @@ use crate::system::System;
 /// `self.delta`, and the other one containing `x + y + z`.
 #[doc(hidden)]
 #[derive(Debug, Clone)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 pub struct DummyCalculator {
     /// Spherical cutoff to use for atomic environments
     pub cutoff: f64,
