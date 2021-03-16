@@ -10,7 +10,9 @@
     "gradients": true,
     "max_angular": 4,
     "max_radial": 4,
-    "radial_basis": "GTO"
+    "radial_basis": {
+      "GTO": {}
+    }
   },
   "systems": [
     {

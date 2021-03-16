@@ -26,6 +26,7 @@ num-traits = "0.2"
 indexmap = "1.6"
 log = "0.4"
 itertools = "0.10"
+schemars = "0.8"
 
 [dev-dependencies]
 approx = "0.4"

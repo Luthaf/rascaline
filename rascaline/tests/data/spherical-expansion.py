@@ -25,7 +25,9 @@ hyperparameters = {
     "max_radial": 8,
     "max_angular": 8,
     "atomic_gaussian_width": 0.3,
-    "radial_basis": "GTO",
+    "radial_basis": {
+        "GTO": {},
+    },
     "gradients": False,
     "cutoff_function": {
         "ShiftedCosine": {

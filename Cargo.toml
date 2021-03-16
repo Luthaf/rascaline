@@ -3,4 +3,5 @@
 members = [
     "rascaline",
     "rascaline-c-api",
+    "docs/rascaline-json-schema",
 ]

@@ -1,4 +1,5 @@
 sphinx >=3.3
 breathe >=4.27
+recommonmark
 furo
 toml

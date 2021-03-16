@@ -11,18 +11,24 @@ use super::{GTO, GTOParameters, RadialIntegral};
 use super::{SphericalHarmonics, SphericalHarmonicsArray};
 
 #[derive(Debug, Clone)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+/// Radial basis that can be used in the spherical expansion
 pub enum RadialBasis {
-    GTO,
+    /// Use a radial basis similar to Gaussian-Type Orbitals.
+    ///
+    /// The basis is defined as `R_n(r) ∝ r^n e^{- r^2 / (2 σ_n^2)}`, where `σ_n
+    /// = cutoff * \sqrt{n} / n_max`
+    GTO{},
 }
 
 /// Possible values for the smoothing cutoff function
-#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone)]
+#[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 pub enum CutoffFunction {
-    /// Step function, 1 if `r < r_cut` and 0 if `r >= r_cut`
-    Step,
+    /// Step function, 1 if `r < cutoff` and 0 if `r >= cutoff`
+    Step{},
     /// Shifted cosine switching function
-    /// f(r) = 1/2 * (1 + cos(\pi (r - r_cut + width) / width ))
+    /// `f(r) = 1/2 * (1 + cos(π (r - cutoff + width) / width ))`
     ShiftedCosine {
         width: f64,
     },
@@ -32,7 +38,7 @@ impl CutoffFunction {
     /// Evaluate the cutoff function at the distance `r` for the given `cutoff`
     pub fn compute(&self, r: f64, cutoff: f64) -> f64 {
         match self {
-            CutoffFunction::Step => {
+            CutoffFunction::Step{} => {
                 if r >= cutoff { 0.0 } else { 1.0 }
             },
             CutoffFunction::ShiftedCosine { width } => {
@@ -52,7 +58,7 @@ impl CutoffFunction {
     /// given `cutoff`
     pub fn derivative(&self, r: f64, cutoff: f64) -> f64 {
         match self {
-            CutoffFunction::Step => 0.0,
+            CutoffFunction::Step{} => 0.0,
             CutoffFunction::ShiftedCosine { width } => {
                 if r <= (cutoff - width) || r >= cutoff {
                     0.0
@@ -65,22 +71,29 @@ impl CutoffFunction {
     }
 }
 
-#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone)]
+#[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 #[allow(clippy::module_name_repetitions)]
+/// Parameters for Spherical expansion calculator. The spherical expansion is at
+/// the core of representations in the SOAP (Smooth Overlap of Atomic Positions)
+/// family. See [this review article](https://doi.org/10.1063/1.5090481) for
+/// more information on the SOAP representation, and [this
+/// paper](https://arxiv.org/abs/2101.08814) for information on how it is
+/// implemented in rascaline.
 pub struct SphericalExpansionParameters {
     /// Spherical cutoff to use for atomic environments
     pub cutoff: f64,
-    /// Number of radial basis function to use
+    /// Number of radial basis function to use in the expansion
     pub max_radial: usize,
-    /// Number of spherical harmonics to use
+    /// Number of spherical harmonics to use in the expansion
     pub max_angular: usize,
-    /// Width of the atom-centered gaussian creating the atomic density
+    /// Width of the atom-centered gaussian used to create the atomic density
     pub atomic_gaussian_width: f64,
     /// Should we also compute gradients of the feature?
     pub gradients: bool,
-    /// radial basis to use for the radial integral
+    /// Radial basis to use for the radial integral
     pub radial_basis: RadialBasis,
-    /// cutoff function used to smooth the behavior around the cutoff radius
+    /// Cutoff function used to smooth the behavior around the cutoff radius
     pub cutoff_function: CutoffFunction,
 }
 
@@ -97,7 +110,7 @@ pub struct SphericalExpansion {
 impl SphericalExpansion {
     pub fn new(parameters: SphericalExpansionParameters) -> SphericalExpansion {
         let radial_integral = match parameters.radial_basis {
-            RadialBasis::GTO => {
+            RadialBasis::GTO{} => {
                 let parameters = GTOParameters {
                     max_radial: parameters.max_radial,
                     max_angular: parameters.max_angular,
@@ -210,7 +223,6 @@ impl CalculatorBase for SphericalExpansion {
     }
 
     fn check_features(&self, indexes: &Indexes) {
-        // TODO check for duplicated features?
         assert_eq!(indexes.names(), &["n", "l", "m"]);
         for value in indexes {
             let n = value[0].usize();
@@ -223,7 +235,6 @@ impl CalculatorBase for SphericalExpansion {
     }
 
     fn check_environments(&self, indexes: &Indexes, systems: &mut [&mut dyn System]) {
-        // TODO: check for duplicated environments?
         assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor"]);
         // This could be made much faster by not recomputing the full list of
         // potential environments
@@ -414,7 +425,7 @@ mod tests {
             gradients: gradients,
             max_radial: 6,
             max_angular: 6,
-            radial_basis: RadialBasis::GTO
+            radial_basis: RadialBasis::GTO{}
         }
     }
 
@@ -626,7 +637,7 @@ mod tests {
 
         #[test]
         fn step() {
-            let function = CutoffFunction::Step;
+            let function = CutoffFunction::Step{};
             let cutoff = 4.0;
 
             assert_eq!(function.compute(2.0, cutoff), 1.0);
@@ -635,7 +646,7 @@ mod tests {
 
         #[test]
         fn step_gradient() {
-            let function = CutoffFunction::Step;
+            let function = CutoffFunction::Step{};
             let cutoff = 4.0;
 
             assert_eq!(function.derivative(2.0, cutoff), 0.0);

@@ -10,9 +10,21 @@ use crate::descriptor::{EnvironmentIndexes, AtomSpeciesEnvironment};
 use crate::system::System;
 
 #[derive(Debug, Clone)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+/// Sorted distances vector representation of an atomic environment.
+///
+/// Each atomic center is represented by a vector of distance to its neighbors
+/// within the spherical `cutoff`, sorted from smallest to largest. If there are
+/// less neighbors than `max_neighbors`, the remaining entries are filled with
+/// `cutoff` instead.
+///
+/// Separate species for neighbors are represented separately, meaning that the
+/// `max_neighbors` parameter only apply to a single species.
 pub struct SortedDistances {
+    /// Spherical cutoff to use for atomic environments
     cutoff: f64,
+    /// Maximal number of neighbors of a given atomic species a center is
+    /// allowed to have. This is also the dimensionality of the features.
     max_neighbors: usize,
 }
 

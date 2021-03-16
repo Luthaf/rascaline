@@ -35,7 +35,7 @@ fn spherical_expansion(c: &mut Criterion) {
                 cutoff: 4.5,
                 atomic_gaussian_width: 0.5,
                 gradients: false,
-                radial_basis: RadialBasis::GTO,
+                radial_basis: RadialBasis::GTO{},
                 cutoff_function: CutoffFunction::ShiftedCosine{ width: 0.5 },
             };
             let mut calculator = SphericalExpansion::new(parameters);
@@ -72,7 +72,7 @@ fn spherical_expansion_gradients(c: &mut Criterion) {
                 cutoff: 4.5,
                 atomic_gaussian_width: 0.5,
                 gradients: true,
-                radial_basis: RadialBasis::GTO,
+                radial_basis: RadialBasis::GTO{},
                 cutoff_function: CutoffFunction::ShiftedCosine{ width: 0.5 },
             };
             let mut calculator = SphericalExpansion::new(parameters);
