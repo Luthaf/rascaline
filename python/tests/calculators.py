@@ -58,6 +58,13 @@ class TestDummyCalculator(unittest.TestCase):
         for i in range(gradients.shape[0]):
             self.assertTrue(np.all(gradients[i] == (0, 1)))
 
+    def test_compute_multiple_systems(self):
+        systems = [TestSystem(), TestSystem(), TestSystem()]
+        calculator = DummyCalculator(cutoff=3.2, delta=2, name="", gradients=True)
+        descriptor = calculator.compute(systems)
+
+        self.assertEqual(descriptor.values.shape, (12, 2))
+
     def test_compute_partial_samples(self):
         system = TestSystem()
         calculator = DummyCalculator(cutoff=3.2, delta=2, name="", gradients=True)

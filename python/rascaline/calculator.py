@@ -52,7 +52,9 @@ def _convert_systems(systems):
         return (rascal_system_t * 1)(wrap_system(systems)._as_rascal_system_t())
     except TypeError:
         # try iterating over the systems
-        return (rascal_system_t * len(systems))(*list(wrap_system(s) for s in systems))
+        return (rascal_system_t * len(systems))(
+            *list(wrap_system(s)._as_rascal_system_t() for s in systems)
+        )
 
 
 def _options_to_c(options):
