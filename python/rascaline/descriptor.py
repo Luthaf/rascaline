@@ -9,8 +9,13 @@ from .status import _check_rascal_pointer
 
 class Indexes(np.ndarray):
     """
-    Small wrapper around `numpy.ndarray` that adds a `names` attribute
-    containing the names of the indexes.
+    This is a small wrapper around ``numpy.ndarray`` that adds a ``names``
+    attribute containing the names of the indexes.
+
+    .. py:attribute:: name
+        :type: Tuple[str]
+
+        name of each column in this indexes array
     """
 
     def __new__(cls, ptr, shape, names):
@@ -38,6 +43,20 @@ class Indexes(np.ndarray):
 
 
 class Descriptor:
+    """
+    Descriptors store the result of a single calculation on a set of systems.
+
+    They contains the values produced by the calculation; as well as metdata to
+    interpret these values. In particular, it contains two additional named
+    arrays describing the ``environments`` (associated with rows in the values)
+    and ``features`` (associated with columns in the values).
+
+    Optionally, a descriptor can also contain gradients of the samples. In this
+    case, some additional metadata is available to describe the rows of the
+    gradients array in ``gradients_environments``. The columns of the gradients
+    array are still described by the same ``features``.
+    """
+
     def __init__(self):
         self._lib = _get_library()
         self._as_parameter_ = self._lib.rascal_descriptor()
@@ -49,6 +68,10 @@ class Descriptor:
 
     @property
     def values(self):
+        """
+        The values stored in this descriptor by a calculator, as a **read only**
+        2D numpy ndarray with ``dtype=np.float64``.
+        """
         environments = c_uintptr_t()
         features = c_uintptr_t()
         data = POINTER(c_double)()
@@ -59,6 +82,11 @@ class Descriptor:
 
     @property
     def gradients(self):
+        """
+        The gradients stored in this descriptor by a calculator, as a **read
+        only** 2D numpy ndarray with ``dtype=np.float64``, or ``None`` if no
+        value was stored.
+        """
         environments = c_uintptr_t()
         features = c_uintptr_t()
         data = POINTER(c_double)()
@@ -88,17 +116,48 @@ class Descriptor:
 
     @property
     def environments(self):
+        """
+        Metdata describing the samples/rows in :py:attr:`Descriptor.values`.
+
+        This is stored as a :py:class:`rascaline.descriptor.Indexes` wrapping a
+        **read only** 2D numpy ndarray with ``dtype=np.float64``. Each column of
+        the array is named, and the names are available in ``Indexes.names``.
+        """
         return self._indexes(rascal_indexes.RASCAL_INDEXES_ENVIRONMENTS)
 
     @property
     def features(self):
+        """
+        Metdata describing the features/columns in :py:attr:`Descriptor.values`
+        and :py:attr:`Descriptor.gradients`.
+
+        This is stored as a :py:class:`rascaline.descriptor.Indexes` wrapping a
+        **read only** 2D numpy ndarray with ``dtype=np.float64``. Each column of
+        the array is named, and the names are available in ``Indexes.names``.
+        """
         return self._indexes(rascal_indexes.RASCAL_INDEXES_FEATURES)
 
     @property
     def gradients_environments(self):
+        """
+        Metdata describing the rows in :py:attr:`Descriptor.gradients`.
+
+        If there are no gradients stored in this descriptor,
+        ``gradients_environments`` is ``None``.
+
+        This is stored as a :py:class:`rascaline.descriptor.Indexes` wrapping a
+        **read only** 2D numpy ndarray with ``dtype=np.float64``. Each column of
+        the array is named, and the names are available in ``Indexes.names``.
+        """
         return self._indexes(rascal_indexes.RASCAL_INDEXES_GRADIENTS)
 
     def densify(self, variables):
+        """
+        Move the values with names in ``variables`` from samples to features.
+
+        :param variables: names of the variables to move
+        :type variables: str | list[str]
+        """
         if isinstance(variables, str):
             variables = [variables]
 

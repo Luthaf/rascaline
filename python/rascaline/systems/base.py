@@ -12,7 +12,8 @@ class SystemBase:
     implement this class to add new kinds of system that work with rascaline.
 
     Most users should use one of the already provided implementation, such as
-    ASESystem instead of using this class directly.
+    :py:class:`rascaline.systems.AseSystem` instead of using this class
+    directly.
     """
 
     def __init__(self):
@@ -178,8 +179,8 @@ class SystemBase:
     def compute_neighbors(self, cutoff):
         """
         Compute the neighbor list with the given ``cutoff``, and store it for
-        later access using :py:func:`SystemBase.pairs` or
-        :py:func:`SystemBase.pairs_containing`.
+        later access using :py:func:`rascaline.SystemBase.pairs` or
+        :py:func:`rascaline.SystemBase.pairs_containing`.
         """
         raise NotImplementedError("System.compute_neighbors method is not implemented")
 
@@ -192,11 +193,13 @@ class SystemBase:
         ``dtype=rascal_pair_t``.
 
         The list of pair should only contain each pair once (and not twice as
-        `i-j` and `j-i`), should not contain self pairs (`i-i`); and should only
-        contains pairs where the distance between atoms is actually bellow the
-        cutoff passed in the last call to
-        :py:func:`SystemBase.compute_neighbors`. This function is only valid to
-        call after a call to :py:func:`SystemBase.compute_neighbors`.
+        ``i-j`` and ``j-i``), should not contain self pairs (``i-i``); and
+        should only contains pairs where the distance between atoms is actually
+        bellow the cutoff passed in the last call to
+        :py:func:`rascaline.SystemBase.compute_neighbors`.
+
+        This function is only valid to call after a call to
+        :py:func:`rascaline.SystemBase.compute_neighbors` to set the cutoff.
         """
         raise NotImplementedError("System.pairs method is not implemented")
 
@@ -206,9 +209,8 @@ class SystemBase:
         ``center``.
 
         The same restrictions on the list of pairs as
-        :py:func:`SystemBase.pairs` applies, with the additional condition that
-        the pair `i-j` should be included both in the list returned by
-        :py:func:`SystemBase.pairs_containing(i)` and
-        :py:func:`SystemBase.pairs_containing(j)`.
+        :py:func:`rascaline.SystemBase.pairs` applies, with the additional
+        condition that the pair ``i-j`` should be included both in the list
+        returned by ``pairs_containing(i)`` and ``pairs_containing(j)``.
         """
         raise NotImplementedError("System.pairs_containing method is not implemented")

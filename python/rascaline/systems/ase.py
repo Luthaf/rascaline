@@ -13,7 +13,21 @@ from .base import SystemBase
 if HAVE_ASE:
 
     class AseSystem(SystemBase):
+        """
+        This class implements :py:class:`rascaline.SystemBase` using the
+        `ase.Atoms`_ to get the data and `ase.neighborlist.neighbor_list`_ to
+        compute the neighbor list.
+
+        .. _ase.Atoms: https://wiki.fysik.dtu.dk/ase/ase/atoms.html
+
+        .. _ase.neighborlist.neighbor_list:
+            https://wiki.fysik.dtu.dk/ase/ase/neighborlist.html#ase.neighborlist.neighbor_list
+        """
+
         def __init__(self, atoms):
+            """
+            :param atoms: `ase.Atoms`_ object to be wrapped in this ``AseSystem``
+            """
             super().__init__()
             if not isinstance(atoms, ase.Atoms):
                 raise Exception("this class expects ASE.Atoms objects")

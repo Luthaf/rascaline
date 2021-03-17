@@ -43,7 +43,7 @@ def extract_json_schema():
 
 def build_doxygen_docs():
     # we need to run a build to make sure the header is up to date
-    subprocess.run(["cargo", "build"])
+    subprocess.run(["cargo", "build", "--package", "rascaline-c-api"])
     subprocess.run(["doxygen", "Doxyfile"], cwd=os.path.join(ROOT, "docs"))
 
 
@@ -73,6 +73,8 @@ extensions = [
 exclude_patterns = ["Thumbs.db", ".DS_Store"]
 
 
+autoclass_content = "both"
+
 breathe_projects = {
     "rascaline": os.path.join(ROOT, "docs", "build", "doxygen", "xml"),
 }
@@ -80,7 +82,6 @@ breathe_default_project = "rascaline"
 breathe_domain_by_extension = {
     "h": "c",
 }
-
 
 # -- Options for HTML output -------------------------------------------------
 

@@ -1,3 +1,5 @@
+.. _sorted-distances:
+
 Sorted distance vector
 ======================
 
