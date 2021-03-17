@@ -5,5 +5,7 @@ Developer documentation
     :maxdepth: 2
 
     getting-started
+    contributing
+    new-calculator
     architecture
-    python-bindings
+    interfaces
