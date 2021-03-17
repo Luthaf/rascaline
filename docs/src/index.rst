@@ -8,5 +8,6 @@ Welcome to Rascaline's documentation!
    installation
    concepts
    calculators/index
+   tutorials/index
    reference/index
    devdoc/index

@@ -61,6 +61,7 @@ needs_sphinx = "3.5.0"
 extensions = [
     "sphinx.ext.autodoc",
     "breathe",
+    "sphinx_tabs.tabs",
     "rascaline_json_schema",
 ]
 

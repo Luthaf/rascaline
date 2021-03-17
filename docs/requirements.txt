@@ -1,5 +1,7 @@
 sphinx >=3.5
+pygments >=2.8
 breathe >=4.27
 recommonmark
+sphinx-tabs
 furo
 toml
