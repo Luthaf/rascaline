@@ -1,16 +1,11 @@
-Calculators
-===========
+Available Calculators
+=====================
 
 .. autoclass:: rascaline.SphericalExpansion
-    :members:
-    :undoc-members:
 
 
 .. autoclass:: rascaline.SortedDistances
-    :members:
-    :undoc-members:
 
 
-.. autoclass:: rascaline.CalculatorBase
+.. autoclass:: rascaline.calculator.CalculatorBase()
     :members:
-    :undoc-members:

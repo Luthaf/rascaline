@@ -29,7 +29,7 @@ class TestDummyCalculator(unittest.TestCase):
     def test_parameters(self):
         calculator = DummyCalculator(cutoff=3.2, delta=12, name="foo", gradients=True)
         self.assertEqual(
-            calculator.parameters(),
+            calculator.parameters,
             """{"cutoff": 3.2, "delta": 12, "name": "foo", "gradients": true}""",
         )
 
@@ -138,5 +138,5 @@ class TestSortedDistances(unittest.TestCase):
     def test_parameters(self):
         calculator = SortedDistances(cutoff=3.5, max_neighbors=12)
         self.assertEqual(
-            calculator.parameters(), """{"cutoff": 3.5, "max_neighbors": 12}"""
+            calculator.parameters, """{"cutoff": 3.5, "max_neighbors": 12}"""
         )

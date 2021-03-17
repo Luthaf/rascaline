@@ -38,15 +38,6 @@ def _check_selected_indexes(indexes, kind):
         raise ValueError(f"selected {kind} array must contain float64 values")
 
 
-def _is_iterable(object):
-    try:
-        for e in object:
-            pass
-        return True
-    except TypeError:
-        return False
-
-
 def _convert_systems(systems):
     try:
         return (rascal_system_t * 1)(wrap_system(systems)._as_rascal_system_t())
@@ -55,7 +46,7 @@ def _convert_systems(systems):
         return (rascal_system_t * len(systems))(*list(wrap_system(s) for s in systems))
 
 
-def _options_to_c(options):
+def _options_to_c(**options):
     known_options = [
         "use_native_system",
         "selected_samples",
@@ -109,11 +100,11 @@ def _options_to_c(options):
 
 
 class CalculatorBase:
-    def __init__(self, __rascal__name, **kwargs):
+    def __init__(self, name, parameters):
         self._lib = _get_library()
-        parameters = json.dumps(kwargs).encode("utf8")
+        parameters = json.dumps(parameters)
         self._as_parameter_ = self._lib.rascal_calculator(
-            __rascal__name.encode("utf8"), parameters
+            name.encode("utf8"), parameters.encode("utf8")
         )
         _check_rascal_pointer(self._as_parameter_)
 
@@ -123,26 +114,94 @@ class CalculatorBase:
 
     @property
     def name(self):
+        """The name used to register this calculator"""
         return _call_with_growing_buffer(
             lambda buffer, bufflen: self._lib.rascal_calculator_name(
                 self, buffer, bufflen
             )
         )
 
+    @property
     def parameters(self):
+        """The parameters (formatted as JSON) used to create this calculator"""
         return _call_with_growing_buffer(
             lambda buffer, bufflen: self._lib.rascal_calculator_parameters(
                 self, buffer, bufflen
             )
         )
 
-    def compute(self, systems, descriptor=None, **kwargs):
+    def compute(
+        self,
+        systems,
+        descriptor=None,
+        use_native_system=False,
+        selected_samples=None,
+        selected_features=None,
+    ):
+        """
+        Run a calculation with this calculator on the given ``systems``, storing
+        the resulting data in the ``descriptor``.
+
+        :param systems: single system or list of systems on which to run the
+                        calculation. Multiple types of systems are supported,
+                        see the documentation for
+                        :py:func:`rascaline.systems.wrap_system` to get the full
+                        list.
+
+        :param descriptor: Descriptor in which the result of the calculation are
+                           stored. If this parameter is ``None``, a new
+                           desriptor is created and returned by this function.
+
+        :type descriptor: :py:class:`Descriptor`, optional
+
+        :param bool use_native_system: defaults to ``False``. If ``True``, copy
+            data from the ``systems`` into Rust ``SimpleSystem``. This can be a
+            lot faster than having to cross the FFI boundary often when acessing
+            the neighbor list.
+
+        :param selected_samples: defaults to ``None``. List of samples on which
+            to run the calculation. Use ``None`` to run the calculation on all
+            samples in the ``systems`` (this is the default).
+
+            This should be either a numpy ndarray with ``dtype=np.float64`` and
+            two dimensions; or a slice of a :py:class:`rascaline.descriptor.Indexes`
+            instance extracted from a calculator. If a raw ndarray is used, the
+            first dimension of the array is the list of all samples to consider;
+            and the second dimension of the array must match the size of the
+            sample indexes used by this calculator. Each row of the array
+            describes a single sample and will be validated by the calculator.
+
+        :type selected_samples: Optional[numpy.ndarray | :py:class:`rascaline.descriptor.Indexes`]
+
+        :param selected_features: defaults to ``None``. List of features on
+            which to run the calculation. Use ``None`` to run the calculation on
+            all features (this is the default).
+
+            This should be either a numpy ndarray with ``dtype=np.float64`` and
+            two dimensions; or a slice of a :py:class:`rascaline.descriptor.Indexes`
+            instance extracted from a calculator. If a raw ndarray is used, the
+            first dimension of the array is the list of all features to
+            consider; and the second dimension of the array must match the size
+            of the features used by this calculator.  Each row of the array
+            describes a single feature and will be validated by the calculator.
+
+        :type selected_features: Optional[numpy.ndarray | :py:class:`rascaline.descriptor.Indexes`]
+
+        :return: the ``descriptor`` parameter or the new new descriptor if
+                 ``descriptor`` was ``None``.
+        """
+
         if descriptor is None:
             descriptor = Descriptor()
 
         c_systems = _convert_systems(systems)
+        c_options = _options_to_c(
+            use_native_system=use_native_system,
+            selected_samples=selected_samples,
+            selected_features=selected_features,
+        )
         self._lib.rascal_calculator_compute(
-            self, descriptor, c_systems, c_systems._length_, _options_to_c(kwargs)
+            self, descriptor, c_systems, c_systems._length_, c_options
         )
         return descriptor
 
@@ -155,16 +214,48 @@ class DummyCalculator(CalculatorBase):
             "name": name,
             "gradients": gradients,
         }
-        super().__init__("dummy_calculator", **parameters)
+        super().__init__("dummy_calculator", parameters)
 
 
 class SortedDistances(CalculatorBase):
+    """
+    Sorted distances vector representation of an atomic environment.
+
+    Each atomic center is represented by a vector of distance to its neighbors
+    within the spherical ``cutoff``, sorted from smallest to largest. If there
+    are less neighbors than ``max_neighbors``, the remaining entries are filled
+    with ``cutoff`` instead.
+
+    Separate species for neighbors are represented separately, meaning that the
+    ``max_neighbors`` parameter only apply to a single species.
+
+    For a full description of the hyper-parameters, see the corresponding
+    :ref:`documentation <sorted-distances>`.
+
+    This class inherits from :py:class:`rascaline.calculator.CalculatorBase` and
+    exposes the same functions and properties.
+    """
+
     def __init__(self, cutoff, max_neighbors):
         parameters = {"cutoff": cutoff, "max_neighbors": max_neighbors}
-        super().__init__("sorted_distances", **parameters)
+        super().__init__("sorted_distances", parameters)
 
 
 class SphericalExpansion(CalculatorBase):
+    """
+    The spherical expansion is at the core of representations in the SOAP
+    (Smooth Overlap of Atomic Positions) family. See `this review article
+    <https://doi.org/10.1063/1.5090481>`_ for more information on the SOAP
+    representation, and `this paper <https://doi.org/10.1063/5.0044689>`_ for
+    information on how it is implemented in rascaline.
+
+    For a full description of the hyper-parameters, see the corresponding
+    :ref:`documentation <spherical-expansion>`.
+
+    This class inherits from :py:class:`rascaline.calculator.CalculatorBase` and
+    exposes the same functions and properties.
+    """
+
     def __init__(
         self,
         cutoff,
@@ -184,4 +275,4 @@ class SphericalExpansion(CalculatorBase):
             "gradients": gradients,
             "cutoff_function": cutoff_function,
         }
-        super().__init__("spherical_expansion", **parameters)
+        super().__init__("spherical_expansion", parameters)

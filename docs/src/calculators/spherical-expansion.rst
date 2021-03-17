@@ -1,3 +1,5 @@
+.. _spherical-expansion:
+
 Spherical expansion
 ===================
 
