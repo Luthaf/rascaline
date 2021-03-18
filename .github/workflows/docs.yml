@@ -19,10 +19,16 @@ jobs:
         with:
           profile: minimal
           toolchain: stable
-      - name: build documentation
-        # TODO: also build docs for C API
+      - name: setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: install dependencies
         run: |
-          cargo doc -p rascaline --no-deps
+          pip install -r docs/requirements.txt
+          sudo apt install doxygen
+      - name: build documentation
+        run: cd docs && make html
       - name: put documentation in the website
         run: |
           git clone https://github.com/$GITHUB_REPOSITORY --branch gh-pages gh-pages
@@ -32,12 +38,10 @@ jobs:
           REF_KIND=$(echo $GITHUB_REF | cut -d / -f2)
           if [[ "$REF_KIND" == "tags" ]]; then
               TAG=${GITHUB_REF#refs/tags/}
-              mv ../target/doc/ $TAG
-              cp _redirect.html $TAG/index.html
+              mv ../docs/build/html $TAG
           else
               rm -rf latest
-              mv ../target/doc/ latest
-              cp _redirect.html latest/index.html
+              mv ../docs/build/html latest
           fi
       - name: deploy to gh-pages
         if: github.event_name == 'push'
