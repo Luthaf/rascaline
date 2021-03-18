@@ -1,17 +1,8 @@
 # Rascaline
 
-Start by getting a rust compiler: https://www.rust-lang.org/tools/install
+[![Test](https://github.com/Luthaf/rascaline/actions/workflows/tests.yml/badge.svg)](https://github.com/Luthaf/rascaline/actions/workflows/tests.yml)
+[![Documentation](https://img.shields.io/badge/documentation-latest-sucess)](https://luthaf.fr/rascaline/index.html)
 
-Few thing that you can do:
-
-1. build the code `cargo build`
-2. run all tests `cargo test`
-3. run benchmarks `cargo bench --package rascaline`
-4. install the python package `pip install .`
-5. install the code in a CMake compatible way:
-
-```bash
-mkdir build && cd build
-cmake ..
-make install
-```
+WIP, please don't use for anything important. Have a look at [the
+documentation](https://luthaf.fr/rascaline/index.html) if you want to find out
+more.
