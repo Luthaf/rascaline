@@ -2,7 +2,7 @@ use std::ops::{Deref, DerefMut};
 use std::os::raw::c_char;
 use std::ffi::CStr;
 
-use rascaline::Descriptor;
+use rascaline::descriptor::{Descriptor, IndexValue};
 use super::{catch_unwind, rascal_status_t};
 
 /// Opaque type representing a Descriptor
@@ -155,7 +155,7 @@ pub unsafe extern fn rascal_descriptor_gradients(
 }
 
 #[repr(C)]
-#[allow(non_camel_case_types, dead_code)]
+#[allow(non_camel_case_types)]
 /// The different kinds of indexes that can exist on a `rascal_descriptor_t`
 pub enum rascal_indexes {
     /// The feature index, describing the features of the representation
@@ -223,7 +223,7 @@ pub unsafe extern fn rascal_descriptor_indexes(
         if *count == 0 {
             *data = std::ptr::null();
         } else {
-            *data = &indexes[0][0] as *const _ as *const f64;
+            *data = (&indexes[0][0] as *const IndexValue).cast();
         }
 
         Ok(())

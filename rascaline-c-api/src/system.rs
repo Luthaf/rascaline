@@ -106,8 +106,8 @@ impl System for rascal_system_t {
         let function = self.positions.expect("rascal_system_t.positions is NULL");
         unsafe {
             function(self.user_data, &mut ptr);
-            let slice = std::slice::from_raw_parts(ptr as *const [f64; 3], self.size());
-            return &*(slice as *const [[f64; 3]] as *const [Vector3D]);
+            // TODO: check if ptr.is_null() and error in some way?
+            return std::slice::from_raw_parts(ptr.cast(), self.size());
         }
     }
 
@@ -139,7 +139,7 @@ impl System for rascal_system_t {
         let mut count = 0;
         unsafe {
             function(self.user_data, &mut ptr, &mut count);
-            return std::slice::from_raw_parts(ptr as *const Pair, count);
+            return std::slice::from_raw_parts(ptr.cast(), count);
         }
     }
 
@@ -149,7 +149,7 @@ impl System for rascal_system_t {
         let mut count = 0;
         unsafe {
             function(self.user_data, center, &mut ptr, &mut count);
-            return std::slice::from_raw_parts(ptr as *const Pair, count);
+            return std::slice::from_raw_parts(ptr.cast(), count);
         }
     }
 }

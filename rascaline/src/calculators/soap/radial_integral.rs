@@ -19,7 +19,7 @@ pub trait RadialIntegral: std::panic::RefUnwindSafe {
 
 /// Parameters controlling GTO radial basis
 #[derive(Debug, Clone, Copy)]
-pub struct GTOParameters {
+pub struct GtoParameters {
     /// Number of radial components
     pub max_radial: usize,
     /// Number of angular components
@@ -30,7 +30,7 @@ pub struct GTOParameters {
     pub cutoff: f64,
 }
 
-impl GTOParameters {
+impl GtoParameters {
     fn validate(&self) {
         assert!(self.max_radial > 0, "max_radial must be at least 1");
 
@@ -86,8 +86,9 @@ fn sorted_eigen(mat: na::DMatrix<f64>) -> SymmetricEigen<f64, na::Dynamic> {
 }
 
 #[derive(Debug, Clone)]
-pub struct GTO {
-    parameters: GTOParameters,
+#[allow(clippy::module_name_repetitions)]
+pub struct GtoRadialIntegral {
+    parameters: GtoParameters,
     hypergeometric: HyperGeometricSphericalExpansion,
     /// 1/2σ^2, with σ the atomic density gaussian width
     atomic_gaussian_constant: f64,
@@ -97,8 +98,8 @@ pub struct GTO {
     gto_orthonormalization: Array2<f64>,
 }
 
-impl GTO {
-    pub fn new(parameters: GTOParameters) -> GTO {
+impl GtoRadialIntegral {
+    pub fn new(parameters: GtoParameters) -> GtoRadialIntegral {
         parameters.validate();
 
         let gto_gaussian_widths = (0..parameters.max_radial).into_iter().map(|n| {
@@ -167,7 +168,7 @@ impl GTO {
         let hypergeometric = HyperGeometricSphericalExpansion::new(parameters.max_radial, parameters.max_angular);
 
         let sigma2 = parameters.atomic_gaussian_width * parameters.atomic_gaussian_width;
-        return GTO {
+        return GtoRadialIntegral {
             parameters: parameters,
             hypergeometric: hypergeometric,
             atomic_gaussian_constant: 1.0 / (2.0 * sigma2),
@@ -177,7 +178,7 @@ impl GTO {
     }
 }
 
-impl RadialIntegral for GTO {
+impl RadialIntegral for GtoRadialIntegral {
     fn compute(
         &self,
         distance: f64,
@@ -247,13 +248,13 @@ mod tests {
     mod gto {
         use approx::assert_relative_eq;
 
-        use super::super::{GTO, GTOParameters, RadialIntegral};
+        use super::super::{GtoRadialIntegral, GtoParameters, RadialIntegral};
         use ndarray::Array2;
 
         #[test]
         #[should_panic = "max_radial must be at least 1"]
         fn invalid_max_radial() {
-            GTO::new(GTOParameters {
+            GtoRadialIntegral::new(GtoParameters {
                 max_radial: 0,
                 max_angular: 4,
                 cutoff: 3.0,
@@ -264,7 +265,7 @@ mod tests {
         #[test]
         #[should_panic = "cutoff must be a positive number"]
         fn negative_cutoff() {
-            GTO::new(GTOParameters {
+            GtoRadialIntegral::new(GtoParameters {
                 max_radial: 10,
                 max_angular: 4,
                 cutoff: -3.0,
@@ -275,7 +276,7 @@ mod tests {
         #[test]
         #[should_panic = "cutoff must be a positive number"]
         fn infinite_cutoff() {
-            GTO::new(GTOParameters {
+            GtoRadialIntegral::new(GtoParameters {
                 max_radial: 10,
                 max_angular: 4,
                 cutoff: std::f64::INFINITY,
@@ -286,7 +287,7 @@ mod tests {
         #[test]
         #[should_panic = "atomic_gaussian_width must be a positive number"]
         fn negative_atomic_gaussian_width() {
-            GTO::new(GTOParameters {
+            GtoRadialIntegral::new(GtoParameters {
                 max_radial: 10,
                 max_angular: 4,
                 cutoff: 3.0,
@@ -297,7 +298,7 @@ mod tests {
         #[test]
         #[should_panic = "atomic_gaussian_width must be a positive number"]
         fn infinite_atomic_gaussian_width() {
-            GTO::new(GTOParameters {
+            GtoRadialIntegral::new(GtoParameters {
                 max_radial: 10,
                 max_angular: 4,
                 cutoff: 3.0,
@@ -308,7 +309,7 @@ mod tests {
         #[test]
         #[should_panic = "radial overlap matrix is singular, try with a lower max_radial (current value is 30)"]
         fn ill_conditioned_orthonormalization() {
-            GTO::new(GTOParameters {
+            GtoRadialIntegral::new(GtoParameters {
                 max_radial: 30,
                 max_angular: 3,
                 cutoff: 5.0,
@@ -319,7 +320,7 @@ mod tests {
         #[test]
         #[should_panic = "wrong size for values array, expected [2, 4] but got [2, 3]"]
         fn values_array_size() {
-            let gto = GTO::new(GTOParameters {
+            let gto = GtoRadialIntegral::new(GtoParameters {
                 max_radial: 2,
                 max_angular: 3,
                 cutoff: 5.0,
@@ -333,7 +334,7 @@ mod tests {
         #[test]
         #[should_panic = "wrong size for gradients array, expected [2, 4] but got [2, 3]"]
         fn gradient_array_size() {
-            let gto = GTO::new(GTOParameters {
+            let gto = GtoRadialIntegral::new(GtoParameters {
                 max_radial: 2,
                 max_angular: 3,
                 cutoff: 5.0,
@@ -349,7 +350,7 @@ mod tests {
         fn gto_finite_differences() {
             let max_radial = 8;
             let max_angular = 8;
-            let gto = GTO::new(GTOParameters {
+            let gto = GtoRadialIntegral::new(GtoParameters {
                 max_radial: max_radial,
                 max_angular: max_angular,
                 cutoff: 5.0,

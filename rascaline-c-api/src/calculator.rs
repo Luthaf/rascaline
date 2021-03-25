@@ -3,7 +3,6 @@ use std::ffi::CStr;
 use std::ops::{Deref, DerefMut};
 
 use rascaline::{Calculator, System, CalculationOptions, SelectedIndexes};
-use rascaline::descriptor::IndexValue;
 
 use super::utils::copy_str_to_c;
 use super::{catch_unwind, rascal_status_t};
@@ -180,7 +179,7 @@ impl<'a> From<&'a rascal_calculation_options_t> for CalculationOptions<'a> {
         } else {
             let slice = unsafe {
                 std::slice::from_raw_parts(
-                    options.selected_samples as *const IndexValue,
+                    options.selected_samples.cast(),
                     options.selected_samples_count
                 )
             };
@@ -192,7 +191,7 @@ impl<'a> From<&'a rascal_calculation_options_t> for CalculationOptions<'a> {
         } else {
             let slice = unsafe {
                 std::slice::from_raw_parts(
-                    options.selected_features as *const IndexValue,
+                    options.selected_features.cast(),
                     options.selected_features_count
                 )
             };

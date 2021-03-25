@@ -1,4 +1,4 @@
-use rascaline::calculators::soap::{RadialIntegral, GTOParameters, GTO};
+use rascaline::calculators::soap::{RadialIntegral, GtoParameters, GtoRadialIntegral};
 
 use ndarray::Array2;
 
@@ -10,13 +10,13 @@ fn gto_radial_integral(c: &mut Criterion) {
 
     for &max_radial in black_box(&[2, 8, 14]) {
         for &max_angular in black_box(&[1, 7, 15]) {
-            let parameters = GTOParameters {
+            let parameters = GtoParameters {
                 max_radial,
                 max_angular,
                 cutoff: 4.5,
                 atomic_gaussian_width: 0.5,
             };
-            let gto: Box<dyn RadialIntegral> = Box::new(GTO::new(parameters));
+            let gto: Box<dyn RadialIntegral> = Box::new(GtoRadialIntegral::new(parameters));
             let mut values = Array2::from_elem((max_radial, max_angular + 1), 0.0);
 
             // multiple random values spanning the whole range [0, cutoff)
@@ -44,13 +44,13 @@ fn gto_radial_integral_gradient(c: &mut Criterion) {
 
     for &max_radial in black_box(&[2, 8, 14]) {
         for &max_angular in black_box(&[1, 7, 15]) {
-            let parameters = GTOParameters {
+            let parameters = GtoParameters {
                 max_radial,
                 max_angular,
                 cutoff: 4.5,
                 atomic_gaussian_width: 0.5,
             };
-            let gto: Box<dyn RadialIntegral> = Box::new(GTO::new(parameters));
+            let gto: Box<dyn RadialIntegral> = Box::new(GtoRadialIntegral::new(parameters));
             let mut values = Array2::from_elem((max_radial, max_angular + 1), 0.0);
             let mut gradient = Array2::from_elem((max_radial, max_angular + 1), 0.0);
 

@@ -7,7 +7,7 @@ use crate::system::Pair;
 use crate::{Descriptor, System, Vector3D};
 
 use super::super::CalculatorBase;
-use super::{GTO, GTOParameters, RadialIntegral};
+use super::{GtoRadialIntegral, GtoParameters, RadialIntegral};
 use super::{SphericalHarmonics, SphericalHarmonicsArray};
 
 #[derive(Debug, Clone)]
@@ -18,7 +18,7 @@ pub enum RadialBasis {
     ///
     /// The basis is defined as `R_n(r) ∝ r^n e^{- r^2 / (2 σ_n^2)}`, where `σ_n
     /// = cutoff * \sqrt{n} / n_max`
-    GTO{},
+    Gto {},
 }
 
 /// Possible values for the smoothing cutoff function
@@ -110,14 +110,14 @@ pub struct SphericalExpansion {
 impl SphericalExpansion {
     pub fn new(parameters: SphericalExpansionParameters) -> SphericalExpansion {
         let radial_integral = match parameters.radial_basis {
-            RadialBasis::GTO{} => {
-                let parameters = GTOParameters {
+            RadialBasis::Gto {} => {
+                let parameters = GtoParameters {
                     max_radial: parameters.max_radial,
                     max_angular: parameters.max_angular,
                     atomic_gaussian_width: parameters.atomic_gaussian_width,
                     cutoff: parameters.cutoff,
                 };
-                Box::new(GTO::new(parameters))
+                Box::new(GtoRadialIntegral::new(parameters))
             }
         };
 
@@ -425,7 +425,7 @@ mod tests {
             gradients: gradients,
             max_radial: 6,
             max_angular: 6,
-            radial_basis: RadialBasis::GTO{}
+            radial_basis: RadialBasis::Gto {}
         }
     }
 

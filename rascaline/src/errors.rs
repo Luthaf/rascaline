@@ -6,7 +6,7 @@ pub enum Error {
     /// Got an invalid parameter value in a function
     InvalidParameter(String),
     /// Error while serializing/deserializing data
-    JSON(serde_json::Error),
+    Json(serde_json::Error),
     /// Error due to C strings containing non-utf8 data
     Utf8(Utf8Error),
     /// Error used when a panic was caught
@@ -17,7 +17,7 @@ impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Error::InvalidParameter(e) => write!(f, "invalid parameter: {}", e),
-            Error::JSON(e) => write!(f, "json error: {}", e),
+            Error::Json(e) => write!(f, "json error: {}", e),
             Error::Utf8(e) => write!(f, "utf8 decoding error: {}", e),
             Error::Panic(e) => write!(f, "internal error: {}", e),
         }
@@ -28,7 +28,7 @@ impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Error::InvalidParameter(_) | Error::Panic(_) => None,
-            Error::JSON(e) => Some(e),
+            Error::Json(e) => Some(e),
             Error::Utf8(e) => Some(e),
         }
     }
@@ -36,7 +36,7 @@ impl std::error::Error for Error {
 
 impl From<serde_json::Error> for Error {
     fn from(error: serde_json::Error) -> Error {
-        Error::JSON(error)
+        Error::Json(error)
     }
 }
 

@@ -11,7 +11,7 @@ pub unsafe fn copy_str_to_c(string: &str, buffer: *mut c_char, buflen: usize) ->
         )))
     }
 
-    std::ptr::copy(string.as_ptr(), buffer as *mut u8, size);
+    std::ptr::copy(string.as_ptr(), buffer.cast(), size);
     // NULL-terminate the string
     buffer.add(size).write(0);
     Ok(())

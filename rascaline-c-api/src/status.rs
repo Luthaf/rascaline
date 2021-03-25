@@ -15,8 +15,8 @@ thread_local! {
 
 /// Status type returned by all functions in the C API.
 #[repr(C)]
-#[allow(non_camel_case_types)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(non_camel_case_types)]
 pub enum rascal_status_t {
     /// The function succeeded
     RASCAL_SUCCESS = 0,
@@ -39,7 +39,7 @@ impl From<Error> for rascal_status_t {
         });
         match error {
             Error::InvalidParameter(_) => rascal_status_t::RASCAL_INVALID_PARAMETER_ERROR,
-            Error::JSON(_) => rascal_status_t::RASCAL_JSON_ERROR,
+            Error::Json(_) => rascal_status_t::RASCAL_JSON_ERROR,
             Error::Utf8(_) => rascal_status_t::RASCAL_UTF8_ERROR,
             Error::Panic(_) => rascal_status_t::RASCAL_INTERNAL_PANIC,
             _ => rascal_status_t::RASCAL_UNKNOWN_ERROR,
