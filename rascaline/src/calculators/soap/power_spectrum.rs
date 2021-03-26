@@ -295,7 +295,7 @@ mod tests {
     /// Convenience macro to create IndexValue
     macro_rules! v {
         ($value: expr) => {
-            crate::descriptor::IndexValue::from($value as f64)
+            crate::descriptor::IndexValue::from($value)
         };
     }
 

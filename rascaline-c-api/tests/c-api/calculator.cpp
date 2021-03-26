@@ -9,7 +9,7 @@ static void check_indexes(
     rascal_descriptor_t* descriptor,
     rascal_indexes kind,
     std::vector<std::string> names,
-    std::vector<double> values,
+    std::vector<int32_t> values,
     uintptr_t count,
     uintptr_t size
 );
@@ -140,15 +140,15 @@ TEST_CASE("Compute descriptor") {
             calculator, descriptor, &system, 1, options
         ));
 
-        auto expected = std::vector<double>{
+        auto expected = std::vector<int32_t>{
             0, 0, /**/ 0, 1, /**/ 0, 2, /**/ 0, 3,
         };
         check_indexes(descriptor, RASCAL_INDEXES_ENVIRONMENTS, {"structure", "center"}, expected, 4, 2);
 
-        expected = std::vector<double>{
-            1, 0, 1.2, /**/ 0, 1, 3.2
+        expected = std::vector<int32_t>{
+            1, 0, /**/ 0, 1,
         };
-        check_indexes(descriptor, RASCAL_INDEXES_FEATURES, {"index_delta", "x_y_z", "float"}, expected, 2, 3);
+        check_indexes(descriptor, RASCAL_INDEXES_FEATURES, {"index_delta", "x_y_z"}, expected, 2, 2);
 
         const double* data = nullptr;
         uintptr_t shape[2] = {0};
@@ -183,7 +183,7 @@ TEST_CASE("Compute descriptor") {
     SECTION("Partial compute -- samples") {
         auto system = simple_system();
 
-        auto samples = std::vector<double>{
+        auto samples = std::vector<int32_t>{
             0, 1, /**/ 0, 3,
         };
 
@@ -200,10 +200,10 @@ TEST_CASE("Compute descriptor") {
 
         check_indexes(descriptor, RASCAL_INDEXES_ENVIRONMENTS, {"structure", "center"}, samples, 2, 2);
 
-        auto expected = std::vector<double>{
-            1, 0, 1.2, /**/ 0, 1, 3.2
+        auto expected = std::vector<int32_t>{
+            1, 0, /**/ 0, 1
         };
-        check_indexes(descriptor, RASCAL_INDEXES_FEATURES, {"index_delta", "x_y_z", "float"}, expected, 2, 3);
+        check_indexes(descriptor, RASCAL_INDEXES_FEATURES, {"index_delta", "x_y_z"}, expected, 2, 2);
 
         const double* data = nullptr;
         uintptr_t shape[2] = {0};
@@ -238,8 +238,8 @@ TEST_CASE("Compute descriptor") {
     SECTION("Partial compute -- features") {
         auto system = simple_system();
 
-        auto features = std::vector<double>{
-            0, 1, 3.2,
+        auto features = std::vector<int32_t>{
+            0, 1
         };
         auto options = rascal_calculation_options_t {
             /* use_native_system */ false,
@@ -252,12 +252,12 @@ TEST_CASE("Compute descriptor") {
             calculator, descriptor, &system, 1, options
         ));
 
-        auto expected = std::vector<double>{
+        auto expected = std::vector<int32_t>{
             0, 0, /**/ 0, 1, /**/ 0, 2, /**/ 0, 3,
         };
         check_indexes(descriptor, RASCAL_INDEXES_ENVIRONMENTS, {"structure", "center"}, expected, 4, 2);
 
-        check_indexes(descriptor, RASCAL_INDEXES_FEATURES, {"index_delta", "x_y_z", "float"}, features, 1, 3);
+        check_indexes(descriptor, RASCAL_INDEXES_FEATURES, {"index_delta", "x_y_z"}, features, 1, 2);
 
         const double* data = nullptr;
         uintptr_t shape[2] = {0};
@@ -289,7 +289,7 @@ TEST_CASE("Compute descriptor") {
     SECTION("Partial compute -- errors") {
         auto system = simple_system();
 
-        auto samples = std::vector<double>{0, 1, 3};
+        auto samples = std::vector<int32_t>{0, 1, 3};
         auto options = rascal_calculation_options_t {
             /* use_native_system */ false,
             /* selected_samples */ samples.data(),
@@ -303,7 +303,7 @@ TEST_CASE("Compute descriptor") {
         CHECK(status != RASCAL_SUCCESS);
         CHECK(std::string(rascal_last_error()) == "invalid parameter: wrong size for partial samples list, expected a multiple of 2, got 3");
 
-        auto features = std::vector<double>{0, 1, 3.2, 1};
+        auto features = std::vector<int32_t>{0, 1, 1};
         options = rascal_calculation_options_t {
             /* use_native_system */ false,
             /* selected_samples */ nullptr,
@@ -315,7 +315,7 @@ TEST_CASE("Compute descriptor") {
             calculator, descriptor, &system, 1, options
         );
         CHECK(status != RASCAL_SUCCESS);
-        CHECK(std::string(rascal_last_error()) == "invalid parameter: wrong size for partial features list, expected a multiple of 3, got 4");
+        CHECK(std::string(rascal_last_error()) == "invalid parameter: wrong size for partial features list, expected a multiple of 2, got 3");
     }
 
     rascal_calculator_free(calculator);
@@ -326,11 +326,11 @@ void check_indexes(
     rascal_descriptor_t* descriptor,
     rascal_indexes kind,
     std::vector<std::string> names,
-    std::vector<double> values,
+    std::vector<int32_t> values,
     uintptr_t count,
     uintptr_t size
 ) {
-    const double* actual_values = nullptr;
+    const int32_t* actual_values = nullptr;
     uintptr_t actual_count = 0;
     uintptr_t actual_size = 0;
 
@@ -338,6 +338,8 @@ void check_indexes(
         descriptor, kind, &actual_values, &actual_count, &actual_size
     ));
     REQUIRE(actual_values != nullptr);
+
+    REQUIRE(values.size() == count * size);
     CHECK(actual_count == count);
     CHECK(actual_size == size);
 

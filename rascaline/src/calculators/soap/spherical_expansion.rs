@@ -368,11 +368,11 @@ impl CalculatorBase for SphericalExpansion {
                         assert!(self.parameters.gradients);
                         let center_grad = gradients_indexes.position(&[
                             i_system, IndexValue::from(center), alpha, beta,
-                            IndexValue::from(neighbor), IndexValue::from(0_usize)
+                            IndexValue::from(neighbor), IndexValue::from(0)
                         ]);
                         let neighbor_grad = gradients_indexes.position(&[
                             i_system, IndexValue::from(neighbor), beta, alpha,
-                            IndexValue::from(center), IndexValue::from(0_usize)
+                            IndexValue::from(center), IndexValue::from(0)
                         ]);
                         (center_grad, neighbor_grad)
                     } else {
@@ -457,7 +457,7 @@ mod tests {
     /// Convenience macro to create IndexValue
     macro_rules! v {
         ($value: expr) => {
-            crate::descriptor::IndexValue::from($value as f64)
+            crate::descriptor::IndexValue::from($value)
         };
     }
 

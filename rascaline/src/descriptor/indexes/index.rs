@@ -6,40 +6,10 @@ use twox_hash::XxHash64;
 
 use crate::system::System;
 
-/// Biggest integer value such that all integer values up to it can be stored in
-/// a f64 value.
-const MAX_SAFE_INTEGER: i64 = 9007199254740991;
 
-/// Smallest integer value such that all integers value between it and zero can
-/// be stored in a f64 value.
-const MIN_SAFE_INTEGER: i64 = -9007199254740991;
-
-
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(clippy::module_name_repetitions)]
-pub struct IndexValue(f64);
-
-#[allow(clippy::derive_hash_xor_eq)]
-impl std::hash::Hash for IndexValue {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.0.to_le_bytes().hash(state);
-    }
-}
-
-// This is fine since we can not construct a NaN IndexValue
-impl Ord for IndexValue {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.0.partial_cmp(&other.0).expect("a NaN slipped through!")
-    }
-}
-
-impl PartialOrd for IndexValue {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(&other))
-    }
-}
-
-impl Eq for IndexValue {}
+pub struct IndexValue(i32);
 
 impl std::fmt::Debug for IndexValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -53,40 +23,41 @@ impl std::fmt::Display for IndexValue {
     }
 }
 
-impl From<f64> for IndexValue {
-    fn from(value: f64) -> IndexValue {
-        assert!(!value.is_nan());
+impl From<u32> for IndexValue {
+    fn from(value: u32) -> IndexValue {
+        assert!(value < i32::MAX as u32);
+        IndexValue(value as i32)
+    }
+}
+
+impl From<i32> for IndexValue {
+    fn from(value: i32) -> IndexValue {
         IndexValue(value)
     }
 }
 
 impl From<usize> for IndexValue {
     fn from(value: usize) -> IndexValue {
-        assert!(value < MAX_SAFE_INTEGER as usize);
-        IndexValue(value as f64)
+        assert!(value < i32::MAX as usize);
+        IndexValue(value as i32)
     }
 }
 
 impl From<isize> for IndexValue {
     fn from(value: isize) -> IndexValue {
-        assert!(MIN_SAFE_INTEGER < (value as i64) && (value as i64) < MAX_SAFE_INTEGER);
-        IndexValue(value as f64)
+        assert!(value < i32::MAX as isize && value > i32::MIN as isize);
+        IndexValue(value as i32)
     }
 }
 
 impl IndexValue {
-    pub fn f64(self) -> f64 {
-        self.0
-    }
-
     #[allow(clippy::cast_sign_loss)]
     pub fn usize(self) -> usize {
-        debug_assert!(self.0 >= 0.0 && self.0 < MAX_SAFE_INTEGER as f64 && self.0 % 1.0 == 0.0);
+        debug_assert!(self.0 >= 0);
         self.0 as usize
     }
 
     pub fn isize(self) -> isize {
-        debug_assert!((MIN_SAFE_INTEGER as f64) < self.0 && self.0 < MAX_SAFE_INTEGER as f64 && self.0 % 1.0 == 0.0);
         self.0 as isize
     }
 }
@@ -208,11 +179,7 @@ impl std::fmt::Debug for Indexes {
         for values in self {
             write!(f, "    ")?;
             for (value, width) in values.iter().zip(&widths) {
-                if value.f64() % 1.0 == 0.0 {
-                    write!(f, "{:^width$}  ", value.isize(), width=width)?;
-                } else {
-                    write!(f, "{:.width$}  ", value.f64(), width=width - 2)?;
-                }
+                write!(f, "{:^width$}  ", value.isize(), width=width)?;
             }
             writeln!(f)?;
         }
@@ -336,34 +303,34 @@ mod tests {
     #[test]
     fn indexes() {
         let mut builder = IndexesBuilder::new(vec!["foo", "bar"]);
-        builder.add(&[IndexValue::from(2_isize), IndexValue::from(3.9)]);
-        builder.add(&[IndexValue::from(1_isize), IndexValue::from(2.43)]);
-        builder.add(&[IndexValue::from(-4_isize), IndexValue::from(-24e13)]);
+        builder.add(&[IndexValue::from(2), IndexValue::from(3)]);
+        builder.add(&[IndexValue::from(1), IndexValue::from(243)]);
+        builder.add(&[IndexValue::from(-4), IndexValue::from(-2413)]);
 
         let idx = builder.finish();
         assert_eq!(idx.names(), &["foo", "bar"]);
         assert_eq!(idx.size(), 2);
         assert_eq!(idx.count(), 3);
 
-        assert_eq!(idx[0], [IndexValue::from(2_isize), IndexValue::from(3.9)]);
-        assert_eq!(idx[1], [IndexValue::from(1_isize), IndexValue::from(2.43)]);
-        assert_eq!(idx[2], [IndexValue::from(-4_isize), IndexValue::from(-24e13)]);
+        assert_eq!(idx[0], [IndexValue::from(2), IndexValue::from(3)]);
+        assert_eq!(idx[1], [IndexValue::from(1), IndexValue::from(243)]);
+        assert_eq!(idx[2], [IndexValue::from(-4), IndexValue::from(-2413)]);
     }
 
     #[test]
     fn indexes_iter() {
         let mut builder = IndexesBuilder::new(vec!["foo", "bar"]);
-        builder.add(&[IndexValue::from(2_usize), IndexValue::from(3_usize)]);
-        builder.add(&[IndexValue::from(1_usize), IndexValue::from(2_usize)]);
-        builder.add(&[IndexValue::from(4_usize), IndexValue::from(3_usize)]);
+        builder.add(&[IndexValue::from(2_usize), IndexValue::from(3)]);
+        builder.add(&[IndexValue::from(1_usize), IndexValue::from(2)]);
+        builder.add(&[IndexValue::from(4_usize), IndexValue::from(3)]);
 
         let idx = builder.finish();
         let mut iter = idx.iter();
         assert_eq!(iter.len(), 3);
 
-        assert_eq!(iter.next().unwrap(), &[IndexValue::from(2_usize), IndexValue::from(3_usize)]);
-        assert_eq!(iter.next().unwrap(), &[IndexValue::from(1_usize), IndexValue::from(2_usize)]);
-        assert_eq!(iter.next().unwrap(), &[IndexValue::from(4_usize), IndexValue::from(3_usize)]);
+        assert_eq!(iter.next().unwrap(), &[IndexValue::from(2_usize), IndexValue::from(3)]);
+        assert_eq!(iter.next().unwrap(), &[IndexValue::from(1_usize), IndexValue::from(2)]);
+        assert_eq!(iter.next().unwrap(), &[IndexValue::from(4_usize), IndexValue::from(3)]);
         assert_eq!(iter.next(), None);
     }
 
@@ -383,8 +350,8 @@ mod tests {
     #[should_panic(expected = "can not have the same index value multiple time: [0, 1] is already present at position 0")]
     fn duplicated_index_value() {
         let mut builder = IndexesBuilder::new(vec!["foo", "bar"]);
-        builder.add(&[IndexValue::from(0_usize), IndexValue::from(1_usize)]);
-        builder.add(&[IndexValue::from(0_usize), IndexValue::from(1_usize)]);
+        builder.add(&[IndexValue::from(0_usize), IndexValue::from(1)]);
+        builder.add(&[IndexValue::from(0_usize), IndexValue::from(1)]);
         builder.finish();
     }
 }

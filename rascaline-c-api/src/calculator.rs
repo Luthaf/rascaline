@@ -158,7 +158,7 @@ pub struct rascal_calculation_options_t {
     /// row-major array, containing values similar to the samples index of a
     /// descriptor. If necessary, gradients samples will be derived from the
     /// values given in selected_samples.
-    selected_samples: *const f64,
+    selected_samples: *const i32,
     /// If selected_samples is not `NULL`, this should be set to the size of the
     /// selected_samples array
     selected_samples_count: usize,
@@ -166,7 +166,7 @@ pub struct rascal_calculation_options_t {
     /// calculation on all features. The features must be represented as a
     /// row-major array, containing values similar to the features index of a
     /// descriptor.
-    selected_features: *const f64,
+    selected_features: *const i32,
     /// If selected_features is not `NULL`, this should be set to the size of the
     /// selected_features array
     selected_features_count: usize,

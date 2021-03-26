@@ -176,7 +176,7 @@ typedef struct rascal_calculation_options_t {
    * descriptor. If necessary, gradients samples will be derived from the
    * values given in selected_samples.
    */
-  const double *selected_samples;
+  const int32_t *selected_samples;
   /**
    * If selected_samples is not `NULL`, this should be set to the size of the
    * selected_samples array
@@ -188,7 +188,7 @@ typedef struct rascal_calculation_options_t {
    * row-major array, containing values similar to the features index of a
    * descriptor.
    */
-  const double *selected_features;
+  const int32_t *selected_features;
   /**
    * If selected_features is not `NULL`, this should be set to the size of the
    * selected_features array
@@ -318,7 +318,7 @@ enum rascal_status_t rascal_descriptor_gradients(const struct rascal_descriptor_
  */
 enum rascal_status_t rascal_descriptor_indexes(const struct rascal_descriptor_t *descriptor,
                                                enum rascal_indexes indexes,
-                                               const double **data,
+                                               const int32_t **data,
                                                uintptr_t *count,
                                                uintptr_t *size);
 

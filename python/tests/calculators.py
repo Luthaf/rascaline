@@ -121,7 +121,7 @@ class TestDummyCalculator(unittest.TestCase):
             self.assertTrue(np.all(gradients[i] == [1]))
 
         # Manually constructing the selected features
-        features = [[1, 0, 1.2]]
+        features = [[1, 0]]
         descriptor = calculator.compute(system, selected_features=features)
 
         values = descriptor.values

@@ -85,7 +85,7 @@ def parse(file):
 
 def c_type_name(name):
     if name.startswith("rascal_"):
-        # enums are represente as int
+        # enums are represented as int
         if name == "rascal_indexes":
             return "ctypes.c_int"
         else:
@@ -94,6 +94,14 @@ def c_type_name(name):
         return "c_uintptr_t"
     elif name == "void":
         return "None"
+    elif name == "int32_t":
+        return "ctypes.c_int32"
+    elif name == "uint32_t":
+        return "ctypes.c_uint32"
+    elif name == "int64_t":
+        return "ctypes.c_int64"
+    elif name == "uint64_t":
+        return "ctypes.c_uint64"
     else:
         return "ctypes.c_" + name
 
