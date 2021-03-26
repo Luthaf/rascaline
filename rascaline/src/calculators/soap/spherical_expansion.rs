@@ -9,6 +9,7 @@ use crate::{Descriptor, System, Vector3D};
 use super::super::CalculatorBase;
 use super::RadialIntegral;
 use super::{GtoRadialIntegral, GtoParameters};
+use super::{SplinedRadialIntegral, SplinedRIParameters};
 
 use super::{SphericalHarmonics, SphericalHarmonicsArray};
 
@@ -21,6 +22,50 @@ pub enum RadialBasis {
     /// The basis is defined as `R_n(r) ∝ r^n e^{- r^2 / (2 σ_n^2)}`, where `σ_n
     /// = cutoff * \sqrt{n} / n_max`
     Gto {},
+    /// Splined version of the `Gto` radial basis.
+    ///
+    /// This computes the same integral as the GTO radial basis but using Cubic
+    /// Hermit splines with control points sampled from the GTO implementation.
+    /// Using splines is usually much faster (up to 30% of the runtime in the
+    /// spherical expansion) than using the base GTO implementation.
+    ///
+    /// The number of control points in the spline is automatically determined
+    /// to ensure the maximal absolute error is close to the requested accuracy.
+    SplinedGto {
+        accuracy: f64,
+    },
+}
+
+impl RadialBasis {
+    fn construct(&self, parameters: &SphericalExpansionParameters) -> Box<dyn RadialIntegral> {
+        match self {
+            RadialBasis::Gto {} => {
+                let parameters = GtoParameters {
+                    max_radial: parameters.max_radial,
+                    max_angular: parameters.max_angular,
+                    atomic_gaussian_width: parameters.atomic_gaussian_width,
+                    cutoff: parameters.cutoff,
+                };
+                return Box::new(GtoRadialIntegral::new(parameters));
+            }
+            RadialBasis::SplinedGto { accuracy } => {
+                let parameters = GtoParameters {
+                    max_radial: parameters.max_radial,
+                    max_angular: parameters.max_angular,
+                    atomic_gaussian_width: parameters.atomic_gaussian_width,
+                    cutoff: parameters.cutoff,
+                };
+                let gto = GtoRadialIntegral::new(parameters);
+
+                let parameters = SplinedRIParameters {
+                    max_radial: parameters.max_radial,
+                    max_angular: parameters.max_angular,
+                    cutoff: parameters.cutoff,
+                };
+                return Box::new(SplinedRadialIntegral::with_accuracy(parameters, *accuracy, gto));
+            }
+        };
+    }
 }
 
 /// Possible values for the smoothing cutoff function
@@ -111,18 +156,7 @@ pub struct SphericalExpansion {
 
 impl SphericalExpansion {
     pub fn new(parameters: SphericalExpansionParameters) -> SphericalExpansion {
-        let radial_integral = match parameters.radial_basis {
-            RadialBasis::Gto {} => {
-                let parameters = GtoParameters {
-                    max_radial: parameters.max_radial,
-                    max_angular: parameters.max_angular,
-                    atomic_gaussian_width: parameters.atomic_gaussian_width,
-                    cutoff: parameters.cutoff,
-                };
-                Box::new(GtoRadialIntegral::new(parameters))
-            }
-        };
-
+        let radial_integral = parameters.radial_basis.construct(&parameters);
         let spherical_harmonics = SphericalHarmonics::new(parameters.max_angular);
         let sph_values = SphericalHarmonicsArray::new(parameters.max_angular);
         let sph_gradients = if parameters.gradients {

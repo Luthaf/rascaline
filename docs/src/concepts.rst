@@ -87,5 +87,6 @@ metadata array as the values.
 
 .. figure:: ../static/images/descriptor.*
     :width: 80%
+    :align: center
 
     Graphical representation of all data and metadata stored in a descriptor.
