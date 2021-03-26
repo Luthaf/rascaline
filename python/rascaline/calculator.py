@@ -62,25 +62,25 @@ def _options_to_c(**options):
     if samples is not None:
         samples = np.array(samples)
         if samples.dtype.fields is not None:
-            # convert structured array back to float64 array
+            # convert structured array back to int32 array
             size = len(samples)
-            samples = samples.view(dtype=np.float64).reshape((size, -1))
+            samples = samples.view(dtype=np.int32).reshape((size, -1))
         else:
             _check_selected_indexes(samples, "samples")
-            samples = np.array(samples, dtype=np.float64)
+            samples = np.array(samples, dtype=np.int32)
 
     features = options.get("selected_features")
     if features is not None:
         features = np.array(features)
         if features.dtype.fields is not None:
-            # convert structured array back to float64 array
+            # convert structured array back to int32 array
             size = len(features)
-            features = features.view(dtype=np.float64).reshape((size, -1))
+            features = features.view(dtype=np.int32).reshape((size, -1))
         else:
             _check_selected_indexes(features, "features")
-            features = np.array(features, dtype=np.float64)
+            features = np.array(features, dtype=np.int32)
 
-    ptr_double = ctypes.POINTER(ctypes.c_double)
+    ptr_int32 = ctypes.POINTER(ctypes.c_int32)
     c_options = rascal_calculation_options_t()
     c_options.use_native_system = bool(options.get("use_native_system", False))
 
@@ -88,14 +88,14 @@ def _options_to_c(**options):
         c_options.selected_samples = None
         c_options.selected_samples_count = 0
     else:
-        c_options.selected_samples = samples.ctypes.data_as(ptr_double)
+        c_options.selected_samples = samples.ctypes.data_as(ptr_int32)
         c_options.selected_samples_count = samples.size
 
     if features is None:
         c_options.selected_features = None
         c_options.selected_features_count = 0
     else:
-        c_options.selected_features = features.ctypes.data_as(ptr_double)
+        c_options.selected_features = features.ctypes.data_as(ptr_int32)
         c_options.selected_features_count = features.size
 
     return c_options
@@ -165,7 +165,7 @@ class CalculatorBase:
             to run the calculation. Use ``None`` to run the calculation on all
             samples in the ``systems`` (this is the default).
 
-            This should be either a numpy ndarray with ``dtype=np.float64`` and
+            This should be either a numpy ndarray with ``dtype=np.int32`` and
             two dimensions; or a slice of a :py:class:`rascaline.descriptor.Indexes`
             instance extracted from a calculator. If a raw ndarray is used, the
             first dimension of the array is the list of all samples to consider;
@@ -179,7 +179,7 @@ class CalculatorBase:
             which to run the calculation. Use ``None`` to run the calculation on
             all features (this is the default).
 
-            This should be either a numpy ndarray with ``dtype=np.float64`` and
+            This should be either a numpy ndarray with ``dtype=np.int32`` and
             two dimensions; or a slice of a :py:class:`rascaline.descriptor.Indexes`
             instance extracted from a calculator. If a raw ndarray is used, the
             first dimension of the array is the list of all features to

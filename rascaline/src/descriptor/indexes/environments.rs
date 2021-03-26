@@ -36,9 +36,9 @@ impl EnvironmentIndexes for StructureEnvironment {
         for value in samples.iter() {
             let system = value[0];
             for atom in 0..systems[system.usize()].size() {
-                gradients.add(&[system, IndexValue::from(atom), IndexValue::from(0_usize)]);
-                gradients.add(&[system, IndexValue::from(atom), IndexValue::from(1_usize)]);
-                gradients.add(&[system, IndexValue::from(atom), IndexValue::from(2_usize)]);
+                gradients.add(&[system, IndexValue::from(atom), IndexValue::from(0)]);
+                gradients.add(&[system, IndexValue::from(atom), IndexValue::from(1)]);
+                gradients.add(&[system, IndexValue::from(atom), IndexValue::from(2)]);
             }
         }
 
@@ -112,9 +112,9 @@ impl EnvironmentIndexes for AtomEnvironment {
         for (structure, atom, neighbor) in indexes {
             let atom = IndexValue::from(atom);
             let neighbor = IndexValue::from(neighbor);
-            gradients.add(&[structure, atom, neighbor, IndexValue::from(0_usize)]);
-            gradients.add(&[structure, atom, neighbor, IndexValue::from(1_usize)]);
-            gradients.add(&[structure, atom, neighbor, IndexValue::from(2_usize)]);
+            gradients.add(&[structure, atom, neighbor, IndexValue::from(0)]);
+            gradients.add(&[structure, atom, neighbor, IndexValue::from(1)]);
+            gradients.add(&[structure, atom, neighbor, IndexValue::from(2)]);
         }
 
         return Some(gradients.finish());
@@ -130,7 +130,7 @@ mod tests {
     /// Convenience macro to create IndexValue
     macro_rules! v {
         ($value: expr) => {
-            crate::descriptor::indexes::IndexValue::from($value as f64)
+            crate::descriptor::indexes::IndexValue::from($value)
         };
     }
 

@@ -36,13 +36,13 @@ impl CalculatorBase for DummyCalculator {
     }
 
     fn features_names(&self) -> Vec<&str> {
-        vec!["index_delta", "x_y_z", "float"]
+        vec!["index_delta", "x_y_z"]
     }
 
     fn features(&self) -> Indexes {
         let mut features = IndexesBuilder::new(self.features_names());
-        features.add(&[IndexValue::from(1_usize), IndexValue::from(0_isize), IndexValue::from(1.2)]);
-        features.add(&[IndexValue::from(0_usize), IndexValue::from(1_isize), IndexValue::from(3.2)]);
+        features.add(&[IndexValue::from(1), IndexValue::from(0)]);
+        features.add(&[IndexValue::from(0), IndexValue::from(1)]);
         features.finish()
     }
 
@@ -56,8 +56,8 @@ impl CalculatorBase for DummyCalculator {
 
     fn check_features(&self, indexes: &Indexes) {
         assert_eq!(indexes.names(), self.features_names());
-        let first = [IndexValue::from(1_usize), IndexValue::from(0_isize), IndexValue::from(1.2)];
-        let second = [IndexValue::from(0_usize), IndexValue::from(1_isize), IndexValue::from(3.2)];
+        let first = [IndexValue::from(1), IndexValue::from(0)];
+        let second = [IndexValue::from(0), IndexValue::from(1)];
         for value in indexes.iter() {
             assert!(value == first || value == second);
         }
@@ -207,7 +207,7 @@ mod tests {
         let mut descriptor = Descriptor::new();
 
         let mut samples = IndexesBuilder::new(vec!["structure", "center"]);
-        samples.add(&[IndexValue::from(0_usize), IndexValue::from(1_usize)]);
+        samples.add(&[IndexValue::from(0), IndexValue::from(1)]);
 
         let options = CalculationOptions {
             selected_samples: SelectedIndexes::Some(samples.finish()),
@@ -219,8 +219,8 @@ mod tests {
         assert_eq!(descriptor.values.shape(), [1, 2]);
         assert_eq!(descriptor.values.slice(s![0, ..]), aview1(&[10.0, 0.16649999999999998]));
 
-        let mut features = IndexesBuilder::new(vec!["index_delta", "x_y_z", "float"]);
-        features.add(&[IndexValue::from(0_usize), IndexValue::from(1_isize), IndexValue::from(3.2)]);
+        let mut features = IndexesBuilder::new(vec!["index_delta", "x_y_z"]);
+        features.add(&[IndexValue::from(0), IndexValue::from(1)]);
         let options = CalculationOptions {
             selected_samples: SelectedIndexes::All,
             selected_features: SelectedIndexes::Some(features.finish()),

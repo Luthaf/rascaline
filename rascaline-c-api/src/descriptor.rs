@@ -196,7 +196,7 @@ pub enum rascal_indexes {
 pub unsafe extern fn rascal_descriptor_indexes(
     descriptor: *const rascal_descriptor_t,
     indexes: rascal_indexes,
-    data: *mut *const f64,
+    data: *mut *const i32,
     count: *mut usize,
     size: *mut usize,
 ) -> rascal_status_t {

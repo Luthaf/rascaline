@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-from ctypes import c_double, c_char_p, POINTER, ARRAY
+from ctypes import c_double, c_int32, c_char_p, POINTER, ARRAY
 
 from ._rascaline import c_uintptr_t, rascal_indexes
 from .clib import _get_library
@@ -22,7 +22,7 @@ class Indexes(np.ndarray):
         assert len(shape) == 2
         assert len(names) == shape[1]
 
-        dtype = [(name, np.float64) for name in names]
+        dtype = [(name, np.int32) for name in names]
         if ptr is not None:
             array = np.ctypeslib.as_array(ptr, shape=shape)
             array.flags.writeable = False
@@ -102,7 +102,7 @@ class Descriptor:
     def _indexes(self, kind):
         count = c_uintptr_t()
         size = c_uintptr_t()
-        data = POINTER(c_double)()
+        data = POINTER(c_int32)()
         self._lib.rascal_descriptor_indexes(self, kind.value, data, count, size)
 
         StringArray = c_char_p * size.value

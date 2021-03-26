@@ -65,9 +65,9 @@ class rascal_system_t(ctypes.Structure):
 class rascal_calculation_options_t(ctypes.Structure):
     _fields_ = [
         ("use_native_system", ctypes.c_bool),
-        ("selected_samples", POINTER(ctypes.c_double)),
+        ("selected_samples", POINTER(ctypes.c_int32)),
         ("selected_samples_count", c_uintptr_t),
-        ("selected_features", POINTER(ctypes.c_double)),
+        ("selected_features", POINTER(ctypes.c_int32)),
         ("selected_features_count", c_uintptr_t),
     ]
 
@@ -109,7 +109,7 @@ def setup_functions(lib):
     lib.rascal_descriptor_indexes.argtypes = [
         POINTER(rascal_descriptor_t),
         ctypes.c_int,
-        POINTER(POINTER(ctypes.c_double)),
+        POINTER(POINTER(ctypes.c_int32)),
         POINTER(c_uintptr_t),
         POINTER(c_uintptr_t)
     ]

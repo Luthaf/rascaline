@@ -219,8 +219,8 @@ mod tests {
 
         let mut samples = IndexesBuilder::new(vec!["structure", "center", "species_center", "species_neighbor"]);
         samples.add(&[
-            IndexValue::from(0_usize), IndexValue::from(1_usize),
-            IndexValue::from(1_usize), IndexValue::from(123456_usize)
+            IndexValue::from(0_usize), IndexValue::from(1),
+            IndexValue::from(1_usize), IndexValue::from(123456)
         ]);
         let options = CalculationOptions {
             selected_samples: SelectedIndexes::Some(samples.finish()),
@@ -233,8 +233,8 @@ mod tests {
         assert_eq!(descriptor.values.slice(s![0, ..]), aview1(&[0.957897074324794, 1.5, 1.5]));
 
         let mut features = IndexesBuilder::new(vec!["neighbor"]);
-        features.add(&[IndexValue::from(0_usize)]);
-        features.add(&[IndexValue::from(2_usize)]);
+        features.add(&[IndexValue::from(0)]);
+        features.add(&[IndexValue::from(2)]);
 
         let options = CalculationOptions {
             selected_samples: SelectedIndexes::All,

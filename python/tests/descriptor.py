@@ -86,7 +86,7 @@ class TestDummyDescriptor(unittest.TestCase):
         # view & reshape for easier direct comparison of values
         # numpy only consider structured arrays to be equal if they have
         # the same dtype
-        environments = environments.view(dtype=np.float64).reshape(
+        environments = environments.view(dtype=np.int32).reshape(
             (environments.shape[0], -1)
         )
         self.assertTrue(np.all(environments[0] == [0, 0]))
@@ -123,7 +123,7 @@ class TestDummyDescriptor(unittest.TestCase):
         # view & reshape for easier direct comparison of values
         # numpy only consider structured arrays to be equal if they have
         # the same dtype
-        gradients_environments = gradients_environments.view(dtype=np.float64).reshape(
+        gradients_environments = gradients_environments.view(dtype=np.int32).reshape(
             (gradients_environments.shape[0], -1)
         )
 
@@ -163,9 +163,9 @@ class TestDummyDescriptor(unittest.TestCase):
         # view & reshape for easier direct comparison of values
         # numpy only consider structured arrays to be equal if they have
         # the same dtype
-        features = features.view(dtype=np.float64).reshape((features.shape[0], -1))
-        self.assertTrue(np.all(features[0] == [1, 0, 1.2]))
-        self.assertTrue(np.all(features[1] == [0, 1, 3.2]))
+        features = features.view(dtype=np.int32).reshape((features.shape[0], -1))
+        self.assertTrue(np.all(features[0] == [1, 0]))
+        self.assertTrue(np.all(features[1] == [0, 1]))
 
     def test_densify(self):
         system = TestSystem()

@@ -248,17 +248,17 @@ mod tests {
     use ndarray::array;
 
     fn dummy_features() -> Indexes {
-        let mut features = IndexesBuilder::new(vec!["foo", "bar", "baz"]);
-        features.add(&[IndexValue::from(0_usize), IndexValue::from(1_isize), IndexValue::from(0.3)]);
-        features.add(&[IndexValue::from(4_usize), IndexValue::from(2_isize), IndexValue::from(3.3)]);
-        features.add(&[IndexValue::from(1_usize), IndexValue::from(0_isize), IndexValue::from(2.3)]);
+        let mut features = IndexesBuilder::new(vec!["foo", "bar"]);
+        features.add(&[IndexValue::from(0), IndexValue::from(-1)]);
+        features.add(&[IndexValue::from(4), IndexValue::from(-2)]);
+        features.add(&[IndexValue::from(1), IndexValue::from(-5)]);
         return features.finish();
     }
 
     /// Convenience macro to create IndexValue
     macro_rules! v {
         ($value: expr) => {
-        crate::descriptor::indexes::IndexValue::from($value as f64)
+            crate::descriptor::indexes::IndexValue::from($value)
         };
     }
 

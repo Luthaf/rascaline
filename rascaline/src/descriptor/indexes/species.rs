@@ -47,9 +47,9 @@ impl EnvironmentIndexes for StructureSpeciesEnvironment {
             for (i_atom, &species) in species.iter().enumerate() {
                 // only atoms with the same species participate to the gradient
                 if species == alpha.usize() {
-                    gradients.add(&[i_system, alpha, IndexValue::from(i_atom), IndexValue::from(0_usize)]);
-                    gradients.add(&[i_system, alpha, IndexValue::from(i_atom), IndexValue::from(1_usize)]);
-                    gradients.add(&[i_system, alpha, IndexValue::from(i_atom), IndexValue::from(2_usize)]);
+                    gradients.add(&[i_system, alpha, IndexValue::from(i_atom), IndexValue::from(0)]);
+                    gradients.add(&[i_system, alpha, IndexValue::from(i_atom), IndexValue::from(1)]);
+                    gradients.add(&[i_system, alpha, IndexValue::from(i_atom), IndexValue::from(2)]);
                 }
             }
         }
@@ -172,9 +172,9 @@ impl EnvironmentIndexes for AtomSpeciesEnvironment {
             let alpha = IndexValue::from(a);
             let beta = IndexValue::from(b);
             let neighbor = IndexValue::from(n);
-            gradients.add(&[system, center, alpha, beta, neighbor, IndexValue::from(0_usize)]);
-            gradients.add(&[system, center, alpha, beta, neighbor, IndexValue::from(1_usize)]);
-            gradients.add(&[system, center, alpha, beta, neighbor, IndexValue::from(2_usize)]);
+            gradients.add(&[system, center, alpha, beta, neighbor, IndexValue::from(0)]);
+            gradients.add(&[system, center, alpha, beta, neighbor, IndexValue::from(1)]);
+            gradients.add(&[system, center, alpha, beta, neighbor, IndexValue::from(2)]);
         }
 
         return Some(gradients.finish());
@@ -355,7 +355,7 @@ mod tests {
     /// Convenience macro to create IndexValue
     macro_rules! v {
         ($value: expr) => {
-            crate::descriptor::indexes::IndexValue::from($value as f64)
+            crate::descriptor::indexes::IndexValue::from($value)
         };
     }
 
