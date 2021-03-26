@@ -12,3 +12,6 @@ pub use self::hypergeometric::{HyperGeometricSphericalExpansion, HyperGeometricP
 
 mod gto;
 pub use self::gto::{GtoRadialIntegral, GtoParameters};
+
+mod spline;
+pub use self::spline::{SplinedRadialIntegral, SplinedRIParameters};
