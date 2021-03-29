@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet, HashMap};
+use std::collections::BTreeSet;
 
 use crate::{CalculationOptions, Calculator, SelectedIndexes, descriptor::{AtomSpeciesEnvironment, EnvironmentIndexes, IndexValue, Indexes, IndexesBuilder}};
 use crate::descriptor::ThreeBodiesSpeciesEnvironment;
@@ -132,6 +132,22 @@ impl std::fmt::Debug for SoapPowerSpectrum {
     }
 }
 
+/// Mapping between the feature index of the power spectrum (indexed with `n1,
+/// n2, l`) and the spherical expansion (indexed with `n, l, m`). Each power
+/// spectrum feature corresponds to a block (m from -l to l) of spherical
+/// expansion features.
+struct FeatureBlock {
+    /// angular basis number for this feature block. The block size is 2l + 1,
+    /// corresponding to all m values from -l to l
+    l: isize,
+    /// Index of the first feature in the spherical expansion (corresponding to
+    /// `n1, l, m=-l`)
+    start_n1_l: usize,
+    /// Index of the second feature in the spherical expansion (corresponding to
+    /// `n2, l, m=-l`)
+    start_n2_l: usize,
+}
+
 impl CalculatorBase for SoapPowerSpectrum {
     fn name(&self) -> String {
         "SOAP power spectrum".into()
@@ -207,21 +223,20 @@ impl CalculatorBase for SoapPowerSpectrum {
         ).expect("failed to compute spherical expansion");
 
         // Find out where feature blocks of the spherical expansion are located
-        let mut feature_block_starts = HashMap::new();
+        let mut feature_blocks = Vec::with_capacity(descriptor.features.count());
         for feature in descriptor.features.iter() {
             let n1 = feature[0];
             let n2 = feature[1];
             let l = feature[2].isize();
 
-            let feature_start_n1 = self.spherical_expansion.features.position(
+            let start_n1_l = self.spherical_expansion.features.position(
                 &[n1, IndexValue::from(l), IndexValue::from(-l)]
-            ).expect("missing feature in spherical expansion");
-            let feature_start_n2 = self.spherical_expansion.features.position(
+            ).expect("missing feature `n1, l, m` in spherical expansion");
+            let start_n2_l = self.spherical_expansion.features.position(
                 &[n2, IndexValue::from(l), IndexValue::from(-l)]
-            ).expect("missing feature in spherical expansion");
+            ).expect("missing feature `n2, l, m` in spherical expansion");
 
-            feature_block_starts.insert((n1, l), feature_start_n1);
-            feature_block_starts.insert((n2, l), feature_start_n2);
+            feature_blocks.push(FeatureBlock { l, start_n1_l, start_n2_l });
         }
 
         for (environment_i, environment) in descriptor.environments.iter().enumerate() {
@@ -238,20 +253,13 @@ impl CalculatorBase for SoapPowerSpectrum {
                 structure, center, species_center, species_neighbor_2
             ]).expect("missing data for one of the neighbor species");
 
-            for (feature_i, feature) in descriptor.features.iter().enumerate() {
-                let n1 = feature[0];
-                let n2 = feature[1];
-                let l = feature[2].isize();
-
-                let feature_start_n1 = feature_block_starts[&(n1, l)];
-                let feature_start_n2 = feature_block_starts[&(n2, l)];
-
+            for (feature_i, &FeatureBlock { l, start_n1_l, start_n2_l }) in feature_blocks.iter().enumerate() {
                 let mut sum = 0.0;
                 for (index_m, m) in (-l..=l).enumerate() {
-                    let feature_1 = feature_start_n1 + index_m;
-                    let feature_2 = feature_start_n2 + index_m;
+                    let feature_1 = start_n1_l + index_m;
+                    let feature_2 = start_n2_l + index_m;
                     // this code assumes that all m values for a given n/l are
-                    // consecutive
+                    // consecutive, let's double check it
                     debug_assert_eq!(self.spherical_expansion.features[feature_1][2].isize(), m);
                     debug_assert_eq!(self.spherical_expansion.features[feature_2][2].isize(), m);
 
