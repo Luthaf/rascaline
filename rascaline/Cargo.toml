@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["Luthaf <luthaf@luthaf.fr>"]
 edition = "2018"
 
+[lib]
+bench = false
+
 [[bench]]
 name = "spherical-harmonics"
 harness = false
