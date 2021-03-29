@@ -220,6 +220,34 @@ impl ThreeBodiesSpeciesEnvironment {
     }
 }
 
+/// A Set built as a sorted vector
+struct SortedVecSet<T> {
+    data: Vec<T>
+}
+
+impl<T: Ord> SortedVecSet<T> {
+    fn new() -> Self {
+        SortedVecSet {
+            data: Vec::new()
+        }
+    }
+
+    fn insert(&mut self, value: T) {
+        match self.data.binary_search(&value) {
+            Ok(_) => {},
+            Err(index) => self.data.insert(index, value),
+        }
+    }
+}
+
+impl<T> IntoIterator for SortedVecSet<T> {
+    type Item = T;
+    type IntoIter = std::vec::IntoIter<T>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.data.into_iter()
+    }
+}
+
 impl EnvironmentIndexes for ThreeBodiesSpeciesEnvironment {
     fn names(&self) -> Vec<&str> {
         vec!["structure", "center", "species_center", "species_neighbor_1", "species_neighbor_2"]
@@ -230,7 +258,7 @@ impl EnvironmentIndexes for ThreeBodiesSpeciesEnvironment {
         // Accumulate indexes in a set first to ensure uniqueness of the indexes
         // even if their are multiple neighbors of the same specie around a
         // given center
-        let mut set = BTreeSet::new();
+        let mut set = SortedVecSet::new();
 
         let sort_pair = |i, j| {
             if i < j { (i, j) } else { (j, i) }
