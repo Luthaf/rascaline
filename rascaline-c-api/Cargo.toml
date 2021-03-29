@@ -7,6 +7,7 @@ edition = "2018"
 [lib]
 name = "rascaline"
 crate-type = ["cdylib"]
+bench = false
 
 [dependencies]
 rascaline = {path = "../rascaline", version = "0.1.0"}

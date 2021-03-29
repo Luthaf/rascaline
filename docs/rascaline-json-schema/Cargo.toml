@@ -8,6 +8,8 @@ publish = false
 [[bin]]
 name = "rascaline-json-schema"
 path = "main.rs"
+bench = false
+test = false
 
 [dependencies]
 rascaline = {path = "../../rascaline"}
