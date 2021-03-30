@@ -1,6 +1,9 @@
 use crate::descriptor::{Descriptor, Indexes, EnvironmentIndexes};
 use crate::system::System;
 
+#[cfg(test)]
+mod tests_utils;
+
 /// TODO: docs
 ///
 /// `std::panic::RefUnwindSafe` is a required super-trait to enable passing

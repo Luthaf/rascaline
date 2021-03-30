@@ -436,12 +436,8 @@ fn sort_pair(pair: &Pair) -> (usize, usize) {
 #[cfg(test)]
 mod tests {
     use crate::system::test_systems;
-    use crate::descriptor::{IndexValue, IndexesBuilder};
-    use crate::{Descriptor, Calculator, System};
-    use crate::{CalculationOptions, SelectedIndexes};
-
-    use approx::assert_relative_eq;
-    use ndarray::s;
+    use crate::descriptor::{Indexes, IndexValue, IndexesBuilder};
+    use crate::{Descriptor, Calculator};
 
     use super::{SphericalExpansion, SphericalExpansionParameters};
     use super::{CutoffFunction, RadialBasis};
@@ -496,84 +492,47 @@ mod tests {
 
     #[test]
     fn finite_differences() {
-        let mut calculator = Calculator::from(Box::new(SphericalExpansion::new(
+        use super::super::super::tests_utils::{MovedAtomIndex, ChangedGradientIndex};
+
+        let calculator = Calculator::from(Box::new(SphericalExpansion::new(
             parameters(true)
         )) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
-        let mut reference = Descriptor::new();
-        calculator.compute(&mut systems.get(), &mut reference, Default::default()).unwrap();
+        let system = systems.systems.pop().unwrap();
 
-        // exact gradients for spherical expansion are regression-tested in
-        // `rascaline/tests/spherical-expansion.rs`
-
-        let gradients_indexes = reference.gradients_indexes.as_ref().unwrap();
-        assert_eq!(
-            gradients_indexes.names(),
-            ["structure", "center", "species_center", "species_neighbor", "neighbor", "spatial"]
-        );
-
-        // get the list of modified gradient environments when moving atom_i
-        let modified_indexes = |atom_i: usize, spatial_index: usize| {
+        let compute_modified_indexes = |gradients_indexes: &Indexes, moved: MovedAtomIndex| {
             let mut results = Vec::new();
             for (env_i, env) in gradients_indexes.iter().enumerate() {
                 let center = env[1];
                 let neighbor = env[4];
                 let spatial = env[5];
-                if center.usize() != atom_i && neighbor.usize() == atom_i && spatial.usize() == spatial_index {
-                    results.push((env_i, &env[..4]));
+                if center.usize() != moved.center &&
+                   neighbor.usize() == moved.center &&
+                   spatial.usize() == moved.spatial
+                {
+                    results.push(ChangedGradientIndex {
+                        gradient_index: env_i,
+                        environment: env[..4].to_vec(),
+                    });
                 }
             }
             return results;
         };
 
-        let delta = 1e-9;
-        let gradients = reference.gradients.as_ref().unwrap();
-        for atom_i in 0..systems.systems[0].size() {
-            for spatial in 0..3 {
-                systems.systems[0].positions_mut()[atom_i][spatial] += delta;
-
-                let mut updated = Descriptor::new();
-                calculator.compute(&mut systems.get(), &mut updated, Default::default()).unwrap();
-
-                for (grad_i, env) in modified_indexes(atom_i, spatial) {
-                    let env_i = reference.environments.position(env).expect(
-                        "missing environment in reference values"
-                    );
-                    assert_eq!(updated.environments.position(env).unwrap(), env_i);
-
-                    let value = reference.values.slice(s![env_i, ..]);
-                    let value_delta = updated.values.slice(s![env_i, ..]);
-                    let gradient = gradients.slice(s![grad_i, ..]);
-
-                    assert_eq!(value.shape(), value_delta.shape());
-                    assert_eq!(value.shape(), gradient.shape());
-
-                    let mut finite_difference = value_delta.to_owned().clone();
-                    finite_difference -= &value;
-                    finite_difference /= delta;
-
-                    assert_relative_eq!(
-                        finite_difference, gradient,
-                        epsilon=1e-9,
-                        max_relative=5e-4,
-                    );
-                }
-
-                systems.systems[0].positions_mut()[atom_i][spatial] -= delta;
-            }
-        }
+        let max_relative = 5e-4;
+        super::super::super::tests_utils::finite_difference(
+            calculator, system, compute_modified_indexes, max_relative
+        );
     }
 
     #[test]
     fn compute_partial() {
-        let mut calculator = Calculator::from(Box::new(SphericalExpansion::new(
+        let calculator = Calculator::from(Box::new(SphericalExpansion::new(
             parameters(true)
         )) as Box<dyn CalculatorBase>);
 
-        let mut systems = test_systems(&["water", "methane"]);
-        let mut full = Descriptor::new();
-        calculator.compute(&mut systems.get(), &mut full, Default::default()).unwrap();
+        let systems = test_systems(&["water", "methane"]);
 
         // partial set of features, all environments
         let mut features = IndexesBuilder::new(vec!["n", "l", "m"]);
@@ -585,88 +544,16 @@ mod tests {
         features.add(&[v!(1), v!(1), v!(-1)]);
         let features = features.finish();
 
-        let mut partial = Descriptor::new();
-        let options = CalculationOptions {
-            selected_samples: SelectedIndexes::All,
-            selected_features: SelectedIndexes::Some(features.clone()),
-            ..Default::default()
-        };
-        calculator.compute(&mut systems.get(), &mut partial, options).unwrap();
+        let mut samples = IndexesBuilder::new(vec!["structure", "center", "species_center", "species_neighbor"]);
+        samples.add(&[v!(0), v!(1), v!(1), v!(1)]);
+        samples.add(&[v!(0), v!(2), v!(1), v!(123456)]);
+        samples.add(&[v!(1), v!(0), v!(6), v!(1)]);
+        samples.add(&[v!(1), v!(2), v!(1), v!(1)]);
+        let samples = samples.finish();
 
-        assert_eq!(full.environments, partial.environments);
-        for (partial_i, feature) in features.iter().enumerate() {
-            let index = full.features.position(feature).unwrap();
-            assert_eq!(
-                full.values.slice(s![.., index]),
-                partial.values.slice(s![.., partial_i])
-            );
-
-            assert_eq!(
-                full.gradients.as_ref().unwrap().slice(s![.., index]),
-                partial.gradients.as_ref().unwrap().slice(s![.., partial_i])
-            );
-        }
-
-        // all features, partial set of environments
-        let mut environments = IndexesBuilder::new(vec!["structure", "center", "species_center", "species_neighbor"]);
-        environments.add(&[v!(0), v!(1), v!(1), v!(1)]);
-        environments.add(&[v!(0), v!(2), v!(1), v!(123456)]);
-        environments.add(&[v!(1), v!(0), v!(6), v!(1)]);
-        environments.add(&[v!(1), v!(2), v!(1), v!(1)]);
-        let environments = environments.finish();
-
-        let options = CalculationOptions {
-            selected_samples: SelectedIndexes::Some(environments.clone()),
-            selected_features: SelectedIndexes::All,
-            ..Default::default()
-        };
-        calculator.compute(&mut systems.get(), &mut partial, options).unwrap();
-
-        assert_eq!(full.features, partial.features);
-        for (partial_i, environment) in environments.iter().enumerate() {
-            let index = full.environments.position(environment).unwrap();
-            assert_eq!(
-                full.values.slice(s![index, ..]),
-                partial.values.slice(s![partial_i, ..])
-            );
-
-        }
-        for (partial_i, environment) in partial.gradients_indexes.as_ref().unwrap().iter().enumerate() {
-            let index = full.gradients_indexes.as_ref().unwrap().position(environment).unwrap();
-            assert_eq!(
-                full.gradients.as_ref().unwrap().slice(s![index, ..]),
-                partial.gradients.as_ref().unwrap().slice(s![partial_i, ..])
-            );
-        }
-
-        // partial set of features, partial set of environments
-        let options = CalculationOptions {
-            selected_samples: SelectedIndexes::Some(environments.clone()),
-            selected_features: SelectedIndexes::Some(features.clone()),
-            ..Default::default()
-        };
-        calculator.compute(&mut systems.get(), &mut partial, options).unwrap();
-        for (env_i, environment) in environments.iter().enumerate() {
-            for (feature_i, feature) in features.iter().enumerate() {
-                let full_env = full.environments.position(environment).unwrap();
-                let full_feature = full.features.position(feature).unwrap();
-                assert_eq!(
-                    full.values[[full_env, full_feature]],
-                    partial.values[[env_i, feature_i]]
-                );
-            }
-        }
-
-        for (env_i, environment) in partial.gradients_indexes.as_ref().unwrap().iter().enumerate() {
-            for (feature_i, feature) in features.iter().enumerate() {
-                let full_env = full.gradients_indexes.as_ref().unwrap().position(environment).unwrap();
-                let full_feature = full.features.position(feature).unwrap();
-                assert_eq!(
-                    full.gradients.as_ref().unwrap()[[full_env, full_feature]],
-                    partial.gradients.as_ref().unwrap()[[env_i, feature_i]]
-                );
-            }
-        }
+        super::super::super::tests_utils::compute_partial(
+            calculator, systems, samples, features, true
+        );
     }
 
     mod cutoff_function {

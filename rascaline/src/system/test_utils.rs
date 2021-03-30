@@ -1,6 +1,7 @@
 use crate::{System, Vector3D};
 use super::{UnitCell, SimpleSystem};
 
+#[derive(Clone, Debug)]
 pub struct SimpleSystems {
     pub(crate) systems: Vec<SimpleSystem>
 }
