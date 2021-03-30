@@ -1,6 +1,6 @@
 import ase
 
-from rascaline import SphericalExpansion
+from rascaline import SoapPowerSpectrum
 
 from save_data import save_calculator_input, save_numpy_array
 
@@ -36,19 +36,8 @@ hyperparameters = {
     },
 }
 
-calculator = SphericalExpansion(**hyperparameters)
+calculator = SoapPowerSpectrum(**hyperparameters)
 descriptor = calculator.compute(frame, use_native_system=True)
 
-save_calculator_input("spherical-expansion-values", frame, hyperparameters)
-save_numpy_array("spherical-expansion-values", descriptor.values)
-
-# Use less values for gradients to keep the file size low
-hyperparameters["max_radial"] = 4
-hyperparameters["max_angular"] = 4
-hyperparameters["gradients"] = True
-
-calculator = SphericalExpansion(**hyperparameters)
-descriptor = calculator.compute(frame, use_native_system=True)
-
-save_calculator_input("spherical-expansion-gradients", frame, hyperparameters)
-save_numpy_array("spherical-expansion-gradients", descriptor.gradients)
+save_calculator_input("soap-power-spectrum-values", frame, hyperparameters)
+save_numpy_array("soap-power-spectrum-values", descriptor.values)

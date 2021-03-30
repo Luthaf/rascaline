@@ -268,5 +268,88 @@ impl CalculatorBase for SoapPowerSpectrum {
 
 #[cfg(test)]
 mod tests {
+    use crate::system::test_systems;
+    use crate::descriptor::{IndexValue, IndexesBuilder};
+    use crate::{Descriptor, Calculator};
 
+    use super::*;
+    use super::super::super::CalculatorBase;
+
+    /// Convenience macro to create IndexValue
+    macro_rules! v {
+        ($value: expr) => {
+            crate::descriptor::IndexValue::from($value as f64)
+        };
+    }
+
+    fn parameters(gradients: bool) -> PowerSpectrumParameters {
+        PowerSpectrumParameters {
+            atomic_gaussian_width: 0.3,
+            cutoff: 3.5,
+            cutoff_function: CutoffFunction::ShiftedCosine { width: 0.5 },
+            gradients: gradients,
+            max_radial: 6,
+            max_angular: 6,
+            radial_basis: RadialBasis::Gto {}
+        }
+    }
+
+    #[test]
+    fn values() {
+        let mut calculator = Calculator::from(Box::new(SoapPowerSpectrum::new(
+            parameters(false)
+        )) as Box<dyn CalculatorBase>);
+
+        let mut systems = test_systems(&["water"]);
+        let mut descriptor = Descriptor::new();
+        calculator.compute(&mut systems.get(), &mut descriptor, Default::default()).unwrap();
+
+        assert_eq!(descriptor.environments.names(), ["structure", "center", "species_center", "species_neighbor_1", "species_neighbor_2"]);
+        assert_eq!(descriptor.features.names(), ["n1", "n2", "l"]);
+
+        let mut index = 0;
+        for n1 in 0..6_usize {
+            for n2 in 0..6_usize {
+                for l in 0..=6_isize {
+                    let expected = [IndexValue::from(n1), IndexValue::from(n2), IndexValue::from(l)];
+                    assert_eq!(descriptor.features[index], expected);
+                    index += 1;
+                }
+            }
+        }
+
+        // exact values for power spectrum are regression-tested in
+        // `rascaline/tests/soap-power-spectrum.rs`
+    }
+
+    #[test]
+    fn compute_partial() {
+        let calculator = Calculator::from(Box::new(SoapPowerSpectrum::new(
+            parameters(false)
+        )) as Box<dyn CalculatorBase>);
+
+        let systems = test_systems(&["water", "methane"]);
+
+        let mut samples = IndexesBuilder::new(vec!["structure", "center", "species_center", "species_neighbor_1", "species_neighbor_2"]);
+        samples.add(&[v!(0), v!(1), v!(1), v!(1), v!(1)]);
+        samples.add(&[v!(0), v!(2), v!(1), v!(123456), v!(123456)]);
+        samples.add(&[v!(1), v!(0), v!(6), v!(1), v!(6)]);
+        samples.add(&[v!(1), v!(2), v!(1), v!(1), v!(1)]);
+        let samples = samples.finish();
+
+        let mut features = IndexesBuilder::new(vec!["n1", "n2", "l"]);
+        features.add(&[v!(0), v!(1), v!(0)]);
+        features.add(&[v!(3), v!(3), v!(3)]);
+        features.add(&[v!(2), v!(3), v!(2)]);
+        features.add(&[v!(1), v!(4), v!(4)]);
+        features.add(&[v!(5), v!(2), v!(0)]);
+        features.add(&[v!(1), v!(1), v!(2)]);
+        let features = features.finish();
+
+        super::super::super::tests_utils::compute_partial(
+            calculator, systems, samples, features, false
+        );
+    }
+
+    // TODO: gradients & finite difference
 }
