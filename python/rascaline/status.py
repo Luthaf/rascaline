@@ -26,9 +26,7 @@ def _check_rascal_status_t(status):
 
 
 def _check_rascal_pointer(pointer):
-    try:
-        pointer.contents
-    except ValueError:
+    if not pointer:
         raise RascalError(last_error())
 
 
