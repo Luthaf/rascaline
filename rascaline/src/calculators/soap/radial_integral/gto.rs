@@ -136,7 +136,8 @@ impl GtoRadialIntegral {
             }
         }
 
-        // TODO: this is a over allocating mess
+        // TODO: this is not ideal, transforming from ndarray to nalgebra just
+        // to compute the eigen decomposition of the matrix.
         // compute normalization * overlap^-1/2
         let mut eigen = sorted_eigen(overlap); // .symmetric_eigen();
         for n in 0..parameters.max_radial {
@@ -159,7 +160,7 @@ impl GtoRadialIntegral {
             (parameters.max_radial, parameters.max_radial),
             gto_orthonormalization.data.as_vec().clone()
         ).expect("wrong matrix size for gto_orthonormalization");
-        // TODO end of mess
+        // TODO end
 
         let hypergeometric = HyperGeometricSphericalExpansion::new(parameters.max_radial, parameters.max_angular);
 
@@ -203,9 +204,10 @@ impl RadialIntegral for GtoRadialIntegral {
         self.hypergeometric.compute(distance, hyperg_parameters, values.view_mut(), gradients.as_mut().map(|g| g.view_mut()));
 
         let c = self.atomic_gaussian_constant;
+        let c_rij = c * distance;
+
         for n in 0..self.parameters.max_radial {
             let gto_constant = self.gto_gaussian_constants[n];
-            let c_rij = c * distance;
             // `(c * rij)^l`
             let mut c_rij_l = 1.0;
 
@@ -223,15 +225,27 @@ impl RadialIntegral for GtoRadialIntegral {
             }
         }
 
-        // TODO: this takes 2/3 of the time spend in this method, corresponding
-        // to the performance difference with librascal.
-        //
-        // We could use the same trick as librascal, i.e. orthonormalize the
-        // full spherical expansion coefficients instead of single radial
-        // integral evaluation, but this requires computing all n/l/m
-        // coefficients all the time, forbidding partial feature evaluation.
-        //
-        // Alternatively, we could use splined GTO and be happy.
+        // for r = 0, the formula used in the calculations above yield NaN,
+        // which in turns breaks the SplinedGto radial integral. From the
+        // analytical formula, the gradient is 0 everywhere expect for l=1
+        if distance == 0.0 {
+            if let Some(ref mut gradients) = gradients {
+                gradients.fill(0.0);
+
+                let l = 1;
+                for n in 0..self.parameters.max_radial {
+                    let gto_constant = self.gto_gaussian_constants[n];
+                    let a = 0.5 * (n + l) as f64 + 1.5;
+                    let b = 2.5;
+                    let c_dn = (c + gto_constant).powf(-a);
+                    let factor = c * c_dn;
+
+
+                    gradients[[n, l]] = gamma(a) / gamma(b) * factor;
+                }
+            }
+        }
+
         values.assign(&self.gto_orthonormalization.dot(&values));
         if let Some(ref mut gradients) = gradients {
             gradients.assign(&self.gto_orthonormalization.dot(&*gradients));
@@ -241,136 +255,157 @@ impl RadialIntegral for GtoRadialIntegral {
 
 #[cfg(test)]
 mod tests {
-    mod gto {
-        use approx::assert_relative_eq;
+    use approx::assert_relative_eq;
 
-        use super::super::{GtoRadialIntegral, GtoParameters, RadialIntegral};
-        use ndarray::Array2;
+    use super::super::{GtoRadialIntegral, GtoParameters, RadialIntegral};
+    use ndarray::Array2;
 
-        #[test]
-        #[should_panic = "max_radial must be at least 1"]
-        fn invalid_max_radial() {
-            GtoRadialIntegral::new(GtoParameters {
-                max_radial: 0,
-                max_angular: 4,
-                cutoff: 3.0,
-                atomic_gaussian_width: 0.5
-            });
-        }
+    #[test]
+    #[should_panic = "max_radial must be at least 1"]
+    fn invalid_max_radial() {
+        GtoRadialIntegral::new(GtoParameters {
+            max_radial: 0,
+            max_angular: 4,
+            cutoff: 3.0,
+            atomic_gaussian_width: 0.5
+        });
+    }
 
-        #[test]
-        #[should_panic = "cutoff must be a positive number"]
-        fn negative_cutoff() {
-            GtoRadialIntegral::new(GtoParameters {
-                max_radial: 10,
-                max_angular: 4,
-                cutoff: -3.0,
-                atomic_gaussian_width: 0.5
-            });
-        }
+    #[test]
+    #[should_panic = "cutoff must be a positive number"]
+    fn negative_cutoff() {
+        GtoRadialIntegral::new(GtoParameters {
+            max_radial: 10,
+            max_angular: 4,
+            cutoff: -3.0,
+            atomic_gaussian_width: 0.5
+        });
+    }
 
-        #[test]
-        #[should_panic = "cutoff must be a positive number"]
-        fn infinite_cutoff() {
-            GtoRadialIntegral::new(GtoParameters {
-                max_radial: 10,
-                max_angular: 4,
-                cutoff: std::f64::INFINITY,
-                atomic_gaussian_width: 0.5
-            });
-        }
+    #[test]
+    #[should_panic = "cutoff must be a positive number"]
+    fn infinite_cutoff() {
+        GtoRadialIntegral::new(GtoParameters {
+            max_radial: 10,
+            max_angular: 4,
+            cutoff: std::f64::INFINITY,
+            atomic_gaussian_width: 0.5
+        });
+    }
 
-        #[test]
-        #[should_panic = "atomic_gaussian_width must be a positive number"]
-        fn negative_atomic_gaussian_width() {
-            GtoRadialIntegral::new(GtoParameters {
-                max_radial: 10,
-                max_angular: 4,
-                cutoff: 3.0,
-                atomic_gaussian_width: -0.5
-            });
-        }
+    #[test]
+    #[should_panic = "atomic_gaussian_width must be a positive number"]
+    fn negative_atomic_gaussian_width() {
+        GtoRadialIntegral::new(GtoParameters {
+            max_radial: 10,
+            max_angular: 4,
+            cutoff: 3.0,
+            atomic_gaussian_width: -0.5
+        });
+    }
 
-        #[test]
-        #[should_panic = "atomic_gaussian_width must be a positive number"]
-        fn infinite_atomic_gaussian_width() {
-            GtoRadialIntegral::new(GtoParameters {
-                max_radial: 10,
-                max_angular: 4,
-                cutoff: 3.0,
-                atomic_gaussian_width: std::f64::INFINITY,
-            });
-        }
+    #[test]
+    #[should_panic = "atomic_gaussian_width must be a positive number"]
+    fn infinite_atomic_gaussian_width() {
+        GtoRadialIntegral::new(GtoParameters {
+            max_radial: 10,
+            max_angular: 4,
+            cutoff: 3.0,
+            atomic_gaussian_width: std::f64::INFINITY,
+        });
+    }
 
-        #[test]
-        #[should_panic = "radial overlap matrix is singular, try with a lower max_radial (current value is 30)"]
-        fn ill_conditioned_orthonormalization() {
-            GtoRadialIntegral::new(GtoParameters {
-                max_radial: 30,
-                max_angular: 3,
-                cutoff: 5.0,
-                atomic_gaussian_width: 0.5,
-            });
-        }
+    #[test]
+    #[should_panic = "radial overlap matrix is singular, try with a lower max_radial (current value is 30)"]
+    fn ill_conditioned_orthonormalization() {
+        GtoRadialIntegral::new(GtoParameters {
+            max_radial: 30,
+            max_angular: 3,
+            cutoff: 5.0,
+            atomic_gaussian_width: 0.5,
+        });
+    }
 
-        #[test]
-        #[should_panic = "wrong size for values array, expected [2, 4] but got [2, 3]"]
-        fn values_array_size() {
-            let gto = GtoRadialIntegral::new(GtoParameters {
-                max_radial: 2,
-                max_angular: 3,
-                cutoff: 5.0,
-                atomic_gaussian_width: 0.5,
-            });
-            let mut values = Array2::from_elem((2, 3), 0.0);
+    #[test]
+    #[should_panic = "wrong size for values array, expected [2, 4] but got [2, 3]"]
+    fn values_array_size() {
+        let gto = GtoRadialIntegral::new(GtoParameters {
+            max_radial: 2,
+            max_angular: 3,
+            cutoff: 5.0,
+            atomic_gaussian_width: 0.5,
+        });
+        let mut values = Array2::from_elem((2, 3), 0.0);
 
-            gto.compute(1.0, values.view_mut(), None);
-        }
+        gto.compute(1.0, values.view_mut(), None);
+    }
 
-        #[test]
-        #[should_panic = "wrong size for gradients array, expected [2, 4] but got [2, 3]"]
-        fn gradient_array_size() {
-            let gto = GtoRadialIntegral::new(GtoParameters {
-                max_radial: 2,
-                max_angular: 3,
-                cutoff: 5.0,
-                atomic_gaussian_width: 0.5,
-            });
-            let mut values = Array2::from_elem((2, 4), 0.0);
-            let mut gradients = Array2::from_elem((2, 3), 0.0);
+    #[test]
+    #[should_panic = "wrong size for gradients array, expected [2, 4] but got [2, 3]"]
+    fn gradient_array_size() {
+        let gto = GtoRadialIntegral::new(GtoParameters {
+            max_radial: 2,
+            max_angular: 3,
+            cutoff: 5.0,
+            atomic_gaussian_width: 0.5,
+        });
+        let mut values = Array2::from_elem((2, 4), 0.0);
+        let mut gradients = Array2::from_elem((2, 3), 0.0);
 
-            gto.compute(1.0, values.view_mut(), Some(gradients.view_mut()));
-        }
+        gto.compute(1.0, values.view_mut(), Some(gradients.view_mut()));
+    }
 
-        #[test]
-        fn gto_finite_differences() {
-            let max_radial = 8;
-            let max_angular = 8;
-            let gto = GtoRadialIntegral::new(GtoParameters {
-                max_radial: max_radial,
-                max_angular: max_angular,
-                cutoff: 5.0,
-                atomic_gaussian_width: 0.5,
-            });
+    #[test]
+    fn gradients_near_zero() {
+        let max_radial = 8;
+        let max_angular = 8;
+        let gto = GtoRadialIntegral::new(GtoParameters {
+            max_radial: max_radial,
+            max_angular: max_angular,
+            cutoff: 5.0,
+            atomic_gaussian_width: 0.5,
+        });
 
-            let rij = 3.4;
-            let delta = 1e-9;
+        let mut values = Array2::from_elem((max_radial, max_angular + 1), 0.0);
+        let mut gradients = Array2::from_elem((max_radial, max_angular + 1), 0.0);
+        let mut gradients_plus = Array2::from_elem((max_radial, max_angular + 1), 0.0);
+        gto.compute(0.0, values.view_mut(), Some(gradients.view_mut()));
+        gto.compute(1e-12, values.view_mut(), Some(gradients_plus.view_mut()));
 
-            let mut values = Array2::from_elem((max_radial, max_angular + 1), 0.0);
-            let mut values_delta = Array2::from_elem((max_radial, max_angular + 1), 0.0);
-            let mut gradients = Array2::from_elem((max_radial, max_angular + 1), 0.0);
-            gto.compute(rij, values.view_mut(), Some(gradients.view_mut()));
-            gto.compute(rij + delta, values_delta.view_mut(), None);
+        assert_relative_eq!(
+            gradients, gradients_plus,
+            epsilon=1e-9, max_relative=1e-6,
+        );
+    }
 
-            let finite_differences = (&values_delta - &values) / delta;
+    #[test]
+    fn gto_finite_differences() {
+        let max_radial = 8;
+        let max_angular = 8;
+        let gto = GtoRadialIntegral::new(GtoParameters {
+            max_radial: max_radial,
+            max_angular: max_angular,
+            cutoff: 5.0,
+            atomic_gaussian_width: 0.5,
+        });
 
-            for n in 0..max_radial {
-                for l in 0..(max_angular + 1) {
-                    assert_relative_eq!(
-                        finite_differences[[n, l]], gradients[[n, l]],
-                        epsilon=1e-5, max_relative=5e-5
-                    );
-                }
+        let rij = 3.4;
+        let delta = 1e-9;
+
+        let mut values = Array2::from_elem((max_radial, max_angular + 1), 0.0);
+        let mut values_delta = Array2::from_elem((max_radial, max_angular + 1), 0.0);
+        let mut gradients = Array2::from_elem((max_radial, max_angular + 1), 0.0);
+        gto.compute(rij, values.view_mut(), Some(gradients.view_mut()));
+        gto.compute(rij + delta, values_delta.view_mut(), None);
+
+        let finite_differences = (&values_delta - &values) / delta;
+
+        for n in 0..max_radial {
+            for l in 0..(max_angular + 1) {
+                assert_relative_eq!(
+                    finite_differences[[n, l]], gradients[[n, l]],
+                    epsilon=1e-5, max_relative=5e-5
+                );
             }
         }
     }
