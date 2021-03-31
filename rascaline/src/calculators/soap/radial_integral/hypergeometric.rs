@@ -1,7 +1,7 @@
 //! This module implement a modified version of Kummer's confluent
-//! hypergeometric function 1F1: `G(rij) = Γ(a) / Γ(b) exp(-c rij^2) 1F1(a, b, c^2
-//! rij^2 / (c + d)` where `a = (n + l + 3)/2`, `b = l + 3/2`, `c = 1 / 2σ^2`,
-//! `d = 1 / 2 (r_cut \sqrt(n) / (n_max + 1))^2`; σ is the atomic density
+//! hypergeometric function 1F1: `G(rij) = Γ(a) / Γ(b) exp(-c rij^2) 1F1(a, b,
+//! c^2 rij^2 / (c + d))` where `a = (n + l + 3) / 2`, `b = l + 3 / 2`, `c = 1 /
+//! 2σ^2`, `d = 1 / 2 (r_cut \sqrt(n) / (n_max + 1))^2`; σ is the atomic density
 //! gaussian width, `r_cut` the cutoff radius, `n_max` the number of radial
 //! basis, n the current radial basis index and l the current angular index.
 //!
