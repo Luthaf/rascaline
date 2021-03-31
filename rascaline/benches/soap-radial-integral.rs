@@ -1,77 +1,97 @@
-use rascaline::calculators::soap::{RadialIntegral, GtoParameters, GtoRadialIntegral};
+#![allow(clippy::needless_return)]
+
+use rascaline::calculators::soap::RadialIntegral;
+use rascaline::calculators::soap::{GtoParameters, GtoRadialIntegral};
+use rascaline::calculators::soap::{SplinedRadialIntegral, SplinedRIParameters};
 
 use ndarray::Array2;
 
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use criterion::{BenchmarkGroup, measurement::WallTime};
+
+fn benchmark_radial_integral(
+    mut group: BenchmarkGroup<'_, WallTime>,
+    benchmark_gradients: bool,
+    create_radial_integral: impl Fn(usize, usize) -> Box<dyn RadialIntegral>,
+) {
+    for &max_radial in black_box(&[2, 8, 14]) {
+        for &max_angular in black_box(&[1, 7, 15]) {
+            let ri = create_radial_integral(max_radial, max_angular);
+
+            let mut values = Array2::from_elem((max_radial, max_angular + 1), 0.0);
+            let mut gradients = Array2::from_elem((max_radial, max_angular + 1), 0.0);
+
+            // multiple random values spanning the whole range [0, cutoff)
+            let distances = [
+                0.145, 0.218, 0.585, 0.723, 1.011, 1.463, 1.560, 1.704,
+                2.109, 2.266, 2.852, 2.942, 3.021, 3.247, 3.859, 4.462,
+            ];
+
+            group.bench_function(&format!("n_max = {}, l_max = {}", max_radial, max_angular), |b| b.iter_custom(|repeat| {
+                let start = std::time::Instant::now();
+                for _ in 0..repeat {
+                    for &distance in &distances {
+                        if benchmark_gradients {
+                            ri.compute(distance, values.view_mut(), Some(gradients.view_mut()))
+                        } else {
+                            ri.compute(distance, values.view_mut(), None)
+                        }
+                    }
+                }
+                start.elapsed() / distances.len() as u32
+            }));
+        }
+    }
+}
 
 fn gto_radial_integral(c: &mut Criterion) {
-    let mut group = c.benchmark_group("GTO radial integral (per neighbor)");
+    let create_radial_integral = |max_radial, max_angular| {
+        let parameters = GtoParameters {
+            max_radial,
+            max_angular,
+            cutoff: 4.5,
+            atomic_gaussian_width: 0.5,
+        };
+        return Box::new(GtoRadialIntegral::new(parameters)) as Box<dyn RadialIntegral>;
+    };
+
+    let mut group = c.benchmark_group("GTO (per neighbor)");
     group.noise_threshold(0.05);
+    benchmark_radial_integral(group, false, create_radial_integral);
 
-    for &max_radial in black_box(&[2, 8, 14]) {
-        for &max_angular in black_box(&[1, 7, 15]) {
-            let parameters = GtoParameters {
-                max_radial,
-                max_angular,
-                cutoff: 4.5,
-                atomic_gaussian_width: 0.5,
-            };
-            let gto: Box<dyn RadialIntegral> = Box::new(GtoRadialIntegral::new(parameters));
-            let mut values = Array2::from_elem((max_radial, max_angular + 1), 0.0);
-
-            // multiple random values spanning the whole range [0, cutoff)
-            let distances = [
-                0.145, 0.218, 0.585, 0.723, 1.011, 1.463, 1.560, 1.704,
-                2.109, 2.266, 2.852, 2.942, 3.021, 3.247, 3.859, 4.462,
-            ];
-
-            group.bench_function(&format!("n_max = {}, l_max = {}", max_radial, max_angular), |b| b.iter_custom(|repeat| {
-                let start = std::time::Instant::now();
-                for _ in 0..repeat {
-                    for &distance in &distances {
-                        gto.compute(distance, values.view_mut(), None)
-                    }
-                }
-                start.elapsed() / distances.len() as u32
-            }));
-        }
-    }
+    let mut group = c.benchmark_group("GTO with gradients (per neighbor)");
+    group.noise_threshold(0.05);
+    benchmark_radial_integral(group, true, create_radial_integral);
 }
 
-fn gto_radial_integral_gradient(c: &mut Criterion) {
-    let mut group = c.benchmark_group("GTO radial integral with gradients (per neighbor)");
+fn splined_gto_radial_integral(c: &mut Criterion) {
+    let create_radial_integral = |max_radial, max_angular| {
+        let cutoff = 4.5;
+        let parameters = GtoParameters {
+            max_radial,
+            max_angular,
+            cutoff: cutoff,
+            atomic_gaussian_width: 0.5,
+        };
+        let gto = GtoRadialIntegral::new(parameters);
+
+        let parameters = SplinedRIParameters {
+            max_radial,
+            max_angular,
+            cutoff: cutoff,
+        };
+        let accuracy = 1e-8;
+        return Box::new(SplinedRadialIntegral::with_accuracy(parameters, accuracy, gto)) as Box<dyn RadialIntegral>;
+    };
+
+    let mut group = c.benchmark_group("Splined GTO (per neighbor)");
     group.noise_threshold(0.05);
+    benchmark_radial_integral(group, false, create_radial_integral);
 
-    for &max_radial in black_box(&[2, 8, 14]) {
-        for &max_angular in black_box(&[1, 7, 15]) {
-            let parameters = GtoParameters {
-                max_radial,
-                max_angular,
-                cutoff: 4.5,
-                atomic_gaussian_width: 0.5,
-            };
-            let gto: Box<dyn RadialIntegral> = Box::new(GtoRadialIntegral::new(parameters));
-            let mut values = Array2::from_elem((max_radial, max_angular + 1), 0.0);
-            let mut gradient = Array2::from_elem((max_radial, max_angular + 1), 0.0);
-
-            // multiple random values spanning the whole range [0, cutoff)
-            let distances = [
-                0.145, 0.218, 0.585, 0.723, 1.011, 1.463, 1.560, 1.704,
-                2.109, 2.266, 2.852, 2.942, 3.021, 3.247, 3.859, 4.462,
-            ];
-
-            group.bench_function(&format!("n_max = {}, l_max = {}", max_radial, max_angular), |b| b.iter_custom(|repeat| {
-                let start = std::time::Instant::now();
-                for _ in 0..repeat {
-                    for &distance in &distances {
-                        gto.compute(distance, values.view_mut(), Some(gradient.view_mut()))
-                    }
-                }
-                start.elapsed() / distances.len() as u32
-            }));
-        }
-    }
+    let mut group = c.benchmark_group("Splined GTO with gradients (per neighbor)");
+    group.noise_threshold(0.05);
+    benchmark_radial_integral(group, true, create_radial_integral);
 }
 
-criterion_group!(gto, gto_radial_integral, gto_radial_integral_gradient);
+criterion_group!(gto, gto_radial_integral, splined_gto_radial_integral);
 criterion_main!(gto);
