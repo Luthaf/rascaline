@@ -15,7 +15,7 @@ jobs:
       matrix:
         include:
           - os: ubuntu-18.04
-            rust-version: 1.42
+            rust-version: 1.45
             # check the build on a stock Ubuntu 18.04, including cmake 3.10
             container: ubuntu:18.04
             rust-target: x86_64-unknown-linux-gnu
