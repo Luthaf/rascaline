@@ -20,8 +20,8 @@ Installing the Python module
 
 .. _install-c-lib:
 
-Installing the C library
-------------------------
+Installing the C/C++ library
+----------------------------
 
 This installs a C-compatible shared library that can also be called from C++, as
 well as CMake files that can be used with ``find_package(rascaline)``.

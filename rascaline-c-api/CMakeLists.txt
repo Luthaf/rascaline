@@ -82,8 +82,12 @@ add_custom_target(cargo-build-rascaline ALL
 
 add_library(rascaline SHARED IMPORTED GLOBAL)
 add_dependencies(rascaline cargo-build-rascaline)
-set(RASCALINE_HEADER "${PROJECT_SOURCE_DIR}/rascaline.h")
-get_filename_component(RASCALINE_INCLUDE_DIR ${RASCALINE_HEADER} DIRECTORY)
+set(RASCALINE_HEADERS
+    "${PROJECT_SOURCE_DIR}/include/rascaline.h"
+    "${PROJECT_SOURCE_DIR}/include/rascaline.hpp"
+)
+set(RASCALINE_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/)
+
 set_target_properties(rascaline PROPERTIES
     IMPORTED_LOCATION ${RASCALINE_LOCATION}
     INTERFACE_INCLUDE_DIRECTORIES ${RASCALINE_INCLUDE_DIR}
@@ -109,7 +113,7 @@ configure_file(
     @ONLY
 )
 
-install(FILES ${RASCALINE_HEADER} DESTINATION ${INCLUDE_INSTALL_DIR})
+install(FILES ${RASCALINE_HEADERS} DESTINATION ${INCLUDE_INSTALL_DIR})
 install(FILES ${RASCALINE_LOCATION} DESTINATION ${LIB_INSTALL_DIR})
 install(FILES
     ${PROJECT_BINARY_DIR}/rascaline-config-version.cmake

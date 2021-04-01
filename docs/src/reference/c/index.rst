@@ -1,5 +1,5 @@
-C/C++ API reference
-===================
+C API reference
+===============
 
 Rascaline offers a C API (that can also be called directly from C++). The C API
 is implemented in Rust, in the ``rascaline-c-api`` crate. You can use this API

@@ -16,7 +16,7 @@ int main(int argc, char* argv[]) {
         "\"atomic_gaussian_width\": 0.3,\n"
         "\"gradients\": false,\n"
         "\"radial_basis\": {\n"
-        "    \"GTO\": {}\n"
+        "    \"Gto\": {}\n"
         "},\n"
         "\"cutoff_function\": {\n"
         "    \"ShiftedCosine\": {\"width\": 0.5}\n"
@@ -35,8 +35,8 @@ int main(int argc, char* argv[]) {
         goto cleanup;
     }
 
-    // create the calculator with its name and parameters
-     descriptor = rascal_descriptor();
+    // create a new empty descriptor
+    descriptor = rascal_descriptor();
     if (descriptor == NULL) {
         printf("Error: %s\n", rascal_last_error());
         goto cleanup;
@@ -62,13 +62,14 @@ int main(int argc, char* argv[]) {
 
     // Transform the descriptor to dense representation,
     // with one sample for each atom-centered environment
-    const char* variables = {"neighbor_species"};
+    const char* variables[] = {"neighbor_species"};
     status = rascal_descriptor_densify(descriptor, variables, 1);
     if (status != RASCAL_SUCCESS) {
         printf("Error: %s\n", rascal_last_error());
         goto cleanup;
     }
 
+    // extract values from the descriptor
     const double* values = NULL;
     uintptr_t samples = 0;
     uintptr_t features = 0;

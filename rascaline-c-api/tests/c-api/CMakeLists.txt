@@ -6,6 +6,8 @@ project(rascaline-capi-tests CXX)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(CMAKE_NO_SYSTEM_FROM_IMPORTED TRUE)
+
 # make sure assert works in tests
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -UNDEBUG")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -UNDEBUG")
@@ -20,8 +22,8 @@ endif()
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../.. ${CMAKE_CURRENT_BINARY_DIR}/rascaline)
 
-add_library(catch STATIC external/catch.cpp)
-target_include_directories(catch PUBLIC external)
+add_library(catch STATIC catch/catch.cpp)
+target_include_directories(catch PUBLIC catch)
 
 add_library(tests_helpers STATIC helpers.cpp)
 target_link_libraries(tests_helpers rascaline)
@@ -38,3 +40,5 @@ foreach(_file_ ${ALL_TESTS})
 
     # TODO: add support for running tests using valgrind
 endforeach()
+
+add_subdirectory(cxx)
