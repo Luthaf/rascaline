@@ -44,9 +44,10 @@ pub struct rascal_system_t {
     /// This function should set `*size` to the number of atoms in this system
     size: Option<unsafe extern fn(user_data: *const c_void, size: *mut usize)>,
     /// This function should set `*species` to a pointer to the first element of
-    /// a contiguous array containing the atomic species. Each different atomic
-    /// species should be identified with a different value. These values are
-    /// usually the atomic number, but don't have to be.
+    /// a contiguous array containing the atomic species of each atom in the
+    /// system. Different atomic species should be identified with a different
+    /// value. These values are usually the atomic number, but don't have to be.
+    /// The array should contain `rascal_system_t::size()` elements.
     species: Option<unsafe extern fn(user_data: *const c_void, species: *mut *const usize)>,
     /// This function should set `*positions` to a pointer to the first element
     /// of a contiguous array containing the atomic cartesian coordinates.

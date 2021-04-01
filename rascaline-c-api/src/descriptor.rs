@@ -5,7 +5,7 @@ use std::ffi::CStr;
 use rascaline::descriptor::{Descriptor, IndexValue};
 use super::{catch_unwind, rascal_status_t};
 
-/// Opaque type representing a Descriptor
+/// Opaque type representing a `Descriptor`.
 #[allow(non_camel_case_types)]
 pub struct rascal_descriptor_t(Descriptor);
 

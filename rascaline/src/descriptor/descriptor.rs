@@ -185,6 +185,8 @@ fn remove_from_indexes(indexes: &Indexes, variables: &[&str]) -> RemovedResult {
             indexes.names()
                 .iter()
                 .position(|name| name == v)
+                // TODO: this function should return a Result and this should be
+                // an InvalidParameterError.
                 .unwrap_or_else(|| panic!(
                     "can not densify along '{}' which is not present in the samples: [{}]",
                     v, indexes.names().join(", ")

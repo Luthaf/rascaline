@@ -18,6 +18,11 @@ learning (such as PCA or linear regression) work.
         .. literalinclude:: ../../../rascaline/examples/compute-soap.rs
             :language: rust
 
+    .. group-tab:: C++
+
+        .. literalinclude:: ../../../rascaline-c-api/examples/compute-soap.cpp
+            :language: c++
+
     .. group-tab:: C
 
         .. literalinclude:: ../../../rascaline-c-api/examples/compute-soap.c

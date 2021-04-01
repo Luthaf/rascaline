@@ -17,7 +17,7 @@ HYPER_PARAMETERS = {
     "atomic_gaussian_width": 0.3,
     "gradients": False,
     "radial_basis": {
-        "GTO": {},
+        "Gto": {},
     },
     "cutoff_function": {
         "ShiftedCosine": {"width": 0.5},
