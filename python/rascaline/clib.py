@@ -32,15 +32,15 @@ def set_logging_callback(function):
 
     '''
 
-    def callback(message):
+    def callback(level, message):
         try:
-            function(message.decode("utf8"))
+            function(str(level), message.decode("utf8"))
         except Exception as e:
             message = "exception raised in logging callback: {}".format(e)
             warnings.warn(message, ResourceWarning)
 
     global _CURRENT_CALLBACK
-    _CURRENT_CALLBACK = ctypes.CFUNCTYPE(None, ctypes.c_char_p)(callback)
+    _CURRENT_CALLBACK = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_char_p)(callback)
 
     _get_library().rascal_set_logging_callback(_CURRENT_CALLBACK)
 

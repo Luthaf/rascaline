@@ -233,7 +233,7 @@ pub unsafe extern fn rascal_calculator_compute(
     let to_print_ptr = to_print.as_ptr();
     //(GLOBAL_CALLBACK.expect("No callback function was set."))(to_print_ptr);
     match GLOBAL_CALLBACK {
-        Some(p) => p(to_print_ptr),
+        Some(p) => p(5, to_print_ptr),
         None => println!("No callback function was set."),
     }
     catch_unwind(|| {

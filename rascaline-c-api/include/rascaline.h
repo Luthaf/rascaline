@@ -79,7 +79,7 @@ typedef struct rascal_calculator_t rascal_calculator_t;
  */
 typedef struct rascal_descriptor_t rascal_descriptor_t;
 
-typedef void (*RascalLoggingCallback)(const char *message);
+typedef void (*RascalLoggingCallback)(int32_t level, const char *message);
 
 /**
  * Status type returned by all functions in the C API.

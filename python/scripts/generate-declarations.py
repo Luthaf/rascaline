@@ -95,7 +95,7 @@ def parse(file):
     return visitor
 
 
-rust_user_defined_types = {"RascalLoggingCallback": "CFUNCTYPE(None, ctypes.c_char_p)"}
+rust_user_defined_types = {"RascalLoggingCallback": "CFUNCTYPE(None, ctypes.c_int, ctypes.c_char_p)"}
 
 
 def c_type_name(name):
