@@ -143,7 +143,7 @@ TEST_CASE("Compute descriptor") {
         auto expected = std::vector<int32_t>{
             0, 0, /**/ 0, 1, /**/ 0, 2, /**/ 0, 3,
         };
-        check_indexes(descriptor, RASCAL_INDEXES_ENVIRONMENTS, {"structure", "center"}, expected, 4, 2);
+        check_indexes(descriptor, RASCAL_INDEXES_SAMPLES, {"structure", "center"}, expected, 4, 2);
 
         expected = std::vector<int32_t>{
             1, 0, /**/ 0, 1,
@@ -198,7 +198,7 @@ TEST_CASE("Compute descriptor") {
             calculator, descriptor, &system, 1, options
         ));
 
-        check_indexes(descriptor, RASCAL_INDEXES_ENVIRONMENTS, {"structure", "center"}, samples, 2, 2);
+        check_indexes(descriptor, RASCAL_INDEXES_SAMPLES, {"structure", "center"}, samples, 2, 2);
 
         auto expected = std::vector<int32_t>{
             1, 0, /**/ 0, 1
@@ -255,7 +255,7 @@ TEST_CASE("Compute descriptor") {
         auto expected = std::vector<int32_t>{
             0, 0, /**/ 0, 1, /**/ 0, 2, /**/ 0, 3,
         };
-        check_indexes(descriptor, RASCAL_INDEXES_ENVIRONMENTS, {"structure", "center"}, expected, 4, 2);
+        check_indexes(descriptor, RASCAL_INDEXES_SAMPLES, {"structure", "center"}, expected, 4, 2);
 
         check_indexes(descriptor, RASCAL_INDEXES_FEATURES, {"index_delta", "x_y_z"}, features, 1, 2);
 

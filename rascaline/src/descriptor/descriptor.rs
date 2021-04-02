@@ -7,13 +7,13 @@ use ndarray::{Array2, s};
 use super::{Indexes, IndexesBuilder, IndexValue};
 
 pub struct Descriptor {
-    /// An array of environments.count() by features.count() values
+    /// An array of samples.count() by features.count() values
     pub values: Array2<f64>,
-    pub environments: Indexes,
+    pub samples: Indexes,
     pub features: Indexes,
     /// Gradients of the descriptor with respect to one atomic position
     pub gradients: Option<Array2<f64>>,
-    pub gradients_indexes: Option<Indexes>,
+    pub gradients_samples: Option<Indexes>,
 }
 
 impl Default for Descriptor {
@@ -25,47 +25,47 @@ impl Descriptor {
         let indexes = IndexesBuilder::new(vec![]).finish();
         return Descriptor {
             values: Array2::zeros((0, 0)),
-            environments: indexes.clone(),
+            samples: indexes.clone(),
             features: indexes,
             gradients: None,
-            gradients_indexes: None,
+            gradients_samples: None,
         }
     }
 
     pub fn prepare(
         &mut self,
-        environments: Indexes,
+        samples: Indexes,
         features: Indexes,
     ) {
-        self.environments = environments;
+        self.samples = samples;
         self.features = features;
 
         // resize the 'values' array if needed, and set the requested initial value
-        let shape = (self.environments.count(), self.features.count());
+        let shape = (self.samples.count(), self.features.count());
         resize_and_reset(&mut self.values, shape);
 
         self.gradients = None;
-        self.gradients_indexes = None;
+        self.gradients_samples = None;
     }
 
     pub fn prepare_gradients(
         &mut self,
-        environments: Indexes,
+        samples: Indexes,
         gradients: Indexes,
         features: Indexes,
     ) {
         // basic sanity check
         assert_eq!(gradients.names().last(), Some(&"spatial"), "the last index of gradient should be spatial");
 
-        self.environments = environments;
+        self.samples = samples;
         self.features = features;
 
         // resize the 'values' array if needed, and set the requested initial value
-        let shape = (self.environments.count(), self.features.count());
+        let shape = (self.samples.count(), self.features.count());
         resize_and_reset(&mut self.values, shape);
 
         let gradient_shape = (gradients.count(), self.features.count());
-        self.gradients_indexes = Some(gradients);
+        self.gradients_samples = Some(gradients);
 
         if let Some(array) = &mut self.gradients {
             // resize the 'gradient' array if needed, and set the requested initial value
@@ -82,17 +82,17 @@ impl Descriptor {
             return;
         }
 
-        let new_environments = remove_from_indexes(&self.environments, &variables);
-        let new_gradients = self.gradients_indexes.as_ref().map(|indexes| {
+        let new_samples = remove_from_indexes(&self.samples, &variables);
+        let new_gradients = self.gradients_samples.as_ref().map(|indexes| {
             let gradients = remove_from_indexes(indexes, &variables);
 
-            if gradients.new_features != new_environments.new_features {
+            if gradients.new_features != new_samples.new_features {
                 let name = if variables.len() == 1 {
                     variables[0].to_owned()
                 } else {
                     format!("({})", variables.join(", "))
                 };
-                panic!("gradient indexes contains different values for {} than the environment indexes", name);
+                panic!("gradient samples contains different values for {} than the samples themselves", name);
             }
 
             return gradients;
@@ -102,7 +102,7 @@ impl Descriptor {
         let mut feature_names = variables;
         feature_names.extend(self.features.names());
         let mut new_features = IndexesBuilder::new(feature_names);
-        for new in new_environments.new_features {
+        for new in new_samples.new_features {
             for feature in self.features.iter() {
                 let mut cleaned = new.clone();
                 cleaned.extend(feature);
@@ -113,12 +113,12 @@ impl Descriptor {
         let old_feature_size = self.features.count();
 
         // copy values as needed
-        let mut new_values = Array2::zeros((new_environments.indexes.count(), new_features.count()));
-        for (new, old) in new_environments.mapping {
+        let mut new_values = Array2::zeros((new_samples.indexes.count(), new_features.count()));
+        for (new, old) in new_samples.mapping {
             let value = self.values.slice(s![old, ..]);
             let start = new.feature_block * old_feature_size;
             let stop = (new.feature_block + 1) * old_feature_size;
-            new_values.slice_mut(s![new.environment, start..stop]).assign(&value);
+            new_values.slice_mut(s![new.sample_i, start..stop]).assign(&value);
         }
 
         if let Some(self_gradients) = &self.gradients {
@@ -129,15 +129,15 @@ impl Descriptor {
                 let value = self_gradients.slice(s![old, ..]);
                 let start = new.feature_block * old_feature_size;
                 let stop = (new.feature_block + 1) * old_feature_size;
-                gradients.slice_mut(s![new.environment, start..stop]).assign(&value);
+                gradients.slice_mut(s![new.sample_i, start..stop]).assign(&value);
             }
 
             self.gradients = Some(gradients);
-            self.gradients_indexes = Some(new_gradients.indexes);
+            self.gradients_samples = Some(new_gradients.indexes);
         }
 
         self.features = new_features;
-        self.environments = new_environments.indexes;
+        self.samples = new_samples.indexes;
         self.values = new_values;
     }
 }
@@ -155,11 +155,11 @@ fn resize_and_reset(array: &mut Array2<f64>, shape: (usize, usize)) {
     let _replaced = std::mem::replace(array, values);
 }
 
-/// Representation of an environment/gradient index after a call to `densify`
+/// Representation of an sample/gradient sample index after a call to `densify`
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 struct DensifiedIndex {
-    /// Index of the new environment/gradient in the value/gradients array
-    environment: usize,
+    /// Index of the new sample/gradient sample in the value/gradients array
+    sample_i: usize,
     /// Index of the feature **block** corresponding to the moved variable
     feature_block: usize,
 }
@@ -186,7 +186,7 @@ fn remove_from_indexes(indexes: &Indexes, variables: &[&str]) -> RemovedResult {
                 .iter()
                 .position(|name| name == v)
                 .unwrap_or_else(|| panic!(
-                    "can not densify along '{}' which is not present in the environments: [{}]",
+                    "can not densify along '{}' which is not present in the samples: [{}]",
                     v, indexes.names().join(", ")
                 ))
         }).collect::<Vec<_>>();
@@ -214,7 +214,7 @@ fn remove_from_indexes(indexes: &Indexes, variables: &[&str]) -> RemovedResult {
         new_indexes.insert(new_index);
 
         let densified = DensifiedIndex{
-            environment: new_indexes.len() - 1,
+            sample_i: new_indexes.len() - 1,
             feature_block: new_features.iter()
                 .position(|feature| feature == &new_feature)
                 .expect("missing feature that was just added"),
@@ -228,8 +228,8 @@ fn remove_from_indexes(indexes: &Indexes, variables: &[&str]) -> RemovedResult {
         .cloned()
         .collect();
     let mut builder = IndexesBuilder::new(names);
-    for env in new_indexes {
-        builder.add(&env);
+    for sample in new_indexes {
+        builder.add(&sample);
     }
 
     return RemovedResult {
@@ -244,7 +244,7 @@ fn remove_from_indexes(indexes: &Indexes, variables: &[&str]) -> RemovedResult {
 mod tests {
     use super::*;
     use crate::system::test_systems;
-    use crate::descriptor::{AtomSpeciesEnvironment, StructureSpeciesEnvironment, EnvironmentIndexes};
+    use crate::descriptor::{AtomSpeciesSamples, StructureSpeciesSamples, SamplesIndexes};
     use ndarray::array;
 
     fn dummy_features() -> Indexes {
@@ -268,17 +268,17 @@ mod tests {
 
         let mut systems = test_systems(&["water", "CH"]);
         let features = dummy_features();
-        let environments = StructureSpeciesEnvironment.indexes(&mut systems.get());
-        descriptor.prepare(environments, features);
+        let samples = StructureSpeciesSamples.indexes(&mut systems.get());
+        descriptor.prepare(samples, features);
 
 
         assert_eq!(descriptor.values.shape(), [4, 3]);
 
-        assert_eq!(descriptor.environments.names(), ["structure", "species"]);
-        assert_eq!(descriptor.environments[0], [v!(0), v!(1)]);
-        assert_eq!(descriptor.environments[1], [v!(0), v!(123456)]);
-        assert_eq!(descriptor.environments[2], [v!(1), v!(1)]);
-        assert_eq!(descriptor.environments[3], [v!(1), v!(6)]);
+        assert_eq!(descriptor.samples.names(), ["structure", "species"]);
+        assert_eq!(descriptor.samples[0], [v!(0), v!(1)]);
+        assert_eq!(descriptor.samples[1], [v!(0), v!(123456)]);
+        assert_eq!(descriptor.samples[2], [v!(1), v!(1)]);
+        assert_eq!(descriptor.samples[3], [v!(1), v!(6)]);
 
         assert!(descriptor.gradients.is_none());
     }
@@ -289,14 +289,14 @@ mod tests {
 
         let mut systems = test_systems(&["water", "CH"]);
         let features = dummy_features();
-        let (environments, gradients) = StructureSpeciesEnvironment.with_gradients(&mut systems.get());
-        descriptor.prepare_gradients(environments, gradients.unwrap(), features);
+        let (samples, gradients) = StructureSpeciesSamples.with_gradients(&mut systems.get());
+        descriptor.prepare_gradients(samples, gradients.unwrap(), features);
 
         let gradients = descriptor.gradients.unwrap();
         assert_eq!(gradients.shape(), [15, 3]);
 
-        let gradients_indexes = descriptor.gradients_indexes.as_ref().unwrap();
-        assert_eq!(gradients_indexes.names(), ["structure", "species", "atom", "spatial"]);
+        let gradients_samples = descriptor.gradients_samples.as_ref().unwrap();
+        assert_eq!(gradients_samples.names(), ["structure", "species", "atom", "spatial"]);
 
         let expected = [
             [v!(0), v!(1), v!(1)],
@@ -307,14 +307,14 @@ mod tests {
         ];
         // use a loop to simplify checking the spatial dimension
         for (i, &value) in expected.iter().enumerate() {
-            assert_eq!(gradients_indexes[3 * i][..3], value);
-            assert_eq!(gradients_indexes[3 * i][3], v!(0));
+            assert_eq!(gradients_samples[3 * i][..3], value);
+            assert_eq!(gradients_samples[3 * i][3], v!(0));
 
-            assert_eq!(gradients_indexes[3 * i + 1][..3], value);
-            assert_eq!(gradients_indexes[3 * i + 1][3], v!(1));
+            assert_eq!(gradients_samples[3 * i + 1][..3], value);
+            assert_eq!(gradients_samples[3 * i + 1][3], v!(1));
 
-            assert_eq!(gradients_indexes[3 * i + 2][..3], value);
-            assert_eq!(gradients_indexes[3 * i + 2][3], v!(2));
+            assert_eq!(gradients_samples[3 * i + 2][..3], value);
+            assert_eq!(gradients_samples[3 * i + 2][3], v!(2));
         }
     }
 
@@ -324,8 +324,8 @@ mod tests {
 
         let mut systems = test_systems(&["water", "CH"]);
         let features = dummy_features();
-        let (environments, gradients) = StructureSpeciesEnvironment.with_gradients(&mut systems.get());
-        descriptor.prepare_gradients(environments, gradients.unwrap(), features);
+        let (samples, gradients) = StructureSpeciesSamples.with_gradients(&mut systems.get());
+        descriptor.prepare_gradients(samples, gradients.unwrap(), features);
 
         descriptor.values.assign(&array![
             [1.0, 2.0, 3.0],
@@ -347,9 +347,9 @@ mod tests {
         descriptor.densify(vec!["species"]);
 
         assert_eq!(descriptor.values.shape(), [2, 9]);
-        assert_eq!(descriptor.environments.names(), ["structure"]);
-        assert_eq!(descriptor.environments[0], [v!(0)]);
-        assert_eq!(descriptor.environments[1], [v!(1)]);
+        assert_eq!(descriptor.samples.names(), ["structure"]);
+        assert_eq!(descriptor.samples[0], [v!(0)]);
+        assert_eq!(descriptor.samples[1], [v!(1)]);
 
         assert_eq!(descriptor.values, array![
             [1.0, 2.0, 3.0, /**/ 4.0, 5.0, 6.0, /**/ 0.0, 0.0, 0.0],
@@ -358,8 +358,8 @@ mod tests {
 
         let gradients = descriptor.gradients.as_ref().unwrap();
         assert_eq!(gradients.shape(), [15, 9]);
-        let gradients_indexes = descriptor.gradients_indexes.as_ref().unwrap();
-        assert_eq!(gradients_indexes.names(), ["structure", "atom", "spatial"]);
+        let gradients_samples = descriptor.gradients_samples.as_ref().unwrap();
+        assert_eq!(gradients_samples.names(), ["structure", "atom", "spatial"]);
 
         let expected = [
             [v!(0), v!(1)],
@@ -370,14 +370,14 @@ mod tests {
         ];
         // use a loop to simplify checking the spatial dimension
         for (i, &value) in expected.iter().enumerate() {
-            assert_eq!(gradients_indexes[3 * i][..2], value);
-            assert_eq!(gradients_indexes[3 * i][2], v!(0));
+            assert_eq!(gradients_samples[3 * i][..2], value);
+            assert_eq!(gradients_samples[3 * i][2], v!(0));
 
-            assert_eq!(gradients_indexes[3 * i + 1][..2], value);
-            assert_eq!(gradients_indexes[3 * i + 1][2], v!(1));
+            assert_eq!(gradients_samples[3 * i + 1][..2], value);
+            assert_eq!(gradients_samples[3 * i + 1][2], v!(1));
 
-            assert_eq!(gradients_indexes[3 * i + 2][..2], value);
-            assert_eq!(gradients_indexes[3 * i + 2][2], v!(2));
+            assert_eq!(gradients_samples[3 * i + 2][..2], value);
+            assert_eq!(gradients_samples[3 * i + 2][2], v!(2));
         }
 
         assert_eq!(*gradients, array![
@@ -404,8 +404,8 @@ mod tests {
 
         let mut systems = test_systems(&["water", "CH"]);
         let features = dummy_features();
-        let (environments, gradients) = AtomSpeciesEnvironment::new(3.0).with_gradients(&mut systems.get());
-        descriptor.prepare_gradients(environments, gradients.unwrap(), features);
+        let (samples, gradients) = AtomSpeciesSamples::new(3.0).with_gradients(&mut systems.get());
+        descriptor.prepare_gradients(samples, gradients.unwrap(), features);
 
         descriptor.values.assign(&array![
             [1.0, 2.0, 3.0],
@@ -433,12 +433,12 @@ mod tests {
         descriptor.densify(vec!["species_center", "species_neighbor"]);
 
         assert_eq!(descriptor.values.shape(), [5, 15]);
-        assert_eq!(descriptor.environments.names(), ["structure", "center"]);
-        assert_eq!(descriptor.environments[0], [v!(0), v!(0)]);
-        assert_eq!(descriptor.environments[1], [v!(0), v!(1)]);
-        assert_eq!(descriptor.environments[2], [v!(0), v!(2)]);
-        assert_eq!(descriptor.environments[3], [v!(1), v!(0)]);
-        assert_eq!(descriptor.environments[4], [v!(1), v!(1)]);
+        assert_eq!(descriptor.samples.names(), ["structure", "center"]);
+        assert_eq!(descriptor.samples[0], [v!(0), v!(0)]);
+        assert_eq!(descriptor.samples[1], [v!(0), v!(1)]);
+        assert_eq!(descriptor.samples[2], [v!(0), v!(2)]);
+        assert_eq!(descriptor.samples[3], [v!(1), v!(0)]);
+        assert_eq!(descriptor.samples[4], [v!(1), v!(1)]);
 
         assert_eq!(descriptor.values, array![
             /*    O-H             H-H                 H-O                  H-C                C-H     */
@@ -456,8 +456,8 @@ mod tests {
 
         let gradients = descriptor.gradients.as_ref().unwrap();
         assert_eq!(gradients.shape(), [24, 15]);
-        let gradients_indexes = descriptor.gradients_indexes.as_ref().unwrap();
-        assert_eq!(gradients_indexes.names(), ["structure", "center", "neighbor", "spatial"]);
+        let gradients_samples = descriptor.gradients_samples.as_ref().unwrap();
+        assert_eq!(gradients_samples.names(), ["structure", "center", "neighbor", "spatial"]);
 
         let expected = [
             [v!(0), v!(0), v!(1)],
@@ -471,14 +471,14 @@ mod tests {
         ];
         // use a loop to simplify checking the spatial dimension
         for (i, &value) in expected.iter().enumerate() {
-            assert_eq!(gradients_indexes[3 * i][..3], value);
-            assert_eq!(gradients_indexes[3 * i][3], v!(0));
+            assert_eq!(gradients_samples[3 * i][..3], value);
+            assert_eq!(gradients_samples[3 * i][3], v!(0));
 
-            assert_eq!(gradients_indexes[3 * i + 1][..3], value);
-            assert_eq!(gradients_indexes[3 * i + 1][3], v!(1));
+            assert_eq!(gradients_samples[3 * i + 1][..3], value);
+            assert_eq!(gradients_samples[3 * i + 1][3], v!(1));
 
-            assert_eq!(gradients_indexes[3 * i + 2][..3], value);
-            assert_eq!(gradients_indexes[3 * i + 2][3], v!(2));
+            assert_eq!(gradients_samples[3 * i + 2][..3], value);
+            assert_eq!(gradients_samples[3 * i + 2][3], v!(2));
         }
 
         assert_eq!(*gradients, array![

@@ -161,10 +161,10 @@ pub enum rascal_indexes {
     /// The feature index, describing the features of the representation
     RASCAL_INDEXES_FEATURES = 0,
     /// The samples index, describing different samples in the representation
-    RASCAL_INDEXES_ENVIRONMENTS = 1,
-    /// The gradient index, describing the gradients of samples in the
+    RASCAL_INDEXES_SAMPLES = 1,
+    /// The gradient samples index, describing the gradients of samples in the
     /// representation with respect to other atoms
-    RASCAL_INDEXES_GRADIENTS = 2,
+    RASCAL_INDEXES_GRADIENT_SAMPLES = 2,
 }
 
 /// Get the values associated with one of the `indexes` in the given
@@ -205,9 +205,9 @@ pub unsafe extern fn rascal_descriptor_indexes(
 
         let indexes = match indexes {
             rascal_indexes::RASCAL_INDEXES_FEATURES => &(*descriptor).features,
-            rascal_indexes::RASCAL_INDEXES_ENVIRONMENTS => &(*descriptor).environments,
-            rascal_indexes::RASCAL_INDEXES_GRADIENTS => {
-                if let Some(indexes) = &(*descriptor).gradients_indexes {
+            rascal_indexes::RASCAL_INDEXES_SAMPLES => &(*descriptor).samples,
+            rascal_indexes::RASCAL_INDEXES_GRADIENT_SAMPLES => {
+                if let Some(indexes) = &(*descriptor).gradients_samples {
                     indexes
                 } else {
                     *data = std::ptr::null();
@@ -262,9 +262,9 @@ pub unsafe extern fn rascal_descriptor_indexes_names(
 
         let indexes = match indexes {
             rascal_indexes::RASCAL_INDEXES_FEATURES => &(*descriptor).features,
-            rascal_indexes::RASCAL_INDEXES_ENVIRONMENTS => &(*descriptor).environments,
-            rascal_indexes::RASCAL_INDEXES_GRADIENTS => {
-                if let Some(indexes) = &(*descriptor).gradients_indexes {
+            rascal_indexes::RASCAL_INDEXES_SAMPLES => &(*descriptor).samples,
+            rascal_indexes::RASCAL_INDEXES_GRADIENT_SAMPLES => {
+                if let Some(indexes) = &(*descriptor).gradients_samples {
                     indexes
                 } else {
                     for i in 0..size {

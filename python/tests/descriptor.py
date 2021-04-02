@@ -17,17 +17,17 @@ class TestEmptyDescriptor(unittest.TestCase):
         descriptor = Descriptor()
         self.assertEqual(descriptor.gradients, None)
 
-    def test_environments(self):
+    def test_samples(self):
         descriptor = Descriptor()
-        self.assertEqual(len(descriptor.environments), 0)
+        self.assertEqual(len(descriptor.samples), 0)
 
     def test_features(self):
         descriptor = Descriptor()
         self.assertEqual(len(descriptor.features), 0)
 
-    def test_gradients_environments(self):
+    def test_gradients_samples(self):
         descriptor = Descriptor()
-        self.assertEqual(len(descriptor.gradients_environments), 0)
+        self.assertEqual(len(descriptor.gradients_samples), 0)
 
 
 class TestDummyDescriptor(unittest.TestCase):
@@ -69,82 +69,80 @@ class TestDummyDescriptor(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "assignment destination is read-only"):
             gradients[0] = (3, 4)
 
-    def test_environments(self):
+    def test_samples(self):
         system = TestSystem()
         calculator = DummyCalculator(cutoff=3.2, delta=12, name="", gradients=False)
         descriptor = calculator.compute(system)
 
-        environments = descriptor.environments
-        self.assertEqual(len(environments), 4)
+        samples = descriptor.samples
+        self.assertEqual(len(samples), 4)
 
         with self.assertRaisesRegex(ValueError, "assignment destination is read-only"):
-            environments[0] = (3, 4)
+            samples[0] = (3, 4)
 
-        self.assertTrue(np.all(environments["structure"] == [0, 0, 0, 0]))
-        self.assertTrue(np.all(environments["center"] == [0, 1, 2, 3]))
+        self.assertTrue(np.all(samples["structure"] == [0, 0, 0, 0]))
+        self.assertTrue(np.all(samples["center"] == [0, 1, 2, 3]))
 
         # view & reshape for easier direct comparison of values
         # numpy only consider structured arrays to be equal if they have
         # the same dtype
-        environments = environments.view(dtype=np.int32).reshape(
-            (environments.shape[0], -1)
-        )
-        self.assertTrue(np.all(environments[0] == [0, 0]))
-        self.assertTrue(np.all(environments[1] == [0, 1]))
-        self.assertTrue(np.all(environments[2] == [0, 2]))
-        self.assertTrue(np.all(environments[3] == [0, 3]))
+        samples = samples.view(dtype=np.int32).reshape((samples.shape[0], -1))
+        self.assertTrue(np.all(samples[0] == [0, 0]))
+        self.assertTrue(np.all(samples[1] == [0, 1]))
+        self.assertTrue(np.all(samples[2] == [0, 2]))
+        self.assertTrue(np.all(samples[3] == [0, 3]))
 
     def test_gradient_indexes(self):
         system = TestSystem()
         calculator = DummyCalculator(cutoff=3.2, delta=12, name="", gradients=False)
         descriptor = calculator.compute(system)
-        self.assertEqual(len(descriptor.gradients_environments), 0)
+        self.assertEqual(len(descriptor.gradients_samples), 0)
 
         calculator = DummyCalculator(cutoff=3.2, delta=12, name="", gradients=True)
         descriptor = calculator.compute(system)
-        gradients_environments = descriptor.gradients_environments
-        self.assertEqual(len(gradients_environments), 18)
+        gradients_samples = descriptor.gradients_samples
+        self.assertEqual(len(gradients_samples), 18)
 
         with self.assertRaisesRegex(ValueError, "assignment destination is read-only"):
-            gradients_environments[0] = (3, 4)
+            gradients_samples[0] = (3, 4)
 
         expected = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        self.assertTrue(np.all(gradients_environments["structure"] == expected))
+        self.assertTrue(np.all(gradients_samples["structure"] == expected))
 
         expected = [0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3]
-        self.assertTrue(np.all(gradients_environments["center"] == expected))
+        self.assertTrue(np.all(gradients_samples["center"] == expected))
 
         expected = [1, 1, 1, 0, 0, 0, 2, 2, 2, 1, 1, 1, 3, 3, 3, 2, 2, 2]
-        self.assertTrue(np.all(gradients_environments["neighbor"] == expected))
+        self.assertTrue(np.all(gradients_samples["neighbor"] == expected))
 
         expected = [0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2]
-        self.assertTrue(np.all(gradients_environments["spatial"] == expected))
+        self.assertTrue(np.all(gradients_samples["spatial"] == expected))
 
         # view & reshape for easier direct comparison of values
         # numpy only consider structured arrays to be equal if they have
         # the same dtype
-        gradients_environments = gradients_environments.view(dtype=np.int32).reshape(
-            (gradients_environments.shape[0], -1)
+        gradients_samples = gradients_samples.view(dtype=np.int32).reshape(
+            (gradients_samples.shape[0], -1)
         )
 
-        self.assertTrue(np.all(gradients_environments[0] == [0, 0, 1, 0]))
-        self.assertTrue(np.all(gradients_environments[1] == [0, 0, 1, 1]))
-        self.assertTrue(np.all(gradients_environments[2] == [0, 0, 1, 2]))
-        self.assertTrue(np.all(gradients_environments[3] == [0, 1, 0, 0]))
-        self.assertTrue(np.all(gradients_environments[4] == [0, 1, 0, 1]))
-        self.assertTrue(np.all(gradients_environments[5] == [0, 1, 0, 2]))
-        self.assertTrue(np.all(gradients_environments[6] == [0, 1, 2, 0]))
-        self.assertTrue(np.all(gradients_environments[7] == [0, 1, 2, 1]))
-        self.assertTrue(np.all(gradients_environments[8] == [0, 1, 2, 2]))
-        self.assertTrue(np.all(gradients_environments[9] == [0, 2, 1, 0]))
-        self.assertTrue(np.all(gradients_environments[10] == [0, 2, 1, 1]))
-        self.assertTrue(np.all(gradients_environments[11] == [0, 2, 1, 2]))
-        self.assertTrue(np.all(gradients_environments[12] == [0, 2, 3, 0]))
-        self.assertTrue(np.all(gradients_environments[13] == [0, 2, 3, 1]))
-        self.assertTrue(np.all(gradients_environments[14] == [0, 2, 3, 2]))
-        self.assertTrue(np.all(gradients_environments[15] == [0, 3, 2, 0]))
-        self.assertTrue(np.all(gradients_environments[16] == [0, 3, 2, 1]))
-        self.assertTrue(np.all(gradients_environments[17] == [0, 3, 2, 2]))
+        self.assertTrue(np.all(gradients_samples[0] == [0, 0, 1, 0]))
+        self.assertTrue(np.all(gradients_samples[1] == [0, 0, 1, 1]))
+        self.assertTrue(np.all(gradients_samples[2] == [0, 0, 1, 2]))
+        self.assertTrue(np.all(gradients_samples[3] == [0, 1, 0, 0]))
+        self.assertTrue(np.all(gradients_samples[4] == [0, 1, 0, 1]))
+        self.assertTrue(np.all(gradients_samples[5] == [0, 1, 0, 2]))
+        self.assertTrue(np.all(gradients_samples[6] == [0, 1, 2, 0]))
+        self.assertTrue(np.all(gradients_samples[7] == [0, 1, 2, 1]))
+        self.assertTrue(np.all(gradients_samples[8] == [0, 1, 2, 2]))
+        self.assertTrue(np.all(gradients_samples[9] == [0, 2, 1, 0]))
+        self.assertTrue(np.all(gradients_samples[10] == [0, 2, 1, 1]))
+        self.assertTrue(np.all(gradients_samples[11] == [0, 2, 1, 2]))
+        self.assertTrue(np.all(gradients_samples[12] == [0, 2, 3, 0]))
+        self.assertTrue(np.all(gradients_samples[13] == [0, 2, 3, 1]))
+        self.assertTrue(np.all(gradients_samples[14] == [0, 2, 3, 2]))
+        self.assertTrue(np.all(gradients_samples[15] == [0, 3, 2, 0]))
+        self.assertTrue(np.all(gradients_samples[16] == [0, 3, 2, 1]))
+        self.assertTrue(np.all(gradients_samples[17] == [0, 3, 2, 2]))
 
     def test_features(self):
         system = TestSystem()

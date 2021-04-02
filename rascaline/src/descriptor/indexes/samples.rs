@@ -1,25 +1,25 @@
 use indexmap::IndexSet;
 
 use crate::system::System;
-use super::{Indexes, IndexesBuilder, EnvironmentIndexes, IndexValue};
+use super::{Indexes, IndexesBuilder, SamplesIndexes, IndexValue};
 
-/// `StructureEnvironment` is used to represents environments corresponding to
-/// full structures, each structure being described by a single features vector.
+/// `StructureSamples` is used to represents samples corresponding to full
+/// structures, each structure being described by a single features vector.
 ///
 /// It does not contain any chemical species information, for this you should
-/// use `StructureSpeciesEnvironment`.
+/// use [`super::StructureSpeciesSamples`].
 ///
 /// The base set of indexes contains only the `structure` index; the  gradient
 /// indexes also contains the `atom` inside the structure with respect to which
 /// the gradient is taken and the `spatial` (i.e. x/y/z) index.
-pub struct StructureEnvironment;
+pub struct StructureSamples;
 
-impl EnvironmentIndexes for StructureEnvironment {
+impl SamplesIndexes for StructureSamples {
     fn names(&self) -> Vec<&str> {
         vec!["structure"]
     }
 
-    #[time_graph::instrument(name = "StructureEnvironment::indexes")]
+    #[time_graph::instrument(name = "StructureSamples::indexes")]
     fn indexes(&self, systems: &mut [&mut dyn System]) -> Indexes {
         let mut indexes = IndexesBuilder::new(self.names());
         for system in 0..systems.len() {
@@ -28,7 +28,7 @@ impl EnvironmentIndexes for StructureEnvironment {
         return indexes.finish();
     }
 
-    #[time_graph::instrument(name = "StructureEnvironment::gradients_for")]
+    #[time_graph::instrument(name = "StructureSamples::gradients_for")]
     fn gradients_for(&self, systems: &mut [&mut dyn System], samples: &Indexes) -> Option<Indexes> {
         assert_eq!(samples.names(), self.names());
 
@@ -46,36 +46,36 @@ impl EnvironmentIndexes for StructureEnvironment {
     }
 }
 
-/// `AtomEnvironment` is used to represents atom-centered environments, where
+/// `AtomSamples` is used to represents atom-centered environments, where
 /// each atom in a structure is described with a feature vector based on other
 /// atoms inside a sphere centered on the central atom.
 ///
 /// This type of indexes does not contain any chemical species information, for
-/// this you should use `AtomSpeciesEnvironment`.
+/// this you should use [`super::AtomSpeciesSamples`].
 ///
 /// The base set of indexes contains `structure` and `center` (i.e. central atom
 /// index inside the structure); the gradient indexes also contains the
 /// `neighbor` inside the spherical cutoff with respect to which the gradient is
 /// taken and the `spatial` (i.e x/y/z) index.
-pub struct AtomEnvironment {
+pub struct AtomSamples {
     /// spherical cutoff radius used to construct the atom-centered environments
     cutoff: f64,
 }
 
-impl AtomEnvironment {
-    /// Create a new `AtomEnvironment` with the given cutoff.
-    pub fn new(cutoff: f64) -> AtomEnvironment {
-        assert!(cutoff > 0.0 && cutoff.is_finite(), "cutoff must be positive for AtomEnvironment");
-        AtomEnvironment { cutoff }
+impl AtomSamples {
+    /// Create a new `AtomSamples` with the given cutoff.
+    pub fn new(cutoff: f64) -> AtomSamples {
+        assert!(cutoff > 0.0 && cutoff.is_finite(), "cutoff must be positive for AtomSamples");
+        AtomSamples { cutoff }
     }
 }
 
-impl EnvironmentIndexes for AtomEnvironment {
+impl SamplesIndexes for AtomSamples {
     fn names(&self) -> Vec<&str> {
         vec!["structure", "center"]
     }
 
-    #[time_graph::instrument(name = "AtomEnvironment::indexes")]
+    #[time_graph::instrument(name = "AtomSamples::indexes")]
     fn indexes(&self, systems: &mut [&mut dyn System]) -> Indexes {
         let mut indexes = IndexesBuilder::new(self.names());
         for (i_system, system) in systems.iter().enumerate() {
@@ -86,7 +86,7 @@ impl EnvironmentIndexes for AtomEnvironment {
         return indexes.finish();
     }
 
-    #[time_graph::instrument(name = "AtomEnvironment::gradients_for")]
+    #[time_graph::instrument(name = "AtomSamples::gradients_for")]
     fn gradients_for(&self, systems: &mut [&mut dyn System], samples: &Indexes) -> Option<Indexes> {
         assert_eq!(samples.names(), self.names());
 
@@ -137,7 +137,7 @@ mod tests {
     #[test]
     fn structure() {
         let mut systems = test_systems(&["methane", "methane", "water"]);
-        let indexes = StructureEnvironment.indexes(&mut systems.get());
+        let indexes = StructureSamples.indexes(&mut systems.get());
         assert_eq!(indexes.count(), 3);
         assert_eq!(indexes.names(), &["structure"]);
         assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![&[v!(0)], &[v!(1)], &[v!(2)]]);
@@ -147,7 +147,7 @@ mod tests {
     fn structure_gradient() {
         let mut systems = test_systems(&["methane", "water"]);
 
-        let (_, gradients) = StructureEnvironment.with_gradients(&mut systems.get());
+        let (_, gradients) = StructureSamples.with_gradients(&mut systems.get());
         let gradients = gradients.unwrap();
         assert_eq!(gradients.count(), 24);
         assert_eq!(gradients.names(), &["structure", "atom", "spatial"]);
@@ -172,7 +172,7 @@ mod tests {
         indexes.add(&[v!(0)]);
 
         let mut systems = test_systems(&["water", "methane", "water", "methane"]);
-        let gradients = StructureEnvironment.gradients_for(&mut systems.get(), &indexes.finish());
+        let gradients = StructureSamples.gradients_for(&mut systems.get(), &indexes.finish());
         let gradients = gradients.unwrap();
 
         assert_eq!(gradients.names(), &["structure", "atom", "spatial"]);
@@ -191,7 +191,7 @@ mod tests {
     #[test]
     fn atoms() {
         let mut systems = test_systems(&["methane", "water"]);
-        let strategy = AtomEnvironment { cutoff: 2.0 };
+        let strategy = AtomSamples { cutoff: 2.0 };
         let indexes = strategy.indexes(&mut systems.get());
         assert_eq!(indexes.count(), 8);
         assert_eq!(indexes.names(), &["structure", "center"]);
@@ -204,7 +204,7 @@ mod tests {
     #[test]
     fn atom_gradients() {
         let mut systems = test_systems(&["methane"]);
-        let strategy = AtomEnvironment { cutoff: 1.5 };
+        let strategy = AtomSamples { cutoff: 1.5 };
         let (_, gradients) = strategy.with_gradients(&mut systems.get());
         let gradients = gradients.unwrap();
 
@@ -255,7 +255,7 @@ mod tests {
         indexes.add(&[v!(0), v!(0)]);
 
         let mut systems = test_systems(&["methane"]);
-        let strategy = AtomEnvironment { cutoff: 1.5 };
+        let strategy = AtomSamples { cutoff: 1.5 };
         let gradients = strategy.gradients_for(&mut systems.get(), &indexes.finish());
         let gradients = gradients.unwrap();
 

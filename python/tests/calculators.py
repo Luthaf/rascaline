@@ -71,7 +71,7 @@ class TestDummyCalculator(unittest.TestCase):
         descriptor = calculator.compute(system)
 
         # From a selection scheme, using numpy array indexing
-        samples = descriptor.environments[[0, 2]]
+        samples = descriptor.samples[[0, 2]]
         descriptor = calculator.compute(system, selected_samples=samples)
 
         values = descriptor.values

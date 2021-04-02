@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
-use crate::{CalculationOptions, Calculator, SelectedIndexes, descriptor::{AtomSpeciesEnvironment, EnvironmentIndexes, IndexValue, Indexes, IndexesBuilder}};
-use crate::descriptor::ThreeBodiesSpeciesEnvironment;
+use crate::descriptor::{ThreeBodiesSpeciesSamples, AtomSpeciesSamples, SamplesIndexes, IndexValue, Indexes, IndexesBuilder};
+use crate::{CalculationOptions, Calculator, SelectedIndexes};
 use crate::{Descriptor, System};
 
 use super::{super::CalculatorBase, SphericalExpansionParameters};
@@ -74,7 +74,7 @@ impl SoapPowerSpectrum {
     }
 
     fn get_expansion_samples(&self, samples: &Indexes) -> Indexes {
-        assert_eq!(samples.names(), self.environments().names());
+        assert_eq!(samples.names(), self.samples().names());
 
         let mut set = BTreeSet::new();
         for sample in samples {
@@ -93,7 +93,7 @@ impl SoapPowerSpectrum {
         }
 
         let mut spherical_expansion_samples = IndexesBuilder::new(
-            AtomSpeciesEnvironment::new(1.0).names()
+            AtomSpeciesSamples::new(1.0).names()
         );
         for index in set {
             spherical_expansion_samples.add(&index);
@@ -175,8 +175,8 @@ impl CalculatorBase for SoapPowerSpectrum {
         return features.finish();
     }
 
-    fn environments(&self) -> Box<dyn EnvironmentIndexes> {
-        Box::new(ThreeBodiesSpeciesEnvironment::with_self_contribution(self.parameters.cutoff))
+    fn samples(&self) -> Box<dyn SamplesIndexes> {
+        Box::new(ThreeBodiesSpeciesSamples::with_self_contribution(self.parameters.cutoff))
     }
 
     fn compute_gradients(&self) -> bool {
@@ -195,23 +195,23 @@ impl CalculatorBase for SoapPowerSpectrum {
         }
     }
 
-    fn check_environments(&self, indexes: &Indexes, systems: &mut [&mut dyn System]) {
-        assert_eq!(indexes.names(), self.environments().names());
+    fn check_samples(&self, indexes: &Indexes, systems: &mut [&mut dyn System]) {
+        assert_eq!(indexes.names(), self.samples().names());
         // This could be made much faster by not recomputing the full list of
-        // potential environments
-        let allowed = self.environments().indexes(systems);
+        // potential samples
+        let allowed = self.samples().indexes(systems);
         for value in indexes.iter() {
-            assert!(allowed.contains(value), "{:?} is not a valid environment", value);
+            assert!(allowed.contains(value), "{:?} is not a valid sample", value);
         }
     }
 
     #[time_graph::instrument(name = "SoapPowerSpectrum::compute")]
     fn compute(&mut self, systems: &mut [&mut dyn System], descriptor: &mut Descriptor) {
-        assert_eq!(descriptor.environments.names(), self.environments().names());
+        assert_eq!(descriptor.samples.names(), self.samples().names());
         assert_eq!(descriptor.features.names(), self.features_names());
 
         let options = CalculationOptions {
-            selected_samples: SelectedIndexes::Some(self.get_expansion_samples(&descriptor.environments)),
+            selected_samples: SelectedIndexes::Some(self.get_expansion_samples(&descriptor.samples)),
             selected_features: SelectedIndexes::Some(self.get_expansion_features(&descriptor.features)),
             ..Default::default()
         };
@@ -239,17 +239,17 @@ impl CalculatorBase for SoapPowerSpectrum {
             feature_blocks.push(FeatureBlock { l, start_n1_l, start_n2_l });
         }
 
-        for (environment_i, environment) in descriptor.environments.iter().enumerate() {
-            let structure = environment[0];
-            let center = environment[1];
-            let species_center = environment[2];
-            let species_neighbor_1 = environment[3];
-            let species_neighbor_2 = environment[4];
+        for (sample_i, sample) in descriptor.samples.iter().enumerate() {
+            let structure = sample[0];
+            let center = sample[1];
+            let species_center = sample[2];
+            let species_neighbor_1 = sample[3];
+            let species_neighbor_2 = sample[4];
 
-            let neighbor_1 = self.spherical_expansion.environments.position(&[
+            let neighbor_1 = self.spherical_expansion.samples.position(&[
                 structure, center, species_center, species_neighbor_1
             ]).expect("missing data for one of the neighbor species");
-            let neighbor_2 = self.spherical_expansion.environments.position(&[
+            let neighbor_2 = self.spherical_expansion.samples.position(&[
                 structure, center, species_center, species_neighbor_2
             ]).expect("missing data for one of the neighbor species");
 
@@ -280,7 +280,7 @@ impl CalculatorBase for SoapPowerSpectrum {
                 }
 
                 let normalization = f64::sqrt(2.0 * l as f64 + 1.0);
-                descriptor.values[[environment_i, feature_i]] = sum / normalization;
+                descriptor.values[[sample_i, feature_i]] = sum / normalization;
             }
         }
 
@@ -329,7 +329,7 @@ mod tests {
         let mut descriptor = Descriptor::new();
         calculator.compute(&mut systems.get(), &mut descriptor, Default::default()).unwrap();
 
-        assert_eq!(descriptor.environments.names(), ["structure", "center", "species_center", "species_neighbor_1", "species_neighbor_2"]);
+        assert_eq!(descriptor.samples.names(), ["structure", "center", "species_center", "species_neighbor_1", "species_neighbor_2"]);
         assert_eq!(descriptor.features.names(), ["n1", "n2", "l"]);
 
         let mut index = 0;

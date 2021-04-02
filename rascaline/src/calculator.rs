@@ -56,13 +56,13 @@ impl<'a> SelectedIndexes<'a> {
     ) -> Result<Indexes, Error> {
         let indexes = match self {
             SelectedIndexes::All => {
-                let environments = calculator.environments();
-                environments.indexes(systems)
+                let samples = calculator.samples();
+                samples.indexes(systems)
             },
             SelectedIndexes::Some(indexes) => indexes,
             SelectedIndexes::FromC(list) => {
-                let environments = calculator.environments();
-                let mut builder = IndexesBuilder::new(environments.names());
+                let samples = calculator.samples();
+                let mut builder = IndexesBuilder::new(samples.names());
 
                 if list.len() % builder.size() != 0 {
                     return Err(Error::InvalidParameter(format!(
@@ -78,7 +78,7 @@ impl<'a> SelectedIndexes<'a> {
             }
         };
 
-        calculator.check_environments(&indexes, systems);
+        calculator.check_samples(&indexes, systems);
         return Ok(indexes);
     }
 }
@@ -184,11 +184,11 @@ impl Calculator {
         let features = options.selected_features.into_features(&*self.implementation)?;
         let samples = options.selected_samples.into_samples(&*self.implementation, systems)?;
 
-        let environments_builder = self.implementation.environments();
+        let samples_builder = self.implementation.samples();
         if self.implementation.compute_gradients() {
-            let gradients = environments_builder
+            let gradients = samples_builder
                 .gradients_for(systems, &samples)
-                .expect("this environments definition do not support gradients");
+                .expect("this samples definition do not support gradients");
             descriptor.prepare_gradients(samples, gradients, features);
         } else {
             descriptor.prepare(samples, features);

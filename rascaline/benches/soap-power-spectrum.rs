@@ -66,8 +66,8 @@ fn run_soap_power_spectrum(mut group: BenchmarkGroup<WallTime>, path: &str) {
             let mut calculator = SoapPowerSpectrum::new(parameters);
 
             let mut descriptor = Descriptor::new();
-            let environments = calculator.environments();
-            descriptor.prepare(environments.indexes(&mut systems), calculator.features());
+            let samples = calculator.samples();
+            descriptor.prepare(samples.indexes(&mut systems), calculator.features());
 
             group.bench_function(&format!("n_max = {}, l_max = {}", max_radial, max_angular), |b| b.iter_custom(|repeat| {
                 let start = std::time::Instant::now();

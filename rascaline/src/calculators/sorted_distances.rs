@@ -6,7 +6,7 @@ use super::CalculatorBase;
 
 use crate::descriptor::Descriptor;
 use crate::descriptor::{Indexes, IndexesBuilder, IndexValue};
-use crate::descriptor::{EnvironmentIndexes, AtomSpeciesEnvironment};
+use crate::descriptor::{SamplesIndexes, AtomSpeciesSamples};
 use crate::system::System;
 
 #[derive(Debug, Clone)]
@@ -49,8 +49,8 @@ impl CalculatorBase for SortedDistances {
         return features.finish();
     }
 
-    fn environments(&self) -> Box<dyn EnvironmentIndexes> {
-        Box::new(AtomSpeciesEnvironment::new(self.cutoff))
+    fn samples(&self) -> Box<dyn SamplesIndexes> {
+        Box::new(AtomSpeciesSamples::new(self.cutoff))
     }
 
     fn compute_gradients(&self) -> bool {
@@ -64,13 +64,13 @@ impl CalculatorBase for SortedDistances {
         }
     }
 
-    fn check_environments(&self, indexes: &Indexes, systems: &mut [&mut dyn System]) {
+    fn check_samples(&self, indexes: &Indexes, systems: &mut [&mut dyn System]) {
         assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor"]);
         // This could be made much faster by not recomputing the full list of
-        // potential environments
-        let allowed = self.environments().indexes(systems);
+        // potential samples
+        let allowed = self.samples().indexes(systems);
         for value in indexes.iter() {
-            assert!(allowed.contains(value), "{:?} is not a valid environment", value);
+            assert!(allowed.contains(value), "{:?} is not a valid sample", value);
         }
     }
 
@@ -92,9 +92,9 @@ impl CalculatorBase for SortedDistances {
             // distance contains a vector of distances vector (one distance
             // vector for each center) for each pair of species in the system
             let mut distances = HashMap::new();
-            for idx in &descriptor.environments {
-                let alpha = idx[2].usize();
-                let beta = idx[3].usize();
+            for sample in &descriptor.samples {
+                let alpha = sample[2].usize();
+                let beta = sample[3].usize();
                 distances.entry((alpha, beta)).or_insert_with(
                     || vec![Vec::with_capacity(self.max_neighbors); system.size()]
                 );
@@ -127,13 +127,13 @@ impl CalculatorBase for SortedDistances {
             }
 
             loop {
-                if current == descriptor.environments.count() {
+                if current == descriptor.samples.count() {
                     break;
                 }
 
                 // Copy the data in the descriptor array, until we find the
                 // next system
-                if let [structure, center, alpha, beta] = descriptor.environments[current] {
+                if let [structure, center, alpha, beta] = descriptor.samples[current] {
                     if structure.usize() != i_system {
                         break;
                     }
@@ -154,8 +154,8 @@ impl CalculatorBase for SortedDistances {
             }
         }
 
-        // sanity check: did we get all environment in the above loop?
-        assert_eq!(current, descriptor.environments.count());
+        // sanity check: did we get all samples in the above loop?
+        assert_eq!(current, descriptor.samples.count());
     }
 }
 
