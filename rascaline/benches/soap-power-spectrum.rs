@@ -30,26 +30,25 @@ impl From<JsonSystem> for SimpleSystem {
     }
 }
 
-fn load_system(path: &str) -> Vec<SimpleSystem> {
+fn load_system(path: &str) -> Vec<Box<dyn System>> {
     let file = std::fs::File::open(&format!("benches/data/{}", path))
         .expect("failed to open file");
 
     let data: Vec<JsonSystem> = serde_json::from_reader(GzDecoder::new(file)).expect("failed to parse JSON");
 
-    return data.into_iter().map(|s| s.into()).collect()
+    return data.into_iter()
+        .map(|s| Box::new(SimpleSystem::from(s)) as Box<dyn System>)
+        .collect()
 }
 
 fn run_soap_power_spectrum(mut group: BenchmarkGroup<WallTime>, path: &str) {
-    let mut raw_systems = load_system(path);
+    let mut systems = load_system(path);
 
     let cutoff = 4.0;
-
     let mut n_centers = 0;
-    let mut systems = Vec::new();
-    for system in &mut raw_systems {
+    for system in &mut systems {
         n_centers += system.size();
         system.compute_neighbors(cutoff);
-        systems.push(system as &mut dyn System);
     }
 
     for &max_radial in black_box(&[2, 8, 14]) {

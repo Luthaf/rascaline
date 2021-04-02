@@ -234,14 +234,14 @@ pub unsafe extern fn rascal_calculator_compute(
         }
         check_pointers!(calculator, descriptor, systems);
 
-        // Create a Vec<&mut dyn System> from the passed systems
-        let systems = std::slice::from_raw_parts_mut(systems, systems_count);
-        let mut references = Vec::new();
-        for system in systems {
-            references.push(system as &mut dyn System);
+        // Create a Vec<Box<dyn System>> from the passed systems
+        let c_systems = std::slice::from_raw_parts_mut(systems, systems_count);
+        let mut systems = Vec::with_capacity(c_systems.len());
+        for system in c_systems {
+            systems.push(Box::new(system) as Box<dyn System>);
         }
 
         let options = (&options).into();
-        (*calculator).compute(&mut references, &mut *descriptor, options)
+        (*calculator).compute(&mut systems, &mut *descriptor, options)
     })
 }

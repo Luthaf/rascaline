@@ -195,7 +195,7 @@ impl CalculatorBase for SoapPowerSpectrum {
         }
     }
 
-    fn check_samples(&self, indexes: &Indexes, systems: &mut [&mut dyn System]) {
+    fn check_samples(&self, indexes: &Indexes, systems: &mut [Box<dyn System>]) {
         assert_eq!(indexes.names(), self.samples().names());
         // This could be made much faster by not recomputing the full list of
         // potential samples
@@ -206,7 +206,7 @@ impl CalculatorBase for SoapPowerSpectrum {
     }
 
     #[time_graph::instrument(name = "SoapPowerSpectrum::compute")]
-    fn compute(&mut self, systems: &mut [&mut dyn System], descriptor: &mut Descriptor) {
+    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor) {
         assert_eq!(descriptor.samples.names(), self.samples().names());
         assert_eq!(descriptor.features.names(), self.features_names());
 
@@ -325,9 +325,9 @@ mod tests {
             parameters(false)
         )) as Box<dyn CalculatorBase>);
 
-        let mut systems = test_systems(&["water"]);
+        let mut systems = test_systems(&["water"]).boxed();
         let mut descriptor = Descriptor::new();
-        calculator.compute(&mut systems.get(), &mut descriptor, Default::default()).unwrap();
+        calculator.compute(&mut systems, &mut descriptor, Default::default()).unwrap();
 
         assert_eq!(descriptor.samples.names(), ["structure", "center", "species_center", "species_neighbor_1", "species_neighbor_2"]);
         assert_eq!(descriptor.features.names(), ["n1", "n2", "l"]);
@@ -353,7 +353,7 @@ mod tests {
             parameters(false)
         )) as Box<dyn CalculatorBase>);
 
-        let systems = test_systems(&["water", "methane"]);
+        let mut systems = test_systems(&["water", "methane"]).boxed();
 
         let mut samples = IndexesBuilder::new(vec!["structure", "center", "species_center", "species_neighbor_1", "species_neighbor_2"]);
         samples.add(&[v!(0), v!(1), v!(1), v!(1), v!(1)]);
@@ -372,7 +372,7 @@ mod tests {
         let features = features.finish();
 
         super::super::super::tests_utils::compute_partial(
-            calculator, systems, samples, features, false
+            calculator, &mut systems, samples, features, false
         );
     }
 

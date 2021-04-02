@@ -23,9 +23,9 @@ fn spherical_expansion(c: &mut Criterion) {
     group.noise_threshold(0.05);
     group.measurement_time(std::time::Duration::from_secs(10));
 
-    let mut system = SimpleSystem::from_xyz(UnitCell::infinite(), TESTING_FRAME);
+    let system = SimpleSystem::from_xyz(UnitCell::infinite(), TESTING_FRAME);
     let n_centers = system.size();
-    let systems = &mut [&mut system as &mut dyn System];
+    let systems = &mut [Box::new(system) as Box<dyn System>];
 
     for &max_radial in black_box(&[2, 8, 14]) {
         for &max_angular in black_box(&[1, 7, 15]) {
@@ -59,9 +59,9 @@ fn spherical_expansion_gradients(c: &mut Criterion) {
     group.noise_threshold(0.05);
     group.measurement_time(std::time::Duration::from_secs(10));
 
-    let mut system = SimpleSystem::from_xyz(UnitCell::infinite(), TESTING_FRAME);
+    let system = SimpleSystem::from_xyz(UnitCell::infinite(), TESTING_FRAME);
     let n_centers = system.size();
-    let systems = &mut [&mut system as &mut dyn System];
+    let systems = &mut [Box::new(system) as Box<dyn System>];
 
     for &max_radial in black_box(&[2, 8, 14]) {
         for &max_angular in black_box(&[1, 7, 15]) {

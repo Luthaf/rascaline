@@ -281,7 +281,7 @@ impl CalculatorBase for SphericalExpansion {
         }
     }
 
-    fn check_samples(&self, indexes: &Indexes, systems: &mut [&mut dyn System]) {
+    fn check_samples(&self, indexes: &Indexes, systems: &mut [Box<dyn System>]) {
         assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor"]);
         // This could be made much faster by not recomputing the full list of
         // potential samples
@@ -293,7 +293,7 @@ impl CalculatorBase for SphericalExpansion {
 
     #[allow(clippy::similar_names, clippy::too_many_lines, clippy::identity_op)]
     #[time_graph::instrument(name = "SphericalExpansion::compute")]
-    fn compute(&mut self, systems: &mut [&mut dyn System], descriptor: &mut Descriptor) {
+    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor) {
         assert_eq!(descriptor.samples.names(), &["structure", "center", "species_center", "species_neighbor"]);
         assert_eq!(descriptor.features.names(), &["n", "l", "m"]);
 
@@ -479,9 +479,9 @@ mod tests {
             parameters(false)
         )) as Box<dyn CalculatorBase>);
 
-        let mut systems = test_systems(&["water"]);
+        let mut systems = test_systems(&["water"]).boxed();
         let mut descriptor = Descriptor::new();
-        calculator.compute(&mut systems.get(), &mut descriptor, Default::default()).unwrap();
+        calculator.compute(&mut systems, &mut descriptor, Default::default()).unwrap();
 
         assert_eq!(descriptor.samples.names(), ["structure", "center", "species_center", "species_neighbor"]);
         assert_eq!(descriptor.features.names(), ["n", "l", "m"]);
@@ -543,7 +543,7 @@ mod tests {
             parameters(true)
         )) as Box<dyn CalculatorBase>);
 
-        let systems = test_systems(&["water", "methane"]);
+        let mut systems = test_systems(&["water", "methane"]).boxed();
 
         let mut features = IndexesBuilder::new(vec!["n", "l", "m"]);
         features.add(&[v!(0), v!(1), v!(0)]);
@@ -562,7 +562,7 @@ mod tests {
         let samples = samples.finish();
 
         super::super::super::tests_utils::compute_partial(
-            calculator, systems, samples, features, true
+            calculator, &mut systems, samples, features, true
         );
     }
 

@@ -81,7 +81,7 @@ pub struct rascal_system_t {
     pairs_containing: Option<unsafe extern fn(user_data: *const c_void, center: usize, pairs: *mut *const rascal_pair_t, count: *mut usize)>,
 }
 
-impl System for rascal_system_t {
+impl<'a> System for &'a mut rascal_system_t {
     fn size(&self) -> usize {
         let mut value = 0;
         let function = self.size.expect("rascal_system_t.size is NULL");

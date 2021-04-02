@@ -63,7 +63,7 @@ impl CalculatorBase for DummyCalculator {
         }
     }
 
-    fn check_samples(&self, indexes: &Indexes, systems: &mut [&mut dyn System]) {
+    fn check_samples(&self, indexes: &Indexes, systems: &mut [Box<dyn System>]) {
         assert_eq!(indexes.names(), ["structure", "center"]);
         // This could be made much faster by not recomputing the full list of
         // potential samples
@@ -75,7 +75,7 @@ impl CalculatorBase for DummyCalculator {
 
     #[allow(clippy::clippy::cast_precision_loss)]
     #[time_graph::instrument(name = "DummyCalculator::compute")]
-    fn compute(&mut self, systems: &mut [&mut dyn System], descriptor: &mut Descriptor) {
+    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor) {
         for (sample_i, indexes) in descriptor.samples.iter().enumerate() {
             let i_system = indexes[0].usize();
             let center = indexes[1].usize();
@@ -164,9 +164,9 @@ mod tests {
             gradients: false,
         }) as Box<dyn CalculatorBase>);
 
-        let mut systems = test_systems(&["water"]);
+        let mut systems = test_systems(&["water"]).boxed();
         let mut descriptor = Descriptor::new();
-        calculator.compute(&mut systems.get(), &mut descriptor, Default::default()).unwrap();
+        calculator.compute(&mut systems, &mut descriptor, Default::default()).unwrap();
 
         assert_eq!(descriptor.values.shape(), [3, 2]);
         assert_eq!(descriptor.values.slice(s![0, ..]), aview1(&[9.0, -1.1778999999999997]));
@@ -183,9 +183,9 @@ mod tests {
             gradients: true,
         }) as Box<dyn CalculatorBase>);
 
-        let mut systems = test_systems(&["water"]);
+        let mut systems = test_systems(&["water"]).boxed();
         let mut descriptor = Descriptor::new();
-        calculator.compute(&mut systems.get(), &mut descriptor, Default::default()).unwrap();
+        calculator.compute(&mut systems, &mut descriptor, Default::default()).unwrap();
 
         let gradients = descriptor.gradients.unwrap();
         assert_eq!(gradients.shape(), [12, 2]);
@@ -203,7 +203,7 @@ mod tests {
             gradients: true,
         }) as Box<dyn CalculatorBase>);
 
-        let mut systems = test_systems(&["water"]);
+        let mut systems = test_systems(&["water"]).boxed();
         let mut descriptor = Descriptor::new();
 
         let mut samples = IndexesBuilder::new(vec!["structure", "center"]);
@@ -214,7 +214,7 @@ mod tests {
             selected_features: SelectedIndexes::All,
             ..Default::default()
         };
-        calculator.compute(&mut systems.get(), &mut descriptor, options).unwrap();
+        calculator.compute(&mut systems, &mut descriptor, options).unwrap();
 
         assert_eq!(descriptor.values.shape(), [1, 2]);
         assert_eq!(descriptor.values.slice(s![0, ..]), aview1(&[10.0, 0.16649999999999998]));
@@ -226,7 +226,7 @@ mod tests {
             selected_features: SelectedIndexes::Some(features.finish()),
             ..Default::default()
         };
-        calculator.compute(&mut systems.get(), &mut descriptor, options).unwrap();
+        calculator.compute(&mut systems, &mut descriptor, options).unwrap();
 
         assert_eq!(descriptor.values.shape(), [3, 1]);
         assert_eq!(descriptor.values.slice(s![0, ..]), aview1(&[-1.1778999999999997]));

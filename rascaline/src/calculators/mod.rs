@@ -32,7 +32,7 @@ pub trait CalculatorBase: std::panic::RefUnwindSafe {
     /// Check that the given indexes are valid samples indexes for this
     /// Calculator. This is used by `Calculator::compute_partial` to ensure
     /// only valid samples are requested
-    fn check_samples(&self, indexes: &Indexes, systems: &mut [&mut dyn System]);
+    fn check_samples(&self, indexes: &Indexes, systems: &mut [Box<dyn System>]);
 
     /// Core implementation of the descriptor.
     ///
@@ -42,7 +42,7 @@ pub trait CalculatorBase: std::panic::RefUnwindSafe {
     /// and features coming from `Descriptor::samples()` and
     /// `Descriptor::features()` respectively; but the user can request only a
     /// subset of them.
-    fn compute(&mut self, systems: &mut [&mut dyn System], descriptor: &mut Descriptor);
+    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor);
 }
 
 mod sorted_distances;

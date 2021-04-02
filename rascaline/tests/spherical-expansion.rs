@@ -1,13 +1,12 @@
 use approx::assert_relative_eq;
 use ndarray::Array2;
-use rascaline::{System, Calculator, Descriptor};
+use rascaline::{Calculator, Descriptor};
 
 mod data;
 
 #[test]
 fn values() {
     let (mut systems, parameters) = data::load_calculator_input("spherical-expansion-values-input.json");
-    let mut systems = systems.iter_mut().map(|s| s as &mut dyn System).collect::<Vec<_>>();
 
     let mut descriptor = Descriptor::new();
     let mut calculator = Calculator::new("spherical_expansion", parameters).unwrap();
@@ -22,7 +21,6 @@ fn values() {
 #[test]
 fn gradients() {
     let (mut systems, parameters) = data::load_calculator_input("spherical-expansion-gradients-input.json");
-    let mut systems = systems.iter_mut().map(|s| s as &mut dyn System).collect::<Vec<_>>();
 
     let mut descriptor = Descriptor::new();
     let mut calculator = Calculator::new("spherical_expansion", parameters).unwrap();

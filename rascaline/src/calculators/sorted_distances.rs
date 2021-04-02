@@ -64,7 +64,7 @@ impl CalculatorBase for SortedDistances {
         }
     }
 
-    fn check_samples(&self, indexes: &Indexes, systems: &mut [&mut dyn System]) {
+    fn check_samples(&self, indexes: &Indexes, systems: &mut [Box<dyn System>]) {
         assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor"]);
         // This could be made much faster by not recomputing the full list of
         // potential samples
@@ -75,7 +75,7 @@ impl CalculatorBase for SortedDistances {
     }
 
     #[time_graph::instrument(name = "SortedDistances::compute")]
-    fn compute(&mut self, systems: &mut [&mut dyn System], descriptor: &mut Descriptor) {
+    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor) {
         let all_features = descriptor.features.count() == self.max_neighbors;
         let mut requested_features = Vec::new();
         if !all_features {
@@ -190,9 +190,9 @@ mod tests {
             max_neighbors: 3,
         }) as Box<dyn CalculatorBase>);
 
-        let mut systems = test_systems(&["water"]);
+        let mut systems = test_systems(&["water"]).boxed();
         let mut descriptor = Descriptor::new();
-        calculator.compute(&mut systems.get(), &mut descriptor, Default::default()).unwrap();
+        calculator.compute(&mut systems, &mut descriptor, Default::default()).unwrap();
 
         assert_eq!(descriptor.values.shape(), [3, 3]);
 
@@ -214,7 +214,7 @@ mod tests {
             max_neighbors: 3,
         }) as Box<dyn CalculatorBase>);
 
-        let mut systems = test_systems(&["water"]);
+        let mut systems = test_systems(&["water"]).boxed();
         let mut descriptor = Descriptor::new();
 
         let mut samples = IndexesBuilder::new(vec!["structure", "center", "species_center", "species_neighbor"]);
@@ -227,7 +227,7 @@ mod tests {
             selected_features: SelectedIndexes::All,
             ..Default::default()
         };
-        calculator.compute(&mut systems.get(), &mut descriptor, options).unwrap();
+        calculator.compute(&mut systems, &mut descriptor, options).unwrap();
 
         assert_eq!(descriptor.values.shape(), [1, 3]);
         assert_eq!(descriptor.values.slice(s![0, ..]), aview1(&[0.957897074324794, 1.5, 1.5]));
@@ -241,7 +241,7 @@ mod tests {
             selected_features: SelectedIndexes::Some(features.finish()),
             ..Default::default()
         };
-        calculator.compute(&mut systems.get(), &mut descriptor, options).unwrap();
+        calculator.compute(&mut systems, &mut descriptor, options).unwrap();
 
         assert_eq!(descriptor.values.shape(), [3, 2]);
         assert_eq!(descriptor.values.slice(s![0, ..]), aview1(&[0.957897074324794, 1.5]));

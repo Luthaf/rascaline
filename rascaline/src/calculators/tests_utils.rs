@@ -4,7 +4,6 @@ use approx::assert_relative_eq;
 
 use crate::{CalculationOptions, Calculator, SelectedIndexes};
 use crate::system::{System, SimpleSystem};
-use crate::system::test_utils::SimpleSystems;
 use crate::descriptor::{Descriptor, Indexes, IndexValue};
 
 /// Check that computing a partial subset of features/samples works as intended
@@ -16,13 +15,13 @@ use crate::descriptor::{Descriptor, Indexes, IndexValue};
 #[allow(clippy::needless_pass_by_value)]
 pub fn compute_partial(
     mut calculator: Calculator,
-    mut systems: SimpleSystems,
+    systems: &mut [Box<dyn System>],
     samples: Indexes,
     features: Indexes,
     gradients: bool,
 ) {
     let mut full = Descriptor::new();
-    calculator.compute(&mut systems.get(), &mut full, Default::default()).unwrap();
+    calculator.compute(systems, &mut full, Default::default()).unwrap();
 
     // partial set of features, all samples
     let mut partial = Descriptor::new();
@@ -31,7 +30,7 @@ pub fn compute_partial(
         selected_features: SelectedIndexes::Some(features.clone()),
         ..Default::default()
     };
-    calculator.compute(&mut systems.get(), &mut partial, options).unwrap();
+    calculator.compute(systems, &mut partial, options).unwrap();
 
     assert_eq!(full.samples, partial.samples);
     for (partial_i, feature) in features.iter().enumerate() {
@@ -55,7 +54,7 @@ pub fn compute_partial(
         selected_features: SelectedIndexes::All,
         ..Default::default()
     };
-    calculator.compute(&mut systems.get(), &mut partial, options).unwrap();
+    calculator.compute(systems, &mut partial, options).unwrap();
 
     assert_eq!(full.features, partial.features);
     for (partial_i, sample) in samples.iter().enumerate() {
@@ -82,7 +81,7 @@ pub fn compute_partial(
         selected_features: SelectedIndexes::Some(features.clone()),
         ..Default::default()
     };
-    calculator.compute(&mut systems.get(), &mut partial, options).unwrap();
+    calculator.compute(systems, &mut partial, options).unwrap();
     for (sample_i, sample) in samples.iter().enumerate() {
         for (feature_i, feature) in features.iter().enumerate() {
             let full_sample_i = full.samples.position(sample).unwrap();
@@ -136,7 +135,7 @@ pub fn finite_difference(
 ) {
 
     let mut reference = Descriptor::new();
-    calculator.compute(&mut [&mut system], &mut reference, Default::default()).unwrap();
+    calculator.compute(&mut [Box::new(system.clone())], &mut reference, Default::default()).unwrap();
 
     let gradients_samples = reference.gradients_samples.as_ref().unwrap();
 
@@ -147,7 +146,7 @@ pub fn finite_difference(
             system.positions_mut()[atom_i][spatial] += delta;
 
             let mut updated = Descriptor::new();
-            calculator.compute(&mut [&mut system], &mut updated, Default::default()).unwrap();
+            calculator.compute(&mut [Box::new(system.clone())], &mut updated, Default::default()).unwrap();
 
             let moved = MovedAtomIndex {
                 center: atom_i,
