@@ -7,12 +7,10 @@ pub struct SimpleSystems {
 }
 
 impl SimpleSystems {
-    pub fn get(&mut self) -> Vec<&mut dyn System> {
-        let mut references = Vec::new();
-        for system in &mut self.systems {
-            references.push(system as &mut dyn System)
-        }
-        return references;
+    pub fn boxed(self) -> Vec<Box<dyn System>> {
+        self.systems.into_iter()
+            .map(|s| Box::new(s) as Box<dyn System>)
+            .collect()
     }
 }
 

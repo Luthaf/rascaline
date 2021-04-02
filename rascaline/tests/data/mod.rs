@@ -4,12 +4,12 @@ use serde_json::Value;
 use ndarray_npy::ReadNpyExt;
 use flate2::read::GzDecoder;
 
-use rascaline::{SimpleSystem, Matrix3, Vector3D};
+use rascaline::{SimpleSystem, System, Matrix3, Vector3D};
 use rascaline::system::UnitCell;
 
 type HyperParameters = String;
 
-pub fn load_calculator_input(path: &str) -> (Vec<SimpleSystem>, HyperParameters) {
+pub fn load_calculator_input(path: &str) -> (Vec<Box<dyn System>>, HyperParameters) {
     let json = std::fs::read_to_string(&format!("tests/data/generated/{}", path))
         .expect("failed to read input file");
 
@@ -36,7 +36,7 @@ pub fn load_calculator_input(path: &str) -> (Vec<SimpleSystem>, HyperParameters)
             simple_system.add_atom(species, position);
         }
 
-        systems.push(simple_system);
+        systems.push(Box::new(simple_system) as Box<dyn System>);
     }
 
     (systems, parameters)

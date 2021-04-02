@@ -52,7 +52,7 @@ impl<'a> SelectedIndexes<'a> {
     fn into_samples(
         self,
         calculator: &dyn CalculatorBase,
-        systems: &mut [&mut dyn System],
+        systems: &mut [Box<dyn System>],
     ) -> Result<Indexes, Error> {
         let indexes = match self {
             SelectedIndexes::All => {
@@ -160,26 +160,17 @@ impl Calculator {
     #[time_graph::instrument(name = "Calculator::compute")]
     pub fn compute(
         &mut self,
-        systems: &mut [&mut dyn System],
+        systems: &mut [Box<dyn System>],
         descriptor: &mut Descriptor,
         options: CalculationOptions,
     ) -> Result<(), Error> {
         let mut native_systems;
-        let mut references = Vec::with_capacity(systems.len());
-
-        if options.use_native_system {
+        let systems = if options.use_native_system {
             native_systems = to_native_systems(systems);
-            for system in &mut native_systems {
-                references.push(system as &mut dyn System);
-            }
+            &mut native_systems
         } else {
-            for system in systems {
-                // re-borrow every system to ensure the lifetime matches with
-                // the native_system case
-                references.push(&mut **system);
-            }
-        }
-        let systems = &mut references;
+            systems
+        };
 
         let features = options.selected_features.into_features(&*self.implementation)?;
         let samples = options.selected_samples.into_samples(&*self.implementation, systems)?;
@@ -199,10 +190,10 @@ impl Calculator {
     }
 }
 
-fn to_native_systems(systems: &mut [&mut dyn System]) -> Vec<SimpleSystem> {
+fn to_native_systems(systems: &mut [Box<dyn System>]) -> Vec<Box<dyn System>> {
     let mut native_systems = Vec::with_capacity(systems.len());
     for system in systems.iter() {
-        native_systems.push(SimpleSystem::from(*system as &dyn System));
+        native_systems.push(Box::new(SimpleSystem::from(&**system)) as Box<dyn System>);
     }
     return native_systems;
 }

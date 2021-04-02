@@ -8,14 +8,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let file_content = std::fs::read_to_string(&path)?;
         // WARNING: this function only read the first step of the file
         let system = SimpleSystem::from_xyz(UnitCell::infinite(), &file_content);
-        systems.push(system);
+        systems.push(Box::new(system) as Box<dyn System>);
     }
-
-    // transform the vector of SimpleSystems to a vector of trait objects
-    let mut references = systems.iter_mut()
-        .map(|s| s as &mut dyn System)
-        .collect::<Vec<_>>();
-
 
     // pass hyper-parameters as JSON
     let parameters = "{
@@ -38,7 +32,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut descriptor = Descriptor::new();
 
     // run the calculation using default options
-    calculator.compute(&mut references, &mut descriptor, Default::default())?;
+    calculator.compute(&mut systems, &mut descriptor, Default::default())?;
 
     // Transform the descriptor to dense representation,
     // with one sample for each atom-centered environment

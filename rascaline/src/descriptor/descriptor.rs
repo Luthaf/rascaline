@@ -266,9 +266,9 @@ mod tests {
     fn prepare() {
         let mut descriptor = Descriptor::new();
 
-        let mut systems = test_systems(&["water", "CH"]);
+        let mut systems = test_systems(&["water", "CH"]).boxed();
         let features = dummy_features();
-        let samples = StructureSpeciesSamples.indexes(&mut systems.get());
+        let samples = StructureSpeciesSamples.indexes(&mut systems);
         descriptor.prepare(samples, features);
 
 
@@ -287,9 +287,9 @@ mod tests {
     fn prepare_gradients() {
         let mut descriptor = Descriptor::new();
 
-        let mut systems = test_systems(&["water", "CH"]);
+        let mut systems = test_systems(&["water", "CH"]).boxed();
         let features = dummy_features();
-        let (samples, gradients) = StructureSpeciesSamples.with_gradients(&mut systems.get());
+        let (samples, gradients) = StructureSpeciesSamples.with_gradients(&mut systems);
         descriptor.prepare_gradients(samples, gradients.unwrap(), features);
 
         let gradients = descriptor.gradients.unwrap();
@@ -322,9 +322,9 @@ mod tests {
     fn densify_single_variable() {
         let mut descriptor = Descriptor::new();
 
-        let mut systems = test_systems(&["water", "CH"]);
+        let mut systems = test_systems(&["water", "CH"]).boxed();
         let features = dummy_features();
-        let (samples, gradients) = StructureSpeciesSamples.with_gradients(&mut systems.get());
+        let (samples, gradients) = StructureSpeciesSamples.with_gradients(&mut systems);
         descriptor.prepare_gradients(samples, gradients.unwrap(), features);
 
         descriptor.values.assign(&array![
@@ -402,9 +402,9 @@ mod tests {
     fn densify_multiple_variables() {
         let mut descriptor = Descriptor::new();
 
-        let mut systems = test_systems(&["water", "CH"]);
+        let mut systems = test_systems(&["water", "CH"]).boxed();
         let features = dummy_features();
-        let (samples, gradients) = AtomSpeciesSamples::new(3.0).with_gradients(&mut systems.get());
+        let (samples, gradients) = AtomSpeciesSamples::new(3.0).with_gradients(&mut systems);
         descriptor.prepare_gradients(samples, gradients.unwrap(), features);
 
         descriptor.values.assign(&array![
