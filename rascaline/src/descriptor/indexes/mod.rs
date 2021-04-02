@@ -1,9 +1,11 @@
-mod index;
-pub use self::index::{IndexValue, Indexes, IndexesBuilder, EnvironmentIndexes};
+#![allow(clippy::module_name_repetitions)]
 
-mod environments;
-pub use self::environments::{StructureEnvironment, AtomEnvironment};
+mod index;
+pub use self::index::{IndexValue, Indexes, IndexesBuilder, SamplesIndexes};
+
+mod samples;
+pub use self::samples::{StructureSamples, AtomSamples};
 
 mod species;
-pub use self::species::{StructureSpeciesEnvironment, AtomSpeciesEnvironment};
-pub use self::species::{ThreeBodiesSpeciesEnvironment};
+pub use self::species::{StructureSpeciesSamples, AtomSpeciesSamples};
+pub use self::species::{ThreeBodiesSpeciesSamples};

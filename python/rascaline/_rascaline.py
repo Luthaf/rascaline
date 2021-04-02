@@ -20,8 +20,8 @@ elif arch == "64bit":
 
 class rascal_indexes(enum.Enum):
     RASCAL_INDEXES_FEATURES = 0
-    RASCAL_INDEXES_ENVIRONMENTS = 1
-    RASCAL_INDEXES_GRADIENTS = 2
+    RASCAL_INDEXES_SAMPLES = 1
+    RASCAL_INDEXES_GRADIENT_SAMPLES = 2
 
 
 class rascal_status_t(enum.Enum):

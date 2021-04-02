@@ -41,8 +41,7 @@ fn spherical_expansion(c: &mut Criterion) {
             let mut calculator = SphericalExpansion::new(parameters);
 
             let mut descriptor = Descriptor::new();
-            let environments = calculator.environments();
-            descriptor.prepare(environments.indexes(systems), calculator.features());
+            descriptor.prepare(calculator.samples().indexes(systems), calculator.features());
 
             group.bench_function(&format!("n_max = {}, l_max = {}", max_radial, max_angular), |b| b.iter_custom(|repeat| {
                 let start = std::time::Instant::now();
@@ -78,8 +77,7 @@ fn spherical_expansion_gradients(c: &mut Criterion) {
             let mut calculator = SphericalExpansion::new(parameters);
 
             let mut descriptor = Descriptor::new();
-            let environments = calculator.environments();
-            let (samples, gradients) = environments.with_gradients(systems);
+            let (samples, gradients) = calculator.samples().with_gradients(systems);
             descriptor.prepare_gradients(samples, gradients.unwrap(), calculator.features());
 
             group.bench_function(&format!("n_max = {}, l_max = {}", max_radial, max_angular), |b| b.iter_custom(|repeat| {

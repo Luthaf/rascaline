@@ -17,12 +17,12 @@ typedef enum rascal_indexes {
   /**
    * The samples index, describing different samples in the representation
    */
-  RASCAL_INDEXES_ENVIRONMENTS = 1,
+  RASCAL_INDEXES_SAMPLES = 1,
   /**
-   * The gradient index, describing the gradients of samples in the
+   * The gradient samples index, describing the gradients of samples in the
    * representation with respect to other atoms
    */
-  RASCAL_INDEXES_GRADIENTS = 2,
+  RASCAL_INDEXES_GRADIENT_SAMPLES = 2,
 } rascal_indexes;
 
 /**

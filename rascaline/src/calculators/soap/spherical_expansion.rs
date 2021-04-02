@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use ndarray::Array2;
 
-use crate::descriptor::{IndexesBuilder, IndexValue, Indexes, EnvironmentIndexes, AtomSpeciesEnvironment};
+use crate::descriptor::{IndexesBuilder, IndexValue, Indexes, SamplesIndexes, AtomSpeciesSamples};
 use crate::system::Pair;
 use crate::{Descriptor, System, Vector3D};
 
@@ -201,7 +201,7 @@ impl SphericalExpansion {
 
     fn do_self_contributions(&mut self, descriptor: &mut Descriptor) {
         // keep a list of centers which have already been computed
-        for (i_env, requested_env) in descriptor.environments.iter().enumerate() {
+        for (i_env, requested_env) in descriptor.samples.iter().enumerate() {
             let alpha = requested_env[2];
             let beta = requested_env[3];
 
@@ -215,13 +215,13 @@ impl SphericalExpansion {
                 );
                 let f_cut = self.parameters.cutoff_function.compute(0.0, self.parameters.cutoff);
 
-                for (i_feature, feature) in descriptor.features.iter().enumerate() {
+                for (feature_i, feature) in descriptor.features.iter().enumerate() {
                     let n = feature[0].usize();
                     let l = feature[1].usize();
                     let m = feature[2].isize();
 
                     let n_l_m_value = f_cut * self.ri_values[[n, l]] * self.sph_values[[l as isize, m]];
-                    descriptor.values[[i_env, i_feature]] += n_l_m_value;
+                    descriptor.values[[i_env, feature_i]] += n_l_m_value;
                 }
             }
         }
@@ -261,8 +261,8 @@ impl CalculatorBase for SphericalExpansion {
         return features.finish();
     }
 
-    fn environments(&self) -> Box<dyn EnvironmentIndexes> {
-        Box::new(AtomSpeciesEnvironment::with_self_contribution(self.parameters.cutoff))
+    fn samples(&self) -> Box<dyn SamplesIndexes> {
+        Box::new(AtomSpeciesSamples::with_self_contribution(self.parameters.cutoff))
     }
 
     fn compute_gradients(&self) -> bool {
@@ -281,20 +281,20 @@ impl CalculatorBase for SphericalExpansion {
         }
     }
 
-    fn check_environments(&self, indexes: &Indexes, systems: &mut [&mut dyn System]) {
+    fn check_samples(&self, indexes: &Indexes, systems: &mut [&mut dyn System]) {
         assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor"]);
         // This could be made much faster by not recomputing the full list of
-        // potential environments
-        let allowed = self.environments().indexes(systems);
+        // potential samples
+        let allowed = self.samples().indexes(systems);
         for value in indexes.iter() {
-            assert!(allowed.contains(value), "{:?} is not a valid environment", value);
+            assert!(allowed.contains(value), "{:?} is not a valid sample", value);
         }
     }
 
     #[allow(clippy::similar_names, clippy::too_many_lines, clippy::identity_op)]
     #[time_graph::instrument(name = "SphericalExpansion::compute")]
     fn compute(&mut self, systems: &mut [&mut dyn System], descriptor: &mut Descriptor) {
-        assert_eq!(descriptor.environments.names(), &["structure", "center", "species_center", "species_neighbor"]);
+        assert_eq!(descriptor.samples.names(), &["structure", "center", "species_center", "species_neighbor"]);
         assert_eq!(descriptor.features.names(), &["n", "l", "m"]);
 
         self.do_self_contributions(descriptor);
@@ -302,11 +302,11 @@ impl CalculatorBase for SphericalExpansion {
         // keep the set of pairs already seen for each system
         let mut already_computed_pairs = vec![BTreeSet::new(); systems.len()];
 
-        for (i_env, requested_env) in descriptor.environments.iter().enumerate() {
-            let i_system = requested_env[0];
-            let center = requested_env[1].usize();
-            let alpha = requested_env[2];
-            let beta = requested_env[3];
+        for (sample_i, sample) in descriptor.samples.iter().enumerate() {
+            let i_system = sample[0];
+            let center = sample[1].usize();
+            let alpha = sample[2];
+            let beta = sample[3];
 
             let system = &mut *systems[i_system.usize()];
             system.compute_neighbors(self.parameters.cutoff);
@@ -331,7 +331,7 @@ impl CalculatorBase for SphericalExpansion {
                 // we store the result for the center--neighbor pair in env_i,
                 // this code check where (it can not be part of the requested
                 // envs) to store the result for the neighbor--center pair.
-                let other_env_i = descriptor.environments.position(
+                let other_sample_i = descriptor.samples.position(
                     &[i_system, IndexValue::from(neighbor), beta, alpha]
                 );
 
@@ -347,30 +347,30 @@ impl CalculatorBase for SphericalExpansion {
                 );
                 let f_cut = self.parameters.cutoff_function.compute(distance, self.parameters.cutoff);
 
-                for (i_feature, feature) in descriptor.features.iter().enumerate() {
+                for (feature_i, feature) in descriptor.features.iter().enumerate() {
                     let n = feature[0].usize();
                     let l = feature[1].usize();
                     let m = feature[2].isize();
 
                     let n_l_m_value = f_cut * self.ri_values[[n, l]] * self.sph_values[[l as isize, m]];
-                    descriptor.values[[i_env, i_feature]] += n_l_m_value;
-                    if let Some(other_env_i) = other_env_i {
+                    descriptor.values[[sample_i, feature_i]] += n_l_m_value;
+                    if let Some(other_env_i) = other_sample_i {
                         // Use the fact that `se[n, l, m](-r) = (-1)^l se[n, l, m](r)`
                         // where se === spherical_expansion.
-                        descriptor.values[[other_env_i, i_feature]] += m_1_pow(l) * n_l_m_value;
+                        descriptor.values[[other_env_i, feature_i]] += m_1_pow(l) * n_l_m_value;
                     }
                 }
 
                 if self.parameters.gradients {
                     // get the indexes where to store the gradient for this
                     // specific pair, if any
-                    let (center_grad_i, neighbor_grad_i) = if let Some(ref gradients_indexes) = descriptor.gradients_indexes {
+                    let (center_grad_i, neighbor_grad_i) = if let Some(ref gradients_samples) = descriptor.gradients_samples {
                         assert!(self.parameters.gradients);
-                        let center_grad = gradients_indexes.position(&[
+                        let center_grad = gradients_samples.position(&[
                             i_system, IndexValue::from(center), alpha, beta,
                             IndexValue::from(neighbor), IndexValue::from(0)
                         ]);
-                        let neighbor_grad = gradients_indexes.position(&[
+                        let neighbor_grad = gradients_samples.position(&[
                             i_system, IndexValue::from(neighbor), beta, alpha,
                             IndexValue::from(center), IndexValue::from(0)
                         ]);
@@ -390,7 +390,7 @@ impl CalculatorBase for SphericalExpansion {
                     let ri_gradients = self.ri_gradients.as_ref().expect("missing radial integral gradients");
                     let sph_gradients = self.sph_gradients.as_ref().expect("missing spherical harmonics gradients");
 
-                    for (i_feature, feature) in descriptor.features.iter().enumerate() {
+                    for (feature_i, feature) in descriptor.features.iter().enumerate() {
                         let n = feature[0].usize();
                         let l = feature[1].usize();
                         let m = feature[2].isize();
@@ -417,17 +417,17 @@ impl CalculatorBase for SphericalExpansion {
 
                         // assumes that the three spatial derivative are stored
                         // one after the other
-                        gradients[[center_grad_i + 0, i_feature]] += grad_x;
-                        gradients[[center_grad_i + 1, i_feature]] += grad_y;
-                        gradients[[center_grad_i + 2, i_feature]] += grad_z;
+                        gradients[[center_grad_i + 0, feature_i]] += grad_x;
+                        gradients[[center_grad_i + 1, feature_i]] += grad_y;
+                        gradients[[center_grad_i + 2, feature_i]] += grad_z;
 
                         if let Some(neighbor_grad_i) = neighbor_grad_i {
                             // Use the fact that `grad se[n, l, m](-r) = (-1)^(l + 1) grad se[n, l, m](r)`
                             // where se === spherical_expansion.
                             let parity = m_1_pow(l + 1);
-                            gradients[[neighbor_grad_i + 0, i_feature]] = parity * grad_x;
-                            gradients[[neighbor_grad_i + 1, i_feature]] = parity * grad_y;
-                            gradients[[neighbor_grad_i + 2, i_feature]] = parity * grad_z;
+                            gradients[[neighbor_grad_i + 0, feature_i]] = parity * grad_x;
+                            gradients[[neighbor_grad_i + 1, feature_i]] = parity * grad_y;
+                            gradients[[neighbor_grad_i + 2, feature_i]] = parity * grad_z;
                         }
                     }
                 }
@@ -483,7 +483,7 @@ mod tests {
         let mut descriptor = Descriptor::new();
         calculator.compute(&mut systems.get(), &mut descriptor, Default::default()).unwrap();
 
-        assert_eq!(descriptor.environments.names(), ["structure", "center", "species_center", "species_neighbor"]);
+        assert_eq!(descriptor.samples.names(), ["structure", "center", "species_center", "species_neighbor"]);
         assert_eq!(descriptor.features.names(), ["n", "l", "m"]);
 
         let mut index = 0;
@@ -512,19 +512,19 @@ mod tests {
         let mut systems = test_systems(&["water"]);
         let system = systems.systems.pop().unwrap();
 
-        let compute_modified_indexes = |gradients_indexes: &Indexes, moved: MovedAtomIndex| {
+        let compute_modified_indexes = |gradients_samples: &Indexes, moved: MovedAtomIndex| {
             let mut results = Vec::new();
-            for (env_i, env) in gradients_indexes.iter().enumerate() {
-                let center = env[1];
-                let neighbor = env[4];
-                let spatial = env[5];
+            for (sample_i, sample) in gradients_samples.iter().enumerate() {
+                let center = sample[1];
+                let neighbor = sample[4];
+                let spatial = sample[5];
                 if center.usize() != moved.center &&
                    neighbor.usize() == moved.center &&
                    spatial.usize() == moved.spatial
                 {
                     results.push(ChangedGradientIndex {
-                        gradient_index: env_i,
-                        environment: env[..4].to_vec(),
+                        gradient_index: sample_i,
+                        sample: sample[..4].to_vec(),
                     });
                 }
             }
@@ -545,7 +545,6 @@ mod tests {
 
         let systems = test_systems(&["water", "methane"]);
 
-        // partial set of features, all environments
         let mut features = IndexesBuilder::new(vec!["n", "l", "m"]);
         features.add(&[v!(0), v!(1), v!(0)]);
         features.add(&[v!(3), v!(6), v!(-5)]);

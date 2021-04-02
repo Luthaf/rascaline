@@ -1,7 +1,7 @@
 use super::CalculatorBase;
 
 use crate::descriptor::Descriptor;
-use crate::descriptor::{IndexesBuilder, Indexes, IndexValue, EnvironmentIndexes, AtomEnvironment};
+use crate::descriptor::{IndexesBuilder, Indexes, IndexValue, SamplesIndexes, AtomSamples};
 use crate::system::System;
 
 /// A stupid calculator implementation used to test the API, and API binding to
@@ -46,8 +46,8 @@ impl CalculatorBase for DummyCalculator {
         features.finish()
     }
 
-    fn environments(&self) -> Box<dyn EnvironmentIndexes> {
-        Box::new(AtomEnvironment::new(self.cutoff))
+    fn samples(&self) -> Box<dyn SamplesIndexes> {
+        Box::new(AtomSamples::new(self.cutoff))
     }
 
     fn compute_gradients(&self) -> bool {
@@ -63,26 +63,26 @@ impl CalculatorBase for DummyCalculator {
         }
     }
 
-    fn check_environments(&self, indexes: &Indexes, systems: &mut [&mut dyn System]) {
+    fn check_samples(&self, indexes: &Indexes, systems: &mut [&mut dyn System]) {
         assert_eq!(indexes.names(), ["structure", "center"]);
         // This could be made much faster by not recomputing the full list of
-        // potential environments
-        let allowed = self.environments().indexes(systems);
+        // potential samples
+        let allowed = self.samples().indexes(systems);
         for value in indexes.iter() {
-            assert!(allowed.contains(value), "{:?} is not a valid environment", value);
+            assert!(allowed.contains(value), "{:?} is not a valid sample", value);
         }
     }
 
     #[allow(clippy::clippy::cast_precision_loss)]
     #[time_graph::instrument(name = "DummyCalculator::compute")]
     fn compute(&mut self, systems: &mut [&mut dyn System], descriptor: &mut Descriptor) {
-        for (i_sample, indexes) in descriptor.environments.iter().enumerate() {
+        for (sample_i, indexes) in descriptor.samples.iter().enumerate() {
             let i_system = indexes[0].usize();
             let center = indexes[1].usize();
 
-            for (i_feature, feature) in descriptor.features.iter().enumerate() {
+            for (feature_i, feature) in descriptor.features.iter().enumerate() {
                 if feature[0].isize() == 1 {
-                    descriptor.values[[i_sample, i_feature]] = center as f64 + self.delta as f64;
+                    descriptor.values[[sample_i, feature_i]] = center as f64 + self.delta as f64;
                 } else if feature[1].isize() == 1 {
                     let system = &mut *systems[i_system];
                     system.compute_neighbors(self.cutoff);
@@ -99,23 +99,23 @@ impl CalculatorBase for DummyCalculator {
                         }
                     }
 
-                    descriptor.values[[i_sample, i_feature]] = sum;
+                    descriptor.values[[sample_i, feature_i]] = sum;
                 }
             }
         }
 
         if self.gradients {
             let gradients = descriptor.gradients.as_mut().expect("missing gradient values");
-            let gradients_indexes = descriptor.gradients_indexes.as_ref().expect("missing gradient index");
+            let gradients_samples = descriptor.gradients_samples.as_ref().expect("missing gradient index");
 
-            assert_eq!(gradients_indexes.names(), ["structure", "center", "neighbor", "spatial"]);
+            assert_eq!(gradients_samples.names(), ["structure", "center", "neighbor", "spatial"]);
 
-            for i_grad in 0..gradients_indexes.count() {
-                for (i_feature, feature) in descriptor.features.iter().enumerate() {
+            for i_grad in 0..gradients_samples.count() {
+                for (feature_i, feature) in descriptor.features.iter().enumerate() {
                     if feature[0].isize() == 1 {
-                        gradients[[i_grad, i_feature]] = 0.0;
+                        gradients[[i_grad, feature_i]] = 0.0;
                     } else if feature[1].isize() == 1 {
-                        gradients[[i_grad, i_feature]] = 1.0;
+                        gradients[[i_grad, feature_i]] = 1.0;
                     }
                 }
             }
