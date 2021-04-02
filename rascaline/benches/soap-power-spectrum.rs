@@ -9,7 +9,7 @@ use rascaline::calculators::soap::{RadialBasis, CutoffFunction};
 use rascaline::system::{System, SimpleSystem, UnitCell};
 use rascaline::{Descriptor, Matrix3};
 
-use criterion::{BenchmarkGroup, Criterion, measurement::WallTime};
+use criterion::{BenchmarkGroup, Criterion, measurement::WallTime, SamplingMode};
 use criterion::{black_box, criterion_group, criterion_main};
 
 #[derive(serde::Deserialize)]
@@ -84,12 +84,14 @@ fn soap_power_spectrum(c: &mut Criterion) {
     let mut group = c.benchmark_group("SOAP power spectrum (per atom)/Bulk Silicon");
     group.noise_threshold(0.05);
     group.measurement_time(std::time::Duration::from_secs(30));
+    group.sampling_mode(SamplingMode::Flat);
 
     run_soap_power_spectrum(group, "silicon_bulk.json.gz");
 
     let mut group = c.benchmark_group("SOAP power spectrum (per atom)/Molecular crystals");
     group.noise_threshold(0.05);
     group.measurement_time(std::time::Duration::from_secs(30));
+    group.sampling_mode(SamplingMode::Flat);
 
     run_soap_power_spectrum(group, "molecular_crystals.json.gz");
 }

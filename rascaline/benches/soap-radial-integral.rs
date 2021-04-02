@@ -70,7 +70,7 @@ fn splined_gto_radial_integral(c: &mut Criterion) {
         let parameters = GtoParameters {
             max_radial,
             max_angular,
-            cutoff: cutoff,
+            cutoff,
             atomic_gaussian_width: 0.5,
         };
         let gto = GtoRadialIntegral::new(parameters);
@@ -78,7 +78,7 @@ fn splined_gto_radial_integral(c: &mut Criterion) {
         let parameters = SplinedRIParameters {
             max_radial,
             max_angular,
-            cutoff: cutoff,
+            cutoff,
         };
         let accuracy = 1e-8;
         return Box::new(SplinedRadialIntegral::with_accuracy(parameters, accuracy, gto)) as Box<dyn RadialIntegral>;
