@@ -9,8 +9,11 @@ name = "rascaline"
 crate-type = ["cdylib"]
 bench = false
 
+[features]
+default = ["rascaline/chemfiles"]
+
 [dependencies]
-rascaline = {path = "../rascaline", version = "0.1.0"}
+rascaline = {path = "../rascaline", version = "0.1.0", default-features = false}
 
 [build-dependencies]
 cbindgen = "0.17"

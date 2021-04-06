@@ -32,8 +32,26 @@ well as CMake files that can be used with ``find_package(rascaline)``.
     cd rascaline/rascaline-c-api
     mkdir build
     cd build
-    cmake ..
+    cmake <CMAKE_OPTIONS_HERE> ..
     make install
+
+The build and installation can be configures with a few cmake options, using
+``-D<OPTION>=<VALUE>`` on the cmake command line, or one of the cmake GUI
+(``cmake-gui`` or ``ccmake``). Here are the main configuration options:
+
++--------------------------+--------------------------------------------------------------------------------------+----------------+
+| Option                   | Description                                                                          | Default        |
++==========================+======================================================================================+================+
+| CMAKE_BUILD_TYPE         | Type of build: debug or release                                                      | release        |
++--------------------------+--------------------------------------------------------------------------------------+----------------+
+| CMAKE_INSTALL_PREFIX     | Prefix in which the library will be installed                                        | ``/usr/local`` |
++--------------------------+--------------------------------------------------------------------------------------+----------------+
+| INCLUDE_INSTALL_DIR      | Path relative to ``CMAKE_INSTALL_PREFIX`` where the headers will be installed        | ``include``    |
++--------------------------+--------------------------------------------------------------------------------------+----------------+
+| LIB_INSTALL_DIR          | Path relative to ``CMAKE_INSTALL_PREFIX`` where the shared library will be installed | ``lib``        |
++--------------------------+--------------------------------------------------------------------------------------+----------------+
+| RASCAL_DISABLE_CHEMFILES | Disable the usage of chemfiles for reading structures from files                     | OFF            |
++--------------------------+--------------------------------------------------------------------------------------+----------------+
 
 
 Using the Rust library
@@ -45,3 +63,11 @@ Add the following to your project ``Cargo.toml``
 
     [dependencies]
     rascaline = {git = "https://github.com/Luthaf/rascaline"}
+
+Rascaline has one optional dependency (chemfiles), which is enabled by default.
+If you want to disable it, you can use:
+
+.. code-block:: toml
+
+    [dependencies]
+    rascaline = {git = "https://github.com/Luthaf/rascaline", default-features = false}
