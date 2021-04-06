@@ -65,37 +65,6 @@ impl SimpleSystem {
         }
     }
 
-    /// Read a system from an XYZ formatted string.
-    ///
-    /// This function is only intended for internal tests, and is NOT strong in
-    /// the face of badly formatted files, or files with strange atomic types.
-    pub fn from_xyz(cell: UnitCell, xyz: &str) -> SimpleSystem {
-        let mut system = SimpleSystem::new(cell);
-        let mut lines = xyz.lines();
-        let natoms: usize = lines.next().expect("missing number of atoms in XYZ")
-            .parse().expect("failed to parse number of atoms in XYZ");
-
-        lines.next().expect("missing comment line in XYZ");
-
-        for line in lines {
-            let mut split = line.split(' ').filter(|s| !s.is_empty());
-            let name = split.next().expect("missing atomic name in XYZ");
-            let species = atomic_number(name);
-
-            let x = split.next().expect("missing atomic name in XYZ")
-                .parse().expect("failed to parse x coordinate in XYZ");
-            let y = split.next().expect("missing atomic name in XYZ")
-                .parse().expect("failed to parse y coordinate in XYZ");
-            let z = split.next().expect("missing atomic name in XYZ")
-                .parse().expect("failed to parse z coordinate in XYZ");
-            system.add_atom(species, Vector3D::new(x, y, z))
-        }
-
-        assert_eq!(natoms, system.species().len());
-
-        return system;
-    }
-
     /// Add an atom with the given species and position to this system
     pub fn add_atom(&mut self, species: usize, position: Vector3D) {
         self.species.push(species);
@@ -108,29 +77,6 @@ impl SimpleSystem {
         self.neighbors = None;
         return &mut self.positions;
     }
-}
-
-static ATOMIC_NAMES: [&str; 118] = [
-    "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al",
-    "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe",
-    "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr",
-    "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn",
-    "Sb", "Te", "I", "Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd", "Pm", "Sm",
-    "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W",
-    "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn",
-    "Fr", "Ra", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf",
-    "Es", "Fm", "Md", "No", "Lr", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds",
-    "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og",
-];
-
-fn atomic_number(name: &str) -> usize {
-    for (i, &symbol) in ATOMIC_NAMES.iter().enumerate() {
-        if name == symbol {
-            return i + 1;
-        }
-    }
-
-    panic!("atom type '{}' not found in periodic table", name);
 }
 
 impl System for SimpleSystem {
@@ -197,25 +143,6 @@ mod tests {
         assert_eq!(system.positions.len(), 3);
 
         assert_eq!(system.species(), &[3, 1, 3]);
-        assert_eq!(system.positions(), &[
-            Vector3D::new(2.0, 3.0, 4.0),
-            Vector3D::new(1.0, 3.0, 4.0),
-            Vector3D::new(5.0, 3.0, 4.0),
-        ]);
-    }
-
-    #[test]
-    fn from_xyz() {
-        let system = SimpleSystem::from_xyz(UnitCell::cubic(10.0), "3
-
-C 2.0 3.0 4.0
-O 1.0 3.0 4.0
-Zn 5.0 3.0 4.0
-");
-
-        assert_eq!(system.size(), 3);
-
-        assert_eq!(system.species(), &[6, 8, 30]);
         assert_eq!(system.positions(), &[
             Vector3D::new(2.0, 3.0, 4.0),
             Vector3D::new(1.0, 3.0, 4.0),

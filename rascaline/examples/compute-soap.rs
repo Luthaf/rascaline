@@ -1,14 +1,12 @@
 use rascaline::{Calculator, Descriptor, System};
-use rascaline::system::{SimpleSystem, UnitCell};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // load the systems from command line arguments
     let mut systems = Vec::new();
     for path in std::env::args().skip(1) {
-        let file_content = std::fs::read_to_string(&path)?;
-        // WARNING: this function only read the first step of the file
-        let system = SimpleSystem::from_xyz(UnitCell::infinite(), &file_content);
-        systems.push(Box::new(system) as Box<dyn System>);
+        for system in rascaline::system::read_from_file(path)? {
+            systems.push(Box::new(system) as Box<dyn System>);
+        }
     }
 
     // pass hyper-parameters as JSON

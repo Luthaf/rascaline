@@ -6,24 +6,26 @@ use rascaline::Descriptor;
 
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 
-static TESTING_FRAME: &str = "8
+fn testing_system() -> SimpleSystem {
+    let mut system = SimpleSystem::new(UnitCell::infinite());
+    system.add_atom(6, [1.65624000, 4.29873000, 4.95347000].into());
+    system.add_atom(1, [0.66542300, 0.09010260, 3.34439000].into());
+    system.add_atom(1, [1.48517000, 2.73735000, 2.67172000].into());
+    system.add_atom(1, [4.74104000, 0.73324400, 4.66036000].into());
+    system.add_atom(8, [3.27751000, 1.44248000, 2.45736000].into());
+    system.add_atom(1, [3.15050000, 1.11292000, 1.82185000].into());
+    system.add_atom(8, [0.32936900, 4.74779000, 1.78124000].into());
+    system.add_atom(1, [4.86120000, 4.00324000, 1.36439000].into());
 
-C        1.65624000       4.29873000       4.95347000
-H        0.66542300       0.09010260       3.34439000
-H        1.48517000       2.73735000       2.67172000
-H        4.74104000       0.73324400       4.66036000
-O        3.27751000       1.44248000       2.45736000
-H        3.15050000       1.11292000       1.82185000
-O        0.32936900       4.74779000       1.78124000
-H        4.86120000       4.00324000       1.36439000
-";
+    system
+}
 
 fn spherical_expansion(c: &mut Criterion) {
     let mut group = c.benchmark_group("Spherical expansion (per atom)");
     group.noise_threshold(0.05);
     group.measurement_time(std::time::Duration::from_secs(10));
 
-    let system = SimpleSystem::from_xyz(UnitCell::infinite(), TESTING_FRAME);
+    let system = testing_system();
     let n_centers = system.size();
     let systems = &mut [Box::new(system) as Box<dyn System>];
 
@@ -59,7 +61,7 @@ fn spherical_expansion_gradients(c: &mut Criterion) {
     group.noise_threshold(0.05);
     group.measurement_time(std::time::Duration::from_secs(10));
 
-    let system = SimpleSystem::from_xyz(UnitCell::infinite(), TESTING_FRAME);
+    let system = testing_system();
     let n_centers = system.size();
     let systems = &mut [Box::new(system) as Box<dyn System>];
 

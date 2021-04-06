@@ -9,6 +9,8 @@ pub enum Error {
     Json(serde_json::Error),
     /// Error due to C strings containing non-utf8 data
     Utf8(Utf8Error),
+    /// Error related to reading structure files
+    Chemfiles(String),
     /// Error used when a panic was caught
     Panic(String),
 }
@@ -19,6 +21,7 @@ impl std::fmt::Display for Error {
             Error::InvalidParameter(e) => write!(f, "invalid parameter: {}", e),
             Error::Json(e) => write!(f, "json error: {}", e),
             Error::Utf8(e) => write!(f, "utf8 decoding error: {}", e),
+            Error::Chemfiles(e) => write!(f, "chemfiles error: {}", e),
             Error::Panic(e) => write!(f, "internal error: {}", e),
         }
     }
@@ -27,7 +30,9 @@ impl std::fmt::Display for Error {
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Error::InvalidParameter(_) | Error::Panic(_) => None,
+            Error::InvalidParameter(_) |
+            Error::Panic(_) |
+            Error::Chemfiles(_) => None,
             Error::Json(e) => Some(e),
             Error::Utf8(e) => Some(e),
         }
