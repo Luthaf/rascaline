@@ -28,6 +28,19 @@ target_include_directories(catch PUBLIC catch)
 add_library(tests_helpers STATIC helpers.cpp)
 target_link_libraries(tests_helpers rascaline)
 
+
+find_program(VALGRIND valgrind)
+if (VALGRIND)
+    message(STATUS "Running tests using valgrind")
+    set(TEST_COMMAND
+        "${VALGRIND}" "--tool=memcheck" "--dsymutil=yes" "--error-exitcode=125"
+        "--leak-check=full" "--show-leak-kinds=definite,indirect,possible" "--track-origins=yes"
+        "--suppressions=${CMAKE_CURRENT_SOURCE_DIR}/valgrind.supp"
+    )
+else()
+    set(TEST_COMMAND "")
+endif()
+
 file(GLOB ALL_TESTS *.cpp)
 list(REMOVE_ITEM ALL_TESTS "${CMAKE_CURRENT_SOURCE_DIR}/helpers.cpp")
 
@@ -38,11 +51,9 @@ foreach(_file_ ${ALL_TESTS})
     target_link_libraries(${_name_} rascaline catch tests_helpers)
     add_test(
         NAME ${_name_}
-        COMMAND ${_name_}
+        COMMAND ${TEST_COMMAND} $<TARGET_FILE:${_name_}>
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
-
-    # TODO: add support for running tests using valgrind
 endforeach()
 
 add_subdirectory(cxx)

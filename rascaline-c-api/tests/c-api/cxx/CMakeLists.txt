@@ -6,9 +6,7 @@ foreach(_file_ ${ALL_TESTS})
     target_link_libraries(cxx-${_name_} rascaline catch)
     add_test(
         NAME cxx-${_name_}
-        COMMAND cxx-${_name_}
+        COMMAND ${TEST_COMMAND} $<TARGET_FILE:cxx-${_name_}>
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
-
-    # TODO: add support for running tests using valgrind
 endforeach()
