@@ -1,43 +1,21 @@
 #![allow(clippy::needless_return)]
 
-use flate2::read::GzDecoder;
-
 use rascaline::calculators::CalculatorBase;
 use rascaline::calculators::{SoapPowerSpectrum, PowerSpectrumParameters};
 use rascaline::calculators::soap::{RadialBasis, CutoffFunction};
 
-use rascaline::system::{System, SimpleSystem, UnitCell};
-use rascaline::{Descriptor, Matrix3};
+use rascaline::{Descriptor, System};
 
 use criterion::{BenchmarkGroup, Criterion, measurement::WallTime, SamplingMode};
 use criterion::{black_box, criterion_group, criterion_main};
 
-#[derive(serde::Deserialize)]
-struct JsonSystem {
-    cell: [[f64; 3]; 3],
-    positions: Vec<[f64; 3]>,
-    species: Vec<usize>,
-}
-
-impl From<JsonSystem> for SimpleSystem {
-    fn from(system: JsonSystem) -> SimpleSystem {
-        let cell = UnitCell::from(Matrix3::new(system.cell));
-        let mut new = SimpleSystem::new(cell);
-        for (species, position) in system.species.into_iter().zip(system.positions.into_iter()) {
-            new.add_atom(species, position.into());
-        }
-        return new;
-    }
-}
 
 fn load_system(path: &str) -> Vec<Box<dyn System>> {
-    let file = std::fs::File::open(&format!("benches/data/{}", path))
-        .expect("failed to open file");
+    let systems = rascaline::system::read_from_file(&format!("benches/data/{}", path))
+        .expect("failed to read file");
 
-    let data: Vec<JsonSystem> = serde_json::from_reader(GzDecoder::new(file)).expect("failed to parse JSON");
-
-    return data.into_iter()
-        .map(|s| Box::new(SimpleSystem::from(s)) as Box<dyn System>)
+    return systems.into_iter()
+        .map(|s| Box::new(s) as Box<dyn System>)
         .collect()
 }
 
@@ -85,14 +63,14 @@ fn soap_power_spectrum(c: &mut Criterion) {
     group.measurement_time(std::time::Duration::from_secs(30));
     group.sampling_mode(SamplingMode::Flat);
 
-    run_soap_power_spectrum(group, "silicon_bulk.json.gz");
+    run_soap_power_spectrum(group, "silicon_bulk.xyz");
 
     let mut group = c.benchmark_group("SOAP power spectrum (per atom)/Molecular crystals");
     group.noise_threshold(0.05);
     group.measurement_time(std::time::Duration::from_secs(30));
     group.sampling_mode(SamplingMode::Flat);
 
-    run_soap_power_spectrum(group, "molecular_crystals.json.gz");
+    run_soap_power_spectrum(group, "molecular_crystals.xyz");
 }
 
 

@@ -27,14 +27,13 @@ pub fn test_systems(names: &[&str]) -> SimpleSystems {
 }
 
 fn get_methane() -> SimpleSystem {
-    SimpleSystem::from_xyz(UnitCell::cubic(10.0), "5
-
-        C 5.0000 5.0000 5.0000
-        H 5.5288 5.1610 5.9359
-        H 5.2051 5.8240 4.3214
-        H 5.3345 4.0686 4.5504
-        H 3.9315 4.9463 5.1921"
-    )
+    let mut system = SimpleSystem::new(UnitCell::cubic(5.0));
+    system.add_atom(6, Vector3D::new(5.0000, 5.0000, 5.0000));
+    system.add_atom(1, Vector3D::new(5.5288, 5.1610, 5.9359));
+    system.add_atom(1, Vector3D::new(5.2051, 5.8240, 4.3214));
+    system.add_atom(1, Vector3D::new(5.3345, 4.0686, 4.5504));
+    system.add_atom(1, Vector3D::new(3.9315, 4.9463, 5.1921));
+    return system;
 }
 
 fn get_water() -> SimpleSystem {

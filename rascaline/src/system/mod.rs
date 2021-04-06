@@ -6,6 +6,9 @@ pub use self::cell::UnitCell;
 mod simple_system;
 pub use self::simple_system::SimpleSystem;
 
+mod chemfiles;
+pub use self::chemfiles::read_from_file;
+
 #[cfg(test)]
 pub(crate) mod test_utils;
 #[cfg(test)]
