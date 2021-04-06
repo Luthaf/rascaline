@@ -9,10 +9,17 @@ project(rascaline
     LANGUAGES C
 )
 
-if("${CMAKE_BUILD_TYPE}" STREQUAL "" AND "${CMAKE_CONFIGURATION_TYPES}" STREQUAL "")
-    message(STATUS "Setting build type to 'release' as none was specified.")
-    set(CMAKE_BUILD_TYPE "release" CACHE STRING "" FORCE)
-    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS debug release relwithdebinfo minsizerel)
+option(RASCAL_DISABLE_CHEMFILES "Disable the usage of chemfiles for reading structures from files" OFF)
+
+if (${CMAKE_CURRENT_SOURCE_DIR} STREQUAL ${CMAKE_SOURCE_DIR})
+    if("${CMAKE_BUILD_TYPE}" STREQUAL "" AND "${CMAKE_CONFIGURATION_TYPES}" STREQUAL "")
+        message(STATUS "Setting build type to 'release' as none was specified.")
+        set(CMAKE_BUILD_TYPE "release"
+            CACHE STRING
+            "Choose the type of build, options are: debug or release"
+        FORCE)
+        set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS release debug)
+    endif()
 endif()
 
 # TODO: support multiple configuration generators (MSVC, ...)
@@ -28,6 +35,10 @@ elseif("${BUILD_TYPE}" STREQUAL "relwithdebinfo")
     set(CARGO_BUILD_TYPE "release")
 else()
     message(FATAL_ERROR "unsuported build type: ${CMAKE_BUILD_TYPE}")
+endif()
+
+if (${RASCAL_DISABLE_CHEMFILES})
+    set(CARGO_BUILD_ARG "${CARGO_BUILD_ARG};--no-default-features")
 endif()
 
 find_program(CARGO_EXE "cargo" DOC "path to cargo (Rust build system)")
