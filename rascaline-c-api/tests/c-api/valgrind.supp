@@ -1,0 +1,25 @@
+{
+   <macOS objective-C runtime>
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc_zone_calloc
+   ...
+   fun:NXHashGet
+   fun:NXCreateHashTableFromZone
+   fun:NXMapRemove
+   fun:_unload_image
+   ...
+}
+
+{
+   <macOS objective-C runtime>
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc_zone_calloc
+   ...
+   fun:NXHashInsert
+   fun:_ZL13hashPrototypePKvS0_
+   fun:NXCreateHashTableFromZone
+   ...
+   fun:__objc_personality_v0
+}

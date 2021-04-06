@@ -485,16 +485,12 @@ public:
 
     /// Move the values with names in ``variables`` from samples to features.
     void densify(std::vector<std::string> variables) {
-        auto c_variables = new const char*[variables.size()];
-        if (c_variables == nullptr) {
-            throw RascalError("failed to allocate memory for variables names");
-        }
-
+        auto c_variables = std::vector<const char*>(variables.size());
         for (size_t i=0; i<variables.size(); i++) {
             c_variables[i] = variables[i].data();
         }
         details::check_status(
-            rascal_descriptor_densify(descriptor_, c_variables, variables.size())
+            rascal_descriptor_densify(descriptor_, c_variables.data(), variables.size())
         );
     }
 
