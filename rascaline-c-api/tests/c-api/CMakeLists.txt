@@ -36,7 +36,11 @@ foreach(_file_ ${ALL_TESTS})
     get_filename_component(_name_ ${_file_} NAME_WE)
     add_executable(${_name_} ${_file_})
     target_link_libraries(${_name_} rascaline catch tests_helpers)
-    add_test(${_name_} ${_name_})
+    add_test(
+        NAME ${_name_}
+        COMMAND ${_name_}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
 
     # TODO: add support for running tests using valgrind
 endforeach()

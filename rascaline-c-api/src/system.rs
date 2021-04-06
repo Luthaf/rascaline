@@ -1,7 +1,10 @@
-use std::os::raw::c_void;
+use std::os::raw::{c_char, c_void};
+use std::ffi::CStr;
 
-use rascaline::types::{Vector3D, Matrix3};
+use rascaline::{SimpleSystem, types::{Vector3D, Matrix3}};
 use rascaline::system::{System, Pair, UnitCell};
+
+use super::{catch_unwind, rascal_status_t};
 
 /// Pair of atoms coming from a neighbor list
 #[repr(C)]
@@ -153,4 +156,140 @@ impl<'a> System for &'a mut rascal_system_t {
             return std::slice::from_raw_parts(ptr.cast(), count);
         }
     }
+}
+
+/// Convert a Simple System to a `rascal_system_t`
+impl From<SimpleSystem> for rascal_system_t {
+    fn from(system: SimpleSystem) -> rascal_system_t {
+        unsafe extern fn size(this: *const c_void, size: *mut usize) {
+            *size = (*this.cast::<SimpleSystem>()).size();
+        }
+
+        unsafe extern fn species(this: *const c_void, species: *mut *const usize) {
+            *species = (*this.cast::<SimpleSystem>()).species().as_ptr();
+        }
+
+        unsafe extern fn positions(this: *const c_void, positions: *mut *const f64) {
+            *positions = (*this.cast::<SimpleSystem>()).positions().as_ptr().cast();
+        }
+
+        unsafe extern fn cell(this: *const c_void, cell: *mut f64) {
+            let matrix = (*this.cast::<SimpleSystem>()).cell().matrix();
+            cell.add(0).write(matrix[0][0]);
+            cell.add(1).write(matrix[0][1]);
+            cell.add(2).write(matrix[0][2]);
+
+            cell.add(3).write(matrix[1][0]);
+            cell.add(4).write(matrix[1][1]);
+            cell.add(5).write(matrix[1][2]);
+
+            cell.add(6).write(matrix[2][0]);
+            cell.add(7).write(matrix[2][1]);
+            cell.add(8).write(matrix[2][2]);
+        }
+
+        unsafe extern fn compute_neighbors(this: *mut c_void, cutoff: f64) {
+            (*this.cast::<SimpleSystem>()).compute_neighbors(cutoff);
+        }
+
+        unsafe extern fn pairs(this: *const c_void, pairs: *mut *const rascal_pair_t, count: *mut usize) {
+            let all_pairs = (*this.cast::<SimpleSystem>()).pairs();
+            *pairs = all_pairs.as_ptr().cast();
+            *count = all_pairs.len();
+        }
+
+        unsafe extern fn pairs_containing(this: *const c_void, center: usize, pairs: *mut *const rascal_pair_t, count: *mut usize) {
+            let all_pairs = (*this.cast::<SimpleSystem>()).pairs_containing(center);
+            *pairs = all_pairs.as_ptr().cast();
+            *count = all_pairs.len();
+        }
+
+        rascal_system_t {
+            user_data: Box::into_raw(Box::new(system)).cast(),
+            size: Some(size),
+            species: Some(species),
+            positions: Some(positions),
+            cell: Some(cell),
+            compute_neighbors: Some(compute_neighbors),
+            pairs: Some(pairs),
+            pairs_containing: Some(pairs_containing),
+        }
+    }
+}
+
+/// Read all structures in the file at the given `path` using
+/// [chemfiles](https://chemfiles.org/), and convert them to an array of
+/// `rascal_system_t`.
+///
+/// This function can read all [formats supported by
+/// chemfiles](https://chemfiles.org/chemfiles/latest/formats.html).
+///
+/// This function allocates memory, which must be released using
+/// `rascal_basic_systems_free`.
+///
+/// If you need more control over the system behavior, consider writing your own
+/// instance of `rascal_system_t`.
+///
+/// @param path path of the file to read from in the local filesystem
+/// @param systems `*systems` will be set to a pointer to the first element of
+///                 the array of `rascal_system_t`
+/// @param count `*count` will be set to the number of systems read from the file
+///
+/// @returns The status code of this operation. If the status is not
+///          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the full
+///          error message.
+#[no_mangle]
+#[allow(clippy::missing_panics_doc)]
+pub unsafe extern fn rascal_basic_systems_read(
+    path: *const c_char,
+    systems: *mut *mut rascal_system_t,
+    count: *mut usize,
+) -> rascal_status_t {
+    catch_unwind(move || {
+        check_pointers!(path, systems, count);
+        let path = CStr::from_ptr(path).to_str()?;
+        let simple_systems = rascaline::system::read_from_file(path)?;
+
+        let mut c_systems = Vec::with_capacity(simple_systems.len());
+        for system in simple_systems {
+            c_systems.push(system.into());
+        }
+
+        // we rely on this below to drop the vector
+        assert!(c_systems.capacity() == c_systems.len());
+
+        *systems = c_systems.as_mut_ptr();
+        *count = c_systems.len();
+        std::mem::forget(c_systems);
+
+        Ok(())
+    })
+}
+
+/// Release memory allocated by `rascal_basic_systems_read`.
+///
+/// This function is only valid to call with a pointer to systems obtained from
+/// `rascal_basic_systems_read`, and the corresponding `count`. Any other use
+/// will probably result in segmentation faults or double free. If `systems` is
+/// NULL, this function does nothing.
+///
+/// @param systems pointer to the first element of the array of
+/// `rascal_system_t` @param count number of systems in the array
+///
+/// @returns The status code of this operation. If the status is not
+///          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the full
+///          error message.
+#[no_mangle]
+pub unsafe extern fn rascal_basic_systems_free(systems: *mut rascal_system_t, count: usize) -> rascal_status_t {
+    catch_unwind(|| {
+        if !systems.is_null() {
+            let vec = Vec::from_raw_parts(systems, count, count);
+            for element in vec {
+                let boxed = Box::from_raw(element.user_data.cast::<SimpleSystem>());
+                std::mem::drop(boxed);
+            }
+        }
+
+        Ok(())
+    })
 }

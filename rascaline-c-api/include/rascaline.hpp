@@ -159,6 +159,45 @@ public:
 };
 
 
+/// A collection of systems read from a file. This is a convenience class
+/// enabling the common use case of reading systems from a file and runnning a
+/// calculation on the systems. If you need more control or access to advanced
+/// functionalities, you should consider writing a new class extending `System`.
+class BasicSystems {
+public:
+    /// Read all structures in the file at the given `path` using
+    /// [chemfiles](https://chemfiles.org/).
+    ///
+    /// This function can read all [formats supported by
+    /// chemfiles](https://chemfiles.org/chemfiles/latest/formats.html).
+    ///
+    /// @throws RascalError if chemfiles can not read the file
+    BasicSystems(std::string path): systems_(nullptr), count_(0) {
+        details::check_status(rascal_basic_systems_read(path.c_str(), &systems_, &count_));
+    }
+
+    ~BasicSystems() {
+        details::check_status(rascal_basic_systems_free(systems_, count_));
+    }
+
+    /// Get a pointer to the first element of the underlying array of systems
+    ///
+    /// This function is intended for internal use only.
+    rascal_system_t* systems() {
+        return systems_;
+    }
+
+    /// Get the number of systems managed by this `BasicSystems`
+    uintptr_t count() const {
+        return count_;
+    }
+
+private:
+    rascal_system_t* systems_;
+    uintptr_t count_;
+};
+
+
 /// An `ArrayView` is view inside a rust-owned 2D array, similar to std::span
 /// for 2D arrays.
 ///
@@ -658,6 +697,28 @@ public:
     /// return the resulting data in a new `Descriptor`. Options for this
     /// calculation can be passed in `options`.
     Descriptor compute(std::vector<System*> systems, CalculationOptions options = CalculationOptions()) const {
+        auto descriptor = Descriptor();
+        this->compute(std::move(systems), descriptor, options);
+        return descriptor;
+    }
+
+    /// Run a calculation with this `calculator` on the given `systems`, storing
+    /// the resulting data in the `descriptor`. Options for this calculation can
+    /// be passed in `options`.
+    void compute(BasicSystems systems, Descriptor& descriptor, CalculationOptions options = CalculationOptions()) const {
+        details::check_status(rascal_calculator_compute(
+            calculator_,
+            descriptor.as_rascal_descriptor_t(),
+            systems.systems(),
+            systems.count(),
+            options.as_rascal_calculation_options_t()
+        ));
+    }
+
+    /// Run a calculation with this `calculator` on the given `systems`, and
+    /// return the resulting data in a new `Descriptor`. Options for this
+    /// calculation can be passed in `options`.
+    Descriptor compute(BasicSystems systems, CalculationOptions options = CalculationOptions()) const {
         auto descriptor = Descriptor();
         this->compute(std::move(systems), descriptor, options);
         return descriptor;
