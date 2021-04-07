@@ -1,7 +1,7 @@
 use rascaline::calculators::{CalculatorBase, SphericalExpansion, SphericalExpansionParameters};
 use rascaline::calculators::soap::{RadialBasis, CutoffFunction};
 
-use rascaline::system::{System, SimpleSystem, UnitCell};
+use rascaline::systems::{System, SimpleSystem, UnitCell};
 use rascaline::Descriptor;
 
 use criterion::{Criterion, black_box, criterion_group, criterion_main};

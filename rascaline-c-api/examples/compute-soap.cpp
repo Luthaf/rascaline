@@ -1,9 +1,12 @@
+#include <iostream>
 #include <rascaline.hpp>
 
 int main(int argc, char* argv[]) {
-    // TODO: systems are not yet easy to create from C++,
-    // this code will not run for now
-    auto systems = std::vector<rascaline::System*>();
+    if (argc < 2) {
+        std::cout << "error: expected a command line argument" << std::endl;
+        return 1;
+    }
+    auto systems = rascaline::BasicSystems(argv[1]);
 
     // pass hyper-parameters as JSON
     const char* parameters = "{\n"

@@ -293,7 +293,7 @@ impl CalculatorBase for SoapPowerSpectrum {
 
 #[cfg(test)]
 mod tests {
-    use crate::system::test_systems;
+    use crate::systems::test_systems;
     use crate::descriptor::{IndexValue, IndexesBuilder};
     use crate::{Descriptor, Calculator};
 

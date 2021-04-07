@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use ndarray::Array2;
 
 use crate::descriptor::{IndexesBuilder, IndexValue, Indexes, SamplesIndexes, AtomSpeciesSamples};
-use crate::system::Pair;
+use crate::systems::Pair;
 use crate::{Descriptor, System, Vector3D};
 
 use super::super::CalculatorBase;
@@ -446,7 +446,7 @@ fn sort_pair(pair: &Pair) -> (usize, usize) {
 
 #[cfg(test)]
 mod tests {
-    use crate::system::test_systems;
+    use crate::systems::test_systems;
     use crate::descriptor::{Indexes, IndexValue, IndexesBuilder};
     use crate::{Descriptor, Calculator};
 

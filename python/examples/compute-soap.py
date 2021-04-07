@@ -4,10 +4,8 @@ from ase import io
 
 from rascaline import SphericalExpansion
 
-# read all systems using ASE
-frames = []
-for path in sys.argv[1:]:
-    frames.extend(ase.io.read(path, ":"))
+# read structures using ASE
+frames = ase.io.read(sys.argv[1], ":")
 
 # define hyper parameters for the calculation
 HYPER_PARAMETERS = {
