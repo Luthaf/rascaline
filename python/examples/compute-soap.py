@@ -2,7 +2,7 @@ import sys
 import ase
 from ase import io
 
-from rascaline import SphericalExpansion
+from rascaline import SoapPowerSpectrum
 
 # read structures using ASE
 frames = ase.io.read(sys.argv[1], ":")
@@ -22,14 +22,14 @@ HYPER_PARAMETERS = {
     },
 }
 
-calculator = SphericalExpansion(**HYPER_PARAMETERS)
+calculator = SoapPowerSpectrum(**HYPER_PARAMETERS)
 
 # run the actual calculation, use_native_system=True is usually much faster
 descriptor = calculator.compute(frames, use_native_system=True)
 
 # Transform the descriptor to dense representation,
 # with one sample for each atom-centered environment
-descriptor.densify(["neighbor_species"])
+descriptor.densify(["species_neighbor_1", "species_neighbor_2"])
 
 # you can now use descriptor.values as the
 # input of a machine learning algorithm

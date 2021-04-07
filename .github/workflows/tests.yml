@@ -64,5 +64,7 @@ jobs:
         run: cargo test --target ${{ matrix.rust-target }} -- --test-threads=2
       - name: run tests in release mode
         run: cargo test --release --target ${{ matrix.rust-target }} -- --test-threads=2
+      - name: check that examples compile & run
+        run: cargo run --example compute-soap -- rascaline/examples/data/water.xyz
       - name: check that benchmarks compile and run once
         run: cargo bench -- --test

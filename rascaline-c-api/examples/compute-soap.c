@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
     "}";
 
     // create the calculator with its name and parameters
-    calculator = rascal_calculator("spherical_expansion", parameters);
+    calculator = rascal_calculator("soap_power_spectrum", parameters);
     if (calculator == NULL) {
         printf("Error: %s\n", rascal_last_error());
         goto cleanup;
@@ -72,7 +72,7 @@ int main(int argc, char* argv[]) {
 
     // Transform the descriptor to dense representation,
     // with one sample for each atom-centered environment
-    const char* variables[] = {"neighbor_species"};
+    const char* variables[] = {"species_neighbor_1", "species_neighbor_2"};
     status = rascal_descriptor_densify(descriptor, variables, 1);
     if (status != RASCAL_SUCCESS) {
         printf("Error: %s\n", rascal_last_error());

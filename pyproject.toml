@@ -41,4 +41,20 @@ deps =
 commands =
     python setup.py --quiet install
     discover -p "*.py" -s python/tests
+
+[testenv:examples]
+skip_install = True
+passenv =
+    RASCALINE_BUILD_TYPE
+    RUSTUP_HOME
+    CARGO_HOME
+
+deps =
+    discover
+    numpy
+    ase
+
+commands =
+    python setup.py --quiet install
+    python python/examples/compute-soap.py rascaline/examples/data/water.xyz
 """

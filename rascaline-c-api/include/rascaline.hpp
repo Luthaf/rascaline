@@ -176,6 +176,25 @@ public:
         details::check_status(rascal_basic_systems_read(path.c_str(), &systems_, &count_));
     }
 
+    /// BasicSystems is **NOT** copy-constructible
+    BasicSystems(const BasicSystems&) = delete;
+    /// BasicSystems can **NOT** be copy-assigned
+    BasicSystems& operator=(const BasicSystems&) = delete;
+
+    /// BasicSystems is move-constructible
+    BasicSystems(BasicSystems&& other) {
+        *this = std::move(other);
+    }
+
+    /// BasicSystems can be move-assigned
+    BasicSystems& operator=(BasicSystems&& other) {
+        this->systems_ = other.systems_;
+        this->count_ = other.count_;
+        other.systems_ = nullptr;
+        other.count_ = 0;
+        return *this;
+    }
+
     ~BasicSystems() {
         details::check_status(rascal_basic_systems_free(systems_, count_));
     }

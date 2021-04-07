@@ -17,14 +17,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         \"atomic_gaussian_width\": 0.3,
         \"gradients\": false,
         \"radial_basis\": {
-            \"GTO\": {}
+            \"Gto\": {}
         },
         \"cutoff_function\": {
             \"ShiftedCosine\": {\"width\": 0.5}
         }
     }";
     // create the calculator with its name and parameters
-    let mut calculator = Calculator::new("spherical_expansion", parameters.to_owned())?;
+    let mut calculator = Calculator::new("soap_power_spectrum", parameters.to_owned())?;
 
     // create an empty descriptor
     let mut descriptor = Descriptor::new();
@@ -34,7 +34,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Transform the descriptor to dense representation,
     // with one sample for each atom-centered environment
-    descriptor.densify(vec!["species_neighbors"]);
+    descriptor.densify(vec!["species_neighbor_1", "species_neighbor_2"]);
 
     // you can now use descriptor.values as the
     // input of a machine learning algorithm

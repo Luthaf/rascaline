@@ -1,10 +1,10 @@
 Computing SOAP features
 =======================
 
-This examples takes structure files from command line arguments, and compute the
-spherical expansion descriptor for each atom in each structure. Finally, the
-descriptor is transformed in a way compatible with how most classic machine
-learning (such as PCA or linear regression) work.
+This examples takes the path to a structure files from command line arguments,
+and compute the SOAP power spectrum descriptor for each atom in each structure.
+Finally, the descriptor is transformed in a way compatible with how most classic
+machine learning (such as PCA or linear regression) work.
 
 .. tabs::
 
