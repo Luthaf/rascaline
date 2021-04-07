@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 
 message(STATUS "Running CMake version ${CMAKE_VERSION}")
 
-project(rascaline-capi-tests CXX)
+project(rascaline-capi-tests C CXX)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -55,5 +55,20 @@ foreach(_file_ ${ALL_TESTS})
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 endforeach()
+
+# make sure example compile and run
+file(GLOB EXAMPLES ../../examples/*.c)
+foreach(_file_ ${EXAMPLES})
+    get_filename_component(_name_ ${_file_} NAME_WE)
+    set(_name_ example-${_name_})
+    add_executable(${_name_} ${_file_})
+    target_link_libraries(${_name_} rascaline)
+endforeach()
+
+set(XYZ_EXAMPLE_FILE ${CMAKE_CURRENT_SOURCE_DIR}/../../../rascaline/examples/data/water.xyz)
+add_test(
+    NAME example-c-compute-soap
+    COMMAND ${TEST_COMMAND} $<TARGET_FILE:example-compute-soap> ${XYZ_EXAMPLE_FILE}
+)
 
 add_subdirectory(cxx)
