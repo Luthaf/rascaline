@@ -1,13 +1,13 @@
 use rascaline::{Calculator, Descriptor, System};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // load the systems from command line arguments
-    let mut systems = Vec::new();
-    for path in std::env::args().skip(1) {
-        for system in rascaline::system::read_from_file(path)? {
-            systems.push(Box::new(system) as Box<dyn System>);
-        }
-    }
+    // load the systems from command line argument
+    let path = std::env::args().nth(1).expect("expected a command line argument");
+    let systems = rascaline::systems::read_from_file(path)?;
+    // transform systems into a vector of trait objects (`Vec<Box<dyn System>>`)
+    let mut systems = systems.into_iter()
+        .map(|s| Box::new(s) as Box<dyn System>)
+        .collect::<Vec<_>>();
 
     // pass hyper-parameters as JSON
     let parameters = "{

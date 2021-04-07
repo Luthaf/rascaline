@@ -245,7 +245,7 @@ fn remove_from_indexes(indexes: &Indexes, variables: &[&str]) -> RemovedResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::system::test_systems;
+    use crate::systems::test_systems;
     use crate::descriptor::{AtomSpeciesSamples, StructureSpeciesSamples, SamplesIndexes};
     use ndarray::array;
 

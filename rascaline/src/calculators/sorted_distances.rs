@@ -7,7 +7,7 @@ use super::CalculatorBase;
 use crate::descriptor::Descriptor;
 use crate::descriptor::{Indexes, IndexesBuilder, IndexValue};
 use crate::descriptor::{SamplesIndexes, AtomSpeciesSamples};
-use crate::system::System;
+use crate::systems::System;
 
 #[derive(Debug, Clone)]
 #[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
@@ -161,7 +161,7 @@ impl CalculatorBase for SortedDistances {
 
 #[cfg(test)]
 mod tests {
-    use crate::system::test_systems;
+    use crate::systems::test_systems;
     use crate::{Descriptor, Calculator};
     use crate::{CalculationOptions, SelectedIndexes};
     use crate::descriptor::{IndexesBuilder, IndexValue};

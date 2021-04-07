@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use indexmap::IndexSet;
 use itertools::Itertools;
 
-use crate::system::System;
+use crate::systems::System;
 use super::{SamplesIndexes, Indexes, IndexesBuilder, IndexValue};
 
 /// `StructureSpeciesSamples` is used to represents samples corresponding to
@@ -378,7 +378,7 @@ fn triplets_around(system: &dyn System, center: usize) -> impl Iterator<Item=(us
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::system::test_systems;
+    use crate::systems::test_systems;
 
     /// Convenience macro to create IndexValue
     macro_rules! v {

@@ -20,7 +20,7 @@ impl From<chemfiles::Error> for Error {
 pub fn read_from_file(path: impl AsRef<Path>) -> Result<Vec<SimpleSystem>, Error> {
     use std::collections::HashMap;
     use crate::Matrix3;
-    use crate::system::UnitCell;
+    use crate::systems::UnitCell;
 
     let mut systems = Vec::new();
 

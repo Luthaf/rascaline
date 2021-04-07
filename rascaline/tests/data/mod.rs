@@ -5,7 +5,7 @@ use ndarray_npy::ReadNpyExt;
 use flate2::read::GzDecoder;
 
 use rascaline::{SimpleSystem, System, Matrix3, Vector3D};
-use rascaline::system::UnitCell;
+use rascaline::systems::UnitCell;
 
 type HyperParameters = String;
 

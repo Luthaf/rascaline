@@ -2,7 +2,7 @@ use super::CalculatorBase;
 
 use crate::descriptor::Descriptor;
 use crate::descriptor::{IndexesBuilder, Indexes, IndexValue, SamplesIndexes, AtomSamples};
-use crate::system::System;
+use crate::systems::System;
 
 /// A stupid calculator implementation used to test the API, and API binding to
 /// C/Python/etc.
@@ -125,7 +125,7 @@ impl CalculatorBase for DummyCalculator {
 
 #[cfg(test)]
 mod tests {
-    use crate::system::test_systems;
+    use crate::systems::test_systems;
     use crate::{Descriptor, Calculator};
     use crate::{CalculationOptions, SelectedIndexes};
     use crate::descriptor::{IndexesBuilder, IndexValue};

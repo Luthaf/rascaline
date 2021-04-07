@@ -1,6 +1,6 @@
 use indexmap::IndexSet;
 
-use crate::system::System;
+use crate::systems::System;
 use super::{Indexes, IndexesBuilder, SamplesIndexes, IndexValue};
 
 /// `StructureSamples` is used to represents samples corresponding to full
@@ -125,7 +125,7 @@ impl SamplesIndexes for AtomSamples {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::system::test_systems;
+    use crate::systems::test_systems;
 
     /// Convenience macro to create IndexValue
     macro_rules! v {

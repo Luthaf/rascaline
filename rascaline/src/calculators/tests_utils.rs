@@ -3,7 +3,7 @@ use ndarray::s;
 use approx::assert_relative_eq;
 
 use crate::{CalculationOptions, Calculator, SelectedIndexes};
-use crate::system::{System, SimpleSystem};
+use crate::systems::{System, SimpleSystem};
 use crate::descriptor::{Descriptor, Indexes, IndexValue};
 
 /// Check that computing a partial subset of features/samples works as intended

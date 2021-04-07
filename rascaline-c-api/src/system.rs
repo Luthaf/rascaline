@@ -2,7 +2,7 @@ use std::os::raw::{c_char, c_void};
 use std::ffi::CStr;
 
 use rascaline::{SimpleSystem, types::{Vector3D, Matrix3}};
-use rascaline::system::{System, Pair, UnitCell};
+use rascaline::systems::{System, Pair, UnitCell};
 
 use super::{catch_unwind, rascal_status_t};
 
@@ -248,7 +248,7 @@ pub unsafe extern fn rascal_basic_systems_read(
     catch_unwind(move || {
         check_pointers!(path, systems, count);
         let path = CStr::from_ptr(path).to_str()?;
-        let simple_systems = rascaline::system::read_from_file(path)?;
+        let simple_systems = rascaline::systems::read_from_file(path)?;
 
         let mut c_systems = Vec::with_capacity(simple_systems.len());
         for system in simple_systems {

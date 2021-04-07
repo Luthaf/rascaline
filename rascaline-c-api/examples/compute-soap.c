@@ -4,9 +4,24 @@
 #include <rascaline.h>
 
 int main(int argc, char* argv[]) {
-    // TODO: systems are not yet easy to create from C,
-    // this code will not run for now
-    rascal_system_t systems[] = {{0}, {0}};
+    rascal_status_t status = RASCAL_SUCCESS;
+    rascal_calculator_t* calculator = NULL;
+    rascal_descriptor_t* descriptor = NULL;
+    rascal_system_t* systems = NULL;
+    uintptr_t n_systems = 0;
+    bool got_error = true;
+
+
+    // load systems from command line arguments
+    if (argc < 2) {
+        printf("error: expected a command line argument");
+        goto cleanup;
+    }
+    status = rascal_basic_systems_read(argv[1], &systems, &n_systems);
+    if (status != RASCAL_SUCCESS) {
+        printf("Error: %s\n", rascal_last_error());
+        goto cleanup;
+    }
 
     // pass hyper-parameters as JSON
     const char* parameters = "{\n"
@@ -22,11 +37,6 @@ int main(int argc, char* argv[]) {
         "    \"ShiftedCosine\": {\"width\": 0.5}\n"
         "}\n"
     "}";
-
-    rascal_calculator_t* calculator = NULL;
-    rascal_descriptor_t* descriptor = NULL;
-    rascal_status_t status = RASCAL_SUCCESS;
-    bool got_error = true;
 
     // create the calculator with its name and parameters
     calculator = rascal_calculator("spherical_expansion", parameters);
@@ -53,7 +63,7 @@ int main(int argc, char* argv[]) {
 
     // run the calculation
     status = rascal_calculator_compute(
-        calculator, descriptor, systems, 2, options
+        calculator, descriptor, systems, n_systems, options
     );
     if (status != RASCAL_SUCCESS) {
         printf("Error: %s\n", rascal_last_error());
@@ -86,6 +96,7 @@ int main(int argc, char* argv[]) {
 cleanup:
     rascal_descriptor_free(descriptor);
     rascal_calculator_free(calculator);
+    rascal_basic_systems_free(systems, n_systems);
 
     if (got_error) {
         return 1;
