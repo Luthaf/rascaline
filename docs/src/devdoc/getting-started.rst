@@ -38,7 +38,7 @@ repository on github, and then clone it locally:
     git clone <insert/your/fork/url/here>
     cd rascaline
 
-    # setup the local repository so that the master branch tracks changed in
+    # setup the local repository so that the master branch tracks changes in
     # the main repository
     git remote add upstream https://github.com/Luthaf/rascaline/
     git fetch upstream
