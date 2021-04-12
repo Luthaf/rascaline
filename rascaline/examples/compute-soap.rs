@@ -10,19 +10,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .collect::<Vec<_>>();
 
     // pass hyper-parameters as JSON
-    let parameters = "{
-        \"cutoff\": 5.0,
-        \"max_radial\": 6,
-        \"max_angular\": 4,
-        \"atomic_gaussian_width\": 0.3,
-        \"gradients\": false,
-        \"radial_basis\": {
-            \"Gto\": {}
+    let parameters = r#"{
+        "cutoff": 5.0,
+        "max_radial": 6,
+        "max_angular": 4,
+        "atomic_gaussian_width": 0.3,
+        "gradients": false,
+        "radial_basis": {
+            "Gto": {}
         },
-        \"cutoff_function\": {
-            \"ShiftedCosine\": {\"width\": 0.5}
+        "cutoff_function": {
+            "ShiftedCosine": {"width": 0.5}
         }
-    }";
+    }"#;
     // create the calculator with its name and parameters
     let mut calculator = Calculator::new("soap_power_spectrum", parameters.to_owned())?;
 
