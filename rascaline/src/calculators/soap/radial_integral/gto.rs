@@ -176,7 +176,7 @@ impl GtoRadialIntegral {
 }
 
 impl RadialIntegral for GtoRadialIntegral {
-    #[time_graph::instrument(name = "GTO radial integral")]
+    #[time_graph::instrument(name = "GtoRadialIntegral::compute")]
     fn compute(
         &self,
         distance: f64,
