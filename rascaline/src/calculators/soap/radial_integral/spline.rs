@@ -67,6 +67,7 @@ impl SplinedRadialIntegral {
     /// accuracy is reached. We consider that the accuracy is reached when
     /// either the mean absolute error or the mean relative error gets below the
     /// `accuracy` threshold.
+    #[time_graph::instrument(name = "SplinedRadialIntegral::with_accuracy")]
     pub fn with_accuracy(
         parameters: SplinedRIParameters,
         accuracy: f64,
@@ -178,7 +179,7 @@ impl SplinedRadialIntegral {
 }
 
 impl RadialIntegral for SplinedRadialIntegral {
-    #[time_graph::instrument(name = "splined radial integral")]
+    #[time_graph::instrument(name = "SplinedRadialIntegral::compute")]
     fn compute(&self, x: f64, values: ArrayViewMut2<f64>, gradients: Option<ArrayViewMut2<f64>>) {
         // notation in this function follows
         // https://en.wikipedia.org/wiki/Cubic_Hermite_spline
