@@ -233,16 +233,17 @@ impl RadialIntegral for GtoRadialIntegral {
             if let Some(ref mut gradients) = gradients {
                 gradients.fill(0.0);
 
-                let l = 1;
-                for n in 0..self.parameters.max_radial {
-                    let gto_constant = self.gto_gaussian_constants[n];
-                    let a = 0.5 * (n + l) as f64 + 1.5;
-                    let b = 2.5;
-                    let c_dn = (c + gto_constant).powf(-a);
-                    let factor = c * c_dn;
+                if self.parameters.max_angular >= 1 {
+                    let l = 1;
+                    for n in 0..self.parameters.max_radial {
+                        let gto_constant = self.gto_gaussian_constants[n];
+                        let a = 0.5 * (n + l) as f64 + 1.5;
+                        let b = 2.5;
+                        let c_dn = (c + gto_constant).powf(-a);
+                        let factor = c * c_dn;
 
-
-                    gradients[[n, l]] = gamma(a) / gamma(b) * factor;
+                        gradients[[n, l]] = gamma(a) / gamma(b) * factor;
+                    }
                 }
             }
         }
