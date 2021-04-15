@@ -77,14 +77,15 @@ impl Descriptor {
         }
     }
 
+    #[time_graph::instrument]
     pub fn densify(&mut self, variables: Vec<&str>) {
         if variables.is_empty() {
             return;
         }
 
-        let new_samples = remove_from_indexes(&self.samples, &variables);
+        let new_samples = remove_from_samples(&self.samples, &variables);
         let new_gradients = self.gradients_samples.as_ref().map(|indexes| {
-            let gradients = remove_from_indexes(indexes, &variables);
+            let gradients = remove_from_samples(indexes, &variables);
 
             if gradients.new_features != new_samples.new_features {
                 let name = if variables.len() == 1 {
@@ -98,7 +99,10 @@ impl Descriptor {
             return gradients;
         });
 
-        // new feature indexes, add `variable` in the front
+        // new feature indexes, add `variables` in the front. This transforms
+        // something like [n, l, m] to [species_neighbor, n, l, m]; and fill it
+        // with the corresponding values from `new_samples.new_features`,
+        // duplicating the `[n, l, m]` block as needed
         let mut feature_names = variables;
         feature_names.extend(self.features.names());
         let mut new_features = IndexesBuilder::new(feature_names);
@@ -112,8 +116,8 @@ impl Descriptor {
         let new_features = new_features.finish();
         let old_feature_size = self.features.count();
 
-        // copy values as needed
-        let mut new_values = Array2::zeros((new_samples.indexes.count(), new_features.count()));
+        // copy values themselves as needed
+        let mut new_values = Array2::zeros((new_samples.samples.count(), new_features.count()));
         for (new, old) in new_samples.mapping {
             let value = self.values.slice(s![old, ..]);
             let start = new.feature_block * old_feature_size;
@@ -124,7 +128,7 @@ impl Descriptor {
         if let Some(self_gradients) = &self.gradients {
             let new_gradients = new_gradients.expect("missing densified gradients");
 
-            let mut gradients = Array2::zeros((new_gradients.indexes.count(), new_features.count()));
+            let mut gradients = Array2::zeros((new_gradients.samples.count(), new_features.count()));
             for (new, old) in new_gradients.mapping {
                 let value = self_gradients.slice(s![old, ..]);
                 let start = new.feature_block * old_feature_size;
@@ -133,11 +137,11 @@ impl Descriptor {
             }
 
             self.gradients = Some(gradients);
-            self.gradients_samples = Some(new_gradients.indexes);
+            self.gradients_samples = Some(new_gradients.samples);
         }
 
         self.features = new_features;
-        self.samples = new_samples.indexes;
+        self.samples = new_samples.samples;
         self.values = new_values;
     }
 }
@@ -164,10 +168,10 @@ struct DensifiedIndex {
     feature_block: usize,
 }
 
-/// Results of removing a set of variables from Indexes
+/// Results of removing a set of variables from samples
 struct RemovedResult {
-    /// New Indexes, without the variables
-    indexes: Indexes,
+    /// New samples, without the variables
+    samples: Indexes,
     /// Values taken by the variables in the original Index
     ///
     /// This needs to be a IndexSet to keep the same order as in the initial
@@ -177,65 +181,64 @@ struct RemovedResult {
     mapping: BTreeMap<DensifiedIndex, usize>,
 }
 
-/// Remove the given `variables` from the `indexes`, returning the updated
-/// `indexes` and a set of all the values taken by the removed variables.
-fn remove_from_indexes(indexes: &Indexes, variables: &[&str]) -> RemovedResult {
-    let variable_indexes = variables.iter()
+/// Remove the given `variables` from the `samples`, returning the updated
+/// `samples` and a set of all the values taken by the removed variables.
+fn remove_from_samples(samples: &Indexes, variables: &[&str]) -> RemovedResult {
+    let variables_positions = variables.iter()
         .map(|v| {
-            indexes.names()
+            samples.names()
                 .iter()
                 .position(|name| name == v)
                 // TODO: this function should return a Result and this should be
                 // an InvalidParameterError.
                 .unwrap_or_else(|| panic!(
                     "can not densify along '{}' which is not present in the samples: [{}]",
-                    v, indexes.names().join(", ")
+                    v, samples.names().join(", ")
                 ))
         }).collect::<Vec<_>>();
 
     let mut mapping = BTreeMap::new();
 
-    // collect all different indexes in a set. Assuming we are densifying
+    // collect all different indexes in maps. Assuming we are densifying
     // along the first index, we want to convert [[2, 3, 0], [1, 3, 0]]
     // to [[3, 0]].
-    let mut new_indexes = IndexSet::new();
+    let mut new_samples = IndexSet::new();
     let mut new_features = IndexSet::new();
-    for (old, index) in indexes.iter().enumerate() {
-        let mut new_feature = Vec::new();
-        for &i in &variable_indexes {
-            new_feature.push(index[i]);
-        }
-        new_features.insert(new_feature.clone());
 
-        let mut new_index = index.to_vec();
+    for (old, sample) in samples.iter().enumerate() {
+        let mut new_feature = Vec::new();
+        for &i in &variables_positions {
+            new_feature.push(sample[i]);
+        }
+        let (feature_block, _) = new_features.insert_full(new_feature.clone());
+
+        let mut new_sample = sample.to_vec();
         // sort and reverse the indexes to ensure the all the calls to `remove`
         // are valid
-        for &i in variable_indexes.iter().sorted().rev() {
-            new_index.remove(i);
+        for &i in variables_positions.iter().sorted().rev() {
+            new_sample.remove(i);
         }
-        new_indexes.insert(new_index);
+        let (sample_i, _) = new_samples.insert_full(new_sample.clone());
 
-        let densified = DensifiedIndex{
-            sample_i: new_indexes.len() - 1,
-            feature_block: new_features.iter()
-                .position(|feature| feature == &new_feature)
-                .expect("missing feature that was just added"),
+        let densified = DensifiedIndex {
+            sample_i: sample_i,
+            feature_block: feature_block,
         };
         mapping.insert(densified, old);
     }
 
-    let names = indexes.names()
+    let names = samples.names()
         .iter()
         .filter(|&name| !variables.contains(name))
         .cloned()
         .collect();
     let mut builder = IndexesBuilder::new(names);
-    for sample in new_indexes {
+    for sample in new_samples {
         builder.add(&sample);
     }
 
     return RemovedResult {
-        indexes: builder.finish(),
+        samples: builder.finish(),
         new_features: new_features,
         mapping: mapping,
     };
