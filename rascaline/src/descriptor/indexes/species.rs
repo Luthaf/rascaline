@@ -111,6 +111,13 @@ impl SamplesIndexes for AtomSpeciesSamples {
         for (i_system, system) in systems.iter_mut().enumerate() {
             system.compute_neighbors(self.cutoff);
             let species = system.species();
+
+            if self.self_contribution {
+                for (center, &species) in species.iter().enumerate() {
+                    set.insert((i_system, center, species, species));
+                }
+            }
+
             for pair in system.pairs() {
                 let species_first = species[pair.first];
                 let species_second = species[pair.second];
@@ -118,12 +125,6 @@ impl SamplesIndexes for AtomSpeciesSamples {
                 set.insert((i_system, pair.first, species_first, species_second));
                 set.insert((i_system, pair.second, species_second, species_first));
             };
-
-            if self.self_contribution {
-                for (center, &species) in species.iter().enumerate() {
-                    set.insert((i_system, center, species, species));
-                }
-            }
         }
 
         let mut indexes = IndexesBuilder::new(self.names());
@@ -145,21 +146,29 @@ impl SamplesIndexes for AtomSpeciesSamples {
         for requested in samples {
             let i_system = requested[0];
             let center = requested[1].usize();
+            let species_center = requested[2].usize();
             let species_neighbor = requested[3].usize();
 
             let system = &mut *systems[i_system.usize()];
             system.compute_neighbors(self.cutoff);
 
+            if species_neighbor == species_center && self.self_contribution {
+                indexes.insert((i_system, center, species_center, species_center, center));
+            }
+
             let species = system.species();
             for pair in system.pairs_containing(center) {
-                let species_first = species[pair.first];
-                let species_second = species[pair.second];
+                let neighbor = if pair.first == center { pair.second } else { pair.first };
 
-                if pair.first == center && species_second == species_neighbor {
-                    indexes.insert((i_system, pair.first, species_first, species_second, pair.second));
-                } else if pair.second == center && species_first == species_neighbor {
-                    indexes.insert((i_system, pair.second, species_second, species_first, pair.first));
+                if species[neighbor] != species_neighbor {
+                    continue;
                 }
+
+                if self.self_contribution {
+                    indexes.insert((i_system, center, species_center, species_neighbor, center));
+                }
+
+                indexes.insert((i_system, center, species_center, species_neighbor, neighbor));
             }
         }
 
@@ -468,46 +477,6 @@ mod tests {
     }
 
     #[test]
-    fn atoms_self_contribution() {
-        let mut systems = test_systems(&["CH"]).boxed();
-        let strategy = AtomSpeciesSamples::new(2.0);
-        let indexes = strategy.indexes(&mut systems);
-        assert_eq!(indexes.count(), 2);
-        assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor"]);
-        assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
-            // H in CH
-            &[v!(0), v!(0), v!(1), v!(6)],
-            // C in CH
-            &[v!(0), v!(1), v!(6), v!(1)],
-        ]);
-
-        let strategy = AtomSpeciesSamples::with_self_contribution(2.0);
-        let indexes = strategy.indexes(&mut systems);
-        assert_eq!(indexes.count(), 4);
-        assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor"]);
-        assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
-            // H in CH
-            &[v!(0), v!(0), v!(1), v!(1)],
-            &[v!(0), v!(0), v!(1), v!(6)],
-            // C in CH
-            &[v!(0), v!(1), v!(6), v!(1)],
-            &[v!(0), v!(1), v!(6), v!(6)],
-        ]);
-
-        // we get entries even without proper neighbors
-        let strategy = AtomSpeciesSamples::with_self_contribution(1.0);
-        let indexes = strategy.indexes(&mut systems);
-        assert_eq!(indexes.count(), 2);
-        assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor"]);
-        assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
-            // H in CH
-            &[v!(0), v!(0), v!(1), v!(1)],
-            // C in CH
-            &[v!(0), v!(1), v!(6), v!(6)],
-        ]);
-    }
-
-    #[test]
     fn atoms_gradient() {
         let mut systems = test_systems(&["CH", "water"]).boxed();
         let strategy = AtomSpeciesSamples::new(2.0);
@@ -577,6 +546,129 @@ mod tests {
             &[v!(0), v!(0), v!(1), v!(6), v!(1), v!(1)],
             &[v!(0), v!(0), v!(1), v!(6), v!(1), v!(2)],
             // H-H channel in water, 1st atom
+            &[v!(1), v!(1), v!(1), v!(1), v!(2), v!(0)],
+            &[v!(1), v!(1), v!(1), v!(1), v!(2), v!(1)],
+            &[v!(1), v!(1), v!(1), v!(1), v!(2), v!(2)],
+        ]);
+    }
+
+    #[test]
+    fn atoms_self_contribution() {
+        let mut systems = test_systems(&["CH"]).boxed();
+        let strategy = AtomSpeciesSamples::new(2.0);
+        let indexes = strategy.indexes(&mut systems);
+        assert_eq!(indexes.count(), 2);
+        assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor"]);
+        assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
+            // H in CH
+            &[v!(0), v!(0), v!(1), v!(6)],
+            // C in CH
+            &[v!(0), v!(1), v!(6), v!(1)],
+        ]);
+
+        let strategy = AtomSpeciesSamples::with_self_contribution(2.0);
+        let indexes = strategy.indexes(&mut systems);
+        assert_eq!(indexes.count(), 4);
+        assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor"]);
+        assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
+            // H in CH
+            &[v!(0), v!(0), v!(1), v!(1)],
+            &[v!(0), v!(0), v!(1), v!(6)],
+            // C in CH
+            &[v!(0), v!(1), v!(6), v!(1)],
+            &[v!(0), v!(1), v!(6), v!(6)],
+        ]);
+
+        // we get entries even without proper neighbors
+        let strategy = AtomSpeciesSamples::with_self_contribution(1.0);
+        let indexes = strategy.indexes(&mut systems);
+        assert_eq!(indexes.count(), 2);
+        assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor"]);
+        assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
+            // H in CH
+            &[v!(0), v!(0), v!(1), v!(1)],
+            // C in CH
+            &[v!(0), v!(1), v!(6), v!(6)],
+        ]);
+    }
+
+    #[test]
+    fn atoms_self_contribution_gradients() {
+        let mut systems = test_systems(&["CH"]).boxed();
+        let strategy = AtomSpeciesSamples::with_self_contribution(2.0);
+        let (_, gradients) = strategy.with_gradients(&mut systems);
+        let gradients = gradients.unwrap();
+
+        assert_eq!(gradients.count(), 18);
+        assert_eq!(gradients.names(), &["structure", "center", "species_center", "species_neighbor", "neighbor", "spatial"]);
+        assert_eq!(gradients.iter().collect::<Vec<_>>(), vec![
+            // H channel around H atom, gradient w.r.t. H positions
+            &[v!(0), v!(0), v!(1), v!(1), v!(0), v!(0)],
+            &[v!(0), v!(0), v!(1), v!(1), v!(0), v!(1)],
+            &[v!(0), v!(0), v!(1), v!(1), v!(0), v!(2)],
+            // C channel around H atom, gradient w.r.t. H positions
+            &[v!(0), v!(0), v!(1), v!(6), v!(0), v!(0)],
+            &[v!(0), v!(0), v!(1), v!(6), v!(0), v!(1)],
+            &[v!(0), v!(0), v!(1), v!(6), v!(0), v!(2)],
+            // C channel around H atom, gradient w.r.t. C positions
+            &[v!(0), v!(0), v!(1), v!(6), v!(1), v!(0)],
+            &[v!(0), v!(0), v!(1), v!(6), v!(1), v!(1)],
+            &[v!(0), v!(0), v!(1), v!(6), v!(1), v!(2)],
+            // H channel around C atom, gradient w.r.t. C positions
+            &[v!(0), v!(1), v!(6), v!(1), v!(1), v!(0)],
+            &[v!(0), v!(1), v!(6), v!(1), v!(1), v!(1)],
+            &[v!(0), v!(1), v!(6), v!(1), v!(1), v!(2)],
+            // H channel around C atom, gradient w.r.t. H positions
+            &[v!(0), v!(1), v!(6), v!(1), v!(0), v!(0)],
+            &[v!(0), v!(1), v!(6), v!(1), v!(0), v!(1)],
+            &[v!(0), v!(1), v!(6), v!(1), v!(0), v!(2)],
+            // C channel around C atom, gradient w.r.t. C positions
+            &[v!(0), v!(1), v!(6), v!(6), v!(1), v!(0)],
+            &[v!(0), v!(1), v!(6), v!(6), v!(1), v!(1)],
+            &[v!(0), v!(1), v!(6), v!(6), v!(1), v!(2)],
+        ]);
+    }
+
+    #[test]
+    fn atoms_self_contribution_partial_gradients() {
+        let mut indexes = IndexesBuilder::new(vec!["structure", "center", "species_center", "species_neighbor"]);
+        indexes.add(&[v!(1), v!(0), v!(123456), v!(1)]);
+        indexes.add(&[v!(0), v!(0), v!(1), v!(6)]);
+        indexes.add(&[v!(1), v!(1), v!(1), v!(1)]);
+
+        let mut systems = test_systems(&["CH", "water"]).boxed();
+        let strategy = AtomSpeciesSamples::with_self_contribution(2.0);
+        let gradients = strategy.gradients_for(&mut systems, &indexes.finish());
+        let gradients = gradients.unwrap();
+
+        assert_eq!(gradients.count(), 21);
+        assert_eq!(gradients.names(), &["structure", "center", "species_center", "species_neighbor", "neighbor", "spatial"]);
+        assert_eq!(gradients.iter().collect::<Vec<_>>(), vec![
+            // H channel around O in water, gradient w.r.t. O positions
+            &[v!(1), v!(0), v!(123456), v!(1), v!(0), v!(0)],
+            &[v!(1), v!(0), v!(123456), v!(1), v!(0), v!(1)],
+            &[v!(1), v!(0), v!(123456), v!(1), v!(0), v!(2)],
+            // H channel around O in water, gradient w.r.t. H1 positions
+            &[v!(1), v!(0), v!(123456), v!(1), v!(1), v!(0)],
+            &[v!(1), v!(0), v!(123456), v!(1), v!(1), v!(1)],
+            &[v!(1), v!(0), v!(123456), v!(1), v!(1), v!(2)],
+            // H channel around O in water, gradient w.r.t. H2 positions
+            &[v!(1), v!(0), v!(123456), v!(1), v!(2), v!(0)],
+            &[v!(1), v!(0), v!(123456), v!(1), v!(2), v!(1)],
+            &[v!(1), v!(0), v!(123456), v!(1), v!(2), v!(2)],
+            // C channel around H in CH, gradient w.r.t. H positions
+            &[v!(0), v!(0), v!(1), v!(6), v!(0), v!(0)],
+            &[v!(0), v!(0), v!(1), v!(6), v!(0), v!(1)],
+            &[v!(0), v!(0), v!(1), v!(6), v!(0), v!(2)],
+            // C channel around H in CH, gradient w.r.t. C positions
+            &[v!(0), v!(0), v!(1), v!(6), v!(1), v!(0)],
+            &[v!(0), v!(0), v!(1), v!(6), v!(1), v!(1)],
+            &[v!(0), v!(0), v!(1), v!(6), v!(1), v!(2)],
+            // H channel around H1 in water, gradient w.r.t. H1 positions
+            &[v!(1), v!(1), v!(1), v!(1), v!(1), v!(0)],
+            &[v!(1), v!(1), v!(1), v!(1), v!(1), v!(1)],
+            &[v!(1), v!(1), v!(1), v!(1), v!(1), v!(2)],
+            // H channel around H1 in water, gradient w.r.t. H2 positions
             &[v!(1), v!(1), v!(1), v!(1), v!(2), v!(0)],
             &[v!(1), v!(1), v!(1), v!(1), v!(2), v!(1)],
             &[v!(1), v!(1), v!(1), v!(1), v!(2), v!(2)],

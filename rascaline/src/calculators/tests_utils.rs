@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use ndarray::s;
 
 use approx::assert_relative_eq;
@@ -68,6 +70,7 @@ pub fn compute_partial(
     if gradients {
         for (partial_i, sample) in partial.gradients_samples.as_ref().unwrap().iter().enumerate() {
             let index = full.gradients_samples.as_ref().unwrap().position(sample).unwrap();
+            dbg!(full.gradients_samples.as_ref().unwrap().names(), sample);
             assert_eq!(
                 full.gradients.as_ref().unwrap().slice(s![index, ..]),
                 partial.gradients.as_ref().unwrap().slice(s![partial_i, ..])
@@ -131,7 +134,6 @@ pub fn finite_difference(
     mut calculator: Calculator,
     mut system: SimpleSystem,
     compute_modified_indexes: impl Fn(&Indexes, MovedAtomIndex) -> Vec<ChangedGradientIndex>,
-    max_relative: f64,
 ) {
 
     let mut reference = Descriptor::new();
@@ -139,7 +141,9 @@ pub fn finite_difference(
 
     let gradients_samples = reference.gradients_samples.as_ref().unwrap();
 
-    let delta = 1e-9;
+    let mut checked_gradient_samples = BTreeSet::new();
+
+    let delta = 1e-6;
     let gradients = reference.gradients.as_ref().unwrap();
     for atom_i in 0..system.size() {
         for spatial in 0..3 {
@@ -162,6 +166,8 @@ pub fn finite_difference(
                     sample_i
                 );
 
+                checked_gradient_samples.insert(changed.gradient_index);
+
                 let value = reference.values.slice(s![sample_i, ..]);
                 let value_delta = updated.values.slice(s![sample_i, ..]);
                 let gradient = gradients.slice(s![changed.gradient_index, ..]);
@@ -176,11 +182,14 @@ pub fn finite_difference(
                 assert_relative_eq!(
                     finite_difference, gradient,
                     epsilon=delta,
-                    max_relative=max_relative,
+                    max_relative=delta,
                 );
             }
 
             system.positions_mut()[atom_i][spatial] -= delta;
         }
     }
+
+    // ensure that all values in the gradient have been checked
+    assert_eq!(checked_gradient_samples.len(), gradients.shape()[0]);
 }
