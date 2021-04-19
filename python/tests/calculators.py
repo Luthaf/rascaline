@@ -5,6 +5,9 @@ import numpy as np
 from rascaline import SortedDistances
 from rascaline.calculator import DummyCalculator
 
+from rascaline.clib import _get_library
+import ctypes
+
 from test_systems import TestSystem
 
 
@@ -25,6 +28,16 @@ class TestDummyCalculator(unittest.TestCase):
             "dummy test calculator with cutoff: 3.2 - delta: 12"
             f" - name: {name} - gradients: true",
         )
+
+    def test_callback(self):
+        #test_callback_fn = lambda x: self.assert(x, 'test', )
+        #lib = _get_library()
+        def default_print(level, string):
+            print(string)
+        callback = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_char_p)(default_print)
+        print(dir(_get_library()))
+        _get_library().rascal_set_logging_callback(callback)
+        calculator = DummyCalculator(cutoff=3.2, delta=12, name="foo", gradients=True)
 
     def test_parameters(self):
         calculator = DummyCalculator(cutoff=3.2, delta=12, name="foo", gradients=True)

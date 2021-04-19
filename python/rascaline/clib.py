@@ -23,7 +23,9 @@ def _set_default_logging_callback():
     '''
     Default logging function. For now print is used.
     '''
-    set_logging_callback(print)
+    def default_print(level, string):
+        print(string)
+    set_logging_callback(default_print)
 
 def set_logging_callback(function):
     '''

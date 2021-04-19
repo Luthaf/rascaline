@@ -229,11 +229,15 @@ pub unsafe extern fn rascal_calculator_compute(
 ) -> rascal_status_t {
 
     // TODO(alex) make a proper test, and set a default logger somewhere
-    let to_print = CString::new("Hello!").unwrap();
+    let to_print = CString::new("test").unwrap();
     let to_print_ptr = to_print.as_ptr();
     //(GLOBAL_CALLBACK.expect("No callback function was set."))(to_print_ptr);
+    //match *(GLOBAL_CALLBACK.lock().unwrap()) {
+    //    Some(p) => p(5, to_print_ptr),
+    //    None => println!("No callback function was set."),
+    //}
     match *(GLOBAL_CALLBACK.lock().unwrap()) {
-        Some(p) => p(5, to_print_ptr),
+        Some(p) => p(0, to_print_ptr),
         None => println!("No callback function was set."),
     }
     catch_unwind(|| {
