@@ -232,7 +232,7 @@ pub unsafe extern fn rascal_calculator_compute(
     let to_print = CString::new("Hello!").unwrap();
     let to_print_ptr = to_print.as_ptr();
     //(GLOBAL_CALLBACK.expect("No callback function was set."))(to_print_ptr);
-    match GLOBAL_CALLBACK {
+    match *(GLOBAL_CALLBACK.lock().unwrap()) {
         Some(p) => p(5, to_print_ptr),
         None => println!("No callback function was set."),
     }

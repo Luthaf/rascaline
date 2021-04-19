@@ -2,10 +2,14 @@
 
 // disable some style lints
 #![allow(clippy::needless_return, clippy::redundant_field_names, clippy::upper_case_acronyms)]
-#![allow(clippy::missing_errors_doc, clippy::missing_safety_doc, clippy::must_use_candidate)]
+#![allow(clippy::missing_errors_doc, clippy::missing_safety_doc, clippy::missing_panics_doc)]
+#![allow(clippy::must_use_candidate)]
 
-pub use log::{error, info, warn, Record, Level, Metadata, LevelFilter};
 use std::ffi::{CString};
+use std::sync::Mutex;
+
+use log::{warn, Record, Metadata};
+use lazy_static::lazy_static;
 
 mod utils;
 #[macro_use]
@@ -21,14 +25,19 @@ pub mod calculator;
 
 pub type RascalLoggingCallback = Option<unsafe extern fn(level: i32, message: *const std::os::raw::c_char)>;
 
+// Mutex cannot use rust static
+// see https://stackoverflow.com/a/27826181
+lazy_static! {
+    static ref GLOBAL_CALLBACK: Mutex<RascalLoggingCallback> = Mutex::new(None);
+}
 
-static mut GLOBAL_CALLBACK: RascalLoggingCallback = None;
 struct RascalLogger;
 
 #[no_mangle]
 pub unsafe extern fn rascal_set_logging_callback(callback: RascalLoggingCallback) {
-    GLOBAL_CALLBACK = callback;
-    log::set_boxed_logger(Box::new(RascalLogger)).expect("Setting rascal logger faild.")
+    *GLOBAL_CALLBACK.lock().unwrap() = callback;
+    // we allow multiple sets of logger, therefore the result will be ignored
+    let _ = log::set_boxed_logger(Box::new(RascalLogger));
 }
 
 
@@ -45,22 +54,12 @@ impl log::Log for RascalLogger {
                 record.args());
             let cstr = CString::new(message).unwrap();
             unsafe {
-              GLOBAL_CALLBACK.unwrap()(record.level() as i32, cstr.as_ptr());
+                //let mut guard = GLOBAL_CALLBACK.lock().unwrap();
+                //let mut f = guard.unwrap();
+                GLOBAL_CALLBACK.lock().unwrap().unwrap()(record.level() as i32, cstr.as_ptr());
             }
         }
     }
 
     fn flush(&self) {}
 }
-
-//impl<T: ?Sized> Log for Box<T> {
-//}
-
-//use std::sync::Mutex;
-//
-//static mut GLOBAL_CALLBACK: Mutex<RascalLoggingCallback> = Mutex::new(None);
-//
-//unsafe extern fn set_logging_callback(callback: RascalLoggingCallback) {
-//    let mut data = GLOBAL_CALLBACK.lock().unwrap();
-//    *data  = callback;
-//}
