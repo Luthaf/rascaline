@@ -23,7 +23,7 @@ def DEFAULT_LOG_CALLBACK(log_level, message):
     else:
         raise ValueError('Log level ' + str(log_level) + ' is not supported.')
 
-# just to illustrate the next step how initialize the logger
+# just to illustrate the next step how set up the the python logger
 # import logging
 #def DEFAULT_LOG(log_level, message):
 #    if log_level == RUST_LOG_LEVEL_WARN:

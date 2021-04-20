@@ -35,7 +35,7 @@ def set_logging_callback(callback_function, log_level):
 
     def callback_wrapper(log_level, message):
         try:
-            callback_function(int(log_level), message.decode("utf8"))
+            callback_function(log_level, message.decode("utf8"))
         except Exception as e:
             message = "exception raised in logging callback: {}".format(e)
             warnings.warn(message, ResourceWarning)
