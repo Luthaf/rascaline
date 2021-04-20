@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use indexmap::set::IndexSet;
 
 use itertools::Itertools;
@@ -82,12 +82,13 @@ impl Descriptor {
         if variables.is_empty() {
             return;
         }
+        assert!(self.features.size() > 0);
 
         let new_samples = remove_from_samples(&self.samples, &variables);
-        let new_gradients = self.gradients_samples.as_ref().map(|indexes| {
-            let gradients = remove_from_samples(indexes, &variables);
+        let new_gradients_samples = self.gradients_samples.as_ref().map(|indexes| {
+            let new_gradients_samples = remove_from_samples(indexes, &variables);
 
-            if gradients.new_features != new_samples.new_features {
+            if new_gradients_samples.new_features != new_samples.new_features {
                 let name = if variables.len() == 1 {
                     variables[0].to_owned()
                 } else {
@@ -96,7 +97,7 @@ impl Descriptor {
                 panic!("gradient samples contains different values for {} than the samples themselves", name);
             }
 
-            return gradients;
+            return new_gradients_samples;
         });
 
         // new feature indexes, add `variables` in the front. This transforms
@@ -108,36 +109,53 @@ impl Descriptor {
         let mut new_features = IndexesBuilder::new(feature_names);
         for new in new_samples.new_features {
             for feature in self.features.iter() {
-                let mut cleaned = new.clone();
-                cleaned.extend(feature);
-                new_features.add(&cleaned);
+                let mut new = new.clone();
+                new.extend(feature);
+                new_features.add(&new);
             }
         }
         let new_features = new_features.finish();
+
+        let first_feature_tail = self.features.iter().next().expect("missing first feature").to_vec();
         let old_feature_size = self.features.count();
 
         // copy values themselves as needed
         let mut new_values = Array2::zeros((new_samples.samples.count(), new_features.count()));
-        for (new, old) in new_samples.mapping {
-            let value = self.values.slice(s![old, ..]);
-            let start = new.feature_block * old_feature_size;
-            let stop = (new.feature_block + 1) * old_feature_size;
-            new_values.slice_mut(s![new.sample_i, start..stop]).assign(&value);
+        for changed in new_samples.mapping {
+            let DensifiedIndex { old_sample_i, new_sample_i, variables } = changed;
+
+            // find in which feature block we need to copy the data
+            let mut first_feature = variables;
+            first_feature.extend_from_slice(&first_feature_tail);
+            let start = new_features.position(&first_feature).expect("missing start of the new feature block");
+            let stop = start + old_feature_size;
+
+            let value = self.values.slice(s![old_sample_i, ..]);
+            new_values.slice_mut(s![new_sample_i, start..stop]).assign(&value);
         }
 
-        if let Some(self_gradients) = &self.gradients {
-            let new_gradients = new_gradients.expect("missing densified gradients");
+        if let Some(gradients) = &self.gradients {
+            let new_gradients_samples = new_gradients_samples.expect("missing densified gradients");
 
-            let mut gradients = Array2::zeros((new_gradients.samples.count(), new_features.count()));
-            for (new, old) in new_gradients.mapping {
-                let value = self_gradients.slice(s![old, ..]);
-                let start = new.feature_block * old_feature_size;
-                let stop = (new.feature_block + 1) * old_feature_size;
-                gradients.slice_mut(s![new.sample_i, start..stop]).assign(&value);
+            let mut new_gradients = Array2::zeros(
+                (new_gradients_samples.samples.count(), new_features.count())
+            );
+
+            for changed in new_gradients_samples.mapping {
+                let DensifiedIndex { old_sample_i, new_sample_i, variables } = changed;
+
+                // find in which feature block we need to copy the data
+                let mut first_feature = variables;
+                first_feature.extend_from_slice(&first_feature_tail);
+                let start = new_features.position(&first_feature).expect("missing start of the new feature block");
+                let stop = start + old_feature_size;
+
+                let value = gradients.slice(s![old_sample_i, ..]);
+                new_gradients.slice_mut(s![new_sample_i, start..stop]).assign(&value);
             }
 
-            self.gradients = Some(gradients);
-            self.gradients_samples = Some(new_gradients.samples);
+            self.gradients = Some(new_gradients);
+            self.gradients_samples = Some(new_gradients_samples.samples);
         }
 
         self.features = new_features;
@@ -159,31 +177,35 @@ fn resize_and_reset(array: &mut Array2<f64>, shape: (usize, usize)) {
     let _replaced = std::mem::replace(array, values);
 }
 
-/// Representation of an sample/gradient sample index after a call to `densify`
+/// A `DensifiedIndex` contains all the information to reconstruct the new
+/// position of the values/gradients associated with a single sample in the
+/// initial descriptor
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 struct DensifiedIndex {
-    /// Index of the new sample/gradient sample in the value/gradients array
-    sample_i: usize,
-    /// Index of the feature **block** corresponding to the moved variable
-    feature_block: usize,
+    /// Index of the old sample (respectively gradient sample) in the value
+    /// (respectively gradients) array
+    old_sample_i: usize,
+    /// Index of the new sample (respectively gradient sample) in the value
+    /// (respectively gradients) array
+    new_sample_i: usize,
+    /// Values of the variables in the old descriptor. These are part of the
+    /// samples in the old descriptor; but part of the features in the new one.
+    variables: Vec<IndexValue>,
 }
 
 /// Results of removing a set of variables from samples
-struct RemovedResult {
+struct RemovedSampleResult {
     /// New samples, without the variables
     samples: Indexes,
-    /// Values taken by the variables in the original Index
-    ///
-    /// This needs to be a IndexSet to keep the same order as in the initial
-    /// Indexes.
-    new_features: IndexSet<Vec<IndexValue>>,
-    /// Mapping from the updated index to the original position
-    mapping: BTreeMap<DensifiedIndex, usize>,
+    /// Values taken by the variables in the original samples
+    new_features: BTreeSet<Vec<IndexValue>>,
+    /// Information about all data that needs to be moved
+    mapping: Vec<DensifiedIndex>,
 }
 
 /// Remove the given `variables` from the `samples`, returning the updated
 /// `samples` and a set of all the values taken by the removed variables.
-fn remove_from_samples(samples: &Indexes, variables: &[&str]) -> RemovedResult {
+fn remove_from_samples(samples: &Indexes, variables: &[&str]) -> RemovedSampleResult {
     let variables_positions = variables.iter()
         .map(|v| {
             samples.names()
@@ -197,20 +219,20 @@ fn remove_from_samples(samples: &Indexes, variables: &[&str]) -> RemovedResult {
                 ))
         }).collect::<Vec<_>>();
 
-    let mut mapping = BTreeMap::new();
+    let mut mapping = Vec::new();
 
     // collect all different indexes in maps. Assuming we are densifying
     // along the first index, we want to convert [[2, 3, 0], [1, 3, 0]]
     // to [[3, 0]].
     let mut new_samples = IndexSet::new();
-    let mut new_features = IndexSet::new();
+    let mut new_features = BTreeSet::new();
 
-    for (old, sample) in samples.iter().enumerate() {
+    for (old_sample_i, sample) in samples.iter().enumerate() {
         let mut new_feature = Vec::new();
         for &i in &variables_positions {
             new_feature.push(sample[i]);
         }
-        let (feature_block, _) = new_features.insert_full(new_feature.clone());
+        new_features.insert(new_feature.clone());
 
         let mut new_sample = sample.to_vec();
         // sort and reverse the indexes to ensure the all the calls to `remove`
@@ -218,13 +240,14 @@ fn remove_from_samples(samples: &Indexes, variables: &[&str]) -> RemovedResult {
         for &i in variables_positions.iter().sorted().rev() {
             new_sample.remove(i);
         }
-        let (sample_i, _) = new_samples.insert_full(new_sample.clone());
+        let (new_sample_i, _) = new_samples.insert_full(new_sample);
 
         let densified = DensifiedIndex {
-            sample_i: sample_i,
-            feature_block: feature_block,
+            old_sample_i: old_sample_i,
+            new_sample_i: new_sample_i,
+            variables: new_feature,
         };
-        mapping.insert(densified, old);
+        mapping.push(densified);
     }
 
     let names = samples.names()
@@ -237,7 +260,7 @@ fn remove_from_samples(samples: &Indexes, variables: &[&str]) -> RemovedResult {
         builder.add(&sample);
     }
 
-    return RemovedResult {
+    return RemovedSampleResult {
         samples: builder.finish(),
         new_features: new_features,
         mapping: mapping,
@@ -357,8 +380,8 @@ mod tests {
         assert_eq!(descriptor.samples[1], [v!(1)]);
 
         assert_eq!(descriptor.values, array![
-            [1.0, 2.0, 3.0, /**/ 4.0, 5.0, 6.0, /**/ 0.0, 0.0, 0.0],
-            [7.0, 8.0, 9.0, /**/ 0.0, 0.0, 0.0, /**/ 10.0, 11.0, 12.0],
+            [1.0, 2.0, 3.0, /**/ 0.0, 0.0, 0.0, /**/ 4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0, /**/ 10.0, 11.0, 12.0, /**/ 0.0, 0.0, 0.0],
         ]);
 
         let gradients = descriptor.gradients.as_ref().unwrap();
@@ -386,93 +409,105 @@ mod tests {
         }
 
         assert_eq!(*gradients, array![
-            [/*H*/ 1.0, 2.0, 3.0,       /*O*/ 0.0, 0.0, 0.0,    /*C*/ 0.0, 0.0, 0.0],
-            [/*H*/ 0.1, 0.2, 0.3,       /*O*/ 0.0, 0.0, 0.0,    /*C*/ 0.0, 0.0, 0.0],
-            [/*H*/ -1.0, -2.0, -3.0,    /*O*/ 0.0, 0.0, 0.0,    /*C*/ 0.0, 0.0, 0.0],
-            [/*H*/ 4.0, 5.0, 6.0,       /*O*/ 0.0, 0.0, 0.0,    /*C*/ 0.0, 0.0, 0.0],
-            [/*H*/ 0.4, 0.5, 0.6,       /*O*/ 0.0, 0.0, 0.0,    /*C*/ 0.0, 0.0, 0.0],
-            [/*H*/ -4.0, -5.0, -6.0,    /*O*/ 0.0, 0.0, 0.0,    /*C*/ 0.0, 0.0, 0.0],
-            [/*H*/ 0.0, 0.0, 0.0,       /*O*/ 7.0, 8.0, 9.0,    /*C*/ 0.0, 0.0, 0.0],
-            [/*H*/ 0.0, 0.0, 0.0,       /*O*/ 0.7, 0.8, 0.9,    /*C*/ 0.0, 0.0, 0.0],
-            [/*H*/ 0.0, 0.0, 0.0,       /*O*/ -7.0, -8.0, -9.0, /*C*/ 0.0, 0.0, 0.0],
-            [/*H*/ 10.0, 11.0, 12.0,    /*O*/ 0.0, 0.0, 0.0,    /*C*/ 0.0, 0.0, 0.0],
-            [/*H*/ 0.1, 0.11, 0.12,     /*O*/ 0.0, 0.0, 0.0,    /*C*/ 0.0, 0.0, 0.0],
-            [/*H*/ -10.0, -11.0, -12.0, /*O*/ 0.0, 0.0, 0.0,    /*C*/ 0.0, 0.0, 0.0],
-            [/*H*/ 0.0, 0.0, 0.0,       /*O*/ 0.0, 0.0, 0.0,    /*C*/ 13.0, 14.0, 15.0],
-            [/*H*/ 0.0, 0.0, 0.0,       /*O*/ 0.0, 0.0, 0.0,    /*C*/ 0.13, 0.14, 0.15],
-            [/*H*/ 0.0, 0.0, 0.0,       /*O*/ 0.0, 0.0, 0.0,    /*C*/ -13.0, -14.0, -15.0],
+            [/*H*/ 1.0, 2.0, 3.0,       /*C*/ 0.0, 0.0, 0.0,        /*O*/ 0.0, 0.0, 0.0],
+            [/*H*/ 0.1, 0.2, 0.3,       /*C*/ 0.0, 0.0, 0.0,        /*O*/ 0.0, 0.0, 0.0],
+            [/*H*/ -1.0, -2.0, -3.0,    /*C*/ 0.0, 0.0, 0.0,        /*O*/ 0.0, 0.0, 0.0],
+            [/*H*/ 4.0, 5.0, 6.0,       /*C*/ 0.0, 0.0, 0.0,        /*O*/ 0.0, 0.0, 0.0],
+            [/*H*/ 0.4, 0.5, 0.6,       /*C*/ 0.0, 0.0, 0.0,        /*O*/ 0.0, 0.0, 0.0],
+            [/*H*/ -4.0, -5.0, -6.0,    /*C*/ 0.0, 0.0, 0.0,        /*O*/ 0.0, 0.0, 0.0],
+            [/*H*/ 0.0, 0.0, 0.0,       /*C*/ 0.0, 0.0, 0.0,        /*O*/ 7.0, 8.0, 9.0],
+            [/*H*/ 0.0, 0.0, 0.0,       /*C*/ 0.0, 0.0, 0.0,        /*O*/ 0.7, 0.8, 0.9],
+            [/*H*/ 0.0, 0.0, 0.0,       /*C*/ 0.0, 0.0, 0.0,        /*O*/ -7.0, -8.0, -9.0],
+            [/*H*/ 10.0, 11.0, 12.0,    /*C*/ 0.0, 0.0, 0.0,        /*O*/ 0.0, 0.0, 0.0],
+            [/*H*/ 0.1, 0.11, 0.12,     /*C*/ 0.0, 0.0, 0.0,        /*O*/ 0.0, 0.0, 0.0],
+            [/*H*/ -10.0, -11.0, -12.0, /*C*/ 0.0, 0.0, 0.0,        /*O*/ 0.0, 0.0, 0.0],
+            [/*H*/ 0.0, 0.0, 0.0,       /*C*/ 13.0, 14.0, 15.0,     /*O*/ 0.0, 0.0, 0.0],
+            [/*H*/ 0.0, 0.0, 0.0,       /*C*/ 0.13, 0.14, 0.15,     /*O*/ 0.0, 0.0, 0.0],
+            [/*H*/ 0.0, 0.0, 0.0,       /*C*/ -13.0, -14.0, -15.0,  /*O*/ 0.0, 0.0, 0.0],
         ]);
     }
     #[test]
     fn densify_multiple_variables() {
         let mut descriptor = Descriptor::new();
 
-        let mut systems = test_systems(&["water", "CH"]).boxed();
+        let mut systems = test_systems(&["water"]).boxed();
         let features = dummy_features();
         let (samples, gradients) = AtomSpeciesSamples::new(3.0).with_gradients(&mut systems);
         descriptor.prepare_gradients(samples, gradients.unwrap(), features);
 
         descriptor.values.assign(&array![
+            // H channel around O
             [1.0, 2.0, 3.0],
+            // H channel around H1
             [4.0, 5.0, 6.0],
+            // O channel around H1
             [7.0, 8.0, 9.0],
+            // H channel around H2
             [10.0, 11.0, 12.0],
+            // O channel around H2
             [13.0, 14.0, 15.0],
-            [16.0, 17.0, 18.0],
-            [19.0, 20.0, 21.0],
         ]);
 
         let gradients = descriptor.gradients.as_mut().unwrap();
         gradients.assign(&array![
-            [1.0, 2.0, 3.0], [0.1, 0.2, 0.3], [-1.0, -2.0, -3.0],
-            [4.0, 5.0, 6.0], [0.4, 0.5, 0.6], [-4.0, -5.0, -6.0],
-            [7.0, 8.0, 9.0], [0.7, 0.8, 0.9], [-7.0, -8.0, -9.0],
-            [10.0, 11.0, 12.0], [0.10, 0.11, 0.12], [-10.0, -11.0, -12.0],
-            [13.0, 14.0, 15.0], [0.13, 0.14, 0.15], [-13.0, -14.0, -15.0],
-            [16.0, 17.0, 18.0], [0.16, 0.17, 0.18], [-16.0, -17.0, -18.0],
-            [19.0, 20.0, 21.0], [0.19, 0.20, 0.21], [-19.0, -20.0, -21.0],
-            [22.0, 23.0, 24.0], [0.22, 0.23, 0.24], [-22.0, -23.0, -24.0],
+            // H channel around O, derivatives w.r.t. O
+            [1.0, 0.1, -1.0], [2.0, 0.2, -2.0], [3.0, 0.3, -3.0],
+            // H channel around O, derivatives w.r.t. H1
+            [4.0, 0.4, -4.0], [5.0, 0.5, -5.0], [6.0, 0.6, -6.0],
+            // H channel around O, derivatives w.r.t. H2
+            [7.0, 0.7, -7.0], [8.0, 0.8, -8.0], [9.0, 0.9, -9.0],
+            // H channel around H1, derivatives w.r.t. H1
+            [10.0, 0.10, -10.0], [11.0, 0.11, -11.0], [12.0, 0.12, -12.0],
+            // H channel around H1, derivatives w.r.t. H2
+            [13.0, 0.13, -13.0], [14.0, 0.14, -14.0], [15.0, 0.15, -15.0],
+            // O channel around H1, derivatives w.r.t. H1
+            [16.0, 0.16, -16.0], [17.0, 0.17, -17.0], [18.0, 0.18, -18.0],
+            // O channel around H1, derivatives w.r.t. O
+            [19.0, 0.19, -19.0], [20.0, 0.20, -20.0], [21.0, 0.21, -21.0],
+            // H channel around H2, derivatives w.r.t. H2
+            [22.0, 0.22, -22.0], [23.0, 0.23, -23.0], [24.0, 0.24, -24.0],
+            // H channel around H2, derivatives w.r.t. H1
+            [25.0, 0.25, -25.0], [26.0, 0.26, -26.0], [27.0, 0.27, -27.0],
+            // O channel around H2, derivatives w.r.t. H2
+            [28.0, 0.28, -28.0], [29.0, 0.29, -29.0], [30.0, 0.30, -30.0],
+            // O channel around H2, derivatives w.r.t. O
+            [31.0, 0.31, -31.0], [32.0, 0.32, -32.0], [33.0, 0.33, -33.0],
         ]);
 
         // where the magic happens
         descriptor.densify(vec!["species_center", "species_neighbor"]);
 
-        assert_eq!(descriptor.values.shape(), [5, 15]);
+        assert_eq!(descriptor.values.shape(), [3, 9]);
         assert_eq!(descriptor.samples.names(), ["structure", "center"]);
         assert_eq!(descriptor.samples[0], [v!(0), v!(0)]);
         assert_eq!(descriptor.samples[1], [v!(0), v!(1)]);
         assert_eq!(descriptor.samples[2], [v!(0), v!(2)]);
-        assert_eq!(descriptor.samples[3], [v!(1), v!(0)]);
-        assert_eq!(descriptor.samples[4], [v!(1), v!(1)]);
 
         assert_eq!(descriptor.values, array![
-            /*    O-H             H-H                 H-O                  H-C                C-H     */
+            /*    H-H             H-O                 O-H             */
             // O in water
-            [1.0, 2.0, 3.0,   0.0, 0.0, 0.0,      0.0, 0.0, 0.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
-            // H in water
-            [0.0, 0.0, 0.0,   4.0, 5.0, 6.0,      7.0, 8.0, 9.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
-            // H in water
-            [0.0, 0.0, 0.0,   10.0, 11.0, 12.0,   13.0, 14.0, 15.0,   0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
-            // H in CH
-            [0.0, 0.0, 0.0,   0.0, 0.0, 0.0,      0.0, 0.0, 0.0,      16.0, 17.0, 18.0,  0.0, 0.0, 0.0],
-            // C in CH
-            [0.0, 0.0, 0.0,   0.0, 0.0, 0.0,      0.0, 0.0, 0.0,      0.0, 0.0, 0.0,     19.0, 20.0, 21.0],
+            [0.0, 0.0, 0.0,    /**/ 0.0, 0.0, 0.0,    /**/ 1.0, 2.0, 3.0],
+            // H1 in water
+            [4.0, 5.0, 6.0,    /**/ 7.0, 8.0, 9.0,    /**/ 0.0, 0.0, 0.0],
+            // H2 in water
+            [10.0, 11.0, 12.0, /**/ 13.0, 14.0, 15.0, /**/ 0.0, 0.0, 0.0],
         ]);
 
         let gradients = descriptor.gradients.as_ref().unwrap();
-        assert_eq!(gradients.shape(), [24, 15]);
+        assert_eq!(gradients.shape(), [27, 9]);
         let gradients_samples = descriptor.gradients_samples.as_ref().unwrap();
         assert_eq!(gradients_samples.names(), ["structure", "center", "neighbor", "spatial"]);
 
         let expected = [
+            [v!(0), v!(0), v!(0)],
             [v!(0), v!(0), v!(1)],
             [v!(0), v!(0), v!(2)],
+            [v!(0), v!(1), v!(1)],
             [v!(0), v!(1), v!(2)],
             [v!(0), v!(1), v!(0)],
+            [v!(0), v!(2), v!(2)],
             [v!(0), v!(2), v!(1)],
             [v!(0), v!(2), v!(0)],
-            [v!(1), v!(0), v!(1)],
-            [v!(1), v!(1), v!(0)]
         ];
         // use a loop to simplify checking the spatial dimension
         for (i, &value) in expected.iter().enumerate() {
@@ -487,39 +522,43 @@ mod tests {
         }
 
         assert_eq!(*gradients, array![
-            /*    O-H                H-H                   H-O                H-C                C-H     */
-            // O in water, 1rst H neighbor
-            [1.0, 2.0, 3.0,      0.0, 0.0, 0.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
-            [0.1, 0.2, 0.3,      0.0, 0.0, 0.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
-            [-1.0, -2.0, -3.0,   0.0, 0.0, 0.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
-            // O in water, 2nd H neighbor
-            [4.0, 5.0, 6.0,      0.0, 0.0, 0.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
-            [0.4, 0.5, 0.6,      0.0, 0.0, 0.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
-            [-4.0, -5.0, -6.0,   0.0, 0.0, 0.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
-            // 1rst H in water, H neighbor
-            [0.0, 0.0, 0.0,      7.0, 8.0, 9.0,     0.0, 0.0, 0.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0,      0.7, 0.8, 0.9,     0.0, 0.0, 0.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0,    -7.0, -8.0, -9.0,    0.0, 0.0, 0.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
-            // 1rst H in water, O neighbor
-            [0.0, 0.0, 0.0,     0.0, 0.0, 0.0,      10.0, 11.0, 12.0,   0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0,     0.0, 0.0, 0.0,      0.10, 0.11, 0.12,   0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0,     0.0, 0.0, 0.0,    -10.0, -11.0, -12.0,  0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
-            // 2nd H in water, H neighbor
-            [0.0, 0.0, 0.0,   13.0, 14.0, 15.0,     0.0, 0.0, 0.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0,   0.13, 0.14, 0.15,     0.0, 0.0, 0.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0,  -13.0, -14.0, -15.0,   0.0, 0.0, 0.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
-            // 2nd H in water, O neighbor
-            [0.0, 0.0, 0.0,     0.0, 0.0, 0.0,    16.0, 17.0, 18.0,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0,     0.0, 0.0, 0.0,    0.16, 0.17, 0.18,      0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0,     0.0, 0.0, 0.0,   -16.0, -17.0, -18.0,    0.0, 0.0, 0.0,     0.0, 0.0, 0.0],
-            // H in CH
-            [0.0, 0.0, 0.0,     0.0, 0.0, 0.0,      0.0, 0.0, 0.0,    19.0, 20.0, 21.0,     0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0,     0.0, 0.0, 0.0,      0.0, 0.0, 0.0,    0.19, 0.20, 0.21,     0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0,     0.0, 0.0, 0.0,      0.0, 0.0, 0.0,   -19.0, -20.0, -21.0,   0.0, 0.0, 0.0],
-            // C in CH
-            [0.0, 0.0, 0.0,     0.0, 0.0, 0.0,      0.0, 0.0, 0.0,    0.0, 0.0, 0.0,    22.0, 23.0, 24.0],
-            [0.0, 0.0, 0.0,     0.0, 0.0, 0.0,      0.0, 0.0, 0.0,    0.0, 0.0, 0.0,    0.22, 0.23, 0.24],
-            [0.0, 0.0, 0.0,     0.0, 0.0, 0.0,      0.0, 0.0, 0.0,    0.0, 0.0, 0.0,   -22.0, -23.0, -24.0],
+            /*    H-H                  H-O                  O-H       */
+            // O in water, derivatives w.r.t. O
+            [0.0, 0.0, 0.0,        0.0, 0.0, 0.0,       1.0, 0.1, -1.0],
+            [0.0, 0.0, 0.0,        0.0, 0.0, 0.0,       2.0, 0.2, -2.0],
+            [0.0, 0.0, 0.0,        0.0, 0.0, 0.0,       3.0, 0.3, -3.0],
+            // O in water, derivatives w.r.t. H1
+            [0.0, 0.0, 0.0,        0.0, 0.0, 0.0,       4.0, 0.4, -4.0],
+            [0.0, 0.0, 0.0,        0.0, 0.0, 0.0,       5.0, 0.5, -5.0],
+            [0.0, 0.0, 0.0,        0.0, 0.0, 0.0,       6.0, 0.6, -6.0],
+            // O in water, derivatives w.r.t. H2
+            [0.0, 0.0, 0.0,        0.0, 0.0, 0.0,       7.0, 0.7, -7.0],
+            [0.0, 0.0, 0.0,        0.0, 0.0, 0.0,       8.0, 0.8, -8.0],
+            [0.0, 0.0, 0.0,        0.0, 0.0, 0.0,       9.0, 0.9, -9.0],
+            // H1 in water, derivatives w.r.t. H1
+            [10.0, 0.10, -10.0,    16.0, 0.16, -16.0,   0.0, 0.0, 0.0],
+            [11.0, 0.11, -11.0,    17.0, 0.17, -17.0,   0.0, 0.0, 0.0],
+            [12.0, 0.12, -12.0,    18.0, 0.18, -18.0,   0.0, 0.0, 0.0],
+            // H1 in water, derivatives w.r.t. H2
+            [13.0, 0.13, -13.0,    0.0, 0.0, 0.0,       0.0, 0.0, 0.0],
+            [14.0, 0.14, -14.0,    0.0, 0.0, 0.0,       0.0, 0.0, 0.0],
+            [15.0, 0.15, -15.0,    0.0, 0.0, 0.0,       0.0, 0.0, 0.0],
+            // H1 in water, derivatives w.r.t. O
+            [0.0, 0.0, 0.0,        19.0, 0.19, -19.0,   0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0,        20.0, 0.20, -20.0,   0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0,        21.0, 0.21, -21.0,   0.0, 0.0, 0.0],
+            // H2 in water, derivatives w.r.t. H2
+            [22.0, 0.22, -22.0,    28.0, 0.28, -28.0,   0.0, 0.0, 0.0],
+            [23.0, 0.23, -23.0,    29.0, 0.29, -29.0,   0.0, 0.0, 0.0],
+            [24.0, 0.24, -24.0,    30.0, 0.30, -30.0,   0.0, 0.0, 0.0],
+            // H2 in water, derivatives w.r.t. H1
+            [25.0, 0.25, -25.0,    0.0, 0.0, 0.0,       0.0, 0.0, 0.0],
+            [26.0, 0.26, -26.0,    0.0, 0.0, 0.0,       0.0, 0.0, 0.0],
+            [27.0, 0.27, -27.0,    0.0, 0.0, 0.0,       0.0, 0.0, 0.0],
+            // H2 in water, derivatives w.r.t. O
+            [0.0, 0.0, 0.0,        31.0, 0.31, -31.0,   0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0,        32.0, 0.32, -32.0,   0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0,        33.0, 0.33, -33.0,   0.0, 0.0, 0.0],
         ]);
     }
 }
