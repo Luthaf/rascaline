@@ -4,6 +4,7 @@ import sys
 import warnings
 import ctypes
 from ctypes import cdll
+from .log_utils import (DEFAULT_LOG_CALLBACK, DEFAULT_LOG_LEVEL)
 
 from ._rascaline import setup_functions
 
@@ -21,31 +22,27 @@ class RascalFinder(object):
 
 def _set_default_logging_callback():
     '''
-    Default logging function. For now print is used.
+    Default logging function. For now it is only a print,
+    but it can be replaced by a more sophisticated logging utility
     '''
-    def default_print(level, string):
-        print(string)
-    set_logging_callback(default_print)
+    set_logging_callback(DEFAULT_LOG_CALLBACK, DEFAULT_LOG_LEVEL)
 
-def set_logging_callback(function):
+def set_logging_callback(callback_function, log_level):
     '''
     Call `function` on every logging event. The callback should take a string
     message and return nothing.
-
     '''
 
-    def callback(level, message):
+    def callback_wrapper(log_level, message):
         try:
-            function(str(level), message.decode("utf8"))
+            callback_function(int(log_level), message.decode("utf8"))
         except Exception as e:
             message = "exception raised in logging callback: {}".format(e)
             warnings.warn(message, ResourceWarning)
 
     global _CURRENT_CALLBACK
-    _CURRENT_CALLBACK = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_char_p)(callback)
-
-    _get_library().rascal_set_logging_callback(_CURRENT_CALLBACK)
-
+    _CURRENT_CALLBACK = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_char_p)(callback_wrapper)
+    _get_library().rascal_set_logging_callback(_CURRENT_CALLBACK, log_level)
 
 def _lib_path():
     if sys.platform.startswith("darwin"):
@@ -102,6 +99,5 @@ def _check_dll(path):
     else:
         raise ImportError("Could not determine pointer size of Python")
 
-
-_get_library = RascalFinder()
 _CURRENT_CALLBACK = None
+_get_library = RascalFinder()

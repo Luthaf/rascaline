@@ -237,7 +237,7 @@ typedef struct rascal_calculation_options_t {
 extern "C" {
 #endif // __cplusplus
 
-void rascal_set_logging_callback(RascalLoggingCallback callback);
+void rascal_set_logging_callback(RascalLoggingCallback callback, int32_t log_level);
 
 /**
  * Get the last error message that was created on the current thread.

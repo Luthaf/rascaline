@@ -1,15 +1,9 @@
-use super::CalculatorBase;
-
-<<<<<<< HEAD
-use crate::descriptor::{IndexesBuilder, Indexes, IndexValue, SamplesIndexes, AtomSamples};
-use crate::{Descriptor, Error, System};
-=======
-use crate::descriptor::Descriptor;
-use crate::descriptor::{IndexesBuilder, Indexes, IndexValue, EnvironmentIndexes, AtomEnvironment};
-use crate::system::System;
 use log::info;
 
->>>>>>> 550aa35 (add functional python test)
+use super::CalculatorBase;
+
+use crate::descriptor::{IndexesBuilder, Indexes, IndexValue, SamplesIndexes, AtomSamples};
+use crate::{Descriptor, Error, System};
 
 /// A stupid calculator implementation used to test the API, and API binding to
 /// C/Python/etc.
@@ -80,8 +74,8 @@ impl CalculatorBase for DummyCalculator {
     #[allow(clippy::clippy::cast_precision_loss)]
     #[time_graph::instrument(name = "DummyCalculator::compute")]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor) -> Result<(), Error> {
-        // This message of this log is tested, therefore if changed here, it has to be changed also in the tests
-        info!{"Computation of DummyCalculator is invoked."}
+        // These logs are tested, therefore if they are changed here, it has to be changed also in the tests
+        info!{"Computation of DummyCalculator has been invoked."}
 
         for (sample_i, indexes) in descriptor.samples.iter().enumerate() {
             let i_system = indexes[0].usize();

@@ -1,12 +1,10 @@
 use std::os::raw::c_char;
-//use std::ffi::{CStr, CString};
-use std::ffi::{CStr};
+use std::ffi::CStr;
 use std::ops::{Deref, DerefMut};
 
 use rascaline::{Calculator, System, CalculationOptions, SelectedIndexes};
 
 use super::utils::copy_str_to_c;
-//use super::{catch_unwind, rascal_status_t, GLOBAL_CALLBACK};
 use super::{catch_unwind, rascal_status_t};
 
 use super::descriptor::rascal_descriptor_t;
@@ -229,19 +227,6 @@ pub unsafe extern fn rascal_calculator_compute(
     systems_count: usize,
     options: rascal_calculation_options_t,
 ) -> rascal_status_t {
-    //RascalLogger.log(0, "test");
-    // TODO(alex) make a proper test, and set a default logger somewhere
-    //let to_print = CString::new("test").unwrap();
-    //let to_print_ptr = to_print.as_ptr();
-    ////(GLOBAL_CALLBACK.expect("No callback function was set."))(to_print_ptr);
-    ////match *(GLOBAL_CALLBACK.lock().unwrap()) {
-    ////    Some(p) => p(5, to_print_ptr),
-    ////    None => println!("No callback function was set."),
-    ////}
-    //match *(GLOBAL_CALLBACK.lock().unwrap()) {
-    //    Some(p) => p(0, to_print_ptr),
-    //    None => println!("No callback function was set."),
-    //}
     catch_unwind(|| {
         if systems_count == 0 {
             log::warn!("0 systems given to rascal_calculator_compute, we will do nothing");

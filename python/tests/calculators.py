@@ -5,34 +5,55 @@ import numpy as np
 from rascaline import SortedDistances
 from rascaline.calculator import DummyCalculator
 
-from rascaline.clib import _get_library, _set_default_logging_callback
+from rascaline.clib import (_get_library,
+        _set_default_logging_callback)
+from rascaline.log_utils import (
+        RUST_LOG_LEVEL_OFF,
+        RUST_LOG_LEVEL_ERROR,
+        RUST_LOG_LEVEL_WARN,
+        RUST_LOG_LEVEL_INFO,
+        RUST_LOG_LEVEL_DEBUG,
+        RUST_LOG_LEVEL_TRACE)
 import ctypes
 
 from test_systems import TestSystem
 
-
-
 class TestDummyCalculator(unittest.TestCase):
-    def test_callback(self):
+    def test_log_levels(self):
+        # tests if log levels can be set without error
+        def callback_function(level, message):
+            pass
+        test_callback_ctype = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_char_p)(callback_function)
+        _get_library().rascal_set_logging_callback(test_callback_ctype, RUST_LOG_LEVEL_OFF)
+        _get_library().rascal_set_logging_callback(test_callback_ctype, RUST_LOG_LEVEL_ERROR)
+        _get_library().rascal_set_logging_callback(test_callback_ctype, RUST_LOG_LEVEL_WARN)
+        _get_library().rascal_set_logging_callback(test_callback_ctype, RUST_LOG_LEVEL_INFO)
+        _get_library().rascal_set_logging_callback(test_callback_ctype, RUST_LOG_LEVEL_DEBUG)
+        _get_library().rascal_set_logging_callback(test_callback_ctype, RUST_LOG_LEVEL_TRACE)
+        _set_default_logging_callback()
+
+    def test_log_message_in_calculator(self):
+        # tests if targeted message is is recorded when running compute
+        # function of the calculator and checks if the log level is correct
         recorded_levels = []
         recorded_messages = []
-        def test_callback(level, message):
+
+        def callback_function(level, message):
             recorded_levels.append(level)
             recorded_messages.append(message)
-        test_callback_ctype = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_char_p)(test_callback)
-        _get_library().rascal_set_logging_callback(test_callback_ctype)
+        test_callback_ctype = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_char_p)(callback_function)
+        _get_library().rascal_set_logging_callback(test_callback_ctype, RUST_LOG_LEVEL_INFO)
 
         system = TestSystem()
         calculator = DummyCalculator(cutoff=3.2, delta=2, name="", gradients=True)
+        # in the compute function of the dummy calculator a message is put into the info log
         descriptor = calculator.compute(system)
 
-        print("recorded_messages", recorded_messages)
-        targeted_message = b"INFO:rascaline::calculators::dummy_calculator -- Computation of DummyCalculator is invoked."
-        self.assertTrue(targeted_message in recorded_messages)
+        targeted_info_message = b"rascaline::calculators::dummy_calculator -- Computation of DummyCalculator has been invoked."
+        log_level = recorded_levels[recorded_messages.index(targeted_info_message)]
+        self.assertEqual(log_level, RUST_LOG_LEVEL_INFO)
 
         _set_default_logging_callback()
-        print("end test callback\n\n\n")
-
 
     def test_name(self):
         calculator = DummyCalculator(cutoff=3.2, delta=12, name="foo", gradients=True)
