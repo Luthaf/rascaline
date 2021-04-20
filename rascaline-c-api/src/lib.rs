@@ -38,6 +38,7 @@ pub unsafe extern fn rascal_set_logging_callback(callback: RascalLoggingCallback
     *GLOBAL_CALLBACK.lock().unwrap() = callback;
     // we allow multiple sets of logger, therefore the result will be ignored
     let _ = log::set_boxed_logger(Box::new(RascalLogger));
+    let _ = log::set_max_level(LevelFilter::Info);
 }
 
 

@@ -5,13 +5,35 @@ import numpy as np
 from rascaline import SortedDistances
 from rascaline.calculator import DummyCalculator
 
-from rascaline.clib import _get_library
+from rascaline.clib import _get_library, _set_default_logging_callback
 import ctypes
 
 from test_systems import TestSystem
 
 
+
 class TestDummyCalculator(unittest.TestCase):
+    def test_callback(self):
+        recorded_levels = []
+        recorded_messages = []
+        def test_callback(level, message):
+            recorded_levels.append(level)
+            recorded_messages.append(message)
+        test_callback_ctype = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_char_p)(test_callback)
+        _get_library().rascal_set_logging_callback(test_callback_ctype)
+
+        system = TestSystem()
+        calculator = DummyCalculator(cutoff=3.2, delta=2, name="", gradients=True)
+        descriptor = calculator.compute(system)
+
+        print("recorded_messages", recorded_messages)
+        targeted_message = b"INFO:rascaline::calculators::dummy_calculator -- Computation of DummyCalculator is invoked."
+        self.assertTrue(targeted_message in recorded_messages)
+
+        _set_default_logging_callback()
+        print("end test callback\n\n\n")
+
+
     def test_name(self):
         calculator = DummyCalculator(cutoff=3.2, delta=12, name="foo", gradients=True)
         self.assertEqual(
@@ -28,18 +50,6 @@ class TestDummyCalculator(unittest.TestCase):
             "dummy test calculator with cutoff: 3.2 - delta: 12"
             f" - name: {name} - gradients: true",
         )
-
-    def test_callback(self):
-        #test_callback_fn = lambda x: self.assert(x, 'test', )
-        #lib = _get_library()
-        def default_print(level, string):
-            print(string)
-        callback = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_char_p)(default_print)
-        print(dir(_get_library()))
-        lib = _get_library()
-        # error happens here
-        lib.rascal_set_logging_callback(callback)
-        #calculator = DummyCalculator(cutoff=3.2, delta=12, name="foo", gradients=True)
 
     def test_parameters(self):
         calculator = DummyCalculator(cutoff=3.2, delta=12, name="foo", gradients=True)
@@ -150,7 +160,6 @@ class TestDummyCalculator(unittest.TestCase):
         self.assertEqual(gradients.shape, (18, 1))
         for i in range(gradients.shape[0]):
             self.assertTrue(np.all(gradients[i] == [0]))
-
 
 class TestSortedDistances(unittest.TestCase):
     def test_name(self):
