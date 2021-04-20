@@ -36,8 +36,10 @@ class TestDummyCalculator(unittest.TestCase):
             print(string)
         callback = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_char_p)(default_print)
         print(dir(_get_library()))
-        _get_library().rascal_set_logging_callback(callback)
-        calculator = DummyCalculator(cutoff=3.2, delta=12, name="foo", gradients=True)
+        lib = _get_library()
+        # error happens here
+        lib.rascal_set_logging_callback(callback)
+        #calculator = DummyCalculator(cutoff=3.2, delta=12, name="foo", gradients=True)
 
     def test_parameters(self):
         calculator = DummyCalculator(cutoff=3.2, delta=12, name="foo", gradients=True)

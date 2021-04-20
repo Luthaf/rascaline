@@ -56,7 +56,11 @@ impl log::Log for RascalLogger {
             unsafe {
                 //let mut guard = GLOBAL_CALLBACK.lock().unwrap();
                 //let mut f = guard.unwrap();
-                GLOBAL_CALLBACK.lock().unwrap().unwrap()(record.level() as i32, cstr.as_ptr());
+                //unwrap()(record.level() as i32, cstr.as_ptr());
+                match *(GLOBAL_CALLBACK.lock().expect("Mutex was poisoned")) {
+                    Some(callback) => callback(record.level() as i32, cstr.as_ptr()),
+                    None => println!("No callback function was set."),
+                }
             }
         }
     }
