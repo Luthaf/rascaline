@@ -1,4 +1,4 @@
-use log::info;
+use log::{info, warn};
 
 use super::CalculatorBase;
 
@@ -74,8 +74,8 @@ impl CalculatorBase for DummyCalculator {
     #[allow(clippy::clippy::cast_precision_loss)]
     #[time_graph::instrument(name = "DummyCalculator::compute")]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor) -> Result<(), Error> {
-        // These logs are tested, therefore if they are changed here, it has to be changed also in the tests
-        info!{"Computation of DummyCalculator has been invoked."}
+        info!("this is an info message used for testing purposes, do not remove");
+        warn!("this is a warning message used for testing purposes, do not remove");
 
         for (sample_i, indexes) in descriptor.samples.iter().enumerate() {
             let i_system = indexes[0].usize();

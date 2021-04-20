@@ -41,7 +41,7 @@ def set_logging_callback(callback_function, log_level):
             warnings.warn(message, ResourceWarning)
 
     global _CURRENT_CALLBACK
-    _CURRENT_CALLBACK = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_char_p)(callback_wrapper)
+    _CURRENT_CALLBACK = _get_library().rascal_set_logging_callback.argtypes[0](callback_wrapper)
     _get_library().rascal_set_logging_callback(_CURRENT_CALLBACK, log_level)
 
 def _lib_path():
