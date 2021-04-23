@@ -41,3 +41,20 @@ descriptor = calculator.compute(frame, use_native_system=True)
 
 save_calculator_input("soap-power-spectrum-values", frame, hyperparameters)
 save_numpy_array("soap-power-spectrum-values", descriptor.values)
+
+descriptor.densify(["species_neighbor_1", "species_neighbor_2"])
+save_numpy_array("soap-power-spectrum-dense-values", descriptor.values)
+
+# Use less values for gradients to keep the file size low
+hyperparameters["max_radial"] = 4
+hyperparameters["max_angular"] = 4
+hyperparameters["gradients"] = True
+
+calculator = SoapPowerSpectrum(**hyperparameters)
+descriptor = calculator.compute(frame, use_native_system=True)
+
+save_calculator_input("soap-power-spectrum-gradients", frame, hyperparameters)
+save_numpy_array("soap-power-spectrum-gradients", descriptor.gradients)
+
+descriptor.densify(["species_neighbor_1", "species_neighbor_2"])
+save_numpy_array("soap-power-spectrum-dense-gradients", descriptor.gradients)
