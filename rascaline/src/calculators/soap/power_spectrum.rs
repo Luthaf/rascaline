@@ -253,7 +253,9 @@ impl CalculatorBase for SoapPowerSpectrum {
                 structure, center, species_center, species_neighbor_2
             ]).expect("missing data for one of the neighbor species");
 
-            for (feature_i, &FeatureBlock { l, start_n1_l, start_n2_l }) in feature_blocks.iter().enumerate() {
+            for (feature_i, block) in feature_blocks.iter().enumerate() {
+                let &FeatureBlock { l, start_n1_l, start_n2_l } = block;
+
                 let mut sum = 0.0;
                 for (index_m, m) in (-l..=l).enumerate() {
                     let feature_1 = start_n1_l + index_m;
@@ -285,7 +287,74 @@ impl CalculatorBase for SoapPowerSpectrum {
         }
 
         if self.parameters.gradients {
-            unimplemented!("gradients are not yet implemented");
+            let se_samples = &self.spherical_expansion.samples;
+            let se_gradients_samples = self.spherical_expansion.gradients_samples.as_ref().expect("missing spherical expansion gradient samples");
+
+            let se_values = &self.spherical_expansion.values;
+            let se_gradients = self.spherical_expansion.gradients.as_ref().expect("missing spherical expansion gradients");
+
+            let gradients = descriptor.gradients.as_mut().expect("missing power spectrum gradients");
+            let gradient_samples = descriptor.gradients_samples.as_ref().expect("missing power spectrum gradient samples");
+            for (grad_i, sample) in gradient_samples.iter().enumerate() {
+                let structure = sample[0];
+                let center = sample[1];
+                let species_center = sample[2];
+                let species_neighbor_1 = sample[3];
+                let species_neighbor_2 = sample[4];
+                let neighbor = sample[5];
+                let spatial = sample[6];
+
+                let neighbor_1 = se_samples.position(&[
+                    structure, center, species_center, species_neighbor_1
+                ]).expect("missing data for the first neighbor");
+                let neighbor_2 = se_samples.position(&[
+                    structure, center, species_center, species_neighbor_2
+                ]).expect("missing data for the second neighbor");
+
+                let grad_neighbor_1 = se_gradients_samples.position(&[
+                    structure, center, species_center, species_neighbor_1, neighbor, spatial
+                ]);
+                let grad_neighbor_2 = se_gradients_samples.position(&[
+                    structure, center, species_center, species_neighbor_2, neighbor, spatial
+                ]);
+
+
+                for (feature_i, block) in feature_blocks.iter().enumerate() {
+                    let &FeatureBlock { l, start_n1_l, start_n2_l } = block;
+
+                    let mut sum = 0.0;
+                    for (index_m, m) in (-l..=l).enumerate() {
+                        let feature_1 = start_n1_l + index_m;
+                        let feature_2 = start_n2_l + index_m;
+                        // this code assumes that all m values for a given n/l are
+                        // consecutive, let's double check it
+                        debug_assert_eq!(self.spherical_expansion.features[feature_1][2].isize(), m);
+                        debug_assert_eq!(self.spherical_expansion.features[feature_2][2].isize(), m);
+
+                        if let Some(grad_neighbor_1) = grad_neighbor_1 {
+                            unsafe {
+                                sum += se_gradients.uget([grad_neighbor_1, feature_1])
+                                     * se_values.uget([neighbor_2, feature_2]);
+                            }
+                        }
+
+                        if let Some(grad_neighbor_2) = grad_neighbor_2 {
+                            unsafe {
+                                sum += se_values.uget([neighbor_1, feature_1])
+                                     * se_gradients.uget([grad_neighbor_2, feature_2]);
+                            }
+                        }
+                    }
+
+                    if species_neighbor_1 != species_neighbor_2 {
+                        // see above
+                        sum *= std::f64::consts::SQRT_2;
+                    }
+
+                    let normalization = f64::sqrt(2.0 * l as f64 + 1.0);
+                    gradients[[grad_i, feature_i]] = sum / normalization;
+                }
+            }
         }
     }
 }
@@ -376,5 +445,34 @@ mod tests {
         );
     }
 
-    // TODO: gradients & finite difference
+    #[test]
+    fn finite_differences() {
+        use super::super::super::tests_utils::{MovedAtomIndex, ChangedGradientIndex};
+
+        let calculator = Calculator::from(Box::new(SoapPowerSpectrum::new(
+            parameters(true)
+        )) as Box<dyn CalculatorBase>);
+
+        let mut systems = test_systems(&["water"]);
+        let system = systems.systems.pop().unwrap();
+
+        let compute_modified_indexes = |gradients_samples: &Indexes, moved: MovedAtomIndex| {
+            let mut results = Vec::new();
+            for (sample_i, sample) in gradients_samples.iter().enumerate() {
+                let neighbor = sample[5];
+                let spatial = sample[6];
+                if neighbor.usize() == moved.center && spatial.usize() == moved.spatial {
+                    results.push(ChangedGradientIndex {
+                        gradient_index: sample_i,
+                        sample: sample[..5].to_vec(),
+                    });
+                }
+            }
+            return results;
+        };
+
+        super::super::super::tests_utils::finite_difference(
+            calculator, system, compute_modified_indexes
+        );
+    }
 }
