@@ -93,3 +93,61 @@ class TestAseSystem(unittest.TestCase):
         self.assertEqual(len(pairs), 2)
         self.assertEqual(pairs[0][:2], (0, 2))
         self.assertEqual(pairs[1][:2], (1, 2))
+
+
+@unittest.skipIf(not HAVE_ASE, "ASE not installed")
+class TestAseSystemErrors(unittest.TestCase):
+    def test_pbc_no_cell(self):
+        message = (
+            "periodic boundary conditions are enabled, but the cell "
+            + "matrix is zero everywhere. You should set pbc to `False`, "
+            + "or the cell to its value."
+        )
+
+        atoms = ase.Atoms("C", positions=[(0, 0, 0)])
+        atoms.pbc = [True, True, True]
+
+        with self.assertRaises(Exception) as cm:
+            _ = AseSystem(atoms)
+
+        self.assertEqual(cm.exception.args[0], message)
+
+        atoms.cell = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
+        atoms.pbc = True
+
+        with self.assertRaises(Exception) as cm:
+            _ = AseSystem(atoms)
+
+        self.assertEqual(cm.exception.args[0], message)
+
+    def test_partial_pbc(self):
+        atoms = ase.Atoms("C", positions=[(0, 0, 0)])
+
+        atoms.cell = [[10, 0, 0], [0, 10, 0], [0, 0, 10]]
+        atoms.pbc = [True, True, False]
+
+        with self.assertRaises(Exception) as cm:
+            _ = AseSystem(atoms)
+
+        message = (
+            "different periodic boundary conditions on different axis "
+            + "are not supported"
+        )
+
+        self.assertEqual(cm.exception.args[0], message)
+
+    def test_no_pbc_cell(self):
+        atoms = ase.Atoms("C", positions=[(0, 0, 0)])
+
+        atoms.cell = [[10, 0, 0], [0, 10, 0], [0, 0, 10]]
+        atoms.pbc = False
+
+        with self.assertWarns(Warning) as cm:
+            _ = AseSystem(atoms)
+
+        message = (
+            "periodic boundary conditions are disabled, but the cell matrix is "
+            + "not zero, we will set the cell to zero."
+        )
+
+        self.assertEqual(cm.warning.args[0], message)
