@@ -131,15 +131,18 @@ impl GtoRadialIntegral {
                     * gamma(n1_n2_3_over_2)
                     / ((sigma1 * sigma2).powf(1.5) * f64::sqrt(gamma(n1 as f64 + 1.5) * gamma(n2 as f64 + 1.5)));
 
-                overlap[(n1, n2)] = value;
+
+                // we don't have to write to the upper half of the matrix since
+                // we use symmetric_eigen in sorted_eigen.
+                // overlap[(n1, n2)] = value;
+
                 overlap[(n2, n1)] = value;
             }
         }
 
-        // TODO: this is not ideal, transforming from ndarray to nalgebra just
-        // to compute the eigen decomposition of the matrix.
-        // compute normalization * overlap^-1/2
-        let mut eigen = sorted_eigen(overlap); // .symmetric_eigen();
+        // compute overlap^-1/2 through its eigendecomposition. We use
+        // sorted_eigen for agreement with librascal
+        let mut eigen = sorted_eigen(overlap);
         for n in 0..parameters.max_radial {
             if eigen.eigenvalues[n] <= 0.0 {
                 panic!(
@@ -160,7 +163,6 @@ impl GtoRadialIntegral {
             (parameters.max_radial, parameters.max_radial),
             gto_orthonormalization.data.as_vec().clone()
         ).expect("wrong matrix size for gto_orthonormalization");
-        // TODO end
 
         let hypergeometric = HyperGeometricSphericalExpansion::new(parameters.max_radial, parameters.max_angular);
 
