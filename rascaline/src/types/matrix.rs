@@ -684,8 +684,8 @@ mod tests {
             [8.0, 9.0, 10.0],
         ]);
 
-        let vec = Vector3D::new(1.0, 1.0, 1.0);
-        assert_eq!(a * vec, Vector3D::new(6.0, 15.0, 27.0));
+        let vec = Vector3D::new(1.0, 1.5, -2.0);
+        assert_eq!(a * vec, Vector3D::new(-2.0, -0.5, 1.5));
 
         let unit = Matrix3::one();
         let vec = Vector3D::new(567.45, 356.8, 215673.12);

@@ -84,20 +84,17 @@ class SystemBase:
             """
             self = get_self(user_data)
             cell = np.array(self.cell(), dtype=c_double)
-            if cell.shape == (3, 3):
-                cell = cell.reshape(9)
+            assert cell.shape == (3, 3)
 
-            assert len(cell) == 9
-
-            data[0] = cell[0]
-            data[1] = cell[1]
-            data[2] = cell[2]
-            data[3] = cell[3]
-            data[4] = cell[4]
-            data[5] = cell[5]
-            data[6] = cell[6]
-            data[7] = cell[7]
-            data[8] = cell[8]
+            data[0] = cell[0][0]
+            data[1] = cell[0][1]
+            data[2] = cell[0][2]
+            data[3] = cell[1][0]
+            data[4] = cell[1][1]
+            data[5] = cell[1][2]
+            data[6] = cell[2][0]
+            data[7] = cell[2][1]
+            data[8] = cell[2][2]
 
         struct.cell = struct.cell.__class__(rascal_system_cell)
 
@@ -172,7 +169,9 @@ class SystemBase:
 
     def cell(self):
         """
-        Get the 3x3 matrix representing unit cell of the system.
+        Get the 3x3 matrix representing unit cell of the system. The cell should
+        be written in row major order, i.e. `[[ax, ay, az], [bx, by, bz], [cx,
+        cy, cz]]`, where a/b/c are the unit cell vectors.
         """
         raise NotImplementedError("System.cell method is not implemented")
 

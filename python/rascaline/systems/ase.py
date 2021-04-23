@@ -46,7 +46,7 @@ if HAVE_ASE:
             return self._atoms.positions
 
         def cell(self):
-            return np.concatenate(self._atoms.cell[:, :])
+            return self._atoms.cell[:, :]
 
         def compute_neighbors(self, cutoff):
             if self._last_cutoff == cutoff:

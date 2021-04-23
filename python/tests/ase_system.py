@@ -35,7 +35,7 @@ class TestAseSystem(unittest.TestCase):
         self.assertEqual(self.system.size(), 3)
         self.assertTrue(np.all(self.system.species() == [6, 8, 8]))
         self.assertTrue(np.all(self.system.positions() == self.positions))
-        self.assertTrue(np.all(self.system.cell() == [0, 0, 0, 0, 0, 0, 0, 0, 0]))
+        self.assertTrue(np.all(self.system.cell() == [[0, 0, 0], [0, 0, 0], [0, 0, 0]]))
 
     def test_pairs(self):
         self.system.compute_neighbors(1.5)

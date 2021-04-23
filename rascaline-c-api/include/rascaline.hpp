@@ -83,7 +83,9 @@ public:
     /// on. The array should contain `3 x System::size()` elements.
     virtual const double* positions() const = 0;
 
-    /// Unit cell representation as a 3x3 matrix
+    /// Unit cell representation as a 3x3 matrix. The cell should be written in
+    /// row major order, i.e. `{{ax ay az}, {bx by bz}, {cx cy cz}}`, where
+    /// a/b/c are the unit cell vectors.
     using CellMatrix = std::array<std::array<double, 3>, 3>;
 
     /// Get the matrix describing the unit cell
