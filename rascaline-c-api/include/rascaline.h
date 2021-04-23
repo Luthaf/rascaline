@@ -134,7 +134,8 @@ typedef struct rascal_system_t {
   void (*positions)(const void *user_data, const double **positions);
   /**
    * This function should write the unit cell matrix in `cell`, which have
-   * space for 9 values.
+   * space for 9 values. The cell should be written in row major order, i.e.
+   * `ax ay az bx by bz cx cy cz`, where a/b/c are the unit cell vectors.
    */
   void (*cell)(const void *user_data, double *cell);
   /**

@@ -58,7 +58,8 @@ pub struct rascal_system_t {
     /// cartesian coordinates of the first atom, and so on.
     positions: Option<unsafe extern fn(user_data: *const c_void, positions: *mut *const f64)>,
     /// This function should write the unit cell matrix in `cell`, which have
-    /// space for 9 values.
+    /// space for 9 values. The cell should be written in row major order, i.e.
+    /// `ax ay az bx by bz cx cy cz`, where a/b/c are the unit cell vectors.
     cell: Option<unsafe extern fn(user_data: *const c_void, cell: *mut f64)>,
     /// This function should compute the neighbor list with the given cutoff,
     /// and store it for later access using `pairs` or `pairs_containing`.

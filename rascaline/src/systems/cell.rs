@@ -26,10 +26,11 @@ pub enum CellShape {
 #[allow(clippy::module_name_repetitions)]
 pub struct UnitCell {
     /// Unit cell matrix
-    cell: Matrix3,
-    /// Inverse of the unit cell matrix. This is cached for performance reason,
-    /// and MUST be updated as needed.
-    inv: Matrix3,
+    matrix: Matrix3,
+    /// Transpose of the unit cell matrix, cached from matrix
+    transpose: Matrix3,
+    /// Inverse of the transpose of the unit cell matrix, cached from matrix
+    inverse: Matrix3,
     /// Unit cell shape
     shape: CellShape,
 }
@@ -37,18 +38,26 @@ pub struct UnitCell {
 impl From<Matrix3> for UnitCell {
     fn from(matrix: Matrix3) -> UnitCell {
         assert!(matrix.determinant() > 1e-6, "matrix is not invertible");
-        let mut cell = UnitCell {
-            cell: matrix,
-            inv: matrix.inverse(),
-            shape: CellShape::Triclinic
+
+        let is_close_0 = |value| f64::abs(value) < 1e-6;
+        let is_diagonal = |matrix: Matrix3| {
+            is_close_0(matrix[0][1]) && is_close_0(matrix[0][2]) &&
+            is_close_0(matrix[1][0]) && is_close_0(matrix[1][2]) &&
+            is_close_0(matrix[2][0]) && is_close_0(matrix[2][1])
         };
 
-        let is_close_90 = |value| f64::abs(value - 90.0) < 1e-3;
-        if is_close_90(cell.alpha()) && is_close_90(cell.beta()) && is_close_90(cell.gamma()) {
-            cell.shape = CellShape::Orthorhombic;
-        }
+        let shape = if is_diagonal(matrix) {
+            CellShape::Orthorhombic
+        } else {
+            CellShape::Triclinic
+        };
 
-        return cell;
+        return UnitCell {
+            matrix: matrix,
+            transpose: matrix.transposed(),
+            inverse: matrix.transposed().inverse(),
+            shape: shape
+        }
     }
 }
 
@@ -56,31 +65,34 @@ impl UnitCell {
     /// Create an infinite unit cell
     pub fn infinite() -> UnitCell {
         UnitCell {
-            cell: Matrix3::zero(),
-            inv: Matrix3::zero(),
+            matrix: Matrix3::zero(),
+            transpose: Matrix3::zero(),
+            inverse: Matrix3::zero(),
             shape: CellShape::Infinite,
         }
     }
+
     /// Create an orthorhombic unit cell, with side lengths `a, b, c`.
-    pub fn ortho(a: f64, b: f64, c: f64) -> UnitCell {
+    pub fn orthorhombic(a: f64, b: f64, c: f64) -> UnitCell {
         assert!(a > 0.0 && b > 0.0 && c > 0.0, "Cell lengths must be positive");
-        let cell = Matrix3::new([[a, 0.0, 0.0], [0.0, b, 0.0], [0.0, 0.0, c]]);
+        let matrix = Matrix3::new([
+            [a, 0.0, 0.0],
+            [0.0, b, 0.0],
+            [0.0, 0.0, c]
+        ]);
         UnitCell {
-            cell: cell,
-            inv: cell.inverse(),
+            matrix: matrix,
+            transpose: matrix,
+            inverse: matrix.inverse(),
             shape: CellShape::Orthorhombic,
         }
     }
+
     /// Create a cubic unit cell, with side lengths `length, length, length`.
     pub fn cubic(length: f64) -> UnitCell {
-        assert!(length > 0.0, "Cell lengths must be positive");
-        let cell = Matrix3::new([[length, 0.0, 0.0], [0.0, length, 0.0], [0.0, 0.0, length]]);
-        UnitCell {
-            cell: cell,
-            inv: cell.inverse(),
-            shape: CellShape::Orthorhombic,
-        }
+        UnitCell::orthorhombic(length, length, length)
     }
+
     /// Create a triclinic unit cell, with side lengths `a, b, c` and angles
     /// `alpha, beta, gamma`.
     pub fn triclinic(a: f64, b: f64, c: f64, alpha: f64, beta: f64, gamma: f64) -> UnitCell {
@@ -96,17 +108,14 @@ impl UnitCell {
         let c_y = c * (cos_alpha - cos_beta * cos_gamma) / sin_gamma;
         let c_z = f64::sqrt(c * c - c_y * c_y - c_x * c_x);
 
-        let cell = Matrix3::new([[a, b_x, c_x], [0.0, b_y, c_y], [0.0, 0.0, c_z]]);
-
-        UnitCell {
-            cell: cell,
-            inv: cell.inverse(),
-            shape: CellShape::Triclinic,
-        }
+        return UnitCell::from(Matrix3::new([
+            [a,   0.0, 0.0],
+            [b_x, b_y, 0.0],
+            [c_x, c_y, c_z],
+        ]));
     }
 
     /// Get the cell shape
-    #[inline]
     pub fn shape(&self) -> CellShape {
         self.shape
     }
@@ -122,7 +131,7 @@ impl UnitCell {
     pub fn a(&self) -> f64 {
         match self.shape {
             CellShape::Triclinic => self.a_vector().norm(),
-            CellShape::Orthorhombic | CellShape::Infinite => self.cell[0][0],
+            CellShape::Orthorhombic | CellShape::Infinite => self.matrix[0][0],
         }
     }
 
@@ -131,7 +140,7 @@ impl UnitCell {
     pub fn b(&self) -> f64 {
         match self.shape {
             CellShape::Triclinic => self.b_vector().norm(),
-            CellShape::Orthorhombic | CellShape::Infinite => self.cell[1][1],
+            CellShape::Orthorhombic | CellShape::Infinite => self.matrix[1][1],
         }
     }
 
@@ -140,12 +149,12 @@ impl UnitCell {
     pub fn c(&self) -> f64 {
         match self.shape {
             CellShape::Triclinic => self.c_vector().norm(),
-            CellShape::Orthorhombic | CellShape::Infinite => self.cell[2][2],
+            CellShape::Orthorhombic | CellShape::Infinite => self.matrix[2][2],
         }
     }
 
     /// Get the distances between faces of the unit cell
-    pub fn lengths(&self) -> Vector3D {
+    pub fn distances_between_faces(&self) -> Vector3D {
         if self.shape == CellShape::Infinite {
             return Vector3D::new(f64::INFINITY, f64::INFINITY, f64::INFINITY);
         }
@@ -212,54 +221,24 @@ impl UnitCell {
         return volume;
     }
 
-    /// Scale this unit cell in-place by multiplying the cell matrix by `factor`.
-    #[inline]
-    pub fn scale_mut(&mut self, factor: Matrix3) {
-        assert!(self.shape() != CellShape::Infinite, "can not scale infinite cells");
-        self.cell *= factor;
-        self.inv = self.cell.inverse();
-    }
-
-    /// Scale this unit cell by multiplying the cell matrix by `s`, and return a
-    /// new scaled unit cell
-    #[inline]
-    pub fn scale(&self, s: Matrix3) -> UnitCell {
-        assert!(self.shape() != CellShape::Infinite, "can not scale infinite cells");
-        let cell = s * self.cell;
-        UnitCell {
-            cell: cell,
-            inv: cell.inverse(),
-            shape: self.shape,
-        }
-    }
-
     /// Get the matricial representation of the unit cell
     pub fn matrix(&self) -> Matrix3 {
-        self.cell
+        self.matrix
     }
 
     /// Get the first vector of the cell
     fn a_vector(&self) -> Vector3D {
-        let x = self.cell[0][0];
-        let y = self.cell[1][0];
-        let z = self.cell[2][0];
-        Vector3D::new(x, y, z)
+        self.matrix[0].into()
     }
 
     /// Get the second vector of the cell
     fn b_vector(&self) -> Vector3D {
-        let x = self.cell[0][1];
-        let y = self.cell[1][1];
-        let z = self.cell[2][1];
-        Vector3D::new(x, y, z)
+        self.matrix[1].into()
     }
 
     /// Get the third vector of the cell
     fn c_vector(&self) -> Vector3D {
-        let x = self.cell[0][2];
-        let y = self.cell[1][2];
-        let z = self.cell[2][2];
-        Vector3D::new(x, y, z)
+        self.matrix[2].into()
     }
 }
 
@@ -268,20 +247,20 @@ impl UnitCell {
     /// Wrap a vector in the unit cell, obeying the periodic boundary conditions.
     /// For a cubic cell of side length `L`, this produce a vector with all
     /// components in `[0, L)`.
-    pub fn wrap_vector(&self, vect: &mut Vector3D) {
+    pub fn wrap_vector(&self, vector: &mut Vector3D) {
         match self.shape {
             CellShape::Infinite => (),
             CellShape::Orthorhombic => {
-                vect[0] -= f64::floor(vect[0] / self.a()) * self.a();
-                vect[1] -= f64::floor(vect[1] / self.b()) * self.b();
-                vect[2] -= f64::floor(vect[2] / self.c()) * self.c();
+                vector[0] -= f64::floor(vector[0] / self.a()) * self.a();
+                vector[1] -= f64::floor(vector[1] / self.b()) * self.b();
+                vector[2] -= f64::floor(vector[2] / self.c()) * self.c();
             }
             CellShape::Triclinic => {
-                let mut fractional = self.fractional(vect);
+                let mut fractional = self.fractional(*vector);
                 fractional[0] -= f64::floor(fractional[0]);
                 fractional[1] -= f64::floor(fractional[1]);
                 fractional[2] -= f64::floor(fractional[2]);
-                *vect = self.cartesian(&fractional);
+                *vector = self.cartesian(fractional);
             }
         }
     }
@@ -289,40 +268,42 @@ impl UnitCell {
     /// Find the image of a vector in the unit cell, obeying the periodic
     /// boundary conditions. For a cubic cell of side length `L`, this produce a
     /// vector with all components in `[-L/2, L/2)`.
-    pub fn vector_image(&self, vect: &mut Vector3D) {
+    pub fn vector_image(&self, vector: &mut Vector3D) {
         match self.shape {
             CellShape::Infinite => (),
             CellShape::Orthorhombic => {
-                vect[0] -= f64::round(vect[0] / self.a()) * self.a();
-                vect[1] -= f64::round(vect[1] / self.b()) * self.b();
-                vect[2] -= f64::round(vect[2] / self.c()) * self.c();
+                vector[0] -= f64::round(vector[0] / self.a()) * self.a();
+                vector[1] -= f64::round(vector[1] / self.b()) * self.b();
+                vector[2] -= f64::round(vector[2] / self.c()) * self.c();
             }
             CellShape::Triclinic => {
-                let mut fractional = self.fractional(vect);
+                let mut fractional = self.fractional(*vector);
                 fractional[0] -= f64::round(fractional[0]);
                 fractional[1] -= f64::round(fractional[1]);
                 fractional[2] -= f64::round(fractional[2]);
-                *vect = self.cartesian(&fractional);
+                *vector = self.cartesian(fractional);
             }
         }
     }
 
     /// Get the fractional representation of the `vector` in this cell
-    #[inline]
-    pub fn fractional(&self, vector: &Vector3D) -> Vector3D {
-        return self.inv * vector;
+    pub fn fractional(&self, vector: Vector3D) -> Vector3D {
+        // this needs to use the inverse of the transpose of the matrix, since
+        // we only have code to multiply a vector by a matrix on the left
+        return self.inverse * vector;
     }
 
     /// Get the Cartesian representation of the `fractional` vector in this
     /// cell
-    #[inline]
-    pub fn cartesian(&self, fractional: &Vector3D) -> Vector3D {
-        return self.cell * fractional;
+    pub fn cartesian(&self, fractional: Vector3D) -> Vector3D {
+        // this needs to use the inverse of the transpose of the matrix, since
+        // we only have code to multiply a vector by a matrix on the left
+        return self.transpose * fractional;
     }
 
     /// Periodic boundary conditions squared distance between the point `u` and
     /// the point `v`
-    pub fn distance2(&self, u: &Vector3D, v: &Vector3D) -> f64 {
+    pub fn distance2(&self, u: Vector3D, v: Vector3D) -> f64 {
         let mut d = v - u;
         self.vector_image(&mut d);
         return d.norm2();
@@ -330,100 +311,8 @@ impl UnitCell {
 
     /// Periodic boundary conditions distance between the point `u` and
     /// the point `v`
-    pub fn distance(&self, u: &Vector3D, v: &Vector3D) -> f64 {
+    pub fn distance(&self, u: Vector3D, v: Vector3D) -> f64 {
         return f64::sqrt(self.distance2(u, v));
-    }
-
-    /// Get the angle formed by the points at `r1`, `r2` and `r3` using periodic
-    /// boundary conditions.
-    pub fn angle(&self, r1: &Vector3D, r2: &Vector3D, r3: &Vector3D) -> f64 {
-        let mut r12 = r1 - r2;
-        self.vector_image(&mut r12);
-        let mut r23 = r3 - r2;
-        self.vector_image(&mut r23);
-
-        return f64::acos(r12 * r23 / (r12.norm() * r23.norm()));
-    }
-
-    /// Get the angle formed by the points at `r1`, `r2` and `r3` using periodic
-    /// boundary conditions and its derivatives with respect to `r1`, `r2` and
-    /// `r3`.
-    pub fn angle_and_derivatives(
-        &self,
-        r1: &Vector3D,
-        r2: &Vector3D,
-        r3: &Vector3D,
-    ) -> (f64, Vector3D, Vector3D, Vector3D) {
-        let mut r12 = r1 - r2;
-        self.vector_image(&mut r12);
-        let mut r23 = r3 - r2;
-        self.vector_image(&mut r23);
-
-        let r12_norm = r12.norm();
-        let r23_norm = r23.norm();
-        let r12n = r12 / r12_norm;
-        let r23n = r23 / r23_norm;
-
-        let cos = r12n * r23n;
-        let sin_inv = 1.0 / f64::sqrt(1.0 - cos * cos);
-
-        let d1 = sin_inv * (cos * r12n - r23n) / r12_norm;
-        let d3 = sin_inv * (cos * r23n - r12n) / r23_norm;
-        let d2 = -(d1 + d3);
-
-        return (f64::acos(cos), d1, d2, d3);
-    }
-
-    /// Get the dihedral angle formed by the points at `r1`, `r2`, `r3`, and
-    /// `r4` using periodic boundary conditions.
-    pub fn dihedral(&self, r1: &Vector3D, r2: &Vector3D, r3: &Vector3D, r4: &Vector3D) -> f64 {
-        let mut r12 = r2 - r1;
-        self.vector_image(&mut r12);
-        let mut r23 = r3 - r2;
-        self.vector_image(&mut r23);
-        let mut r34 = r4 - r3;
-        self.vector_image(&mut r34);
-
-        let u = r12 ^ r23;
-        let v = r23 ^ r34;
-        return f64::atan2(r23.norm() * v * r12, u * v);
-    }
-
-    /// Get the dihedral angle defined by the points at `r1`, `r2`, `r3`, and
-    /// `r4` using periodic boundary conditions, and its derivatives with
-    /// respect to `r1`, `r2`, `r3` and `r4`.
-    pub fn dihedral_and_derivatives(
-        &self,
-        r1: &Vector3D,
-        r2: &Vector3D,
-        r3: &Vector3D,
-        r4: &Vector3D,
-    ) -> (f64, Vector3D, Vector3D, Vector3D, Vector3D) {
-        let mut r12 = r2 - r1;
-        self.vector_image(&mut r12);
-        let mut r23 = r3 - r2;
-        self.vector_image(&mut r23);
-        let mut r34 = r4 - r3;
-        self.vector_image(&mut r34);
-
-        let u = r12 ^ r23;
-        let v = r23 ^ r34;
-        let u_norm2 = u.norm2();
-        let v_norm2 = v.norm2();
-        let r23_norm2 = r23.norm2();
-        let r23_norm = f64::sqrt(r23_norm2);
-
-        let d1 = (-r23_norm / u_norm2) * u;
-        let d4 = ( r23_norm / v_norm2) * v;
-
-        let r23_r34 = r23 * r34;
-        let r12_r23 = r12 * r23;
-
-        let d2 = (-r12_r23 / r23_norm2 - 1.0) * d1 + (r23_r34 / r23_norm2) * d4;
-        let d3 = (-r23_r34 / r23_norm2 - 1.0) * d4 + (r12_r23 / r23_norm2) * d1;
-
-        let phi = f64::atan2(r23_norm * v * r12, u * v);
-        return (phi, d1, d2, d3, d4);
     }
 }
 
@@ -438,25 +327,23 @@ fn angle(u: Vector3D, v: Vector3D) -> f64 {
 mod tests {
     use super::*;
     use std::f64;
-    use std::f64::consts::PI;
-    use crate::Matrix3;
 
     use approx::{assert_ulps_eq, assert_relative_eq};
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "Cell lengths must be positive")]
     fn negative_cubic() {
         let _ = UnitCell::cubic(-4.0);
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "Cell lengths must be positive")]
     fn negative_ortho() {
-        let _ = UnitCell::ortho(3.0, 0.0, -5.0);
+        let _ = UnitCell::orthorhombic(3.0, 0.0, -5.0);
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "Cell lengths must be positive")]
     fn negative_triclinic() {
         let _ = UnitCell::triclinic(3.0, 0.0, -5.0, 90.0, 90.0, 90.0);
     }
@@ -505,7 +392,7 @@ mod tests {
 
     #[test]
     fn orthorhombic() {
-        let cell = UnitCell::ortho(3.0, 4.0, 5.0);
+        let cell = UnitCell::orthorhombic(3.0, 4.0, 5.0);
         assert_eq!(cell.shape(), CellShape::Orthorhombic);
         assert!(!cell.is_infinite());
 
@@ -545,57 +432,23 @@ mod tests {
     }
 
     #[test]
-    fn lengths() {
-        let ortho = UnitCell::ortho(3.0, 4.0, 5.0);
-        assert_eq!(ortho.lengths(), Vector3D::new(3.0, 4.0, 5.0));
+    fn distances_between_faces() {
+        let ortho = UnitCell::orthorhombic(3.0, 4.0, 5.0);
+        assert_eq!(ortho.distances_between_faces(), Vector3D::new(3.0, 4.0, 5.0));
 
         let triclinic = UnitCell::triclinic(3.0, 4.0, 5.0, 90.0, 90.0, 90.0);
-        assert_eq!(triclinic.lengths(), Vector3D::new(3.0, 4.0, 5.0));
+        assert_eq!(triclinic.distances_between_faces(), Vector3D::new(3.0, 4.0, 5.0));
 
         let triclinic = UnitCell::triclinic(3.0, 4.0, 5.0, 90.0, 80.0, 100.0);
-        assert_eq!(triclinic.lengths(), Vector3D::new(2.908132319388713, 3.9373265973230853, 4.921658246653857));
-    }
-
-    #[test]
-    fn scale() {
-        let cell = UnitCell::ortho(3.0, 4.0, 5.0);
-        let cell = cell.scale(2.0 * Matrix3::one());
-
-        assert_eq!(cell.a(), 6.0);
-        assert_eq!(cell.b(), 8.0);
-        assert_eq!(cell.c(), 10.0);
-    }
-
-    #[test]
-    #[should_panic]
-    fn scale_infinite() {
-        let cell = UnitCell::infinite();
-        let _ = cell.scale(2.0 * Matrix3::one());
-    }
-
-    #[test]
-    fn scale_mut() {
-        let mut cell = UnitCell::ortho(3.0, 4.0, 5.0);
-        cell.scale_mut(2.0 * Matrix3::one());
-
-        assert_eq!(cell.a(), 6.0);
-        assert_eq!(cell.b(), 8.0);
-        assert_eq!(cell.c(), 10.0);
-    }
-
-    #[test]
-    #[should_panic]
-    fn scale_mut_infinite() {
-        let mut cell = UnitCell::infinite();
-        cell.scale_mut(2.0 * Matrix3::one());
+        assert_eq!(triclinic.distances_between_faces(), Vector3D::new(2.908132319388713, 3.9373265973230853, 4.921658246653857));
     }
 
     #[test]
     fn distances() {
         // Orthorhombic unit cell
-        let cell = UnitCell::ortho(3.0, 4.0, 5.0);
-        let u = &Vector3D::zero();
-        let v = &Vector3D::new(1.0, 2.0, 6.0);
+        let cell = UnitCell::orthorhombic(3.0, 4.0, 5.0);
+        let u = Vector3D::zero();
+        let v = Vector3D::new(1.0, 2.0, 6.0);
         assert_eq!(cell.distance(u, v), f64::sqrt(6.0));
 
         // Infinite unit cell
@@ -603,8 +456,14 @@ mod tests {
         assert_eq!(cell.distance(u, v), v.norm());
 
         // Triclinic unit cell
-        let cell = UnitCell::triclinic(3.0, 4.0, 5.0, 90.0, 90.0, 90.0);
-        assert_eq!(cell.distance(u, v), f64::sqrt(6.0));
+        let u = Vector3D::new(7.86753, 10.4541, 13.0982);
+        let v = Vector3D::new(9.13177, 3.87718, 6.55355);
+        let cell = UnitCell::from(Matrix3::new([
+            [7.84788, 0.0,     7.84791],
+            [7.84788, 7.84787, 0.0    ],
+            [0.0,     7.84787, 7.84791],
+        ]));
+        assert_eq!(cell.distance(u, v), 2.216326534538627);
     }
 
     #[test]
@@ -616,7 +475,7 @@ mod tests {
         assert_eq!(v, Vector3D::new(9.0, 8.0, 4.0));
 
         // Orthorhombic unit cell
-        let cell = UnitCell::ortho(3.0, 4.0, 5.0);
+        let cell = UnitCell::orthorhombic(3.0, 4.0, 5.0);
         let mut v = Vector3D::new(1.0, 1.5, 6.0);
         cell.wrap_vector(&mut v);
         assert_eq!(v, Vector3D::new(1.0, 1.5, 1.0));
@@ -646,7 +505,7 @@ mod tests {
         assert_eq!(v, Vector3D::new(-1.0, -2.0, 4.0));
 
         // Orthorhombic unit cell
-        let cell = UnitCell::ortho(3.0, 4.0, 5.0);
+        let cell = UnitCell::orthorhombic(3.0, 4.0, 5.0);
         let mut v = Vector3D::new(1.0, 1.5, 6.0);
         cell.vector_image(&mut v);
         assert_eq!(v, Vector3D::new(1.0, 1.5, 1.0));
@@ -671,8 +530,14 @@ mod tests {
     fn fractional_cartesian() {
         let cell = UnitCell::cubic(5.0);
 
-        assert_eq!(cell.fractional(&Vector3D::new(0.0, 10.0, 4.0)), Vector3D::new(0.0, 2.0, 0.8));
-        assert_eq!(cell.cartesian(&Vector3D::new(0.0, 2.0, 0.8)), Vector3D::new(0.0, 10.0, 4.0));
+        assert_eq!(
+            cell.fractional(Vector3D::new(0.0, 10.0, 4.0)),
+            Vector3D::new(0.0, 2.0, 0.8)
+        );
+        assert_eq!(
+            cell.cartesian(Vector3D::new(0.0, 2.0, 0.8)),
+            Vector3D::new(0.0, 10.0, 4.0)
+        );
 
         let cell = UnitCell::triclinic(5.0, 6.0, 3.6, 90.0, 53.0, 77.0);
         let tests = vec![
@@ -680,111 +545,9 @@ mod tests {
             Vector3D::new(-5.0, 12.0, 4.9),
         ];
 
-        for test in &tests {
-            let transformed = cell.cartesian(&cell.fractional(test));
-            assert_ulps_eq!(test, &transformed, epsilon = 1e-15);
-        }
-    }
-
-    #[test]
-    fn angles() {
-        let cell = UnitCell::infinite();
-
-        let a = Vector3D::new(1.0, 0.0, 0.0);
-        let b = Vector3D::zero();
-        let c = Vector3D::new(0.0, 1.0, 0.0);
-        assert_eq!(cell.angle(&a, &b, &c), PI / 2.0);
-
-        let a = Vector3D::new(1.0, 0.0, 0.0);
-        let b = Vector3D::zero();
-        let c = Vector3D::new(f64::cos(1.877), f64::sin(1.877), 0.0);
-        assert_eq!(cell.angle(&a, &b, &c), 1.877);
-    }
-
-    #[test]
-    fn angle_derivatives() {
-        const EPS: f64 = 1e-6;
-        let cell = UnitCell::infinite();
-        let a = Vector3D::new(0.0, 0.02, 0.0);
-        let b = Vector3D::new(-0.784729, -0.5548997, 0.0);
-        let c = Vector3D::new(0.784729, -0.5548997, 0.0);
-
-        let (angle, d1, d2, d3) = cell.angle_and_derivatives(&a, &b, &c);
-        assert_eq!(angle, cell.angle(&a, &b, &c));
-
-        // Check by comparison to finite differences
-        for i in 0..3 {
-            let mut p = a;
-            p[i] += EPS;
-            assert_ulps_eq!((cell.angle(&p, &b, &c) - angle) / EPS, d1[i], epsilon = 1e-6);
-        }
-
-        for i in 0..3 {
-            let mut p = b;
-            p[i] += EPS;
-            assert_ulps_eq!((cell.angle(&a, &p, &c) - angle) / EPS, d2[i], epsilon = 1e-6);
-        }
-
-        for i in 0..3 {
-            let mut p = c;
-            p[i] += EPS;
-            assert_ulps_eq!((cell.angle(&a, &b, &p) - angle) / EPS, d3[i], epsilon = 1e-6);
-        }
-    }
-
-    #[test]
-    fn dihedrals() {
-        let cell = UnitCell::infinite();
-
-        let a = Vector3D::zero();
-        let b = Vector3D::new(1.0, 0.0, 0.0);
-        let c = Vector3D::new(1.0, 1.0, 0.0);
-        let d = Vector3D::new(2.0, 1.0, 0.0);
-        assert_eq!(cell.dihedral(&a, &b, &c, &d), PI);
-
-        let a = Vector3D::new(1.241, 0.444, 0.349);
-        let b = Vector3D::new(-0.011, -0.441, 0.333);
-        let c = Vector3D::new(-1.176, 0.296, -0.332);
-        let d = Vector3D::new(-1.396, 1.211, 0.219);
-        assert_relative_eq!(cell.dihedral(&a, &b, &c, &d), -1.0453789626063168);
-    }
-
-    #[test]
-    #[allow(clippy::many_single_char_names)]
-    fn dihedral_derivatives() {
-        const EPS: f64 = 1e-6;
-        let cell = UnitCell::infinite();
-        let a = Vector3D::new(1.241, 0.444, 0.349);
-        let b = Vector3D::new(-0.011, -0.441, 0.333);
-        let c = Vector3D::new(-1.176, 0.296, -0.332);
-        let d = Vector3D::new(-1.396, 1.211, 0.219);
-
-        let (angle, d1, d2, d3, d4) = cell.dihedral_and_derivatives(&a, &b, &c, &d);
-        assert_eq!(angle, cell.dihedral(&a, &b, &c, &d));
-
-        // Check by comparison to finite differences
-        for i in 0..3 {
-            let mut p = a;
-            p[i] += EPS;
-            assert_ulps_eq!((cell.dihedral(&p, &b, &c, &d) - angle) / EPS, d1[i], epsilon = 1e-6);
-        }
-
-        for i in 0..3 {
-            let mut p = b;
-            p[i] += EPS;
-            assert_ulps_eq!((cell.dihedral(&a, &p, &c, &d) - angle) / EPS, d2[i], epsilon = 1e-6);
-        }
-
-        for i in 0..3 {
-            let mut p = c;
-            p[i] += EPS;
-            assert_ulps_eq!((cell.dihedral(&a, &b, &p, &d) - angle) / EPS, d3[i], epsilon = 1e-6);
-        }
-
-        for i in 0..3 {
-            let mut p = d;
-            p[i] += EPS;
-            assert_ulps_eq!((cell.dihedral(&a, &b, &c, &p) - angle) / EPS, d4[i], epsilon = 1e-6);
+        for test in tests {
+            let transformed = cell.cartesian(cell.fractional(test));
+            assert_ulps_eq!(test, transformed, epsilon = 1e-15);
         }
     }
 }
