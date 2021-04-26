@@ -3,6 +3,7 @@ use std::os::raw::c_char;
 use std::ffi::CStr;
 
 use rascaline::descriptor::{Descriptor, IndexValue};
+use rascaline::Error;
 use super::{catch_unwind, rascal_status_t};
 
 /// Opaque type representing a `Descriptor`.
@@ -250,6 +251,7 @@ pub unsafe extern fn rascal_descriptor_indexes(
 /// @returns The status code of this operation. If the status is not
 ///          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the full
 ///          error message.
+#[allow(clippy::missing_panics_doc)]
 #[no_mangle]
 pub unsafe extern fn rascal_descriptor_indexes_names(
     descriptor: *const rascal_descriptor_t,
@@ -275,12 +277,18 @@ pub unsafe extern fn rascal_descriptor_indexes_names(
             }
         };
 
+        if size != indexes.c_names().len() {
+            return Err(Error::InvalidParameter(
+                format!(
+                    "not enough space for all names in these indexes: \
+                    we need {} entries but the buffer only have space for {}",
+                    indexes.c_names().len(), size
+                )
+            ));
+        }
+
         for (i, name) in indexes.c_names().iter().enumerate() {
-            if i >= size {
-                // TODO: return an error instead if we don't have enough space
-                // for all names?
-                return Ok(());
-            }
+            assert!(i < size);
             names.add(i).write(name.as_ptr());
         }
 
