@@ -229,7 +229,7 @@ pub unsafe extern fn rascal_calculator_compute(
 ) -> rascal_status_t {
     catch_unwind(|| {
         if systems_count == 0 {
-            // TODO: warning
+            log::warn!("0 systems given to rascal_calculator_compute, we will do nothing");
             return Ok(());
         }
         check_pointers!(calculator, descriptor, systems);

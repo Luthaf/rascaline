@@ -42,11 +42,10 @@ TEST_CASE("rascal_descriptor_t") {
         CHECK(size == 0);
 
         const char* names[2] = {"foo", "bar"};
-        CHECK_SUCCESS(rascal_descriptor_indexes_names(
+        auto status = rascal_descriptor_indexes_names(
             descriptor, RASCAL_INDEXES_FEATURES, names, 2
-        ));
-        CHECK(names[0] == nullptr);
-        CHECK(names[1] == nullptr);
+        );
+        CHECK(status != RASCAL_SUCCESS);
 
         compute_descriptor(descriptor);
         CHECK_SUCCESS(rascal_descriptor_indexes(
@@ -86,9 +85,10 @@ TEST_CASE("rascal_descriptor_t") {
         CHECK(size == 0);
 
         const char* names[2] = {"foo", "bar"};
-        rascal_descriptor_indexes_names(descriptor, RASCAL_INDEXES_SAMPLES, names, 2);
-        CHECK(names[0] == nullptr);
-        CHECK(names[1] == nullptr);
+        auto status = rascal_descriptor_indexes_names(
+            descriptor, RASCAL_INDEXES_FEATURES, names, 2
+        );
+        CHECK(status != RASCAL_SUCCESS);
 
 
         compute_descriptor(descriptor);
