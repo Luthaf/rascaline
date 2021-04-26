@@ -1,5 +1,6 @@
 import numpy as np
 import warnings
+import copy
 
 try:
     import ase
@@ -35,23 +36,26 @@ if HAVE_ASE:
 
             # normalize pbc to three values
             if isinstance(atoms.pbc, bool):
-                atoms.pbc = [atoms.pbc, atoms.pbc, atoms.pbc]
+                atoms_pbc = [atoms.pbc, atoms.pbc, atoms.pbc]
+            else:
+                atoms_pbc = copy.deepcopy(atoms.pbc)
 
+            self._cell = np.array(atoms.cell)
             # validate pcb consistency with the cell matrix
-            if np.all(np.abs(atoms.cell[:, :]) < 1e-9):
-                if np.any(atoms.pbc):
+            if np.all(np.abs(self._cell) < 1e-9):
+                if np.any(atoms_pbc):
                     raise Exception(
                         "periodic boundary conditions are enabled, "
                         "but the cell matrix is zero everywhere. "
                         "You should set pbc to `False`, or the cell to its value."
                     )
-            elif np.any(np.bitwise_not(atoms.pbc)):
-                if np.all(np.bitwise_not(atoms.pbc)):
+            elif np.any(np.bitwise_not(atoms_pbc)):
+                if np.all(np.bitwise_not(atoms_pbc)):
                     warnings.warn(
                         "periodic boundary conditions are disabled, but the cell "
                         "matrix is not zero, we will set the cell to zero."
                     )
-                    atoms.cell[:, :] = 0.0
+                    self._cell[:, :] = 0.0
                 else:
                     raise Exception(
                         "different periodic boundary conditions on different axis "
@@ -73,7 +77,7 @@ if HAVE_ASE:
             return self._atoms.positions
 
         def cell(self):
-            return self._atoms.cell[:, :]
+            return self._cell
 
         def compute_neighbors(self, cutoff):
             if self._last_cutoff == cutoff:
