@@ -24,6 +24,8 @@ pub struct Pair {
     pub first: usize,
     /// index of the second atom in the pair
     pub second: usize,
+    /// distance between the two atoms
+    pub distance: f64,
     /// vector from the first atom to the second atom, wrapped inside the unit
     /// cell as required
     pub vector: Vector3D,

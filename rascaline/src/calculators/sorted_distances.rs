@@ -106,7 +106,7 @@ impl CalculatorBase for SortedDistances {
             for pair in system.pairs() {
                 let i = pair.first;
                 let j = pair.second;
-                let d = pair.vector.norm();
+                let d = pair.distance;
 
                 if let Some(distances) = distances.get_mut(&(species[i], species[j])) {
                     distances[i].push(d);

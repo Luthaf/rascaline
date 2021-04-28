@@ -520,7 +520,7 @@ impl CalculatorBase for SphericalExpansion {
                     IndexValue::from(species_center),
                 ]);
 
-                let distance = pair.vector.norm();
+                let distance = pair.distance;
                 let direction = sign * pair.vector / distance;
 
                 let pair = PairForAccumulation {

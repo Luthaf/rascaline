@@ -13,6 +13,8 @@ pub struct rascal_pair_t {
     pub first: usize,
     /// index of the second atom in the pair
     pub second: usize,
+    /// distance between the two atoms
+    pub distance: f64,
     /// vector from the first atom to the second atom, wrapped inside the unit
     /// cell as required by periodic boundary conditions.
     pub vector: [f64; 3],

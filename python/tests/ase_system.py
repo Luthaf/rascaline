@@ -42,28 +42,34 @@ class TestAseSystem(unittest.TestCase):
         pairs = self.system.pairs()
         self.assertEqual(len(pairs), 1)
         self.assertEqual(pairs[0][:2], (0, 1))
-        self.assertTrue(np.all(pairs[0][2] == [0, 0, 1.4]))
+        self.assertEqual(pairs[0][2], 1.4)
+        self.assertTrue(np.all(pairs[0][3] == [0, 0, 1.4]))
 
         self.system.compute_neighbors(2.5)
         pairs = self.system.pairs()
         self.assertEqual(len(pairs), 2)
         self.assertEqual(pairs[0][:2], (0, 1))
-        self.assertTrue(np.all(pairs[0][2] == [0, 0, 1.4]))
+        self.assertEqual(pairs[0][2], 1.4)
+        self.assertTrue(np.all(pairs[0][3] == [0, 0, 1.4]))
 
         self.assertEqual(pairs[1][:2], (0, 2))
-        self.assertTrue(np.all(pairs[1][2] == [0, 0, -1.6]))
+        self.assertEqual(pairs[1][2], 1.6)
+        self.assertTrue(np.all(pairs[1][3] == [0, 0, -1.6]))
 
         self.system.compute_neighbors(3.5)
         pairs = self.system.pairs()
         self.assertEqual(len(pairs), 3)
         self.assertEqual(pairs[0][:2], (0, 1))
-        self.assertTrue(np.all(pairs[0][2] == [0, 0, 1.4]))
+        self.assertEqual(pairs[0][2], 1.4)
+        self.assertTrue(np.all(pairs[0][3] == [0, 0, 1.4]))
 
         self.assertEqual(pairs[1][:2], (0, 2))
-        self.assertTrue(np.all(pairs[1][2] == [0, 0, -1.6]))
+        self.assertEqual(pairs[1][2], 1.6)
+        self.assertTrue(np.all(pairs[1][3] == [0, 0, -1.6]))
 
         self.assertEqual(pairs[2][:2], (1, 2))
-        self.assertTrue(np.all(pairs[2][2] == [0, 0, -3.0]))
+        self.assertEqual(pairs[2][2], 3.0)
+        self.assertTrue(np.all(pairs[2][3] == [0, 0, -3.0]))
 
     def test_pairs_containing(self):
         self.system.compute_neighbors(1.5)

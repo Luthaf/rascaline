@@ -186,9 +186,9 @@ class SystemBase:
     def pairs(self):
         """
         Get all neighbor pairs in this system as a list of tuples ``(int, int,
-        (float, float, float))`` containing the indexes of the first and second
-        atom in the pair; and the wrapped distance vector between them.
-        Alternatively, this function can return a numpy array with
+        float, (float, float, float))`` containing the indexes of the first and
+        second atom in the pair, the distance between the atoms, and the wrapped
+        between them. Alternatively, this function can return a numpy array with
         ``dtype=rascal_pair_t``.
 
         The list of pair should only contain each pair once (and not twice as
