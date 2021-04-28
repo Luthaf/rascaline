@@ -85,6 +85,10 @@ typedef struct rascal_pair_t {
    */
   uintptr_t second;
   /**
+   * distance between the two atoms
+   */
+  double distance;
+  /**
    * vector from the first atom to the second atom, wrapped inside the unit
    * cell as required by periodic boundary conditions.
    */

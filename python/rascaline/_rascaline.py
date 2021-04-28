@@ -45,6 +45,7 @@ class rascal_pair_t(ctypes.Structure):
     _fields_ = [
         ("first", c_uintptr_t),
         ("second", c_uintptr_t),
+        ("distance", ctypes.c_double),
         ("vector", ctypes.c_double * 3),
     ]
 
@@ -79,6 +80,19 @@ def setup_functions(lib):
         
     ]
     lib.rascal_last_error.restype = ctypes.c_char_p
+
+    lib.rascal_basic_systems_read.argtypes = [
+        ctypes.c_char_p,
+        POINTER(POINTER(rascal_system_t)),
+        POINTER(c_uintptr_t)
+    ]
+    lib.rascal_basic_systems_read.restype = _check_rascal_status_t
+
+    lib.rascal_basic_systems_free.argtypes = [
+        POINTER(rascal_system_t),
+        c_uintptr_t
+    ]
+    lib.rascal_basic_systems_free.restype = _check_rascal_status_t
 
     lib.rascal_descriptor.argtypes = [
         

@@ -21,11 +21,22 @@ impl CrappyNeighborsList {
             for j in (i + 1)..natoms {
                 let mut vector = positions[j] - positions[i];
                 cell.vector_image(&mut vector);
-                if vector.norm2() < cutoff2 {
+                let distance2 = vector.norm2();
+                if distance2 < cutoff2 {
                     if i < j {
-                        pairs.push(Pair{ first: i, second: j, vector: vector});
+                        pairs.push(Pair {
+                            first: i,
+                            second: j,
+                            distance: distance2.sqrt(),
+                            vector: vector
+                        });
                     } else {
-                        pairs.push(Pair{ first: j, second: i, vector: -vector});
+                        pairs.push(Pair {
+                            first: j,
+                            second: i,
+                            distance: distance2.sqrt(),
+                            vector: -vector
+                        });
                     }
                 }
             }

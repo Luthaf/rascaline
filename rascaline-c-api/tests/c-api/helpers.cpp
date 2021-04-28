@@ -5,6 +5,8 @@
 
 #include "helpers.hpp"
 
+#define SQRT_3 1.73205080756887729352
+
 rascal_system_t simple_system() {
     rascal_system_t system;
     std::memset(&system, 0, sizeof(system));
@@ -39,14 +41,14 @@ rascal_system_t simple_system() {
 
     // basic compute_neighbors, always returning the same pairs
     system.compute_neighbors = [](void* _, double cutoff){
-        assert(cutoff > 1.73205080756887729352 && cutoff < 3.46410161513775458704);
+        assert(cutoff > SQRT_3 && cutoff < 3.46410161513775458704);
     };
 
     system.pairs = [](const void* _, const rascal_pair_t** pairs, uintptr_t* count){
         static rascal_pair_t PAIRS[] = {
-            {0, 1, {1, 1, 1}},
-            {1, 2, {1, 1, 1}},
-            {2, 3, {1, 1, 1}},
+            {0, 1, SQRT_3, {1, 1, 1}},
+            {1, 2, SQRT_3, {1, 1, 1}},
+            {2, 3, SQRT_3, {1, 1, 1}},
         };
 
         *pairs = PAIRS;
@@ -55,21 +57,21 @@ rascal_system_t simple_system() {
 
     system.pairs_containing = [](const void* _, uintptr_t center, const rascal_pair_t** pairs, uintptr_t* count){
         static rascal_pair_t PAIRS_0[] = {
-            {0, 1, {1, 1, 1}},
+            {0, 1, SQRT_3, {1, 1, 1}},
         };
 
         static rascal_pair_t PAIRS_1[] = {
-            {0, 1, {1, 1, 1}},
-            {1, 2, {1, 1, 1}},
+            {0, 1, SQRT_3, {1, 1, 1}},
+            {1, 2, SQRT_3, {1, 1, 1}},
         };
 
         static rascal_pair_t PAIRS_2[] = {
-            {1, 2, {1, 1, 1}},
-            {2, 3, {1, 1, 1}},
+            {1, 2, SQRT_3, {1, 1, 1}},
+            {2, 3, SQRT_3, {1, 1, 1}},
         };
 
         static rascal_pair_t PAIRS_3[] = {
-            {2, 3, {1, 1, 1}},
+            {2, 3, SQRT_3, {1, 1, 1}},
         };
 
         if (center == 0) {
