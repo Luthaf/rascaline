@@ -24,8 +24,8 @@ HYPER_PARAMETERS = {
 
 calculator = SoapPowerSpectrum(**HYPER_PARAMETERS)
 
-# run the actual calculation, use_native_system=True is usually much faster
-descriptor = calculator.compute(frames, use_native_system=True)
+# run the actual calculation
+descriptor = calculator.compute(frames)
 
 # Transform the descriptor to dense representation,
 # with one sample for each atom-centered environment

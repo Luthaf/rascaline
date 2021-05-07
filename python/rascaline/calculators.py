@@ -49,17 +49,7 @@ def _convert_systems(systems):
         )
 
 
-def _options_to_c(**options):
-    known_options = [
-        "use_native_system",
-        "selected_samples",
-        "selected_features",
-    ]
-    for option in options.keys():
-        if option not in known_options:
-            raise Exception(f"unknown option '{option}' passed to compute")
-
-    samples = options.get("selected_samples")
+def _options_to_c(use_native_system, samples, features):
     if samples is not None:
         samples = np.array(samples)
         if samples.dtype.fields is not None:
@@ -70,7 +60,6 @@ def _options_to_c(**options):
             _check_selected_indexes(samples, "samples")
             samples = np.array(samples, dtype=np.int32)
 
-    features = options.get("selected_features")
     if features is not None:
         features = np.array(features)
         if features.dtype.fields is not None:
@@ -83,7 +72,7 @@ def _options_to_c(**options):
 
     ptr_int32 = ctypes.POINTER(ctypes.c_int32)
     c_options = rascal_calculation_options_t()
-    c_options.use_native_system = bool(options.get("use_native_system", False))
+    c_options.use_native_system = bool(use_native_system)
 
     if samples is None:
         c_options.selected_samples = None
@@ -137,7 +126,7 @@ class CalculatorBase:
         self,
         systems,
         descriptor=None,
-        use_native_system=False,
+        use_native_system=True,
         selected_samples=None,
         selected_features=None,
     ):
@@ -157,7 +146,7 @@ class CalculatorBase:
 
         :type descriptor: :py:class:`Descriptor`, optional
 
-        :param bool use_native_system: defaults to ``False``. If ``True``, copy
+        :param bool use_native_system: defaults to ``True``. If ``True``, copy
             data from the ``systems`` into Rust ``SimpleSystem``. This can be a
             lot faster than having to cross the FFI boundary often when acessing
             the neighbor list.
@@ -202,8 +191,8 @@ class CalculatorBase:
         c_systems = _convert_systems(systems)
         c_options = _options_to_c(
             use_native_system=use_native_system,
-            selected_samples=selected_samples,
-            selected_features=selected_features,
+            samples=selected_samples,
+            features=selected_features,
         )
         self._lib.rascal_calculator_compute(
             self, descriptor, c_systems, c_systems._length_, c_options

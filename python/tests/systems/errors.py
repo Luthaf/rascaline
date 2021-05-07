@@ -16,7 +16,7 @@ class TestSystemExceptions(unittest.TestCase):
         calculator = DummyCalculator(cutoff=3.2, delta=2, name="", gradients=True)
 
         with self.assertRaises(RascalError) as cm:
-            _ = calculator.compute(system)
+            _ = calculator.compute(system, use_native_system=False)
 
         self.assertEqual(
             cm.exception.args[0],

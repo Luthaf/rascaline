@@ -44,7 +44,7 @@ class TestDummyCalculator(unittest.TestCase):
     def test_compute(self):
         system = TestSystem()
         calculator = DummyCalculator(cutoff=3.2, delta=2, name="", gradients=True)
-        descriptor = calculator.compute(system)
+        descriptor = calculator.compute(system, use_native_system=False)
 
         values = descriptor.values
         self.assertEqual(values.shape, (4, 2))
@@ -61,18 +61,20 @@ class TestDummyCalculator(unittest.TestCase):
     def test_compute_multiple_systems(self):
         systems = [TestSystem(), TestSystem(), TestSystem()]
         calculator = DummyCalculator(cutoff=3.2, delta=2, name="", gradients=True)
-        descriptor = calculator.compute(systems)
+        descriptor = calculator.compute(systems, use_native_system=False)
 
         self.assertEqual(descriptor.values.shape, (12, 2))
 
     def test_compute_partial_samples(self):
         system = TestSystem()
         calculator = DummyCalculator(cutoff=3.2, delta=2, name="", gradients=True)
-        descriptor = calculator.compute(system)
+        descriptor = calculator.compute(system, use_native_system=False)
 
         # From a selection scheme, using numpy array indexing
         samples = descriptor.samples[[0, 2]]
-        descriptor = calculator.compute(system, selected_samples=samples)
+        descriptor = calculator.compute(
+            system, use_native_system=False, selected_samples=samples
+        )
 
         values = descriptor.values
         self.assertEqual(values.shape, (2, 2))
@@ -86,7 +88,9 @@ class TestDummyCalculator(unittest.TestCase):
 
         #  Manually constructing the selected samples
         samples = [(0, 0), (0, 3), (0, 1)]
-        descriptor = calculator.compute(system, selected_samples=samples)
+        descriptor = calculator.compute(
+            system, use_native_system=False, selected_samples=samples
+        )
 
         values = descriptor.values
         self.assertEqual(values.shape, (3, 2))
@@ -102,11 +106,13 @@ class TestDummyCalculator(unittest.TestCase):
     def test_compute_partial_features(self):
         system = TestSystem()
         calculator = DummyCalculator(cutoff=3.2, delta=2, name="", gradients=True)
-        descriptor = calculator.compute(system)
+        descriptor = calculator.compute(system, use_native_system=False)
 
         # From a selection scheme, using numpy array indexing
         features = descriptor.features[[1]]
-        descriptor = calculator.compute(system, selected_features=features)
+        descriptor = calculator.compute(
+            system, use_native_system=False, selected_features=features
+        )
 
         values = descriptor.values
         self.assertEqual(values.shape, (4, 1))
@@ -122,7 +128,9 @@ class TestDummyCalculator(unittest.TestCase):
 
         # Manually constructing the selected features
         features = [[1, 0]]
-        descriptor = calculator.compute(system, selected_features=features)
+        descriptor = calculator.compute(
+            system, use_native_system=False, selected_features=features
+        )
 
         values = descriptor.values
         self.assertEqual(values.shape, (4, 1))
