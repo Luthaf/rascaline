@@ -34,7 +34,7 @@ class TestDummyDescriptor(unittest.TestCase):
     def test_values(self):
         system = TestSystem()
         calculator = DummyCalculator(cutoff=3.2, delta=12, name="", gradients=False)
-        descriptor = calculator.compute(system)
+        descriptor = calculator.compute(system, use_native_system=False)
 
         values = descriptor.values
         self.assertEqual(values.shape, (4, 2))
@@ -51,16 +51,16 @@ class TestDummyDescriptor(unittest.TestCase):
     def test_gradients(self):
         system = TestSystem()
         calculator = DummyCalculator(cutoff=3.2, delta=12, name="", gradients=False)
-        descriptor = calculator.compute(system)
+        descriptor = calculator.compute(system, use_native_system=False)
         self.assertEqual(descriptor.gradients, None)
 
         system = EmptySystem()
         calculator = DummyCalculator(cutoff=3.2, delta=12, name="", gradients=True)
-        descriptor = calculator.compute(system)
+        descriptor = calculator.compute(system, use_native_system=False)
         self.assertEqual(descriptor.gradients.shape, (0, 2))
 
         system = TestSystem()
-        descriptor = calculator.compute(system)
+        descriptor = calculator.compute(system, use_native_system=False)
         gradients = descriptor.gradients
         self.assertEqual(gradients.shape, (18, 2))
         for i in range(18):
@@ -72,7 +72,7 @@ class TestDummyDescriptor(unittest.TestCase):
     def test_samples(self):
         system = TestSystem()
         calculator = DummyCalculator(cutoff=3.2, delta=12, name="", gradients=False)
-        descriptor = calculator.compute(system)
+        descriptor = calculator.compute(system, use_native_system=False)
 
         samples = descriptor.samples
         self.assertEqual(len(samples), 4)
@@ -95,11 +95,11 @@ class TestDummyDescriptor(unittest.TestCase):
     def test_gradient_indexes(self):
         system = TestSystem()
         calculator = DummyCalculator(cutoff=3.2, delta=12, name="", gradients=False)
-        descriptor = calculator.compute(system)
+        descriptor = calculator.compute(system, use_native_system=False)
         self.assertEqual(len(descriptor.gradients_samples), 0)
 
         calculator = DummyCalculator(cutoff=3.2, delta=12, name="", gradients=True)
-        descriptor = calculator.compute(system)
+        descriptor = calculator.compute(system, use_native_system=False)
         gradients_samples = descriptor.gradients_samples
         self.assertEqual(len(gradients_samples), 18)
 
@@ -147,7 +147,7 @@ class TestDummyDescriptor(unittest.TestCase):
     def test_features(self):
         system = TestSystem()
         calculator = DummyCalculator(cutoff=3.2, delta=12, name="", gradients=False)
-        descriptor = calculator.compute(system)
+        descriptor = calculator.compute(system, use_native_system=False)
 
         features = descriptor.features
         self.assertEqual(len(features), 2)
@@ -168,7 +168,7 @@ class TestDummyDescriptor(unittest.TestCase):
     def test_densify(self):
         system = TestSystem()
         calculator = DummyCalculator(cutoff=3.2, delta=12, name="", gradients=True)
-        descriptor = calculator.compute(system)
+        descriptor = calculator.compute(system, use_native_system=False)
 
         self.assertEqual(descriptor.values.shape, (4, 2))
         self.assertEqual(descriptor.gradients.shape, (18, 2))
