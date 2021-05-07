@@ -1,9 +1,13 @@
+import os
+
 import ase
+from ase import io  # noqa
 
 from rascaline import SphericalExpansion
 
 from save_data import save_calculator_input, save_numpy_array
 
+# structure without periodic boundary condition
 frame = ase.Atoms(
     "CHOC4H2",
     positions=[
@@ -52,3 +56,39 @@ descriptor = calculator.compute(frame, use_native_system=True)
 
 save_calculator_input("spherical-expansion-gradients", frame, hyperparameters)
 save_numpy_array("spherical-expansion-gradients", descriptor.gradients)
+
+# structure with periodic boundary condition. Some atoms in this structure are
+# neighbors twice with a cutoff of 4.5 (pairs 0-19, 1-18, 9-16, 12-13 after the
+# pop below).
+datadir = os.path.join(os.path.dirname(__file__), "..", "..", "benches", "data")
+frame = ase.io.read(os.path.join(datadir, "molecular_crystals.xyz"), "4")
+
+# remove most atoms to have smaller reference data while keeping duplicated
+# pairs
+for _ in range(60):
+    frame.pop()
+
+for _ in range(20):
+    frame.pop(5)
+
+hyperparameters = {
+    "cutoff": 4.5,
+    "max_radial": 6,
+    "max_angular": 6,
+    "atomic_gaussian_width": 0.5,
+    "radial_basis": {
+        "Gto": {},
+    },
+    "gradients": False,
+    "cutoff_function": {
+        "ShiftedCosine": {
+            "width": 0.2,
+        }
+    },
+}
+
+calculator = SphericalExpansion(**hyperparameters)
+descriptor = calculator.compute(frame, use_native_system=True)
+
+save_calculator_input("spherical-expansion-pbc-values", frame, hyperparameters)
+save_numpy_array("spherical-expansion-pbc-values", descriptor.values)
