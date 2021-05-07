@@ -4,6 +4,7 @@ mod cell;
 pub use self::cell::UnitCell;
 
 mod neighbors;
+pub use self::neighbors::NeighborsList;
 
 mod simple_system;
 pub use self::simple_system::SimpleSystem;

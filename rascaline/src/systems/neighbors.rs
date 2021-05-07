@@ -1,7 +1,7 @@
 use ndarray::Array3;
 
 use crate::{Matrix3, Vector3D};
-use super::UnitCell;
+use super::{UnitCell, Pair};
 
 /// `f64::clamp` backported to rust 1.45
 fn f64_clamp(mut x: f64, min: f64, max: f64) -> f64 {
@@ -288,4 +288,173 @@ fn divmod_vec(a: [isize; 3], b: [usize; 3]) -> ([isize; 3], [usize; 3]) {
     let (qy, ry) = divmod(a[1], b[1]);
     let (qz, rz) = divmod(a[2], b[2]);
     return ([qx, qy, qz], [rx, ry, rz]);
+}
+
+/// A neighbor list implementation usable with any system
+#[derive(Clone, Debug)]
+#[allow(clippy::module_name_repetitions)]
+pub struct NeighborsList {
+    /// the cutoff used to create this neighbor list
+    pub cutoff: f64,
+    /// all pairs in the system
+    pub pairs: Vec<Pair>,
+    /// all pairs in the system, classified by associated center
+    pub pairs_by_center: Vec<Vec<Pair>>,
+}
+
+impl NeighborsList {
+    #[time_graph::instrument(name = "neighbor list")]
+    pub fn new(positions: &[Vector3D], unit_cell: UnitCell, cutoff: f64) -> NeighborsList {
+        let mut cell_list = CellList::new(unit_cell, cutoff);
+
+        for (index, &position) in positions.iter().enumerate() {
+            cell_list.add_atom(index, position);
+        }
+
+        let cell_matrix = unit_cell.matrix();
+        let cutoff2 = cutoff * cutoff;
+
+        // the cell list creates too many pairs, we only need to keep the one where
+        // the distance is actually below the cutoff
+        let mut pairs = Vec::new();
+        let mut pairs_by_center = vec![Vec::new(); positions.len()];
+
+        for pair in cell_list.pairs() {
+            let mut vector = positions[pair.second] - positions[pair.first];
+            vector += pair.shift.dot(&cell_matrix);
+
+            let distance2 = vector * vector;
+            if distance2 < cutoff2 {
+                let pair = Pair {
+                    first: pair.first,
+                    second: pair.second,
+                    distance: distance2.sqrt(),
+                    vector: vector,
+                };
+
+                pairs.push(pair);
+                pairs_by_center[pair.first].push(pair);
+                pairs_by_center[pair.second].push(pair);
+            }
+        }
+
+        // sort the pairs to make sure the final output of rascaline is ordered
+        // naturally
+        pairs.sort_unstable_by_key(|pair| (pair.first, pair.second));
+        for pairs in &mut pairs_by_center {
+            pairs.sort_unstable_by_key(|pair| (pair.first, pair.second));
+        }
+
+        return NeighborsList {
+            cutoff: cutoff,
+            pairs: pairs,
+            pairs_by_center: pairs_by_center,
+        };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use approx::assert_ulps_eq;
+
+    use crate::Matrix3;
+
+    use super::*;
+
+    #[test]
+    fn non_periodic() {
+        let positions = [
+            Vector3D::new(0.134, 1.282, 1.701),
+            Vector3D::new(-0.273, 1.026, -1.471),
+            Vector3D::new(1.922, -0.124, 1.900),
+            Vector3D::new(1.400, -0.464, 0.480),
+            Vector3D::new(0.149, 1.865, 0.635),
+        ];
+
+        let neighbors = NeighborsList::new(&positions, UnitCell::infinite(), 3.42);
+
+        // reference computed with ASE
+        let reference = [
+            (0, 1, 3.2082345612501593),
+            (0, 2, 2.283282943482914),
+            (0, 3, 2.4783286706972505),
+            (0, 4, 1.215100818862369),
+            (1, 3, 2.9707625283755013),
+            (1, 4, 2.3059143522689647),
+            (2, 3, 1.550639867925496),
+            (2, 4, 2.9495550511899244),
+            (3, 4, 2.6482573515427084),
+        ];
+
+        assert_eq!(neighbors.pairs.len(), reference.len());
+        for (pair, reference) in neighbors.pairs.iter().zip(&reference) {
+            assert_eq!(pair.first, reference.0);
+            assert_eq!(pair.second, reference.1);
+            assert_ulps_eq!(pair.distance, reference.2);
+        }
+    }
+
+    #[test]
+    fn fcc_cell() {
+        let cell = UnitCell::from(Matrix3::from([
+            [0.0, 1.5, 1.5],
+            [1.5, 0.0, 1.5],
+            [1.5, 1.5, 0.0],
+        ]));
+        let positions = [Vector3D::new(0.0, 0.0, 0.0)];
+        let neighbors = NeighborsList::new(&positions, cell, 3.0);
+
+        let expected = [
+            Vector3D::new(0.0, -1.0, -1.0),
+            Vector3D::new(1.0, 0.0, -1.0),
+            Vector3D::new(1.0, -1.0, 0.0),
+            Vector3D::new(-1.0, 0.0, -1.0),
+            Vector3D::new(0.0, 1.0, -1.0),
+            Vector3D::new(-1.0, -1.0, 0.0),
+            Vector3D::new(1.0, 1.0, 0.0),
+            Vector3D::new(0.0, -1.0, 1.0),
+            Vector3D::new(1.0, 0.0, 1.0),
+            Vector3D::new(-1.0, 1.0, 0.0),
+            Vector3D::new(-1.0, 0.0, 1.0),
+            Vector3D::new(0.0, 1.0, 1.0),
+        ];
+
+        assert_eq!(neighbors.pairs.len(), 12);
+        for (pair, vector) in neighbors.pairs.iter().zip(&expected) {
+            assert_eq!(pair.first, 0);
+            assert_eq!(pair.second, 0);
+            assert_ulps_eq!(pair.distance, 2.1213203435596424);
+            assert_ulps_eq!(pair.vector / 1.5, vector);
+        }
+    }
+
+    #[test]
+    fn large_cell_small_cutoff() {
+        let cell = UnitCell::cubic(54.0);
+        let positions = [
+            Vector3D::new(0.0, 0.0, 0.0),
+            Vector3D::new(0.0, 2.0, 0.0),
+            Vector3D::new(0.0, 0.0, 2.0),
+            // atoms outside the cell natural boundaries
+            Vector3D::new(-6.0, 0.0, 0.0),
+            Vector3D::new(-6.0, -2.0, 0.0),
+            Vector3D::new(-6.0, 0.0, -2.0),
+        ];
+
+        let neighbors = NeighborsList::new(&positions, cell, 2.1);
+
+        let expected = [
+            (0, 1),
+            (0, 2),
+            (3, 4),
+            (3, 5),
+        ];
+
+        assert_eq!(neighbors.pairs.len(), expected.len());
+        for (pair, expected) in neighbors.pairs.iter().zip(&expected) {
+            assert_eq!(pair.first, expected.0);
+            assert_eq!(pair.second, expected.1);
+            assert_ulps_eq!(pair.distance, 2.0);
+        }
+    }
 }
