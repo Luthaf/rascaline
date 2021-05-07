@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 
 from rascaline import SortedDistances
-from rascaline.calculator import DummyCalculator
+from rascaline.calculators import DummyCalculator
 
 from test_systems import TestSystem
 

@@ -1,11 +1,15 @@
 Available Calculators
 =====================
 
-.. autoclass:: rascaline.SphericalExpansion
+.. autoclass:: rascaline.SoapPowerSpectrum
+    :show-inheritance:
 
+.. autoclass:: rascaline.SphericalExpansion
+    :show-inheritance:
 
 .. autoclass:: rascaline.SortedDistances
+    :show-inheritance:
 
 
-.. autoclass:: rascaline.calculator.CalculatorBase()
+.. autoclass:: rascaline.calculators.CalculatorBase()
     :members:

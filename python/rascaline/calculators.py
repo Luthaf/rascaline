@@ -236,9 +236,6 @@ class SortedDistances(CalculatorBase):
 
     For a full description of the hyper-parameters, see the corresponding
     :ref:`documentation <sorted-distances>`.
-
-    This class inherits from :py:class:`rascaline.calculator.CalculatorBase` and
-    exposes the same functions and properties.
     """
 
     def __init__(self, cutoff, max_neighbors):
@@ -249,16 +246,20 @@ class SortedDistances(CalculatorBase):
 class SphericalExpansion(CalculatorBase):
     """
     The spherical expansion is at the core of representations in the SOAP
-    (Smooth Overlap of Atomic Positions) family. See `this review article
-    <https://doi.org/10.1063/1.5090481>`_ for more information on the SOAP
-    representation, and `this paper <https://doi.org/10.1063/5.0044689>`_ for
-    information on how it is implemented in rascaline.
+    (Smooth Overlap of Atomic Positions) family of descriptors. The spherical
+    expansion represent atomic density as a collection of gaussian functions
+    centered on each atom, and then represent the local density around each atom
+    (up to a cutoff) on a basis of radial functions and spherical harmonics.
+    This representation is not rotationally invariant, for that you should use
+    the :py:class:`SoapPowerSpectrum` class.
+
+    See `this review article <https://doi.org/10.1063/1.5090481>`_ for more
+    information on the SOAP representation, and `this paper
+    <https://doi.org/10.1063/5.0044689>`_ for information on how it is
+    implemented in rascaline.
 
     For a full description of the hyper-parameters, see the corresponding
     :ref:`documentation <spherical-expansion>`.
-
-    This class inherits from :py:class:`rascaline.calculator.CalculatorBase` and
-    exposes the same functions and properties.
     """
 
     def __init__(
@@ -284,6 +285,21 @@ class SphericalExpansion(CalculatorBase):
 
 
 class SoapPowerSpectrum(CalculatorBase):
+    """
+    The SOAP power spectrum is the main member of the SOAP (Smooth Overlap of
+    Atomic Positions) family of descriptors. The power spectrum is based on the
+    :py:class:`SphericalExpansion` coefficients, which are combined to create a
+    rotationally invariant three-body descriptor.
+
+    See `this review article <https://doi.org/10.1063/1.5090481>`_ for more
+    information on the SOAP representation, and `this paper
+    <https://doi.org/10.1063/5.0044689>`_ for information on how it is
+    implemented in rascaline.
+
+    For a full description of the hyper-parameters, see the corresponding
+    :ref:`documentation <soap-power-spectrum>`.
+    """
+
     def __init__(
         self,
         cutoff,
