@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import unittest
 
-from rascaline.calculator import DummyCalculator
+from rascaline.calculators import DummyCalculator
 
 from rascaline import set_logging_callback
 from rascaline.log import default_logging_callback

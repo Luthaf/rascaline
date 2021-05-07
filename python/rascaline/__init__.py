@@ -6,9 +6,9 @@ from .descriptor import Descriptor
 
 from .systems import SystemBase
 
-from .calculator import CalculatorBase
-from .calculator import SortedDistances
-from .calculator import SphericalExpansion
-from .calculator import SoapPowerSpectrum
+from .calculators import CalculatorBase
+from .calculators import SortedDistances
+from .calculators import SphericalExpansion
+from .calculators import SoapPowerSpectrum
 
 __version__ = "0.0.0"
