@@ -54,11 +54,18 @@ class cargo_ext(build_ext):
         else:
             raise ImportError("Unknown platform. Please edit this file")
 
-        cargo_build = ["cargo", "build"]
+        cargo_build = [
+            "cargo",
+            "build",
+            # do not include chemfiles when building the Python package
+            "--no-default-features",
+        ]
         if RASCALINE_BUILD_TYPE == "release":
             cargo_build.append("--release")
 
-        process = subprocess.Popen(cargo_build, cwd=ROOT)
+        process = subprocess.Popen(
+            cargo_build, cwd=os.path.join(ROOT, "rascaline-c-api")
+        )
         status = process.wait()
         if status != 0:
             sys.exit(status)
