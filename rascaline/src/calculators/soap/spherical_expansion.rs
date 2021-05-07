@@ -1,9 +1,6 @@
-use std::collections::BTreeSet;
-
 use ndarray::Array2;
 
 use crate::descriptor::{IndexesBuilder, IndexValue, Indexes, SamplesIndexes, AtomSpeciesSamples};
-use crate::systems::Pair;
 use crate::{Descriptor, System, Vector3D};
 
 use super::super::CalculatorBase;
@@ -128,9 +125,6 @@ impl CutoffFunction {
     }
 }
 
-#[derive(Debug, Clone)]
-#[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
-#[allow(clippy::module_name_repetitions)]
 /// Parameters for spherical expansion calculator.
 ///
 /// The spherical expansion is at the core of representations in the SOAP
@@ -138,6 +132,9 @@ impl CutoffFunction {
 /// article](https://doi.org/10.1063/1.5090481) for more information on the SOAP
 /// representation, and [this paper](https://doi.org/10.1063/5.0044689) for
 /// information on how it is implemented in rascaline.
+#[derive(Debug, Clone)]
+#[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+#[allow(clippy::module_name_repetitions)]
 pub struct SphericalExpansionParameters {
     /// Spherical cutoff to use for atomic environments
     pub cutoff: f64,
@@ -155,17 +152,35 @@ pub struct SphericalExpansionParameters {
     pub cutoff_function: CutoffFunction,
 }
 
+/// The actual calculator used to compute SOAP spherical expansion coefficients
 pub struct SphericalExpansion {
+    /// Parameters governing the spherical expansion
     parameters: SphericalExpansionParameters,
+    /// Implementation of the radial integral
     radial_integral: Box<dyn RadialIntegral>,
+    /// Implementation of the spherical harmonics
     spherical_harmonics: SphericalHarmonics,
+    /// Cache for the spherical harmonics values
     sph_values: SphericalHarmonicsArray,
+    /// Cache for the spherical harmonics gradients (one value each for x/y/z)
     sph_gradients: Option<[SphericalHarmonicsArray; 3]>,
+    /// Cache for the radial integral values
     ri_values: Array2<f64>,
+    /// Cache for the radial integral gradient
     ri_gradients: Option<Array2<f64>>,
+    /// Store whether the radial integral and spherical harmonic have been
+    /// computed for the current pair.
+    computed_ri_sph_for_this_pair: bool,
+}
+
+impl std::fmt::Debug for SphericalExpansion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.parameters)
+    }
 }
 
 impl SphericalExpansion {
+    /// Create a new `SphericalExpansion` calculator with the given parameters
     pub fn new(parameters: SphericalExpansionParameters) -> SphericalExpansion {
         let radial_integral = parameters.radial_basis.construct(&parameters);
         let spherical_harmonics = SphericalHarmonics::new(parameters.max_angular);
@@ -196,9 +211,15 @@ impl SphericalExpansion {
             sph_gradients: sph_gradients,
             ri_values: ri_values,
             ri_gradients: ri_gradients,
+            computed_ri_sph_for_this_pair: false,
         }
     }
 
+    /// Compute the self contribution to spherical expansion, i.e. the
+    /// contribution of the central atom own density to the expansion around
+    /// itself.
+    ///
+    /// The self contribution does not have contributions to the gradients
     fn do_self_contributions(&mut self, descriptor: &mut Descriptor) {
         // we could cache the self contribution since they only depend on the
         // gaussian atomic width. For now, we recompute them all the time
@@ -227,16 +248,38 @@ impl SphericalExpansion {
         }
     }
 
-    fn accumulate_for_pair(
-        &mut self,
-        descriptor: &mut Descriptor,
-        pair: &PairForAccumulation,
-        // position of the sample in descriptor.values
-        sample_i: usize,
-        // position of the sample corresponding to the neighbor in descriptor.values
-        neighbor_sample_i: Option<usize>,
-    ) {
-        debug_assert_ne!(pair.center, pair.neighbor);
+    /// Accumulate the spherical expansion coefficients for the given pair.
+    ///
+    /// This function assumes that the radial integral and spherical harmonics
+    /// have just been computed for this pair.
+    fn accumulate_for_pair(&mut self, descriptor: &mut Descriptor, pair: &Pair) {
+        self.computed_ri_sph_for_this_pair = false;
+
+        let first_sample_i = descriptor.samples.position(&[
+            IndexValue::from(pair.system),
+            IndexValue::from(pair.first),
+            IndexValue::from(pair.species_first),
+            IndexValue::from(pair.species_second),
+        ]);
+
+        let second_sample_i;
+        if pair.first == pair.second {
+            // do not compute for the reversed pair if the pair is between an
+            // atom and its image
+            second_sample_i = None;
+        } else {
+            second_sample_i = descriptor.samples.position(&[
+                IndexValue::from(pair.system),
+                IndexValue::from(pair.second),
+                IndexValue::from(pair.species_second),
+                IndexValue::from(pair.species_first),
+            ]);
+        }
+
+        if first_sample_i.is_none() && second_sample_i.is_none() {
+            // nothing to do
+            return;
+        }
 
         self.radial_integral.compute(
             pair.distance, self.ri_values.view_mut(), self.ri_gradients.as_mut().map(|o| o.view_mut())
@@ -245,6 +288,9 @@ impl SphericalExpansion {
         self.spherical_harmonics.compute(
             pair.direction, &mut self.sph_values, self.sph_gradients.as_mut()
         );
+
+        self.computed_ri_sph_for_this_pair = true;
+
         let f_cut = self.parameters.cutoff_function.compute(
             pair.distance, self.parameters.cutoff
         );
@@ -255,22 +301,26 @@ impl SphericalExpansion {
             let m = feature[2].isize();
 
             let n_l_m_value = f_cut * self.ri_values[[n, l]] * self.sph_values[[l as isize, m]];
-            descriptor.values[[sample_i, feature_i]] += n_l_m_value;
-            if let Some(neighbor_sample_i) = neighbor_sample_i {
+            if let Some(first_sample_i) = first_sample_i {
+                descriptor.values[[first_sample_i, feature_i]] += n_l_m_value;
+            }
+
+            if let Some(second_sample_i) = second_sample_i {
                 // Use the fact that `se[n, l, m](-r) = (-1)^l se[n, l, m](r)`
                 // where se === spherical_expansion.
-                descriptor.values[[neighbor_sample_i, feature_i]] += m_1_pow(l) * n_l_m_value;
+                descriptor.values[[second_sample_i, feature_i]] += m_1_pow(l) * n_l_m_value;
             }
         }
     }
 
-    #[allow(clippy::similar_names, clippy::identity_op)]
-    fn accumulate_gradient_for_pair(
-        &mut self,
-        descriptor: &mut Descriptor,
-        pair: &PairForAccumulation,
-    ) {
+    /// Accumulate the spherical expansion gradients for the given pair.
+    ///
+    /// This function assumes that the radial integral and spherical harmonics
+    /// have just been computed for this pair.
+    #[allow(clippy::similar_names, clippy::identity_op, clippy::clippy::too_many_lines)]
+    fn accumulate_gradient_for_pair(&self, descriptor: &mut Descriptor, pair: &Pair) {
         debug_assert!(self.parameters.gradients);
+
         let gradients = descriptor.gradients.as_mut().expect("missing storage for gradients");
         let gradients_samples = descriptor.gradients_samples.as_ref().expect("missing gradients samples");
 
@@ -281,44 +331,62 @@ impl SphericalExpansion {
         // contributions to the gradient for this specific pair, if they
         // exist in the set of requested samples
 
-        // store derivative w.r.t. `neighbor` of the environment around `center`
-        let center_grad_i = gradients_samples.position(&[
+        // store derivative w.r.t. `second` of the environment around `first`
+        let first_grad_i = gradients_samples.position(&[
             IndexValue::from(pair.system),
-            IndexValue::from(pair.center),
-            IndexValue::from(pair.species_center),
-            IndexValue::from(pair.species_neighbor),
-            IndexValue::from(pair.neighbor),
-            IndexValue::from(0)
-        ]).expect("missing storage for gradient of this center");
-
-        // store derivative w.r.t. `center` of the environment around `neighbor`
-        let neighbor_grad_i = gradients_samples.position(&[
-            IndexValue::from(pair.system),
-            IndexValue::from(pair.neighbor),
-            IndexValue::from(pair.species_neighbor),
-            IndexValue::from(pair.species_center),
-            IndexValue::from(pair.center),
+            IndexValue::from(pair.first),
+            IndexValue::from(pair.species_first),
+            IndexValue::from(pair.species_second),
+            IndexValue::from(pair.second),
             IndexValue::from(0)
         ]);
 
-        // store derivative w.r.t. `center` of the environment around `center`
-        let center_self_grad_i = gradients_samples.position(&[
+        // store derivative w.r.t. `first` of the environment around `first`
+        let first_self_grad_i = gradients_samples.position(&[
             IndexValue::from(pair.system),
-            IndexValue::from(pair.center),
-            IndexValue::from(pair.species_center),
-            IndexValue::from(pair.species_neighbor),
-            IndexValue::from(pair.center),
+            IndexValue::from(pair.first),
+            IndexValue::from(pair.species_first),
+            IndexValue::from(pair.species_second),
+            IndexValue::from(pair.first),
             IndexValue::from(0),
         ]);
-        // store derivative w.r.t. `neighbor` of the environment around `neighbor`
-        let neighbor_self_grad_i = gradients_samples.position(&[
-            IndexValue::from(pair.system),
-            IndexValue::from(pair.neighbor),
-            IndexValue::from(pair.species_neighbor),
-            IndexValue::from(pair.species_center),
-            IndexValue::from(pair.neighbor),
-            IndexValue::from(0),
-        ]);
+
+        // store derivative w.r.t. `first` of the environment around `second`
+        let second_grad_i;
+        // store derivative w.r.t. `second` of the environment around `second`
+        let second_self_grad_i;
+        if pair.first == pair.second {
+            // do not compute for the reversed pair if the pair is between an
+            // atom and its image
+            second_grad_i = None;
+            second_self_grad_i = None;
+        } else {
+            second_grad_i = gradients_samples.position(&[
+                IndexValue::from(pair.system),
+                IndexValue::from(pair.second),
+                IndexValue::from(pair.species_second),
+                IndexValue::from(pair.species_first),
+                IndexValue::from(pair.first),
+                IndexValue::from(0)
+            ]);
+
+            second_self_grad_i = gradients_samples.position(&[
+                IndexValue::from(pair.system),
+                IndexValue::from(pair.second),
+                IndexValue::from(pair.species_second),
+                IndexValue::from(pair.species_first),
+                IndexValue::from(pair.second),
+                IndexValue::from(0),
+            ]);
+        }
+
+        if first_grad_i.is_none() && first_self_grad_i.is_none()
+           && second_grad_i.is_none() && second_self_grad_i.is_none()  {
+            // nothing to do
+            return;
+        }
+
+        assert!(self.computed_ri_sph_for_this_pair);
 
         let f_cut = self.parameters.cutoff_function.compute(
             pair.distance, self.parameters.cutoff
@@ -358,55 +426,61 @@ impl SphericalExpansion {
 
             // we assume that the three spatial derivative are stored
             // one after the other
-            gradients[[center_grad_i + 0, feature_i]] += grad_x;
-            gradients[[center_grad_i + 1, feature_i]] += grad_y;
-            gradients[[center_grad_i + 2, feature_i]] += grad_z;
-
-            if let Some(center_self_grad_i) = center_self_grad_i {
-                gradients[[center_self_grad_i + 0, feature_i]] -= grad_x;
-                gradients[[center_self_grad_i + 1, feature_i]] -= grad_y;
-                gradients[[center_self_grad_i + 2, feature_i]] -= grad_z;
+            if let Some(grad_i) = first_grad_i {
+                gradients[[grad_i + 0, feature_i]] += grad_x;
+                gradients[[grad_i + 1, feature_i]] += grad_y;
+                gradients[[grad_i + 2, feature_i]] += grad_z;
             }
 
-            // when storing data for the environment around `neighbor`, use
+            if let Some(grad_i) = first_self_grad_i {
+                gradients[[grad_i + 0, feature_i]] -= grad_x;
+                gradients[[grad_i + 1, feature_i]] -= grad_y;
+                gradients[[grad_i + 2, feature_i]] -= grad_z;
+            }
+
+            // when storing data for the environment around `second`, use
             // the fact that
             // `grad_j se_i[n, l, m](r) = - (-1)^l grad_i se_j[n, l, m](r)`
             // where se === spherical_expansion.
             let parity = m_1_pow(l);
-            let neighbor_grad_x = - parity * grad_x;
-            let neighbor_grad_y = - parity * grad_y;
-            let neighbor_grad_z = - parity * grad_z;
+            let second_grad_x = - parity * grad_x;
+            let second_grad_y = - parity * grad_y;
+            let second_grad_z = - parity * grad_z;
 
-            if let Some(neighbor_grad_i) = neighbor_grad_i {
-                gradients[[neighbor_grad_i + 0, feature_i]] += neighbor_grad_x;
-                gradients[[neighbor_grad_i + 1, feature_i]] += neighbor_grad_y;
-                gradients[[neighbor_grad_i + 2, feature_i]] += neighbor_grad_z;
+            if let Some(grad_i) = second_grad_i {
+                gradients[[grad_i + 0, feature_i]] += second_grad_x;
+                gradients[[grad_i + 1, feature_i]] += second_grad_y;
+                gradients[[grad_i + 2, feature_i]] += second_grad_z;
             }
 
-            if let Some(neighbor_self_grad_i) = neighbor_self_grad_i {
-                gradients[[neighbor_self_grad_i + 0, feature_i]] -= neighbor_grad_x;
-                gradients[[neighbor_self_grad_i + 1, feature_i]] -= neighbor_grad_y;
-                gradients[[neighbor_self_grad_i + 2, feature_i]] -= neighbor_grad_z;
+            if let Some(grad_i) = second_self_grad_i {
+                gradients[[grad_i + 0, feature_i]] -= second_grad_x;
+                gradients[[grad_i + 1, feature_i]] -= second_grad_y;
+                gradients[[grad_i + 2, feature_i]] -= second_grad_z;
             }
         }
     }
 }
 
+/// Pair data for spherical expansion, with a bit more data than the system
+/// pairs
 #[derive(Debug, Clone)]
-struct PairForAccumulation {
+struct Pair {
+    /// index of the system this pair comes from
     system: usize,
-    center: usize,
-    neighbor: usize,
+    /// index of the first atom of the pair inside the system
+    first: usize,
+    /// index of the second atom of the pair inside the system
+    second: usize,
+    /// species of the first atom of the pair
+    species_first: usize,
+    /// species of the second atom of the pair
+    species_second: usize,
+    /// distance between the first and second atom in the pair
     distance: f64,
+    /// direction vector (normalized) from the first to the second atom in the
+    /// pair
     direction: Vector3D,
-    species_center: usize,
-    species_neighbor: usize,
-}
-
-impl std::fmt::Debug for SphericalExpansion {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.parameters)
-    }
 }
 
 impl CalculatorBase for SphericalExpansion {
@@ -473,84 +547,28 @@ impl CalculatorBase for SphericalExpansion {
 
         self.do_self_contributions(descriptor);
 
-        // Make the borrow checker happy in call to accumulate_for_pair below by
-        // temporary moving samples out of the descriptor.
-        let empty_samples = IndexesBuilder::new(
-            vec!["structure", "center", "species_center", "species_neighbor"]
-        ).finish();
-        let samples = std::mem::replace(&mut descriptor.samples, empty_samples);
-
-        // keep the set of pairs already seen for each system
-        let mut already_computed_pairs = vec![BTreeSet::new(); systems.len()];
-
-        for (sample_i, sample) in samples.iter().enumerate() {
-            let i_system = sample[0].usize();
-            let center = sample[1].usize();
-            let species_center = sample[2].usize();
-            let species_neighbor = sample[3].usize();
-
-            let system = &mut *systems[i_system];
+        for (i_system, system) in systems.iter_mut().enumerate() {
             system.compute_neighbors(self.parameters.cutoff);
             let species = system.species();
 
-            for pair in system.pairs_containing(center) {
-                let (neighbor, sign) = if center == pair.first {
-                    (pair.second, 1.0)
-                } else {
-                    assert_eq!(center, pair.second, "system.pairs_containing is broken");
-                    (pair.first, -1.0)
-                };
-
-                if species[neighbor] != species_neighbor {
-                    continue;
-                }
-
-                if !already_computed_pairs[i_system].insert(sort_pair(&pair)) {
-                    continue;
-                }
-
-                // we store the result for the center->neighbor pair in
-                // sample_i, this code check where (if any, neighbor may not be
-                // a center in the requested samples) to store the result for
-                // the neighbor->center pair.
-                let neighbor_sample_i = samples.position(&[
-                    IndexValue::from(i_system),
-                    IndexValue::from(neighbor),
-                    IndexValue::from(species_neighbor),
-                    IndexValue::from(species_center),
-                ]);
-
-                let distance = pair.distance;
-                let direction = sign * pair.vector / distance;
-
-                let pair = PairForAccumulation {
+            for pair in system.pairs() {
+                let pair = Pair {
                     system: i_system,
-                    center: center,
-                    neighbor: neighbor,
-                    distance: distance,
-                    direction: direction,
-                    species_center: species_center,
-                    species_neighbor: species_neighbor,
+                    first: pair.first,
+                    second: pair.second,
+                    species_first: species[pair.first],
+                    species_second: species[pair.second],
+                    distance: pair.distance,
+                    direction: pair.vector / pair.distance,
                 };
 
-                self.accumulate_for_pair(descriptor, &pair, sample_i, neighbor_sample_i);
+                self.accumulate_for_pair(descriptor, &pair);
 
                 if self.parameters.gradients {
                     self.accumulate_gradient_for_pair(descriptor, &pair);
                 }
             }
         }
-
-        // reset samples
-        let _ = std::mem::replace(&mut descriptor.samples, samples);
-    }
-}
-
-fn sort_pair(pair: &Pair) -> (usize, usize) {
-    if pair.first <= pair.second {
-        (pair.first, pair.second)
-    } else {
-        (pair.second, pair.first)
     }
 }
 
