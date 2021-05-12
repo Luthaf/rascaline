@@ -14,6 +14,37 @@
 #include <stdlib.h>
 
 /**
+ * Status code used when a function succeeded
+ */
+#define RASCAL_SUCCESS 0
+
+/**
+ * Status code used when a function got an invalid parameter
+ */
+#define RASCAL_INVALID_PARAMETER_ERROR 1
+
+/**
+ * Status code used when there was an error reading or writing JSON
+ */
+#define RASCAL_JSON_ERROR 2
+
+/**
+ * Status code used when a string contains non-utf8 data
+ */
+#define RASCAL_UTF8_ERROR 3
+
+/**
+ * Status code used when there was an error of unknown kind
+ */
+#define RASCAL_UNKNOWN_ERROR 254
+
+/**
+ * Status code used when there was an internal error, i.e. there is a bug
+ * inside rascaline
+ */
+#define RASCAL_INTERNAL_ERROR 255
+
+/**
  * The different kinds of indexes that can exist on a `rascal_descriptor_t`
  */
 typedef enum rascal_indexes {
@@ -33,36 +64,6 @@ typedef enum rascal_indexes {
 } rascal_indexes;
 
 /**
- * Status type returned by all functions in the C API.
- */
-typedef enum rascal_status_t {
-  /**
-   * The function succeeded
-   */
-  RASCAL_SUCCESS = 0,
-  /**
-   * A function got an invalid parameter
-   */
-  RASCAL_INVALID_PARAMETER_ERROR = 1,
-  /**
-   * There was an error reading or writing JSON
-   */
-  RASCAL_JSON_ERROR = 2,
-  /**
-   * A string contains non-utf8 data
-   */
-  RASCAL_UTF8_ERROR = 3,
-  /**
-   * There was an error of unknown kind
-   */
-  RASCAL_UNKNOWN_ERROR = 254,
-  /**
-   * There was an internal error (rust panic)
-   */
-  RASCAL_INTERNAL_PANIC = 255,
-} rascal_status_t;
-
-/**
  * Opaque type representing a `Calculator`
  */
 typedef struct rascal_calculator_t rascal_calculator_t;
@@ -71,6 +72,11 @@ typedef struct rascal_calculator_t rascal_calculator_t;
  * Opaque type representing a `Descriptor`.
  */
 typedef struct rascal_descriptor_t rascal_descriptor_t;
+
+/**
+ * Status type returned by all functions in the C API.
+ */
+typedef int32_t rascal_status_t;
 
 /**
  * Pair of atoms coming from a neighbor list
@@ -243,9 +249,9 @@ const char *rascal_last_error(void);
  *          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the full
  *          error message.
  */
-enum rascal_status_t rascal_basic_systems_read(const char *path,
-                                               struct rascal_system_t **systems,
-                                               uintptr_t *count);
+rascal_status_t rascal_basic_systems_read(const char *path,
+                                          struct rascal_system_t **systems,
+                                          uintptr_t *count);
 
 /**
  * Release memory allocated by `rascal_basic_systems_read`.
@@ -262,7 +268,7 @@ enum rascal_status_t rascal_basic_systems_read(const char *path,
  *          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the full
  *          error message.
  */
-enum rascal_status_t rascal_basic_systems_free(struct rascal_system_t *systems, uintptr_t count);
+rascal_status_t rascal_basic_systems_free(struct rascal_system_t *systems, uintptr_t count);
 
 /**
  * Create a new empty descriptor.
@@ -288,7 +294,7 @@ struct rascal_descriptor_t *rascal_descriptor(void);
  *          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the
  *          full error message.
  */
-enum rascal_status_t rascal_descriptor_free(struct rascal_descriptor_t *descriptor);
+rascal_status_t rascal_descriptor_free(struct rascal_descriptor_t *descriptor);
 
 /**
  * Get the values stored inside this descriptor after a call to
@@ -311,10 +317,10 @@ enum rascal_status_t rascal_descriptor_free(struct rascal_descriptor_t *descript
  *          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the full
  *          error message.
  */
-enum rascal_status_t rascal_descriptor_values(const struct rascal_descriptor_t *descriptor,
-                                              const double **data,
-                                              uintptr_t *samples,
-                                              uintptr_t *features);
+rascal_status_t rascal_descriptor_values(const struct rascal_descriptor_t *descriptor,
+                                         const double **data,
+                                         uintptr_t *samples,
+                                         uintptr_t *features);
 
 /**
  * Get the gradients stored inside this descriptor after a call to
@@ -341,10 +347,10 @@ enum rascal_status_t rascal_descriptor_values(const struct rascal_descriptor_t *
  *          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the full
  *          error message.
  */
-enum rascal_status_t rascal_descriptor_gradients(const struct rascal_descriptor_t *descriptor,
-                                                 const double **data,
-                                                 uintptr_t *gradient_samples,
-                                                 uintptr_t *features);
+rascal_status_t rascal_descriptor_gradients(const struct rascal_descriptor_t *descriptor,
+                                            const double **data,
+                                            uintptr_t *gradient_samples,
+                                            uintptr_t *features);
 
 /**
  * Get the values associated with one of the `indexes` in the given
@@ -373,11 +379,11 @@ enum rascal_status_t rascal_descriptor_gradients(const struct rascal_descriptor_
  *          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the full
  *          error message.
  */
-enum rascal_status_t rascal_descriptor_indexes(const struct rascal_descriptor_t *descriptor,
-                                               enum rascal_indexes indexes,
-                                               const int32_t **data,
-                                               uintptr_t *count,
-                                               uintptr_t *size);
+rascal_status_t rascal_descriptor_indexes(const struct rascal_descriptor_t *descriptor,
+                                          enum rascal_indexes indexes,
+                                          const int32_t **data,
+                                          uintptr_t *count,
+                                          uintptr_t *size);
 
 /**
  * Get the names associated with one of the `indexes` in the given
@@ -401,14 +407,14 @@ enum rascal_status_t rascal_descriptor_indexes(const struct rascal_descriptor_t 
  *          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the full
  *          error message.
  */
-enum rascal_status_t rascal_descriptor_indexes_names(const struct rascal_descriptor_t *descriptor,
-                                                     enum rascal_indexes indexes,
-                                                     const char **names,
-                                                     uintptr_t size);
+rascal_status_t rascal_descriptor_indexes_names(const struct rascal_descriptor_t *descriptor,
+                                                enum rascal_indexes indexes,
+                                                const char **names,
+                                                uintptr_t size);
 
-enum rascal_status_t rascal_descriptor_densify(struct rascal_descriptor_t *descriptor,
-                                               const char *const *variables,
-                                               uintptr_t count);
+rascal_status_t rascal_descriptor_densify(struct rascal_descriptor_t *descriptor,
+                                          const char *const *variables,
+                                          uintptr_t count);
 
 /**
  * Create a new calculator with the given `name` and `parameters`.
@@ -446,7 +452,7 @@ struct rascal_calculator_t *rascal_calculator(const char *name, const char *para
  *          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the
  *          full error message.
  */
-enum rascal_status_t rascal_calculator_free(struct rascal_calculator_t *calculator);
+rascal_status_t rascal_calculator_free(struct rascal_calculator_t *calculator);
 
 /**
  * Get a copy of the name of this calculator in the `name` buffer of size
@@ -464,9 +470,9 @@ enum rascal_status_t rascal_calculator_free(struct rascal_calculator_t *calculat
  *          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the full
  *          error message.
  */
-enum rascal_status_t rascal_calculator_name(const struct rascal_calculator_t *calculator,
-                                            char *name,
-                                            uintptr_t bufflen);
+rascal_status_t rascal_calculator_name(const struct rascal_calculator_t *calculator,
+                                       char *name,
+                                       uintptr_t bufflen);
 
 /**
  * Get a copy of the parameters used to create this calculator in the
@@ -485,9 +491,9 @@ enum rascal_status_t rascal_calculator_name(const struct rascal_calculator_t *ca
  *          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the full
  *          error message.
  */
-enum rascal_status_t rascal_calculator_parameters(const struct rascal_calculator_t *calculator,
-                                                  char *parameters,
-                                                  uintptr_t bufflen);
+rascal_status_t rascal_calculator_parameters(const struct rascal_calculator_t *calculator,
+                                             char *parameters,
+                                             uintptr_t bufflen);
 
 /**
  * Run a calculation with the given `calculator` on the given `systems`,
@@ -503,11 +509,11 @@ enum rascal_status_t rascal_calculator_parameters(const struct rascal_calculator
  *          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the full
  *          error message.
  */
-enum rascal_status_t rascal_calculator_compute(struct rascal_calculator_t *calculator,
-                                               struct rascal_descriptor_t *descriptor,
-                                               struct rascal_system_t *systems,
-                                               uintptr_t systems_count,
-                                               struct rascal_calculation_options_t options);
+rascal_status_t rascal_calculator_compute(struct rascal_calculator_t *calculator,
+                                          struct rascal_descriptor_t *descriptor,
+                                          struct rascal_system_t *systems,
+                                          uintptr_t systems_count,
+                                          struct rascal_calculation_options_t options);
 
 #ifdef __cplusplus
 } // extern "C"
