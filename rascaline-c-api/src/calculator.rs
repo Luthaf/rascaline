@@ -5,7 +5,7 @@ use std::ops::{Deref, DerefMut};
 use rascaline::{Calculator, System, CalculationOptions, SelectedIndexes};
 
 use super::utils::copy_str_to_c;
-use super::{catch_unwind, rascal_status_t};
+use super::{catch_unwind, rascal_status_t, RASCAL_SUCCESS};
 
 use super::descriptor::rascal_descriptor_t;
 use super::system::rascal_system_t;
@@ -63,7 +63,7 @@ pub unsafe extern fn rascal_calculator(name: *const c_char, parameters: *const c
         Ok(())
     });
 
-    if status != rascal_status_t::RASCAL_SUCCESS {
+    if status.0 != RASCAL_SUCCESS {
         return std::ptr::null_mut();
     }
 

@@ -14,23 +14,25 @@ thread_local! {
 }
 
 /// Status type returned by all functions in the C API.
-#[repr(C)]
+#[repr(transparent)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[allow(non_camel_case_types)]
-pub enum rascal_status_t {
-    /// The function succeeded
-    RASCAL_SUCCESS = 0,
-    /// A function got an invalid parameter
-    RASCAL_INVALID_PARAMETER_ERROR = 1,
-    /// There was an error reading or writing JSON
-    RASCAL_JSON_ERROR = 2,
-    /// A string contains non-utf8 data
-    RASCAL_UTF8_ERROR = 3,
-    /// There was an error of unknown kind
-    RASCAL_UNKNOWN_ERROR = 254,
-    /// There was an internal error (rust panic)
-    RASCAL_INTERNAL_PANIC = 255,
-}
+pub struct rascal_status_t(pub(crate) i32);
+
+/// Status code used when a function succeeded
+pub const RASCAL_SUCCESS: i32 = 0;
+/// Status code used when a function got an invalid parameter
+pub const RASCAL_INVALID_PARAMETER_ERROR: i32 = 1;
+/// Status code used when there was an error reading or writing JSON
+pub const RASCAL_JSON_ERROR: i32 = 2;
+/// Status code used when a string contains non-utf8 data
+pub const RASCAL_UTF8_ERROR: i32 = 3;
+/// Status code used when there was an error of unknown kind
+pub const RASCAL_UNKNOWN_ERROR: i32 = 254;
+/// Status code used when there was an internal error, i.e. there is a bug
+/// inside rascaline
+pub const RASCAL_INTERNAL_ERROR: i32 = 255;
+
 
 impl From<Error> for rascal_status_t {
     fn from(error: Error) -> rascal_status_t {
@@ -38,11 +40,11 @@ impl From<Error> for rascal_status_t {
             *message.borrow_mut() = CString::new(format!("{}", error)).expect("error message contains a null byte");
         });
         match error {
-            Error::InvalidParameter(_) => rascal_status_t::RASCAL_INVALID_PARAMETER_ERROR,
-            Error::Json(_) => rascal_status_t::RASCAL_JSON_ERROR,
-            Error::Utf8(_) => rascal_status_t::RASCAL_UTF8_ERROR,
-            Error::Panic(_) => rascal_status_t::RASCAL_INTERNAL_PANIC,
-            _ => rascal_status_t::RASCAL_UNKNOWN_ERROR,
+            Error::InvalidParameter(_) => rascal_status_t(RASCAL_INVALID_PARAMETER_ERROR),
+            Error::Json(_) => rascal_status_t(RASCAL_JSON_ERROR),
+            Error::Utf8(_) => rascal_status_t(RASCAL_UTF8_ERROR),
+            Error::Internal(_) => rascal_status_t(RASCAL_INTERNAL_ERROR),
+            _ => rascal_status_t(RASCAL_UNKNOWN_ERROR),
         }
     }
 }
@@ -51,7 +53,7 @@ impl From<Error> for rascal_status_t {
 /// the error into `rascal_status_t`.
 pub fn catch_unwind<F>(function: F) -> rascal_status_t where F: FnOnce() -> Result<(), Error> + UnwindSafe {
     match std::panic::catch_unwind(function) {
-        Ok(Ok(_)) => rascal_status_t::RASCAL_SUCCESS,
+        Ok(Ok(_)) => rascal_status_t(RASCAL_SUCCESS),
         Ok(Err(error)) => error.into(),
         Err(error) => Error::from(error).into()
     }
@@ -86,7 +88,7 @@ pub unsafe extern fn rascal_last_error() -> *const c_char {
         Ok(())
     });
 
-    if status != rascal_status_t::RASCAL_SUCCESS {
+    if status.0 != RASCAL_SUCCESS {
         eprintln!("ERROR: unable to get last error message!");
         return std::ptr::null();
     }
