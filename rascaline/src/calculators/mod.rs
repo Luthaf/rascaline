@@ -1,5 +1,6 @@
 use crate::descriptor::{Descriptor, Indexes, SamplesIndexes};
-use crate::systems::System;
+
+use crate::{Error, System};
 
 #[cfg(test)]
 mod tests_utils;
@@ -20,19 +21,35 @@ pub trait CalculatorBase: std::panic::RefUnwindSafe {
     /// Get the default set of features for this Calculator
     fn features(&self) -> Indexes;
 
-    /// Get the default set of samples for this Calculator
+    /// Get the default sample builder for this Calculator
     fn samples(&self) -> Box<dyn SamplesIndexes>;
     /// Does this calculator compute gradients?
     fn compute_gradients(&self) -> bool;
 
     /// Check that the given indexes are valid feature indexes for this
-    /// Calculator. This is used by `Calculator::compute_partial` to ensure
-    /// only valid features are requested
-    fn check_features(&self, indexes: &Indexes);
+    /// Calculator. This is used by to ensure only valid features are requested
+    fn check_features(&self, indexes: &Indexes) -> Result<(), Error>;
+
     /// Check that the given indexes are valid samples indexes for this
-    /// Calculator. This is used by `Calculator::compute_partial` to ensure
-    /// only valid samples are requested
-    fn check_samples(&self, indexes: &Indexes, systems: &mut [Box<dyn System>]);
+    /// Calculator. This is used by to ensure only valid samples are requested
+    ///
+    /// The default implementation recompute the full set of samples using
+    /// `Self::samples()`, and check that all requested samples are part of the
+    /// full sample set.
+    fn check_samples(&self, indexes: &Indexes, systems: &mut [Box<dyn System>]) -> Result<(), Error> {
+        let samples = self.samples();
+        assert_eq!(indexes.names(), samples.names());
+        let allowed = samples.indexes(systems);
+        for value in indexes.iter() {
+            if !allowed.contains(value) {
+                return Err(Error::InvalidParameter(format!(
+                    "{:?} is not a valid sample for {}", value, self.name()
+                )))
+            };
+        }
+
+        Ok(())
+    }
 
     /// Core implementation of the descriptor.
     ///
@@ -42,7 +59,7 @@ pub trait CalculatorBase: std::panic::RefUnwindSafe {
     /// and features coming from `Descriptor::samples()` and
     /// `Descriptor::features()` respectively; but the user can request only a
     /// subset of them.
-    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor);
+    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor) -> Result<(), Error>;
 }
 
 mod sorted_distances;

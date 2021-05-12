@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use crate::descriptor::{ThreeBodiesSpeciesSamples, AtomSpeciesSamples, SamplesIndexes, IndexValue, Indexes, IndexesBuilder};
 use crate::{CalculationOptions, Calculator, SelectedIndexes};
-use crate::{Descriptor, System};
+use crate::{Descriptor, Error, System};
 
 use super::{super::CalculatorBase, SphericalExpansionParameters};
 use super::{SphericalExpansion, RadialBasis, CutoffFunction};
@@ -51,7 +51,7 @@ pub struct SoapPowerSpectrum {
 }
 
 impl SoapPowerSpectrum {
-    pub fn new(parameters: PowerSpectrumParameters) -> SoapPowerSpectrum {
+    pub fn new(parameters: PowerSpectrumParameters) -> Result<SoapPowerSpectrum, Error> {
         let expansion_parameters = SphericalExpansionParameters {
             cutoff: parameters.cutoff,
             max_radial: parameters.max_radial,
@@ -62,15 +62,15 @@ impl SoapPowerSpectrum {
             cutoff_function: parameters.cutoff_function,
         };
 
-        let spherical_expansion = SphericalExpansion::new(expansion_parameters);
+        let spherical_expansion = SphericalExpansion::new(expansion_parameters)?;
 
-        return SoapPowerSpectrum {
+        return Ok(SoapPowerSpectrum {
             parameters: parameters,
             spherical_expansion_calculator: Calculator::from(
                 Box::new(spherical_expansion) as Box<dyn CalculatorBase>
             ),
             spherical_expansion: Descriptor::new(),
-        };
+        });
     }
 
     fn get_expansion_samples(&self, samples: &Indexes) -> Indexes {
@@ -183,30 +183,40 @@ impl CalculatorBase for SoapPowerSpectrum {
         self.parameters.gradients
     }
 
-    fn check_features(&self, indexes: &Indexes) {
+    fn check_features(&self, indexes: &Indexes) -> Result<(), Error> {
         assert_eq!(indexes.names(), self.features_names());
         for value in indexes {
             let n1 = value[0].usize();
             let n2 = value[1].usize();
             let l = value[2].usize();
-            assert!(n1 < self.parameters.max_radial);
-            assert!(n2 < self.parameters.max_radial);
-            assert!(l <= self.parameters.max_angular);
-        }
-    }
 
-    fn check_samples(&self, indexes: &Indexes, systems: &mut [Box<dyn System>]) {
-        assert_eq!(indexes.names(), self.samples().names());
-        // This could be made much faster by not recomputing the full list of
-        // potential samples
-        let allowed = self.samples().indexes(systems);
-        for value in indexes.iter() {
-            assert!(allowed.contains(value), "{:?} is not a valid sample", value);
+            if n1 >= self.parameters.max_radial {
+                return Err(Error::InvalidParameter(format!(
+                    "'n1' is too large for this SoapPowerSpectrum: \
+                    expected value below {}, got {}", self.parameters.max_radial, n1
+                )))
+            }
+
+            if n2 >= self.parameters.max_radial {
+                return Err(Error::InvalidParameter(format!(
+                    "'n2' is too large for this SoapPowerSpectrum: \
+                    expected value below {}, got {}", self.parameters.max_radial, n2
+                )))
+            }
+
+            if l > self.parameters.max_angular {
+                return Err(Error::InvalidParameter(format!(
+                    "'l' is too large for this SoapPowerSpectrum: \
+                    expected value below {}, got {}", self.parameters.max_angular + 1, l
+                )))
+            }
         }
+
+        Ok(())
     }
 
     #[time_graph::instrument(name = "SoapPowerSpectrum::compute")]
-    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor) {
+    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor) -> Result<(), Error> {
         assert_eq!(descriptor.samples.names(), self.samples().names());
         assert_eq!(descriptor.features.names(), self.features_names());
 
@@ -356,6 +366,8 @@ impl CalculatorBase for SoapPowerSpectrum {
                 }
             }
         }
+
+        Ok(())
     }
 }
 
@@ -392,7 +404,7 @@ mod tests {
     fn values() {
         let mut calculator = Calculator::from(Box::new(SoapPowerSpectrum::new(
             parameters(false)
-        )) as Box<dyn CalculatorBase>);
+        ).unwrap()) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]).boxed();
         let mut descriptor = Descriptor::new();
@@ -420,7 +432,7 @@ mod tests {
     fn compute_partial() {
         let calculator = Calculator::from(Box::new(SoapPowerSpectrum::new(
             parameters(false)
-        )) as Box<dyn CalculatorBase>);
+        ).unwrap()) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water", "methane"]).boxed();
 
@@ -451,7 +463,7 @@ mod tests {
 
         let calculator = Calculator::from(Box::new(SoapPowerSpectrum::new(
             parameters(true)
-        )) as Box<dyn CalculatorBase>);
+        ).unwrap()) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
         let system = systems.systems.pop().unwrap();

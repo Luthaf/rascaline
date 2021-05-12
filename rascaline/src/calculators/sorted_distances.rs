@@ -4,10 +4,9 @@ use ndarray::{aview1, s};
 
 use super::CalculatorBase;
 
-use crate::descriptor::Descriptor;
 use crate::descriptor::{Indexes, IndexesBuilder, IndexValue};
 use crate::descriptor::{SamplesIndexes, AtomSpeciesSamples};
-use crate::systems::System;
+use crate::{Descriptor, Error, System};
 
 #[derive(Debug, Clone)]
 #[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
@@ -57,25 +56,21 @@ impl CalculatorBase for SortedDistances {
         false
     }
 
-    fn check_features(&self, indexes: &Indexes) {
+    fn check_features(&self, indexes: &Indexes) -> Result<(), Error> {
         assert_eq!(indexes.names(), self.features_names());
         for value in indexes.iter() {
-            assert!(value[0].usize() < self.max_neighbors);
+            if value[0].usize() >= self.max_neighbors {
+                return Err(Error::InvalidParameter(format!(
+                    "neighbor index is too large for this SortedDistances: \
+                    got {}, expected value lower than {}", value[0].usize(), self.max_neighbors
+                )))
+            }
         }
-    }
-
-    fn check_samples(&self, indexes: &Indexes, systems: &mut [Box<dyn System>]) {
-        assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor"]);
-        // This could be made much faster by not recomputing the full list of
-        // potential samples
-        let allowed = self.samples().indexes(systems);
-        for value in indexes.iter() {
-            assert!(allowed.contains(value), "{:?} is not a valid sample", value);
-        }
+        Ok(())
     }
 
     #[time_graph::instrument(name = "SortedDistances::compute")]
-    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor) {
+    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor) -> Result<(), Error> {
         let all_features = descriptor.features.count() == self.max_neighbors;
         let mut requested_features = Vec::new();
         if !all_features {
@@ -156,6 +151,8 @@ impl CalculatorBase for SortedDistances {
 
         // sanity check: did we get all samples in the above loop?
         assert_eq!(current, descriptor.samples.count());
+
+        Ok(())
     }
 }
 

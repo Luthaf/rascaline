@@ -52,7 +52,7 @@ fn gto_radial_integral(c: &mut Criterion) {
             cutoff: 4.5,
             atomic_gaussian_width: 0.5,
         };
-        return Box::new(GtoRadialIntegral::new(parameters)) as Box<dyn RadialIntegral>;
+        return Box::new(GtoRadialIntegral::new(parameters).unwrap()) as Box<dyn RadialIntegral>;
     };
 
     let mut group = c.benchmark_group("GTO (per neighbor)");
@@ -73,7 +73,7 @@ fn splined_gto_radial_integral(c: &mut Criterion) {
             cutoff,
             atomic_gaussian_width: 0.5,
         };
-        let gto = GtoRadialIntegral::new(parameters);
+        let gto = GtoRadialIntegral::new(parameters).unwrap();
 
         let parameters = SplinedRIParameters {
             max_radial,
@@ -81,7 +81,7 @@ fn splined_gto_radial_integral(c: &mut Criterion) {
             cutoff,
         };
         let accuracy = 1e-8;
-        return Box::new(SplinedRadialIntegral::with_accuracy(parameters, accuracy, gto)) as Box<dyn RadialIntegral>;
+        return Box::new(SplinedRadialIntegral::with_accuracy(parameters, accuracy, gto).unwrap()) as Box<dyn RadialIntegral>;
     };
 
     let mut group = c.benchmark_group("Splined GTO (per neighbor)");

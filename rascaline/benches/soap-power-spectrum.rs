@@ -40,7 +40,7 @@ fn run_soap_power_spectrum(mut group: BenchmarkGroup<WallTime>, path: &str) {
                 radial_basis: RadialBasis::Gto {},
                 cutoff_function: CutoffFunction::ShiftedCosine{ width: 0.5 },
             };
-            let mut calculator = SoapPowerSpectrum::new(parameters);
+            let mut calculator = SoapPowerSpectrum::new(parameters).unwrap();
 
             let mut descriptor = Descriptor::new();
             let samples = calculator.samples();
@@ -49,7 +49,7 @@ fn run_soap_power_spectrum(mut group: BenchmarkGroup<WallTime>, path: &str) {
             group.bench_function(&format!("n_max = {}, l_max = {}", max_radial, max_angular), |b| b.iter_custom(|repeat| {
                 let start = std::time::Instant::now();
                 for _ in 0..repeat {
-                    calculator.compute(&mut systems, &mut descriptor);
+                    calculator.compute(&mut systems, &mut descriptor).unwrap();
                 }
                 start.elapsed() / n_centers as u32
             }));

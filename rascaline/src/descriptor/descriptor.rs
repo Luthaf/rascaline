@@ -82,6 +82,8 @@ impl Descriptor {
         if variables.is_empty() {
             return;
         }
+
+        // TODO: return Result and convert this to Error
         assert!(self.features.size() > 0);
 
         let new_samples = remove_from_samples(&self.samples, &variables);
