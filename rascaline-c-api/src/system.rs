@@ -5,6 +5,8 @@ use rascaline::types::{Vector3D, Matrix3};
 use rascaline::systems::{SimpleSystem, Pair, UnitCell};
 use rascaline::{Error, System};
 
+use crate::RASCAL_SYSTEM_ERROR;
+
 use super::{catch_unwind, rascal_status_t};
 
 /// Pair of atoms coming from a neighbor list
@@ -30,6 +32,11 @@ pub struct rascal_pair_t {
 /// implementing the `System` trait; and then there is one function pointers
 /// (`Option<unsafe extern fn(XXX)>`) for each function in the `System` trait.
 ///
+/// The `rascal_status_t` return value for the function is used to communicate
+/// error messages. It should be 0/`RASCAL_SUCCESS` in case of success, any
+/// non-zero value in case of error. The error will be propagated to the
+/// top-level caller as a `RASCAL_SYSTEM_ERROR`
+///
 /// A new implementation of the System trait can then be created in any language
 /// supporting a C API (meaning any language for our purposes); by correctly
 /// setting `user_data` to the actual data storage, and setting all function
@@ -48,25 +55,25 @@ pub struct rascal_system_t {
     /// first parameter to all function pointers below.
     user_data: *mut c_void,
     /// This function should set `*size` to the number of atoms in this system
-    size: Option<unsafe extern fn(user_data: *const c_void, size: *mut usize)>,
+    size: Option<unsafe extern fn(user_data: *const c_void, size: *mut usize) -> rascal_status_t>,
     /// This function should set `*species` to a pointer to the first element of
     /// a contiguous array containing the atomic species of each atom in the
     /// system. Different atomic species should be identified with a different
     /// value. These values are usually the atomic number, but don't have to be.
     /// The array should contain `rascal_system_t::size()` elements.
-    species: Option<unsafe extern fn(user_data: *const c_void, species: *mut *const usize)>,
+    species: Option<unsafe extern fn(user_data: *const c_void, species: *mut *const usize) -> rascal_status_t>,
     /// This function should set `*positions` to a pointer to the first element
     /// of a contiguous array containing the atomic cartesian coordinates.
     /// `positions[0], positions[1], positions[2]` must contain the x, y, z
     /// cartesian coordinates of the first atom, and so on.
-    positions: Option<unsafe extern fn(user_data: *const c_void, positions: *mut *const f64)>,
+    positions: Option<unsafe extern fn(user_data: *const c_void, positions: *mut *const f64) -> rascal_status_t>,
     /// This function should write the unit cell matrix in `cell`, which have
     /// space for 9 values. The cell should be written in row major order, i.e.
     /// `ax ay az bx by bz cx cy cz`, where a/b/c are the unit cell vectors.
-    cell: Option<unsafe extern fn(user_data: *const c_void, cell: *mut f64)>,
+    cell: Option<unsafe extern fn(user_data: *const c_void, cell: *mut f64) -> rascal_status_t>,
     /// This function should compute the neighbor list with the given cutoff,
     /// and store it for later access using `pairs` or `pairs_containing`.
-    compute_neighbors: Option<unsafe extern fn(user_data: *mut c_void, cutoff: f64)>,
+    compute_neighbors: Option<unsafe extern fn(user_data: *mut c_void, cutoff: f64) -> rascal_status_t>,
     /// This function should set `*pairs` to a pointer to the first element of a
     /// contiguous array containing all pairs in this system; and `*count` to
     /// the size of the array/the number of pairs.
@@ -76,7 +83,7 @@ pub struct rascal_system_t {
     /// contains pairs where the distance between atoms is actually bellow the
     /// cutoff passed in the last call to `compute_neighbors`. This function is
     /// only valid to call after a call to `compute_neighbors`.
-    pairs: Option<unsafe extern fn(user_data: *const c_void, pairs: *mut *const rascal_pair_t, count: *mut usize)>,
+    pairs: Option<unsafe extern fn(user_data: *const c_void, pairs: *mut *const rascal_pair_t, count: *mut usize) -> rascal_status_t>,
     /// This function should set `*pairs` to a pointer to the first element of a
     /// contiguous array containing all pairs in this system containing the atom
     /// with index `center`; and `*count` to the size of the array/the number of
@@ -86,35 +93,55 @@ pub struct rascal_system_t {
     /// applies, with the additional condition that the pair `i-j` should be
     /// included both in the return of `pairs_containing(i)` and
     /// `pairs_containing(j)`.
-    pairs_containing: Option<unsafe extern fn(user_data: *const c_void, center: usize, pairs: *mut *const rascal_pair_t, count: *mut usize)>,
+    pairs_containing: Option<unsafe extern fn(user_data: *const c_void, center: usize, pairs: *mut *const rascal_pair_t, count: *mut usize) -> rascal_status_t>,
 }
 
 impl<'a> System for &'a mut rascal_system_t {
     fn size(&self) -> Result<usize, Error> {
+        let function = self.size.ok_or_else(|| Error::External {
+            status: RASCAL_SYSTEM_ERROR,
+            message: "rascal_system_t.size function is NULL".into(),
+        })?;
+
         let mut value = 0;
-        let function = self.size.ok_or_else(|| Error::System(
-            "rascal_system_t.size function is NULL".into()
-        ))?;
-        unsafe {
-            function(self.user_data, &mut value);
+        let status = unsafe {
+            function(self.user_data, &mut value)
+        };
+
+        if !status.is_success() {
+            return Err(Error::External {
+                status: status.as_i32(),
+                message: "call to rascal_system_t.size failed".into(),
+            });
         }
+
         return Ok(value);
     }
 
     fn species(&self) -> Result<&[usize], Error> {
+        let function = self.species.ok_or_else(|| Error::External {
+            status: RASCAL_SYSTEM_ERROR,
+            message: "rascal_system_t.species function is NULL".into(),
+        })?;
+
         let mut ptr = std::ptr::null();
-        let function = self.species.ok_or_else(|| Error::System(
-            "rascal_system_t.species function is NULL".into()
-        ))?;
-        unsafe {
-            function(self.user_data, &mut ptr);
+        let status = unsafe {
+            function(self.user_data, &mut ptr)
+        };
+
+        if !status.is_success() {
+            return Err(Error::External {
+                status: status.as_i32(),
+                message: "call to rascal_system_t.species failed".into(),
+            });
         }
 
         let size = self.size()?;
         if ptr.is_null() && size != 0 {
-            return Err(Error::System(
-                "rascal_system_t.species returned a NULL pointer with non zero size".into()
-            ));
+            return Err(Error::External {
+                status: RASCAL_SYSTEM_ERROR,
+                message: "rascal_system_t.species returned a NULL pointer with non zero size".into(),
+            });
         }
 
         unsafe {
@@ -123,19 +150,28 @@ impl<'a> System for &'a mut rascal_system_t {
     }
 
     fn positions(&self) -> Result<&[Vector3D], Error> {
+        let function = self.positions.ok_or_else(|| Error::External {
+            status: RASCAL_SYSTEM_ERROR,
+            message: "rascal_system_t.positions function is NULL".into(),
+        })?;
+
         let mut ptr = std::ptr::null();
-        let function = self.positions.ok_or_else(|| Error::System(
-            "rascal_system_t.positions function is NULL".into()
-        ))?;
-        unsafe {
-            function(self.user_data, &mut ptr);
+        let status = unsafe {
+            function(self.user_data, &mut ptr)
+        };
+        if !status.is_success() {
+            return Err(Error::External {
+                status: status.as_i32(),
+                message: "call to rascal_system_t.positions failed".into(),
+            });
         }
 
         let size = self.size()?;
         if ptr.is_null() && size != 0 {
-            return Err(Error::System(
-                "rascal_system_t.positions returned a NULL pointer with non zero size".into()
-            ));
+            return Err(Error::External {
+                status: RASCAL_SYSTEM_ERROR,
+                message: "rascal_system_t.positions returned a NULL pointer with non zero size".into(),
+            });
         }
 
         unsafe {
@@ -144,12 +180,21 @@ impl<'a> System for &'a mut rascal_system_t {
     }
 
     fn cell(&self) -> Result<UnitCell, Error> {
+        let function = self.cell.ok_or_else(|| Error::External {
+            status: RASCAL_SYSTEM_ERROR,
+            message: "rascal_system_t.cell function is NULL".into(),
+        })?;
+
         let mut value = [[0.0; 3]; 3];
-        let function = self.cell.ok_or_else(|| Error::System(
-            "rascal_system_t.cell function is NULL".into()
-        ))?;
-        unsafe {
-            function(self.user_data, &mut value[0][0]);
+        let status = unsafe {
+            function(self.user_data, &mut value[0][0])
+        };
+
+        if !status.is_success() {
+            return Err(Error::External {
+                status: status.as_i32(),
+                message: "call to rascal_system_t.cell failed".into(),
+            });
         }
 
         let matrix = Matrix3::from(value);
@@ -161,30 +206,46 @@ impl<'a> System for &'a mut rascal_system_t {
     }
 
     fn compute_neighbors(&mut self, cutoff: f64) -> Result<(), Error> {
-        let function = self.compute_neighbors.ok_or_else(|| Error::System(
-            "rascal_system_t.compute_neighbors function is NULL".into()
-        ))?;
-        unsafe {
-            function(self.user_data, cutoff);
+        let function = self.compute_neighbors.ok_or_else(|| Error::External {
+            status: RASCAL_SYSTEM_ERROR,
+            message: "rascal_system_t.compute_neighbors function is NULL".into(),
+        })?;
+
+        let status = unsafe {
+            function(self.user_data, cutoff)
+        };
+        if !status.is_success() {
+            return Err(Error::External {
+                status: status.as_i32(),
+                message: "call to rascal_system_t.compute_neighbors failed".into(),
+            });
         }
         Ok(())
     }
 
     fn pairs(&self) -> Result<&[Pair], Error> {
+        let function = self.pairs.ok_or_else(|| Error::External {
+            status: RASCAL_SYSTEM_ERROR,
+            message: "rascal_system_t.pairs function is NULL".into(),
+        })?;
+
         let mut ptr = std::ptr::null();
         let mut count = 0;
-
-        let function = self.pairs.ok_or_else(|| Error::System(
-            "rascal_system_t.pairs function is NULL".into()
-        ))?;
-        unsafe {
-            function(self.user_data, &mut ptr, &mut count);
+        let status = unsafe {
+            function(self.user_data, &mut ptr, &mut count)
+        };
+        if !status.is_success() {
+            return Err(Error::External {
+                status: status.as_i32(),
+                message: "call to rascal_system_t.pairs failed".into(),
+            });
         }
 
         if ptr.is_null() && count != 0 {
-            return Err(Error::System(
-                "rascal_system_t.positions returned a NULL pointer with non zero size".into()
-            ));
+            return Err(Error::External {
+                status: RASCAL_SYSTEM_ERROR,
+                message: "rascal_system_t.pairs returned a NULL pointer with non zero size".into(),
+            });
         }
         unsafe {
             // SAFETY: ptr is non null, and Pair / rascal_pair_t have the same layout
@@ -193,20 +254,29 @@ impl<'a> System for &'a mut rascal_system_t {
     }
 
     fn pairs_containing(&self, center: usize) -> Result<&[Pair], Error> {
+        let function = self.pairs_containing.ok_or_else(|| Error::External {
+            status: RASCAL_SYSTEM_ERROR,
+            message: "rascal_system_t.pairs_containing function is NULL".into(),
+        })?;
+
         let mut ptr = std::ptr::null();
         let mut count = 0;
+        let status = unsafe {
+            function(self.user_data, center, &mut ptr, &mut count)
+        };
 
-        let function = self.pairs_containing.ok_or_else(|| Error::System(
-            "rascal_system_t.pairs_containing function is NULL".into()
-        ))?;
-        unsafe {
-            function(self.user_data, center, &mut ptr, &mut count);
+        if !status.is_success() {
+            return Err(Error::External {
+                status: status.as_i32(),
+                message: "call to rascal_system_t.pairs_containing failed".into(),
+            });
         }
 
         if ptr.is_null() && count != 0 {
-            return Err(Error::System(
-                "rascal_system_t.positions returned a NULL pointer with non zero size".into()
-            ));
+            return Err(Error::External {
+                status: RASCAL_SYSTEM_ERROR,
+                message: "rascal_system_t.pairs_containing returned a NULL pointer with non zero size".into(),
+            });
         }
         unsafe {
             // SAFETY: ptr is non null, and Pair / rascal_pair_t have the same layout
@@ -218,47 +288,81 @@ impl<'a> System for &'a mut rascal_system_t {
 /// Convert a Simple System to a `rascal_system_t`
 impl From<SimpleSystem> for rascal_system_t {
     fn from(system: SimpleSystem) -> rascal_system_t {
-        unsafe extern fn size(this: *const c_void, size: *mut usize) {
-            *size = (*this.cast::<SimpleSystem>()).size().unwrap();
+        unsafe extern fn size(this: *const c_void, size: *mut usize) -> rascal_status_t {
+            catch_unwind(|| {
+                *size = (*this.cast::<SimpleSystem>()).size()?;
+                Ok(())
+            })
         }
 
-        unsafe extern fn species(this: *const c_void, species: *mut *const usize) {
-            *species = (*this.cast::<SimpleSystem>()).species().unwrap().as_ptr();
+        unsafe extern fn species(this: *const c_void, species: *mut *const usize) -> rascal_status_t {
+            catch_unwind(|| {
+                *species = (*this.cast::<SimpleSystem>()).species()?.as_ptr();
+                Ok(())
+            })
         }
 
-        unsafe extern fn positions(this: *const c_void, positions: *mut *const f64) {
-            *positions = (*this.cast::<SimpleSystem>()).positions().unwrap().as_ptr().cast();
+        unsafe extern fn positions(this: *const c_void, positions: *mut *const f64) -> rascal_status_t {
+            catch_unwind(|| {
+                *positions = (*this.cast::<SimpleSystem>()).positions()?.as_ptr().cast();
+                Ok(())
+            })
         }
 
-        unsafe extern fn cell(this: *const c_void, cell: *mut f64) {
-            let matrix = (*this.cast::<SimpleSystem>()).cell().unwrap().matrix();
-            cell.add(0).write(matrix[0][0]);
-            cell.add(1).write(matrix[0][1]);
-            cell.add(2).write(matrix[0][2]);
+        unsafe extern fn cell(this: *const c_void, cell: *mut f64) -> rascal_status_t {
+            catch_unwind(|| {
+                let matrix = (*this.cast::<SimpleSystem>()).cell()?.matrix();
+                cell.add(0).write(matrix[0][0]);
+                cell.add(1).write(matrix[0][1]);
+                cell.add(2).write(matrix[0][2]);
 
-            cell.add(3).write(matrix[1][0]);
-            cell.add(4).write(matrix[1][1]);
-            cell.add(5).write(matrix[1][2]);
+                cell.add(3).write(matrix[1][0]);
+                cell.add(4).write(matrix[1][1]);
+                cell.add(5).write(matrix[1][2]);
 
-            cell.add(6).write(matrix[2][0]);
-            cell.add(7).write(matrix[2][1]);
-            cell.add(8).write(matrix[2][2]);
+                cell.add(6).write(matrix[2][0]);
+                cell.add(7).write(matrix[2][1]);
+                cell.add(8).write(matrix[2][2]);
+
+                Ok(())
+            })
         }
 
-        unsafe extern fn compute_neighbors(this: *mut c_void, cutoff: f64) {
-            (*this.cast::<SimpleSystem>()).compute_neighbors(cutoff).unwrap();
+        unsafe extern fn compute_neighbors(this: *mut c_void, cutoff: f64) -> rascal_status_t {
+            catch_unwind(|| {
+                (*this.cast::<SimpleSystem>()).compute_neighbors(cutoff)?;
+
+                Ok(())
+            })
         }
 
-        unsafe extern fn pairs(this: *const c_void, pairs: *mut *const rascal_pair_t, count: *mut usize) {
-            let all_pairs = (*this.cast::<SimpleSystem>()).pairs().unwrap();
-            *pairs = all_pairs.as_ptr().cast();
-            *count = all_pairs.len();
+        unsafe extern fn pairs(
+            this: *const c_void,
+            pairs: *mut *const rascal_pair_t,
+            count: *mut usize,
+        ) -> rascal_status_t {
+            catch_unwind(|| {
+                let all_pairs = (*this.cast::<SimpleSystem>()).pairs()?;
+                *pairs = all_pairs.as_ptr().cast();
+                *count = all_pairs.len();
+
+                Ok(())
+            })
         }
 
-        unsafe extern fn pairs_containing(this: *const c_void, center: usize, pairs: *mut *const rascal_pair_t, count: *mut usize) {
-            let all_pairs = (*this.cast::<SimpleSystem>()).pairs_containing(center).unwrap();
-            *pairs = all_pairs.as_ptr().cast();
-            *count = all_pairs.len();
+        unsafe extern fn pairs_containing(
+            this: *const c_void,
+            center: usize,
+            pairs: *mut *const rascal_pair_t,
+            count: *mut usize,
+        ) -> rascal_status_t {
+            catch_unwind(|| {
+                let all_pairs = (*this.cast::<SimpleSystem>()).pairs_containing(center)?;
+                *pairs = all_pairs.as_ptr().cast();
+                *count = all_pairs.len();
+
+                Ok(())
+            })
         }
 
         rascal_system_t {

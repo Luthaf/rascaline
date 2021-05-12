@@ -45,3 +45,50 @@ TEST_CASE("basic systems") {
 
     CHECK_SUCCESS(rascal_basic_systems_free(systems, count));
 }
+
+
+TEST_CASE("systems errors") {
+    const char* HYPERS_JSON = R"({
+        "cutoff": 3.0,
+        "delta": 4,
+        "name": "",
+        "gradients": true
+    })";
+
+    auto* descriptor = rascal_descriptor();
+    REQUIRE(descriptor != nullptr);
+    auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);
+    REQUIRE(calculator != nullptr);
+
+    rascal_system_t system = {0};
+    auto options = rascal_calculation_options_t {
+        /* use_native_system */ false,
+        /* selected_samples */ nullptr,
+        /* selected_samples_count */ 0,
+        /* selected_features */ nullptr,
+        /* selected_features_count */ 0,
+    };
+
+    // default status code when function are not defined
+    auto status = rascal_calculator_compute(
+        calculator, descriptor, &system, 1, options
+    );
+    CHECK(status == RASCAL_SYSTEM_ERROR);
+
+    std::string expected = "error from external code (status 128): rascal_system_t.size function is NULL";
+    CHECK(rascal_last_error() == expected);
+
+    system.size = [](const void* _, uintptr_t* size) {
+        return -5242832;
+    };
+
+    status = rascal_calculator_compute(
+        calculator, descriptor, &system, 1, options
+    );
+    CHECK(status == -5242832);
+    expected = "error from external code (status -5242832): call to rascal_system_t.size failed";
+    CHECK(rascal_last_error() == expected);
+
+    rascal_descriptor_free(descriptor);
+    rascal_calculator_free(calculator);
+}

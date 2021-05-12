@@ -3,7 +3,8 @@ import json
 import ctypes
 import numpy as np
 
-from ._rascaline import rascal_system_t, rascal_status_t, rascal_calculation_options_t
+from ._rascaline import rascal_system_t, rascal_calculation_options_t
+from ._rascaline import RASCAL_INVALID_PARAMETER_ERROR
 from .clib import _get_library
 from .status import _check_rascal_pointer, RascalError
 from .descriptor import Descriptor
@@ -20,7 +21,7 @@ def _call_with_growing_buffer(callback, initial=1024):
             break
         except RascalError as e:
             if (
-                e.status == rascal_status_t.RASCAL_INVALID_PARAMETER_ERROR.value
+                e.status == RASCAL_INVALID_PARAMETER_ERROR
                 and "string buffer is not big enough" in e.args[0]
             ):
                 # grow the buffer and retry
@@ -173,7 +174,8 @@ class CalculatorBase:
             sample indexes used by this calculator. Each row of the array
             describes a single sample and will be validated by the calculator.
 
-        :type selected_samples: Optional[numpy.ndarray | :py:class:`rascaline.descriptor.Indexes`]
+        :type selected_samples:
+            Optional[numpy.ndarray | :py:class:`rascaline.descriptor.Indexes`]
 
         :param selected_features: defaults to ``None``. List of features on
             which to run the calculation. Use ``None`` to run the calculation on
@@ -187,7 +189,8 @@ class CalculatorBase:
             of the features used by this calculator.  Each row of the array
             describes a single feature and will be validated by the calculator.
 
-        :type selected_features: Optional[numpy.ndarray | :py:class:`rascaline.descriptor.Indexes`]
+        :type selected_features:
+            Optional[numpy.ndarray | :py:class:`rascaline.descriptor.Indexes`]
 
         :return: the ``descriptor`` parameter or the new new descriptor if
                  ``descriptor`` was ``None``.
