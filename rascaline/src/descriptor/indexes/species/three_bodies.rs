@@ -1,7 +1,8 @@
 use indexmap::IndexSet;
 use itertools::Itertools;
 
-use crate::systems::System;
+use crate::{Error, System};
+use crate::systems::Pair;
 use super::super::{SamplesIndexes, Indexes, IndexesBuilder, IndexValue};
 
 /// `ThreeBodiesSpeciesSamples` is used to represents atom-centered environments
@@ -77,7 +78,7 @@ impl SamplesIndexes for ThreeBodiesSpeciesSamples {
     }
 
     #[time_graph::instrument(name = "ThreeBodiesSpeciesSamples::indexes")]
-    fn indexes(&self, systems: &mut [Box<dyn System>]) -> Indexes {
+    fn indexes(&self, systems: &mut [Box<dyn System>]) -> Result<Indexes, Error> {
         // Accumulate indexes in a set first to ensure uniqueness of the indexes
         // even if their are multiple neighbors of the same specie around a
         // given center
@@ -87,11 +88,12 @@ impl SamplesIndexes for ThreeBodiesSpeciesSamples {
             if i < j { (i, j) } else { (j, i) }
         };
         for (i_system, system) in systems.iter_mut().enumerate() {
-            system.compute_neighbors(self.cutoff);
-            let species = system.species();
+            system.compute_neighbors(self.cutoff)?;
+            let species = system.species()?;
 
-            for center in 0..system.size() {
-                for (i, j) in triplets_around(&**system, center) {
+            for center in 0..system.size()? {
+                let pairs = system.pairs_containing(center)?;
+                for (i, j) in triplets_from_pairs(pairs, center) {
                     let (species_1, species_2) = sort_pair(species[i], species[j]);
                     set.insert((i_system, center, species[center], species_1, species_2));
                 }
@@ -101,7 +103,7 @@ impl SamplesIndexes for ThreeBodiesSpeciesSamples {
                 for (center, &species_center) in species.iter().enumerate() {
                     set.insert((i_system, center, species_center, species_center, species_center));
 
-                    for pair in system.pairs_containing(center) {
+                    for pair in system.pairs_containing(center)? {
                         let neighbor = if pair.first == center {
                             pair.second
                         } else {
@@ -125,11 +127,12 @@ impl SamplesIndexes for ThreeBodiesSpeciesSamples {
                 IndexValue::from(species_2)
             ]);
         }
-        return indexes.finish();
+
+        return Ok(indexes.finish());
     }
 
     #[time_graph::instrument(name = "ThreeBodiesSpeciesSamples::gradients_for")]
-    fn gradients_for(&self, systems: &mut [Box<dyn System>], samples: &Indexes) -> Option<Indexes> {
+    fn gradients_for(&self, systems: &mut [Box<dyn System>], samples: &Indexes) ->Result<Option<Indexes>, Error> {
         assert_eq!(samples.names(), self.names());
 
         let sort_pair = |i, j| {
@@ -147,9 +150,9 @@ impl SamplesIndexes for ThreeBodiesSpeciesSamples {
             let species_neighbor_2 = requested[4].usize();
 
             let system = &mut *systems[i_system.usize()];
-            system.compute_neighbors(self.cutoff);
+            system.compute_neighbors(self.cutoff)?;
 
-            let species = system.species();
+            let species = system.species()?;
 
             if self.self_contribution {
                 let species_neighbor = if species_neighbor_1 == species_center {
@@ -167,7 +170,7 @@ impl SamplesIndexes for ThreeBodiesSpeciesSamples {
                     // no neighbor of the other type around.
                     indexes.insert((i_system, center, species_center, species_1, species_2, center));
 
-                    for pair in system.pairs_containing(center) {
+                    for pair in system.pairs_containing(center)? {
                         let neighbor = if pair.first == center {
                             pair.second
                         } else {
@@ -184,7 +187,8 @@ impl SamplesIndexes for ThreeBodiesSpeciesSamples {
                 }
             }
 
-            for (i, j) in triplets_around(&*system, center) {
+            let pairs = system.pairs_containing(center)?;
+            for (i, j) in triplets_from_pairs(pairs, center) {
                 let (species_1, species_2) = sort_pair(species[i], species[j]);
 
                 if species_1 == species_neighbor_1 && species_2 == species_neighbor_2 {
@@ -213,15 +217,13 @@ impl SamplesIndexes for ThreeBodiesSpeciesSamples {
             }
         }
 
-        return Some(gradients.finish());
+        return Ok(Some(gradients.finish()));
     }
 }
 
-/// Build the list of triplet i-center-j
-fn triplets_around(system: &dyn System, center: usize) -> impl Iterator<Item=(usize, usize)> + '_ {
-    let pairs = system.pairs_containing(center);
-
-    return pairs.iter().cartesian_product(pairs).map(move |(first_pair, second_pair)| {
+/// Build the list of triplet i-center-j from the given list of pairs
+fn triplets_from_pairs(pairs: &[Pair], center: usize) -> impl Iterator<Item=(usize, usize)> + '_ {
+    pairs.iter().cartesian_product(pairs).map(move |(first_pair, second_pair)| {
         let i = if first_pair.first == center {
             first_pair.second
         } else {
@@ -235,7 +237,7 @@ fn triplets_around(system: &dyn System, center: usize) -> impl Iterator<Item=(us
         };
 
         return (i, j);
-    });
+    })
 }
 
 
@@ -256,7 +258,7 @@ mod tests {
     fn three_bodies() {
         let mut systems = test_systems(&["CH", "water"]).boxed();
         let strategy = ThreeBodiesSpeciesSamples::new(2.0);
-        let indexes = strategy.indexes(&mut systems);
+        let indexes = strategy.indexes(&mut systems).unwrap();
         assert_eq!(indexes.count(), 9);
         assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor_1", "species_neighbor_2"]);
         assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
@@ -285,7 +287,7 @@ mod tests {
     fn three_bodies_gradients() {
         let mut systems = test_systems(&["water"]).boxed();
         let strategy = ThreeBodiesSpeciesSamples::new(2.0);
-        let (_, gradients) = strategy.with_gradients(&mut systems);
+        let (_, gradients) = strategy.with_gradients(&mut systems).unwrap();
         let gradients = gradients.unwrap();
 
         assert_eq!(gradients.count(), 51);
@@ -344,10 +346,11 @@ mod tests {
         indexes.add(&[v!(0), v!(1), v!(6), v!(1), v!(1)]);
         indexes.add(&[v!(1), v!(1), v!(1), v!(123456), v!(123456)]);
         indexes.add(&[v!(0), v!(0), v!(1), v!(6), v!(6)]);
+        let indexes = indexes.finish();
 
         let mut systems = test_systems(&["CH", "water"]).boxed();
         let strategy = ThreeBodiesSpeciesSamples::new(2.0);
-        let gradients = strategy.gradients_for(&mut systems, &indexes.finish());
+        let gradients = strategy.gradients_for(&mut systems, &indexes).unwrap();
         let gradients = gradients.unwrap();
 
         assert_eq!(gradients.count(), 18);
@@ -383,7 +386,7 @@ mod tests {
         let mut systems = test_systems(&["water"]).boxed();
         // Only include O-H neighbors
         let strategy = ThreeBodiesSpeciesSamples::with_self_contribution(1.2);
-        let indexes = strategy.indexes(&mut systems);
+        let indexes = strategy.indexes(&mut systems).unwrap();
         assert_eq!(indexes.count(), 9);
         assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor_1", "species_neighbor_2"]);
         assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
@@ -412,7 +415,7 @@ mod tests {
         let mut systems = test_systems(&["CH"]).boxed();
         // do not include any neighbors
         let strategy = ThreeBodiesSpeciesSamples::with_self_contribution(0.5);
-        let (indexes, gradients) = strategy.with_gradients(&mut systems);
+        let (indexes, gradients) = strategy.with_gradients(&mut systems).unwrap();
         assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
             // Around H
             &[v!(0), v!(0), v!(1), v!(1), v!(1)],
@@ -437,7 +440,7 @@ mod tests {
     fn three_bodies_self_contribution_gradients() {
         let mut systems = test_systems(&["CH"]).boxed();
         let strategy = ThreeBodiesSpeciesSamples::with_self_contribution(2.0);
-        let (_, gradients) = strategy.with_gradients(&mut systems);
+        let (_, gradients) = strategy.with_gradients(&mut systems).unwrap();
         let gradients = gradients.unwrap();
 
         assert_eq!(gradients.count(), 30);
@@ -483,10 +486,11 @@ mod tests {
         indexes.add(&[v!(0), v!(1), v!(6), v!(1), v!(1)]);
         indexes.add(&[v!(1), v!(1), v!(1), v!(123456), v!(123456)]);
         indexes.add(&[v!(0), v!(0), v!(1), v!(1), v!(6)]);
+        let indexes = indexes.finish();
 
         let mut systems = test_systems(&["CH", "water"]).boxed();
         let strategy = ThreeBodiesSpeciesSamples::with_self_contribution(2.0);
-        let gradients = strategy.gradients_for(&mut systems, &indexes.finish());
+        let gradients = strategy.gradients_for(&mut systems, &indexes).unwrap();
         let gradients = gradients.unwrap();
 
         assert_eq!(gradients.count(), 18);

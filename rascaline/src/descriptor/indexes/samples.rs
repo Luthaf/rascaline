@@ -1,6 +1,6 @@
 use indexmap::IndexSet;
 
-use crate::systems::System;
+use crate::{Error, System};
 use super::{Indexes, IndexesBuilder, SamplesIndexes, IndexValue};
 
 /// `StructureSamples` is used to represents samples corresponding to full
@@ -20,29 +20,29 @@ impl SamplesIndexes for StructureSamples {
     }
 
     #[time_graph::instrument(name = "StructureSamples::indexes")]
-    fn indexes(&self, systems: &mut [Box<dyn System>]) -> Indexes {
+    fn indexes(&self, systems: &mut [Box<dyn System>]) -> Result<Indexes, Error> {
         let mut indexes = IndexesBuilder::new(self.names());
         for system in 0..systems.len() {
             indexes.add(&[IndexValue::from(system)]);
         }
-        return indexes.finish();
+        return Ok(indexes.finish());
     }
 
     #[time_graph::instrument(name = "StructureSamples::gradients_for")]
-    fn gradients_for(&self, systems: &mut [Box<dyn System>], samples: &Indexes) -> Option<Indexes> {
+    fn gradients_for(&self, systems: &mut [Box<dyn System>], samples: &Indexes) -> Result<Option<Indexes>, Error> {
         assert_eq!(samples.names(), self.names());
 
         let mut gradients = IndexesBuilder::new(vec!["structure", "atom", "spatial"]);
         for value in samples.iter() {
             let system = value[0];
-            for atom in 0..systems[system.usize()].size() {
+            for atom in 0..systems[system.usize()].size()? {
                 gradients.add(&[system, IndexValue::from(atom), IndexValue::from(0)]);
                 gradients.add(&[system, IndexValue::from(atom), IndexValue::from(1)]);
                 gradients.add(&[system, IndexValue::from(atom), IndexValue::from(2)]);
             }
         }
 
-        Some(gradients.finish())
+        Ok(Some(gradients.finish()))
     }
 }
 
@@ -76,18 +76,18 @@ impl SamplesIndexes for AtomSamples {
     }
 
     #[time_graph::instrument(name = "AtomSamples::indexes")]
-    fn indexes(&self, systems: &mut [Box<dyn System>]) -> Indexes {
+    fn indexes(&self, systems: &mut [Box<dyn System>]) -> Result<Indexes, Error> {
         let mut indexes = IndexesBuilder::new(self.names());
         for (i_system, system) in systems.iter().enumerate() {
-            for center in 0..system.size() {
+            for center in 0..system.size()? {
                 indexes.add(&[IndexValue::from(i_system), IndexValue::from(center)]);
             }
         }
-        return indexes.finish();
+        return Ok(indexes.finish());
     }
 
     #[time_graph::instrument(name = "AtomSamples::gradients_for")]
-    fn gradients_for(&self, systems: &mut [Box<dyn System>], samples: &Indexes) -> Option<Indexes> {
+    fn gradients_for(&self, systems: &mut [Box<dyn System>], samples: &Indexes) -> Result<Option<Indexes>, Error> {
         assert_eq!(samples.names(), self.names());
 
         // We need IndexSet to yield the indexes in the right order, i.e. the
@@ -97,9 +97,9 @@ impl SamplesIndexes for AtomSamples {
             let i_system = requested[0];
             let center = requested[1].usize();
             let system = &mut *systems[i_system.usize()];
-            system.compute_neighbors(self.cutoff);
+            system.compute_neighbors(self.cutoff)?;
 
-            for pair in system.pairs_containing(center) {
+            for pair in system.pairs_containing(center)? {
                 if pair.first == center {
                     indexes.insert((i_system, pair.first, pair.second));
                 } else if pair.second == center {
@@ -117,7 +117,7 @@ impl SamplesIndexes for AtomSamples {
             gradients.add(&[structure, atom, neighbor, IndexValue::from(2)]);
         }
 
-        return Some(gradients.finish());
+        return Ok(Some(gradients.finish()));
     }
 }
 
@@ -137,7 +137,7 @@ mod tests {
     #[test]
     fn structure() {
         let mut systems = test_systems(&["methane", "methane", "water"]).boxed();
-        let indexes = StructureSamples.indexes(&mut systems);
+        let indexes = StructureSamples.indexes(&mut systems).unwrap();
         assert_eq!(indexes.count(), 3);
         assert_eq!(indexes.names(), &["structure"]);
         assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![&[v!(0)], &[v!(1)], &[v!(2)]]);
@@ -147,7 +147,7 @@ mod tests {
     fn structure_gradient() {
         let mut systems = test_systems(&["methane", "water"]).boxed();
 
-        let (_, gradients) = StructureSamples.with_gradients(&mut systems);
+        let (_, gradients) = StructureSamples.with_gradients(&mut systems).unwrap();
         let gradients = gradients.unwrap();
         assert_eq!(gradients.count(), 24);
         assert_eq!(gradients.names(), &["structure", "atom", "spatial"]);
@@ -170,9 +170,10 @@ mod tests {
         let mut indexes = IndexesBuilder::new(vec!["structure"]);
         indexes.add(&[v!(2)]);
         indexes.add(&[v!(0)]);
+        let indexes = indexes.finish();
 
         let mut systems = test_systems(&["water", "methane", "water", "methane"]).boxed();
-        let gradients = StructureSamples.gradients_for(&mut systems, &indexes.finish());
+        let gradients = StructureSamples.gradients_for(&mut systems, &indexes).unwrap();
         let gradients = gradients.unwrap();
 
         assert_eq!(gradients.names(), &["structure", "atom", "spatial"]);
@@ -192,7 +193,7 @@ mod tests {
     fn atoms() {
         let mut systems = test_systems(&["methane", "water"]).boxed();
         let strategy = AtomSamples { cutoff: 2.0 };
-        let indexes = strategy.indexes(&mut systems);
+        let indexes = strategy.indexes(&mut systems).unwrap();
         assert_eq!(indexes.count(), 8);
         assert_eq!(indexes.names(), &["structure", "center"]);
         assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
@@ -205,7 +206,7 @@ mod tests {
     fn atom_gradients() {
         let mut systems = test_systems(&["methane"]).boxed();
         let strategy = AtomSamples { cutoff: 1.5 };
-        let (_, gradients) = strategy.with_gradients(&mut systems);
+        let (_, gradients) = strategy.with_gradients(&mut systems).unwrap();
         let gradients = gradients.unwrap();
 
         assert_eq!(gradients.count(), 24);
@@ -253,10 +254,11 @@ mod tests {
         // out of order values to ensure the gradients are also out of order
         indexes.add(&[v!(0), v!(2)]);
         indexes.add(&[v!(0), v!(0)]);
+        let indexes = indexes.finish();
 
         let mut systems = test_systems(&["methane"]).boxed();
         let strategy = AtomSamples { cutoff: 1.5 };
-        let gradients = strategy.gradients_for(&mut systems, &indexes.finish());
+        let gradients = strategy.gradients_for(&mut systems, &indexes).unwrap();
         let gradients = gradients.unwrap();
 
         assert_eq!(gradients.names(), &["structure", "center", "neighbor", "spatial"]);

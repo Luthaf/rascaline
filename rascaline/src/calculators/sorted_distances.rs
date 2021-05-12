@@ -84,21 +84,23 @@ impl CalculatorBase for SortedDistances {
         // the current system
         let mut current = 0;
         for (i_system, system) in systems.iter_mut().enumerate() {
-            // distance contains a vector of distances vector (one distance
+            let system_size = system.size()?;
+
+            // `distances` contains a vector of distances vector (one distance
             // vector for each center) for each pair of species in the system
             let mut distances = HashMap::new();
             for sample in &descriptor.samples {
                 let alpha = sample[2].usize();
                 let beta = sample[3].usize();
                 distances.entry((alpha, beta)).or_insert_with(
-                    || vec![Vec::with_capacity(self.max_neighbors); system.size()]
+                    || vec![Vec::with_capacity(self.max_neighbors); system_size]
                 );
             }
 
             // Collect all distances around each center in `distances`
-            system.compute_neighbors(self.cutoff);
-            let species = system.species();
-            for pair in system.pairs() {
+            system.compute_neighbors(self.cutoff)?;
+            let species = system.species()?;
+            for pair in system.pairs()? {
                 let i = pair.first;
                 let j = pair.second;
                 let d = pair.distance;

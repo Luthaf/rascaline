@@ -26,7 +26,7 @@ fn spherical_expansion(c: &mut Criterion) {
     group.measurement_time(std::time::Duration::from_secs(10));
 
     let system = testing_system();
-    let n_centers = system.size();
+    let n_centers = system.size().unwrap();
     let systems = &mut [Box::new(system) as Box<dyn System>];
 
     for &max_radial in black_box(&[2, 8, 14]) {
@@ -43,7 +43,8 @@ fn spherical_expansion(c: &mut Criterion) {
             let mut calculator = SphericalExpansion::new(parameters).unwrap();
 
             let mut descriptor = Descriptor::new();
-            descriptor.prepare(calculator.samples().indexes(systems), calculator.features());
+            let samples = calculator.samples().indexes(systems).unwrap();
+            descriptor.prepare(samples, calculator.features());
 
             group.bench_function(&format!("n_max = {}, l_max = {}", max_radial, max_angular), |b| b.iter_custom(|repeat| {
                 let start = std::time::Instant::now();
@@ -62,7 +63,7 @@ fn spherical_expansion_gradients(c: &mut Criterion) {
     group.measurement_time(std::time::Duration::from_secs(10));
 
     let system = testing_system();
-    let n_centers = system.size();
+    let n_centers = system.size().unwrap();
     let systems = &mut [Box::new(system) as Box<dyn System>];
 
     for &max_radial in black_box(&[2, 8, 14]) {
@@ -79,7 +80,7 @@ fn spherical_expansion_gradients(c: &mut Criterion) {
             let mut calculator = SphericalExpansion::new(parameters).unwrap();
 
             let mut descriptor = Descriptor::new();
-            let (samples, gradients) = calculator.samples().with_gradients(systems);
+            let (samples, gradients) = calculator.samples().with_gradients(systems).unwrap();
             descriptor.prepare_gradients(samples, gradients.unwrap(), calculator.features());
 
             group.bench_function(&format!("n_max = {}, l_max = {}", max_radial, max_angular), |b| b.iter_custom(|repeat| {

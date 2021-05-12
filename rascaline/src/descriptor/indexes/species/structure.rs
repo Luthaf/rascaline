@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use crate::systems::System;
+use crate::{Error, System};
 use super::super::{SamplesIndexes, Indexes, IndexesBuilder, IndexValue};
 
 /// `StructureSpeciesSamples` is used to represents samples corresponding to
@@ -18,20 +18,20 @@ impl SamplesIndexes for StructureSpeciesSamples {
     }
 
     #[time_graph::instrument(name = "StructureSpeciesSamples::indexes")]
-    fn indexes(&self, systems: &mut [Box<dyn System>]) -> Indexes {
+    fn indexes(&self, systems: &mut [Box<dyn System>]) -> Result<Indexes, Error> {
         let mut indexes = IndexesBuilder::new(self.names());
         for (i_system, system) in systems.iter().enumerate() {
-            for &species in system.species().iter().collect::<BTreeSet<_>>() {
+            for &species in system.species()?.iter().collect::<BTreeSet<_>>() {
                 indexes.add(&[
                     IndexValue::from(i_system), IndexValue::from(species)
                 ]);
             }
         }
-        return indexes.finish();
+        return Ok(indexes.finish());
     }
 
     #[time_graph::instrument(name = "StructureSpeciesSamples::gradients_for")]
-    fn gradients_for(&self, systems: &mut [Box<dyn System>], samples: &Indexes) -> Option<Indexes> {
+    fn gradients_for(&self, systems: &mut [Box<dyn System>], samples: &Indexes) -> Result<Option<Indexes>, Error> {
         assert_eq!(samples.names(), self.names());
 
         let mut gradients = IndexesBuilder::new(vec!["structure", "species", "atom", "spatial"]);
@@ -40,7 +40,7 @@ impl SamplesIndexes for StructureSpeciesSamples {
             let alpha = value[1];
 
             let system = &systems[i_system.usize()];
-            let species = system.species();
+            let species = system.species()?;
             for (i_atom, &species) in species.iter().enumerate() {
                 // only atoms with the same species participate to the gradient
                 if species == alpha.usize() {
@@ -51,7 +51,7 @@ impl SamplesIndexes for StructureSpeciesSamples {
             }
         }
 
-        return Some(gradients.finish());
+        return Ok(Some(gradients.finish()));
     }
 }
 
@@ -71,7 +71,7 @@ mod tests {
     #[test]
     fn structure() {
         let mut systems = test_systems(&["methane", "methane", "water"]).boxed();
-        let indexes = StructureSpeciesSamples.indexes(&mut systems);
+        let indexes = StructureSpeciesSamples.indexes(&mut systems).unwrap();
         assert_eq!(indexes.count(), 6);
         assert_eq!(indexes.names(), &["structure", "species"]);
         assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
@@ -84,7 +84,7 @@ mod tests {
     #[test]
     fn structure_gradient() {
         let mut systems = test_systems(&["CH", "water"]).boxed();
-        let (_, gradients) = StructureSpeciesSamples.with_gradients(&mut systems);
+        let (_, gradients) = StructureSpeciesSamples.with_gradients(&mut systems).unwrap();
         let gradients = gradients.unwrap();
         assert_eq!(gradients.count(), 15);
         assert_eq!(gradients.names(), &["structure", "species", "atom", "spatial"]);
@@ -107,9 +107,10 @@ mod tests {
         let mut indexes = IndexesBuilder::new(vec!["structure", "species"]);
         indexes.add(&[v!(2), v!(1)]);
         indexes.add(&[v!(0), v!(6)]);
+        let indexes = indexes.finish();
 
         let mut systems = test_systems(&["CH", "water", "CH"]).boxed();
-        let gradients = StructureSpeciesSamples.gradients_for(&mut systems, &indexes.finish());
+        let gradients = StructureSpeciesSamples.gradients_for(&mut systems, &indexes).unwrap();
         let gradients = gradients.unwrap();
         assert_eq!(gradients.names(), &["structure", "species", "atom", "spatial"]);
 

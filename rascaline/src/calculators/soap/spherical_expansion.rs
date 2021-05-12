@@ -557,10 +557,10 @@ impl CalculatorBase for SphericalExpansion {
         self.do_self_contributions(descriptor);
 
         for (i_system, system) in systems.iter_mut().enumerate() {
-            system.compute_neighbors(self.parameters.cutoff);
-            let species = system.species();
+            system.compute_neighbors(self.parameters.cutoff)?;
+            let species = system.species()?;
 
-            for pair in system.pairs() {
+            for pair in system.pairs()? {
                 let pair = Pair {
                     system: i_system,
                     first: pair.first,

@@ -86,7 +86,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn read() {
+    fn read() -> Result<(), Box<dyn std::error::Error>> {
         let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         path.push("benches");
         path.push("data");
@@ -95,25 +95,28 @@ mod tests {
         let systems = read_from_file(&path).unwrap();
 
         assert_eq!(systems.len(), 30);
-        assert_eq!(systems[0].size(), 54);
-        assert_eq!(systems[0].species(), [14; 54].as_ref());
+        assert_eq!(systems[0].size()?, 54);
+        assert_eq!(systems[0].species()?, [14; 54].as_ref());
 
         assert_relative_eq!(
-            systems[0].positions()[0],
+            systems[0].positions()?[0],
             Vector3D::from([7.8554, 7.84887, 0.0188612])
         );
 
-        assert_relative_eq!(systems[0].cell().a(), 11.098535905469692);
-        assert_relative_eq!(systems[0].cell().b(), 11.098535905469692);
-        assert_relative_eq!(systems[0].cell().c(), 11.098535905469692);
-        assert_relative_eq!(systems[0].cell().alpha(), 60.0);
-        assert_relative_eq!(systems[0].cell().beta(), 60.0);
-        assert_relative_eq!(systems[0].cell().gamma(), 60.0);
+        let cell = systems[0].cell()?;
+        assert_relative_eq!(cell.a(), 11.098535905469692);
+        assert_relative_eq!(cell.b(), 11.098535905469692);
+        assert_relative_eq!(cell.c(), 11.098535905469692);
+        assert_relative_eq!(cell.alpha(), 60.0);
+        assert_relative_eq!(cell.beta(), 60.0);
+        assert_relative_eq!(cell.gamma(), 60.0);
 
 
-        let matrix = systems[0].cell().matrix();
+        let matrix = cell.matrix();
         assert_eq!(matrix[0], [7.847849999999999, 0.0, 7.847849999999999]);
         assert_eq!(matrix[1], [7.847849999999999, 7.847849999999999, 0.0]);
         assert_eq!(matrix[2], [0.0, 7.847849999999999, 7.847849999999999]);
+
+        Ok(())
     }
 }
