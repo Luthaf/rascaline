@@ -1,8 +1,7 @@
 use super::CalculatorBase;
 
-use crate::descriptor::Descriptor;
 use crate::descriptor::{IndexesBuilder, Indexes, IndexValue, SamplesIndexes, AtomSamples};
-use crate::systems::System;
+use crate::{Descriptor, Error, System};
 
 /// A stupid calculator implementation used to test the API, and API binding to
 /// C/Python/etc.
@@ -54,28 +53,25 @@ impl CalculatorBase for DummyCalculator {
         self.gradients
     }
 
-    fn check_features(&self, indexes: &Indexes) {
+    fn check_features(&self, indexes: &Indexes) -> Result<(), Error> {
         assert_eq!(indexes.names(), self.features_names());
         let first = [IndexValue::from(1), IndexValue::from(0)];
         let second = [IndexValue::from(0), IndexValue::from(1)];
-        for value in indexes.iter() {
-            assert!(value == first || value == second);
-        }
-    }
 
-    fn check_samples(&self, indexes: &Indexes, systems: &mut [Box<dyn System>]) {
-        assert_eq!(indexes.names(), ["structure", "center"]);
-        // This could be made much faster by not recomputing the full list of
-        // potential samples
-        let allowed = self.samples().indexes(systems);
         for value in indexes.iter() {
-            assert!(allowed.contains(value), "{:?} is not a valid sample", value);
+            if value != first && value != second  {
+                return Err(Error::InvalidParameter(format!(
+                    "invalid feature for DummyCalculator: {:?}", value
+                )))
+            }
         }
+
+        Ok(())
     }
 
     #[allow(clippy::clippy::cast_precision_loss)]
     #[time_graph::instrument(name = "DummyCalculator::compute")]
-    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor) {
+    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor) -> Result<(), Error> {
         for (sample_i, indexes) in descriptor.samples.iter().enumerate() {
             let i_system = indexes[0].usize();
             let center = indexes[1].usize();
@@ -120,6 +116,8 @@ impl CalculatorBase for DummyCalculator {
                 }
             }
         }
+
+        Ok(())
     }
 }
 

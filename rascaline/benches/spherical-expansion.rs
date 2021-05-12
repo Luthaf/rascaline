@@ -40,7 +40,7 @@ fn spherical_expansion(c: &mut Criterion) {
                 radial_basis: RadialBasis::Gto {},
                 cutoff_function: CutoffFunction::ShiftedCosine{ width: 0.5 },
             };
-            let mut calculator = SphericalExpansion::new(parameters);
+            let mut calculator = SphericalExpansion::new(parameters).unwrap();
 
             let mut descriptor = Descriptor::new();
             descriptor.prepare(calculator.samples().indexes(systems), calculator.features());
@@ -48,7 +48,7 @@ fn spherical_expansion(c: &mut Criterion) {
             group.bench_function(&format!("n_max = {}, l_max = {}", max_radial, max_angular), |b| b.iter_custom(|repeat| {
                 let start = std::time::Instant::now();
                 for _ in 0..repeat {
-                    calculator.compute(systems, &mut descriptor);
+                    calculator.compute(systems, &mut descriptor).unwrap();
                 }
                 start.elapsed() / n_centers as u32
             }));
@@ -76,7 +76,7 @@ fn spherical_expansion_gradients(c: &mut Criterion) {
                 radial_basis: RadialBasis::Gto {},
                 cutoff_function: CutoffFunction::ShiftedCosine{ width: 0.5 },
             };
-            let mut calculator = SphericalExpansion::new(parameters);
+            let mut calculator = SphericalExpansion::new(parameters).unwrap();
 
             let mut descriptor = Descriptor::new();
             let (samples, gradients) = calculator.samples().with_gradients(systems);
@@ -85,7 +85,7 @@ fn spherical_expansion_gradients(c: &mut Criterion) {
             group.bench_function(&format!("n_max = {}, l_max = {}", max_radial, max_angular), |b| b.iter_custom(|repeat| {
                 let start = std::time::Instant::now();
                 for _ in 0..repeat {
-                    calculator.compute(systems, &mut descriptor);
+                    calculator.compute(systems, &mut descriptor).unwrap();
                 }
                 start.elapsed() / n_centers as u32
             }));

@@ -4,6 +4,7 @@ use ndarray::{Array2, ArrayViewMut2, azip};
 use log::info;
 
 use super::RadialIntegral;
+use crate::Error;
 
 /// Maximal number of points in the splines
 const MAX_SPLINE_SIZE: usize = 10_000;
@@ -72,8 +73,12 @@ impl SplinedRadialIntegral {
         parameters: SplinedRIParameters,
         accuracy: f64,
         radial_integral: impl RadialIntegral
-    ) -> SplinedRadialIntegral {
-        assert!(accuracy > 0.0, "got invalid accuracy in spline ({}), it must be positive", accuracy);
+    ) -> Result<SplinedRadialIntegral, Error> {
+        if accuracy < 0.0 {
+            return Err(Error::InvalidParameter(format!(
+                "got invalid accuracy in spline ({}), it must be positive", accuracy
+            )));
+        }
 
         let initial_grid_size = 11;
         let grid_step = parameters.cutoff / (initial_grid_size - 1) as f64;
@@ -138,11 +143,11 @@ impl SplinedRadialIntegral {
                 break;
             } else {
                 if spline.len() + new_points.len() > MAX_SPLINE_SIZE {
-                    panic!(
+                    return Err(Error::Internal(format!(
                         "failed to reach requested accuracy ({:e}) in spline interpolation for radial integral, \
                         the best we got was {:e}",
                         accuracy, max_absolute_error
-                    );
+                    )));
                 }
 
                 // add more points and continue
@@ -152,7 +157,7 @@ impl SplinedRadialIntegral {
             }
         }
 
-        return spline;
+        return Ok(spline);
     }
 
     /// Add a new control points to this spline. The new point must be between
@@ -261,7 +266,9 @@ mod tests {
             cutoff: 6.0,
         };
         let shape = (1, 1);
-        let spline = SplinedRadialIntegral::with_accuracy(parameters, accuracy, FalseRadialIntegral);
+        let spline = SplinedRadialIntegral::with_accuracy(
+            parameters, accuracy, FalseRadialIntegral
+        ).unwrap();
 
         for &x in &[0.0, 0.000000001, 2.3, 3.2, 4.7, 5.3, 5.99999999] {
             let mut values = Array2::from_elem(shape, 0.0);
@@ -294,7 +301,7 @@ mod tests {
             max_angular: 0,
             cutoff: 6.0,
         };
-        let _ = SplinedRadialIntegral::with_accuracy(parameters, -1.0, FalseRadialIntegral);
+        SplinedRadialIntegral::with_accuracy(parameters, -1.0, FalseRadialIntegral).unwrap();
     }
 
     #[test]
@@ -312,8 +319,9 @@ mod tests {
             max_angular: parameters.max_angular,
             cutoff: 12.0,
             atomic_gaussian_width: 0.5,
-        });
-        let _ = SplinedRadialIntegral::with_accuracy(parameters, 1e-10, gto);
+        }).unwrap();
+
+        SplinedRadialIntegral::with_accuracy(parameters, 1e-10, gto).unwrap();
     }
 
     #[test]
@@ -331,12 +339,12 @@ mod tests {
             max_angular: parameters.max_angular,
             cutoff: parameters.cutoff,
             atomic_gaussian_width: 0.5,
-        });
+        }).unwrap();
 
         // even with very bad accuracy, we want the gradients of the spline to
         // match the values produces by the spline, and not necessarily the
         // actual GTO gradients.
-        let spline = SplinedRadialIntegral::with_accuracy(parameters, 1e-2, gto);
+        let spline = SplinedRadialIntegral::with_accuracy(parameters, 1e-2, gto).unwrap();
 
         let rij = 3.4;
         let delta = 1e-9;

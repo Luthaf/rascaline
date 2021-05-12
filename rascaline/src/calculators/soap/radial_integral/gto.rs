@@ -6,6 +6,7 @@ use nalgebra as na;
 use nalgebra::linalg::SymmetricEigen;
 
 use crate::math::gamma;
+use crate::Error;
 
 use super::RadialIntegral;
 use super::{HyperGeometricSphericalExpansion, HyperGeometricParameters};
@@ -27,18 +28,26 @@ pub struct GtoParameters {
 }
 
 impl GtoParameters {
-    fn validate(&self) {
-        assert!(self.max_radial > 0, "max_radial must be at least 1");
+    fn validate(&self) -> Result<(), Error> {
+        if self.max_radial == 0 {
+            return Err(Error::InvalidParameter(
+                "max_radial must be at least 1 for GTO radial integral".into()
+            ));
+        }
 
-        assert!(
-            self.cutoff > 0.0 && self.cutoff.is_finite(),
-            "cutoff must be a positive number"
-        );
+        if self.cutoff < 0.0 || !self.cutoff.is_finite() {
+            return Err(Error::InvalidParameter(
+                "cutoff must be a positive number for GTO radial integral".into()
+            ));
+        }
 
-        assert!(
-            self.atomic_gaussian_width > 0.0 && self.atomic_gaussian_width.is_finite(),
-            "atomic_gaussian_width must be a positive number"
-        );
+        if self.atomic_gaussian_width < 0.0 || !self.atomic_gaussian_width.is_finite() {
+            return Err(Error::InvalidParameter(
+                "atomic_gaussian_width must be a positive number for GTO radial integral".into()
+            ));
+        }
+
+        Ok(())
     }
 }
 
@@ -95,8 +104,8 @@ pub struct GtoRadialIntegral {
 }
 
 impl GtoRadialIntegral {
-    pub fn new(parameters: GtoParameters) -> GtoRadialIntegral {
-        parameters.validate();
+    pub fn new(parameters: GtoParameters) -> Result<GtoRadialIntegral, Error> {
+        parameters.validate()?;
 
         let gto_gaussian_widths = (0..parameters.max_radial).into_iter().map(|n| {
             let n = n as f64;
@@ -167,13 +176,14 @@ impl GtoRadialIntegral {
         let hypergeometric = HyperGeometricSphericalExpansion::new(parameters.max_radial, parameters.max_angular);
 
         let sigma2 = parameters.atomic_gaussian_width * parameters.atomic_gaussian_width;
-        return GtoRadialIntegral {
+
+        return Ok(GtoRadialIntegral {
             parameters: parameters,
             hypergeometric: hypergeometric,
             atomic_gaussian_constant: 1.0 / (2.0 * sigma2),
             gto_gaussian_constants: gto_gaussian_constants,
             gto_orthonormalization: gto_orthonormalization,
-        }
+        })
     }
 }
 
@@ -272,7 +282,7 @@ mod tests {
             max_angular: 4,
             cutoff: 3.0,
             atomic_gaussian_width: 0.5
-        });
+        }).unwrap();
     }
 
     #[test]
@@ -283,7 +293,7 @@ mod tests {
             max_angular: 4,
             cutoff: -3.0,
             atomic_gaussian_width: 0.5
-        });
+        }).unwrap();
     }
 
     #[test]
@@ -294,7 +304,7 @@ mod tests {
             max_angular: 4,
             cutoff: std::f64::INFINITY,
             atomic_gaussian_width: 0.5
-        });
+        }).unwrap();
     }
 
     #[test]
@@ -305,7 +315,7 @@ mod tests {
             max_angular: 4,
             cutoff: 3.0,
             atomic_gaussian_width: -0.5
-        });
+        }).unwrap();
     }
 
     #[test]
@@ -316,7 +326,7 @@ mod tests {
             max_angular: 4,
             cutoff: 3.0,
             atomic_gaussian_width: std::f64::INFINITY,
-        });
+        }).unwrap();
     }
 
     #[test]
@@ -327,7 +337,7 @@ mod tests {
             max_angular: 3,
             cutoff: 5.0,
             atomic_gaussian_width: 0.5,
-        });
+        }).unwrap();
     }
 
     #[test]
@@ -338,7 +348,7 @@ mod tests {
             max_angular: 3,
             cutoff: 5.0,
             atomic_gaussian_width: 0.5,
-        });
+        }).unwrap();
         let mut values = Array2::from_elem((2, 3), 0.0);
 
         gto.compute(1.0, values.view_mut(), None);
@@ -352,7 +362,7 @@ mod tests {
             max_angular: 3,
             cutoff: 5.0,
             atomic_gaussian_width: 0.5,
-        });
+        }).unwrap();
         let mut values = Array2::from_elem((2, 4), 0.0);
         let mut gradients = Array2::from_elem((2, 3), 0.0);
 
@@ -368,7 +378,7 @@ mod tests {
             max_angular: max_angular,
             cutoff: 5.0,
             atomic_gaussian_width: 0.5,
-        });
+        }).unwrap();
 
         let mut values = Array2::from_elem((max_radial, max_angular + 1), 0.0);
         let mut gradients = Array2::from_elem((max_radial, max_angular + 1), 0.0);
@@ -391,7 +401,7 @@ mod tests {
             max_angular: max_angular,
             cutoff: 5.0,
             atomic_gaussian_width: 0.5,
-        });
+        }).unwrap();
 
         let rij = 3.4;
         let delta = 1e-9;

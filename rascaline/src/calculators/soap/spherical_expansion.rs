@@ -1,7 +1,7 @@
 use ndarray::Array2;
 
 use crate::descriptor::{IndexesBuilder, IndexValue, Indexes, SamplesIndexes, AtomSpeciesSamples};
-use crate::{Descriptor, System, Vector3D};
+use crate::{Descriptor, Error, System, Vector3D};
 
 use super::super::CalculatorBase;
 use super::RadialIntegral;
@@ -44,7 +44,7 @@ pub enum RadialBasis {
 }
 
 impl RadialBasis {
-    fn construct(&self, parameters: &SphericalExpansionParameters) -> Box<dyn RadialIntegral> {
+    fn construct(&self, parameters: &SphericalExpansionParameters) -> Result<Box<dyn RadialIntegral>, Error> {
         match self {
             RadialBasis::Gto {} => {
                 let parameters = GtoParameters {
@@ -53,7 +53,7 @@ impl RadialBasis {
                     atomic_gaussian_width: parameters.atomic_gaussian_width,
                     cutoff: parameters.cutoff,
                 };
-                return Box::new(GtoRadialIntegral::new(parameters));
+                return Ok(Box::new(GtoRadialIntegral::new(parameters)?));
             }
             RadialBasis::SplinedGto { accuracy } => {
                 let parameters = GtoParameters {
@@ -62,14 +62,14 @@ impl RadialBasis {
                     atomic_gaussian_width: parameters.atomic_gaussian_width,
                     cutoff: parameters.cutoff,
                 };
-                let gto = GtoRadialIntegral::new(parameters);
+                let gto = GtoRadialIntegral::new(parameters)?;
 
                 let parameters = SplinedRIParameters {
                     max_radial: parameters.max_radial,
                     max_angular: parameters.max_angular,
                     cutoff: parameters.cutoff,
                 };
-                return Box::new(SplinedRadialIntegral::with_accuracy(parameters, *accuracy, gto));
+                return Ok(Box::new(SplinedRadialIntegral::with_accuracy(parameters, *accuracy, gto)?));
             }
         };
     }
@@ -181,8 +181,8 @@ impl std::fmt::Debug for SphericalExpansion {
 
 impl SphericalExpansion {
     /// Create a new `SphericalExpansion` calculator with the given parameters
-    pub fn new(parameters: SphericalExpansionParameters) -> SphericalExpansion {
-        let radial_integral = parameters.radial_basis.construct(&parameters);
+    pub fn new(parameters: SphericalExpansionParameters) -> Result<SphericalExpansion, Error> {
+        let radial_integral = parameters.radial_basis.construct(&parameters)?;
         let spherical_harmonics = SphericalHarmonics::new(parameters.max_angular);
         let sph_values = SphericalHarmonicsArray::new(parameters.max_angular);
         let sph_gradients = if parameters.gradients {
@@ -203,7 +203,7 @@ impl SphericalExpansion {
             None
         };
 
-        SphericalExpansion {
+        Ok(SphericalExpansion {
             parameters: parameters,
             radial_integral: radial_integral,
             spherical_harmonics: spherical_harmonics,
@@ -212,7 +212,7 @@ impl SphericalExpansion {
             ri_values: ri_values,
             ri_gradients: ri_gradients,
             computed_ri_sph_for_this_pair: false,
-        }
+        })
     }
 
     /// Compute the self contribution to spherical expansion, i.e. the
@@ -518,30 +518,39 @@ impl CalculatorBase for SphericalExpansion {
         self.parameters.gradients
     }
 
-    fn check_features(&self, indexes: &Indexes) {
+    fn check_features(&self, indexes: &Indexes) -> Result<(), Error> {
         assert_eq!(indexes.names(), self.features_names());
         for value in indexes {
             let n = value[0].usize();
             let l = value[1].isize();
             let m = value[2].isize();
-            assert!(n < self.parameters.max_radial);
-            assert!(l <= self.parameters.max_angular as isize);
-            assert!(-l <= m && m <= l);
-        }
-    }
 
-    fn check_samples(&self, indexes: &Indexes, systems: &mut [Box<dyn System>]) {
-        assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor"]);
-        // This could be made much faster by not recomputing the full list of
-        // potential samples
-        let allowed = self.samples().indexes(systems);
-        for value in indexes.iter() {
-            assert!(allowed.contains(value), "{:?} is not a valid sample", value);
+            if n >= self.parameters.max_radial {
+                return Err(Error::InvalidParameter(format!(
+                    "'n' is too large for this SphericalExpansion: \
+                    expected value below {}, got {}", self.parameters.max_radial, n
+                )))
+            }
+
+            if l > self.parameters.max_angular as isize {
+                return Err(Error::InvalidParameter(format!(
+                    "'l' is too large for this SphericalExpansion: \
+                    expected value below {}, got {}", self.parameters.max_angular + 1, l
+                )))
+            }
+
+            if m < -l || m > l  {
+                return Err(Error::InvalidParameter(format!(
+                    "'m' is not inside [-l, l]: got m={} but l={}", m, l
+                )))
+            }
         }
+
+        Ok(())
     }
 
     #[time_graph::instrument(name = "SphericalExpansion::compute")]
-    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor) {
+    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor) -> Result<(), Error> {
         assert_eq!(descriptor.samples.names(), &["structure", "center", "species_center", "species_neighbor"]);
         assert_eq!(descriptor.features.names(), &["n", "l", "m"]);
 
@@ -569,6 +578,8 @@ impl CalculatorBase for SphericalExpansion {
                 }
             }
         }
+
+        Ok(())
     }
 }
 
@@ -605,7 +616,7 @@ mod tests {
     fn values() {
         let mut calculator = Calculator::from(Box::new(SphericalExpansion::new(
             parameters(false)
-        )) as Box<dyn CalculatorBase>);
+        ).unwrap()) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]).boxed();
         let mut descriptor = Descriptor::new();
@@ -635,7 +646,7 @@ mod tests {
 
         let calculator = Calculator::from(Box::new(SphericalExpansion::new(
             parameters(true)
-        )) as Box<dyn CalculatorBase>);
+        ).unwrap()) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
         let system = systems.systems.pop().unwrap();
@@ -664,7 +675,7 @@ mod tests {
     fn compute_partial() {
         let calculator = Calculator::from(Box::new(SphericalExpansion::new(
             parameters(true)
-        )) as Box<dyn CalculatorBase>);
+        ).unwrap()) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water", "methane"]).boxed();
 

@@ -45,7 +45,7 @@ impl<'a> SelectedIndexes<'a> {
             }
         };
 
-        calculator.check_features(&indexes);
+        calculator.check_features(&indexes)?;
         return Ok(indexes);
     }
 
@@ -78,7 +78,7 @@ impl<'a> SelectedIndexes<'a> {
             }
         };
 
-        calculator.check_samples(&indexes, systems);
+        calculator.check_samples(&indexes, systems)?;
         return Ok(indexes);
     }
 }
@@ -184,7 +184,7 @@ impl Calculator {
             descriptor.prepare(samples, features);
         }
 
-        self.implementation.compute(systems, descriptor);
+        self.implementation.compute(systems, descriptor)?;
         return Ok(());
     }
 }
@@ -213,7 +213,7 @@ macro_rules! add_calculator {
     ($map :expr, $name :literal, $type :ty, $parameters :ty) => (
         $map.insert($name, (|json| {
             let parameters = serde_json::from_str::<$parameters>(json)?;
-            Ok(Box::new(<$type>::new(parameters)))
+            Ok(Box::new(<$type>::new(parameters)?))
         }) as CalculatorCreator);
     );
 }
