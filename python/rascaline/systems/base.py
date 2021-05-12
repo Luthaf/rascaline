@@ -4,6 +4,19 @@ import ctypes
 from ctypes import POINTER, pointer, c_void_p, c_double
 
 from .._rascaline import rascal_system_t, rascal_pair_t, c_uintptr_t
+from ..status import _save_exception
+
+
+def catch_exceptions(function):
+    def inner(*args, **kwargs):
+        try:
+            function(*args, **kwargs)
+        except Exception as e:
+            _save_exception(e)
+            return -1
+        return 0
+
+    return inner
 
 
 class SystemBase:
@@ -38,6 +51,7 @@ class SystemBase:
             assert isinstance(self, SystemBase)
             return self
 
+        @catch_exceptions
         def rascal_system_size(user_data, size):
             """
             Implementation of ``rascal_system_t::size`` using
@@ -48,6 +62,7 @@ class SystemBase:
         # use struct.XXX.__class__ to get the right type for all functions
         struct.size = struct.size.__class__(rascal_system_size)
 
+        @catch_exceptions
         def rascal_system_species(user_data, data):
             """
             Implementation of ``rascal_system_t::species`` using
@@ -61,6 +76,7 @@ class SystemBase:
 
         struct.species = struct.species.__class__(rascal_system_species)
 
+        @catch_exceptions
         def rascal_system_positions(user_data, data):
             """
             Implementation of ``rascal_system_t::positions`` using
@@ -77,6 +93,7 @@ class SystemBase:
 
         struct.positions = struct.positions.__class__(rascal_system_positions)
 
+        @catch_exceptions
         def rascal_system_cell(user_data, data):
             """
             Implementation of ``rascal_system_t::cell`` using
@@ -98,6 +115,7 @@ class SystemBase:
 
         struct.cell = struct.cell.__class__(rascal_system_cell)
 
+        @catch_exceptions
         def rascal_system_compute_neighbors(user_data, cutoff):
             """
             Implementation of ``rascal_system_t::compute_neighbors`` using
@@ -110,6 +128,7 @@ class SystemBase:
             rascal_system_compute_neighbors
         )
 
+        @catch_exceptions
         def rascal_system_pairs(user_data, data, count):
             """
             Implementation of ``rascal_system_t::pairs`` using
@@ -125,6 +144,7 @@ class SystemBase:
 
         struct.pairs = struct.pairs.__class__(rascal_system_pairs)
 
+        @catch_exceptions
         def rascal_system_pairs_containing(user_data, center, data, count):
             """
             Implementation of ``rascal_system_t::pairs_containing`` using

@@ -24,24 +24,25 @@
 #define RASCAL_INVALID_PARAMETER_ERROR 1
 
 /**
- * Status code used for error coming from the system implementation
- */
-#define RASCAL_SYSTEM_ERROR 2
-
-/**
  * Status code used when there was an error reading or writing JSON
  */
-#define RASCAL_JSON_ERROR 3
+#define RASCAL_JSON_ERROR 2
 
 /**
  * Status code used when a string contains non-utf8 data
  */
-#define RASCAL_UTF8_ERROR 4
+#define RASCAL_UTF8_ERROR 3
 
 /**
- * Status code used when there was an error of unknown kind
+ * Status code used for error related to reading files with chemfiles
  */
-#define RASCAL_UNKNOWN_ERROR 254
+#define RASCAL_CHEMFILES_ERROR 4
+
+/**
+ * Status code used for errors coming from the system implementation if we
+ * don't have a more specific status
+ */
+#define RASCAL_SYSTEM_ERROR 128
 
 /**
  * Status code used when there was an internal error, i.e. there is a bug
@@ -80,6 +81,11 @@ typedef struct rascal_descriptor_t rascal_descriptor_t;
 
 /**
  * Status type returned by all functions in the C API.
+ *
+ * The value 0 (`RASCAL_SUCCESS`) is used to indicate successful operations.
+ * Positive non-zero values are reserved for internal use in rascaline.
+ * Negative values are reserved for use in user code, in particular to indicate
+ * error coming from callbacks.
  */
 typedef int32_t rascal_status_t;
 
@@ -116,6 +122,11 @@ typedef struct rascal_pair_t {
  * implementing the `System` trait; and then there is one function pointers
  * (`Option<unsafe extern fn(XXX)>`) for each function in the `System` trait.
  *
+ * The `rascal_status_t` return value for the function is used to communicate
+ * error messages. It should be 0/`RASCAL_SUCCESS` in case of success, any
+ * non-zero value in case of error. The error will be propagated to the
+ * top-level caller as a `RASCAL_SYSTEM_ERROR`
+ *
  * A new implementation of the System trait can then be created in any language
  * supporting a C API (meaning any language for our purposes); by correctly
  * setting `user_data` to the actual data storage, and setting all function
@@ -131,7 +142,7 @@ typedef struct rascal_system_t {
   /**
    * This function should set `*size` to the number of atoms in this system
    */
-  void (*size)(const void *user_data, uintptr_t *size);
+  rascal_status_t (*size)(const void *user_data, uintptr_t *size);
   /**
    * This function should set `*species` to a pointer to the first element of
    * a contiguous array containing the atomic species of each atom in the
@@ -139,25 +150,25 @@ typedef struct rascal_system_t {
    * value. These values are usually the atomic number, but don't have to be.
    * The array should contain `rascal_system_t::size()` elements.
    */
-  void (*species)(const void *user_data, const uintptr_t **species);
+  rascal_status_t (*species)(const void *user_data, const uintptr_t **species);
   /**
    * This function should set `*positions` to a pointer to the first element
    * of a contiguous array containing the atomic cartesian coordinates.
    * `positions[0], positions[1], positions[2]` must contain the x, y, z
    * cartesian coordinates of the first atom, and so on.
    */
-  void (*positions)(const void *user_data, const double **positions);
+  rascal_status_t (*positions)(const void *user_data, const double **positions);
   /**
    * This function should write the unit cell matrix in `cell`, which have
    * space for 9 values. The cell should be written in row major order, i.e.
    * `ax ay az bx by bz cx cy cz`, where a/b/c are the unit cell vectors.
    */
-  void (*cell)(const void *user_data, double *cell);
+  rascal_status_t (*cell)(const void *user_data, double *cell);
   /**
    * This function should compute the neighbor list with the given cutoff,
    * and store it for later access using `pairs` or `pairs_containing`.
    */
-  void (*compute_neighbors)(void *user_data, double cutoff);
+  rascal_status_t (*compute_neighbors)(void *user_data, double cutoff);
   /**
    * This function should set `*pairs` to a pointer to the first element of a
    * contiguous array containing all pairs in this system; and `*count` to
@@ -169,7 +180,7 @@ typedef struct rascal_system_t {
    * cutoff passed in the last call to `compute_neighbors`. This function is
    * only valid to call after a call to `compute_neighbors`.
    */
-  void (*pairs)(const void *user_data, const struct rascal_pair_t **pairs, uintptr_t *count);
+  rascal_status_t (*pairs)(const void *user_data, const struct rascal_pair_t **pairs, uintptr_t *count);
   /**
    * This function should set `*pairs` to a pointer to the first element of a
    * contiguous array containing all pairs in this system containing the atom
@@ -181,7 +192,7 @@ typedef struct rascal_system_t {
    * included both in the return of `pairs_containing(i)` and
    * `pairs_containing(j)`.
    */
-  void (*pairs_containing)(const void *user_data, uintptr_t center, const struct rascal_pair_t **pairs, uintptr_t *count);
+  rascal_status_t (*pairs_containing)(const void *user_data, uintptr_t center, const struct rascal_pair_t **pairs, uintptr_t *count);
 } rascal_system_t;
 
 /**

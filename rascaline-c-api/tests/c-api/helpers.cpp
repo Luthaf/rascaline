@@ -11,11 +11,12 @@ rascal_system_t simple_system() {
     rascal_system_t system;
     std::memset(&system, 0, sizeof(system));
 
-    system.size = [](const void* _, uintptr_t* size){
+    system.size = [](const void* _, uintptr_t* size) {
         *size = 4;
+        return RASCAL_SUCCESS;
     };
 
-    system.positions = [](const void* _, const double** positions){
+    system.positions = [](const void* _, const double** positions) {
         static double POSITIONS[4][3] = {
             {0, 0, 0},
             {1, 1, 1},
@@ -23,28 +24,35 @@ rascal_system_t simple_system() {
             {3, 3, 3},
         };
         *positions = POSITIONS[0];
+        return RASCAL_SUCCESS;
     };
 
-    system.species = [](const void* _, const uintptr_t** species){
+    system.species = [](const void* _, const uintptr_t** species) {
         static uintptr_t SPECIES[4] = {6, 1, 1, 1};
         *species = SPECIES;
+        return RASCAL_SUCCESS;
     };
 
-    system.cell = [](const void* _, double* cell){
+    system.cell = [](const void* _, double* cell) {
         static double CELL[3][3] = {
             {10, 0, 0},
             {0, 10, 0},
             {0, 0, 10},
         };
         std::memcpy(cell, CELL, sizeof(CELL));
+        return RASCAL_SUCCESS;
     };
 
     // basic compute_neighbors, always returning the same pairs
-    system.compute_neighbors = [](void* _, double cutoff){
-        assert(cutoff > SQRT_3 && cutoff < 3.46410161513775458704);
+    system.compute_neighbors = [](void* _, double cutoff) {
+        if (cutoff < SQRT_3 || cutoff > 3.46410161513775458704) {
+            return -1;
+        } else {
+            return RASCAL_SUCCESS;
+        }
     };
 
-    system.pairs = [](const void* _, const rascal_pair_t** pairs, uintptr_t* count){
+    system.pairs = [](const void* _, const rascal_pair_t** pairs, uintptr_t* count) {
         static rascal_pair_t PAIRS[] = {
             {0, 1, SQRT_3, {1, 1, 1}},
             {1, 2, SQRT_3, {1, 1, 1}},
@@ -53,6 +61,7 @@ rascal_system_t simple_system() {
 
         *pairs = PAIRS;
         *count = 3;
+        return RASCAL_SUCCESS;
     };
 
     system.pairs_containing = [](const void* _, uintptr_t center, const rascal_pair_t** pairs, uintptr_t* count){
@@ -87,8 +96,9 @@ rascal_system_t simple_system() {
             *pairs = PAIRS_3;
             *count = 1;
         } else {
-            throw std::runtime_error("got invalid center atom");
+            return -1;
         }
+        return RASCAL_SUCCESS;
     };
 
     return system;

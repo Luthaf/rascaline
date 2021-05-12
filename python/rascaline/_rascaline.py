@@ -17,20 +17,20 @@ if arch == "32bit":
 elif arch == "64bit":
     c_uintptr_t = ctypes.c_uint64
 
+rascal_status_t = ctypes.c_int32
+RASCAL_SUCCESS = 0
+RASCAL_INVALID_PARAMETER_ERROR = 1
+RASCAL_JSON_ERROR = 2
+RASCAL_UTF8_ERROR = 3
+RASCAL_CHEMFILES_ERROR = 4
+RASCAL_SYSTEM_ERROR = 128
+RASCAL_INTERNAL_ERROR = 255
+
 
 class rascal_indexes(enum.Enum):
     RASCAL_INDEXES_FEATURES = 0
     RASCAL_INDEXES_SAMPLES = 1
     RASCAL_INDEXES_GRADIENT_SAMPLES = 2
-
-
-class rascal_status_t(enum.Enum):
-    RASCAL_SUCCESS = 0
-    RASCAL_INVALID_PARAMETER_ERROR = 1
-    RASCAL_JSON_ERROR = 2
-    RASCAL_UTF8_ERROR = 3
-    RASCAL_UNKNOWN_ERROR = 254
-    RASCAL_INTERNAL_PANIC = 255
 
 
 class rascal_calculator_t(ctypes.Structure):
@@ -53,13 +53,13 @@ class rascal_pair_t(ctypes.Structure):
 class rascal_system_t(ctypes.Structure):
     _fields_ = [
         ("user_data", ctypes.c_void_p),
-        ("size", CFUNCTYPE(None, ctypes.c_void_p, POINTER(c_uintptr_t))),
-        ("species", CFUNCTYPE(None, ctypes.c_void_p, POINTER(ndpointer(c_uintptr_t, flags='C_CONTIGUOUS')))),
-        ("positions", CFUNCTYPE(None, ctypes.c_void_p, POINTER(ndpointer(ctypes.c_double, flags='C_CONTIGUOUS')))),
-        ("cell", CFUNCTYPE(None, ctypes.c_void_p, POINTER(ctypes.c_double))),
-        ("compute_neighbors", CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_double)),
-        ("pairs", CFUNCTYPE(None, ctypes.c_void_p, POINTER(ndpointer(rascal_pair_t, flags='C_CONTIGUOUS')), POINTER(c_uintptr_t))),
-        ("pairs_containing", CFUNCTYPE(None, ctypes.c_void_p, c_uintptr_t, POINTER(ndpointer(rascal_pair_t, flags='C_CONTIGUOUS')), POINTER(c_uintptr_t))),
+        ("size", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, POINTER(c_uintptr_t))),
+        ("species", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, POINTER(ndpointer(c_uintptr_t, flags='C_CONTIGUOUS')))),
+        ("positions", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, POINTER(ndpointer(ctypes.c_double, flags='C_CONTIGUOUS')))),
+        ("cell", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, POINTER(ctypes.c_double))),
+        ("compute_neighbors", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, ctypes.c_double)),
+        ("pairs", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, POINTER(ndpointer(rascal_pair_t, flags='C_CONTIGUOUS')), POINTER(c_uintptr_t))),
+        ("pairs_containing", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, c_uintptr_t, POINTER(ndpointer(rascal_pair_t, flags='C_CONTIGUOUS')), POINTER(c_uintptr_t))),
     ]
 
 

@@ -40,3 +40,50 @@ TEST_CASE("basic systems") {
     CHECK_THAT(cell[7], Catch::Matchers::WithinULP(7.84785, 10));
     CHECK_THAT(cell[8], Catch::Matchers::WithinULP(7.84785, 10));
 }
+
+class BadSystem: public rascaline::System {
+public:
+    uintptr_t size() const override {
+        throw std::runtime_error("this is a test error");
+    }
+
+    const uintptr_t* species() const override {
+        throw std::runtime_error("unimplemented");
+    }
+
+    const double* positions() const override {
+        throw std::runtime_error("unimplemented");
+    }
+
+    CellMatrix cell() const override {
+        throw std::runtime_error("unimplemented");
+    }
+
+    void compute_neighbors(double cutoff) override {
+        throw std::runtime_error("unimplemented");
+    }
+
+    const std::vector<rascal_pair_t>& pairs() const override {
+        throw std::runtime_error("unimplemented");
+    }
+
+    const std::vector<rascal_pair_t>& pairs_containing(uintptr_t center) const override {
+        throw std::runtime_error("unimplemented");
+    }
+};
+
+TEST_CASE("systems errors") {
+    const char* HYPERS_JSON = R"({
+        "cutoff": 3.0,
+        "delta": 4,
+        "name": "",
+        "gradients": true
+    })";
+
+    auto system = BadSystem();
+    auto systems = std::vector<rascaline::System*>();
+    systems.push_back(&system);
+    auto calculator = rascaline::Calculator("dummy_calculator", HYPERS_JSON);
+
+    CHECK_THROWS_WITH(calculator.compute(systems), "this is a test error");
+}

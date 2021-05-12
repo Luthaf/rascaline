@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from ._rascaline import rascal_status_t
+from ._rascaline import RASCAL_SUCCESS
 from .clib import _get_library
 
 
@@ -18,11 +18,24 @@ class RascalError(Exception):
         """``Optional[int]``, status code for this exception"""
 
 
+LAST_EXCEPTION = None
+
+
+def _save_exception(e):
+    global LAST_EXCEPTION
+    LAST_EXCEPTION = e
+
+
 def _check_rascal_status_t(status):
-    if status == rascal_status_t.RASCAL_SUCCESS.value:
+    if status == RASCAL_SUCCESS:
         return
-    else:
+    elif status > RASCAL_SUCCESS:
         raise RascalError(last_error(), status)
+    elif status < RASCAL_SUCCESS:
+        global LAST_EXCEPTION
+        e = LAST_EXCEPTION
+        LAST_EXCEPTION = None
+        raise RascalError(last_error(), status) from e
 
 
 def _check_rascal_pointer(pointer):

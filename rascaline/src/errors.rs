@@ -5,14 +5,18 @@ use std::str::Utf8Error;
 pub enum Error {
     /// Got an invalid parameter value in a function
     InvalidParameter(String),
-    /// Errors coming from the system implementation currently used
-    System(String),
     /// Error while serializing/deserializing data
     Json(serde_json::Error),
     /// Error due to C strings containing non-utf8 data
     Utf8(Utf8Error),
     /// Error related to reading files with chemfiles
     Chemfiles(String),
+    /// Errors coming from external callbacks, typically inside the System
+    /// implementation
+    External {
+        status: i32,
+        message: String
+    },
     /// Error used for failed internal consistency check and panics, i.e. bugs
     /// in rascaline.
     Internal(String),
@@ -22,10 +26,10 @@ impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Error::InvalidParameter(e) => write!(f, "invalid parameter: {}", e),
-            Error::System(e) => write!(f, "error from system: {}", e),
             Error::Json(e) => write!(f, "json error: {}", e),
             Error::Utf8(e) => write!(f, "utf8 decoding error: {}", e),
             Error::Chemfiles(e) => write!(f, "chemfiles error: {}", e),
+            Error::External{status, message} => write!(f, "error from external code (status {}): {}", status, message),
             Error::Internal(e) => write!(f, "internal error: {}", e),
         }
     }
@@ -35,9 +39,9 @@ impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Error::InvalidParameter(_) |
-            Error::System(_) |
             Error::Internal(_) |
-            Error::Chemfiles(_) => None,
+            Error::Chemfiles(_) |
+            Error::External{..} => None,
             Error::Json(e) => Some(e),
             Error::Utf8(e) => Some(e),
         }

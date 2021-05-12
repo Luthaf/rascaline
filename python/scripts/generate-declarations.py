@@ -40,11 +40,12 @@ class Enum:
         self.values[name] = value
 
 
-class FuncDefVisitor(c_ast.NodeVisitor):
+class AstVisitor(c_ast.NodeVisitor):
     def __init__(self):
         self.functions = []
         self.enums = []
         self.structs = []
+        self.defines = {}
 
     def visit_Decl(self, node):
         if not node.name.startswith("rascal_"):
@@ -78,9 +79,20 @@ def parse(file):
     cpp_args = ["-E", "-I", FAKE_INCLUDES]
     ast = parse_file(file, use_cpp=True, cpp_path="gcc", cpp_args=cpp_args)
 
-    v = FuncDefVisitor()
-    v.visit(ast)
-    return v
+    visitor = AstVisitor()
+    visitor.visit(ast)
+
+    with open(file) as fd:
+        for line in fd:
+            if "#define" in line:
+                split = line.split()
+                name = split[1]
+                if name == "RASCALINE_H":
+                    continue
+                value = split[2]
+
+                visitor.defines[name] = value
+    return visitor
 
 
 def c_type_name(name):
@@ -226,8 +238,13 @@ if arch == "32bit":
     c_uintptr_t = ctypes.c_uint32
 elif arch == "64bit":
     c_uintptr_t = ctypes.c_uint64
+
+rascal_status_t = ctypes.c_int32
 """
         )
+        for name, value in data.defines.items():
+            file.write(f"{name} = {value}\n")
+
         generate_enums(file, data.enums)
         generate_structs(file, data.structs)
         generate_functions(file, data.functions)
