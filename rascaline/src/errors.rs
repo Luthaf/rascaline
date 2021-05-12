@@ -5,6 +5,8 @@ use std::str::Utf8Error;
 pub enum Error {
     /// Got an invalid parameter value in a function
     InvalidParameter(String),
+    /// Errors coming from the system implementation currently used
+    System(String),
     /// Error while serializing/deserializing data
     Json(serde_json::Error),
     /// Error due to C strings containing non-utf8 data
@@ -20,6 +22,7 @@ impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Error::InvalidParameter(e) => write!(f, "invalid parameter: {}", e),
+            Error::System(e) => write!(f, "error from system: {}", e),
             Error::Json(e) => write!(f, "json error: {}", e),
             Error::Utf8(e) => write!(f, "utf8 decoding error: {}", e),
             Error::Chemfiles(e) => write!(f, "chemfiles error: {}", e),
@@ -32,6 +35,7 @@ impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Error::InvalidParameter(_) |
+            Error::System(_) |
             Error::Internal(_) |
             Error::Chemfiles(_) => None,
             Error::Json(e) => Some(e),

@@ -39,7 +39,7 @@ pub trait CalculatorBase: std::panic::RefUnwindSafe {
     fn check_samples(&self, indexes: &Indexes, systems: &mut [Box<dyn System>]) -> Result<(), Error> {
         let samples = self.samples();
         assert_eq!(indexes.names(), samples.names());
-        let allowed = samples.indexes(systems);
+        let allowed = samples.indexes(systems)?;
         for value in indexes.iter() {
             if !allowed.contains(value) {
                 return Err(Error::InvalidParameter(format!(

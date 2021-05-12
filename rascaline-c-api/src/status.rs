@@ -23,10 +23,12 @@ pub struct rascal_status_t(pub(crate) i32);
 pub const RASCAL_SUCCESS: i32 = 0;
 /// Status code used when a function got an invalid parameter
 pub const RASCAL_INVALID_PARAMETER_ERROR: i32 = 1;
+/// Status code used for error coming from the system implementation
+pub const RASCAL_SYSTEM_ERROR: i32 = 2;
 /// Status code used when there was an error reading or writing JSON
-pub const RASCAL_JSON_ERROR: i32 = 2;
+pub const RASCAL_JSON_ERROR: i32 = 3;
 /// Status code used when a string contains non-utf8 data
-pub const RASCAL_UTF8_ERROR: i32 = 3;
+pub const RASCAL_UTF8_ERROR: i32 = 4;
 /// Status code used when there was an error of unknown kind
 pub const RASCAL_UNKNOWN_ERROR: i32 = 254;
 /// Status code used when there was an internal error, i.e. there is a bug
@@ -41,6 +43,7 @@ impl From<Error> for rascal_status_t {
         });
         match error {
             Error::InvalidParameter(_) => rascal_status_t(RASCAL_INVALID_PARAMETER_ERROR),
+            Error::System(_) => rascal_status_t(RASCAL_SYSTEM_ERROR),
             Error::Json(_) => rascal_status_t(RASCAL_JSON_ERROR),
             Error::Utf8(_) => rascal_status_t(RASCAL_UTF8_ERROR),
             Error::Internal(_) => rascal_status_t(RASCAL_INTERNAL_ERROR),

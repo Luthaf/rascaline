@@ -1,8 +1,9 @@
 use std::os::raw::{c_char, c_void};
 use std::ffi::CStr;
 
-use rascaline::{SimpleSystem, types::{Vector3D, Matrix3}};
-use rascaline::systems::{System, Pair, UnitCell};
+use rascaline::types::{Vector3D, Matrix3};
+use rascaline::systems::{SimpleSystem, Pair, UnitCell};
+use rascaline::{Error, System};
 
 use super::{catch_unwind, rascal_status_t};
 
@@ -89,74 +90,127 @@ pub struct rascal_system_t {
 }
 
 impl<'a> System for &'a mut rascal_system_t {
-    fn size(&self) -> usize {
+    fn size(&self) -> Result<usize, Error> {
         let mut value = 0;
-        let function = self.size.expect("rascal_system_t.size is NULL");
+        let function = self.size.ok_or_else(|| Error::System(
+            "rascal_system_t.size function is NULL".into()
+        ))?;
         unsafe {
             function(self.user_data, &mut value);
         }
-        return value;
+        return Ok(value);
     }
 
-    fn species(&self) -> &[usize] {
+    fn species(&self) -> Result<&[usize], Error> {
         let mut ptr = std::ptr::null();
-        let function = self.species.expect("rascal_system_t.species is NULL");
+        let function = self.species.ok_or_else(|| Error::System(
+            "rascal_system_t.species function is NULL".into()
+        ))?;
         unsafe {
             function(self.user_data, &mut ptr);
-            // TODO: check if ptr.is_null() and error in some way?
-            return std::slice::from_raw_parts(ptr, self.size());
+        }
+
+        let size = self.size()?;
+        if ptr.is_null() && size != 0 {
+            return Err(Error::System(
+                "rascal_system_t.species returned a NULL pointer with non zero size".into()
+            ));
+        }
+
+        unsafe {
+            return Ok(std::slice::from_raw_parts(ptr, self.size()?));
         }
     }
 
-    fn positions(&self) -> &[Vector3D] {
+    fn positions(&self) -> Result<&[Vector3D], Error> {
         let mut ptr = std::ptr::null();
-        let function = self.positions.expect("rascal_system_t.positions is NULL");
+        let function = self.positions.ok_or_else(|| Error::System(
+            "rascal_system_t.positions function is NULL".into()
+        ))?;
         unsafe {
             function(self.user_data, &mut ptr);
-            // TODO: check if ptr.is_null() and error in some way?
-            return std::slice::from_raw_parts(ptr.cast(), self.size());
+        }
+
+        let size = self.size()?;
+        if ptr.is_null() && size != 0 {
+            return Err(Error::System(
+                "rascal_system_t.positions returned a NULL pointer with non zero size".into()
+            ));
+        }
+
+        unsafe {
+            return Ok(std::slice::from_raw_parts(ptr.cast(), self.size()?));
         }
     }
 
-    fn cell(&self) -> UnitCell {
+    fn cell(&self) -> Result<UnitCell, Error> {
         let mut value = [[0.0; 3]; 3];
-        let function = self.cell.expect("rascal_system_t.cell is NULL");
-        let matrix: Matrix3 = unsafe {
+        let function = self.cell.ok_or_else(|| Error::System(
+            "rascal_system_t.cell function is NULL".into()
+        ))?;
+        unsafe {
             function(self.user_data, &mut value[0][0]);
-            std::mem::transmute(value)
-        };
-
-        if matrix == Matrix3::zero() {
-            return UnitCell::infinite();
         }
 
-        return UnitCell::from(matrix);
+        let matrix = Matrix3::from(value);
+        if matrix == Matrix3::zero() {
+            Ok(UnitCell::infinite())
+        } else {
+            Ok(UnitCell::from(matrix))
+        }
     }
 
-    fn compute_neighbors(&mut self, cutoff: f64) {
-        let function = self.compute_neighbors.expect("rascal_system_t.compute_neighbors is NULL");
+    fn compute_neighbors(&mut self, cutoff: f64) -> Result<(), Error> {
+        let function = self.compute_neighbors.ok_or_else(|| Error::System(
+            "rascal_system_t.compute_neighbors function is NULL".into()
+        ))?;
         unsafe {
             function(self.user_data, cutoff);
         }
+        Ok(())
     }
 
-    fn pairs(&self) -> &[Pair] {
-        let function = self.pairs.expect("rascal_system_t.pairs is NULL");
+    fn pairs(&self) -> Result<&[Pair], Error> {
         let mut ptr = std::ptr::null();
         let mut count = 0;
+
+        let function = self.pairs.ok_or_else(|| Error::System(
+            "rascal_system_t.pairs function is NULL".into()
+        ))?;
         unsafe {
             function(self.user_data, &mut ptr, &mut count);
-            return std::slice::from_raw_parts(ptr.cast(), count);
+        }
+
+        if ptr.is_null() && count != 0 {
+            return Err(Error::System(
+                "rascal_system_t.positions returned a NULL pointer with non zero size".into()
+            ));
+        }
+        unsafe {
+            // SAFETY: ptr is non null, and Pair / rascal_pair_t have the same layout
+            return Ok(std::slice::from_raw_parts(ptr.cast(), count));
         }
     }
 
-    fn pairs_containing(&self, center: usize) -> &[Pair] {
-        let function = self.pairs_containing.expect("rascal_system_t.pairs_containing is NULL");
+    fn pairs_containing(&self, center: usize) -> Result<&[Pair], Error> {
         let mut ptr = std::ptr::null();
         let mut count = 0;
+
+        let function = self.pairs_containing.ok_or_else(|| Error::System(
+            "rascal_system_t.pairs_containing function is NULL".into()
+        ))?;
         unsafe {
             function(self.user_data, center, &mut ptr, &mut count);
-            return std::slice::from_raw_parts(ptr.cast(), count);
+        }
+
+        if ptr.is_null() && count != 0 {
+            return Err(Error::System(
+                "rascal_system_t.positions returned a NULL pointer with non zero size".into()
+            ));
+        }
+        unsafe {
+            // SAFETY: ptr is non null, and Pair / rascal_pair_t have the same layout
+            return Ok(std::slice::from_raw_parts(ptr.cast(), count));
         }
     }
 }
@@ -165,19 +219,19 @@ impl<'a> System for &'a mut rascal_system_t {
 impl From<SimpleSystem> for rascal_system_t {
     fn from(system: SimpleSystem) -> rascal_system_t {
         unsafe extern fn size(this: *const c_void, size: *mut usize) {
-            *size = (*this.cast::<SimpleSystem>()).size();
+            *size = (*this.cast::<SimpleSystem>()).size().unwrap();
         }
 
         unsafe extern fn species(this: *const c_void, species: *mut *const usize) {
-            *species = (*this.cast::<SimpleSystem>()).species().as_ptr();
+            *species = (*this.cast::<SimpleSystem>()).species().unwrap().as_ptr();
         }
 
         unsafe extern fn positions(this: *const c_void, positions: *mut *const f64) {
-            *positions = (*this.cast::<SimpleSystem>()).positions().as_ptr().cast();
+            *positions = (*this.cast::<SimpleSystem>()).positions().unwrap().as_ptr().cast();
         }
 
         unsafe extern fn cell(this: *const c_void, cell: *mut f64) {
-            let matrix = (*this.cast::<SimpleSystem>()).cell().matrix();
+            let matrix = (*this.cast::<SimpleSystem>()).cell().unwrap().matrix();
             cell.add(0).write(matrix[0][0]);
             cell.add(1).write(matrix[0][1]);
             cell.add(2).write(matrix[0][2]);
@@ -192,17 +246,17 @@ impl From<SimpleSystem> for rascal_system_t {
         }
 
         unsafe extern fn compute_neighbors(this: *mut c_void, cutoff: f64) {
-            (*this.cast::<SimpleSystem>()).compute_neighbors(cutoff);
+            (*this.cast::<SimpleSystem>()).compute_neighbors(cutoff).unwrap();
         }
 
         unsafe extern fn pairs(this: *const c_void, pairs: *mut *const rascal_pair_t, count: *mut usize) {
-            let all_pairs = (*this.cast::<SimpleSystem>()).pairs();
+            let all_pairs = (*this.cast::<SimpleSystem>()).pairs().unwrap();
             *pairs = all_pairs.as_ptr().cast();
             *count = all_pairs.len();
         }
 
         unsafe extern fn pairs_containing(this: *const c_void, center: usize, pairs: *mut *const rascal_pair_t, count: *mut usize) {
-            let all_pairs = (*this.cast::<SimpleSystem>()).pairs_containing(center);
+            let all_pairs = (*this.cast::<SimpleSystem>()).pairs_containing(center).unwrap();
             *pairs = all_pairs.as_ptr().cast();
             *count = all_pairs.len();
         }

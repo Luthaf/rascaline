@@ -1,3 +1,5 @@
+use crate::Error;
+
 use super::{UnitCell, System, Vector3D, Pair};
 
 use super::neighbors::NeighborsList;
@@ -37,50 +39,59 @@ impl SimpleSystem {
 }
 
 impl System for SimpleSystem {
-    fn size(&self) -> usize {
-        self.species.len()
+    fn size(&self) -> Result<usize, Error> {
+        Ok(self.species.len())
     }
 
-    fn positions(&self) -> &[Vector3D] {
-        &self.positions
+    fn positions(&self) -> Result<&[Vector3D], Error> {
+        Ok(&self.positions)
     }
 
-    fn species(&self) -> &[usize] {
-        &self.species
+    fn species(&self) -> Result<&[usize], Error> {
+        Ok(&self.species)
     }
 
-    fn cell(&self) -> UnitCell {
-        self.cell
+    fn cell(&self) -> Result<UnitCell, Error> {
+        Ok(self.cell)
     }
 
     #[allow(clippy::float_cmp)]
-    fn compute_neighbors(&mut self, cutoff: f64) {
+    fn compute_neighbors(&mut self, cutoff: f64) -> Result<(), Error> {
         // re-use already computed NL is possible
         if let Some(ref nl) = self.neighbors {
             if nl.cutoff == cutoff {
-                return;
+                return Ok(());
             }
         }
 
-        self.neighbors = Some(NeighborsList::new(self.positions(), self.cell(), cutoff));
+        self.neighbors = Some(NeighborsList::new(self.positions()?, self.cell()?, cutoff));
+        Ok(())
     }
 
-    fn pairs(&self) -> &[Pair] {
-        &self.neighbors.as_ref().expect("neighbor list is not initialized").pairs
+    fn pairs(&self) -> Result<&[Pair], Error> {
+        let neighbors = self.neighbors.as_ref().ok_or_else(|| Error::Internal(
+            "neighbor list is not initialized".into()
+        ))?;
+        Ok(&neighbors.pairs)
     }
 
-    fn pairs_containing(&self, center: usize) -> &[Pair] {
-        &self.neighbors.as_ref().expect("neighbor list is not initialized").pairs_by_center[center]
+    fn pairs_containing(&self, center: usize) -> Result<&[Pair], Error> {
+        let neighbors = self.neighbors.as_ref().ok_or_else(|| Error::Internal(
+            "neighbor list is not initialized".into()
+        ))?;
+        Ok(&neighbors.pairs_by_center[center])
     }
 }
 
-impl From<&dyn System> for SimpleSystem {
-    fn from(system: &dyn System) -> SimpleSystem {
-        let mut new = SimpleSystem::new(system.cell());
-        for (&species, &position) in system.species().iter().zip(system.positions()) {
+impl std::convert::TryFrom<&dyn System> for SimpleSystem {
+    type Error = Error;
+
+    fn try_from(system: &dyn System) -> Result<SimpleSystem, Error> {
+        let mut new = SimpleSystem::new(system.cell()?);
+        for (&species, &position) in system.species()?.iter().zip(system.positions()?) {
             new.add_atom(species, position);
         }
-        return new;
+        return Ok(new);
     }
 }
 
@@ -95,12 +106,12 @@ mod tests {
         system.add_atom(1, Vector3D::new(1.0, 3.0, 4.0));
         system.add_atom(3, Vector3D::new(5.0, 3.0, 4.0));
 
-        assert_eq!(system.size(), 3);
+        assert_eq!(system.size().unwrap(), 3);
         assert_eq!(system.species.len(), 3);
         assert_eq!(system.positions.len(), 3);
 
-        assert_eq!(system.species(), &[3, 1, 3]);
-        assert_eq!(system.positions(), &[
+        assert_eq!(system.species().unwrap(), &[3, 1, 3]);
+        assert_eq!(system.positions().unwrap(), &[
             Vector3D::new(2.0, 3.0, 4.0),
             Vector3D::new(1.0, 3.0, 4.0),
             Vector3D::new(5.0, 3.0, 4.0),

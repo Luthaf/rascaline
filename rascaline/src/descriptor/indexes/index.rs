@@ -4,7 +4,7 @@ use std::hash::BuildHasherDefault;
 
 use twox_hash::XxHash64;
 
-use crate::systems::System;
+use crate::{Error, System};
 
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -281,17 +281,17 @@ impl std::ops::Index<usize> for Indexes {
 pub trait SamplesIndexes {
     fn names(&self) -> Vec<&str>;
 
-    fn indexes(&self, systems: &mut [Box<dyn System>]) -> Indexes;
+    fn indexes(&self, systems: &mut [Box<dyn System>]) -> Result<Indexes, Error>;
 
-    fn with_gradients(&self, systems: &mut [Box<dyn System>]) -> (Indexes, Option<Indexes>) {
-        let indexes = self.indexes(systems);
-        let gradients = self.gradients_for(systems, &indexes);
-        return (indexes, gradients);
+    fn with_gradients(&self, systems: &mut [Box<dyn System>]) -> Result<(Indexes, Option<Indexes>), Error> {
+        let indexes = self.indexes(systems)?;
+        let gradients = self.gradients_for(systems, &indexes)?;
+        return Ok((indexes, gradients));
     }
 
     #[allow(unused_variables)]
-    fn gradients_for(&self, systems: &mut [Box<dyn System>], samples: &Indexes) -> Option<Indexes> {
-        None
+    fn gradients_for(&self, systems: &mut [Box<dyn System>], samples: &Indexes) -> Result<Option<Indexes>, Error> {
+        Ok(None)
     }
 }
 

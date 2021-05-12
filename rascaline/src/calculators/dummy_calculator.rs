@@ -81,11 +81,11 @@ impl CalculatorBase for DummyCalculator {
                     descriptor.values[[sample_i, feature_i]] = center as f64 + self.delta as f64;
                 } else if feature[1].isize() == 1 {
                     let system = &mut *systems[i_system];
-                    system.compute_neighbors(self.cutoff);
+                    system.compute_neighbors(self.cutoff)?;
 
-                    let positions = system.positions();
+                    let positions = system.positions()?;
                     let mut sum = positions[center][0] + positions[center][1] + positions[center][2];
-                    for pair in system.pairs() {
+                    for pair in system.pairs()? {
                         if pair.first == center {
                             sum += positions[pair.second][0] + positions[pair.second][1] + positions[pair.second][2];
                         }

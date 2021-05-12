@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, convert::TryFrom};
 
 use crate::{SimpleSystem, descriptor::{Descriptor, Indexes, IndexValue, IndexesBuilder}};
 use crate::systems::System;
@@ -27,7 +27,10 @@ impl<'a> SelectedIndexes<'a> {
     fn into_features(self, calculator: &dyn CalculatorBase) -> Result<Indexes, Error> {
         let indexes = match self {
             SelectedIndexes::All => calculator.features(),
-            SelectedIndexes::Some(indexes) => indexes,
+            SelectedIndexes::Some(indexes) => {
+                calculator.check_features(&indexes)?;
+                indexes
+            },
             SelectedIndexes::FromC(list) => {
                 let mut builder = IndexesBuilder::new(calculator.features_names());
 
@@ -41,11 +44,12 @@ impl<'a> SelectedIndexes<'a> {
                 for chunk in list.chunks(builder.size()) {
                     builder.add(chunk);
                 }
-                builder.finish()
+                let indexes = builder.finish();
+                calculator.check_features(&indexes)?;
+                indexes
             }
         };
 
-        calculator.check_features(&indexes)?;
         return Ok(indexes);
     }
 
@@ -57,9 +61,12 @@ impl<'a> SelectedIndexes<'a> {
         let indexes = match self {
             SelectedIndexes::All => {
                 let samples = calculator.samples();
-                samples.indexes(systems)
+                samples.indexes(systems)?
             },
-            SelectedIndexes::Some(indexes) => indexes,
+            SelectedIndexes::Some(indexes) => {
+                calculator.check_samples(&indexes, systems)?;
+                indexes
+            },
             SelectedIndexes::FromC(list) => {
                 let samples = calculator.samples();
                 let mut builder = IndexesBuilder::new(samples.names());
@@ -74,11 +81,12 @@ impl<'a> SelectedIndexes<'a> {
                 for chunk in list.chunks(builder.size()) {
                     builder.add(chunk);
                 }
-                builder.finish()
+                let indexes = builder.finish();
+                calculator.check_samples(&indexes, systems)?;
+                indexes
             }
         };
 
-        calculator.check_samples(&indexes, systems)?;
         return Ok(indexes);
     }
 }
@@ -165,7 +173,10 @@ impl Calculator {
     ) -> Result<(), Error> {
         let mut native_systems;
         let systems = if options.use_native_system {
-            native_systems = to_native_systems(systems);
+            native_systems = Vec::with_capacity(systems.len());
+            for system in systems {
+                native_systems.push(Box::new(SimpleSystem::try_from(&**system)?) as Box<dyn System>);
+            }
             &mut native_systems
         } else {
             systems
@@ -177,7 +188,7 @@ impl Calculator {
         let samples_builder = self.implementation.samples();
         if self.implementation.compute_gradients() {
             let gradients = samples_builder
-                .gradients_for(systems, &samples)
+                .gradients_for(systems, &samples)?
                 .expect("this samples definition do not support gradients");
             descriptor.prepare_gradients(samples, gradients, features);
         } else {
@@ -189,13 +200,6 @@ impl Calculator {
     }
 }
 
-fn to_native_systems(systems: &mut [Box<dyn System>]) -> Vec<Box<dyn System>> {
-    let mut native_systems = Vec::with_capacity(systems.len());
-    for system in systems.iter() {
-        native_systems.push(Box::new(SimpleSystem::from(&**system)) as Box<dyn System>);
-    }
-    return native_systems;
-}
 
 /// Registration of calculator implementations
 use crate::calculators::{DummyCalculator, SortedDistances};

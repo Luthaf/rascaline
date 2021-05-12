@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use indexmap::IndexSet;
 
-use crate::systems::System;
+use crate::{Error, System};
 use super::super::{SamplesIndexes, Indexes, IndexesBuilder, IndexValue};
 
 /// `AtomSpeciesSamples` is used to represents atom-centered environments, where
@@ -50,14 +50,14 @@ impl SamplesIndexes for AtomSpeciesSamples {
     }
 
     #[time_graph::instrument(name = "AtomSpeciesSamples::indexes")]
-    fn indexes(&self, systems: &mut [Box<dyn System>]) -> Indexes {
+    fn indexes(&self, systems: &mut [Box<dyn System>]) -> Result<Indexes, Error> {
         // Accumulate indexes in a set first to ensure uniqueness of the indexes
         // even if their are multiple neighbors of the same specie around a
         // given center
         let mut set = BTreeSet::new();
         for (i_system, system) in systems.iter_mut().enumerate() {
-            system.compute_neighbors(self.cutoff);
-            let species = system.species();
+            system.compute_neighbors(self.cutoff)?;
+            let species = system.species()?;
 
             if self.self_contribution {
                 for (center, &species) in species.iter().enumerate() {
@@ -65,7 +65,7 @@ impl SamplesIndexes for AtomSpeciesSamples {
                 }
             }
 
-            for pair in system.pairs() {
+            for pair in system.pairs()? {
                 let species_first = species[pair.first];
                 let species_second = species[pair.second];
 
@@ -80,11 +80,12 @@ impl SamplesIndexes for AtomSpeciesSamples {
                 IndexValue::from(s), IndexValue::from(c), IndexValue::from(a), IndexValue::from(b)
             ]);
         }
-        return indexes.finish();
+
+        return Ok(indexes.finish());
     }
 
     #[time_graph::instrument(name = "AtomSpeciesSamples::gradients_for")]
-    fn gradients_for(&self, systems: &mut [Box<dyn System>], samples: &Indexes) -> Option<Indexes> {
+    fn gradients_for(&self, systems: &mut [Box<dyn System>], samples: &Indexes) -> Result<Option<Indexes>, Error> {
         assert_eq!(samples.names(), self.names());
 
         // We need IndexSet to yield the indexes in the right order, i.e. the
@@ -97,14 +98,14 @@ impl SamplesIndexes for AtomSpeciesSamples {
             let species_neighbor = requested[3].usize();
 
             let system = &mut *systems[i_system.usize()];
-            system.compute_neighbors(self.cutoff);
+            system.compute_neighbors(self.cutoff)?;
 
             if species_neighbor == species_center && self.self_contribution {
                 indexes.insert((i_system, center, species_center, species_center, center));
             }
 
-            let species = system.species();
-            for pair in system.pairs_containing(center) {
+            let species = system.species()?;
+            for pair in system.pairs_containing(center)? {
                 let neighbor = if pair.first == center { pair.second } else { pair.first };
 
                 if species[neighbor] != species_neighbor {
@@ -130,7 +131,7 @@ impl SamplesIndexes for AtomSpeciesSamples {
             gradients.add(&[system, center, alpha, beta, neighbor, IndexValue::from(2)]);
         }
 
-        return Some(gradients.finish());
+        return Ok(Some(gradients.finish()));
     }
 }
 
@@ -150,7 +151,7 @@ mod tests {
     fn atoms() {
         let mut systems = test_systems(&["CH", "water"]).boxed();
         let strategy = AtomSpeciesSamples::new(2.0);
-        let indexes = strategy.indexes(&mut systems);
+        let indexes = strategy.indexes(&mut systems).unwrap();
         assert_eq!(indexes.count(), 7);
         assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor"]);
         assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
@@ -175,7 +176,7 @@ mod tests {
     fn atoms_gradient() {
         let mut systems = test_systems(&["CH"]).boxed();
         let strategy = AtomSpeciesSamples::new(2.0);
-        let (_, gradients) = strategy.with_gradients(&mut systems);
+        let (_, gradients) = strategy.with_gradients(&mut systems).unwrap();
         let gradients = gradients.unwrap();
 
         assert_eq!(gradients.count(), 12);
@@ -206,10 +207,11 @@ mod tests {
         indexes.add(&[v!(1), v!(0), v!(123456), v!(1)]);
         indexes.add(&[v!(0), v!(0), v!(1), v!(6)]);
         indexes.add(&[v!(1), v!(1), v!(1), v!(1)]);
+        let indexes = indexes.finish();
 
         let mut systems = test_systems(&["CH", "water"]).boxed();
         let strategy = AtomSpeciesSamples::new(2.0);
-        let gradients = strategy.gradients_for(&mut systems, &indexes.finish());
+        let gradients = strategy.gradients_for(&mut systems, &indexes).unwrap();
         let gradients = gradients.unwrap();
 
         assert_eq!(gradients.count(), 21);
@@ -250,7 +252,7 @@ mod tests {
     fn atoms_self_contribution() {
         let mut systems = test_systems(&["CH"]).boxed();
         let strategy = AtomSpeciesSamples::new(2.0);
-        let indexes = strategy.indexes(&mut systems);
+        let indexes = strategy.indexes(&mut systems).unwrap();
         assert_eq!(indexes.count(), 2);
         assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor"]);
         assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
@@ -261,7 +263,7 @@ mod tests {
         ]);
 
         let strategy = AtomSpeciesSamples::with_self_contribution(2.0);
-        let indexes = strategy.indexes(&mut systems);
+        let indexes = strategy.indexes(&mut systems).unwrap();
         assert_eq!(indexes.count(), 4);
         assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor"]);
         assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
@@ -277,7 +279,7 @@ mod tests {
 
         // we get entries even without proper neighbors
         let strategy = AtomSpeciesSamples::with_self_contribution(1.0);
-        let indexes = strategy.indexes(&mut systems);
+        let indexes = strategy.indexes(&mut systems).unwrap();
         assert_eq!(indexes.count(), 2);
         assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor"]);
         assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
@@ -292,7 +294,7 @@ mod tests {
     fn atoms_self_contribution_gradients() {
         let mut systems = test_systems(&["CH"]).boxed();
         let strategy = AtomSpeciesSamples::with_self_contribution(2.0);
-        let (_, gradients) = strategy.with_gradients(&mut systems);
+        let (_, gradients) = strategy.with_gradients(&mut systems).unwrap();
         let gradients = gradients.unwrap();
 
         assert_eq!(gradients.count(), 18);
@@ -331,10 +333,11 @@ mod tests {
         indexes.add(&[v!(1), v!(0), v!(123456), v!(1)]);
         indexes.add(&[v!(0), v!(0), v!(1), v!(6)]);
         indexes.add(&[v!(1), v!(1), v!(1), v!(1)]);
+        let indexes = indexes.finish();
 
         let mut systems = test_systems(&["CH", "water"]).boxed();
         let strategy = AtomSpeciesSamples::with_self_contribution(2.0);
-        let gradients = strategy.gradients_for(&mut systems, &indexes.finish());
+        let gradients = strategy.gradients_for(&mut systems, &indexes).unwrap();
         let gradients = gradients.unwrap();
 
         assert_eq!(gradients.count(), 21);

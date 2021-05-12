@@ -145,7 +145,7 @@ pub fn finite_difference(
 
     let delta = 1e-6;
     let gradients = reference.gradients.as_ref().unwrap();
-    for atom_i in 0..system.size() {
+    for atom_i in 0..system.size().unwrap() {
         for spatial in 0..3 {
             system.positions_mut()[atom_i][spatial] += delta;
 

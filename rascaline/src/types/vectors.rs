@@ -52,6 +52,7 @@ use crate::Matrix3;
 /// let a = u * v;
 /// assert_eq!(a, 3.0);
 /// ```
+#[repr(transparent)]
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub struct Vector3D([f64; 3]);
 

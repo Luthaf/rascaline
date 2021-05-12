@@ -298,7 +298,7 @@ mod tests {
 
         let mut systems = test_systems(&["water", "CH"]).boxed();
         let features = dummy_features();
-        let samples = StructureSpeciesSamples.indexes(&mut systems);
+        let samples = StructureSpeciesSamples.indexes(&mut systems).unwrap();
         descriptor.prepare(samples, features);
 
 
@@ -319,7 +319,7 @@ mod tests {
 
         let mut systems = test_systems(&["water", "CH"]).boxed();
         let features = dummy_features();
-        let (samples, gradients) = StructureSpeciesSamples.with_gradients(&mut systems);
+        let (samples, gradients) = StructureSpeciesSamples.with_gradients(&mut systems).unwrap();
         descriptor.prepare_gradients(samples, gradients.unwrap(), features);
 
         let gradients = descriptor.gradients.unwrap();
@@ -354,7 +354,7 @@ mod tests {
 
         let mut systems = test_systems(&["water", "CH"]).boxed();
         let features = dummy_features();
-        let (samples, gradients) = StructureSpeciesSamples.with_gradients(&mut systems);
+        let (samples, gradients) = StructureSpeciesSamples.with_gradients(&mut systems).unwrap();
         descriptor.prepare_gradients(samples, gradients.unwrap(), features);
 
         descriptor.values.assign(&array![
@@ -434,7 +434,7 @@ mod tests {
 
         let mut systems = test_systems(&["water"]).boxed();
         let features = dummy_features();
-        let (samples, gradients) = AtomSpeciesSamples::new(3.0).with_gradients(&mut systems);
+        let (samples, gradients) = AtomSpeciesSamples::new(3.0).with_gradients(&mut systems).unwrap();
         descriptor.prepare_gradients(samples, gradients.unwrap(), features);
 
         descriptor.values.assign(&array![

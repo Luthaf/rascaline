@@ -24,14 +24,19 @@
 #define RASCAL_INVALID_PARAMETER_ERROR 1
 
 /**
+ * Status code used for error coming from the system implementation
+ */
+#define RASCAL_SYSTEM_ERROR 2
+
+/**
  * Status code used when there was an error reading or writing JSON
  */
-#define RASCAL_JSON_ERROR 2
+#define RASCAL_JSON_ERROR 3
 
 /**
  * Status code used when a string contains non-utf8 data
  */
-#define RASCAL_UTF8_ERROR 3
+#define RASCAL_UTF8_ERROR 4
 
 /**
  * Status code used when there was an error of unknown kind
