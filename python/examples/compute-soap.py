@@ -1,11 +1,11 @@
 import sys
-import ase
-from ase import io
+import chemfiles
 
 from rascaline import SoapPowerSpectrum
 
-# read structures using ASE
-frames = ase.io.read(sys.argv[1], ":")
+# read structures using chemfiles
+with chemfiles.Trajectory(sys.argv[1]) as trajectory:
+    frames = [f for f in trajectory]
 
 # define hyper parameters for the calculation
 HYPER_PARAMETERS = {

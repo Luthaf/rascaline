@@ -5,5 +5,7 @@ Available system implementation
 
 .. autoclass:: rascaline.systems.AseSystem
 
+.. autoclass:: rascaline.systems.ChemfilesSystem
+
 .. autoclass:: rascaline.SystemBase
     :members:

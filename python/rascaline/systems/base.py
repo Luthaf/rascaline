@@ -25,7 +25,8 @@ class SystemBase:
     implement this class to add new kinds of system that work with rascaline.
 
     Most users should use one of the already provided implementation, such as
-    :py:class:`rascaline.systems.AseSystem` instead of using this class
+    :py:class:`rascaline.systems.AseSystem` or
+    :py:class:`rascaline.systems.ChemfilesSystem` instead of using this class
     directly.
     """
 

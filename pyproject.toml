@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 legacy_tox_ini = """
 [tox]
 
-[testenv:all]
+[testenv:all-deps]
 # skip install to avoid rebuilding the world, do the install with setup.py
 # instead of pip below
 skip_install = True
@@ -22,12 +22,13 @@ deps =
     discover
     numpy
     ase
+    chemfiles
 
 commands =
     python setup.py --quiet install
     discover -p "*.py" -s python/tests
 
-[testenv:no-ase]
+[testenv:min-deps]
 skip_install = True
 passenv =
     RASCALINE_BUILD_TYPE
@@ -50,9 +51,8 @@ passenv =
     CARGO_HOME
 
 deps =
-    discover
     numpy
-    ase
+    chemfiles
 
 commands =
     python setup.py --quiet install
