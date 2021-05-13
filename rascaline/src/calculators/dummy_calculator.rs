@@ -71,7 +71,7 @@ impl CalculatorBase for DummyCalculator {
         Ok(())
     }
 
-    #[allow(clippy::clippy::cast_precision_loss)]
+    #[allow(clippy::cast_precision_loss)]
     #[time_graph::instrument(name = "DummyCalculator::compute")]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor) -> Result<(), Error> {
         if self.name.contains("log-test-info:") {

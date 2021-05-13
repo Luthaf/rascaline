@@ -2,23 +2,17 @@
 import unittest
 import numpy as np
 
-from rascaline.systems import AseSystem
+from rascaline.systems import AseSystem, HAVE_ASE
 
 try:
     import ase
-
-    HAVE_ASE = True
 except ImportError:
-    HAVE_ASE = False
+    pass
 
 
-@unittest.skipIf(not HAVE_ASE, "ASE not installed")
+@unittest.skipIf(not HAVE_ASE, "ASE is not installed")
 class TestAseSystem(unittest.TestCase):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if not HAVE_ASE:
-            return
-
+    def setUp(self):
         self.positions = [
             (0, 0, 0),
             (0, 0, 1.4),
@@ -101,7 +95,7 @@ class TestAseSystem(unittest.TestCase):
         self.assertEqual(pairs[1][:2], (1, 2))
 
 
-@unittest.skipIf(not HAVE_ASE, "ASE not installed")
+@unittest.skipIf(not HAVE_ASE, "ASE is not installed")
 class TestAseSystemErrors(unittest.TestCase):
     def test_pbc_no_cell(self):
         message = (
