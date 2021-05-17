@@ -95,7 +95,9 @@ def parse(file):
     return visitor
 
 
-rust_user_defined_types = {"RascalLoggingCallback": "CFUNCTYPE(None, ctypes.c_int, ctypes.c_char_p)"}
+rust_user_defined_types = {
+    "rascal_logging_callback_t": "CFUNCTYPE(None, ctypes.c_int, ctypes.c_char_p)"
+}
 
 
 def c_type_name(name):
@@ -103,6 +105,8 @@ def c_type_name(name):
         # enums are represented as int
         if name == "rascal_indexes":
             return "ctypes.c_int"
+        elif name in rust_user_defined_types:
+            return rust_user_defined_types[name]
         else:
             return name
     elif name == "uintptr_t":
@@ -117,8 +121,6 @@ def c_type_name(name):
         return "ctypes.c_int64"
     elif name == "uint64_t":
         return "ctypes.c_uint64"
-    elif name.startswith("Rascal"):
-        return rust_user_defined_types[name]
     else:
         return "ctypes.c_" + name
 

@@ -10,10 +10,10 @@ RUST_LOG_LEVEL_TRACE = 5
 
 DEFAULT_LOG_LEVEL = RUST_LOG_LEVEL_WARN
 
-logging.basicConfig(filename='rascaline.log', level=DEFAULT_LOG_LEVEL)
+logging.basicConfig(level=DEFAULT_LOG_LEVEL)
 
 def DEFAULT_LOG_CALLBACK(log_level, message):
-    if log_level == RUST_LOG_LEVEL_WARN:
+    if log_level == RUST_LOG_LEVEL_ERROR:
         logging.error(message)
     elif log_level == RUST_LOG_LEVEL_WARN:
         logging.warning(message)
@@ -24,4 +24,4 @@ def DEFAULT_LOG_CALLBACK(log_level, message):
     elif log_level == RUST_LOG_LEVEL_TRACE:
         print(message)
     else:
-        raise ValueError('Log level ' + str(log_level) + ' is not supported.')
+        raise ValueError(f'Log level {log_level} is not supported.')

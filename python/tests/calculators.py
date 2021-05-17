@@ -9,12 +9,8 @@ from rascaline.clib import (_get_library,
         set_logging_callback,
         _set_default_logging_callback)
 from rascaline.log_utils import (
-        RUST_LOG_LEVEL_OFF,
-        RUST_LOG_LEVEL_ERROR,
         RUST_LOG_LEVEL_WARN,
-        RUST_LOG_LEVEL_INFO,
-        RUST_LOG_LEVEL_DEBUG,
-        RUST_LOG_LEVEL_TRACE)
+        RUST_LOG_LEVEL_INFO)
 import ctypes
 
 from test_systems import TestSystem
@@ -24,12 +20,7 @@ class TestDummyCalculator(unittest.TestCase):
         # tests if log levels can be set without error
         def dummy_callback_function(level, message):
             pass
-        set_logging_callback(dummy_callback_function, RUST_LOG_LEVEL_OFF)
-        set_logging_callback(dummy_callback_function, RUST_LOG_LEVEL_ERROR)
-        set_logging_callback(dummy_callback_function, RUST_LOG_LEVEL_WARN)
-        set_logging_callback(dummy_callback_function, RUST_LOG_LEVEL_INFO)
-        set_logging_callback(dummy_callback_function, RUST_LOG_LEVEL_DEBUG)
-        set_logging_callback(dummy_callback_function, RUST_LOG_LEVEL_TRACE)
+        set_logging_callback(dummy_callback_function)
         _set_default_logging_callback()
 
     def test_log_message_in_calculator(self):
@@ -41,7 +32,7 @@ class TestDummyCalculator(unittest.TestCase):
         def record_callback_function(level, message):
             recorded_levels.append(level)
             recorded_messages.append(message)
-        set_logging_callback(record_callback_function, RUST_LOG_LEVEL_INFO)
+        set_logging_callback(record_callback_function)
 
         system = TestSystem()
         calculator = DummyCalculator(cutoff=3.2, delta=2, name="", gradients=True)
@@ -52,6 +43,11 @@ class TestDummyCalculator(unittest.TestCase):
                 "this is an info message used for testing purposes, do not remove"
         log_level = recorded_levels[recorded_messages.index(targeted_info_message)]
         self.assertEqual(log_level, RUST_LOG_LEVEL_INFO)
+
+        targeted_info_message = "rascaline::calculators::dummy_calculator -- " \
+                "this is a warning message used for testing purposes, do not remove"
+        log_level = recorded_levels[recorded_messages.index(targeted_info_message)]
+        self.assertEqual(log_level, RUST_LOG_LEVEL_WARN)
 
         _set_default_logging_callback()
 

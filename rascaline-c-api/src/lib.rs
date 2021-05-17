@@ -23,34 +23,30 @@ pub mod system;
 pub mod descriptor;
 pub mod calculator;
 
-pub type RascalLoggingCallback = Option<unsafe extern fn(level: i32, message: *const std::os::raw::c_char)>;
+#[allow(non_camel_case_types)]
+pub type rascal_logging_callback_t = Option<unsafe extern fn(level: i32, message: *const std::os::raw::c_char)>;
 
 // Mutex cannot use rust static
 // see https://stackoverflow.com/a/27826181
 lazy_static! {
-    static ref GLOBAL_CALLBACK: Mutex<RascalLoggingCallback> = Mutex::new(None);
+    static ref GLOBAL_CALLBACK: Mutex<rascal_logging_callback_t> = Mutex::new(None);
 }
 
 struct RascalLogger;
 
 #[no_mangle]
-pub unsafe extern fn rascal_set_logging_callback(callback: RascalLoggingCallback, log_level: i32) {
+pub unsafe extern fn rascal_set_logging_callback(callback: rascal_logging_callback_t) {
     *GLOBAL_CALLBACK.lock().unwrap() = callback;
     // we allow multiple sets of logger, therefore the result will be ignored
     let _ = log::set_boxed_logger(Box::new(RascalLogger));
-    // we could also only filter the messages on the python level, but I am
-    // afraid this could result performance issues as the number of log messages
-    // increases
-    let log_level_enum = match log_level {
-        0 => log::LevelFilter::Off,
-        1 => log::LevelFilter::Error,
-        2 => log::LevelFilter::Warn,
-        3 => log::LevelFilter::Info,
-        4 => log::LevelFilter::Debug,
-        5 => log::LevelFilter::Trace,
-        _ => panic!("Log level {} not known, please use an integer in the range [0, 5].", log_level)
-    };
-    let _ = log::set_max_level(log_level_enum);
+    // we need a custom function because debug_assert! does not work with functions with output
+    // type ()
+    fn set_max_level_(level: log::LevelFilter) -> bool {
+        log::set_max_level(level);
+        return true;
+    }
+    log::set_max_level(log::LevelFilter::Info);
+    debug_assert!(set_max_level_(log::LevelFilter::Debug));
 }
 
 
