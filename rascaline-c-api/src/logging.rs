@@ -28,7 +28,13 @@ pub const RASCAL_LOG_LEVEL_DEBUG: i32 = 4;
 /// code.
 pub const RASCAL_LOG_LEVEL_TRACE: i32 = 5;
 
-
+/// Callback function type for rascaline logging system. Such functions are
+/// called when a log event is emitted in the code.
+///
+/// The first argument is the log level, one of `RASCAL_LOG_LEVEL_ERROR`,
+/// `RASCAL_LOG_LEVEL_WARN` `RASCAL_LOG_LEVEL_INFO`, `RASCAL_LOG_LEVEL_DEBUG`,
+/// or `RASCAL_LOG_LEVEL_TRACE`. The second argument is a NULL-terminated string
+/// containing the message associated with the log event.
 #[allow(non_camel_case_types)]
 pub type rascal_logging_callback_t = Option<unsafe extern fn(level: i32, message: *const std::os::raw::c_char)>;
 
@@ -42,6 +48,9 @@ lazy_static! {
 /// `rascal_logging_callback_t`.
 struct RascalLogger;
 
+/// Set the given ``callback`` function as the global logging callback. This
+/// function will be called on all log events. If a logging callback was already
+/// set, it is replaced by the new one.
 #[no_mangle]
 pub unsafe extern fn rascal_set_logging_callback(callback: rascal_logging_callback_t) -> rascal_status_t {
     catch_unwind(|| {

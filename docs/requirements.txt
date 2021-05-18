@@ -1,7 +1,5 @@
 sphinx >=3.5
-# pygments >=2.8
-# we need a bug fix for rust raw strings that is not yet released on PyPI
-git+https://github.com/pygments/pygments#d790cbd
+pygments >=2.9
 breathe >=4.27
 recommonmark
 sphinx-tabs

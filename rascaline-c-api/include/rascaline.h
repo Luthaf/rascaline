@@ -121,6 +121,15 @@ typedef struct rascal_descriptor_t rascal_descriptor_t;
  */
 typedef int32_t rascal_status_t;
 
+/**
+ * Callback function type for rascaline logging system. Such functions are
+ * called when a log event is emitted in the code.
+ *
+ * The first argument is the log level, one of `RASCAL_LOG_LEVEL_ERROR`,
+ * `RASCAL_LOG_LEVEL_WARN` `RASCAL_LOG_LEVEL_INFO`, `RASCAL_LOG_LEVEL_DEBUG`,
+ * or `RASCAL_LOG_LEVEL_TRACE`. The second argument is a NULL-terminated string
+ * containing the message associated with the log event.
+ */
 typedef void (*rascal_logging_callback_t)(int32_t level, const char *message);
 
 /**
@@ -276,6 +285,11 @@ extern "C" {
  */
 const char *rascal_last_error(void);
 
+/**
+ * Set the given ``callback`` function as the global logging callback. This
+ * function will be called on all log events. If a logging callback was already
+ * set, it is replaced by the new one.
+ */
 rascal_status_t rascal_set_logging_callback(rascal_logging_callback_t callback);
 
 /**
