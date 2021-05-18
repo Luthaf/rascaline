@@ -237,14 +237,14 @@ typedef struct rascal_calculation_options_t {
 extern "C" {
 #endif // __cplusplus
 
-void rascal_set_logging_callback(rascal_logging_callback_t callback);
-
 /**
  * Get the last error message that was created on the current thread.
  *
  * @returns the last error message, as a NULL-terminated string
  */
 const char *rascal_last_error(void);
+
+void rascal_set_logging_callback(rascal_logging_callback_t callback);
 
 /**
  * Read all structures in the file at the given `path` using
