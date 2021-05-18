@@ -23,39 +23,53 @@ class TestLogging(unittest.TestCase):
 
         set_logging_callback(record_log_events)
 
-        system = TestSystem()
-        calculator = DummyCalculator(cutoff=3.2, delta=0, name="", gradients=False)
-        # in the compute function of the dummy calculator a message is put into
-        # the info log
-        _ = calculator.compute(system)
+        calculator = DummyCalculator(
+            cutoff=3.2,
+            delta=0,
+            name="log-test-info: test info message",
+            gradients=False,
+        )
+        _ = calculator.compute(TestSystem())
 
         message = (
             "rascaline::calculators::dummy_calculator -- "
-            "this is an info message used for testing purposes, do not remove"
+            "log-test-info: test info message"
         )
         event = (RASCAL_LOG_LEVEL_INFO, message)
         self.assertTrue(event in recorded_events)
 
+        calculator = DummyCalculator(
+            cutoff=3.2,
+            delta=0,
+            name="log-test-warn: this is a test warning message",
+            gradients=False,
+        )
+        _ = calculator.compute(TestSystem())
+
         message = (
             "rascaline::calculators::dummy_calculator -- "
-            "this is a warning message used for testing purposes, do not remove"
+            "log-test-warn: this is a test warning message"
         )
         event = (RASCAL_LOG_LEVEL_WARN, message)
         self.assertTrue(event in recorded_events)
 
     def test_exception_in_callback(self):
         def raise_on_log_event(level, message):
-            raise Exception("this is not good")
+            raise Exception("this is an exception")
 
         set_logging_callback(raise_on_log_event)
 
-        system = TestSystem()
-        calculator = DummyCalculator(cutoff=3.2, delta=0, name="", gradients=False)
+        calculator = DummyCalculator(
+            cutoff=3.2,
+            delta=0,
+            name="log-test-warn: testing errors",
+            gradients=False,
+        )
 
         with self.assertWarns(Warning) as cm:
-            _ = calculator.compute(system)
+            _ = calculator.compute(TestSystem())
 
         self.assertEqual(
             cm.warnings[0].message.args[0],
-            "exception raised in logging callback: this is not good",
+            "exception raised in logging callback: this is an exception",
         )

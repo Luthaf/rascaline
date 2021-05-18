@@ -74,8 +74,11 @@ impl CalculatorBase for DummyCalculator {
     #[allow(clippy::clippy::cast_precision_loss)]
     #[time_graph::instrument(name = "DummyCalculator::compute")]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor) -> Result<(), Error> {
-        info!("this is an info message used for testing purposes, do not remove");
-        warn!("this is a warning message used for testing purposes, do not remove");
+        if self.name.contains("log-test-info:") {
+            info!("{}", self.name);
+        } else if self.name.contains("log-test-warn:") {
+            warn!("{}", self.name);
+        }
 
         for (sample_i, indexes) in descriptor.samples.iter().enumerate() {
             let i_system = indexes[0].usize();
