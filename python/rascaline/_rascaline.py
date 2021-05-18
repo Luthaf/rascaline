@@ -32,6 +32,11 @@ RASCAL_UTF8_ERROR = 3
 RASCAL_CHEMFILES_ERROR = 4
 RASCAL_SYSTEM_ERROR = 128
 RASCAL_INTERNAL_ERROR = 255
+RASCAL_LOG_LEVEL_ERROR = 1
+RASCAL_LOG_LEVEL_WARN = 2
+RASCAL_LOG_LEVEL_INFO = 3
+RASCAL_LOG_LEVEL_DEBUG = 4
+RASCAL_LOG_LEVEL_TRACE = 5
 
 
 class rascal_indexes(enum.Enum):
@@ -83,15 +88,15 @@ class rascal_calculation_options_t(ctypes.Structure):
 def setup_functions(lib):
     from .status import _check_rascal_status_t
 
-    lib.rascal_set_logging_callback.argtypes = [
-        rascal_logging_callback_t
-    ]
-    lib.rascal_set_logging_callback.restype = None
-
     lib.rascal_last_error.argtypes = [
         
     ]
     lib.rascal_last_error.restype = ctypes.c_char_p
+
+    lib.rascal_set_logging_callback.argtypes = [
+        rascal_logging_callback_t
+    ]
+    lib.rascal_set_logging_callback.restype = None
 
     lib.rascal_basic_systems_read.argtypes = [
         ctypes.c_char_p,

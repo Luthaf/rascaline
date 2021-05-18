@@ -4,6 +4,28 @@ use std::sync::Mutex;
 use log::{Record, Metadata};
 use lazy_static::lazy_static;
 
+/// The "error" level designates very serious errors
+pub const RASCAL_LOG_LEVEL_ERROR: i32 = 1;
+
+/// The "warn" level designates hazardous situations
+pub const RASCAL_LOG_LEVEL_WARN: i32 = 2;
+
+/// The "info" level designates useful information
+pub const RASCAL_LOG_LEVEL_INFO: i32 = 3;
+
+/// The "debug" level designates lower priority information
+///
+/// By default, log messages at this level are disabled in release mode, and
+/// enabled in debug mode.
+pub const RASCAL_LOG_LEVEL_DEBUG: i32 = 4;
+
+/// The "trace" level designates very low priority, often extremely verbose,
+/// information.
+///
+/// By default, rascaline disable this level, you can enable it by editing the
+/// code.
+pub const RASCAL_LOG_LEVEL_TRACE: i32 = 5;
+
 
 #[allow(non_camel_case_types)]
 pub type rascal_logging_callback_t = Option<unsafe extern fn(level: i32, message: *const std::os::raw::c_char)>;
@@ -51,4 +73,18 @@ impl log::Log for RascalLogger {
     }
 
     fn flush(&self) {}
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn log_levels() {
+        assert_eq!(RASCAL_LOG_LEVEL_ERROR, log::Level::Error as i32);
+        assert_eq!(RASCAL_LOG_LEVEL_WARN, log::Level::Warn as i32);
+        assert_eq!(RASCAL_LOG_LEVEL_INFO, log::Level::Info as i32);
+        assert_eq!(RASCAL_LOG_LEVEL_DEBUG, log::Level::Debug as i32);
+        assert_eq!(RASCAL_LOG_LEVEL_TRACE, log::Level::Trace as i32);
+    }
 }

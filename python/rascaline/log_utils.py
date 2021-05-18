@@ -1,27 +1,24 @@
 import logging
 
-# enums as integers https://docs.rs/log/0.4.0/log/enum.LevelFilter.html
-RUST_LOG_LEVEL_OFF = 0
-RUST_LOG_LEVEL_ERROR = 1
-RUST_LOG_LEVEL_WARN = 2
-RUST_LOG_LEVEL_INFO = 3
-RUST_LOG_LEVEL_DEBUG = 4
-RUST_LOG_LEVEL_TRACE = 5
+from ._rascaline import RASCAL_LOG_LEVEL_ERROR, RASCAL_LOG_LEVEL_WARN
+from ._rascaline import RASCAL_LOG_LEVEL_INFO, RASCAL_LOG_LEVEL_DEBUG
+from ._rascaline import RASCAL_LOG_LEVEL_TRACE
 
-DEFAULT_LOG_LEVEL = RUST_LOG_LEVEL_INFO
+DEFAULT_LOG_LEVEL = RASCAL_LOG_LEVEL_INFO
 
 logging.basicConfig(level=DEFAULT_LOG_LEVEL)
 
+
 def DEFAULT_LOG_CALLBACK(log_level, message):
-    if log_level == RUST_LOG_LEVEL_ERROR:
+    if log_level == RASCAL_LOG_LEVEL_ERROR:
         logging.error(message)
-    elif log_level == RUST_LOG_LEVEL_WARN:
+    elif log_level == RASCAL_LOG_LEVEL_WARN:
         logging.warning(message)
-    elif log_level == RUST_LOG_LEVEL_INFO:
+    elif log_level == RASCAL_LOG_LEVEL_INFO:
         logging.info(message)
-    elif log_level == RUST_LOG_LEVEL_DEBUG:
+    elif log_level == RASCAL_LOG_LEVEL_DEBUG:
         logging.debug(message)
-    elif log_level == RUST_LOG_LEVEL_TRACE:
-        print(message)
+    elif log_level == RASCAL_LOG_LEVEL_TRACE:
+        logging.debug(message)
     else:
-        raise ValueError(f'Log level {log_level} is not supported.')
+        raise ValueError(f"Log level {log_level} is not supported.")

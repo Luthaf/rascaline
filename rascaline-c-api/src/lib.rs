@@ -14,6 +14,9 @@ pub use self::status::{RASCAL_UTF8_ERROR, RASCAL_CHEMFILES_ERROR, RASCAL_SYSTEM_
 pub use self::status::{RASCAL_INTERNAL_ERROR};
 
 mod logging;
+pub use self::logging::{RASCAL_LOG_LEVEL_ERROR, RASCAL_LOG_LEVEL_WARN, RASCAL_LOG_LEVEL_INFO};
+pub use self::logging::{RASCAL_LOG_LEVEL_DEBUG, RASCAL_LOG_LEVEL_TRACE};
+pub use self::logging::{rascal_logging_callback_t, rascal_set_logging_callback};
 
 pub mod system;
 pub mod descriptor;

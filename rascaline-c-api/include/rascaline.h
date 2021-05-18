@@ -51,6 +51,38 @@
 #define RASCAL_INTERNAL_ERROR 255
 
 /**
+ * The "error" level designates very serious errors
+ */
+#define RASCAL_LOG_LEVEL_ERROR 1
+
+/**
+ * The "warn" level designates hazardous situations
+ */
+#define RASCAL_LOG_LEVEL_WARN 2
+
+/**
+ * The "info" level designates useful information
+ */
+#define RASCAL_LOG_LEVEL_INFO 3
+
+/**
+ * The "debug" level designates lower priority information
+ *
+ * By default, log messages at this level are disabled in release mode, and
+ * enabled in debug mode.
+ */
+#define RASCAL_LOG_LEVEL_DEBUG 4
+
+/**
+ * The "trace" level designates very low priority, often extremely verbose,
+ * information.
+ *
+ * By default, rascaline disable this level, you can enable it by editing the
+ * code.
+ */
+#define RASCAL_LOG_LEVEL_TRACE 5
+
+/**
  * The different kinds of indexes that can exist on a `rascal_descriptor_t`
  */
 typedef enum rascal_indexes {
