@@ -1,48 +1,24 @@
 # -* coding: utf-8 -*
 import os
 import sys
-import warnings
-import ctypes
 from ctypes import cdll
-from .log_utils import (DEFAULT_LOG_CALLBACK, DEFAULT_LOG_LEVEL)
 
 from ._rascaline import setup_functions
+from .log import set_logging_callback, default_logging_callback
+
 
 class RascalFinder(object):
     def __init__(self):
-        self._cache = None
+        self._cached_dll = None
 
     def __call__(self):
-        if self._cache is None:
+        if self._cached_dll is None:
             path = _lib_path()
-            self._cache = cdll.LoadLibrary(path)
-            setup_functions(self._cache)
-            _set_default_logging_callback()
-        return self._cache
+            self._cached_dll = cdll.LoadLibrary(path)
+            setup_functions(self._cached_dll)
+            set_logging_callback(default_logging_callback)
+        return self._cached_dll
 
-def _set_default_logging_callback():
-    '''
-    Default logging function. For now it is only a print,
-    but it can be replaced by a more sophisticated logging utility
-    '''
-    set_logging_callback(DEFAULT_LOG_CALLBACK)
-
-def set_logging_callback(callback_function):
-    '''
-    Call `function` on every logging event. The callback should take a string
-    message and return nothing.
-    '''
-
-    def callback_wrapper(log_level, message):
-        try:
-            callback_function(log_level, message.decode("utf8"))
-        except Exception as e:
-            message = "exception raised in logging callback: {}".format(e)
-            warnings.warn(message, ResourceWarning)
-
-    global _CURRENT_CALLBACK
-    _CURRENT_CALLBACK = _get_library().rascal_set_logging_callback.argtypes[0](callback_wrapper)
-    _get_library().rascal_set_logging_callback(_CURRENT_CALLBACK)
 
 def _lib_path():
     if sys.platform.startswith("darwin"):
@@ -67,9 +43,9 @@ def _lib_path():
 
 
 def _check_dll(path):
-    '''
+    """
     Check if the DLL pointer size matches Python (32-bit or 64-bit)
-    '''
+    """
     import struct
     import platform
 
@@ -99,5 +75,5 @@ def _check_dll(path):
     else:
         raise ImportError("Could not determine pointer size of Python")
 
-_CURRENT_CALLBACK = None
+
 _get_library = RascalFinder()

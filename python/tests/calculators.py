@@ -5,52 +5,10 @@ import numpy as np
 from rascaline import SortedDistances
 from rascaline.calculator import DummyCalculator
 
-from rascaline.clib import (_get_library,
-        set_logging_callback,
-        _set_default_logging_callback)
-from rascaline.log_utils import (
-        RUST_LOG_LEVEL_WARN,
-        RUST_LOG_LEVEL_INFO)
-import ctypes
-
 from test_systems import TestSystem
 
+
 class TestDummyCalculator(unittest.TestCase):
-    def test_log_levels(self):
-        # tests if log levels can be set without error
-        def dummy_callback_function(level, message):
-            pass
-        set_logging_callback(dummy_callback_function)
-        _set_default_logging_callback()
-
-    def test_log_message_in_calculator(self):
-        # tests if targeted message is is recorded when running compute
-        # function of the calculator and checks if the log level is correct
-        recorded_levels = []
-        recorded_messages = []
-
-        def record_callback_function(level, message):
-            recorded_levels.append(level)
-            recorded_messages.append(message)
-        set_logging_callback(record_callback_function)
-
-        system = TestSystem()
-        calculator = DummyCalculator(cutoff=3.2, delta=2, name="", gradients=True)
-        # in the compute function of the dummy calculator a message is put into the info log
-        descriptor = calculator.compute(system)
-
-        targeted_info_message = "rascaline::calculators::dummy_calculator -- " \
-                "this is an info message used for testing purposes, do not remove"
-        log_level = recorded_levels[recorded_messages.index(targeted_info_message)]
-        self.assertEqual(log_level, RUST_LOG_LEVEL_INFO)
-
-        targeted_info_message = "rascaline::calculators::dummy_calculator -- " \
-                "this is a warning message used for testing purposes, do not remove"
-        log_level = recorded_levels[recorded_messages.index(targeted_info_message)]
-        self.assertEqual(log_level, RUST_LOG_LEVEL_WARN)
-
-        _set_default_logging_callback()
-
     def test_name(self):
         calculator = DummyCalculator(cutoff=3.2, delta=12, name="foo", gradients=True)
         self.assertEqual(
@@ -177,6 +135,7 @@ class TestDummyCalculator(unittest.TestCase):
         self.assertEqual(gradients.shape, (18, 1))
         for i in range(gradients.shape[0]):
             self.assertTrue(np.all(gradients[i] == [0]))
+
 
 class TestSortedDistances(unittest.TestCase):
     def test_name(self):
