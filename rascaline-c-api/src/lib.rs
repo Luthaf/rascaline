@@ -62,7 +62,7 @@ impl log::Log for RascalLogger {
             unsafe {
                 match *(GLOBAL_CALLBACK.lock().expect("mutex was poisoned")) {
                     Some(callback) => callback(record.level() as i32, message_cstr.as_ptr()),
-                    None => println!("No callback function was set."),
+                    None => unreachable!("missing callback but RascalLogger is set as the global logger"),
                 }
             }
         }
