@@ -14,15 +14,6 @@ static void check_indexes(
     uintptr_t size
 );
 
-std::vector<int> recorded_levels{};
-std::vector<std::string> recorded_messages{};
-
-// cannot declare function compatible with rascal callback type within test
-void dummy_callback(int level, const char * message) {
-    recorded_levels.push_back(level);
-    recorded_messages.push_back(static_cast<std::string>(message));
-};
-
 TEST_CASE("calculator name") {
     SECTION("dummy_calculator") {
         const char* HYPERS_JSON = R"({
@@ -134,62 +125,6 @@ TEST_CASE("Compute descriptor") {
     REQUIRE(descriptor != nullptr);
     auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);
     REQUIRE(calculator != nullptr);
-
-    SECTION("Callback compute") {
-        auto system = simple_system();
-
-        auto options = rascal_calculation_options_t {
-            /* use_native_system */ false,
-            /* selected_samples */ nullptr,
-            /* selected_samples_count */ 0,
-            /* selected_features */ nullptr,
-            /* selected_features_count */ 0,
-        };
-
-        rascal_set_logging_callback(dummy_callback);
-
-        CHECK_SUCCESS(rascal_calculator_compute(
-            calculator, descriptor, &system, 1, options
-        ));
-
-        // Check info  message
-        std::string target_info_message{"rascaline::calculators::dummy_calculator -- " \
-                "this is an info message used for testing purposes, do not remove"};
-
-        bool target_message_was_recorded{false};
-        int target_message_level{-1};
-        for (int i=0; i < recorded_messages.size(); i++) {
-            if (recorded_messages.at(i) == target_info_message) {
-                target_message_was_recorded = true;
-                target_message_level = recorded_levels.at(i);
-            }
-        }
-
-        CHECK(target_message_was_recorded);
-        int rust_log_level_info = 3;
-        CHECK(target_message_level == rust_log_level_info);
-
-        // Check warning message
-        target_info_message = "rascaline::calculators::dummy_calculator -- " \
-                "this is a warning message used for testing purposes, do not remove";
-
-        target_message_was_recorded = false;
-        target_message_level = -1;
-        for (int i=0; i < recorded_messages.size(); i++) {
-            if (recorded_messages.at(i) == target_info_message) {
-                target_message_was_recorded = true;
-                target_message_level = recorded_levels.at(i);
-            }
-        }
-
-        CHECK(target_message_was_recorded);
-        int rust_log_level_warn = 2;
-        CHECK(target_message_level == rust_log_level_warn);
-
-        //CHECK(not(target_message_was_recorded));
-        // TODO here it should set it back to default function
-        // the tests don't return an error but it might lead to invalid behaviour
-    }
 
     SECTION("Full compute") {
         auto system = simple_system();
