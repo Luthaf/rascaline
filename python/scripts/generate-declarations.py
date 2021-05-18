@@ -95,18 +95,11 @@ def parse(file):
     return visitor
 
 
-rust_user_defined_types = {
-    "rascal_logging_callback_t": "CFUNCTYPE(None, ctypes.c_int, ctypes.c_char_p)"
-}
-
-
 def c_type_name(name):
     if name.startswith("rascal_"):
         # enums are represented as int
         if name == "rascal_indexes":
             return "ctypes.c_int"
-        elif name in rust_user_defined_types:
-            return rust_user_defined_types[name]
         else:
             return name
     elif name == "uintptr_t":
@@ -240,6 +233,8 @@ import ctypes
 from ctypes import POINTER, CFUNCTYPE
 from numpy.ctypeslib import ndpointer
 
+# === WARNING: manual type definitions
+# === Make sure these are kept in sync with rascaline.h
 arch = platform.architecture()[0]
 if arch == "32bit":
     c_uintptr_t = ctypes.c_uint32
@@ -247,6 +242,11 @@ elif arch == "64bit":
     c_uintptr_t = ctypes.c_uint64
 
 rascal_status_t = ctypes.c_int32
+
+rascal_logging_callback_t = CFUNCTYPE(None, ctypes.c_int, ctypes.c_char_p)
+# === end of manual type definitions
+
+
 """
         )
         for name, value in data.defines.items():
