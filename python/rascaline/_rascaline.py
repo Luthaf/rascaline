@@ -11,19 +11,11 @@ import ctypes
 from ctypes import POINTER, CFUNCTYPE
 from numpy.ctypeslib import ndpointer
 
-# === WARNING: manual type definitions
-# === Make sure these are kept in sync with rascaline.h
 arch = platform.architecture()[0]
 if arch == "32bit":
     c_uintptr_t = ctypes.c_uint32
 elif arch == "64bit":
     c_uintptr_t = ctypes.c_uint64
-
-rascal_status_t = ctypes.c_int32
-
-rascal_logging_callback_t = CFUNCTYPE(None, ctypes.c_int, ctypes.c_char_p)
-# === end of manual type definitions
-
 
 RASCAL_SUCCESS = 0
 RASCAL_INVALID_PARAMETER_ERROR = 1
@@ -37,6 +29,10 @@ RASCAL_LOG_LEVEL_WARN = 2
 RASCAL_LOG_LEVEL_INFO = 3
 RASCAL_LOG_LEVEL_DEBUG = 4
 RASCAL_LOG_LEVEL_TRACE = 5
+
+
+rascal_status_t = ctypes.c_int32
+rascal_logging_callback_t = CFUNCTYPE(None, ctypes.c_int32, ctypes.c_char_p)
 
 
 class rascal_indexes(enum.Enum):
