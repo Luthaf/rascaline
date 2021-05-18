@@ -111,8 +111,6 @@ typedef struct rascal_calculator_t rascal_calculator_t;
  */
 typedef struct rascal_descriptor_t rascal_descriptor_t;
 
-typedef void (*rascal_logging_callback_t)(int32_t level, const char *message);
-
 /**
  * Status type returned by all functions in the C API.
  *
@@ -122,6 +120,8 @@ typedef void (*rascal_logging_callback_t)(int32_t level, const char *message);
  * error coming from callbacks.
  */
 typedef int32_t rascal_status_t;
+
+typedef void (*rascal_logging_callback_t)(int32_t level, const char *message);
 
 /**
  * Pair of atoms coming from a neighbor list
@@ -276,7 +276,7 @@ extern "C" {
  */
 const char *rascal_last_error(void);
 
-void rascal_set_logging_callback(rascal_logging_callback_t callback);
+rascal_status_t rascal_set_logging_callback(rascal_logging_callback_t callback);
 
 /**
  * Read all structures in the file at the given `path` using

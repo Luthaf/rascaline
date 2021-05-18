@@ -4,6 +4,8 @@ use std::sync::Mutex;
 use log::{Record, Metadata};
 use lazy_static::lazy_static;
 
+use crate::status::{rascal_status_t, catch_unwind};
+
 /// The "error" level designates very serious errors
 pub const RASCAL_LOG_LEVEL_ERROR: i32 = 1;
 
@@ -41,16 +43,20 @@ lazy_static! {
 struct RascalLogger;
 
 #[no_mangle]
-pub unsafe extern fn rascal_set_logging_callback(callback: rascal_logging_callback_t) {
-    *GLOBAL_CALLBACK.lock().expect("mutex was poisoned") = callback;
-    // we allow multiple sets of logger, therefore the result will be ignored
-    let _ = log::set_boxed_logger(Box::new(RascalLogger));
+pub unsafe extern fn rascal_set_logging_callback(callback: rascal_logging_callback_t) -> rascal_status_t {
+    catch_unwind(|| {
+        *GLOBAL_CALLBACK.lock().expect("mutex was poisoned") = callback;
+        // we allow multiple sets of logger, therefore the result will be ignored
+        let _ = log::set_boxed_logger(Box::new(RascalLogger));
 
-    if cfg!(debug_assertions) {
-        log::set_max_level(log::LevelFilter::Debug);
-    } else {
-        log::set_max_level(log::LevelFilter::Info);
-    }
+        if cfg!(debug_assertions) {
+            log::set_max_level(log::LevelFilter::Debug);
+        } else {
+            log::set_max_level(log::LevelFilter::Info);
+        }
+
+        Ok(())
+    })
 }
 
 

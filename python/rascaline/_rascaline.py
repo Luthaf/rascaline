@@ -96,7 +96,7 @@ def setup_functions(lib):
     lib.rascal_set_logging_callback.argtypes = [
         rascal_logging_callback_t
     ]
-    lib.rascal_set_logging_callback.restype = None
+    lib.rascal_set_logging_callback.restype = _check_rascal_status_t
 
     lib.rascal_basic_systems_read.argtypes = [
         ctypes.c_char_p,
