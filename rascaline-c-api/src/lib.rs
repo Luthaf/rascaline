@@ -32,21 +32,21 @@ lazy_static! {
     static ref GLOBAL_CALLBACK: Mutex<rascal_logging_callback_t> = Mutex::new(None);
 }
 
+/// Implementation of `log::Log` that forward all log messages to the global
+/// `rascal_logging_callback_t`.
 struct RascalLogger;
 
 #[no_mangle]
 pub unsafe extern fn rascal_set_logging_callback(callback: rascal_logging_callback_t) {
-    *GLOBAL_CALLBACK.lock().unwrap() = callback;
+    *GLOBAL_CALLBACK.lock().expect("mutex was poisoned") = callback;
     // we allow multiple sets of logger, therefore the result will be ignored
     let _ = log::set_boxed_logger(Box::new(RascalLogger));
-    // we need a custom function because debug_assert! does not work with functions with output
-    // type ()
-    fn set_max_level_(level: log::LevelFilter) -> bool {
-        log::set_max_level(level);
-        return true;
+
+    if cfg!(debug_assertions) {
+        log::set_max_level(log::LevelFilter::Debug);
+    } else {
+        log::set_max_level(log::LevelFilter::Info);
     }
-    log::set_max_level(log::LevelFilter::Info);
-    debug_assert!(set_max_level_(log::LevelFilter::Debug));
 }
 
 
@@ -57,12 +57,10 @@ impl log::Log for RascalLogger {
 
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
-            let message = format!("{} -- {}",
-                record.target(),
-                record.args());
+            let message = format!("{} -- {}", record.target(), record.args());
             let message_cstr = CString::new(message).unwrap();
             unsafe {
-                match *(GLOBAL_CALLBACK.lock().expect("Mutex was poisoned")) {
+                match *(GLOBAL_CALLBACK.lock().expect("mutex was poisoned")) {
                     Some(callback) => callback(record.level() as i32, message_cstr.as_ptr()),
                     None => println!("No callback function was set."),
                 }
