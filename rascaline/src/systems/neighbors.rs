@@ -31,9 +31,11 @@ fn usize_clamp(mut x: usize, min: usize, max: usize) -> usize {
 /// cells with a small unit cell and a large cutoff
 const MAX_NUMBER_OF_CELLS: f64 = 1e5;
 
-/// A cell shift represents the displacement along cell axis between an atom and
-/// a periodic image. The cell shift can be used to reconstruct the vector
-/// between two points, wrapped inside the unit cell.
+/// A cell shift represents the displacement along cell axis between the actual
+/// position of an atom and a periodic image of this atom.
+///
+/// The cell shift can be used to reconstruct the vector between two points,
+/// wrapped inside the unit cell.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct CellShift([isize; 3]);
 
@@ -68,7 +70,9 @@ impl std::ops::Index<usize> for CellShift {
 }
 
 impl CellShift {
-    pub fn dot(&self, cell: &Matrix3) -> Vector3D {
+    /// Compute the shift vector in cartesian coordinates, using the given cell
+    /// matrix (stored in row major order).
+    pub fn cartesian(&self, cell: &Matrix3) -> Vector3D {
         let x = cell[0][0] * self[0] as f64 + cell[1][0] * self[1] as f64 + cell[2][0] * self[2] as f64;
         let y = cell[0][1] * self[0] as f64 + cell[1][1] * self[1] as f64 + cell[2][1] * self[2] as f64;
         let z = cell[0][2] * self[0] as f64 + cell[1][2] * self[1] as f64 + cell[2][2] * self[2] as f64;
@@ -77,7 +81,7 @@ impl CellShift {
 }
 
 /// Pair produced by the cell list. The vector between the atoms can be
-/// constructed as `position[second] - position[first] + shift.dot(unit_cell)`
+/// constructed as `position[second] - position[first] + shift.cartesian(unit_cell)`
 #[derive(Debug, Clone)]
 pub struct CellPair {
     /// index of the first atom in the pair
@@ -88,15 +92,28 @@ pub struct CellPair {
     pub shift: CellShift,
 }
 
+/// Data associated with an atoms inside the `CellList`
+#[derive(Debug, Clone)]
+pub struct AtomData {
+    /// index of the atom in the original system
+    index: usize,
+    /// the shift vector from the actual atom position to the image of this atom
+    /// inside the unit cell
+    shift: CellShift,
+}
+
+/// The cell list is used to sort atoms inside bins/cells.
+///
+/// The list of potential pairs is then constructed by looking through all
+/// neighboring cells (the number of cells to search depends on the cutoff and
+/// the size of the cells) for each atom to create pair candidates.
 #[derive(Debug, Clone)]
 pub struct CellList {
     /// How many cells do we need to look at when searching neighbors to include
     /// all neighbors below cutoff
     n_search: [isize; 3],
-    /// the cells themselves are represented as an array of atom indexes within
-    /// this cell, together with the shift vector from the actual atom position
-    /// to a position inside the unit cell
-    cells: ndarray::Array3<Vec<(usize, CellShift)>>,
+    /// the cells themselves
+    cells: ndarray::Array3<Vec<AtomData>>,
     /// Unit cell defining periodic boundary conditions
     unit_cell: UnitCell,
 }
@@ -106,7 +123,8 @@ impl CellList {
     /// all required parameters.
     pub fn new(unit_cell: UnitCell, cutoff: f64) -> CellList {
         let distances_between_faces = if unit_cell.is_infinite() {
-            // use a pseudo orthorhombic cell with size cutoff
+            // use a pseudo orthorhombic cell with size 1, `n_search` below will
+            // make sure we look to every cell up to the cutoff
             Vector3D::new(1.0, 1.0, 1.0)
         } else {
             unit_cell.distances_between_faces()
@@ -199,9 +217,26 @@ impl CellList {
             divmod_vec(cell_index, n_cells)
         };
 
-        self.cells[cell_index].push((index, CellShift(shift)));
+        self.cells[cell_index].push(AtomData {
+            index: index,
+            shift: CellShift(shift),
+        });
     }
 
+    /// Get the list of candidate pair. Some pairs might be separated by more
+    /// than `cutoff`, so additional filtering of the pairs might be required
+    /// later.
+    ///
+    /// This function produces a so-called "half" neighbors list, where each
+    /// pair is only included once. For example, if atoms 33 and 64 are in range
+    /// of each other, the output will only contain pairs in the order 33-64,
+    /// and not 64-33.
+    ///
+    /// If two atoms are neighbors of one another more than once (this can
+    /// happen when not using minimal image convention), all pairs at different
+    /// distances/directions are still included. Using the example above and
+    /// with a cutoff of 5 Å, we can have a pair between atoms 33-64 at 2.6 Å
+    /// and another pair between atoms 33-64 at 4.8 Å.
     pub fn pairs(&self) -> Vec<CellPair> {
         let mut pairs = Vec::new();
 
@@ -228,30 +263,31 @@ impl CellList {
                         // the neighboring cell
                         let (cell_shift, neighbor_cell_i) = divmod_vec(cell_i, n_cells);
 
-                        for &(atom_i, shift_i) in current_cell {
-                            for &(atom_j, shift_j) in &self.cells[neighbor_cell_i] {
+                        for atom_i in current_cell {
+                            for atom_j in &self.cells[neighbor_cell_i] {
                                 // create a half neighbor list
-                                if atom_i > atom_j {
+                                if atom_i.index > atom_j.index {
                                     continue;
                                 }
 
-                                let shift = CellShift(cell_shift) + shift_i - shift_j;
+                                let shift = CellShift(cell_shift) + atom_i.shift - atom_j.shift;
+                                let shift_is_zero = shift[0] == 0 && shift[1] == 0 && shift[2] == 0;
 
-                                if atom_i == atom_j && (shift[0] == 0 && shift[1] == 0 && shift[2] == 0) {
+                                if atom_i.index == atom_j.index && shift_is_zero {
                                     // only create pair with the same atom twice
                                     // if the pair spans more than one unit cell
                                     continue;
                                 }
 
-                                if self.unit_cell.is_infinite() && (shift[0] != 0 || shift[1] != 0 || shift[2] != 0) {
+                                if self.unit_cell.is_infinite() && !shift_is_zero {
                                     // do not create pairs crossing the periodic
                                     // boundaries in an infinite cell
                                     continue;
                                 }
 
                                 pairs.push(CellPair {
-                                    first: atom_i,
-                                    second: atom_j,
+                                    first: atom_i.index,
+                                    second: atom_j.index,
                                     shift: shift,
                                 });
                             }
@@ -321,7 +357,7 @@ impl NeighborsList {
 
         for pair in cell_list.pairs() {
             let mut vector = positions[pair.second] - positions[pair.first];
-            vector += pair.shift.dot(&cell_matrix);
+            vector += pair.shift.cartesian(&cell_matrix);
 
             let distance2 = vector * vector;
             if distance2 < cutoff2 {
