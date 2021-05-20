@@ -17,7 +17,7 @@ class TestSystem(SystemBase):
         return [[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 0, 3]]
 
     def cell(self):
-        return [10, 0, 0, 0, 10, 0, 0, 0, 10]
+        return [[10, 0, 0], [0, 10, 0], [0, 0, 10]]
 
     def compute_neighbors(self, cutoff):
         return
