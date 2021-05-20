@@ -51,6 +51,38 @@
 #define RASCAL_INTERNAL_ERROR 255
 
 /**
+ * The "error" level designates very serious errors
+ */
+#define RASCAL_LOG_LEVEL_ERROR 1
+
+/**
+ * The "warn" level designates hazardous situations
+ */
+#define RASCAL_LOG_LEVEL_WARN 2
+
+/**
+ * The "info" level designates useful information
+ */
+#define RASCAL_LOG_LEVEL_INFO 3
+
+/**
+ * The "debug" level designates lower priority information
+ *
+ * By default, log messages at this level are disabled in release mode, and
+ * enabled in debug mode.
+ */
+#define RASCAL_LOG_LEVEL_DEBUG 4
+
+/**
+ * The "trace" level designates very low priority, often extremely verbose,
+ * information.
+ *
+ * By default, rascaline disable this level, you can enable it by editing the
+ * code.
+ */
+#define RASCAL_LOG_LEVEL_TRACE 5
+
+/**
  * The different kinds of indexes that can exist on a `rascal_descriptor_t`
  */
 typedef enum rascal_indexes {
@@ -88,6 +120,17 @@ typedef struct rascal_descriptor_t rascal_descriptor_t;
  * error coming from callbacks.
  */
 typedef int32_t rascal_status_t;
+
+/**
+ * Callback function type for rascaline logging system. Such functions are
+ * called when a log event is emitted in the code.
+ *
+ * The first argument is the log level, one of `RASCAL_LOG_LEVEL_ERROR`,
+ * `RASCAL_LOG_LEVEL_WARN` `RASCAL_LOG_LEVEL_INFO`, `RASCAL_LOG_LEVEL_DEBUG`,
+ * or `RASCAL_LOG_LEVEL_TRACE`. The second argument is a NULL-terminated string
+ * containing the message associated with the log event.
+ */
+typedef void (*rascal_logging_callback_t)(int32_t level, const char *message);
 
 /**
  * Pair of atoms coming from a neighbor list
@@ -241,6 +284,13 @@ extern "C" {
  * @returns the last error message, as a NULL-terminated string
  */
 const char *rascal_last_error(void);
+
+/**
+ * Set the given ``callback`` function as the global logging callback. This
+ * function will be called on all log events. If a logging callback was already
+ * set, it is replaced by the new one.
+ */
+rascal_status_t rascal_set_logging_callback(rascal_logging_callback_t callback);
 
 /**
  * Read all structures in the file at the given `path` using

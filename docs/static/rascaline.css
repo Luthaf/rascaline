@@ -1,0 +1,4 @@
+/* workaround furo style causing function parameters to float on right */
+dl.function > dt span.sig-paren + a.reference.internal {
+  float: none;
+}

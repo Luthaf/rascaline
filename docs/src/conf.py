@@ -51,6 +51,11 @@ extract_json_schema()
 build_cargo_docs()
 build_doxygen_docs()
 
+
+def setup(app):
+    app.add_css_file(os.path.join(ROOT, "docs", "static", "rascaline.css"))
+
+
 # -- General configuration ---------------------------------------------------
 
 needs_sphinx = "3.5.0"

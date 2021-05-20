@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from .status import RascalError
+from .log import set_logging_callback
 
 from .descriptor import Descriptor
 

@@ -1,3 +1,5 @@
+use log::{info, warn};
+
 use super::CalculatorBase;
 
 use crate::descriptor::{IndexesBuilder, Indexes, IndexValue, SamplesIndexes, AtomSamples};
@@ -72,6 +74,12 @@ impl CalculatorBase for DummyCalculator {
     #[allow(clippy::clippy::cast_precision_loss)]
     #[time_graph::instrument(name = "DummyCalculator::compute")]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor) -> Result<(), Error> {
+        if self.name.contains("log-test-info:") {
+            info!("{}", self.name);
+        } else if self.name.contains("log-test-warn:") {
+            warn!("{}", self.name);
+        }
+
         for (sample_i, indexes) in descriptor.samples.iter().enumerate() {
             let i_system = indexes[0].usize();
             let center = indexes[1].usize();
@@ -119,6 +127,7 @@ impl CalculatorBase for DummyCalculator {
 
         Ok(())
     }
+
 }
 
 #[cfg(test)]

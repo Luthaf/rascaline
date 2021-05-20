@@ -4,18 +4,20 @@ import sys
 from ctypes import cdll
 
 from ._rascaline import setup_functions
+from .log import set_logging_callback, default_logging_callback
 
 
 class RascalFinder(object):
     def __init__(self):
-        self._cache = None
+        self._cached_dll = None
 
     def __call__(self):
-        if self._cache is None:
+        if self._cached_dll is None:
             path = _lib_path()
-            self._cache = cdll.LoadLibrary(path)
-            setup_functions(self._cache)
-        return self._cache
+            self._cached_dll = cdll.LoadLibrary(path)
+            setup_functions(self._cached_dll)
+            set_logging_callback(default_logging_callback)
+        return self._cached_dll
 
 
 def _lib_path():
@@ -41,9 +43,9 @@ def _lib_path():
 
 
 def _check_dll(path):
-    '''
+    """
     Check if the DLL pointer size matches Python (32-bit or 64-bit)
-    '''
+    """
     import struct
     import platform
 

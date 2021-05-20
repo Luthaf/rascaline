@@ -45,6 +45,7 @@ class AstVisitor(c_ast.NodeVisitor):
         self.functions = []
         self.enums = []
         self.structs = []
+        self.types = {}
         self.defines = {}
 
     def visit_Decl(self, node):
@@ -60,8 +61,8 @@ class AstVisitor(c_ast.NodeVisitor):
         if not node.name.startswith("rascal_"):
             return
 
-        # Get name and value for enum
         if isinstance(node.type.type, c_ast.Enum):
+            # Get name and value for enum
             enum = Enum(node.name)
             for enumerator in node.type.type.values.enumerators:
                 enum.add_value(enumerator.name, enumerator.value.value)
@@ -73,6 +74,9 @@ class AstVisitor(c_ast.NodeVisitor):
                 struct.add_member(member.name, member.type)
 
             self.structs.append(struct)
+
+        else:
+            self.types[node.name] = node.type.type
 
 
 def parse(file):
@@ -129,6 +133,13 @@ def _typedecl_name(type):
         return type.type.names[0]
 
 
+def funcdecl_to_ctypes(type, ndpointer=False):
+    restype = type_to_ctypes(type.type, ndpointer)
+    args = [type_to_ctypes(t.type, ndpointer) for t in type.args.params]
+
+    return f'CFUNCTYPE({restype}, {", ".join(args)})'
+
+
 def type_to_ctypes(type, ndpointer=False):
     if isinstance(type, c_ast.PtrDecl):
         if isinstance(type.type, c_ast.PtrDecl):
@@ -153,22 +164,23 @@ def type_to_ctypes(type, ndpointer=False):
                 return f"POINTER({c_type_name(name)})"
 
         elif isinstance(type.type, c_ast.FuncDecl):
-            restype = type_to_ctypes(type.type.type, ndpointer)
-            args = [type_to_ctypes(t.type, ndpointer) for t in type.type.args.params]
-
-            return f'CFUNCTYPE({restype}, {", ".join(args)})'
+            return funcdecl_to_ctypes(type.type, ndpointer)
 
     else:
         # not a pointer
         if isinstance(type, c_ast.TypeDecl):
             return c_type_name(_typedecl_name(type))
-        if isinstance(type, c_ast.ArrayDecl):
+        elif isinstance(type, c_ast.IdentifierType):
+            return c_type_name(type.names[0])
+        elif isinstance(type, c_ast.ArrayDecl):
             if isinstance(type.dim, c_ast.Constant):
                 size = type.dim.value
             else:
                 raise Exception("dynamically sized arrays are not supported")
 
             return f"{type_to_ctypes(type.type)} * {size}"
+        elif isinstance(type, c_ast.FuncDecl):
+            return funcdecl_to_ctypes(type, ndpointer)
 
     raise Exception("Unknown type")
 
@@ -239,11 +251,14 @@ if arch == "32bit":
 elif arch == "64bit":
     c_uintptr_t = ctypes.c_uint64
 
-rascal_status_t = ctypes.c_int32
 """
         )
         for name, value in data.defines.items():
             file.write(f"{name} = {value}\n")
+        file.write("\n\n")
+
+        for name, c_type in data.types.items():
+            file.write(f"{name} = {type_to_ctypes(c_type)}\n")
 
         generate_enums(file, data.enums)
         generate_structs(file, data.structs)

@@ -17,7 +17,6 @@ if arch == "32bit":
 elif arch == "64bit":
     c_uintptr_t = ctypes.c_uint64
 
-rascal_status_t = ctypes.c_int32
 RASCAL_SUCCESS = 0
 RASCAL_INVALID_PARAMETER_ERROR = 1
 RASCAL_JSON_ERROR = 2
@@ -25,6 +24,15 @@ RASCAL_UTF8_ERROR = 3
 RASCAL_CHEMFILES_ERROR = 4
 RASCAL_SYSTEM_ERROR = 128
 RASCAL_INTERNAL_ERROR = 255
+RASCAL_LOG_LEVEL_ERROR = 1
+RASCAL_LOG_LEVEL_WARN = 2
+RASCAL_LOG_LEVEL_INFO = 3
+RASCAL_LOG_LEVEL_DEBUG = 4
+RASCAL_LOG_LEVEL_TRACE = 5
+
+
+rascal_status_t = ctypes.c_int32
+rascal_logging_callback_t = CFUNCTYPE(None, ctypes.c_int32, ctypes.c_char_p)
 
 
 class rascal_indexes(enum.Enum):
@@ -80,6 +88,11 @@ def setup_functions(lib):
         
     ]
     lib.rascal_last_error.restype = ctypes.c_char_p
+
+    lib.rascal_set_logging_callback.argtypes = [
+        rascal_logging_callback_t
+    ]
+    lib.rascal_set_logging_callback.restype = _check_rascal_status_t
 
     lib.rascal_basic_systems_read.argtypes = [
         ctypes.c_char_p,
