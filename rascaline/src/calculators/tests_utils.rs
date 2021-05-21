@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use ndarray::s;
 
-use approx::assert_relative_eq;
+use approx::{assert_relative_eq, assert_ulps_eq};
 
 use crate::{CalculationOptions, Calculator, SelectedIndexes};
 use crate::systems::{System, SimpleSystem};
@@ -37,13 +37,13 @@ pub fn compute_partial(
     assert_eq!(full.samples, partial.samples);
     for (partial_i, feature) in features.iter().enumerate() {
         let index = full.features.position(feature).unwrap();
-        assert_eq!(
+        assert_ulps_eq!(
             full.values.slice(s![.., index]),
             partial.values.slice(s![.., partial_i])
         );
 
         if gradients {
-            assert_eq!(
+            assert_ulps_eq!(
                 full.gradients.as_ref().unwrap().slice(s![.., index]),
                 partial.gradients.as_ref().unwrap().slice(s![.., partial_i])
             );
@@ -61,7 +61,7 @@ pub fn compute_partial(
     assert_eq!(full.features, partial.features);
     for (partial_i, sample) in samples.iter().enumerate() {
         let index = full.samples.position(sample).unwrap();
-        assert_eq!(
+        assert_ulps_eq!(
             full.values.slice(s![index, ..]),
             partial.values.slice(s![partial_i, ..])
         );
@@ -71,7 +71,7 @@ pub fn compute_partial(
         for (partial_i, sample) in partial.gradients_samples.as_ref().unwrap().iter().enumerate() {
             let index = full.gradients_samples.as_ref().unwrap().position(sample).unwrap();
             dbg!(full.gradients_samples.as_ref().unwrap().names(), sample);
-            assert_eq!(
+            assert_ulps_eq!(
                 full.gradients.as_ref().unwrap().slice(s![index, ..]),
                 partial.gradients.as_ref().unwrap().slice(s![partial_i, ..])
             );
@@ -89,7 +89,7 @@ pub fn compute_partial(
         for (feature_i, feature) in features.iter().enumerate() {
             let full_sample_i = full.samples.position(sample).unwrap();
             let full_feature_i = full.features.position(feature).unwrap();
-            assert_eq!(
+            assert_ulps_eq!(
                 full.values[[full_sample_i, full_feature_i]],
                 partial.values[[sample_i, feature_i]]
             );
@@ -101,7 +101,7 @@ pub fn compute_partial(
             for (feature_i, feature) in features.iter().enumerate() {
                 let full_sample_i = full.gradients_samples.as_ref().unwrap().position(sample).unwrap();
                 let full_feature_i = full.features.position(feature).unwrap();
-                assert_eq!(
+                assert_ulps_eq!(
                     full.gradients.as_ref().unwrap()[[full_sample_i, full_feature_i]],
                     partial.gradients.as_ref().unwrap()[[sample_i, feature_i]]
                 );
