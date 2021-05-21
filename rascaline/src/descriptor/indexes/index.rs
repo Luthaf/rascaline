@@ -336,13 +336,13 @@ mod tests {
     #[test]
     #[should_panic(expected = "all indexes names must be valid identifiers, \'33 bar\' is not")]
     fn invalid_index_name() {
-        let _ = IndexesBuilder::new(vec!["foo", "33 bar"]);
+        IndexesBuilder::new(vec!["foo", "33 bar"]);
     }
 
     #[test]
     #[should_panic(expected = "invalid indexes: the same name is used multiple times")]
     fn duplicated_index_name() {
-        let _ = IndexesBuilder::new(vec!["foo", "bar", "foo"]);
+        IndexesBuilder::new(vec!["foo", "bar", "foo"]);
     }
 
     #[test]

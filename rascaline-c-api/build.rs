@@ -32,10 +32,8 @@ fn main() {
 
     // if not ok, rerun the build script unconditionally
     if result.is_ok() {
-        for entry in glob::glob("src/**/*.rs").unwrap() {
-            if let Ok(path) = entry {
-                println!("cargo:rerun-if-changed={}", path.display());
-            }
+        for path in glob::glob("src/**/*.rs").unwrap().flatten() {
+            println!("cargo:rerun-if-changed={}", path.display());
         }
     }
 }
