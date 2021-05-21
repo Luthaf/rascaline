@@ -39,6 +39,7 @@ itertools = "0.10"
 schemars = "0.8"
 time-graph = "0.1.1"
 twox-hash = "1.6"
+thread_local = "1.1"
 chemfiles = {version = "0.10", optional = true}
 
 [dev-dependencies]

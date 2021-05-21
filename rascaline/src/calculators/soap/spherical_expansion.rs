@@ -1,4 +1,7 @@
+use std::cell::RefCell;
+
 use ndarray::Array2;
+use thread_local::ThreadLocal;
 
 use crate::descriptor::{IndexesBuilder, IndexValue, Indexes, SamplesIndexes, TwoBodiesSpeciesSamples};
 use crate::{Descriptor, Error, System, Vector3D};
@@ -231,8 +234,8 @@ impl SphericalHarmonicsImpl {
 pub struct SphericalExpansion {
     /// Parameters governing the spherical expansion
     parameters: SphericalExpansionParameters,
-    radial_integral: RadialIntegralImpl,
-    spherical_harmonics: SphericalHarmonicsImpl,
+    radial_integral: ThreadLocal<RefCell<RadialIntegralImpl>>,
+    spherical_harmonics: ThreadLocal<RefCell<SphericalHarmonicsImpl>>,
 }
 
 impl std::fmt::Debug for SphericalExpansion {
@@ -244,13 +247,14 @@ impl std::fmt::Debug for SphericalExpansion {
 impl SphericalExpansion {
     /// Create a new `SphericalExpansion` calculator with the given parameters
     pub fn new(parameters: SphericalExpansionParameters) -> Result<SphericalExpansion, Error> {
-        let radial_integral = RadialIntegralImpl::new(&parameters)?;
-        let spherical_harmonics = SphericalHarmonicsImpl::new(&parameters);
+        // validate parameters once in the constructor, so that we can use
+        // expect("invalid parameters") in the main code.
+        RadialIntegralImpl::new(&parameters)?;
 
         return Ok(SphericalExpansion {
             parameters,
-            radial_integral,
-            spherical_harmonics
+            radial_integral: ThreadLocal::new(),
+            spherical_harmonics: ThreadLocal::new(),
         });
     }
 
@@ -263,13 +267,22 @@ impl SphericalExpansion {
         // we could cache the self contribution since they only depend on the
         // gaussian atomic width. For now, we recompute them all the time
 
+        let mut radial_integral = self.radial_integral.get_or(|| {
+            let ri = RadialIntegralImpl::new(&self.parameters).expect("invalid parameters");
+            RefCell::new(ri)
+        }).borrow_mut();
+
+        let mut spherical_harmonics = self.spherical_harmonics.get_or(|| {
+            RefCell::new(SphericalHarmonicsImpl::new(&self.parameters))
+        }).borrow_mut();
+
         for (i_env, requested_env) in descriptor.samples.iter().enumerate() {
             let species_center = requested_env[2];
             let species_neighbor = requested_env[3];
 
             if species_center == species_neighbor {
-                self.radial_integral.compute_no_gradients(0.0);
-                self.spherical_harmonics.compute_no_gradients(Vector3D::new(0.0, 0.0, 1.0));
+                radial_integral.compute_no_gradients(0.0);
+                spherical_harmonics.compute_no_gradients(Vector3D::new(0.0, 0.0, 1.0));
                 let f_cut = self.parameters.cutoff_function.compute(0.0, self.parameters.cutoff);
 
                 for (feature_i, feature) in descriptor.features.iter().enumerate() {
@@ -278,8 +291,8 @@ impl SphericalExpansion {
                     let m = feature[2].isize();
 
                     let n_l_m_value = f_cut
-                        * self.radial_integral.values[[n, l]]
-                        * self.spherical_harmonics.values[[l as isize, m]];
+                        * radial_integral.values[[n, l]]
+                        * spherical_harmonics.values[[l as isize, m]];
                     descriptor.values[[i_env, feature_i]] += n_l_m_value;
                 }
             }
@@ -290,7 +303,7 @@ impl SphericalExpansion {
     ///
     /// This function assumes that the radial integral and spherical harmonics
     /// have just been computed for this pair.
-    fn accumulate_for_pair(&mut self, descriptor: &mut Descriptor, pair: &Pair) {
+    fn accumulate_for_pair(&self, descriptor: &mut Descriptor, pair: &Pair) {
         let first_sample_i = descriptor.samples.position(&[
             IndexValue::from(pair.system),
             IndexValue::from(pair.first),
@@ -317,8 +330,17 @@ impl SphericalExpansion {
             return;
         }
 
-        self.radial_integral.compute(pair.distance);
-        self.spherical_harmonics.compute(pair.direction);
+        let mut radial_integral = self.radial_integral.get_or(|| {
+            let ri = RadialIntegralImpl::new(&self.parameters).expect("invalid parameters");
+            RefCell::new(ri)
+        }).borrow_mut();
+
+        let mut spherical_harmonics = self.spherical_harmonics.get_or(|| {
+            RefCell::new(SphericalHarmonicsImpl::new(&self.parameters))
+        }).borrow_mut();
+
+        radial_integral.compute(pair.distance);
+        spherical_harmonics.compute(pair.direction);
 
         let f_cut = self.parameters.cutoff_function.compute(
             pair.distance, self.parameters.cutoff
@@ -330,8 +352,8 @@ impl SphericalExpansion {
             let m = feature[2].isize();
 
             let n_l_m_value = f_cut
-                * self.radial_integral.values[[n, l]]
-                * self.spherical_harmonics.values[[l as isize, m]];
+                * radial_integral.values[[n, l]]
+                * spherical_harmonics.values[[l as isize, m]];
             if let Some(first_sample_i) = first_sample_i {
                 descriptor.values[[first_sample_i, feature_i]] += n_l_m_value;
             }
@@ -414,11 +436,20 @@ impl SphericalExpansion {
             return;
         }
 
-        let ri_values = &self.radial_integral.values;
-        let ri_gradients = self.radial_integral.gradients.as_ref().expect("missing radial integral gradients");
+        let radial_integral = self.radial_integral.get_or(|| {
+            let ri = RadialIntegralImpl::new(&self.parameters).expect("invalid parameters");
+            RefCell::new(ri)
+        }).borrow();
 
-        let sph_values = &self.spherical_harmonics.values;
-        let sph_gradients = self.spherical_harmonics.gradients.as_ref().expect("missing spherical harmonics gradients");
+        let spherical_harmonics = self.spherical_harmonics.get_or(|| {
+            RefCell::new(SphericalHarmonicsImpl::new(&self.parameters))
+        }).borrow();
+
+        let ri_values = &radial_integral.values;
+        let ri_gradients = radial_integral.gradients.as_ref().expect("missing radial integral gradients");
+
+        let sph_values = &spherical_harmonics.values;
+        let sph_gradients = spherical_harmonics.gradients.as_ref().expect("missing spherical harmonics gradients");
 
         let f_cut = self.parameters.cutoff_function.compute(
             pair.distance, self.parameters.cutoff
