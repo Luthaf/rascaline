@@ -1,6 +1,6 @@
 use ndarray::ArrayViewMut2;
 
-pub trait RadialIntegral: std::panic::RefUnwindSafe {
+pub trait RadialIntegral: std::panic::RefUnwindSafe + Send {
     /// Compute the radial integral for a single atomic `distance` and store the
     /// resulting data in the `max_radial x max_angular` array `values`. If
     /// `gradients` is `Some`, also compute and store gradients.
