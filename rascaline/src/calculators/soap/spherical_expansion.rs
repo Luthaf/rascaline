@@ -152,25 +152,87 @@ pub struct SphericalExpansionParameters {
     pub cutoff_function: CutoffFunction,
 }
 
+struct RadialIntegralImpl {
+    /// Implementation of the radial integral
+    code: Box<dyn RadialIntegral>,
+    /// Cache for the radial integral values
+    values: Array2<f64>,
+    /// Cache for the radial integral gradient
+    gradients: Option<Array2<f64>>,
+}
+
+impl RadialIntegralImpl {
+    fn new(parameters: &SphericalExpansionParameters) -> Result<Self, Error> {
+        let code = parameters.radial_basis.construct(&parameters)?;
+        let shape = (parameters.max_radial, parameters.max_angular + 1);
+        let values = Array2::from_elem(shape, 0.0);
+        let gradients = if parameters.gradients {
+            Some(Array2::from_elem(shape, 0.0))
+        } else {
+            None
+        };
+
+        return Ok(RadialIntegralImpl { code, values, gradients });
+    }
+
+    fn compute(&mut self, distance: f64) {
+        self.code.compute(
+            distance,
+            self.values.view_mut(),
+            self.gradients.as_mut().map(|o| o.view_mut()),
+        );
+    }
+
+    fn compute_no_gradients(&mut self, distance: f64) {
+        self.code.compute(distance, self.values.view_mut(), None);
+    }
+}
+
+struct SphericalHarmonicsImpl {
+    /// Implementation of the spherical harmonics
+    code: SphericalHarmonics,
+    /// Cache for the spherical harmonics values
+    values: SphericalHarmonicsArray,
+    /// Cache for the spherical harmonics gradients (one value each for x/y/z)
+    gradients: Option<[SphericalHarmonicsArray; 3]>,
+}
+
+impl SphericalHarmonicsImpl {
+    fn new(parameters: &SphericalExpansionParameters) -> SphericalHarmonicsImpl {
+        let code = SphericalHarmonics::new(parameters.max_angular);
+        let values = SphericalHarmonicsArray::new(parameters.max_angular);
+        let gradients = if parameters.gradients {
+            Some([
+                SphericalHarmonicsArray::new(parameters.max_angular),
+                SphericalHarmonicsArray::new(parameters.max_angular),
+                SphericalHarmonicsArray::new(parameters.max_angular)
+            ])
+        } else {
+            None
+        };
+
+        return SphericalHarmonicsImpl { code, values, gradients };
+    }
+
+    fn compute(&mut self, direction: Vector3D) {
+        self.code.compute(
+            direction,
+            &mut self.values,
+            self.gradients.as_mut(),
+        );
+    }
+
+    fn compute_no_gradients(&mut self, direction: Vector3D) {
+        self.code.compute(direction, &mut self.values, self.gradients.as_mut());
+    }
+}
+
 /// The actual calculator used to compute SOAP spherical expansion coefficients
 pub struct SphericalExpansion {
     /// Parameters governing the spherical expansion
     parameters: SphericalExpansionParameters,
-    /// Implementation of the radial integral
-    radial_integral: Box<dyn RadialIntegral>,
-    /// Implementation of the spherical harmonics
-    spherical_harmonics: SphericalHarmonics,
-    /// Cache for the spherical harmonics values
-    sph_values: SphericalHarmonicsArray,
-    /// Cache for the spherical harmonics gradients (one value each for x/y/z)
-    sph_gradients: Option<[SphericalHarmonicsArray; 3]>,
-    /// Cache for the radial integral values
-    ri_values: Array2<f64>,
-    /// Cache for the radial integral gradient
-    ri_gradients: Option<Array2<f64>>,
-    /// Store whether the radial integral and spherical harmonic have been
-    /// computed for the current pair.
-    computed_ri_sph_for_this_pair: bool,
+    radial_integral: RadialIntegralImpl,
+    spherical_harmonics: SphericalHarmonicsImpl,
 }
 
 impl std::fmt::Debug for SphericalExpansion {
@@ -182,37 +244,14 @@ impl std::fmt::Debug for SphericalExpansion {
 impl SphericalExpansion {
     /// Create a new `SphericalExpansion` calculator with the given parameters
     pub fn new(parameters: SphericalExpansionParameters) -> Result<SphericalExpansion, Error> {
-        let radial_integral = parameters.radial_basis.construct(&parameters)?;
-        let spherical_harmonics = SphericalHarmonics::new(parameters.max_angular);
-        let sph_values = SphericalHarmonicsArray::new(parameters.max_angular);
-        let sph_gradients = if parameters.gradients {
-            Some([
-                SphericalHarmonicsArray::new(parameters.max_angular),
-                SphericalHarmonicsArray::new(parameters.max_angular),
-                SphericalHarmonicsArray::new(parameters.max_angular)
-            ])
-        } else {
-            None
-        };
+        let radial_integral = RadialIntegralImpl::new(&parameters)?;
+        let spherical_harmonics = SphericalHarmonicsImpl::new(&parameters);
 
-        let shape = (parameters.max_radial, parameters.max_angular + 1);
-        let ri_values = Array2::from_elem(shape, 0.0);
-        let ri_gradients = if parameters.gradients {
-            Some(Array2::from_elem(shape, 0.0))
-        } else {
-            None
-        };
-
-        Ok(SphericalExpansion {
-            parameters: parameters,
-            radial_integral: radial_integral,
-            spherical_harmonics: spherical_harmonics,
-            sph_values: sph_values,
-            sph_gradients: sph_gradients,
-            ri_values: ri_values,
-            ri_gradients: ri_gradients,
-            computed_ri_sph_for_this_pair: false,
-        })
+        return Ok(SphericalExpansion {
+            parameters,
+            radial_integral,
+            spherical_harmonics
+        });
     }
 
     /// Compute the self contribution to spherical expansion, i.e. the
@@ -229,11 +268,8 @@ impl SphericalExpansion {
             let species_neighbor = requested_env[3];
 
             if species_center == species_neighbor {
-                self.radial_integral.compute(0.0, self.ri_values.view_mut(), None);
-
-                self.spherical_harmonics.compute(
-                    Vector3D::new(0.0, 0.0, 1.0), &mut self.sph_values, None
-                );
+                self.radial_integral.compute_no_gradients(0.0);
+                self.spherical_harmonics.compute_no_gradients(Vector3D::new(0.0, 0.0, 1.0));
                 let f_cut = self.parameters.cutoff_function.compute(0.0, self.parameters.cutoff);
 
                 for (feature_i, feature) in descriptor.features.iter().enumerate() {
@@ -241,7 +277,9 @@ impl SphericalExpansion {
                     let l = feature[1].usize();
                     let m = feature[2].isize();
 
-                    let n_l_m_value = f_cut * self.ri_values[[n, l]] * self.sph_values[[l as isize, m]];
+                    let n_l_m_value = f_cut
+                        * self.radial_integral.values[[n, l]]
+                        * self.spherical_harmonics.values[[l as isize, m]];
                     descriptor.values[[i_env, feature_i]] += n_l_m_value;
                 }
             }
@@ -253,8 +291,6 @@ impl SphericalExpansion {
     /// This function assumes that the radial integral and spherical harmonics
     /// have just been computed for this pair.
     fn accumulate_for_pair(&mut self, descriptor: &mut Descriptor, pair: &Pair) {
-        self.computed_ri_sph_for_this_pair = false;
-
         let first_sample_i = descriptor.samples.position(&[
             IndexValue::from(pair.system),
             IndexValue::from(pair.first),
@@ -281,15 +317,8 @@ impl SphericalExpansion {
             return;
         }
 
-        self.radial_integral.compute(
-            pair.distance, self.ri_values.view_mut(), self.ri_gradients.as_mut().map(|o| o.view_mut())
-        );
-
-        self.spherical_harmonics.compute(
-            pair.direction, &mut self.sph_values, self.sph_gradients.as_mut()
-        );
-
-        self.computed_ri_sph_for_this_pair = true;
+        self.radial_integral.compute(pair.distance);
+        self.spherical_harmonics.compute(pair.direction);
 
         let f_cut = self.parameters.cutoff_function.compute(
             pair.distance, self.parameters.cutoff
@@ -300,7 +329,9 @@ impl SphericalExpansion {
             let l = feature[1].usize();
             let m = feature[2].isize();
 
-            let n_l_m_value = f_cut * self.ri_values[[n, l]] * self.sph_values[[l as isize, m]];
+            let n_l_m_value = f_cut
+                * self.radial_integral.values[[n, l]]
+                * self.spherical_harmonics.values[[l as isize, m]];
             if let Some(first_sample_i) = first_sample_i {
                 descriptor.values[[first_sample_i, feature_i]] += n_l_m_value;
             }
@@ -323,9 +354,6 @@ impl SphericalExpansion {
 
         let gradients = descriptor.gradients.as_mut().expect("missing storage for gradients");
         let gradients_samples = descriptor.gradients_samples.as_ref().expect("missing gradients samples");
-
-        let ri_gradients = self.ri_gradients.as_ref().expect("missing radial integral gradients");
-        let sph_gradients = self.sph_gradients.as_ref().expect("missing spherical harmonics gradients");
 
         // get the positions in the gradients array where to store the
         // contributions to the gradient for this specific pair, if they
@@ -386,7 +414,11 @@ impl SphericalExpansion {
             return;
         }
 
-        assert!(self.computed_ri_sph_for_this_pair);
+        let ri_values = &self.radial_integral.values;
+        let ri_gradients = self.radial_integral.gradients.as_ref().expect("missing radial integral gradients");
+
+        let sph_values = &self.spherical_harmonics.values;
+        let sph_gradients = self.spherical_harmonics.gradients.as_ref().expect("missing spherical harmonics gradients");
 
         let f_cut = self.parameters.cutoff_function.compute(
             pair.distance, self.parameters.cutoff
@@ -404,12 +436,12 @@ impl SphericalExpansion {
             let l = feature[1].usize();
             let m = feature[2].isize();
 
-            let sph_value = self.sph_values[[l as isize, m]];
+            let sph_value = sph_values[[l as isize, m]];
             let sph_grad_x = sph_gradients[0][[l as isize, m]];
             let sph_grad_y = sph_gradients[1][[l as isize, m]];
             let sph_grad_z = sph_gradients[2][[l as isize, m]];
 
-            let ri_value = self.ri_values[[n, l]];
+            let ri_value = ri_values[[n, l]];
             let ri_grad = ri_gradients[[n, l]];
 
             let grad_x = f_cut_grad * dr_dx * ri_value * sph_value
