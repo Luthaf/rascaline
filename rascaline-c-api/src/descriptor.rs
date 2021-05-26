@@ -1,3 +1,4 @@
+use std::convert::TryInto;
 use std::ops::{Deref, DerefMut};
 use std::os::raw::c_char;
 use std::ffi::CStr;
@@ -295,6 +296,76 @@ pub unsafe extern fn rascal_descriptor_indexes_names(
         if size > indexes.size() {
             for i in indexes.size()..size {
                 names.add(i).write(std::ptr::null());
+            }
+        }
+
+        Ok(())
+    })
+}
+
+/// Sentinel index indicating that a value was not found
+pub const RASCAL_NOT_FOUND: i32 = -1;
+
+/// Get the position of the given `value` in the requested `indexes` inside the
+/// given `descriptor`.
+///
+/// The `value` must be a contiguous array of `size` values. The position of the
+/// value inside the indexes is written to `positions`. If the value can not be
+/// found, `positions` is set to `RASCAL_NOT_FOUND`.
+///
+/// If this `descriptor` does not contain gradient data, and `indexes` is
+/// `RASCAL_INDEXES_GRADIENTS`, `positions` is set to `RASCAL_NOT_FOUND`.
+///
+/// @param descriptor pointer to an existing descriptor
+/// @param indexes type of indexes requested
+/// @param value array of integers describing the value to find
+/// @param size size of the `value` array, i.e. number of elements inside
+///             the array
+/// @param position pointer to an integer where the position will be written
+///
+/// @returns The status code of this operation. If the status is not
+///          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the full
+///          error message.
+#[allow(clippy::missing_panics_doc)]
+#[no_mangle]
+pub unsafe extern fn rascal_descriptor_indexes_position(
+    descriptor: *const rascal_descriptor_t,
+    indexes: rascal_indexes,
+    value: *const i32,
+    size: usize,
+    position: *mut i32,
+) -> rascal_status_t {
+    catch_unwind(|| {
+        check_pointers!(descriptor, value, position);
+
+        let indexes = match indexes {
+            rascal_indexes::RASCAL_INDEXES_FEATURES => &(*descriptor).features,
+            rascal_indexes::RASCAL_INDEXES_SAMPLES => &(*descriptor).samples,
+            rascal_indexes::RASCAL_INDEXES_GRADIENT_SAMPLES => {
+                if let Some(indexes) = &(*descriptor).gradients_samples {
+                    indexes
+                } else {
+                    *position = RASCAL_NOT_FOUND;
+                    return Ok(());
+                }
+            }
+        };
+
+        if size != indexes.size() {
+            return Err(Error::InvalidParameter(format!(
+                "invalid size for this index: expected a vector of {} values, \
+                got {} values", indexes.size(), size
+            )));
+        }
+
+        let value: *const IndexValue = value.cast();
+        let value = std::slice::from_raw_parts(value, size);
+        match indexes.position(value) {
+            Some(i) => {
+                *position = i.try_into().expect("position do not fit in 32-bit integer");
+            }
+            None => {
+                *position = RASCAL_NOT_FOUND;
             }
         }
 

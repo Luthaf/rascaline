@@ -18,7 +18,7 @@ class Indexes(np.ndarray):
         name of each column in this indexes array
     """
 
-    def __new__(cls, ptr, shape, names):
+    def __new__(cls, ptr, shape, names, index_callback):
         assert len(shape) == 2
         assert len(names) == shape[1]
 
@@ -34,12 +34,21 @@ class Indexes(np.ndarray):
 
         obj = array.view(cls)
         obj.names = tuple(names)
+        obj._index_callback = index_callback
         return obj
 
     def __array_finalize__(self, obj):
         if obj is None:
             return
         self.names = getattr(obj, "names", tuple())
+        self._index_callback = getattr(obj, "_index_callback", lambda _: None)
+
+    def index(self, value):
+        """
+        Get the index associated with the given value in this array, or ``None``
+        if the value is not inside this array.
+        """
+        return self._index_callback(value)
 
 
 class Descriptor:
@@ -108,7 +117,27 @@ class Descriptor:
 
         shape = (count.value, size.value)
         ptr = data if count.value != 0 else None
-        return Indexes(ptr=ptr, shape=shape, names=names)
+
+        def index_callback(value):
+            value = np.array(value)
+            assert len(value.shape) == 1
+            if value.dtype.fields is not None:
+                # convert structured array back to int32 array
+                value = value.view(dtype=np.int32).reshape((1, -1))
+            else:
+                value = np.array(value, dtype=np.int32)
+
+            ptr_int32 = POINTER(c_int32)
+            output = c_int32()
+            self._lib.rascal_descriptor_indexes_position(
+                self, kind.value, value.ctypes.data_as(ptr_int32), len(value), output
+            )
+            if output.value == -1:
+                return None
+            else:
+                return output.value
+
+        return Indexes(ptr=ptr, shape=shape, names=names, index_callback=index_callback)
 
     @property
     def samples(self):

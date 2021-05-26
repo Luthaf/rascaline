@@ -92,6 +92,10 @@ class TestDummyDescriptor(unittest.TestCase):
         self.assertTrue(np.all(samples[2] == [0, 2]))
         self.assertTrue(np.all(samples[3] == [0, 3]))
 
+        self.assertEqual(samples.index([0, 0]), 0)
+        self.assertEqual(samples.index([0, 3]), 3)
+        self.assertEqual(samples.index([2, 0]), None)
+
     def test_gradient_indexes(self):
         system = TestSystem()
         calculator = DummyCalculator(cutoff=3.2, delta=12, name="", gradients=False)
@@ -117,6 +121,10 @@ class TestDummyDescriptor(unittest.TestCase):
 
         expected = [0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2]
         self.assertTrue(np.all(gradients_samples["spatial"] == expected))
+
+        self.assertEqual(gradients_samples.index([0, 1, 2, 1]), 7)
+        self.assertEqual(gradients_samples.index([0, 2, 3, 2]), 14)
+        self.assertEqual(gradients_samples.index([0, 2, 0, 0]), None)
 
         # view & reshape for easier direct comparison of values
         # numpy only consider structured arrays to be equal if they have
@@ -158,6 +166,10 @@ class TestDummyDescriptor(unittest.TestCase):
         self.assertTrue(np.all(features["index_delta"] == [1, 0]))
         self.assertTrue(np.all(features["x_y_z"] == [0, 1]))
 
+        self.assertEqual(features.index([0, 1]), 1)
+        self.assertEqual(features.index([1, 0]), 0)
+        self.assertEqual(features.index([0, 2]), None)
+
         # view & reshape for easier direct comparison of values
         # numpy only consider structured arrays to be equal if they have
         # the same dtype
@@ -177,3 +189,19 @@ class TestDummyDescriptor(unittest.TestCase):
 
         self.assertEqual(descriptor.values.shape, (1, 8))
         self.assertEqual(descriptor.gradients.shape, (12, 8))
+
+    def test_index_errors(self):
+        system = TestSystem()
+        calculator = DummyCalculator(cutoff=3.2, delta=12, name="", gradients=True)
+        descriptor = calculator.compute(system, use_native_system=False)
+
+        features = descriptor.features
+
+        with self.assertRaises(Exception) as cm:
+            features.index([3, 4, 5])
+
+        message = (
+            "invalid parameter: invalid size for this index: "
+            + "expected a vector of 2 values, got 3 values"
+        )
+        self.assertEqual(cm.exception.args[0], message)

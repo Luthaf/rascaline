@@ -29,6 +29,7 @@ RASCAL_LOG_LEVEL_WARN = 2
 RASCAL_LOG_LEVEL_INFO = 3
 RASCAL_LOG_LEVEL_DEBUG = 4
 RASCAL_LOG_LEVEL_TRACE = 5
+RASCAL_NOT_FOUND = -1
 
 
 rascal_status_t = ctypes.c_int32
@@ -149,6 +150,15 @@ def setup_functions(lib):
         c_uintptr_t
     ]
     lib.rascal_descriptor_indexes_names.restype = _check_rascal_status_t
+
+    lib.rascal_descriptor_indexes_position.argtypes = [
+        POINTER(rascal_descriptor_t),
+        ctypes.c_int,
+        POINTER(ctypes.c_int32),
+        c_uintptr_t,
+        POINTER(ctypes.c_int32)
+    ]
+    lib.rascal_descriptor_indexes_position.restype = _check_rascal_status_t
 
     lib.rascal_descriptor_densify.argtypes = [
         POINTER(rascal_descriptor_t),

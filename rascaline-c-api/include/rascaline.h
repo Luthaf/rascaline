@@ -83,6 +83,11 @@
 #define RASCAL_LOG_LEVEL_TRACE 5
 
 /**
+ * Sentinel index indicating that a value was not found
+ */
+#define RASCAL_NOT_FOUND -1
+
+/**
  * The different kinds of indexes that can exist on a `rascal_descriptor_t`
  */
 typedef enum rascal_indexes {
@@ -477,6 +482,34 @@ rascal_status_t rascal_descriptor_indexes_names(const struct rascal_descriptor_t
                                                 enum rascal_indexes indexes,
                                                 const char **names,
                                                 uintptr_t size);
+
+/**
+ * Get the position of the given `value` in the requested `indexes` inside the
+ * given `descriptor`.
+ *
+ * The `value` must be a contiguous array of `size` values. The position of the
+ * value inside the indexes is written to `positions`. If the value can not be
+ * found, `positions` is set to `RASCAL_NOT_FOUND`.
+ *
+ * If this `descriptor` does not contain gradient data, and `indexes` is
+ * `RASCAL_INDEXES_GRADIENTS`, `positions` is set to `RASCAL_NOT_FOUND`.
+ *
+ * @param descriptor pointer to an existing descriptor
+ * @param indexes type of indexes requested
+ * @param value array of integers describing the value to find
+ * @param size size of the `value` array, i.e. number of elements inside
+ *             the array
+ * @param position pointer to an integer where the position will be written
+ *
+ * @returns The status code of this operation. If the status is not
+ *          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the full
+ *          error message.
+ */
+rascal_status_t rascal_descriptor_indexes_position(const struct rascal_descriptor_t *descriptor,
+                                                   enum rascal_indexes indexes,
+                                                   const int32_t *value,
+                                                   uintptr_t size,
+                                                   int32_t *position);
 
 rascal_status_t rascal_descriptor_densify(struct rascal_descriptor_t *descriptor,
                                           const char *const *variables,

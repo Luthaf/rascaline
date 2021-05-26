@@ -40,6 +40,10 @@ TEST_CASE("Descriptor") {
         CHECK(features(0, 1) == 0);
         CHECK(features(1, 0) == 0);
         CHECK(features(1, 1) == 1);
+
+        CHECK(features.position({1, 0}) == 0);
+        CHECK(features.position({0, 1}) == 1);
+        CHECK(features.position({2, 1}) == RASCAL_NOT_FOUND);
     }
 
     SECTION("samples") {
@@ -62,6 +66,10 @@ TEST_CASE("Descriptor") {
             CHECK(samples(i, 0) == 0);
             CHECK(samples(i, 1) == i);
         }
+
+        CHECK(samples.position({0, 0}) == 0);
+        CHECK(samples.position({0, 3}) == 3);
+        CHECK(samples.position({1, 3}) == RASCAL_NOT_FOUND);
     }
 
     SECTION("values") {
@@ -114,6 +122,10 @@ TEST_CASE("Descriptor") {
                 CHECK(gradients_samples(i, j) == expected[i * size + j]);
             }
         }
+
+        CHECK(gradients_samples.position({0, 1, 2, 1}) == 7);
+        CHECK(gradients_samples.position({0, 2, 3, 2}) == 14);
+        CHECK(gradients_samples.position({0, 2, 0, 0}) == RASCAL_NOT_FOUND);
 
         CHECK(gradients_samples.names()[0] == "structure");
         CHECK(gradients_samples.names()[1] == "center");

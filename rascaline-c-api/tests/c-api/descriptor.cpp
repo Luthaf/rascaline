@@ -60,6 +60,19 @@ TEST_CASE("rascal_descriptor_t") {
         CHECK(data[1 * size + 0] == 0);
         CHECK(data[1 * size + 1] == 1);
 
+        int32_t positions = 0;
+        int32_t value[2] = {0, 1};
+        CHECK_SUCCESS(rascal_descriptor_indexes_position(
+            descriptor, RASCAL_INDEXES_FEATURES, value, 2, &positions
+        ));
+        CHECK(positions == 1);
+
+        value[1] = 2;
+        CHECK_SUCCESS(rascal_descriptor_indexes_position(
+            descriptor, RASCAL_INDEXES_FEATURES, value, 2, &positions
+        ));
+        CHECK(positions == RASCAL_NOT_FOUND);
+
         CHECK_SUCCESS(rascal_descriptor_indexes_names(
             descriptor, RASCAL_INDEXES_FEATURES, names, 2
         ));
@@ -104,6 +117,19 @@ TEST_CASE("rascal_descriptor_t") {
             CHECK(data[i * size + 0] == 0);
             CHECK(data[i * size + 1] == i);
         }
+
+        int32_t positions = 0;
+        int32_t value[2] = {0, 3};
+        CHECK_SUCCESS(rascal_descriptor_indexes_position(
+            descriptor, RASCAL_INDEXES_SAMPLES, value, 2, &positions
+        ));
+        CHECK(positions == 3);
+
+        value[0] = 2;
+        CHECK_SUCCESS(rascal_descriptor_indexes_position(
+            descriptor, RASCAL_INDEXES_SAMPLES, value, 2, &positions
+        ));
+        CHECK(positions == RASCAL_NOT_FOUND);
 
         CHECK_SUCCESS(rascal_descriptor_indexes_names(
             descriptor, RASCAL_INDEXES_SAMPLES, names, 2
@@ -187,6 +213,19 @@ TEST_CASE("rascal_descriptor_t") {
         };
 
         CHECK(std::vector<int32_t>(data, data + (count * size)) == expected);
+
+        int32_t positions = 0;
+        int32_t value[4] = {0, 2, 3, 1};
+        CHECK_SUCCESS(rascal_descriptor_indexes_position(
+            descriptor, RASCAL_INDEXES_GRADIENT_SAMPLES, value, 4, &positions
+        ));
+        CHECK(positions == 13);
+
+        value[0] = 1;
+        CHECK_SUCCESS(rascal_descriptor_indexes_position(
+            descriptor, RASCAL_INDEXES_GRADIENT_SAMPLES, value, 4, &positions
+        ));
+        CHECK(positions == RASCAL_NOT_FOUND);
 
         CHECK_SUCCESS(rascal_descriptor_indexes_names(
             descriptor, RASCAL_INDEXES_GRADIENT_SAMPLES, names, 4

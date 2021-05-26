@@ -488,6 +488,8 @@ private:
     std::vector<int32_t> indexes_;
 };
 
+class Descriptor;
+
 
 /// A set of `Indexes` contains metdata describing row or columns in the
 /// `values` and `gradients` arrays in a `Descriptor`.
@@ -496,18 +498,34 @@ private:
 /// and a vector of names associated with the columns of the 2D array.
 class Indexes: public ArrayView<int32_t> {
 public:
-    /// Create a new Indexes with the given `names` and corresponding `data`
+    /// Create the `Indexes` of the requested `kind` in this `descriptor`.
     ///
     /// This function is intended for internal use only.
-    Indexes(std::vector<std::string> names, ArrayView<int32_t> data):
-        ArrayView<int32_t>(std::move(data)), names_(names)
-    {
-        assert(this->shape()[1] == names_.size());
-    }
+    static Indexes create(const Descriptor& descriptor, rascal_indexes kind);
+
+    Indexes(const Indexes&) = delete;
+    Indexes& operator=(const Indexes&) = delete;
+
+    // we can use default implementation since we do not own `descriptor_`
+    ~Indexes() = default;
+    Indexes(Indexes&&) = default;
+    Indexes& operator=(Indexes&&) = default;
 
     /// Get the names of variables described by this `Indexes` set.
     const std::vector<std::string>& names() const {
         return names_;
+    }
+
+    /// Get the position of the given `value` in these `Indexes`
+    ///
+    /// If the value can not be found, this function returns `RASCAL_NOT_FOUND`
+    /// (i.e. `-1`).
+    int32_t position(std::vector<int32_t> value) {
+        int32_t output = RASCAL_NOT_FOUND;
+        details::check_status(rascal_descriptor_indexes_position(
+            descriptor_, kind_, value.data(), value.size(), &output
+        ));
+        return output;
     }
 
     /// Construct a `SelectedIndexes` containing only values from the requested
@@ -523,6 +541,25 @@ public:
     }
 
 private:
+    Indexes(
+        ArrayView<int32_t> array,
+        std::vector<std::string> names,
+        const rascal_descriptor_t* descriptor,
+        rascal_indexes kind
+    ):
+        ArrayView<int32_t>(std::move(array)),
+        names_(std::move(names)),
+        descriptor_(descriptor),
+        kind_(kind)
+    {
+        assert(this->shape()[1] == names_.size());
+    }
+
+    /// non-owning pointer, used for calls to `index`
+    const rascal_descriptor_t* descriptor_;
+    /// which kind of indexes are we?
+    rascal_indexes kind_;
+
     std::vector<std::string> names_;
 };
 
@@ -600,7 +637,7 @@ public:
     ///
     /// This is stored as a **read only** 2D array, where each column is named.
     Indexes samples() const {
-        return this->indexes(RASCAL_INDEXES_SAMPLES);
+        return Indexes::create(*this, RASCAL_INDEXES_SAMPLES);
     }
 
     /// Get metdata describing the features/columns in `Descriptor::values` and
@@ -608,14 +645,14 @@ public:
     ///
     /// This is stored as a **read only** 2D array, where each column is named.
     Indexes features() const {
-        return this->indexes(RASCAL_INDEXES_FEATURES);
+        return Indexes::create(*this, RASCAL_INDEXES_FEATURES);
     }
 
     /// Get metdata describing the gradients rows in `Descriptor::gradients`.
     ///
     /// This is stored as a **read only** 2D array, where each column is named.
     Indexes gradients_samples() const {
-        return this->indexes(RASCAL_INDEXES_GRADIENT_SAMPLES);
+        return Indexes::create(*this, RASCAL_INDEXES_GRADIENT_SAMPLES);
     }
 
     /// Move the values with names in ``variables`` from samples to features.
@@ -646,33 +683,38 @@ public:
     }
 
 private:
-    /// Generic function to get a set of `Indexes` out of this descriptor.
-    Indexes indexes(rascal_indexes indexes) const {
-        const int32_t* data = nullptr;
-        uintptr_t count = 0;
-        uintptr_t size = 0;
-        details::check_status(rascal_descriptor_indexes(
-            descriptor_, indexes, &data, &count, &size
-        ));
-
-        auto array = ArrayView<int32_t>(data, {count, size});
-
-        auto names = std::vector<std::string>();
-        if (size != 0) {
-            auto c_names = std::vector<const char*>(size, nullptr);
-            details::check_status(rascal_descriptor_indexes_names(
-                descriptor_, indexes, c_names.data(), size
-            ));
-            for (const auto name: c_names) {
-                names.push_back(std::string(name));
-            }
-        }
-
-        return Indexes(std::move(names), std::move(array));
-    }
-
     rascal_descriptor_t* descriptor_;
 };
+
+
+inline Indexes Indexes::create(const Descriptor& descriptor, rascal_indexes kind) {
+    const int32_t* data = nullptr;
+    uintptr_t count = 0;
+    uintptr_t size = 0;
+    details::check_status(rascal_descriptor_indexes(
+        descriptor.as_rascal_descriptor_t(), kind, &data, &count, &size
+    ));
+
+    auto array = ArrayView<int32_t>(data, {count, size});
+
+    auto names = std::vector<std::string>();
+    if (size != 0) {
+        auto c_names = std::vector<const char*>(size, nullptr);
+        details::check_status(rascal_descriptor_indexes_names(
+            descriptor.as_rascal_descriptor_t(), kind, c_names.data(), size
+        ));
+        for (const auto name: c_names) {
+            names.push_back(std::string(name));
+        }
+    }
+
+    return Indexes(
+        std::move(array),
+        std::move(names),
+        descriptor.as_rascal_descriptor_t(),
+        kind
+    );
+}
 
 
 /// Options that can be set to change how a calculator operates.
