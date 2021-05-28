@@ -19,8 +19,19 @@ fn load_systems(path: &str) -> Vec<Box<dyn System>> {
         .collect()
 }
 
-fn run_soap_power_spectrum(mut group: BenchmarkGroup<WallTime>, path: &str, gradients: bool) {
+fn run_soap_power_spectrum(
+    mut group: BenchmarkGroup<WallTime>,
+    path: &str,
+    gradients: bool,
+    test_mode: bool,
+) {
     let mut systems = load_systems(path);
+
+    if test_mode {
+        // Reduce the time/RAM required to test the benchmarks code.
+        // Without this, the process gets killed in github actions CI
+        systems.truncate(1);
+    }
 
     let cutoff = 4.0;
     let mut n_centers = 0;
@@ -63,33 +74,35 @@ fn run_soap_power_spectrum(mut group: BenchmarkGroup<WallTime>, path: &str, grad
 }
 
 fn soap_power_spectrum(c: &mut Criterion) {
+    let test_mode = std::env::args().any(|arg| arg == "--test");
+
     let mut group = c.benchmark_group("SOAP power spectrum (per atom)/Bulk Silicon");
     group.noise_threshold(0.05);
     group.sampling_mode(SamplingMode::Flat);
     group.sample_size(10);
 
-    run_soap_power_spectrum(group, "silicon_bulk.xyz", false);
+    run_soap_power_spectrum(group, "silicon_bulk.xyz", false, test_mode);
 
     let mut group = c.benchmark_group("SOAP power spectrum (per atom) with gradients/Bulk Silicon");
     group.noise_threshold(0.05);
     group.sampling_mode(SamplingMode::Flat);
     group.sample_size(10);
 
-    run_soap_power_spectrum(group, "silicon_bulk.xyz", true);
+    run_soap_power_spectrum(group, "silicon_bulk.xyz", true, test_mode);
 
     let mut group = c.benchmark_group("SOAP power spectrum (per atom)/Molecular crystals");
     group.noise_threshold(0.05);
     group.sampling_mode(SamplingMode::Flat);
     group.sample_size(10);
 
-    run_soap_power_spectrum(group, "molecular_crystals.xyz", false);
+    run_soap_power_spectrum(group, "molecular_crystals.xyz", false, test_mode);
 
     let mut group = c.benchmark_group("SOAP power spectrum (per atom) with gradients/Molecular crystals");
     group.noise_threshold(0.05);
     group.sampling_mode(SamplingMode::Flat);
     group.sample_size(10);
 
-    run_soap_power_spectrum(group, "molecular_crystals.xyz", true);
+    run_soap_power_spectrum(group, "molecular_crystals.xyz", true, test_mode);
 }
 
 
