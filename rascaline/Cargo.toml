@@ -27,7 +27,7 @@ name = "soap-power-spectrum"
 harness = false
 
 [dependencies]
-ndarray = {version = "0.14", features = ["approx"]}
+ndarray = {version = "0.14", features = ["approx", "rayon"]}
 nalgebra = "0.24"
 lazy_static = "1"
 serde = { version = "1", features = ["derive"] }
