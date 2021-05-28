@@ -72,21 +72,20 @@ if (${CARGO_VERSION} VERSION_LESS ${REQUIRED_RUST_VERSION})
 endif()
 
 file(GLOB_RECURSE ALL_RUST_SOURCES
+    ${PROJECT_SOURCE_DIR}/../Cargo.toml
+    ${PROJECT_SOURCE_DIR}/../rascaline/Cargo.toml
+    ${PROJECT_SOURCE_DIR}/../rascaline/src/**.rs
+
     ${PROJECT_SOURCE_DIR}/Cargo.toml
-
-    ${PROJECT_SOURCE_DIR}/rascaline/Cargo.toml
-    ${PROJECT_SOURCE_DIR}/rascaline/src/**.rs
-
-    ${PROJECT_SOURCE_DIR}/rascaline-c-api/Cargo.toml
-    ${PROJECT_SOURCE_DIR}/rascaline-c-api/build.rs
-    ${PROJECT_SOURCE_DIR}/rascaline-c-api/src/**.rs
+    ${PROJECT_SOURCE_DIR}/build.rs
+    ${PROJECT_SOURCE_DIR}/src/**.rs
 )
 
 set(RASCALINE_LOCATION "${PROJECT_SOURCE_DIR}/../target/${CARGO_BUILD_TYPE}/${CMAKE_SHARED_LIBRARY_PREFIX}rascaline${CMAKE_SHARED_LIBRARY_SUFFIX}")
 get_filename_component(RASCALINE_LIB_NAME ${RASCALINE_LOCATION} NAME)
 
 add_custom_target(cargo-build-rascaline ALL
-    COMMAND cargo build -p rascaline-c-api ${CARGO_BUILD_ARG}
+    COMMAND cargo build ${CARGO_BUILD_ARG}
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     DEPENDS ${ALL_RUST_SOURCES}
 )
