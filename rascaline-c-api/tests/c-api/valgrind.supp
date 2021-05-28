@@ -23,3 +23,15 @@
    ...
    fun:__objc_personality_v0
 }
+
+{
+   <Global Rayon threadpool>
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   ...
+   fun:pthread_create*
+   ...
+   fun:_ZN10rayon_core8registry8Registry3new*
+   ...
+}
