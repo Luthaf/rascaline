@@ -9,7 +9,7 @@ on:
 jobs:
   tests:
     runs-on: ${{ matrix.os }}
-    name: ${{ matrix.os }} / rust ${{ matrix.rust-version }} / ${{ matrix.build-type }}
+    name: ${{ matrix.os }} / rust ${{ matrix.rust-version }} / ${{ matrix.build-type }} ${{ matrix.extra-name }}
     container: ${{ matrix.container }}
     strategy:
       matrix:
@@ -18,6 +18,12 @@ jobs:
             rust-version: stable
             rust-target: x86_64-unknown-linux-gnu
             build-type: debug
+          - os: ubuntu-18.04
+            rust-version: stable
+            rust-target: x86_64-unknown-linux-gnu
+            build-type: debug
+            test-static-lib: true
+            extra-name: static C library
           - os: ubuntu-18.04
             rust-version: stable
             rust-target: x86_64-unknown-linux-gnu
@@ -76,6 +82,8 @@ jobs:
 
       - name: run tests
         if: matrix.build-type == 'debug'
+        env:
+          RASCALINE_TEST_WITH_STATIC_LIB: ${{ matrix.test-static-lib || 0 }}
         run: cargo test --target ${{ matrix.rust-target }} -- --test-threads=2
 
       - name: run tests in release mode

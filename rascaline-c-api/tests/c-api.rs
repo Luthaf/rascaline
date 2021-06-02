@@ -26,10 +26,19 @@ fn check_c_api() {
         "release"
     };
 
+    let mut shared_lib = "ON";
+    if let Ok(value) = std::env::var("RASCALINE_TEST_WITH_STATIC_LIB") {
+        if value != "0" {
+            shared_lib = "OFF";
+        }
+    }
+
     let mut cmake_config = Command::new("cmake");
     cmake_config.current_dir(&build_dir);
     cmake_config.arg(&source_dir);
     cmake_config.arg(format!("-DCMAKE_BUILD_TYPE={}", build_type));
+    cmake_config.arg(format!("-DBUILD_SHARED_LIBS={}", shared_lib));
+
     let status = cmake_config.status().expect("failed to configure cmake");
     assert!(status.success());
 

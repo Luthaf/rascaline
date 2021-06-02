@@ -6,10 +6,11 @@ string(REGEX REPLACE ".*version = \"([0-9]+\\.[0-9]+\\.[0-9]+)\".*" "\\1" RASCAL
 
 project(rascaline
     VERSION ${RASCALINE_VERSION}
-    LANGUAGES C
+    LANGUAGES C # we need to declare a language to access CMAKE_SIZEOF_VOID_P later
 )
 
 option(RASCAL_DISABLE_CHEMFILES "Disable the usage of chemfiles for reading structures from files" OFF)
+option(BUILD_SHARED_LIBS "Build a shared library instead of a static one" ON)
 
 if (${CMAKE_CURRENT_SOURCE_DIR} STREQUAL ${CMAKE_SOURCE_DIR})
     if("${CMAKE_BUILD_TYPE}" STREQUAL "" AND "${CMAKE_CONFIGURATION_TYPES}" STREQUAL "")
@@ -81,16 +82,23 @@ file(GLOB_RECURSE ALL_RUST_SOURCES
     ${PROJECT_SOURCE_DIR}/src/**.rs
 )
 
-set(RASCALINE_LOCATION "${PROJECT_SOURCE_DIR}/../target/${CARGO_BUILD_TYPE}/${CMAKE_SHARED_LIBRARY_PREFIX}rascaline${CMAKE_SHARED_LIBRARY_SUFFIX}")
-get_filename_component(RASCALINE_LIB_NAME ${RASCALINE_LOCATION} NAME)
+set(RASCALINE_LIBDIR "${PROJECT_SOURCE_DIR}/../target/${CARGO_BUILD_TYPE}/")
+if(${BUILD_SHARED_LIBS})
+    add_library(rascaline SHARED IMPORTED GLOBAL)
+    set(RASCALINE_LOCATION "${RASCALINE_LIBDIR}/${CMAKE_SHARED_LIBRARY_PREFIX}rascaline${CMAKE_SHARED_LIBRARY_SUFFIX}")
+else()
+    add_library(rascaline STATIC IMPORTED GLOBAL)
+    set(RASCALINE_LOCATION "${RASCALINE_LIBDIR}/${CMAKE_STATIC_LIBRARY_PREFIX}rascaline${CMAKE_STATIC_LIBRARY_SUFFIX}")
+endif()
 
+get_filename_component(RASCALINE_LIB_NAME ${RASCALINE_LOCATION} NAME)
 add_custom_target(cargo-build-rascaline ALL
     COMMAND cargo build ${CARGO_BUILD_ARG}
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     DEPENDS ${ALL_RUST_SOURCES}
+    COMMENT "Building ${RASCALINE_LIB_NAME} with cargo"
 )
 
-add_library(rascaline SHARED IMPORTED GLOBAL)
 add_dependencies(rascaline cargo-build-rascaline)
 set(RASCALINE_HEADERS
     "${PROJECT_SOURCE_DIR}/include/rascaline.h"
@@ -102,6 +110,24 @@ set_target_properties(rascaline PROPERTIES
     IMPORTED_LOCATION ${RASCALINE_LOCATION}
     INTERFACE_INCLUDE_DIRECTORIES ${RASCALINE_INCLUDE_DIR}
 )
+
+if(NOT ${RASCAL_DISABLE_CHEMFILES})
+    # the static library will need to be linked as C++ code since it contains
+    # chemfiles
+    set_target_properties(rascaline PROPERTIES
+        IMPORTED_LINK_INTERFACE_LANGUAGES CXX
+    )
+endif()
+
+if(UNIX AND NOT APPLE)
+    set(LINUX TRUE)
+endif()
+
+if(LINUX)
+    set_target_properties(rascaline PROPERTIES
+        IMPORTED_LINK_INTERFACE_LIBRARIES "pthread;dl"
+    )
+endif()
 
 #------------------------------------------------------------------------------#
 # Installation configuration
