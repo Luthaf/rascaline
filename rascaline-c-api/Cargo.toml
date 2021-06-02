@@ -6,7 +6,9 @@ edition = "2018"
 
 [lib]
 name = "rascaline"
-crate-type = ["cdylib"]
+# when https://github.com/rust-lang/cargo/pull/8789 lands, use it here!
+# until then, build all the crate-type we need
+crate-type = ["cdylib", "staticlib"]
 bench = false
 
 [features]
