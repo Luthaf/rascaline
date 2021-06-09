@@ -7,5 +7,6 @@ mod samples;
 pub use self::samples::{StructureSamples, AtomSamples};
 
 mod species;
-pub use self::species::{StructureSpeciesSamples, AtomSpeciesSamples};
-pub use self::species::{ThreeBodiesSpeciesSamples};
+pub use self::species::StructureSpeciesSamples;
+pub use self::species::TwoBodiesSpeciesSamples;
+pub use self::species::ThreeBodiesSpeciesSamples;

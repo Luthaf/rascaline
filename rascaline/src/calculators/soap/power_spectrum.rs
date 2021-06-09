@@ -1,6 +1,8 @@
 use std::collections::BTreeSet;
 
-use crate::descriptor::{ThreeBodiesSpeciesSamples, AtomSpeciesSamples, SamplesIndexes, IndexValue, Indexes, IndexesBuilder};
+use crate::descriptor::{SamplesIndexes, IndexValue, Indexes, IndexesBuilder};
+use crate::descriptor::{TwoBodiesSpeciesSamples, ThreeBodiesSpeciesSamples};
+
 use crate::{CalculationOptions, Calculator, SelectedIndexes};
 use crate::{Descriptor, Error, System};
 
@@ -93,7 +95,7 @@ impl SoapPowerSpectrum {
         }
 
         let mut spherical_expansion_samples = IndexesBuilder::new(
-            AtomSpeciesSamples::new(1.0).names()
+            TwoBodiesSpeciesSamples::new(1.0).names()
         );
         for index in set {
             spherical_expansion_samples.add(&index);
