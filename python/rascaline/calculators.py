@@ -273,6 +273,29 @@ class SphericalExpansion(CalculatorBase):
         super().__init__("spherical_expansion", parameters)
 
 
+class SphericalExpansionByPair(CalculatorBase):
+    def __init__(
+        self,
+        cutoff,
+        max_radial,
+        max_angular,
+        atomic_gaussian_width,
+        radial_basis,
+        gradients,
+        cutoff_function,
+    ):
+        parameters = {
+            "cutoff": cutoff,
+            "max_radial": max_radial,
+            "max_angular": max_angular,
+            "atomic_gaussian_width": atomic_gaussian_width,
+            "radial_basis": radial_basis,
+            "gradients": gradients,
+            "cutoff_function": cutoff_function,
+        }
+        super().__init__("spherical_expansion_by_pair", parameters)
+
+
 class SoapPowerSpectrum(CalculatorBase):
     """
     The SOAP power spectrum is the main member of the SOAP (Smooth Overlap of

@@ -44,7 +44,9 @@ pub enum RadialBasis {
 }
 
 impl RadialBasis {
-    fn construct(&self, parameters: &SphericalExpansionParameters) -> Result<Box<dyn RadialIntegral>, Error> {
+    /// Create the `RadialIntegral` corresponding to this `RadialBasis` and the
+    /// given parameters.
+    pub fn construct(&self, parameters: &SphericalExpansionParameters) -> Result<Box<dyn RadialIntegral>, Error> {
         match self {
             RadialBasis::Gto {} => {
                 let parameters = GtoParameters {

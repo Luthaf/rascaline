@@ -204,6 +204,7 @@ impl Calculator {
 /// Registration of calculator implementations
 use crate::calculators::{DummyCalculator, SortedDistances};
 use crate::calculators::{SphericalExpansion, SphericalExpansionParameters};
+use crate::calculators::SphericalExpansionByPair;
 use crate::calculators::{SoapPowerSpectrum, PowerSpectrumParameters};
 type CalculatorCreator = fn(&str) -> Result<Box<dyn CalculatorBase>, Error>;
 
@@ -228,6 +229,7 @@ lazy_static::lazy_static!{
         add_calculator!(map, "dummy_calculator", DummyCalculator);
         add_calculator!(map, "sorted_distances", SortedDistances);
         add_calculator!(map, "spherical_expansion", SphericalExpansion, SphericalExpansionParameters);
+        add_calculator!(map, "spherical_expansion_by_pair", SphericalExpansionByPair, SphericalExpansionParameters);
         add_calculator!(map, "soap_power_spectrum", SoapPowerSpectrum, PowerSpectrumParameters);
         return map;
     };
