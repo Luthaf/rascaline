@@ -6,3 +6,6 @@ pub use self::two_bodies::TwoBodiesSpeciesSamples;
 
 mod three_bodies;
 pub use self::three_bodies::ThreeBodiesSpeciesSamples;
+
+mod pairs;
+pub use self::pairs::PairSpeciesSamples;
