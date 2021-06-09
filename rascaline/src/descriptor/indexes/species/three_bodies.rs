@@ -255,7 +255,7 @@ mod tests {
     }
 
     #[test]
-    fn three_bodies() {
+    fn samples() {
         let mut systems = test_systems(&["CH", "water"]).boxed();
         let strategy = ThreeBodiesSpeciesSamples::new(2.0);
         let indexes = strategy.indexes(&mut systems).unwrap();
@@ -284,7 +284,7 @@ mod tests {
     }
 
     #[test]
-    fn three_bodies_gradients() {
+    fn gradients() {
         let mut systems = test_systems(&["water"]).boxed();
         let strategy = ThreeBodiesSpeciesSamples::new(2.0);
         let (_, gradients) = strategy.with_gradients(&mut systems).unwrap();
@@ -341,7 +341,7 @@ mod tests {
     }
 
     #[test]
-    fn three_bodies_partial_gradients() {
+    fn partial_gradients() {
         let mut indexes = IndexesBuilder::new(vec!["structure", "center", "species_center", "species_neighbor_1", "species_neighbor_2"]);
         indexes.add(&[v!(0), v!(1), v!(6), v!(1), v!(1)]);
         indexes.add(&[v!(1), v!(1), v!(1), v!(123456), v!(123456)]);
@@ -382,7 +382,7 @@ mod tests {
     }
 
     #[test]
-    fn three_bodies_self_contribution() {
+    fn self_contribution() {
         let mut systems = test_systems(&["water"]).boxed();
         // Only include O-H neighbors
         let strategy = ThreeBodiesSpeciesSamples::with_self_contribution(1.2);
@@ -411,7 +411,7 @@ mod tests {
     }
 
     #[test]
-    fn three_bodies_self_contribution_no_neighbor() {
+    fn self_contribution_no_neighbor() {
         let mut systems = test_systems(&["CH"]).boxed();
         // do not include any neighbors
         let strategy = ThreeBodiesSpeciesSamples::with_self_contribution(0.5);
@@ -437,7 +437,7 @@ mod tests {
     }
 
     #[test]
-    fn three_bodies_self_contribution_gradients() {
+    fn self_contribution_gradients() {
         let mut systems = test_systems(&["CH"]).boxed();
         let strategy = ThreeBodiesSpeciesSamples::with_self_contribution(2.0);
         let (_, gradients) = strategy.with_gradients(&mut systems).unwrap();
@@ -481,7 +481,7 @@ mod tests {
     }
 
     #[test]
-    fn three_bodies_self_contribution_partial_gradients() {
+    fn self_contribution_partial_gradients() {
         let mut indexes = IndexesBuilder::new(vec!["structure", "center", "species_center", "species_neighbor_1", "species_neighbor_2"]);
         indexes.add(&[v!(0), v!(1), v!(6), v!(1), v!(1)]);
         indexes.add(&[v!(1), v!(1), v!(1), v!(123456), v!(123456)]);

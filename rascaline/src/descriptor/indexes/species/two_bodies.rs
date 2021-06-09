@@ -5,9 +5,9 @@ use indexmap::IndexSet;
 use crate::{Error, System};
 use super::super::{SamplesIndexes, Indexes, IndexesBuilder, IndexValue};
 
-/// `AtomSpeciesSamples` is used to represents atom-centered environments, where
-/// each atom in a structure is described with a feature vector based on other
-/// atoms inside a sphere centered on the central atom. These environments
+/// `TwoBodiesSpeciesSamples` is used to represents atom-centered environments,
+/// where each atom in a structure is described with a feature vector based on
+/// other atoms inside a sphere centered on the central atom. These environments
 /// include chemical species information.
 ///
 /// The base set of indexes contains `structure`, `center` (i.e. central atom
@@ -15,41 +15,41 @@ use super::super::{SamplesIndexes, Indexes, IndexesBuilder, IndexValue};
 /// gradient indexes also contains the `neighbor` inside the spherical cutoff
 /// with respect to which the gradient is taken and the `spatial` (i.e x/y/z)
 /// index.
-pub struct AtomSpeciesSamples {
+pub struct TwoBodiesSpeciesSamples {
     /// spherical cutoff radius used to construct the atom-centered environments
     cutoff: f64,
     /// Is the central atom considered to be its own neighbor?
     self_contribution: bool,
 }
 
-impl AtomSpeciesSamples {
-    /// Create a new `AtomSpeciesSamples` with the given `cutoff`, excluding
+impl TwoBodiesSpeciesSamples {
+    /// Create a new `TwoBodiesSpeciesSamples` with the given `cutoff`, excluding
     /// self contributions.
-    pub fn new(cutoff: f64) -> AtomSpeciesSamples {
-        assert!(cutoff > 0.0 && cutoff.is_finite(), "cutoff must be positive for AtomSpeciesSamples");
-        AtomSpeciesSamples {
+    pub fn new(cutoff: f64) -> TwoBodiesSpeciesSamples {
+        assert!(cutoff > 0.0 && cutoff.is_finite(), "cutoff must be positive for TwoBodiesSpeciesSamples");
+        TwoBodiesSpeciesSamples {
             cutoff: cutoff,
             self_contribution: false,
         }
     }
 
-    /// Create a new `AtomSpeciesSamples` with the given `cutoff`, including
+    /// Create a new `TwoBodiesSpeciesSamples` with the given `cutoff`, including
     /// self contributions.
-    pub fn with_self_contribution(cutoff: f64) -> AtomSpeciesSamples {
-        assert!(cutoff > 0.0 && cutoff.is_finite(), "cutoff must be positive for AtomSpeciesSamples");
-        AtomSpeciesSamples {
+    pub fn with_self_contribution(cutoff: f64) -> TwoBodiesSpeciesSamples {
+        assert!(cutoff > 0.0 && cutoff.is_finite(), "cutoff must be positive for TwoBodiesSpeciesSamples");
+        TwoBodiesSpeciesSamples {
             cutoff: cutoff,
             self_contribution: true,
         }
     }
 }
 
-impl SamplesIndexes for AtomSpeciesSamples {
+impl SamplesIndexes for TwoBodiesSpeciesSamples {
     fn names(&self) -> Vec<&str> {
         vec!["structure", "center", "species_center", "species_neighbor"]
     }
 
-    #[time_graph::instrument(name = "AtomSpeciesSamples::indexes")]
+    #[time_graph::instrument(name = "TwoBodiesSpeciesSamples::indexes")]
     fn indexes(&self, systems: &mut [Box<dyn System>]) -> Result<Indexes, Error> {
         // Accumulate indexes in a set first to ensure uniqueness of the indexes
         // even if their are multiple neighbors of the same specie around a
@@ -84,7 +84,7 @@ impl SamplesIndexes for AtomSpeciesSamples {
         return Ok(indexes.finish());
     }
 
-    #[time_graph::instrument(name = "AtomSpeciesSamples::gradients_for")]
+    #[time_graph::instrument(name = "TwoBodiesSpeciesSamples::gradients_for")]
     fn gradients_for(&self, systems: &mut [Box<dyn System>], samples: &Indexes) -> Result<Option<Indexes>, Error> {
         assert_eq!(samples.names(), self.names());
 
@@ -148,9 +148,9 @@ mod tests {
     }
 
     #[test]
-    fn atoms() {
+    fn samples() {
         let mut systems = test_systems(&["CH", "water"]).boxed();
-        let strategy = AtomSpeciesSamples::new(2.0);
+        let strategy = TwoBodiesSpeciesSamples::new(2.0);
         let indexes = strategy.indexes(&mut systems).unwrap();
         assert_eq!(indexes.count(), 7);
         assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor"]);
@@ -173,9 +173,9 @@ mod tests {
     }
 
     #[test]
-    fn atoms_gradient() {
+    fn gradients() {
         let mut systems = test_systems(&["CH"]).boxed();
-        let strategy = AtomSpeciesSamples::new(2.0);
+        let strategy = TwoBodiesSpeciesSamples::new(2.0);
         let (_, gradients) = strategy.with_gradients(&mut systems).unwrap();
         let gradients = gradients.unwrap();
 
@@ -202,7 +202,7 @@ mod tests {
     }
 
     #[test]
-    fn partial_atoms_gradient() {
+    fn partial_gradients() {
         let mut indexes = IndexesBuilder::new(vec!["structure", "center", "species_center", "species_neighbor"]);
         indexes.add(&[v!(1), v!(0), v!(123456), v!(1)]);
         indexes.add(&[v!(0), v!(0), v!(1), v!(6)]);
@@ -210,7 +210,7 @@ mod tests {
         let indexes = indexes.finish();
 
         let mut systems = test_systems(&["CH", "water"]).boxed();
-        let strategy = AtomSpeciesSamples::new(2.0);
+        let strategy = TwoBodiesSpeciesSamples::new(2.0);
         let gradients = strategy.gradients_for(&mut systems, &indexes).unwrap();
         let gradients = gradients.unwrap();
 
@@ -249,9 +249,9 @@ mod tests {
     }
 
     #[test]
-    fn atoms_self_contribution() {
+    fn self_contribution() {
         let mut systems = test_systems(&["CH"]).boxed();
-        let strategy = AtomSpeciesSamples::new(2.0);
+        let strategy = TwoBodiesSpeciesSamples::new(2.0);
         let indexes = strategy.indexes(&mut systems).unwrap();
         assert_eq!(indexes.count(), 2);
         assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor"]);
@@ -262,7 +262,7 @@ mod tests {
             &[v!(0), v!(1), v!(6), v!(1)],
         ]);
 
-        let strategy = AtomSpeciesSamples::with_self_contribution(2.0);
+        let strategy = TwoBodiesSpeciesSamples::with_self_contribution(2.0);
         let indexes = strategy.indexes(&mut systems).unwrap();
         assert_eq!(indexes.count(), 4);
         assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor"]);
@@ -278,7 +278,7 @@ mod tests {
         ]);
 
         // we get entries even without proper neighbors
-        let strategy = AtomSpeciesSamples::with_self_contribution(1.0);
+        let strategy = TwoBodiesSpeciesSamples::with_self_contribution(1.0);
         let indexes = strategy.indexes(&mut systems).unwrap();
         assert_eq!(indexes.count(), 2);
         assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor"]);
@@ -291,9 +291,9 @@ mod tests {
     }
 
     #[test]
-    fn atoms_self_contribution_gradients() {
+    fn self_contribution_gradients() {
         let mut systems = test_systems(&["CH"]).boxed();
-        let strategy = AtomSpeciesSamples::with_self_contribution(2.0);
+        let strategy = TwoBodiesSpeciesSamples::with_self_contribution(2.0);
         let (_, gradients) = strategy.with_gradients(&mut systems).unwrap();
         let gradients = gradients.unwrap();
 
@@ -328,7 +328,7 @@ mod tests {
     }
 
     #[test]
-    fn atoms_self_contribution_partial_gradients() {
+    fn self_contribution_partial_gradients() {
         let mut indexes = IndexesBuilder::new(vec!["structure", "center", "species_center", "species_neighbor"]);
         indexes.add(&[v!(1), v!(0), v!(123456), v!(1)]);
         indexes.add(&[v!(0), v!(0), v!(1), v!(6)]);
@@ -336,7 +336,7 @@ mod tests {
         let indexes = indexes.finish();
 
         let mut systems = test_systems(&["CH", "water"]).boxed();
-        let strategy = AtomSpeciesSamples::with_self_contribution(2.0);
+        let strategy = TwoBodiesSpeciesSamples::with_self_contribution(2.0);
         let gradients = strategy.gradients_for(&mut systems, &indexes).unwrap();
         let gradients = gradients.unwrap();
 

@@ -1,6 +1,6 @@
 use ndarray::Array2;
 
-use crate::descriptor::{IndexesBuilder, IndexValue, Indexes, SamplesIndexes, AtomSpeciesSamples};
+use crate::descriptor::{IndexesBuilder, IndexValue, Indexes, SamplesIndexes, TwoBodiesSpeciesSamples};
 use crate::{Descriptor, Error, System, Vector3D};
 
 use super::super::CalculatorBase;
@@ -511,7 +511,7 @@ impl CalculatorBase for SphericalExpansion {
     }
 
     fn samples(&self) -> Box<dyn SamplesIndexes> {
-        Box::new(AtomSpeciesSamples::with_self_contribution(self.parameters.cutoff))
+        Box::new(TwoBodiesSpeciesSamples::with_self_contribution(self.parameters.cutoff))
     }
 
     fn compute_gradients(&self) -> bool {

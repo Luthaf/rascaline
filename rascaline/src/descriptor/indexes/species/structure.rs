@@ -69,7 +69,7 @@ mod tests {
     }
 
     #[test]
-    fn structure() {
+    fn samples() {
         let mut systems = test_systems(&["methane", "methane", "water"]).boxed();
         let indexes = StructureSpeciesSamples.indexes(&mut systems).unwrap();
         assert_eq!(indexes.count(), 6);
@@ -82,7 +82,7 @@ mod tests {
     }
 
     #[test]
-    fn structure_gradient() {
+    fn gradients() {
         let mut systems = test_systems(&["CH", "water"]).boxed();
         let (_, gradients) = StructureSpeciesSamples.with_gradients(&mut systems).unwrap();
         let gradients = gradients.unwrap();
@@ -103,7 +103,7 @@ mod tests {
     }
 
     #[test]
-    fn partial_structure_gradient() {
+    fn partial_gradients() {
         let mut indexes = IndexesBuilder::new(vec!["structure", "species"]);
         indexes.add(&[v!(2), v!(1)]);
         indexes.add(&[v!(0), v!(6)]);

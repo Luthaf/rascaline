@@ -5,7 +5,7 @@ use ndarray::{aview1, s};
 use super::CalculatorBase;
 
 use crate::descriptor::{Indexes, IndexesBuilder, IndexValue};
-use crate::descriptor::{SamplesIndexes, AtomSpeciesSamples};
+use crate::descriptor::{SamplesIndexes, TwoBodiesSpeciesSamples};
 use crate::{Descriptor, Error, System};
 
 #[derive(Debug, Clone)]
@@ -49,7 +49,7 @@ impl CalculatorBase for SortedDistances {
     }
 
     fn samples(&self) -> Box<dyn SamplesIndexes> {
-        Box::new(AtomSpeciesSamples::new(self.cutoff))
+        Box::new(TwoBodiesSpeciesSamples::new(self.cutoff))
     }
 
     fn compute_gradients(&self) -> bool {
