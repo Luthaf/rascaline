@@ -159,6 +159,11 @@ impl Calculator {
         &self.parameters
     }
 
+    /// Get the default set of features for this calculator
+    pub fn default_features(&self) -> Indexes {
+        self.implementation.features()
+    }
+
     /// Compute the descriptor for all the given `systems` and store it in
     /// `descriptor`
     ///

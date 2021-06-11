@@ -128,6 +128,21 @@ class CalculatorBase:
             )
         )
 
+    def features_count(self):
+        """
+        Get the default number of features this calculator will produce.
+
+        This number corresponds to the size of second dimension of the
+        ``values`` and ``gradients`` arrays of the
+        :py:class:`rascaline.Descriptor` returned by
+        :py:func:`rascaline.calculators.CalculatorBase.compute`.
+        """
+        return _call_with_growing_buffer(
+            lambda buffer, bufflen: self._lib.rascal_calculator_parameters(
+                self, buffer, bufflen
+            )
+        )
+
     def compute(
         self,
         systems,

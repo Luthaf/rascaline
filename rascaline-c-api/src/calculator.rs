@@ -147,6 +147,31 @@ pub unsafe extern fn rascal_calculator_parameters(
     })
 }
 
+/// Get the default number of features this `calculator` will produce in the
+/// `count` parameter.
+///
+/// This number corresponds to the size of second dimension of the `values` and
+/// `gradients` arrays in the `rascal_descriptor_t` after a call to
+/// `rascal_calculator_compute`.
+///
+/// @param calculator pointer to an existing calculator
+/// @param features pointer to an integer to be filled with the number of features
+///
+/// @returns The status code of this operation. If the status is not
+///          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the full
+///          error message.
+#[no_mangle]
+pub unsafe extern fn rascal_calculator_features_count(
+    calculator: *const rascal_calculator_t,
+    features: *mut usize
+) -> rascal_status_t {
+    catch_unwind(|| {
+        check_pointers!(calculator, features);
+        *features = (*calculator).default_features().count();
+        Ok(())
+    })
+}
+
 /// Options that can be set to change how a calculator operates.
 #[repr(C)]
 pub struct rascal_calculation_options_t {

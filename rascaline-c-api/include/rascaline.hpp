@@ -805,6 +805,19 @@ public:
         }
     }
 
+    /// Get the default number of features this calculator will produce.
+    ///
+    /// This number corresponds to the size of second dimension of the `values`
+    /// and `gradients` arrays in the `Descriptor` after a call to
+    /// `Calculator::compute`.
+    uintptr_t features_count() const {
+        uintptr_t count = 0;
+        details::check_status(rascal_calculator_features_count(
+            calculator_, &count
+        ));
+        return count;
+    }
+
     /// Run a calculation with this `calculator` on the given `systems`, storing
     /// the resulting data in the `descriptor`. Options for this calculation can
     /// be passed in `options`.

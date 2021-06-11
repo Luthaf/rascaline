@@ -182,6 +182,12 @@ def setup_functions(lib):
     ]
     lib.rascal_calculator_parameters.restype = _check_rascal_status_t
 
+    lib.rascal_calculator_features_count.argtypes = [
+        POINTER(rascal_calculator_t),
+        POINTER(c_uintptr_t)
+    ]
+    lib.rascal_calculator_features_count.restype = _check_rascal_status_t
+
     lib.rascal_calculator_compute.argtypes = [
         POINTER(rascal_calculator_t),
         POINTER(rascal_descriptor_t),

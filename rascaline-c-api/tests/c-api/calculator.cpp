@@ -100,6 +100,40 @@ TEST_CASE("calculator parameters") {
     }
 }
 
+TEST_CASE("calculator features count") {
+    SECTION("dummy_calculator") {
+        std::string HYPERS_JSON = R"({
+            "cutoff": 3.5,
+            "delta": 25,
+            "name": "bar",
+            "gradients": false
+        })";
+        auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON.c_str());
+        REQUIRE(calculator != nullptr);
+
+        uintptr_t count = 0;
+        CHECK_SUCCESS(rascal_calculator_features_count(calculator, &count));
+        CHECK(count == 2);
+
+        rascal_calculator_free(calculator);
+    }
+
+    SECTION("sorted distances vector") {
+        std::string HYPERS_JSON = R"({
+            "cutoff": 3.5,
+            "max_neighbors": 25
+        })";
+        auto* calculator = rascal_calculator("sorted_distances", HYPERS_JSON.c_str());
+        REQUIRE(calculator != nullptr);
+
+        uintptr_t count = 0;
+        CHECK_SUCCESS(rascal_calculator_features_count(calculator, &count));
+        CHECK(count == 25);
+
+        rascal_calculator_free(calculator);
+    }
+}
+
 TEST_CASE("calculator creation errors") {
     const char* HYPERS_JSON = R"({
         "cutoff": "532",
