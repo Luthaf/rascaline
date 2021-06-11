@@ -562,6 +562,24 @@ rascal_status_t rascal_calculator_parameters(const struct rascal_calculator_t *c
                                              uintptr_t bufflen);
 
 /**
+ * Get the default number of features this `calculator` will produce in the
+ * `count` parameter.
+ *
+ * This number corresponds to the size of second dimension of the `values` and
+ * `gradients` arrays in the `rascal_descriptor_t` after a call to
+ * `rascal_calculator_compute`.
+ *
+ * @param calculator pointer to an existing calculator
+ * @param features pointer to an integer to be filled with the number of features
+ *
+ * @returns The status code of this operation. If the status is not
+ *          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the full
+ *          error message.
+ */
+rascal_status_t rascal_calculator_features_count(const struct rascal_calculator_t *calculator,
+                                                 uintptr_t *features);
+
+/**
  * Run a calculation with the given `calculator` on the given `systems`,
  * storing the resulting data in the `descriptor`.
  *

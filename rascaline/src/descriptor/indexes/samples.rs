@@ -51,7 +51,7 @@ impl SamplesIndexes for StructureSamples {
 /// atoms inside a sphere centered on the central atom.
 ///
 /// This type of indexes does not contain any chemical species information, for
-/// this you should use [`super::AtomSpeciesSamples`].
+/// this you should use [`super::TwoBodiesSpeciesSamples`].
 ///
 /// The base set of indexes contains `structure` and `center` (i.e. central atom
 /// index inside the structure); the gradient indexes also contains the

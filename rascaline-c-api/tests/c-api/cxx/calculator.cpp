@@ -67,6 +67,28 @@ TEST_CASE("Calculator parameters") {
     }
 }
 
+TEST_CASE("calculator features count") {
+    SECTION("dummy_calculator") {
+        std::string HYPERS_JSON = R"({
+            "cutoff": 3.5,
+            "delta": 25,
+            "name": "bar",
+            "gradients": false
+        })";
+        auto calculator = rascaline::Calculator("dummy_calculator", HYPERS_JSON);
+        CHECK(calculator.features_count() == 2);
+    }
+
+    SECTION("sorted distances vector") {
+        std::string HYPERS_JSON = R"({
+            "cutoff": 3.5,
+            "max_neighbors": 25
+        })";
+        auto calculator = rascaline::Calculator("sorted_distances", HYPERS_JSON);
+        CHECK(calculator.features_count() == 25);
+    }
+}
+
 TEST_CASE("calculator creation errors") {
     const char* HYPERS_JSON = R"({
         "cutoff": "532",
