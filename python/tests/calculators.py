@@ -17,6 +17,8 @@ class TestDummyCalculator(unittest.TestCase):
             " - name: foo - gradients: true",
         )
 
+        self.assertEqual(calculator.c_name, "dummy_calculator")
+
         # very long name, checking that we can pass large string back and forth
         name = "abc" * 2048
         calculator = DummyCalculator(cutoff=3.2, delta=12, name=name, gradients=True)
@@ -149,6 +151,7 @@ class TestSortedDistances(unittest.TestCase):
     def test_name(self):
         calculator = SortedDistances(cutoff=3.5, max_neighbors=12)
         self.assertEqual(calculator.name, "sorted distances vector")
+        self.assertEqual(calculator.c_name, "sorted_distances")
 
     def test_parameters(self):
         calculator = SortedDistances(cutoff=3.5, max_neighbors=12)

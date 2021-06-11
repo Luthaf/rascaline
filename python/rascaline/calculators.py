@@ -93,6 +93,7 @@ def _options_to_c(use_native_system, samples, features):
 
 class CalculatorBase:
     def __init__(self, name, parameters):
+        self._c_name = name
         self._lib = _get_library()
         parameters = json.dumps(parameters)
         self._as_parameter_ = self._lib.rascal_calculator(
@@ -106,12 +107,17 @@ class CalculatorBase:
 
     @property
     def name(self):
-        """The name used to register this calculator"""
+        """The name of this calculator"""
         return _call_with_growing_buffer(
             lambda buffer, bufflen: self._lib.rascal_calculator_name(
                 self, buffer, bufflen
             )
         )
+
+    @property
+    def c_name(self):
+        """The name used to register & create this calculator"""
+        return self._c_name
 
     @property
     def parameters(self):
