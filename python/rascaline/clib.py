@@ -33,7 +33,7 @@ def _lib_path():
     else:
         raise ImportError("Unknown platform. Please edit this file")
 
-    path = os.path.join(os.path.dirname(__file__), name)
+    path = os.path.join(os.path.dirname(__file__), "lib", name)
     if os.path.isfile(path):
         if windows:
             _check_dll(path)
