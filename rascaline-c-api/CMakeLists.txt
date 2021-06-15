@@ -117,6 +117,16 @@ add_custom_target(cargo-build-rascaline ALL
     COMMENT "Building ${RASCALINE_LIB_NAME} with cargo"
 )
 
+if (RASCAL_BUILD_FOR_PYTHON)
+    if (APPLE)
+        # set the build id of librascaline.dylib to `@rpath/librascaline.dylib`
+        # instead of the full build path (${RASCALINE_LOCATION})
+        add_custom_command(TARGET cargo-build-rascaline POST_BUILD
+            COMMAND install_name_tool -id "@rpath/${RASCALINE_LIB_NAME}" ${RASCALINE_LOCATION}
+        )
+    endif()
+endif()
+
 add_dependencies(rascaline cargo-build-rascaline)
 set(RASCALINE_HEADERS
     "${PROJECT_SOURCE_DIR}/include/rascaline.h"
