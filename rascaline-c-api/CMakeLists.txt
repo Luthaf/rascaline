@@ -12,7 +12,13 @@ if (SKBUILD)
 endif()
 
 file(STRINGS "Cargo.toml" CARGO_TOML_CONTENT)
-string(REGEX REPLACE ".*version = \"([0-9]+\\.[0-9]+\\.[0-9]+)\".*" "\\1" RASCALINE_VERSION ${CARGO_TOML_CONTENT})
+foreach(line ${CARGO_TOML_CONTENT})
+    string(REGEX REPLACE "version = \"([0-9]+\\.[0-9]+\\.[0-9]+)\".*" "\\1" RASCALINE_VERSION ${line})
+    if (NOT ${CMAKE_MATCH_COUNT} EQUAL 0)
+        # stop on the first regex match, this should be rascaline version
+        break()
+    endif()
+endforeach()
 
 project(rascaline
     VERSION ${RASCALINE_VERSION}
