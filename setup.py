@@ -71,7 +71,19 @@ class cmake_ext(build_ext):
         )
 
 
+# read version from Cargo.toml
+with open("rascaline-c-api/Cargo.toml") as fd:
+    for line in fd:
+        if line.startswith("version"):
+            _, version = line.split(" = ")
+            # remove quotes
+            version = version[1:-2]
+            # take the first version in the file, this should be the rascaline
+            # version
+            break
+
 setup(
+    version=version,
     ext_modules=[
         # only declare the extension, it is built & copied as required by cmake
         # in the build_ext command
