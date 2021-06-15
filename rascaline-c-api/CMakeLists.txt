@@ -169,5 +169,5 @@ install(FILES ${RASCALINE_LOCATION} DESTINATION ${LIB_INSTALL_DIR})
 install(FILES
     ${PROJECT_BINARY_DIR}/rascaline-config-version.cmake
     ${PROJECT_BINARY_DIR}/rascaline-config.cmake
-    DESTINATION ${LIB_INSTALL_DIR}/cmake/chemfiles
+    DESTINATION ${LIB_INSTALL_DIR}/cmake/rascaline
 )
