@@ -2,9 +2,7 @@
 requires = [
     "setuptools >=44",
     "wheel >=0.36",
-    "scikit-build",
     "cmake",
-    "ninja",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -22,7 +20,6 @@ passenv =
     CARGO_HOME
 
 deps =
-    scikit-build
     discover
     numpy
     ase
@@ -40,7 +37,6 @@ passenv =
     CARGO_HOME
 
 deps =
-    scikit-build
     discover
     numpy
 
@@ -56,7 +52,6 @@ passenv =
     CARGO_HOME
 
 deps =
-    scikit-build
     numpy
     chemfiles
 

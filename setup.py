@@ -1,18 +1,16 @@
-# -*- coding=utf-8 -*-
 import os
 import sys
+import subprocess
 
-from skbuild import setup
+from setuptools import setup, Extension
 from wheel.bdist_wheel import bdist_wheel
+from distutils.command.build_ext import build_ext  # type: ignore
 
 ROOT = os.path.realpath(os.path.dirname(__file__))
 
 if sys.version_info < (3, 6):
     sys.exit("Sorry, Python < 3.6 is not supported")
 
-# do not include chemfiles inside rascaline, instead users should use
-# chemfiles python bindings directly
-cmake_args = ["-DRASCAL_DISABLE_CHEMFILES=ON"]
 
 RASCALINE_BUILD_TYPE = os.environ.get("RASCALINE_BUILD_TYPE", "release")
 if RASCALINE_BUILD_TYPE not in ["debug", "release"]:
@@ -20,8 +18,6 @@ if RASCALINE_BUILD_TYPE not in ["debug", "release"]:
         f"invalid build type passed: '{RASCALINE_BUILD_TYPE}',"
         "expected 'debug' or 'release'"
     )
-
-cmake_args.append(f"-DCMAKE_BUILD_TYPE={RASCALINE_BUILD_TYPE}")
 
 
 class universal_wheel(bdist_wheel):
@@ -37,11 +33,58 @@ class universal_wheel(bdist_wheel):
         return ("py3", "none") + tag[2:]
 
 
+class cmake_ext(build_ext):
+    """
+    Build the native library using cmake
+    """
+
+    def run(self):
+        source_dir = os.path.join(ROOT, "rascaline-c-api")
+        build_dir = os.path.join(ROOT, "build", "cmake-build")
+        install_dir = os.path.join(os.path.realpath(self.build_lib), "rascaline")
+
+        try:
+            os.mkdir(build_dir)
+        except OSError:
+            pass
+
+        cmake_options = [
+            f"-DCMAKE_INSTALL_PREFIX={install_dir}",
+            f"-DCMAKE_BUILD_TYPE={RASCALINE_BUILD_TYPE}",
+            # do not include chemfiles inside rascaline, instead users should
+            # use chemfiles python bindings directly
+            "-DRASCAL_DISABLE_CHEMFILES=ON",
+        ]
+
+        subprocess.run(
+            ["cmake", source_dir, *cmake_options],
+            cwd=build_dir,
+            check=True,
+        )
+        subprocess.run(
+            ["cmake", "--build", build_dir],
+            check=True,
+        )
+        subprocess.run(
+            ["cmake", "--build", build_dir, "--target", "install"],
+            check=True,
+        )
+
+
 setup(
-    ext_modules=[],
+    ext_modules=[
+        # only declare the extension, it is built & copied as required by cmake
+        # in the build_ext command
+        Extension(name="rascaline", sources=[]),
+    ],
     cmdclass={
+        "build_ext": cmake_ext,
         "bdist_wheel": universal_wheel,
     },
-    cmake_source_dir="rascaline-c-api",
-    cmake_args=cmake_args,
+    package_data={
+        "rascaline": [
+            "rascaline/lib/*",
+            "rascaline/include/*",
+        ]
+    },
 )

@@ -6,11 +6,6 @@ if (POLICY CMP0077)
     cmake_policy(SET CMP0077 NEW)
 endif()
 
-if (SKBUILD)
-    # make sure the library and headers are stored inside the rascaline python module
-    set(CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}/rascaline")
-endif()
-
 file(STRINGS "Cargo.toml" CARGO_TOML_CONTENT)
 foreach(line ${CARGO_TOML_CONTENT})
     string(REGEX REPLACE "version = \"([0-9]+\\.[0-9]+\\.[0-9]+)\".*" "\\1" RASCALINE_VERSION ${line})
@@ -105,7 +100,7 @@ file(GLOB_RECURSE ALL_RUST_SOURCES
     ${PROJECT_SOURCE_DIR}/src/**.rs
 )
 
-set(RASCALINE_LIBDIR "${PROJECT_SOURCE_DIR}/../target/${CARGO_BUILD_TYPE}/deps")
+set(RASCALINE_LIBDIR "${PROJECT_SOURCE_DIR}/../target/${CARGO_BUILD_TYPE}")
 if(${BUILD_SHARED_LIBS})
     add_library(rascaline SHARED IMPORTED GLOBAL)
     set(RASCALINE_LOCATION "${RASCALINE_LIBDIR}/${CMAKE_SHARED_LIBRARY_PREFIX}rascaline${CMAKE_SHARED_LIBRARY_SUFFIX}")
