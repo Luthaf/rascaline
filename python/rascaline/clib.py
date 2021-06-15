@@ -6,6 +6,11 @@ from ctypes import cdll
 from ._rascaline import setup_functions
 from .log import set_logging_callback, default_logging_callback
 
+_HERE = os.path.realpath(os.path.dirname(__file__))
+
+# path that can be used with cmake to access the rascaline library and headers
+cmake_prefix_path = os.path.join(_HERE, "lib", "cmake")
+
 
 class RascalFinder(object):
     def __init__(self):
@@ -33,7 +38,7 @@ def _lib_path():
     else:
         raise ImportError("Unknown platform. Please edit this file")
 
-    path = os.path.join(os.path.dirname(__file__), "lib", name)
+    path = os.path.join(os.path.join(_HERE, "lib"), name)
     if os.path.isfile(path):
         if windows:
             _check_dll(path)
