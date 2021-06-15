@@ -1,6 +1,16 @@
 # Basic CMake integration for rascaline.
 cmake_minimum_required(VERSION 3.10)
 
+if (POLICY CMP0077)
+    # use variables to set OPTIONS
+    cmake_policy(SET CMP0077 NEW)
+endif()
+
+if (SKBUILD)
+    # make sure the library and headers are stored inside the rascaline python module
+    set(CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}/rascaline")
+endif()
+
 file(STRINGS "Cargo.toml" CARGO_TOML_CONTENT)
 string(REGEX REPLACE ".*version = \"([0-9]+\\.[0-9]+\\.[0-9]+)\".*" "\\1" RASCALINE_VERSION ${CARGO_TOML_CONTENT})
 
@@ -11,6 +21,13 @@ project(rascaline
 
 option(RASCAL_DISABLE_CHEMFILES "Disable the usage of chemfiles for reading structures from files" OFF)
 option(BUILD_SHARED_LIBS "Build a shared library instead of a static one" ON)
+
+set(LIB_INSTALL_DIR "lib" CACHE PATH "Path relative to CMAKE_INSTALL_PREFIX where to install libraries")
+set(INCLUDE_INSTALL_DIR "include" CACHE PATH "Path relative to CMAKE_INSTALL_PREFIX where to install headers")
+
+set(CMAKE_MACOSX_RPATH ON)
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}")
+
 
 if (${CMAKE_CURRENT_SOURCE_DIR} STREQUAL ${CMAKE_SOURCE_DIR})
     if("${CMAKE_BUILD_TYPE}" STREQUAL "" AND "${CMAKE_CONFIGURATION_TYPES}" STREQUAL "")
@@ -82,7 +99,7 @@ file(GLOB_RECURSE ALL_RUST_SOURCES
     ${PROJECT_SOURCE_DIR}/src/**.rs
 )
 
-set(RASCALINE_LIBDIR "${PROJECT_SOURCE_DIR}/../target/${CARGO_BUILD_TYPE}/")
+set(RASCALINE_LIBDIR "${PROJECT_SOURCE_DIR}/../target/${CARGO_BUILD_TYPE}/deps")
 if(${BUILD_SHARED_LIBS})
     add_library(rascaline SHARED IMPORTED GLOBAL)
     set(RASCALINE_LOCATION "${RASCALINE_LIBDIR}/${CMAKE_SHARED_LIBRARY_PREFIX}rascaline${CMAKE_SHARED_LIBRARY_SUFFIX}")
@@ -132,9 +149,6 @@ endif()
 #------------------------------------------------------------------------------#
 # Installation configuration
 #------------------------------------------------------------------------------#
-
-set(LIB_INSTALL_DIR "lib" CACHE PATH "Path relative to CMAKE_INSTALL_PREFIX where to install libraries")
-set(INCLUDE_INSTALL_DIR "include" CACHE PATH "Path relative to CMAKE_INSTALL_PREFIX where to install headers")
 
 include(CMakePackageConfigHelpers)
 configure_package_config_file(
