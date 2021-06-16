@@ -64,7 +64,8 @@ impl SamplesIndexes for PairSpeciesSamples {
                         IndexValue::from(i_system),
                         IndexValue::from(center),
                         IndexValue::from(center),
-                        IndexValue::from(0),
+                        // HACK: use pair id starting at 1000000000 for self-pairs
+                        IndexValue::from(1000000000 + center),
                         IndexValue::from(species),
                         IndexValue::from(species)
                     ]);
