@@ -151,3 +151,6 @@ pub use self::vectors::Vector3D;
 
 mod matrix;
 pub use self::matrix::Matrix3;
+
+mod stack_vec;
+pub use self::stack_vec::StackVec;
