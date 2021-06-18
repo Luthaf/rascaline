@@ -1,13 +1,14 @@
 use std::cell::RefCell;
 
 use rayon::prelude::*;
-use ndarray::Array2;
+use ndarray::{Array1, Array2, Axis};
 use thread_local::ThreadLocal;
 
 use crossbeam::channel::Sender;
 
 use crate::descriptor::{IndexesBuilder, IndexValue, Indexes, SamplesIndexes, TwoBodiesSpeciesSamples};
 use crate::{Descriptor, Error, System, Vector3D};
+use crate::types::StackVec;
 
 use super::super::CalculatorBase;
 use super::RadialIntegral;
@@ -233,43 +234,86 @@ impl SphericalHarmonicsImpl {
     }
 }
 
-/// A single sample in descriptor.values
-struct Sample {
-    /// position of the sample
-    index: usize,
-    /// values of the sample
-    values: Vec<f64>,
+/// Identify which atom in a pair we are referring to
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AtomInPair {
+    First,
+    Second,
 }
 
-impl Sample {
-    fn new(index: usize, size: usize) -> Sample {
-        Sample {
-            index: index,
-            values: vec![0.0; size],
-        }
+impl Default for AtomInPair {
+    fn default() -> Self {
+        AtomInPair::First
     }
 }
 
-/// A single sample in descriptor.gradients
-struct GradientSample {
-    /// position of the x sample in the gradients_samples indexes
-    index: usize,
-    /// gradient w.r.t. x
-    x: Vec<f64>,
-    /// gradient w.r.t. y
-    y: Vec<f64>,
-    /// gradient w.r.t. z
-    z: Vec<f64>,
+/// Contribution of a single pair to the spherical expansion. This will be
+/// created in a "compute" thread and send for accumulation in the main values
+/// array to a "writer" thread.
+struct PairContribution {
+    /// A PairContribution can contribute to up to 2 samples.
+    ///
+    /// For each sample, the first element in the tuple is the position in the
+    /// spherical expansion array where we want to accumulate the values (i.e.
+    /// the index of the center); and the second element in the tuple describe
+    /// whether the center is the first or second atom in the pair.
+    ///
+    /// The use of `StackVec` instead of `Vec` or `SmallVec` is a performance
+    /// optimization.
+    samples: StackVec<[(usize, AtomInPair); 2]>,
+    /// pair contribution to the spherical expansion
+    values: Array1<f64>,
 }
 
-impl GradientSample {
-    fn new(index: usize, size: usize) -> GradientSample {
-        GradientSample {
-            index: index,
-            x: vec![0.0; size],
-            y: vec![0.0; size],
-            z: vec![0.0; size],
+impl PairContribution {
+    /// Create a new pair contribution with the given feature `size`
+    fn new(size: usize) -> PairContribution {
+        PairContribution {
+            samples: StackVec::new(),
+            values: Array1::from_elem(size, 0.0),
         }
+    }
+
+    /// Add a sample to which this pair contribution should be accumulated into
+    fn add_sample(&mut self, index: usize, center_position_in_pair: AtomInPair) {
+        self.samples.push((index, center_position_in_pair));
+    }
+}
+
+/// Contribution of a single pair to the spherical expansion gradients. This
+/// will be created in a "compute" thread and send for accumulation in the main
+/// values array to a "writer" thread.
+struct GradientsPairContribution {
+    /// A pair can contribute to up to 4 gradients entries.
+    ///
+    /// For each sample, the first element in the tuple is the position in the
+    /// gradient array of the x component of the gradient. The second and third
+    /// elements in the tuple describe whether the center/neighbor atoms are the
+    /// the first or second atom in the pair.
+    ///
+    /// The use of `StackVec` instead of `Vec` or `SmallVec` is a performance
+    /// optimization.
+    samples: StackVec<[(usize, AtomInPair, AtomInPair); 4]>,
+    /// gradient w.r.t. each of the cartesian coordinate
+    gradients: [Array1<f64>; 3],
+}
+
+impl GradientsPairContribution {
+    /// Create a new gradient pair contribution with the given feature `size`
+    fn new(size: usize) -> GradientsPairContribution {
+        GradientsPairContribution {
+            samples: StackVec::new(),
+            gradients: [
+                Array1::from_elem(size, 0.0),
+                Array1::from_elem(size, 0.0),
+                Array1::from_elem(size, 0.0),
+            ],
+        }
+    }
+
+    /// Add a sample to which this pair contribution should be accumulated into
+    fn add_sample(&mut self, index: usize, center_position_in_pair: AtomInPair, neighbor_position_in_pair: AtomInPair) {
+        self.samples.push((index, center_position_in_pair, neighbor_position_in_pair));
     }
 }
 
@@ -347,7 +391,7 @@ impl SphericalExpansion {
     /// This function passes results back to calling code though `sender`
     fn accumulate_for_pair(
         &self,
-        sender: &Sender<Sample>,
+        sender: &Sender<PairContribution>,
         samples: &Indexes,
         features: &Indexes,
         pair: &Pair
@@ -394,8 +438,14 @@ impl SphericalExpansion {
             pair.distance, self.parameters.cutoff
         );
 
-        let mut first_sample = first_sample_i.map(|index| Sample::new(index, features.count()));
-        let mut second_sample = second_sample_i.map(|index| Sample::new(index, features.count()));
+        let mut pair_contribution = PairContribution::new(features.count());
+        if let Some(index) = first_sample_i {
+            pair_contribution.add_sample(index, AtomInPair::First);
+        }
+
+        if let Some(index) = second_sample_i {
+            pair_contribution.add_sample(index, AtomInPair::Second);
+        }
 
         for (feature_i, feature) in features.iter().enumerate() {
             let n = feature[0].usize();
@@ -405,34 +455,21 @@ impl SphericalExpansion {
             let n_l_m_value = f_cut
                 * radial_integral.values[[n, l]]
                 * spherical_harmonics.values[[l as isize, m]];
-            if let Some(ref mut sample) = first_sample {
-                sample.values[feature_i] += n_l_m_value;
-            }
 
-            if let Some(ref mut sample) = second_sample {
-                // Use the fact that `se[n, l, m](-r) = (-1)^l se[n, l, m](r)`
-                // where se === spherical_expansion.
-                sample.values[feature_i] += m_1_pow(l) * n_l_m_value;
-            }
+            pair_contribution.values[feature_i] = n_l_m_value;
         }
 
-        if let Some(sample) = first_sample {
-            sender.send(sample).expect("receiver hanged up");
-        }
-
-        if let Some(sample) = second_sample {
-            sender.send(sample).expect("receiver hanged up");
-        }
+        sender.send(pair_contribution).expect("receiver hanged up");
     }
 
     /// Accumulate the spherical expansion gradients for the given pair.
     ///
     /// This function assumes that the radial integral and spherical harmonics
     /// have just been computed for this pair.
-    #[allow(clippy::similar_names, clippy::clippy::too_many_lines)]
+    #[allow(clippy::needless_range_loop)]
     fn accumulate_gradient_for_pair(
         &self,
-        sender: &Sender<GradientSample>,
+        sender: &Sender<GradientsPairContribution>,
         gradients_samples: &Indexes,
         features: &Indexes,
         pair: &Pair
@@ -498,10 +535,22 @@ impl SphericalExpansion {
             return;
         }
 
-        let mut first_grad = first_grad_i.map(|index| GradientSample::new(index, features.count()));
-        let mut first_self_grad = first_self_grad_i.map(|index| GradientSample::new(index, features.count()));
-        let mut second_grad = second_grad_i.map(|index| GradientSample::new(index, features.count()));
-        let mut second_self_grad = second_self_grad_i.map(|index| GradientSample::new(index, features.count()));
+        let mut pair_contribution = GradientsPairContribution::new(features.count());
+        if let Some(index) = first_grad_i {
+            pair_contribution.add_sample(index, AtomInPair::First, AtomInPair::Second);
+        }
+
+        if let Some(index) = first_self_grad_i {
+            pair_contribution.add_sample(index, AtomInPair::First, AtomInPair::First);
+        }
+
+        if let Some(index) = second_grad_i {
+            pair_contribution.add_sample(index, AtomInPair::Second, AtomInPair::First);
+        }
+
+        if let Some(index) = second_self_grad_i {
+            pair_contribution.add_sample(index, AtomInPair::Second, AtomInPair::Second);
+        }
 
         let radial_integral = self.radial_integral.get_or(|| {
             let ri = RadialIntegralImpl::new(&self.parameters).expect("invalid parameters");
@@ -525,84 +574,29 @@ impl SphericalExpansion {
             pair.distance, self.parameters.cutoff
         );
 
-        let dr_dx = pair.direction[0];
-        let dr_dy = pair.direction[1];
-        let dr_dz = pair.direction[2];
+        for spatial in 0..3 {
+            let dr_d_spatial = pair.direction[spatial];
+            let sph_gradient = &sph_gradients[spatial];
+            let gradients = &mut pair_contribution.gradients[spatial];
 
-        for (feature_i, feature) in features.iter().enumerate() {
-            let n = feature[0].usize();
-            let l = feature[1].usize();
-            let m = feature[2].isize();
+            for (feature_i, feature) in features.iter().enumerate() {
+                let n = feature[0].usize();
+                let l = feature[1].usize();
+                let m = feature[2].isize();
 
-            let sph_value = sph_values[[l as isize, m]];
-            let sph_grad_x = sph_gradients[0][[l as isize, m]];
-            let sph_grad_y = sph_gradients[1][[l as isize, m]];
-            let sph_grad_z = sph_gradients[2][[l as isize, m]];
+                let sph_value = sph_values[[l as isize, m]];
+                let sph_grad = sph_gradient[[l as isize, m]];
 
-            let ri_value = ri_values[[n, l]];
-            let ri_grad = ri_gradients[[n, l]];
+                let ri_value = ri_values[[n, l]];
+                let ri_grad = ri_gradients[[n, l]];
 
-            let grad_x = f_cut_grad * dr_dx * ri_value * sph_value
-                        + f_cut * ri_grad * dr_dx * sph_value
-                        + f_cut * ri_value * sph_grad_x / pair.distance;
-
-            let grad_y = f_cut_grad * dr_dy * ri_value * sph_value
-                        + f_cut * ri_grad * dr_dy * sph_value
-                        + f_cut * ri_value * sph_grad_y / pair.distance;
-
-            let grad_z = f_cut_grad * dr_dz * ri_value * sph_value
-                        + f_cut * ri_grad * dr_dz * sph_value
-                        + f_cut * ri_value * sph_grad_z / pair.distance;
-
-            if let Some(ref mut gradient) = first_grad {
-                gradient.x[feature_i] += grad_x;
-                gradient.y[feature_i] += grad_y;
-                gradient.z[feature_i] += grad_z;
-            }
-
-            if let Some(ref mut gradient) = first_self_grad {
-                gradient.x[feature_i] -= grad_x;
-                gradient.y[feature_i] -= grad_y;
-                gradient.z[feature_i] -= grad_z;
-            }
-
-            // when storing data for the environment around `second`, use
-            // the fact that
-            // `grad_j se_i[n, l, m](r) = - (-1)^l grad_i se_j[n, l, m](r)`
-            // where se === spherical_expansion.
-            let parity = m_1_pow(l);
-            let second_grad_x = - parity * grad_x;
-            let second_grad_y = - parity * grad_y;
-            let second_grad_z = - parity * grad_z;
-
-            if let Some(ref mut gradient) = second_grad {
-                gradient.x[feature_i] += second_grad_x;
-                gradient.y[feature_i] += second_grad_y;
-                gradient.z[feature_i] += second_grad_z;
-            }
-
-            if let Some(ref mut gradient) = second_self_grad {
-                gradient.x[feature_i] -= second_grad_x;
-                gradient.y[feature_i] -= second_grad_y;
-                gradient.z[feature_i] -= second_grad_z;
+                gradients[feature_i] = f_cut_grad * dr_d_spatial * ri_value * sph_value
+                                     + f_cut * ri_grad * dr_d_spatial * sph_value
+                                     + f_cut * ri_value * sph_grad / pair.distance;
             }
         }
 
-        if let Some(gradient) = first_grad {
-            sender.send(gradient).expect("receiver hanged up");
-        }
-
-        if let Some(gradient) = first_self_grad {
-            sender.send(gradient).expect("receiver hanged up");
-        }
-
-        if let Some(gradient) = second_grad {
-            sender.send(gradient).expect("receiver hanged up");
-        }
-
-        if let Some(gradient) = second_self_grad {
-            sender.send(gradient).expect("receiver hanged up");
-        }
+        sender.send(pair_contribution).expect("receiver hanged up");
     }
 }
 
@@ -694,7 +688,7 @@ impl CalculatorBase for SphericalExpansion {
     }
 
     #[time_graph::instrument(name = "SphericalExpansion::compute")]
-    #[allow(clippy::identity_op)]
+    #[allow(clippy::enum_glob_use)]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor) -> Result<(), Error> {
         assert_eq!(descriptor.samples.names(), &["structure", "center", "species_center", "species_neighbor"]);
         assert_eq!(descriptor.features.names(), &["n", "l", "m"]);
@@ -726,8 +720,8 @@ impl CalculatorBase for SphericalExpansion {
 
             // use crossbeam channels instead of std::sync::mpsc::SyncChannel
             // since crossbeam is faster in our case.
-            let (sender_values, receiver_values) = crossbeam::channel::unbounded::<Sample>();
-            let (sender_grad, receiver_grad) = crossbeam::channel::unbounded::<GradientSample>();
+            let (sender_values, receiver_values) = crossbeam::channel::unbounded::<PairContribution>();
+            let (sender_grad, receiver_grad) = crossbeam::channel::unbounded::<GradientsPairContribution>();
 
             // use crossbeam scoped threads instead of rayon's, to ensure we
             // make progress even with RAYON_NUM_THREADS=1
@@ -772,10 +766,26 @@ impl CalculatorBase for SphericalExpansion {
 
                 // Start a thread to receive and collect values
                 s.spawn(move |_| {
-                    for sample in receiver_values {
-                        for i_feature in 0..features.count() {
-                            values[[sample.index, i_feature]] += sample.values[i_feature];
+                    let m_1_pow_l = features.iter()
+                        .map(|feature| m_1_pow(feature[1].usize()))
+                        .collect::<Array1<f64>>();
+
+                    for contribution in receiver_values {
+                        for &(index, center) in contribution.samples.iter() {
+                            let mut row = values.index_axis_mut(Axis(0), index);
+                            match center {
+                                AtomInPair::First => {
+                                    row += &contribution.values;
+                                }
+                                AtomInPair::Second => {
+                                    // Use the fact that `se[n, l, m](-r) =
+                                    // (-1)^l se[n, l, m](r)` where se is the
+                                    // spherical expansion
+                                    row += &(m_1_pow_l.clone() * &contribution.values);
+                                }
+                            }
                         }
+
                     }
                 });
 
@@ -783,13 +793,40 @@ impl CalculatorBase for SphericalExpansion {
                 if self.parameters.gradients {
                     let gradients = gradients.expect("missing storage for gradients");
                     s.spawn(move |_| {
-                        for sample in receiver_grad {
-                            for i_feature in 0..features.count() {
-                                // we assume that the three spatial derivative are
-                                // stored one below the other
-                                gradients[[sample.index + 0, i_feature]] += sample.x[i_feature];
-                                gradients[[sample.index + 1, i_feature]] += sample.y[i_feature];
-                                gradients[[sample.index + 2, i_feature]] += sample.z[i_feature];
+                        use self::AtomInPair::*;
+
+                        let m_1_pow_l = features.iter()
+                            .map(|feature| m_1_pow(feature[1].usize()))
+                            .collect::<Array1<f64>>();
+
+                        for contribution in receiver_grad {
+                            for &(index, center, neighbor) in contribution.samples.iter() {
+                                for spatial in 0..3 {
+                                    let gradient = &contribution.gradients[spatial];
+                                    // we assume that the three spatial
+                                    // components are stored one after the other
+                                    let mut row = gradients.index_axis_mut(Axis(0), index + spatial);
+
+                                    match (center, neighbor) {
+                                        (First, Second) => {
+                                            row += gradient;
+                                        }
+                                        (First, First) => {
+                                            row -= gradient;
+                                        }
+                                        // when storing data for "reversed"
+                                        // gradients, use the fact that `grad_j
+                                        // se_i[n, l, m](r) = - (-1)^l grad_i
+                                        // se_j[n, l, m](r)` where se is the
+                                        // spherical expansion.
+                                        (Second, First) => {
+                                            row -= &(m_1_pow_l.clone() * gradient);
+                                        }
+                                        (Second, Second) => {
+                                            row += &(m_1_pow_l.clone() * gradient);
+                                        }
+                                    }
+                                }
                             }
                         }
                     });
