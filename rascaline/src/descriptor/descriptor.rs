@@ -255,7 +255,7 @@ fn remove_from_samples(samples: &Indexes, variables: &[&str]) -> RemovedSampleRe
     let names = samples.names()
         .iter()
         .filter(|&name| !variables.contains(name))
-        .cloned()
+        .copied()
         .collect();
     let mut builder = IndexesBuilder::new(names);
     for sample in new_samples {
