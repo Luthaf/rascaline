@@ -233,7 +233,7 @@ impl Indexes {
             return None;
         }
 
-        self.positions.get(value).cloned()
+        self.positions.get(value).copied()
     }
 }
 
