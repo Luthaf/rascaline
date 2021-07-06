@@ -351,15 +351,24 @@ impl SphericalHarmonics {
             }
         }
 
-        // use a recurrence relation for sin(m ϕ) and cos(m ϕ) for m ≠ 0
+        // Use a recurrence relation for sin(m ϕ) and cos(m ϕ) for m ≠ 0. The
+        // relation used differ partially from the arxiv paper to follow the
+        // convention documented on Wikipedia for real spherical harmonics
+        // (https://en.wikipedia.org/wiki/Spherical_harmonics#Real_form). This
+        // effectively cancels out the Condon-Shortley phase (-1^m) in the final
+        // real spherical harmonics.
+
+        // initialize recurrence for m=-1
         let mut cos_1 = 1.0;
-        let mut cos_2 = cos_phi;
         let mut sin_1 = 0.0;
-        let mut sin_2 = -sin_phi;
-        let two_cos = 2.0 * cos_phi;
+        // initialize recurrence for m=0
+        let mut cos_2 = -cos_phi;     // <== this was changed from `cos` to `-cos`
+        let mut sin_2 = sin_phi;      // <== this was changed from `-sin` to `sin`
+
+        let minus_two_cos = -2.0 * cos_phi; // <== this was changed from `2 cos` to `-2 cos`
         for m in 1..(self.max_angular + 1) {
-            let sin_m_phi = two_cos * sin_1 - sin_2;
-            let cos_m_phi = two_cos * cos_1 - cos_2;
+            let sin_m_phi = minus_two_cos * sin_1 - sin_2;
+            let cos_m_phi = minus_two_cos * cos_1 - cos_2;
             sin_2 = sin_1;
             sin_1 = sin_m_phi;
             cos_2 = cos_1;
