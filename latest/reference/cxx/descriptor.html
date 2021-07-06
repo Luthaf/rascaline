@@ -1,0 +1,398 @@
+<!doctype html>
+<html class="no-js">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" /><link rel="next" title="Miscelaneous" href="misc.html" /><link rel="prev" title="Dealing with calculators" href="calculators.html" />
+
+    <meta name="generator" content="sphinx-4.0.3, furo 2021.07.05.beta38"/>
+        <title>Dealing with descriptors - Rascaline 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css" />
+    <link rel="stylesheet" type="text/css" href="/home/runner/work/rascaline/rascaline/docs/static/rascaline.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/tabs.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css" />
+    
+
+
+<style>
+  :root {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+  }
+
+  /* For allowing end-user-specific overrides */
+  .override-light {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  
+  }
+  .override-dark {
+    --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+  }
+</style><link media="(prefers-color-scheme: dark)" rel="stylesheet" href="../../_static/pygments_dark.css"></head>
+  <body dir="">
+    
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+      stroke-width="1.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="none" d="M0 0h24v24H0z"/>
+      <line x1="4" y1="6" x2="20" y2="6" />
+      <line x1="10" y1="12" x2="20" y2="12" />
+      <line x1="6" y1="18" x2="20" y2="18" />
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+      class="feather feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+      class="feather feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../index.html"><div class="brand">Rascaline 0.1.0 documentation</div></a>
+    </div>
+    <div class="header-right">
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
+  
+  
+  <span class="sidebar-brand-text">Rascaline 0.1.0 documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../search.html">
+  <input class="sidebar-search" placeholder=Search name="q">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../concepts.html">Core concepts</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../calculators/index.html">Implemented calculators</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/><label for="toctree-checkbox-1"><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../calculators/spherical-expansion.html">Spherical expansion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../calculators/soap-power-spectrum.html">SOAP Power spectrum</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../calculators/sorted-distances.html">Sorted distance vector</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../tutorials/index.html">User guide and tutorials</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label for="toctree-checkbox-2"><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/descriptor.html">What’s in a descriptor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/computing-soap.html">Computing SOAP features</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="../index.html">API reference</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/><label for="toctree-checkbox-3"><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l2 has-children"><a class="reference internal" href="../python/index.html">Python API reference</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/><label for="toctree-checkbox-4"><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../python/systems.html">Available system implementation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../python/calculators.html">Available Calculators</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../python/descriptor.html">Descriptor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../python/misc.html">Miscelaneous</a></li>
+</ul>
+</li>
+<li class="toctree-l2 current has-children"><a class="reference internal" href="index.html">C++ API reference</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/><label for="toctree-checkbox-5"><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="systems.html">Defining systems</a></li>
+<li class="toctree-l3"><a class="reference internal" href="calculators.html">Dealing with calculators</a></li>
+<li class="toctree-l3 current current-page"><a class="current reference internal" href="#">Dealing with descriptors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="misc.html">Miscelaneous</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../c/index.html">C API reference</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label for="toctree-checkbox-6"><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../c/systems.html">Defining systems</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../c/calculators.html">Dealing with calculators</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../c/descriptor.html">Dealing with descriptors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../c/misc.html">Miscelaneous</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../rust.html">Rust API reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../devdoc/index.html">Developer documentation</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label for="toctree-checkbox-7"><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../devdoc/getting-started.html">Getting started</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../devdoc/contributing.html">Contribution guidelines</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../devdoc/new-calculator.html">Adding a new calculator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../devdoc/architecture.html">Architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../devdoc/interfaces.html">Python and C interface</a></li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+      </div>
+      
+    </div>
+  </aside>
+  <main class="main">
+    <div class="content">
+      <article role="main">
+        <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+          <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+        </label>
+        <div class="section" id="dealing-with-descriptors">
+<h1>Dealing with descriptors<a class="headerlink" href="#dealing-with-descriptors" title="Permalink to this headline">¶</a></h1>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline10DescriptorE">
+<span id="_CPPv3N9rascaline10DescriptorE"></span><span id="_CPPv2N9rascaline10DescriptorE"></span><span id="rascaline::Descriptor"></span><span class="target" id="classrascaline_1_1_descriptor"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">rascaline</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">Descriptor</span></span></span><a class="headerlink" href="#_CPPv4N9rascaline10DescriptorE" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Descriptors store the result of a single calculation on a set of systems.</p>
+<p>They contains the values produced by the calculation; as well as metdata to interpret these values. In particular, it contains two additional arrays describing the <code class="docutils literal notranslate"><span class="pre">samples</span></code> (associated with rows in the values) and <code class="docutils literal notranslate"><span class="pre">features</span></code> (associated with columns in the values).</p>
+<p>Optionally, a descriptor can also contain gradients of the samples. In this case, some additional metadata is available to describe the rows of the gradients array in <code class="docutils literal notranslate"><span class="pre">gradients_samples</span></code>. The columns of the gradients array are still described by the same <code class="docutils literal notranslate"><span class="pre">features</span></code>. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline10Descriptor10DescriptorEv">
+<span id="_CPPv3N9rascaline10Descriptor10DescriptorEv"></span><span id="_CPPv2N9rascaline10Descriptor10DescriptorEv"></span><span id="rascaline::Descriptor::Descriptor"></span><span class="target" id="classrascaline_1_1_descriptor_1a3268a9c9b7dd2b2b694630c938a7fa7a"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Descriptor</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9rascaline10Descriptor10DescriptorEv" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Create a new empty descriptor. </p>
+</dd></dl>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline10Descriptor10DescriptorERK10Descriptor">
+<span id="_CPPv3N9rascaline10Descriptor10DescriptorERK10Descriptor"></span><span id="_CPPv2N9rascaline10Descriptor10DescriptorERK10Descriptor"></span><span id="rascaline::Descriptor::Descriptor__DescriptorCR"></span><span class="target" id="classrascaline_1_1_descriptor_1a285ea1f5d12f6689a38422fee7341d91"></span><span class="sig-name descname"><span class="n"><span class="pre">Descriptor</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N9rascaline10Descriptor10DescriptorERK10Descriptor" title="rascaline::Descriptor::Descriptor"><span class="n"><span class="pre">Descriptor</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">delete</span></span><a class="headerlink" href="#_CPPv4N9rascaline10Descriptor10DescriptorERK10Descriptor" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p><a class="reference internal" href="#classrascaline_1_1_descriptor"><span class="std std-ref">Descriptor</span></a> is <strong>NOT</strong> copy-constructible. </p>
+</dd></dl>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline10DescriptoraSERK10Descriptor">
+<span id="_CPPv3N9rascaline10DescriptoraSERK10Descriptor"></span><span id="_CPPv2N9rascaline10DescriptoraSERK10Descriptor"></span><span id="rascaline::Descriptor::assign-operator__DescriptorCR"></span><span class="target" id="classrascaline_1_1_descriptor_1a51ac1d8b2eeda075096d4e9f88deaf7d"></span><a class="reference internal" href="#_CPPv4N9rascaline10DescriptorE" title="rascaline::Descriptor"><span class="n"><span class="pre">Descriptor</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N9rascaline10DescriptorE" title="rascaline::Descriptor"><span class="n"><span class="pre">Descriptor</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">delete</span></span><a class="headerlink" href="#_CPPv4N9rascaline10DescriptoraSERK10Descriptor" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p><a class="reference internal" href="#classrascaline_1_1_descriptor"><span class="std std-ref">Descriptor</span></a> can <strong>NOT</strong> be copy-assigned. </p>
+</dd></dl>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline10Descriptor10DescriptorERR10Descriptor">
+<span id="_CPPv3N9rascaline10Descriptor10DescriptorERR10Descriptor"></span><span id="_CPPv2N9rascaline10Descriptor10DescriptorERR10Descriptor"></span><span id="rascaline::Descriptor::Descriptor__DescriptorRR"></span><span class="target" id="classrascaline_1_1_descriptor_1a862f318d7c237b825b0593f7a0210168"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Descriptor</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N9rascaline10Descriptor10DescriptorERR10Descriptor" title="rascaline::Descriptor::Descriptor"><span class="n"><span class="pre">Descriptor</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9rascaline10Descriptor10DescriptorERR10Descriptor" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p><a class="reference internal" href="#classrascaline_1_1_descriptor"><span class="std std-ref">Descriptor</span></a> is move-constructible. </p>
+</dd></dl>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline10DescriptoraSERR10Descriptor">
+<span id="_CPPv3N9rascaline10DescriptoraSERR10Descriptor"></span><span id="_CPPv2N9rascaline10DescriptoraSERR10Descriptor"></span><span id="rascaline::Descriptor::assign-operator__DescriptorRR"></span><span class="target" id="classrascaline_1_1_descriptor_1a17877198b51736878d9aa7ffba95d9bc"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N9rascaline10DescriptorE" title="rascaline::Descriptor"><span class="n"><span class="pre">Descriptor</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N9rascaline10DescriptorE" title="rascaline::Descriptor"><span class="n"><span class="pre">Descriptor</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9rascaline10DescriptoraSERR10Descriptor" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p><a class="reference internal" href="#classrascaline_1_1_descriptor"><span class="std std-ref">Descriptor</span></a> can be move-assigned. </p>
+</dd></dl>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK9rascaline10Descriptor6valuesEv">
+<span id="_CPPv3NK9rascaline10Descriptor6valuesEv"></span><span id="_CPPv2NK9rascaline10Descriptor6valuesEv"></span><span id="rascaline::Descriptor::valuesC"></span><span class="target" id="classrascaline_1_1_descriptor_1a0200861da5993d12dcdf9b21cf161fb7"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN9rascaline9ArrayViewE" title="rascaline::ArrayView"><span class="n"><span class="pre">ArrayView</span></span></a><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">double</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">values</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK9rascaline10Descriptor6valuesEv" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Get the values stored inside this descriptor after a call to <code class="docutils literal notranslate"><a class="reference internal" href="calculators.html#classrascaline_1_1_calculator_1ab59ac7ecddfc87b6a0740c009a8afae2"><span class="std std-ref"><span class="pre">Calculator::compute</span></span></a></code>. </p>
+</dd></dl>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK9rascaline10Descriptor9gradientsEv">
+<span id="_CPPv3NK9rascaline10Descriptor9gradientsEv"></span><span id="_CPPv2NK9rascaline10Descriptor9gradientsEv"></span><span id="rascaline::Descriptor::gradientsC"></span><span class="target" id="classrascaline_1_1_descriptor_1aea85014eca6a4803d53d25477bfe0196"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN9rascaline9ArrayViewE" title="rascaline::ArrayView"><span class="n"><span class="pre">ArrayView</span></span></a><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">double</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">gradients</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK9rascaline10Descriptor9gradientsEv" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Get the values stored inside this descriptor after a call to <code class="docutils literal notranslate"><a class="reference internal" href="calculators.html#classrascaline_1_1_calculator_1ab59ac7ecddfc87b6a0740c009a8afae2"><span class="std std-ref"><span class="pre">Calculator::compute</span></span></a></code>, if any.</p>
+<p>If this descriptor does not contain gradient data, an empty array is returned. </p>
+</dd></dl>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK9rascaline10Descriptor7samplesEv">
+<span id="_CPPv3NK9rascaline10Descriptor7samplesEv"></span><span id="_CPPv2NK9rascaline10Descriptor7samplesEv"></span><span id="rascaline::Descriptor::samplesC"></span><span class="target" id="classrascaline_1_1_descriptor_1a282d66574998d770dfe859641eac67f4"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N9rascaline7IndexesE" title="rascaline::Indexes"><span class="n"><span class="pre">Indexes</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">samples</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK9rascaline10Descriptor7samplesEv" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Get metdata describing the samples/rows in <code class="docutils literal notranslate"><a class="reference internal" href="#classrascaline_1_1_descriptor_1a0200861da5993d12dcdf9b21cf161fb7"><span class="std std-ref"><span class="pre">Descriptor::values</span></span></a></code>.</p>
+<p>This is stored as a <strong>read only</strong> 2D array, where each column is named. </p>
+</dd></dl>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK9rascaline10Descriptor8featuresEv">
+<span id="_CPPv3NK9rascaline10Descriptor8featuresEv"></span><span id="_CPPv2NK9rascaline10Descriptor8featuresEv"></span><span id="rascaline::Descriptor::featuresC"></span><span class="target" id="classrascaline_1_1_descriptor_1a0e33e1cde24ad435dff87120230f5b3a"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N9rascaline7IndexesE" title="rascaline::Indexes"><span class="n"><span class="pre">Indexes</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">features</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK9rascaline10Descriptor8featuresEv" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Get metdata describing the features/columns in <code class="docutils literal notranslate"><a class="reference internal" href="#classrascaline_1_1_descriptor_1a0200861da5993d12dcdf9b21cf161fb7"><span class="std std-ref"><span class="pre">Descriptor::values</span></span></a></code> and <code class="docutils literal notranslate"><a class="reference internal" href="#classrascaline_1_1_descriptor_1aea85014eca6a4803d53d25477bfe0196"><span class="std std-ref"><span class="pre">Descriptor::gradients</span></span></a></code>.</p>
+<p>This is stored as a <strong>read only</strong> 2D array, where each column is named. </p>
+</dd></dl>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK9rascaline10Descriptor17gradients_samplesEv">
+<span id="_CPPv3NK9rascaline10Descriptor17gradients_samplesEv"></span><span id="_CPPv2NK9rascaline10Descriptor17gradients_samplesEv"></span><span id="rascaline::Descriptor::gradients_samplesC"></span><span class="target" id="classrascaline_1_1_descriptor_1a3e490bed35411ee97735c81c89711215"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N9rascaline7IndexesE" title="rascaline::Indexes"><span class="n"><span class="pre">Indexes</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">gradients_samples</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK9rascaline10Descriptor17gradients_samplesEv" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Get metdata describing the gradients rows in <code class="docutils literal notranslate"><a class="reference internal" href="#classrascaline_1_1_descriptor_1aea85014eca6a4803d53d25477bfe0196"><span class="std std-ref"><span class="pre">Descriptor::gradients</span></span></a></code>.</p>
+<p>This is stored as a <strong>read only</strong> 2D array, where each column is named. </p>
+</dd></dl>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline10Descriptor7densifyENSt6vectorINSt6stringEEE">
+<span id="_CPPv3N9rascaline10Descriptor7densifyENSt6vectorINSt6stringEEE"></span><span id="_CPPv2N9rascaline10Descriptor7densifyENSt6vectorINSt6stringEEE"></span><span id="rascaline::Descriptor::densify__std::vector:ss:"></span><span class="target" id="classrascaline_1_1_descriptor_1a042fea0b89d2d21f2372c30b03a7a841"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">densify</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">variables</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9rascaline10Descriptor7densifyENSt6vectorINSt6stringEEE" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Move the values with names in <code class="docutils literal notranslate"><span class="pre">variables</span></code> from samples to features. </p>
+</dd></dl>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline10Descriptor22as_rascal_descriptor_tEv">
+<span id="_CPPv3N9rascaline10Descriptor22as_rascal_descriptor_tEv"></span><span id="_CPPv2N9rascaline10Descriptor22as_rascal_descriptor_tEv"></span><span id="rascaline::Descriptor::as_rascal_descriptor_t"></span><span class="target" id="classrascaline_1_1_descriptor_1a4f745c6083b4443cb1dd41cc672dbaf1"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">rascal_descriptor_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">as_rascal_descriptor_t</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9rascaline10Descriptor22as_rascal_descriptor_tEv" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Get the underlying pointer to a <code class="docutils literal notranslate"><span class="pre">rascal_descriptor_t</span></code>.</p>
+<p>This is an advanced function that most users don’t need to call directly. </p>
+</dd></dl>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK9rascaline10Descriptor22as_rascal_descriptor_tEv">
+<span id="_CPPv3NK9rascaline10Descriptor22as_rascal_descriptor_tEv"></span><span id="_CPPv2NK9rascaline10Descriptor22as_rascal_descriptor_tEv"></span><span id="rascaline::Descriptor::as_rascal_descriptor_tC"></span><span class="target" id="classrascaline_1_1_descriptor_1a7294b8dfc88d61237cd4fb7ebe217b44"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">rascal_descriptor_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">as_rascal_descriptor_t</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK9rascaline10Descriptor22as_rascal_descriptor_tEv" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Get the underlying const pointer to a <code class="docutils literal notranslate"><span class="pre">rascal_descriptor_t</span></code>.</p>
+<p>This is an advanced function that most users don’t need to call directly. </p>
+</dd></dl>
+</div>
+</dd></dl>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4I0EN9rascaline9ArrayViewE">
+<span id="_CPPv3I0EN9rascaline9ArrayViewE"></span><span id="_CPPv2I0EN9rascaline9ArrayViewE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br/><span class="target" id="classrascaline_1_1_array_view"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">rascaline</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">ArrayView</span></span></span><a class="headerlink" href="#_CPPv4I0EN9rascaline9ArrayViewE" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>An <code class="docutils literal notranslate"><a class="reference internal" href="#classrascaline_1_1_array_view"><span class="std std-ref"><span class="pre">ArrayView</span></span></a></code> is view inside a rust-owned 2D array, similar to std::span for 2D arrays.</p>
+<p>Instances of this class do not own their memory, but rather point inside memory owned by the Rust library. For this reason, they are only valid to use while the corresponding memory is not touched. In practice, this means that calling <code class="docutils literal notranslate"><a class="reference internal" href="calculators.html#classrascaline_1_1_calculator_1ab59ac7ecddfc87b6a0740c009a8afae2"><span class="std std-ref"><span class="pre">Calculator::compute</span></span></a></code> with a descriptor will invalidate all <code class="docutils literal notranslate"><a class="reference internal" href="#classrascaline_1_1_array_view"><span class="std std-ref"><span class="pre">ArrayView</span></span></a></code> created from this <code class="docutils literal notranslate"><a class="reference internal" href="#classrascaline_1_1_descriptor"><span class="std std-ref"><span class="pre">Descriptor</span></span></a></code>. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline9ArrayView9ArrayViewEv">
+<span id="_CPPv3N9rascaline9ArrayView9ArrayViewEv"></span><span id="_CPPv2N9rascaline9ArrayView9ArrayViewEv"></span><span id="rascaline::ArrayView::ArrayView"></span><span class="target" id="classrascaline_1_1_array_view_1a9f5f67e04eaee9f987c2d1d90f5c059b"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrayView</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9rascaline9ArrayView9ArrayViewEv" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Create a new empty <code class="docutils literal notranslate"><a class="reference internal" href="#classrascaline_1_1_array_view"><span class="std std-ref"><span class="pre">ArrayView</span></span></a></code>, with shape <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">0]</span></code>. </p>
+</dd></dl>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline9ArrayView9ArrayViewEPK1TNSt5arrayI6size_tXL2EEEE">
+<span id="_CPPv3N9rascaline9ArrayView9ArrayViewEPK1TNSt5arrayI6size_tXL2EEEE"></span><span id="_CPPv2N9rascaline9ArrayView9ArrayViewEPK1TNSt5arrayI6size_tX2EEE"></span><span id="rascaline::ArrayView::ArrayView__TCP.std::array:s.2:"></span><span class="target" id="classrascaline_1_1_array_view_1a603c3874206d7c627d3266b890764088"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrayView</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN9rascaline9ArrayViewE" title="rascaline::ArrayView::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">data</span></span>, <span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">array</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">size_t</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">2</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">shape</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9rascaline9ArrayView9ArrayViewEPK1TNSt5arrayI6size_tXL2EEEE" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Create a new <code class="docutils literal notranslate"><a class="reference internal" href="#classrascaline_1_1_array_view"><span class="std std-ref"><span class="pre">ArrayView</span></span></a></code> with the given <code class="docutils literal notranslate"><span class="pre">shape</span></code>. <code class="docutils literal notranslate"><span class="pre">data</span></code> must point to contiguous memory containing <code class="docutils literal notranslate"><span class="pre">shape[0]</span> <span class="pre">x</span> <span class="pre">shape[1]</span></code> elements, to be interpreted as a 2D array in row-major order. The resulting <code class="docutils literal notranslate"><a class="reference internal" href="#classrascaline_1_1_array_view"><span class="std std-ref"><span class="pre">ArrayView</span></span></a></code> is only valid for as long as <code class="docutils literal notranslate"><span class="pre">data</span></code> is.</p>
+<p>This function is intended for internal use only. </p>
+</dd></dl>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline9ArrayView9ArrayViewERK9ArrayView">
+<span id="_CPPv3N9rascaline9ArrayView9ArrayViewERK9ArrayView"></span><span id="_CPPv2N9rascaline9ArrayView9ArrayViewERK9ArrayView"></span><span id="rascaline::ArrayView::ArrayView__ArrayViewCR"></span><span class="target" id="classrascaline_1_1_array_view_1aaa1fbd87c96363716e842c88d488a0f3"></span><span class="sig-name descname"><span class="n"><span class="pre">ArrayView</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N9rascaline9ArrayView9ArrayViewERK9ArrayView" title="rascaline::ArrayView::ArrayView"><span class="n"><span class="pre">ArrayView</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N9rascaline9ArrayView9ArrayViewERK9ArrayView" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p><a class="reference internal" href="#classrascaline_1_1_array_view"><span class="std std-ref">ArrayView</span></a> is copy-constructible. </p>
+</dd></dl>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline9ArrayView9ArrayViewERR9ArrayView">
+<span id="_CPPv3N9rascaline9ArrayView9ArrayViewERR9ArrayView"></span><span id="_CPPv2N9rascaline9ArrayView9ArrayViewERR9ArrayView"></span><span id="rascaline::ArrayView::ArrayView__ArrayViewRR"></span><span class="target" id="classrascaline_1_1_array_view_1ae6dfaf53882598ba0bed2bb101dcf2e4"></span><span class="sig-name descname"><span class="n"><span class="pre">ArrayView</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N9rascaline9ArrayView9ArrayViewERR9ArrayView" title="rascaline::ArrayView::ArrayView"><span class="n"><span class="pre">ArrayView</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N9rascaline9ArrayView9ArrayViewERR9ArrayView" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p><a class="reference internal" href="#classrascaline_1_1_array_view"><span class="std std-ref">ArrayView</span></a> is move-constructible. </p>
+</dd></dl>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline9ArrayViewaSERK9ArrayView">
+<span id="_CPPv3N9rascaline9ArrayViewaSERK9ArrayView"></span><span id="_CPPv2N9rascaline9ArrayViewaSERK9ArrayView"></span><span id="rascaline::ArrayView::assign-operator__ArrayViewCR"></span><span class="target" id="classrascaline_1_1_array_view_1a01f06663529d3abfb09e7c27ba8a418b"></span><a class="reference internal" href="#_CPPv4I0EN9rascaline9ArrayViewE" title="rascaline::ArrayView"><span class="n"><span class="pre">ArrayView</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN9rascaline9ArrayViewE" title="rascaline::ArrayView"><span class="n"><span class="pre">ArrayView</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N9rascaline9ArrayViewaSERK9ArrayView" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p><a class="reference internal" href="#classrascaline_1_1_array_view"><span class="std std-ref">ArrayView</span></a> can be copy-assigned. </p>
+</dd></dl>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline9ArrayViewaSERR9ArrayView">
+<span id="_CPPv3N9rascaline9ArrayViewaSERR9ArrayView"></span><span id="_CPPv2N9rascaline9ArrayViewaSERR9ArrayView"></span><span id="rascaline::ArrayView::assign-operator__ArrayViewRR"></span><span class="target" id="classrascaline_1_1_array_view_1a55d60adcc3965f20c6ec79502f4d3ae6"></span><a class="reference internal" href="#_CPPv4I0EN9rascaline9ArrayViewE" title="rascaline::ArrayView"><span class="n"><span class="pre">ArrayView</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN9rascaline9ArrayViewE" title="rascaline::ArrayView"><span class="n"><span class="pre">ArrayView</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N9rascaline9ArrayViewaSERR9ArrayView" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p><a class="reference internal" href="#classrascaline_1_1_array_view"><span class="std std-ref">ArrayView</span></a> can be move-assigned. </p>
+</dd></dl>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK9rascaline9ArrayViewclE6size_t6size_t">
+<span id="_CPPv3NK9rascaline9ArrayViewclE6size_t6size_t"></span><span id="_CPPv2NK9rascaline9ArrayViewclE6size_t6size_t"></span><span id="rascaline::ArrayView::call-operator__s.sC"></span><span class="target" id="classrascaline_1_1_array_view_1af77d613d7652cc67c82ef2c5f1ca8f01"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN9rascaline9ArrayViewE" title="rascaline::ArrayView::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">()</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">i</span></span>, <span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">j</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK9rascaline9ArrayViewclE6size_t6size_t" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Get a the value inside this <code class="docutils literal notranslate"><a class="reference internal" href="#classrascaline_1_1_array_view"><span class="std std-ref"><span class="pre">ArrayView</span></span></a></code> at index <code class="docutils literal notranslate"><span class="pre">i,</span> <span class="pre">j</span></code> </p>
+</dd></dl>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK9rascaline9ArrayView4dataEv">
+<span id="_CPPv3NK9rascaline9ArrayView4dataEv"></span><span id="_CPPv2NK9rascaline9ArrayView4dataEv"></span><span id="rascaline::ArrayView::dataC"></span><span class="target" id="classrascaline_1_1_array_view_1a9721789ef609954881cbca128e275fe3"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN9rascaline9ArrayViewE" title="rascaline::ArrayView::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">data</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK9rascaline9ArrayView4dataEv" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Get the data pointer for this array, i.e. the pointer to the first element. </p>
+</dd></dl>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK9rascaline9ArrayView5shapeEv">
+<span id="_CPPv3NK9rascaline9ArrayView5shapeEv"></span><span id="_CPPv2NK9rascaline9ArrayView5shapeEv"></span><span id="rascaline::ArrayView::shapeC"></span><span class="target" id="classrascaline_1_1_array_view_1a48a784c9be677520e3fc692b606f6e46"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">array</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">size_t</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">2</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">shape</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK9rascaline9ArrayView5shapeEv" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Get the shape of this array. </p>
+</dd></dl>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK9rascaline9ArrayView8is_emptyEv">
+<span id="_CPPv3NK9rascaline9ArrayView8is_emptyEv"></span><span id="_CPPv2NK9rascaline9ArrayView8is_emptyEv"></span><span id="rascaline::ArrayView::is_emptyC"></span><span class="target" id="classrascaline_1_1_array_view_1a5d51370686387d1d6f86d0ede4c45575"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">is_empty</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK9rascaline9ArrayView8is_emptyEv" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Check if this array is empty, i.e. if at least one of the shape element is 0. </p>
+</dd></dl>
+</div>
+</dd></dl>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline7IndexesE">
+<span id="_CPPv3N9rascaline7IndexesE"></span><span id="_CPPv2N9rascaline7IndexesE"></span><span id="rascaline::Indexes"></span><span class="target" id="classrascaline_1_1_indexes"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">rascaline</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">Indexes</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">rascaline</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4I0EN9rascaline9ArrayViewE" title="rascaline::ArrayView"><span class="n"><span class="pre">ArrayView</span></span></a><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">int32_t</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N9rascaline7IndexesE" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>A set of <code class="docutils literal notranslate"><a class="reference internal" href="#classrascaline_1_1_indexes"><span class="std std-ref"><span class="pre">Indexes</span></span></a></code> contains metdata describing row or columns in the <code class="docutils literal notranslate"><span class="pre">values</span></code> and <code class="docutils literal notranslate"><span class="pre">gradients</span></code> arrays in a <code class="docutils literal notranslate"><a class="reference internal" href="#classrascaline_1_1_descriptor"><span class="std std-ref"><span class="pre">Descriptor</span></span></a></code>.</p>
+<p>Each instance of <code class="docutils literal notranslate"><a class="reference internal" href="#classrascaline_1_1_indexes"><span class="std std-ref"><span class="pre">Indexes</span></span></a></code> contains both a 2D array of shape <code class="docutils literal notranslate"><span class="pre">count</span> <span class="pre">x</span> <span class="pre">size</span></code> and a vector of names associated with the columns of the 2D array. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline7Indexes7IndexesENSt6vectorINSt6stringEEE9ArrayViewI7int32_tE">
+<span id="_CPPv3N9rascaline7Indexes7IndexesENSt6vectorINSt6stringEEE9ArrayViewI7int32_tE"></span><span id="_CPPv2N9rascaline7Indexes7IndexesENSt6vectorINSt6stringEEE9ArrayViewI7int32_tE"></span><span id="rascaline::Indexes::Indexes__std::vector:ss:.ArrayView:int32_t:"></span><span class="target" id="classrascaline_1_1_indexes_1ade6a933c2c83ec8778f557e6cb5f329b"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Indexes</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">names</span></span>, <a class="reference internal" href="#_CPPv4I0EN9rascaline9ArrayViewE" title="rascaline::ArrayView"><span class="n"><span class="pre">ArrayView</span></span></a><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">int32_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">data</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9rascaline7Indexes7IndexesENSt6vectorINSt6stringEEE9ArrayViewI7int32_tE" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Create a new <a class="reference internal" href="#classrascaline_1_1_indexes"><span class="std std-ref">Indexes</span></a> with the given <code class="docutils literal notranslate"><span class="pre">names</span></code> and corresponding <code class="docutils literal notranslate"><span class="pre">data</span></code></p>
+<p>This function is intended for internal use only. </p>
+</dd></dl>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK9rascaline7Indexes5namesEv">
+<span id="_CPPv3NK9rascaline7Indexes5namesEv"></span><span id="_CPPv2NK9rascaline7Indexes5namesEv"></span><span id="rascaline::Indexes::namesC"></span><span class="target" id="classrascaline_1_1_indexes_1a728250efed74f288b1a5e575f1d7cc1b"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">names</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK9rascaline7Indexes5namesEv" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Get the names of variables described by this <code class="docutils literal notranslate"><a class="reference internal" href="#classrascaline_1_1_indexes"><span class="std std-ref"><span class="pre">Indexes</span></span></a></code> set. </p>
+</dd></dl>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline7Indexes6selectENSt6vectorI6size_tEE">
+<span id="_CPPv3N9rascaline7Indexes6selectENSt6vectorI6size_tEE"></span><span id="_CPPv2N9rascaline7Indexes6selectENSt6vectorI6size_tEE"></span><span id="rascaline::Indexes::select__std::vector:s:"></span><span class="target" id="classrascaline_1_1_indexes_1a15a6722be819888e191d92bd45d69c4a"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="calculators.html#_CPPv4N9rascaline15SelectedIndexesE" title="rascaline::SelectedIndexes"><span class="n"><span class="pre">SelectedIndexes</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">select</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">size_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">indexes</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9rascaline7Indexes6selectENSt6vectorI6size_tEE" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Construct a <code class="docutils literal notranslate"><a class="reference internal" href="calculators.html#classrascaline_1_1_selected_indexes"><span class="std std-ref"><span class="pre">SelectedIndexes</span></span></a></code> containing only values from the requested <code class="docutils literal notranslate"><span class="pre">indexes</span></code>. </p>
+</dd></dl>
+</div>
+</dd></dl>
+</div>
+
+      </article>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="misc.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Miscelaneous</div>
+              </div>
+              <svg><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="calculators.html">
+              <svg><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Dealing with calculators</div>
+                
+              </div>
+            </a>
+        </div>
+
+        <div class="related-information">
+              Copyright &#169; 2021, Rascaline developers
+            |
+            Built with <a href="https://www.sphinx-doc.org/">Sphinx</a>
+              and
+              <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+              <a href="https://github.com/pradyunsg/furo">Furo theme</a>.
+            |
+            <a class="muted-link" href="../../_sources/reference/cxx/descriptor.rst.txt"
+               rel="nofollow">
+              Show Source
+            </a>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </main>
+</div><script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/scripts/main.js"></script>
+    </body>
+</html>

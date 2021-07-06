@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Matrix3","A 3x3 square matrix type."],["StackVec","A stack-allocated vector with fixed capacity. If more elements than the initial capacity are needed, this will panic."],["Vector3D","A 3-dimensional vector type"]]});

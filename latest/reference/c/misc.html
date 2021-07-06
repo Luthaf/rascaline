@@ -1,0 +1,321 @@
+<!doctype html>
+<html class="no-js">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" /><link rel="next" title="Rust API reference" href="../rust.html" /><link rel="prev" title="Dealing with descriptors" href="descriptor.html" />
+
+    <meta name="generator" content="sphinx-4.0.3, furo 2021.07.05.beta38"/>
+        <title>Miscelaneous - Rascaline 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css" />
+    <link rel="stylesheet" type="text/css" href="/home/runner/work/rascaline/rascaline/docs/static/rascaline.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/tabs.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css" />
+    
+
+
+<style>
+  :root {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+  }
+
+  /* For allowing end-user-specific overrides */
+  .override-light {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  
+  }
+  .override-dark {
+    --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+  }
+</style><link media="(prefers-color-scheme: dark)" rel="stylesheet" href="../../_static/pygments_dark.css"></head>
+  <body dir="">
+    
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+      stroke-width="1.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="none" d="M0 0h24v24H0z"/>
+      <line x1="4" y1="6" x2="20" y2="6" />
+      <line x1="10" y1="12" x2="20" y2="12" />
+      <line x1="6" y1="18" x2="20" y2="18" />
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+      class="feather feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+      class="feather feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../index.html"><div class="brand">Rascaline 0.1.0 documentation</div></a>
+    </div>
+    <div class="header-right">
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
+  
+  
+  <span class="sidebar-brand-text">Rascaline 0.1.0 documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../search.html">
+  <input class="sidebar-search" placeholder=Search name="q">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../concepts.html">Core concepts</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../calculators/index.html">Implemented calculators</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/><label for="toctree-checkbox-1"><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../calculators/spherical-expansion.html">Spherical expansion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../calculators/soap-power-spectrum.html">SOAP Power spectrum</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../calculators/sorted-distances.html">Sorted distance vector</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../tutorials/index.html">User guide and tutorials</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label for="toctree-checkbox-2"><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/descriptor.html">What’s in a descriptor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/computing-soap.html">Computing SOAP features</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="../index.html">API reference</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/><label for="toctree-checkbox-3"><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l2 has-children"><a class="reference internal" href="../python/index.html">Python API reference</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/><label for="toctree-checkbox-4"><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../python/systems.html">Available system implementation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../python/calculators.html">Available Calculators</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../python/descriptor.html">Descriptor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../python/misc.html">Miscelaneous</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../cxx/index.html">C++ API reference</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/><label for="toctree-checkbox-5"><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cxx/systems.html">Defining systems</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cxx/calculators.html">Dealing with calculators</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cxx/descriptor.html">Dealing with descriptors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cxx/misc.html">Miscelaneous</a></li>
+</ul>
+</li>
+<li class="toctree-l2 current has-children"><a class="reference internal" href="index.html">C API reference</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label for="toctree-checkbox-6"><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="systems.html">Defining systems</a></li>
+<li class="toctree-l3"><a class="reference internal" href="calculators.html">Dealing with calculators</a></li>
+<li class="toctree-l3"><a class="reference internal" href="descriptor.html">Dealing with descriptors</a></li>
+<li class="toctree-l3 current current-page"><a class="current reference internal" href="#">Miscelaneous</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../rust.html">Rust API reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../devdoc/index.html">Developer documentation</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label for="toctree-checkbox-7"><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../devdoc/getting-started.html">Getting started</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../devdoc/contributing.html">Contribution guidelines</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../devdoc/new-calculator.html">Adding a new calculator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../devdoc/architecture.html">Architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../devdoc/interfaces.html">Python and C interface</a></li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+      </div>
+      
+    </div>
+  </aside>
+  <main class="main">
+    <div class="content">
+      <article role="main">
+        <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+          <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+        </label>
+        <div class="section" id="miscelaneous">
+<h1>Miscelaneous<a class="headerlink" href="#miscelaneous" title="Permalink to this headline">¶</a></h1>
+<dl class="c function">
+<dt class="sig sig-object c" id="c.rascal_last_error">
+<span class="target" id="rascaline_8h_1a5bcd95e97310e0c504f5e0ae292da495"></span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">rascal_last_error</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">void</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.rascal_last_error" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Get the last error message that was created on the current thread.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>the last error message, as a NULL-terminated string </p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="c type">
+<dt class="sig sig-object c" id="c.rascal_status_t">
+<span class="target" id="rascaline_8h_1a922993db151a28a304bbbc31e41a93a7"></span><span class="k"><span class="pre">typedef</span></span><span class="w"> </span><span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">rascal_status_t</span></span></span><a class="headerlink" href="#c.rascal_status_t" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Status type returned by all functions in the C API.</p>
+<p>The value 0 (<code class="docutils literal notranslate"><span class="pre">RASCAL_SUCCESS</span></code>) is used to indicate successful operations. Positive non-zero values are reserved for internal use in rascaline. Negative values are reserved for use in user code, in particular to indicate error coming from callbacks. </p>
+</dd></dl>
+<dl class="c macro">
+<dt class="sig sig-object c" id="c.RASCAL_SUCCESS">
+<span class="target" id="rascaline_8h_1a74acb9f1381b7c965b5733b6a51cee1d"></span><span class="sig-name descname"><span class="n"><span class="pre">RASCAL_SUCCESS</span></span></span><a class="headerlink" href="#c.RASCAL_SUCCESS" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Status code used when a function succeeded </p>
+</dd></dl>
+<dl class="c macro">
+<dt class="sig sig-object c" id="c.RASCAL_INVALID_PARAMETER_ERROR">
+<span class="target" id="rascaline_8h_1aa4164d5059a80c1a589275d6281e0744"></span><span class="sig-name descname"><span class="n"><span class="pre">RASCAL_INVALID_PARAMETER_ERROR</span></span></span><a class="headerlink" href="#c.RASCAL_INVALID_PARAMETER_ERROR" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Status code used when a function got an invalid parameter </p>
+</dd></dl>
+<dl class="c macro">
+<dt class="sig sig-object c" id="c.RASCAL_JSON_ERROR">
+<span class="target" id="rascaline_8h_1ac927ba3f2176b14fdc3ad6a52d5f7e5c"></span><span class="sig-name descname"><span class="n"><span class="pre">RASCAL_JSON_ERROR</span></span></span><a class="headerlink" href="#c.RASCAL_JSON_ERROR" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Status code used when there was an error reading or writing JSON </p>
+</dd></dl>
+<dl class="c macro">
+<dt class="sig sig-object c" id="c.RASCAL_UTF8_ERROR">
+<span class="target" id="rascaline_8h_1a1daf037b0ad895dca83593a500285a32"></span><span class="sig-name descname"><span class="n"><span class="pre">RASCAL_UTF8_ERROR</span></span></span><a class="headerlink" href="#c.RASCAL_UTF8_ERROR" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Status code used when a string contains non-utf8 data </p>
+</dd></dl>
+<dl class="c macro">
+<dt class="sig sig-object c" id="c.RASCAL_CHEMFILES_ERROR">
+<span class="target" id="rascaline_8h_1a685b18b07c150214dea8b32d828e8756"></span><span class="sig-name descname"><span class="n"><span class="pre">RASCAL_CHEMFILES_ERROR</span></span></span><a class="headerlink" href="#c.RASCAL_CHEMFILES_ERROR" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Status code used for error related to reading files with chemfiles </p>
+</dd></dl>
+<dl class="c macro">
+<dt class="sig sig-object c" id="c.RASCAL_SYSTEM_ERROR">
+<span class="target" id="rascaline_8h_1a2afbe9df609df18a4ae9f7034bd812d0"></span><span class="sig-name descname"><span class="n"><span class="pre">RASCAL_SYSTEM_ERROR</span></span></span><a class="headerlink" href="#c.RASCAL_SYSTEM_ERROR" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Status code used for errors coming from the system implementation if we don’t have a more specific status </p>
+</dd></dl>
+<dl class="c macro">
+<dt class="sig sig-object c" id="c.RASCAL_INTERNAL_ERROR">
+<span class="target" id="rascaline_8h_1a7fdfa8fd6bdb0abbb46274f1f85c6e64"></span><span class="sig-name descname"><span class="n"><span class="pre">RASCAL_INTERNAL_ERROR</span></span></span><a class="headerlink" href="#c.RASCAL_INTERNAL_ERROR" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Status code used when there was an internal error, i.e. there is a bug inside rascaline </p>
+</dd></dl>
+<dl class="c function">
+<dt class="sig sig-object c" id="c.rascal_set_logging_callback">
+<span class="target" id="rascaline_8h_1ab30b4410232821db26c55396d7dcf0d7"></span><a class="reference internal" href="#c.rascal_status_t" title="rascal_status_t"><span class="n"><span class="pre">rascal_status_t</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">rascal_set_logging_callback</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#c.rascal_logging_callback_t" title="rascal_logging_callback_t"><span class="n"><span class="pre">rascal_logging_callback_t</span></span></a><span class="w"> </span><span class="n"><span class="pre">callback</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.rascal_set_logging_callback" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Set the given <code class="docutils literal notranslate"><span class="pre">callback</span></code> function as the global logging callback. This function will be called on all log events. If a logging callback was already set, it is replaced by the new one. </p>
+</dd></dl>
+<dl class="c type">
+<dt class="sig sig-object c" id="c.rascal_logging_callback_t">
+<span class="target" id="rascaline_8h_1a8b0ce2c4a0fe94724a253df29f205980"></span><span class="k"><span class="pre">typedef</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">rascal_logging_callback_t</span></span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="n"><span class="pre">level</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">)</span></span><a class="headerlink" href="#c.rascal_logging_callback_t" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>Callback function type for rascaline logging system. Such functions are called when a log event is emitted in the code.</p>
+<p>The first argument is the log level, one of <code class="docutils literal notranslate"><span class="pre">RASCAL_LOG_LEVEL_ERROR</span></code>, <code class="docutils literal notranslate"><span class="pre">RASCAL_LOG_LEVEL_WARN</span></code> <code class="docutils literal notranslate"><span class="pre">RASCAL_LOG_LEVEL_INFO</span></code>, <code class="docutils literal notranslate"><span class="pre">RASCAL_LOG_LEVEL_DEBUG</span></code>, or <code class="docutils literal notranslate"><span class="pre">RASCAL_LOG_LEVEL_TRACE</span></code>. The second argument is a NULL-terminated string containing the message associated with the log event. </p>
+</dd></dl>
+<dl class="c macro">
+<dt class="sig sig-object c" id="c.RASCAL_LOG_LEVEL_ERROR">
+<span class="target" id="rascaline_8h_1a10009cd3c851ac8fed7cf2e12a50b6df"></span><span class="sig-name descname"><span class="n"><span class="pre">RASCAL_LOG_LEVEL_ERROR</span></span></span><a class="headerlink" href="#c.RASCAL_LOG_LEVEL_ERROR" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>The “error” level designates very serious errors </p>
+</dd></dl>
+<dl class="c macro">
+<dt class="sig sig-object c" id="c.RASCAL_LOG_LEVEL_WARN">
+<span class="target" id="rascaline_8h_1a21ef6c76a349f7fb23a0e89719183cad"></span><span class="sig-name descname"><span class="n"><span class="pre">RASCAL_LOG_LEVEL_WARN</span></span></span><a class="headerlink" href="#c.RASCAL_LOG_LEVEL_WARN" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>The “warn” level designates hazardous situations </p>
+</dd></dl>
+<dl class="c macro">
+<dt class="sig sig-object c" id="c.RASCAL_LOG_LEVEL_INFO">
+<span class="target" id="rascaline_8h_1afe1875f884a3e1e9b5cf69dfcde2e9fc"></span><span class="sig-name descname"><span class="n"><span class="pre">RASCAL_LOG_LEVEL_INFO</span></span></span><a class="headerlink" href="#c.RASCAL_LOG_LEVEL_INFO" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>The “info” level designates useful information </p>
+</dd></dl>
+<dl class="c macro">
+<dt class="sig sig-object c" id="c.RASCAL_LOG_LEVEL_DEBUG">
+<span class="target" id="rascaline_8h_1a4b0c832efbf7da54e583240b5fc99b0a"></span><span class="sig-name descname"><span class="n"><span class="pre">RASCAL_LOG_LEVEL_DEBUG</span></span></span><a class="headerlink" href="#c.RASCAL_LOG_LEVEL_DEBUG" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>The “debug” level designates lower priority information</p>
+<p>By default, log messages at this level are disabled in release mode, and enabled in debug mode. </p>
+</dd></dl>
+<dl class="c macro">
+<dt class="sig sig-object c" id="c.RASCAL_LOG_LEVEL_TRACE">
+<span class="target" id="rascaline_8h_1a93e2ff78b26a8a88511ca3a1eb1485ba"></span><span class="sig-name descname"><span class="n"><span class="pre">RASCAL_LOG_LEVEL_TRACE</span></span></span><a class="headerlink" href="#c.RASCAL_LOG_LEVEL_TRACE" title="Permalink to this definition">¶</a><br/></dt>
+<dd><p>The “trace” level designates very low priority, often extremely verbose, information.</p>
+<p>By default, rascaline disable this level, you can enable it by editing the code. </p>
+</dd></dl>
+</div>
+
+      </article>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="../rust.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Rust API reference</div>
+              </div>
+              <svg><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="descriptor.html">
+              <svg><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Dealing with descriptors</div>
+                
+              </div>
+            </a>
+        </div>
+
+        <div class="related-information">
+              Copyright &#169; 2021, Rascaline developers
+            |
+            Built with <a href="https://www.sphinx-doc.org/">Sphinx</a>
+              and
+              <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+              <a href="https://github.com/pradyunsg/furo">Furo theme</a>.
+            |
+            <a class="muted-link" href="../../_sources/reference/c/misc.rst.txt"
+               rel="nofollow">
+              Show Source
+            </a>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </main>
+</div><script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/scripts/main.js"></script>
+    </body>
+</html>
