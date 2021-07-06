@@ -1,6 +1,7 @@
 mod indexes;
 pub use self::indexes::{Indexes, IndexesBuilder, IndexValue};
-pub use self::indexes::SamplesIndexes;
+
+pub use self::indexes::SamplesBuilder;
 pub use self::indexes::{StructureSamples, AtomSamples};
 pub use self::indexes::{StructureSpeciesSamples, TwoBodiesSpeciesSamples};
 pub use self::indexes::{ThreeBodiesSpeciesSamples};

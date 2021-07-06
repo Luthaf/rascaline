@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use crate::{Error, System};
-use super::super::{SamplesIndexes, Indexes, IndexesBuilder, IndexValue};
+use super::super::{SamplesBuilder, Indexes, IndexesBuilder, IndexValue};
 
 /// `StructureSpeciesSamples` is used to represents samples corresponding to
 /// full structures, where each chemical species in the structure is represented
@@ -12,13 +12,19 @@ use super::super::{SamplesIndexes, Indexes, IndexesBuilder, IndexValue};
 /// the gradient is taken and the `spatial` (i.e. x/y/z) index.
 pub struct StructureSpeciesSamples;
 
-impl SamplesIndexes for StructureSpeciesSamples {
+impl SamplesBuilder for StructureSpeciesSamples {
     fn names(&self) -> Vec<&str> {
         vec!["structure", "species"]
     }
 
-    #[time_graph::instrument(name = "StructureSpeciesSamples::indexes")]
-    fn indexes(&self, systems: &mut [Box<dyn System>]) -> Result<Indexes, Error> {
+    fn gradients_names(&self) -> Option<Vec<&str>> {
+        let mut names = self.names();
+        names.extend_from_slice(&["atom", "spatial"]);
+        return Some(names);
+    }
+
+    #[time_graph::instrument(name = "StructureSpeciesSamples::samples")]
+    fn samples(&self, systems: &mut [Box<dyn System>]) -> Result<Indexes, Error> {
         let mut indexes = IndexesBuilder::new(self.names());
         for (i_system, system) in systems.iter().enumerate() {
             for &species in system.species()?.iter().collect::<BTreeSet<_>>() {
@@ -34,7 +40,7 @@ impl SamplesIndexes for StructureSpeciesSamples {
     fn gradients_for(&self, systems: &mut [Box<dyn System>], samples: &Indexes) -> Result<Option<Indexes>, Error> {
         assert_eq!(samples.names(), self.names());
 
-        let mut gradients = IndexesBuilder::new(vec!["structure", "species", "atom", "spatial"]);
+        let mut gradients = IndexesBuilder::new(self.gradients_names().expect("gradients names"));
         for value in samples.iter() {
             let i_system = value[0];
             let alpha = value[1];
@@ -71,10 +77,13 @@ mod tests {
     #[test]
     fn samples() {
         let mut systems = test_systems(&["methane", "methane", "water"]).boxed();
-        let indexes = StructureSpeciesSamples.indexes(&mut systems).unwrap();
-        assert_eq!(indexes.count(), 6);
-        assert_eq!(indexes.names(), &["structure", "species"]);
-        assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
+        let builder = StructureSpeciesSamples;
+        assert_eq!(builder.names(), &["structure", "species"]);
+
+        let samples = builder.samples(&mut systems).unwrap();
+        assert_eq!(samples.names(), builder.names());
+        assert_eq!(samples.count(), 6);
+        assert_eq!(samples.iter().collect::<Vec<_>>(), vec![
             &[v!(0), v!(1)], &[v!(0), v!(6)],
             &[v!(1), v!(1)], &[v!(1), v!(6)],
             &[v!(2), v!(1)], &[v!(2), v!(123456)],
@@ -84,10 +93,13 @@ mod tests {
     #[test]
     fn gradients() {
         let mut systems = test_systems(&["CH", "water"]).boxed();
+        let builder = StructureSpeciesSamples;
+        assert_eq!(builder.gradients_names().unwrap(), &["structure", "species", "atom", "spatial"]);
+
         let (_, gradients) = StructureSpeciesSamples.with_gradients(&mut systems).unwrap();
         let gradients = gradients.unwrap();
         assert_eq!(gradients.count(), 15);
-        assert_eq!(gradients.names(), &["structure", "species", "atom", "spatial"]);
+        assert_eq!(gradients.names(), builder.gradients_names().unwrap());
 
         assert_eq!(gradients.iter().collect::<Vec<_>>(), vec![
             // H channel in CH
@@ -104,15 +116,15 @@ mod tests {
 
     #[test]
     fn partial_gradients() {
-        let mut indexes = IndexesBuilder::new(vec!["structure", "species"]);
-        indexes.add(&[v!(2), v!(1)]);
-        indexes.add(&[v!(0), v!(6)]);
-        let indexes = indexes.finish();
+        let mut samples = IndexesBuilder::new(vec!["structure", "species"]);
+        samples.add(&[v!(2), v!(1)]);
+        samples.add(&[v!(0), v!(6)]);
+        let samples = samples.finish();
 
         let mut systems = test_systems(&["CH", "water", "CH"]).boxed();
-        let gradients = StructureSpeciesSamples.gradients_for(&mut systems, &indexes).unwrap();
+        let gradients = StructureSpeciesSamples.gradients_for(&mut systems, &samples).unwrap();
         let gradients = gradients.unwrap();
-        assert_eq!(gradients.names(), &["structure", "species", "atom", "spatial"]);
+        assert_eq!(gradients.names(), StructureSpeciesSamples.gradients_names().unwrap());
 
         assert_eq!(gradients.iter().collect::<Vec<_>>(), vec![
             // H channel in CH #2

@@ -1,7 +1,7 @@
 #![allow(clippy::module_name_repetitions)]
 
 mod index;
-pub use self::index::{IndexValue, Indexes, IndexesBuilder, SamplesIndexes};
+pub use self::index::{IndexValue, Indexes, IndexesBuilder, SamplesBuilder};
 
 mod samples;
 pub use self::samples::{StructureSamples, AtomSamples};

@@ -5,7 +5,7 @@ use ndarray::{aview1, s};
 use super::CalculatorBase;
 
 use crate::descriptor::{Indexes, IndexesBuilder, IndexValue};
-use crate::descriptor::{SamplesIndexes, TwoBodiesSpeciesSamples};
+use crate::descriptor::{SamplesBuilder, TwoBodiesSpeciesSamples};
 use crate::{Descriptor, Error, System};
 
 #[derive(Debug, Clone)]
@@ -48,7 +48,7 @@ impl CalculatorBase for SortedDistances {
         return features.finish();
     }
 
-    fn samples(&self) -> Box<dyn SamplesIndexes> {
+    fn samples_builder(&self) -> Box<dyn SamplesBuilder> {
         Box::new(TwoBodiesSpeciesSamples::new(self.cutoff))
     }
 

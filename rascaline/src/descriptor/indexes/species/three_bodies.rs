@@ -3,7 +3,7 @@ use itertools::Itertools;
 
 use crate::{Error, System};
 use crate::systems::Pair;
-use super::super::{SamplesIndexes, Indexes, IndexesBuilder, IndexValue};
+use super::super::{SamplesBuilder, Indexes, IndexesBuilder, IndexValue};
 
 /// `ThreeBodiesSpeciesSamples` is used to represents atom-centered environments
 /// representing three body atomic density correlation; where the three bodies
@@ -72,13 +72,19 @@ impl<T> IntoIterator for SortedVecSet<T> {
     }
 }
 
-impl SamplesIndexes for ThreeBodiesSpeciesSamples {
+impl SamplesBuilder for ThreeBodiesSpeciesSamples {
     fn names(&self) -> Vec<&str> {
         vec!["structure", "center", "species_center", "species_neighbor_1", "species_neighbor_2"]
     }
 
-    #[time_graph::instrument(name = "ThreeBodiesSpeciesSamples::indexes")]
-    fn indexes(&self, systems: &mut [Box<dyn System>]) -> Result<Indexes, Error> {
+    fn gradients_names(&self) -> Option<Vec<&str>> {
+        let mut names = self.names();
+        names.extend_from_slice(&["neighbor", "spatial"]);
+        return Some(names);
+    }
+
+    #[time_graph::instrument(name = "ThreeBodiesSpeciesSamples::samples")]
+    fn samples(&self, systems: &mut [Box<dyn System>]) -> Result<Indexes, Error> {
         // Accumulate indexes in a set first to ensure uniqueness of the indexes
         // even if their are multiple neighbors of the same specie around a
         // given center
@@ -199,10 +205,7 @@ impl SamplesIndexes for ThreeBodiesSpeciesSamples {
             }
         }
 
-        let mut gradients = IndexesBuilder::new(vec![
-            "structure", "center", "species_center", "species_neighbor_1",
-            "species_neighbor_2", "neighbor", "spatial"
-        ]);
+        let mut gradients = IndexesBuilder::new(self.gradients_names().expect("gradients names"));
         for (system, center, species_center, species_neighbor_1, species_neighbor_2, neighbor) in indexes {
             let center = IndexValue::from(center);
             let species_center = IndexValue::from(species_center);
@@ -257,11 +260,11 @@ mod tests {
     #[test]
     fn samples() {
         let mut systems = test_systems(&["CH", "water"]).boxed();
-        let strategy = ThreeBodiesSpeciesSamples::new(2.0);
-        let indexes = strategy.indexes(&mut systems).unwrap();
-        assert_eq!(indexes.count(), 9);
-        assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor_1", "species_neighbor_2"]);
-        assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
+        let builder = ThreeBodiesSpeciesSamples::new(2.0);
+        let samples = builder.samples(&mut systems).unwrap();
+        assert_eq!(samples.count(), 9);
+        assert_eq!(samples.names(), &["structure", "center", "species_center", "species_neighbor_1", "species_neighbor_2"]);
+        assert_eq!(samples.iter().collect::<Vec<_>>(), vec![
             // C-C chanel around H in CH
             &[v!(0), v!(0), v!(1), v!(6), v!(6)],
             // H-H channel around C in CH
@@ -286,12 +289,16 @@ mod tests {
     #[test]
     fn gradients() {
         let mut systems = test_systems(&["water"]).boxed();
-        let strategy = ThreeBodiesSpeciesSamples::new(2.0);
-        let (_, gradients) = strategy.with_gradients(&mut systems).unwrap();
-        let gradients = gradients.unwrap();
+        let builder = ThreeBodiesSpeciesSamples::new(2.0);
+        assert_eq!(
+            builder.gradients_names().unwrap(),
+            &["structure", "center", "species_center", "species_neighbor_1", "species_neighbor_2", "neighbor", "spatial"]
+        );
 
+        let (_, gradients) = builder.with_gradients(&mut systems).unwrap();
+        let gradients = gradients.unwrap();
+        assert_eq!(gradients.names(), builder.gradients_names().unwrap());
         assert_eq!(gradients.count(), 51);
-        assert_eq!(gradients.names(), &["structure", "center", "species_center", "species_neighbor_1", "species_neighbor_2", "neighbor", "spatial"]);
         let expected = vec![
             // H-H channel around O, derivative w.r.t. central O
             [v!(0), v!(0), v!(123456), v!(1), v!(1), v!(0)],
@@ -342,19 +349,19 @@ mod tests {
 
     #[test]
     fn partial_gradients() {
-        let mut indexes = IndexesBuilder::new(vec!["structure", "center", "species_center", "species_neighbor_1", "species_neighbor_2"]);
-        indexes.add(&[v!(0), v!(1), v!(6), v!(1), v!(1)]);
-        indexes.add(&[v!(1), v!(1), v!(1), v!(123456), v!(123456)]);
-        indexes.add(&[v!(0), v!(0), v!(1), v!(6), v!(6)]);
-        let indexes = indexes.finish();
+        let mut samples = IndexesBuilder::new(vec!["structure", "center", "species_center", "species_neighbor_1", "species_neighbor_2"]);
+        samples.add(&[v!(0), v!(1), v!(6), v!(1), v!(1)]);
+        samples.add(&[v!(1), v!(1), v!(1), v!(123456), v!(123456)]);
+        samples.add(&[v!(0), v!(0), v!(1), v!(6), v!(6)]);
+        let samples = samples.finish();
 
         let mut systems = test_systems(&["CH", "water"]).boxed();
-        let strategy = ThreeBodiesSpeciesSamples::new(2.0);
-        let gradients = strategy.gradients_for(&mut systems, &indexes).unwrap();
-        let gradients = gradients.unwrap();
+        let builder = ThreeBodiesSpeciesSamples::new(2.0);
 
+        let gradients = builder.gradients_for(&mut systems, &samples).unwrap();
+        let gradients = gradients.unwrap();
+        assert_eq!(gradients.names(), builder.gradients_names().unwrap());
         assert_eq!(gradients.count(), 18);
-        assert_eq!(gradients.names(), &["structure", "center", "species_center", "species_neighbor_1", "species_neighbor_2", "neighbor", "spatial"]);
         let expected = vec![
             // H-H channel around C, derivative w.r.t. C
             [v!(0), v!(1), v!(6), v!(1), v!(1), v!(1)],
@@ -384,12 +391,14 @@ mod tests {
     #[test]
     fn self_contribution() {
         let mut systems = test_systems(&["water"]).boxed();
-        // Only include O-H neighbors
-        let strategy = ThreeBodiesSpeciesSamples::with_self_contribution(1.2);
-        let indexes = strategy.indexes(&mut systems).unwrap();
-        assert_eq!(indexes.count(), 9);
-        assert_eq!(indexes.names(), &["structure", "center", "species_center", "species_neighbor_1", "species_neighbor_2"]);
-        assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
+        // Only include O-H neighbors with this cutoff
+        let builder = ThreeBodiesSpeciesSamples::with_self_contribution(1.2);
+        assert_eq!(builder.names(), &["structure", "center", "species_center", "species_neighbor_1", "species_neighbor_2"]);
+
+        let samples = builder.samples(&mut systems).unwrap();
+        assert_eq!(samples.names(), builder.names());
+        assert_eq!(samples.count(), 9);
+        assert_eq!(samples.iter().collect::<Vec<_>>(), vec![
             // H-O-H
             &[v!(0), v!(0), v!(123456), v!(1), v!(1)],
             &[v!(0), v!(0), v!(123456), v!(1), v!(123456)],
@@ -414,9 +423,9 @@ mod tests {
     fn self_contribution_no_neighbor() {
         let mut systems = test_systems(&["CH"]).boxed();
         // do not include any neighbors
-        let strategy = ThreeBodiesSpeciesSamples::with_self_contribution(0.5);
-        let (indexes, gradients) = strategy.with_gradients(&mut systems).unwrap();
-        assert_eq!(indexes.iter().collect::<Vec<_>>(), vec![
+        let builder = ThreeBodiesSpeciesSamples::with_self_contribution(0.5);
+        let (samples, gradients) = builder.with_gradients(&mut systems).unwrap();
+        assert_eq!(samples.iter().collect::<Vec<_>>(), vec![
             // Around H
             &[v!(0), v!(0), v!(1), v!(1), v!(1)],
             // Around C
@@ -439,13 +448,12 @@ mod tests {
     #[test]
     fn self_contribution_gradients() {
         let mut systems = test_systems(&["CH"]).boxed();
-        let strategy = ThreeBodiesSpeciesSamples::with_self_contribution(2.0);
-        let (_, gradients) = strategy.with_gradients(&mut systems).unwrap();
+        let builder = ThreeBodiesSpeciesSamples::with_self_contribution(2.0);
+
+        let (_, gradients) = builder.with_gradients(&mut systems).unwrap();
         let gradients = gradients.unwrap();
-
+        assert_eq!(gradients.names(), builder.gradients_names().unwrap());
         assert_eq!(gradients.count(), 30);
-        assert_eq!(gradients.names(), &["structure", "center", "species_center", "species_neighbor_1", "species_neighbor_2", "neighbor", "spatial"]);
-
         let expected = vec![
             // H-H channel around H, derivative w.r.t. H
             [v!(0), v!(0), v!(1), v!(1), v!(1), v!(0)],
@@ -482,19 +490,19 @@ mod tests {
 
     #[test]
     fn self_contribution_partial_gradients() {
-        let mut indexes = IndexesBuilder::new(vec!["structure", "center", "species_center", "species_neighbor_1", "species_neighbor_2"]);
-        indexes.add(&[v!(0), v!(1), v!(6), v!(1), v!(1)]);
-        indexes.add(&[v!(1), v!(1), v!(1), v!(123456), v!(123456)]);
-        indexes.add(&[v!(0), v!(0), v!(1), v!(1), v!(6)]);
-        let indexes = indexes.finish();
+        let mut samples = IndexesBuilder::new(vec!["structure", "center", "species_center", "species_neighbor_1", "species_neighbor_2"]);
+        samples.add(&[v!(0), v!(1), v!(6), v!(1), v!(1)]);
+        samples.add(&[v!(1), v!(1), v!(1), v!(123456), v!(123456)]);
+        samples.add(&[v!(0), v!(0), v!(1), v!(1), v!(6)]);
+        let samples = samples.finish();
 
         let mut systems = test_systems(&["CH", "water"]).boxed();
-        let strategy = ThreeBodiesSpeciesSamples::with_self_contribution(2.0);
-        let gradients = strategy.gradients_for(&mut systems, &indexes).unwrap();
-        let gradients = gradients.unwrap();
+        let builder = ThreeBodiesSpeciesSamples::with_self_contribution(2.0);
 
+        let gradients = builder.gradients_for(&mut systems, &samples).unwrap();
+        let gradients = gradients.unwrap();
+        assert_eq!(gradients.names(), builder.gradients_names().unwrap());
         assert_eq!(gradients.count(), 18);
-        assert_eq!(gradients.names(), &["structure", "center", "species_center", "species_neighbor_1", "species_neighbor_2", "neighbor", "spatial"]);
         let expected = vec![
             // H-H channel around C, derivative w.r.t. C
             [v!(0), v!(1), v!(6), v!(1), v!(1), v!(1)],

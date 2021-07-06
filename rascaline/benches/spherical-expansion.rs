@@ -53,10 +53,10 @@ fn run_spherical_expansion(mut group: BenchmarkGroup<WallTime>,
 
             let mut descriptor = Descriptor::new();
             if gradients {
-                let (samples, gradients) = calculator.samples().with_gradients(&mut systems).unwrap();
+                let (samples, gradients) = calculator.samples_builder().with_gradients(&mut systems).unwrap();
                 descriptor.prepare_gradients(samples, gradients.unwrap(), calculator.features());
             } else {
-                let samples = calculator.samples().indexes(&mut systems).unwrap();
+                let samples = calculator.samples_builder().samples(&mut systems).unwrap();
                 descriptor.prepare(samples, calculator.features());
             }
 

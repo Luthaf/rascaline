@@ -6,7 +6,7 @@ use thread_local::ThreadLocal;
 
 use crossbeam::channel::Sender;
 
-use crate::descriptor::{IndexesBuilder, IndexValue, Indexes, SamplesIndexes, TwoBodiesSpeciesSamples};
+use crate::descriptor::{IndexesBuilder, IndexValue, Indexes, SamplesBuilder, TwoBodiesSpeciesSamples};
 use crate::{Descriptor, Error, System, Vector3D};
 use crate::types::StackVec;
 
@@ -648,7 +648,7 @@ impl CalculatorBase for SphericalExpansion {
         return features.finish();
     }
 
-    fn samples(&self) -> Box<dyn SamplesIndexes> {
+    fn samples_builder(&self) -> Box<dyn SamplesBuilder> {
         Box::new(TwoBodiesSpeciesSamples::with_self_contribution(self.parameters.cutoff))
     }
 
