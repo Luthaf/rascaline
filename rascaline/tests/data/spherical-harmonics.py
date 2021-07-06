@@ -7,12 +7,13 @@ from save_data import save_numpy_array, save_json
 
 def real_sph(l, m, theta, phi):  # noqa: E741
     """Compute real spherical harmonics from the complex version in scipy"""
+    m_1_pow_m = (-1) ** m
     if m > 0:
-        return np.real(sph_harm(m, l, theta, phi))
+        return m_1_pow_m * np.real(sph_harm(m, l, theta, phi))
     elif m == 0:
-        return np.real(sph_harm(0, l, theta, phi)) / np.sqrt(2)
+        return m_1_pow_m * np.real(sph_harm(0, l, theta, phi)) / np.sqrt(2)
     else:
-        return np.imag(sph_harm(abs(m), l, theta, phi))
+        return m_1_pow_m * np.imag(sph_harm(abs(m), l, theta, phi))
 
 
 def spherical_harmonics(max_angular, directions):
