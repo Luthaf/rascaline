@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use ndarray::parallel::prelude::*;
 
-use crate::descriptor::{SamplesIndexes, IndexValue, Indexes, IndexesBuilder};
+use crate::descriptor::{SamplesBuilder, IndexValue, Indexes, IndexesBuilder};
 use crate::descriptor::{TwoBodiesSpeciesSamples, ThreeBodiesSpeciesSamples};
 
 use crate::{CalculationOptions, Calculator, SelectedIndexes};
@@ -78,7 +78,7 @@ impl SoapPowerSpectrum {
     }
 
     fn get_expansion_samples(&self, samples: &Indexes) -> Indexes {
-        assert_eq!(samples.names(), self.samples().names());
+        assert_eq!(samples.names(), self.samples_builder().names());
 
         let mut set = BTreeSet::new();
         for sample in samples {
@@ -179,7 +179,7 @@ impl CalculatorBase for SoapPowerSpectrum {
         return features.finish();
     }
 
-    fn samples(&self) -> Box<dyn SamplesIndexes> {
+    fn samples_builder(&self) -> Box<dyn SamplesBuilder> {
         Box::new(ThreeBodiesSpeciesSamples::with_self_contribution(self.parameters.cutoff))
     }
 
@@ -221,7 +221,7 @@ impl CalculatorBase for SoapPowerSpectrum {
 
     #[time_graph::instrument(name = "SoapPowerSpectrum::compute")]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor) -> Result<(), Error> {
-        assert_eq!(descriptor.samples.names(), self.samples().names());
+        assert_eq!(descriptor.samples.names(), self.samples_builder().names());
         assert_eq!(descriptor.features.names(), self.features_names());
 
         let options = CalculationOptions {

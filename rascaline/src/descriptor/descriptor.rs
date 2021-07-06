@@ -274,7 +274,7 @@ fn remove_from_samples(samples: &Indexes, variables: &[&str]) -> RemovedSampleRe
 mod tests {
     use super::*;
     use crate::systems::test_systems;
-    use crate::descriptor::{TwoBodiesSpeciesSamples, StructureSpeciesSamples, SamplesIndexes};
+    use crate::descriptor::{TwoBodiesSpeciesSamples, StructureSpeciesSamples, SamplesBuilder};
     use ndarray::array;
 
     fn dummy_features() -> Indexes {
@@ -298,7 +298,7 @@ mod tests {
 
         let mut systems = test_systems(&["water", "CH"]).boxed();
         let features = dummy_features();
-        let samples = StructureSpeciesSamples.indexes(&mut systems).unwrap();
+        let samples = StructureSpeciesSamples.samples(&mut systems).unwrap();
         descriptor.prepare(samples, features);
 
 

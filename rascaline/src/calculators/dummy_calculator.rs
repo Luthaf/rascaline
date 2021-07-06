@@ -2,7 +2,7 @@ use log::{info, warn};
 
 use super::CalculatorBase;
 
-use crate::descriptor::{IndexesBuilder, Indexes, IndexValue, SamplesIndexes, AtomSamples};
+use crate::descriptor::{IndexesBuilder, Indexes, IndexValue, SamplesBuilder, AtomSamples};
 use crate::{Descriptor, Error, System};
 
 /// A stupid calculator implementation used to test the API, and API binding to
@@ -47,7 +47,7 @@ impl CalculatorBase for DummyCalculator {
         features.finish()
     }
 
-    fn samples(&self) -> Box<dyn SamplesIndexes> {
+    fn samples_builder(&self) -> Box<dyn SamplesBuilder> {
         Box::new(AtomSamples::new(self.cutoff))
     }
 

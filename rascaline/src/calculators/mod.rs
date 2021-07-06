@@ -1,4 +1,4 @@
-use crate::descriptor::{Descriptor, Indexes, SamplesIndexes};
+use crate::descriptor::{Descriptor, Indexes, SamplesBuilder};
 
 use crate::{Error, System};
 
@@ -22,7 +22,7 @@ pub trait CalculatorBase: std::panic::RefUnwindSafe {
     fn features(&self) -> Indexes;
 
     /// Get the default sample builder for this Calculator
-    fn samples(&self) -> Box<dyn SamplesIndexes>;
+    fn samples_builder(&self) -> Box<dyn SamplesBuilder>;
     /// Does this calculator compute gradients?
     fn compute_gradients(&self) -> bool;
 
@@ -37,9 +37,17 @@ pub trait CalculatorBase: std::panic::RefUnwindSafe {
     /// `Self::samples()`, and check that all requested samples are part of the
     /// full sample set.
     fn check_samples(&self, indexes: &Indexes, systems: &mut [Box<dyn System>]) -> Result<(), Error> {
-        let samples = self.samples();
-        assert_eq!(indexes.names(), samples.names());
-        let allowed = samples.indexes(systems)?;
+        let builder = self.samples_builder();
+        if indexes.names() != builder.names() {
+            return Err(Error::InvalidParameter(format!(
+                "invalid sample names for {}, expected [{}], got [{}]",
+                self.name(),
+                builder.names().join(", "),
+                indexes.names().join(", "),
+            )))
+        }
+
+        let allowed = builder.samples(systems)?;
         for value in indexes.iter() {
             if !allowed.contains(value) {
                 return Err(Error::InvalidParameter(format!(

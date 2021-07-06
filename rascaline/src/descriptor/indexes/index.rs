@@ -278,17 +278,45 @@ impl std::ops::Index<usize> for Indexes {
     }
 }
 
-pub trait SamplesIndexes {
+/// The `SampleBuilder` trait is used to abstract over the different kinds of
+/// samples used in Rascaline.
+///
+/// Different implementations of this trait correspond to different types of
+/// samples (for example one sample for each structure; or one sample for each
+/// pair, etc.)
+///
+/// Each implementation must be able to generate samples from a list of systems,
+/// and can optionally implement samples for gradients calculation.
+pub trait SamplesBuilder {
+    /// The list of names used by the sample indexes
     fn names(&self) -> Vec<&str>;
 
-    fn indexes(&self, systems: &mut [Box<dyn System>]) -> Result<Indexes, Error>;
+    /// The list of names used by the sample gradients indexes, if any
+    fn gradients_names(&self) -> Option<Vec<&str>>;
 
+    /// Create an `Indexes` instance containing all the samples corresponding to
+    /// the given list of systems.
+    fn samples(&self, systems: &mut [Box<dyn System>]) -> Result<Indexes, Error>;
+
+    /// Create an `Indexes` instance containing all the samples corresponding to
+    /// the given list of systems, and optionally another `Indexes` instance
+    /// containing the gradient samples corresponding to all the samples
+    /// indexes.
+    ///
+    /// This function is implemented by default using `SampleBuilder::samples`
+    /// and `SampleBuilder::gradients_for`, there is no need to override it.
     fn with_gradients(&self, systems: &mut [Box<dyn System>]) -> Result<(Indexes, Option<Indexes>), Error> {
-        let indexes = self.indexes(systems)?;
-        let gradients = self.gradients_for(systems, &indexes)?;
-        return Ok((indexes, gradients));
+        let samples = self.samples(systems)?;
+        let gradients = self.gradients_for(systems, &samples)?;
+        return Ok((samples, gradients));
     }
 
+    /// Create an `Indexes` instance containing the gradient samples
+    /// corresponding to the given `samples` in the given `systems`; and only
+    /// these.
+    ///
+    /// If this `SampleBuilder` does not implement gradient, it should return
+    /// `None` (that's the default implementation).
     #[allow(unused_variables)]
     fn gradients_for(&self, systems: &mut [Box<dyn System>], samples: &Indexes) -> Result<Option<Indexes>, Error> {
         Ok(None)
