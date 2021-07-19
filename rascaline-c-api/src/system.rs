@@ -51,8 +51,12 @@ pub struct rascal_pair_t {
 // the default C ABI on the current system.
 #[repr(C)]
 pub struct rascal_system_t {
-    /// User-provided data should be stored here, it will be passed as the
-    /// first parameter to all function pointers below.
+    /// User-provided data should be stored here, it will be passed as the first
+    /// parameter to all function pointers below.
+    ///
+    /// *WARNING*: Any value stored in this member *MUST* be safe to send to
+    /// another thread (the pointer itself will be send to other threads, but it
+    /// will not be dereferenced outside of the functions below).
     user_data: *mut c_void,
     /// This function should set `*size` to the number of atoms in this system
     size: Option<unsafe extern fn(user_data: *const c_void, size: *mut usize) -> rascal_status_t>,
@@ -95,6 +99,9 @@ pub struct rascal_system_t {
     /// `pairs_containing(j)`.
     pairs_containing: Option<unsafe extern fn(user_data: *const c_void, center: usize, pairs: *mut *const rascal_pair_t, count: *mut usize) -> rascal_status_t>,
 }
+
+// SAFETY: we require that this is validated by the users creating a rascal_system_t
+unsafe impl Send for rascal_system_t {}
 
 impl<'a> System for &'a mut rascal_system_t {
     fn size(&self) -> Result<usize, Error> {

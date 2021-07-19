@@ -1,10 +1,12 @@
 use std::cell::RefCell;
 
 use rayon::prelude::*;
-use ndarray::{Array1, Array2, Axis};
+use rayon::ThreadPoolBuilder;
 use thread_local::ThreadLocal;
-
 use crossbeam::channel::Sender;
+
+use ndarray::{Array1, Array2, Axis};
+use log::warn;
 
 use crate::descriptor::{IndexesBuilder, IndexValue, Indexes, SamplesBuilder, TwoBodiesSpeciesSamples};
 use crate::{Descriptor, Error, System, Vector3D};
@@ -695,147 +697,245 @@ impl CalculatorBase for SphericalExpansion {
 
         self.do_self_contributions(descriptor);
 
-        for (i_system, system) in systems.iter_mut().enumerate() {
-            system.compute_neighbors(self.parameters.cutoff)?;
-            let species = system.species()?;
 
-            let pairs = system.pairs()?;
+        // # Spherical expansion parallel calculation
+        //
+        // Computing the spherical expansion in parallel is tricky for a number
+        // of reason, which explain why the code below is a bit convoluted.
+        //
+        // There are three possible level of parallelism, each with some
+        // drawbacks and advantages:
+        //  1) Parallelism over the systems. This is only possible when
+        //     computing the spherical expansion for multiple systems at the
+        //     same time, usually when training models or evaluating a freshly
+        //     trained model. Notably, this is not usable when using the model
+        //     in a simulation; and thus can not be the only level of
+        //     parallelism we use. We still want to use this level since it is
+        //     trivially parallel, but we also need one of the level below.
+        //  2) Parallelism over the atoms inside a system / requested samples.
+        //     Since the same pair can contribute to the spherical expansion
+        //     coefficient around more than one central atom, this mean we
+        //     either have to recompute the contribution of one pair multiple
+        //     time in different threads (resulting in more CPU work), or store
+        //     all pair contributions and then reduce them to compute the final
+        //     spherical expansion (resulting in higher memory usage). I tried
+        //     both approaches, and both turned out worth than the one below
+        //  3) Parallelism over the pairs in each system. We can compute the
+        //     pair contributions from different threads, but an issue arise
+        //     when trying to accumulate the results in the 'values' array. For
+        //     example, two separate threads could compute the contributions of
+        //     pair 1-2 and 1-5 respectively, and both would need to write data
+        //     for the expansion around atom 1. To work around this, the
+        //     accumulation of pair contributions is moved to separate threads
+        //     (one for the values and one for the gradients), which are the
+        //     only threads with write access to the arrays. Producer/Worker
+        //     threads then send data to the Receiver/Writer threads through a
+        //     channel
 
-            // Setup parallel computation.
-            //
-            // This code distribute work for computing the spherical expansion
-            // over multiple threads, iterating over pairs in parallel.
-            //
-            // To workaround the fact that each working thread would like to
-            // write data to potentially the same location as other threads
-            // (since two different pairs can produce data to be stored in the
-            // same environment), we use channels to send data two other threads
-            // (one for values, one for gradients) that only receive data and
-            // write it to the descriptor.
-            let samples = &descriptor.samples;
-            let gradient_samples = descriptor.gradients_samples.as_ref();
-            let features = &descriptor.features;
-            let values = &mut descriptor.values;
-            let gradients = descriptor.gradients.as_mut();
+        // distribute the available threads between system and pair parallelism
+        let (n_threads_systems, n_threads_pairs) = num_threads_to_use(systems.len());
 
-            // use crossbeam channels instead of std::sync::mpsc::SyncChannel
-            // since crossbeam is faster in our case.
-            let (sender_values, receiver_values) = crossbeam::channel::unbounded::<PairContribution>();
-            let (sender_grad, receiver_grad) = crossbeam::channel::unbounded::<GradientsPairContribution>();
+        // Thread pool for parallelism over systems
+        let systems_thread_pool = ThreadPoolBuilder::new()
+            .num_threads(n_threads_systems)
+            .build()
+            .expect("could not create a thread pool");
 
-            // use crossbeam scoped threads instead of rayon's, to ensure we
-            // make progress even with RAYON_NUM_THREADS=1
-            crossbeam::thread::scope(|s|{
-                // re-borrow self as an immutable reference to be passed to
-                // the first closure below
-                let this = &*self;
+        return systems_thread_pool.install::<_, Result<(), Error>>(move || {
+            for (i_system, (system, &n_threads_pairs)) in systems.iter_mut().zip(&n_threads_pairs).enumerate() {
+                // Thread pool for parallelism over pairs
+                let pairs_thread_pool = ThreadPoolBuilder::new()
+                    .num_threads(n_threads_pairs)
+                    .build()
+                    .expect("could not create a thread pool");
 
-                // Start a thread to produce values. This thread will start
-                // RAYON_NUM_THREADS more threads, actually doing the work.
-                s.spawn(move |_| {
-                    pairs.par_iter()
-                        .map(|pair| (pair, sender_values.clone(), sender_grad.clone()))
-                        .for_each(|(pair, sender_values, sender_grad)| {
-                            let pair = Pair {
-                                system: i_system,
-                                first: pair.first,
-                                second: pair.second,
-                                species_first: species[pair.first],
-                                species_second: species[pair.second],
-                                distance: pair.distance,
-                                direction: pair.vector / pair.distance,
-                            };
+                system.compute_neighbors(self.parameters.cutoff)?;
+                let species = system.species()?;
 
-                            this.accumulate_for_pair(
-                                &sender_values,
-                                samples,
-                                features,
-                                &pair
-                            );
+                let pairs = system.pairs()?;
 
-                            if this.parameters.gradients {
-                                this.accumulate_gradient_for_pair(
-                                    &sender_grad,
-                                    gradient_samples.expect("missing gradient samples"),
+                // create partial borrow of descriptor for all variables of
+                // interest to be able to pass different part of descriptor to
+                // different threads
+                let samples = &descriptor.samples;
+                let gradient_samples = descriptor.gradients_samples.as_ref();
+                let features = &descriptor.features;
+                let values = &mut descriptor.values;
+                let gradients = descriptor.gradients.as_mut();
+
+                // use crossbeam channels instead of std::sync::mpsc::SyncChannel
+                // since crossbeam is faster in our case.
+                let (sender_values, receiver_values) = crossbeam::channel::unbounded::<PairContribution>();
+                let (sender_grad, receiver_grad) = crossbeam::channel::unbounded::<GradientsPairContribution>();
+
+                // use crossbeam scoped threads instead of rayon's since these
+                // threads are not managed by the thread pools. The two extra
+                // threads are still accounted for in `num_threads_to_use`, to
+                // make sure we don't use more threads than what the user asked
+                // (in general the number of core for the CPU).
+                crossbeam::thread::scope(|s|{
+                    // re-borrow self as an immutable reference to be passed to
+                    // the first closure below
+                    let this = &*self;
+
+                    // Produce the values from the thread pool
+                    pairs_thread_pool.install(move || {
+                        pairs.par_iter()
+                            .map(|pair| (pair, sender_values.clone(), sender_grad.clone()))
+                            .for_each(|(pair, sender_values, sender_grad)| {
+                                let pair = Pair {
+                                    system: i_system,
+                                    first: pair.first,
+                                    second: pair.second,
+                                    species_first: species[pair.first],
+                                    species_second: species[pair.second],
+                                    distance: pair.distance,
+                                    direction: pair.vector / pair.distance,
+                                };
+
+                                this.accumulate_for_pair(
+                                    &sender_values,
+                                    samples,
                                     features,
-                                    &pair,
+                                    &pair
                                 );
-                            }
-                        });
-                });
 
-                // Start a thread to receive and collect values
-                s.spawn(move |_| {
-                    let m_1_pow_l = features.iter()
-                        .map(|feature| m_1_pow(feature[1].usize()))
-                        .collect::<Array1<f64>>();
-
-                    for contribution in receiver_values {
-                        for &(index, center) in contribution.samples.iter() {
-                            let mut row = values.index_axis_mut(Axis(0), index);
-                            match center {
-                                AtomInPair::First => {
-                                    row += &contribution.values;
+                                if this.parameters.gradients {
+                                    this.accumulate_gradient_for_pair(
+                                        &sender_grad,
+                                        gradient_samples.expect("missing gradient samples"),
+                                        features,
+                                        &pair,
+                                    );
                                 }
-                                AtomInPair::Second => {
-                                    // Use the fact that `se[n, l, m](-r) =
-                                    // (-1)^l se[n, l, m](r)` where se is the
-                                    // spherical expansion
-                                    row += &(m_1_pow_l.clone() * &contribution.values);
-                                }
-                            }
-                        }
+                            });
+                    });
 
-                    }
-                });
-
-                // Start a thread to receive and collect gradients
-                if self.parameters.gradients {
-                    let gradients = gradients.expect("missing storage for gradients");
+                    // Start a thread to receive and collect values
                     s.spawn(move |_| {
-                        use self::AtomInPair::*;
-
                         let m_1_pow_l = features.iter()
                             .map(|feature| m_1_pow(feature[1].usize()))
                             .collect::<Array1<f64>>();
 
-                        for contribution in receiver_grad {
-                            for &(index, center, neighbor) in contribution.samples.iter() {
-                                for spatial in 0..3 {
-                                    let gradient = &contribution.gradients[spatial];
-                                    // we assume that the three spatial
-                                    // components are stored one after the other
-                                    let mut row = gradients.index_axis_mut(Axis(0), index + spatial);
+                        for contribution in receiver_values {
+                            for &(index, center) in contribution.samples.iter() {
+                                let mut row = values.index_axis_mut(Axis(0), index);
+                                match center {
+                                    AtomInPair::First => {
+                                        row += &contribution.values;
+                                    }
+                                    AtomInPair::Second => {
+                                        // Use the fact that `se[n, l, m](-r) =
+                                        // (-1)^l se[n, l, m](r)` where se is the
+                                        // spherical expansion
+                                        row += &(m_1_pow_l.clone() * &contribution.values);
+                                    }
+                                }
+                            }
 
-                                    match (center, neighbor) {
-                                        (First, Second) => {
-                                            row += gradient;
-                                        }
-                                        (First, First) => {
-                                            row -= gradient;
-                                        }
-                                        // when storing data for "reversed"
-                                        // gradients, use the fact that `grad_j
-                                        // se_i[n, l, m](r) = - (-1)^l grad_i
-                                        // se_j[n, l, m](r)` where se is the
-                                        // spherical expansion.
-                                        (Second, First) => {
-                                            row -= &(m_1_pow_l.clone() * gradient);
-                                        }
-                                        (Second, Second) => {
-                                            row += &(m_1_pow_l.clone() * gradient);
+                        }
+                    });
+
+                    // Start a thread to receive and collect gradients
+                    if self.parameters.gradients {
+                        let gradients = gradients.expect("missing storage for gradients");
+                        s.spawn(move |_| {
+                            use self::AtomInPair::*;
+
+                            let m_1_pow_l = features.iter()
+                                .map(|feature| m_1_pow(feature[1].usize()))
+                                .collect::<Array1<f64>>();
+
+                            for contribution in receiver_grad {
+                                for &(index, center, neighbor) in contribution.samples.iter() {
+                                    for spatial in 0..3 {
+                                        let gradient = &contribution.gradients[spatial];
+                                        // we assume that the three spatial
+                                        // components are stored one after the other
+                                        let mut row = gradients.index_axis_mut(Axis(0), index + spatial);
+
+                                        match (center, neighbor) {
+                                            (First, Second) => {
+                                                row += gradient;
+                                            }
+                                            (First, First) => {
+                                                row -= gradient;
+                                            }
+                                            // when storing data for "reversed"
+                                            // gradients, use the fact that `grad_j
+                                            // se_i[n, l, m](r) = - (-1)^l grad_i
+                                            // se_j[n, l, m](r)` where se is the
+                                            // spherical expansion.
+                                            (Second, First) => {
+                                                row -= &(m_1_pow_l.clone() * gradient);
+                                            }
+                                            (Second, Second) => {
+                                                row += &(m_1_pow_l.clone() * gradient);
+                                            }
                                         }
                                     }
                                 }
                             }
-                        }
-                    });
-                }
-            }).expect("one of the thread panicked");
+                        });
+                    }
+                }).expect("one of the thread panicked");
+            }
+
+            return Ok(());
+        });
+    }
+}
+
+/// Guess the number of threads to use for system parallelism and pair
+/// parallelism. This function tries to distribute the available threads to
+/// either parallelize a calculation over the different systems or the pairs in
+/// a given system.
+#[allow(clippy::needless_range_loop)]
+fn num_threads_to_use(n_systems: usize) -> (usize, Vec<usize>) {
+    // get the number of worker threads to use from the global thread pool,
+    let mut n_threads = rayon::current_num_threads();
+    if n_threads < 3 {
+        warn!(
+            "only {} threads available, but we need at least 3 to compute spherical expansion",
+            n_threads
+        );
+        n_threads = 3;
+    }
+
+    let mut n_threads_system;
+    let mut n_threads_pairs = Vec::new();
+    if n_systems == 1 {
+        n_threads_system = 1;
+        // leave 2 threads free for the receiving end of the channels
+        n_threads_pairs.push(n_threads - 2);
+    } else {
+        // balance the number of threads used for systems with the number of
+        // threads used for pairs, trying to use all available threads
+        let mut num_threads_pairs = 3;
+        n_threads_system = n_threads / num_threads_pairs;
+
+        while n_systems < n_threads_system {
+            num_threads_pairs += 1;
+            n_threads_system = n_threads / num_threads_pairs;
         }
 
-        Ok(())
+        for _ in 0..n_threads_system {
+            // leave 2 threads free for the receiving end of the channels
+            n_threads_pairs.push(num_threads_pairs - 2);
+        }
+
+        // If we have some leftover threads, use them
+        if num_threads_pairs * n_threads_system != n_threads {
+            for i in 0..(n_threads - num_threads_pairs * n_threads_system) {
+                n_threads_pairs[i] += 1;
+            }
+        }
     }
+
+    assert_eq!(n_threads_pairs.iter().map(|i| i + 2).sum::<usize>(), n_threads);
+    assert_eq!(n_threads_pairs.len(), n_threads_system);
+
+    return (n_threads_system, n_threads_pairs);
 }
 
 #[cfg(test)]

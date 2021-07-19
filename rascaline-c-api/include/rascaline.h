@@ -178,8 +178,12 @@ typedef struct rascal_pair_t {
  */
 typedef struct rascal_system_t {
   /**
-   * User-provided data should be stored here, it will be passed as the
-   * first parameter to all function pointers below.
+   * User-provided data should be stored here, it will be passed as the first
+   * parameter to all function pointers below.
+   *
+   * *WARNING*: Any value stored in this member *MUST* be safe to send to
+   * another thread (the pointer itself will be send to other threads, but it
+   * will not be dereferenced outside of the functions below).
    */
   void *user_data;
   /**

@@ -36,7 +36,7 @@ pub struct Pair {
 
 /// A `System` deals with the storage of atoms and related information, as well
 /// as the computation of neighbor lists.
-pub trait System {
+pub trait System: Send {
     /// Get the unit cell for this system
     fn cell(&self) -> Result<UnitCell, Error>;
 
