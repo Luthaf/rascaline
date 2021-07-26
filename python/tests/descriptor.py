@@ -43,8 +43,10 @@ class TestDummyDescriptor(unittest.TestCase):
         self.assertTrue(np.all(values[2] == (14, 6)))
         self.assertTrue(np.all(values[3] == (15, 5)))
 
-        with self.assertRaisesRegex(ValueError, "assignment destination is read-only"):
-            values[0] = (3, 4)
+        # we can write to the array
+        values[0] = (3, 4)
+        self.assertTrue(np.all(values[0] == (3, 4)))
+        self.assertTrue(np.all(values[1] == (13, 3)))
 
         self.assertEqual(descriptor.gradients, None)
 
@@ -66,8 +68,10 @@ class TestDummyDescriptor(unittest.TestCase):
         for i in range(18):
             self.assertTrue(np.all(gradients[i] == (0, 1)))
 
-        with self.assertRaisesRegex(ValueError, "assignment destination is read-only"):
-            gradients[0] = (3, 4)
+        # we can write to the array
+        gradients[0] = (3, 4)
+        self.assertTrue(np.all(gradients[0] == (3, 4)))
+        self.assertTrue(np.all(gradients[1] == (0, 1)))
 
     def test_samples(self):
         system = TestSystem()

@@ -62,10 +62,10 @@ pub unsafe extern fn rascal_descriptor_free(descriptor: *mut rascal_descriptor_t
 /// Get the values stored inside this descriptor after a call to
 /// `rascal_calculator_compute`.
 ///
-/// This function sets `*data` to a **read only** pointer containing the address
-/// of first element of the 2D array containing the values, `*samples` to the
-/// size of the first axis of this array and `*features` to the size of the
-/// second axis of the array. The array is stored using a row-major layout.
+/// This function sets `*data` to a pointer containing the address of first
+/// element of the 2D array containing the values, `*samples` to the size of the
+/// first axis of this array and `*features` to the size of the second axis of
+/// the array. The array is stored using a row-major layout.
 ///
 /// @param descriptor pointer to an existing descriptor
 /// @param data pointer to a pointer to a double, will be set to the address of
@@ -80,19 +80,19 @@ pub unsafe extern fn rascal_descriptor_free(descriptor: *mut rascal_descriptor_t
 ///          error message.
 #[no_mangle]
 pub unsafe extern fn rascal_descriptor_values(
-    descriptor: *const rascal_descriptor_t,
-    data: *mut *const f64,
+    descriptor: *mut rascal_descriptor_t,
+    data: *mut *mut f64,
     samples: *mut usize,
     features: *mut usize
 ) -> rascal_status_t {
     catch_unwind(|| {
         check_pointers!(descriptor, data, samples, features);
 
-        let array = &(*descriptor).values;
+        let array = &mut (*descriptor).values;
         if array.is_empty() {
-            *data = std::ptr::null();
+            *data = std::ptr::null_mut();
         } else {
-            *data = array.as_ptr();
+            *data = array.as_mut_ptr();
         }
 
         let shape = array.shape();
@@ -107,11 +107,10 @@ pub unsafe extern fn rascal_descriptor_values(
 /// Get the gradients stored inside this descriptor after a call to
 /// `rascal_calculator_compute`, if any.
 ///
-/// This function sets `*data` to to a **read only** pointer containing the
-/// address of the first element of the 2D array containing the gradients,
-/// `*gradient_samples` to the size of the first axis of this array and
-/// `*features` to the size of the second axis of the array. The array is stored
-/// using a row-major layout.
+/// This function sets `*data` to to a pointer containing the address of the
+/// first element of the 2D array containing the gradients, `*gradient_samples`
+/// to the size of the first axis of this array and `*features` to the size of
+/// the second axis of the array. The array is stored using a row-major layout.
 ///
 /// If this descriptor does not contain gradient data, `*data` is set to `NULL`,
 /// while `*gradient_samples` and `*features` are set to 0.
@@ -129,26 +128,23 @@ pub unsafe extern fn rascal_descriptor_values(
 ///          error message.
 #[no_mangle]
 pub unsafe extern fn rascal_descriptor_gradients(
-    descriptor: *const rascal_descriptor_t,
-    data: *mut *const f64,
+    descriptor: *mut rascal_descriptor_t,
+    data: *mut *mut f64,
     gradient_samples: *mut usize,
     features: *mut usize
 ) -> rascal_status_t {
     catch_unwind(|| {
         check_pointers!(descriptor, data, gradient_samples, features);
 
-        match &(*descriptor).gradients {
-            Some(array) => {
-                *data = array.as_ptr();
-                let shape = array.shape();
-                *gradient_samples = shape[0];
-                *features = shape[1];
-            }
-            None => {
-                *data = std::ptr::null();
-                *gradient_samples = 0;
-                *features = 0;
-            }
+        if let Some(ref mut array) = (*descriptor).gradients {
+            *data = array.as_mut_ptr();
+            let shape = array.shape();
+            *gradient_samples = shape[0];
+            *features = shape[1];
+        } else {
+            *data = std::ptr::null_mut();
+            *gradient_samples = 0;
+            *features = 0;
         }
 
         Ok(())

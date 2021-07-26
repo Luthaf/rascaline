@@ -118,7 +118,7 @@ TEST_CASE("rascal_descriptor_t") {
         auto* descriptor = rascal_descriptor();
         REQUIRE(descriptor != nullptr);
 
-        const double* data = nullptr;
+        double* data = nullptr;
         uintptr_t shape[2] = {0};
         CHECK_SUCCESS(rascal_descriptor_values(descriptor, &data, &shape[0], &shape[1]));
         CHECK(data == nullptr);
@@ -203,7 +203,7 @@ TEST_CASE("rascal_descriptor_t") {
         auto* descriptor = rascal_descriptor();
         REQUIRE(descriptor != nullptr);
 
-        const double* data = nullptr;
+        double* data = nullptr;
         uintptr_t shape[2] = {0};
         CHECK_SUCCESS(rascal_descriptor_gradients(descriptor, &data, &shape[0], &shape[1]));
         CHECK(data == nullptr);
@@ -229,7 +229,7 @@ TEST_CASE("rascal_descriptor_t") {
 
         compute_descriptor(descriptor);
 
-        const double* data = nullptr;
+        double* data = nullptr;
         uintptr_t environments = 0;
         uintptr_t features = 0;
         CHECK_SUCCESS(rascal_descriptor_values(
