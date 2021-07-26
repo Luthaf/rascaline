@@ -88,7 +88,7 @@ def _options_to_c(use_native_system, samples, features):
         c_options.selected_features = features.ctypes.data_as(ptr_int32)
         c_options.selected_features_count = features.size
 
-    return c_options
+    return c_options, samples, features
 
 
 class CalculatorBase:
@@ -100,6 +100,9 @@ class CalculatorBase:
             name.encode("utf8"), parameters.encode("utf8")
         )
         _check_rascal_pointer(self._as_parameter_)
+
+        self._selected_samples = None
+        self._selected_features = None
 
     def __del__(self):
         self._lib.rascal_calculator_free(self)
@@ -210,7 +213,10 @@ class CalculatorBase:
             descriptor = Descriptor()
 
         c_systems = _convert_systems(systems)
-        c_options = _options_to_c(
+
+        # keep the selected samples & features arrays in scope to prevent them
+        # from being garbage collected
+        c_options, samples, features = _options_to_c(
             use_native_system=use_native_system,
             samples=selected_samples,
             features=selected_features,
