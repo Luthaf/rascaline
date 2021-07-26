@@ -366,10 +366,10 @@ rascal_status_t rascal_descriptor_free(struct rascal_descriptor_t *descriptor);
  * Get the values stored inside this descriptor after a call to
  * `rascal_calculator_compute`.
  *
- * This function sets `*data` to a **read only** pointer containing the address
- * of first element of the 2D array containing the values, `*samples` to the
- * size of the first axis of this array and `*features` to the size of the
- * second axis of the array. The array is stored using a row-major layout.
+ * This function sets `*data` to a pointer containing the address of first
+ * element of the 2D array containing the values, `*samples` to the size of the
+ * first axis of this array and `*features` to the size of the second axis of
+ * the array. The array is stored using a row-major layout.
  *
  * @param descriptor pointer to an existing descriptor
  * @param data pointer to a pointer to a double, will be set to the address of
@@ -383,8 +383,8 @@ rascal_status_t rascal_descriptor_free(struct rascal_descriptor_t *descriptor);
  *          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the full
  *          error message.
  */
-rascal_status_t rascal_descriptor_values(const struct rascal_descriptor_t *descriptor,
-                                         const double **data,
+rascal_status_t rascal_descriptor_values(struct rascal_descriptor_t *descriptor,
+                                         double **data,
                                          uintptr_t *samples,
                                          uintptr_t *features);
 
@@ -392,11 +392,10 @@ rascal_status_t rascal_descriptor_values(const struct rascal_descriptor_t *descr
  * Get the gradients stored inside this descriptor after a call to
  * `rascal_calculator_compute`, if any.
  *
- * This function sets `*data` to to a **read only** pointer containing the
- * address of the first element of the 2D array containing the gradients,
- * `*gradient_samples` to the size of the first axis of this array and
- * `*features` to the size of the second axis of the array. The array is stored
- * using a row-major layout.
+ * This function sets `*data` to to a pointer containing the address of the
+ * first element of the 2D array containing the gradients, `*gradient_samples`
+ * to the size of the first axis of this array and `*features` to the size of
+ * the second axis of the array. The array is stored using a row-major layout.
  *
  * If this descriptor does not contain gradient data, `*data` is set to `NULL`,
  * while `*gradient_samples` and `*features` are set to 0.
@@ -413,8 +412,8 @@ rascal_status_t rascal_descriptor_values(const struct rascal_descriptor_t *descr
  *          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the full
  *          error message.
  */
-rascal_status_t rascal_descriptor_gradients(const struct rascal_descriptor_t *descriptor,
-                                            const double **data,
+rascal_status_t rascal_descriptor_gradients(struct rascal_descriptor_t *descriptor,
+                                            double **data,
                                             uintptr_t *gradient_samples,
                                             uintptr_t *features);
 

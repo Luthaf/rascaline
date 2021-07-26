@@ -345,7 +345,7 @@ template<typename T>
 class ArrayView {
 public:
     /// Create a new empty `ArrayView`, with shape `[0, 0]`.
-    ArrayView(): ArrayView(nullptr, {0, 0}) {}
+    ArrayView(): ArrayView(nullptr, {0, 0}, true) {}
 
     /// Create a new `ArrayView` with the given `shape`. `data` must point to
     /// contiguous memory containing `shape[0] x shape[1]` elements, to be
@@ -353,18 +353,11 @@ public:
     /// is only valid for as long as `data` is.
     ///
     /// This function is intended for internal use only.
-    ArrayView(const T* data, std::array<size_t, 2> shape): data_(data), shape_(shape) {
-        if (shape_[0] != 0 && shape_[1] != 0) {
-            if (data_ == nullptr) {
-                throw RascalError("invalid parameters to ArrayView, got null data pointer and non zero size");
-            }
-        }
+    ArrayView(const T* data, std::array<size_t, 2> shape):
+        ArrayView(data, shape, true) {}
 
-        static_assert(
-            std::is_arithmetic<T>::value,
-            "ArrayView only works with integers and floating points"
-        );
-    }
+    ArrayView(T* data, std::array<size_t, 2> shape):
+        ArrayView(data, shape, false) {}
 
     ~ArrayView() {
         // no memory to release
@@ -391,6 +384,16 @@ public:
         return data_;
     }
 
+    /// Get the data pointer for this array, i.e. the pointer to the first
+    /// element.
+    T* data() {
+        // TODO: might be worth having different types for const/non-const ArrayView
+        if (is_const_) {
+            throw RascalError("This ArrayView is const, can not get non const access to it");
+        }
+        return data_;
+    }
+
     /// Get the shape of this array
     std::array<size_t, 2> shape() const {
         return shape_;
@@ -403,7 +406,25 @@ public:
     }
 
 private:
-    const T* data_;
+    ArrayView(const T* data, std::array<size_t, 2> shape, bool is_const):
+        data_(const_cast<T*>(data)),
+        shape_(shape),
+        is_const_(is_const)
+    {
+        if (shape_[0] != 0 && shape_[1] != 0) {
+            if (data_ == nullptr) {
+                throw RascalError("invalid parameters to ArrayView, got null data pointer and non zero size");
+            }
+        }
+
+        static_assert(
+            std::is_arithmetic<T>::value,
+            "ArrayView only works with integers and floating points"
+        );
+    }
+
+    bool is_const_;
+    T* data_;
     std::array<size_t, 2> shape_;
 };
 
@@ -570,7 +591,7 @@ public:
     /// Get the values stored inside this descriptor after a call to
     /// `Calculator::compute`.
     ArrayView<double> values() const {
-        const double* data = nullptr;
+        double* data = nullptr;
         uintptr_t samples = 0;
         uintptr_t features = 0;
         details::check_status(rascal_descriptor_values(
@@ -586,7 +607,7 @@ public:
     /// If this descriptor does not contain gradient data, an empty array is
     /// returned.
     ArrayView<double> gradients() const {
-        const double* data = nullptr;
+        double* data = nullptr;
         uintptr_t samples = 0;
         uintptr_t features = 0;
         details::check_status(rascal_descriptor_gradients(

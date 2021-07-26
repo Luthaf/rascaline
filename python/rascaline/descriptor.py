@@ -76,7 +76,7 @@ class Descriptor:
         features = c_uintptr_t()
         data = POINTER(c_double)()
         self._lib.rascal_descriptor_values(self, data, samples, features)
-        return np_array_view(data, (samples.value, features.value), dtype=np.float64)
+        return _ptr_to_ndarray(data, (samples.value, features.value))
 
     @property
     def gradients(self):
@@ -93,7 +93,7 @@ class Descriptor:
         if not data:
             return None
 
-        return np_array_view(data, (samples.value, features.value), dtype=np.float64)
+        return _ptr_to_ndarray(data, (samples.value, features.value))
 
     def _indexes(self, kind):
         count = c_uintptr_t()
@@ -163,12 +163,13 @@ class Descriptor:
         self._lib.rascal_descriptor_densify(self, c_variables, c_variables._length_)
 
 
-def np_array_view(ptr, shape, dtype):
+def _ptr_to_ndarray(ptr, shape):
     assert len(shape) == 2
     if shape[0] != 0 and shape[1] != 0:
         array = np.ctypeslib.as_array(ptr, shape=shape)
-        array.flags.writeable = False
+        assert array.dtype == np.float64
+        array.flags.writeable = True
         return array
     else:
-        data = np.array([], dtype=dtype)
+        data = np.array([], dtype=np.float64)
         return data.reshape(shape)

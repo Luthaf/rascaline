@@ -184,7 +184,7 @@ TEST_CASE("Compute descriptor") {
         };
         check_indexes(descriptor, RASCAL_INDEXES_FEATURES, {"index_delta", "x_y_z"}, expected, 2, 2);
 
-        const double* data = nullptr;
+        double* data = nullptr;
         uintptr_t shape[2] = {0};
         CHECK_SUCCESS(rascal_descriptor_values(descriptor, &data, &shape[0], &shape[1]));
 
@@ -239,7 +239,7 @@ TEST_CASE("Compute descriptor") {
         };
         check_indexes(descriptor, RASCAL_INDEXES_FEATURES, {"index_delta", "x_y_z"}, expected, 2, 2);
 
-        const double* data = nullptr;
+        double* data = nullptr;
         uintptr_t shape[2] = {0};
         CHECK_SUCCESS(rascal_descriptor_values(descriptor, &data, &shape[0], &shape[1]));
 
@@ -293,7 +293,7 @@ TEST_CASE("Compute descriptor") {
 
         check_indexes(descriptor, RASCAL_INDEXES_FEATURES, {"index_delta", "x_y_z"}, features, 1, 2);
 
-        const double* data = nullptr;
+        double* data = nullptr;
         uintptr_t shape[2] = {0};
         CHECK_SUCCESS(rascal_descriptor_values(descriptor, &data, &shape[0], &shape[1]));
 
