@@ -35,8 +35,8 @@ def _check_selected_indexes(indexes, kind):
     if len(indexes.shape) != 2:
         raise ValueError(f"selected {kind} array must be a two-dimensional array")
 
-    if not np.can_cast(indexes.dtype, np.float64, "safe"):
-        raise ValueError(f"selected {kind} array must contain float64 values")
+    if not np.can_cast(indexes.dtype, np.int32, "same_kind"):
+        raise ValueError(f"selected {kind} array must contain int32 values")
 
 
 def _convert_systems(systems):
