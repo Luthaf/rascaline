@@ -36,6 +36,11 @@ fn check_c_api() {
     let mut cmake_config = Command::new("cmake");
     cmake_config.current_dir(&build_dir);
     cmake_config.arg(&source_dir);
+
+    // the cargo executable currently running
+    let cargo_exe = std::env::var("CARGO").expect("CARGO env var is not set");
+    cmake_config.arg(format!("-DCARGO_EXE={}", cargo_exe));
+
     cmake_config.arg(format!("-DCMAKE_BUILD_TYPE={}", build_type));
     cmake_config.arg(format!("-DBUILD_SHARED_LIBS={}", shared_lib));
 
