@@ -6,7 +6,6 @@ use crate::{Matrix3, Vector3D};
 /// The shape of a cell determine how we will be able to compute the periodic
 /// boundaries condition.
 #[derive(Debug, Clone, Copy, PartialEq)]
-#[allow(clippy::module_name_repetitions)]
 pub enum CellShape {
     /// Infinite unit cell, with no boundaries
     Infinite,
@@ -23,7 +22,6 @@ pub enum CellShape {
 ///
 /// [CellShape]: enum.CellShape.html
 #[derive(Debug, Clone, Copy, PartialEq)]
-#[allow(clippy::module_name_repetitions)]
 pub struct UnitCell {
     /// Unit cell matrix
     matrix: Matrix3,

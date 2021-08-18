@@ -23,7 +23,6 @@ impl DerefMut for rascal_descriptor_t {
     }
 }
 
-#[allow(clippy::module_name_repetitions)]
 /// Create a new empty descriptor.
 ///
 /// All memory allocated by this function can be released using
@@ -33,6 +32,7 @@ impl DerefMut for rascal_descriptor_t {
 ///          case of error. In case of error, you can use `rascal_last_error()`
 ///          to get the error message.
 #[no_mangle]
+#[allow(clippy::module_name_repetitions)]
 pub unsafe extern fn rascal_descriptor() -> *mut rascal_descriptor_t {
     let descriptor = Box::new(rascal_descriptor_t(Descriptor::new()));
     return Box::into_raw(descriptor);

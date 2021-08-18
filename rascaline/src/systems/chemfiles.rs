@@ -56,7 +56,7 @@ pub fn read_from_file(path: impl AsRef<Path>) -> Result<Vec<SimpleSystem>, Error
         let mut system = SimpleSystem::new(cell);
         for i in 0..frame.size() {
             let atom = frame.atom(i);
-            system.add_atom(get_species(atom), positions[i].into())
+            system.add_atom(get_species(atom), positions[i].into());
         }
 
         systems.push(system);

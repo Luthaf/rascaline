@@ -68,7 +68,6 @@ use crate::Vector3D;
 /// ```
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug, PartialEq)]
-#[allow(clippy::module_name_repetitions)]
 pub struct Matrix3([[f64; 3]; 3]);
 
 impl Matrix3 {

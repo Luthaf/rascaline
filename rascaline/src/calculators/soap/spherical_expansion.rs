@@ -141,7 +141,6 @@ impl CutoffFunction {
 /// information on how it is implemented in rascaline.
 #[derive(Debug, Clone)]
 #[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
-#[allow(clippy::module_name_repetitions)]
 pub struct SphericalExpansionParameters {
     /// Spherical cutoff to use for atomic environments
     pub cutoff: f64,
@@ -170,7 +169,7 @@ struct RadialIntegralImpl {
 
 impl RadialIntegralImpl {
     fn new(parameters: &SphericalExpansionParameters) -> Result<Self, Error> {
-        let code = parameters.radial_basis.construct(&parameters)?;
+        let code = parameters.radial_basis.construct(parameters)?;
         let shape = (parameters.max_radial, parameters.max_angular + 1);
         let values = Array2::from_elem(shape, 0.0);
         let gradients = if parameters.gradients {
