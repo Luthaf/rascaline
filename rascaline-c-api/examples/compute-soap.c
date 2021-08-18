@@ -9,21 +9,14 @@ int main(int argc, char* argv[]) {
     rascal_descriptor_t* descriptor = NULL;
     rascal_system_t* systems = NULL;
     uintptr_t n_systems = 0;
+    rascal_calculation_options_t options;
+    double* values = NULL;
+    uintptr_t n_samples = 0;
+    uintptr_t n_features = 0;
     bool got_error = true;
+    const char* densify_variables[] = {"species_neighbor_1", "species_neighbor_2"};
 
-
-    // load systems from command line arguments
-    if (argc < 2) {
-        printf("error: expected a command line argument");
-        goto cleanup;
-    }
-    status = rascal_basic_systems_read(argv[1], &systems, &n_systems);
-    if (status != RASCAL_SUCCESS) {
-        printf("Error: %s\n", rascal_last_error());
-        goto cleanup;
-    }
-
-    // pass hyper-parameters as JSON
+    // hyper-parameters for the calculation as JSON
     const char* parameters = "{\n"
         "\"cutoff\": 5.0,\n"
         "\"max_radial\": 6,\n"
@@ -37,6 +30,17 @@ int main(int argc, char* argv[]) {
         "    \"ShiftedCosine\": {\"width\": 0.5}\n"
         "}\n"
     "}";
+
+    // load systems from command line arguments
+    if (argc < 2) {
+        printf("error: expected a command line argument");
+        goto cleanup;
+    }
+    status = rascal_basic_systems_read(argv[1], &systems, &n_systems);
+    if (status != RASCAL_SUCCESS) {
+        printf("Error: %s\n", rascal_last_error());
+        goto cleanup;
+    }
 
     // create the calculator with its name and parameters
     calculator = rascal_calculator("soap_power_spectrum", parameters);
@@ -53,13 +57,11 @@ int main(int argc, char* argv[]) {
     }
 
     // use the default set of options, computing all samples and all features
-    rascal_calculation_options_t options = {
-        /* use_native_system */ false,
-        /* selected_samples */ NULL,
-        /* selected_samples_count */ 0,
-        /* selected_features */ NULL,
-        /* selected_features_count */ 0
-    };
+    options.use_native_system = false;
+    options.selected_samples = NULL;
+    options.selected_samples_count = 0;
+    options.selected_features = NULL;
+    options.selected_features_count = 0;
 
     // run the calculation
     status = rascal_calculator_compute(
@@ -72,25 +74,21 @@ int main(int argc, char* argv[]) {
 
     // Transform the descriptor to dense representation,
     // with one sample for each atom-centered environment
-    const char* variables[] = {"species_neighbor_1", "species_neighbor_2"};
-    status = rascal_descriptor_densify(descriptor, variables, 1);
+    status = rascal_descriptor_densify(descriptor, densify_variables, 1);
     if (status != RASCAL_SUCCESS) {
         printf("Error: %s\n", rascal_last_error());
         goto cleanup;
     }
 
     // extract values from the descriptor
-    const double* values = NULL;
-    uintptr_t samples = 0;
-    uintptr_t features = 0;
-    status = rascal_descriptor_values(descriptor, &values, &samples, &features);
+    status = rascal_descriptor_values(descriptor, &values, &n_samples, &n_features);
     if (status != RASCAL_SUCCESS) {
         printf("Error: %s\n", rascal_last_error());
         goto cleanup;
     }
 
-    // you can now use values as the input of a machine learning algorithm
-
+    // you can now use `values` as the input of a machine learning algorithm
+    printf("the value array shape is %lu x %lu\n", n_samples, n_features);
 
     got_error = false;
 cleanup:
