@@ -58,6 +58,9 @@ class cmake_ext(build_ext):
             "-DRASCAL_BUILD_FOR_PYTHON=ON",
         ]
 
+        if "CARGO" in os.environ:
+            cmake_options.append(f"-DCARGO_EXE={os.environ['CARGO']}")
+
         subprocess.run(
             ["cmake", source_dir, *cmake_options],
             cwd=build_dir,

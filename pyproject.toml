@@ -17,7 +17,7 @@ skip_install = True
 passenv =
     RASCALINE_BUILD_TYPE
     RUSTUP_HOME
-    CARGO_HOME
+    CARGO*
 
 deps =
     discover
@@ -34,7 +34,7 @@ skip_install = True
 passenv =
     RASCALINE_BUILD_TYPE
     RUSTUP_HOME
-    CARGO_HOME
+    CARGO*
 
 deps =
     discover
@@ -49,7 +49,7 @@ skip_install = True
 passenv =
     RASCALINE_BUILD_TYPE
     RUSTUP_HOME
-    CARGO_HOME
+    CARGO*
 
 deps =
     numpy
