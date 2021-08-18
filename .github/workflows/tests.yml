@@ -28,6 +28,7 @@ jobs:
             rust-version: stable
             rust-target: x86_64-unknown-linux-gnu
             build-type: release
+            cargo-build-flags: --release
             do-valgrind: true
           - os: ubuntu-18.04
             rust-version: 1.46
@@ -85,15 +86,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y valgrind
 
-      - name: run tests
-        if: matrix.build-type == 'debug'
+      - name: unit tests
+        run: cargo test --lib --target ${{ matrix.rust-target }} ${{ matrix.cargo-build-flags }}
+
+      - name: documentation tests
+        run: cargo test --doc --target ${{ matrix.rust-target }} ${{ matrix.cargo-build-flags }}
+
+      - name: integration tests
         env:
           RASCALINE_TEST_WITH_STATIC_LIB: ${{ matrix.test-static-lib || 0 }}
-        run: cargo test --target ${{ matrix.rust-target }} -- --test-threads=2
-
-      - name: run tests in release mode
-        if: matrix.build-type == 'release'
-        run: cargo test --release --target ${{ matrix.rust-target }} -- --test-threads=2
+        run: cargo test --test "*" --target ${{ matrix.rust-target }} ${{ matrix.cargo-build-flags }}
 
       - name: check that examples compile & run
         if: matrix.build-type == 'release'
