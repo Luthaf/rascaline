@@ -15,7 +15,6 @@ const PI_TO_THREE_HALF: f64 = 15.503138340149908;
 
 /// Parameters controlling GTO radial basis
 #[derive(Debug, Clone, Copy)]
-#[allow(clippy::module_name_repetitions)]
 pub struct GtoParameters {
     /// Number of radial components
     pub max_radial: usize,
@@ -91,7 +90,6 @@ fn sorted_eigen(mat: na::DMatrix<f64>) -> SymmetricEigen<f64, na::Dynamic> {
 }
 
 #[derive(Debug, Clone)]
-#[allow(clippy::module_name_repetitions)]
 pub struct GtoRadialIntegral {
     parameters: GtoParameters,
     hypergeometric: HyperGeometricSphericalExpansion,

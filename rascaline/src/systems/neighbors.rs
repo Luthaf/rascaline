@@ -328,7 +328,6 @@ fn divmod_vec(a: [isize; 3], b: [usize; 3]) -> ([isize; 3], [usize; 3]) {
 
 /// A neighbor list implementation usable with any system
 #[derive(Clone, Debug)]
-#[allow(clippy::module_name_repetitions)]
 pub struct NeighborsList {
     /// the cutoff used to create this neighbor list
     pub cutoff: f64,

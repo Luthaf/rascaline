@@ -58,7 +58,7 @@ impl<A: Array> StackVec<A> {
     /// If the backing array is already full
     pub fn push(&mut self, value: A::Item) {
         if self.len == A::capacity() {
-            panic!("StackVec is full, use a larger array as storage")
+            panic!("StackVec is full, use a larger array as storage");
         }
 
         // SAFETY: we just checked that we are in bounds

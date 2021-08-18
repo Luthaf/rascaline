@@ -101,7 +101,6 @@ impl std::fmt::Debug for LegendreArray {
 /// // array[[9, 7]] = 1.0;
 /// ```
 #[derive(Clone)]
-#[allow(clippy::module_name_repetitions)]
 pub struct SphericalHarmonicsArray {
     max_angular: isize,
     data: Vec<f64>,
@@ -489,7 +488,7 @@ mod tests {
                     assert_relative_eq!(
                         finite_difference_x, gradients[0][[l, m]],
                         epsilon=1e-5, max_relative=1e-5
-                    )
+                    );
                 }
             }
 
@@ -502,7 +501,7 @@ mod tests {
                     assert_relative_eq!(
                         finite_difference_y, gradients[1][[l, m]],
                         epsilon=1e-5, max_relative=1e-5
-                    )
+                    );
                 }
             }
 
@@ -516,7 +515,7 @@ mod tests {
                     assert_relative_eq!(
                         finite_difference_z, gradients[2][[l, m]],
                         epsilon=1e-5, max_relative=1e-5
-                    )
+                    );
                 }
             }
         }

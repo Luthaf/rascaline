@@ -8,7 +8,6 @@ use crate::{Error, System};
 
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[allow(clippy::module_name_repetitions)]
 pub struct IndexValue(i32);
 
 impl std::fmt::Debug for IndexValue {

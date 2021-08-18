@@ -193,7 +193,7 @@ impl_arithmetic!(
 impl_inplace_arithmetic!(
     Vector3D, Vector3D, AddAssign, add_assign,
     self, other,
-    {self[0] += other[0]; self[1] += other[1]; self[2] += other[2]}
+    {self[0] += other[0]; self[1] += other[1]; self[2] += other[2];}
 );
 
 impl_arithmetic!(
@@ -205,7 +205,7 @@ impl_arithmetic!(
 impl_inplace_arithmetic!(
     Vector3D, Vector3D, SubAssign, sub_assign,
     self, other,
-    {self[0] -= other[0]; self[1] -= other[1]; self[2] -= other[2]}
+    {self[0] -= other[0]; self[1] -= other[1]; self[2] -= other[2];}
 );
 
 // Dot product

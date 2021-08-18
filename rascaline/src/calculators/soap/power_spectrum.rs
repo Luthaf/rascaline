@@ -27,7 +27,6 @@ use super::{SphericalExpansion, RadialBasis, CutoffFunction};
 /// information on the SOAP representations.
 #[derive(Debug, Clone)]
 #[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
-#[allow(clippy::module_name_repetitions)]
 pub struct PowerSpectrumParameters {
     /// Spherical cutoff to use for atomic environments
     pub cutoff: f64,
@@ -47,7 +46,6 @@ pub struct PowerSpectrumParameters {
 
 /// Calculator implementing the Smooth Overlap of Atomic Position (SOAP) power
 /// spectrum representation of atomistic systems.
-#[allow(clippy::module_name_repetitions)]
 pub struct SoapPowerSpectrum {
     parameters: PowerSpectrumParameters,
     spherical_expansion_calculator: Calculator,
@@ -379,7 +377,7 @@ impl CalculatorBase for SoapPowerSpectrum {
                         let normalization = f64::sqrt(2.0 * l as f64 + 1.0);
                         gradient[feature_i] = sum / normalization;
                     }
-                })
+                });
 
         }
 

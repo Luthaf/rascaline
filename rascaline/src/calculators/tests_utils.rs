@@ -157,7 +157,7 @@ pub fn finite_difference(
                 spatial: spatial,
             };
 
-            for changed in compute_modified_indexes(&gradients_samples, moved) {
+            for changed in compute_modified_indexes(gradients_samples, moved) {
                 let sample_i = reference.samples.position(&changed.sample).expect(
                     "missing sample in reference values"
                 );
