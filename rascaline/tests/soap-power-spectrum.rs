@@ -17,7 +17,7 @@ fn values() {
     assert_eq!(descriptor.values.shape(), expected.shape());
     assert_relative_eq!(descriptor.values, expected, max_relative=1e-9);
 
-    descriptor.densify(&["species_neighbor_1", "species_neighbor_2"]);
+    descriptor.densify(&["species_neighbor_1", "species_neighbor_2"], None).unwrap();
     let expected: Array2<f64> = data::load_expected_values("soap-power-spectrum-dense-values.npy.gz");
     assert_eq!(descriptor.values.shape(), expected.shape());
     assert_relative_eq!(descriptor.values, expected, max_relative=1e-9);
@@ -38,7 +38,7 @@ fn gradients() {
     assert_eq!(gradients.shape(), expected.shape());
     assert_relative_eq!(*gradients, expected, max_relative=1e-9);
 
-    descriptor.densify(&["species_neighbor_1", "species_neighbor_2"]);
+    descriptor.densify(&["species_neighbor_1", "species_neighbor_2"], None).unwrap();
     let expected: Array2<f64> = data::load_expected_values("soap-power-spectrum-dense-gradients.npy.gz");
 
     let gradients = descriptor.gradients.as_ref().unwrap();

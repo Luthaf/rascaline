@@ -74,7 +74,7 @@ int main(int argc, char* argv[]) {
 
     // Transform the descriptor to dense representation,
     // with one sample for each atom-centered environment
-    status = rascal_descriptor_densify(descriptor, densify_variables, 1);
+    status = rascal_descriptor_densify(descriptor, densify_variables, 1, NULL, 0);
     if (status != RASCAL_SUCCESS) {
         printf("Error: %s\n", rascal_last_error());
         goto cleanup;

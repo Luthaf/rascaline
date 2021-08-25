@@ -301,8 +301,15 @@ pub unsafe extern fn rascal_descriptor_indexes_names(
 /// Make the given `descriptor` dense along the given `variables`.
 ///
 /// The `variable` array should contain the name of the variables as
-/// NULL-terminated strings, and `count` must be the number of variables in the
-/// array.
+/// NULL-terminated strings, and `variables_count` must be the number of
+/// variables in the array.
+///
+/// The `requested` parameter defines which set of values taken by the
+/// `variables` should be part of the new features. If it is `NULL`, this is the
+/// set of values taken by the variables in the samples. Otherwise, it must be a
+/// pointer to the first element of a 2D row-major array with one row for each
+/// new feature block, and one column for each variable. `requested_size` must
+/// be the number of rows in this array.
 ///
 /// This function "moves" the variables from the samples to the features,
 /// filling the new features with zeros if the corresponding sample is missing.
@@ -346,6 +353,7 @@ pub unsafe extern fn rascal_descriptor_indexes_names(
 /// |     1     |         | 0 | 0 | 5 | 6 | 7 | 8 |
 /// +-----------+---------+---+---+---+---+---+---+
 /// ```
+///
 /// Notice how there is only one row/sample for each structure now, and how each
 /// value for `species` have created a full block of features. Missing values
 /// (e.g. structure 0/species 8) have been filled with 0.
@@ -353,17 +361,29 @@ pub unsafe extern fn rascal_descriptor_indexes_names(
 pub unsafe extern fn rascal_descriptor_densify(
     descriptor: *mut rascal_descriptor_t,
     variables: *const *const c_char,
-    count: usize,
+    variables_count: usize,
+    requested: *const i32,
+    requested_size: usize,
 ) -> rascal_status_t {
     catch_unwind(|| {
         check_pointers!(descriptor, variables);
         let mut rust_variables = Vec::new();
-        for &variable in std::slice::from_raw_parts(variables, count) {
+        for &variable in std::slice::from_raw_parts(variables, variables_count) {
             check_pointers!(variable);
             let variable = CStr::from_ptr(variable).to_str()?;
             rust_variables.push(variable);
         }
-        (*descriptor).densify(&rust_variables);
+
+        let requested = if requested.is_null() {
+            None
+        } else {
+            Some(ndarray::ArrayView2::from_shape_ptr(
+                [requested_size, variables_count], requested.cast::<IndexValue>()
+            ))
+        };
+
+        (*descriptor).densify(&rust_variables, requested)?;
+
         Ok(())
     })
 }
