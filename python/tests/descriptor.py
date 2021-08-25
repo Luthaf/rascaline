@@ -2,7 +2,7 @@
 import unittest
 import numpy as np
 
-from rascaline import Descriptor
+from rascaline import Descriptor, RascalError
 from rascaline.calculators import DummyCalculator
 
 from test_systems import TestSystem, EmptySystem
@@ -170,14 +170,31 @@ class TestDummyDescriptor(unittest.TestCase):
         self.assertTrue(np.all(features[1] == [0, 1]))
 
     def test_densify(self):
-        system = TestSystem()
-        calculator = DummyCalculator(cutoff=3.2, delta=12, name="", gradients=True)
-        descriptor = calculator.compute(system, use_native_system=False)
+        def compute_descriptor():
+            system = TestSystem()
+            calculator = DummyCalculator(cutoff=3.2, delta=12, name="", gradients=True)
+            return calculator.compute(system, use_native_system=False)
+
+        descriptor = compute_descriptor()
 
         self.assertEqual(descriptor.values.shape, (4, 2))
         self.assertEqual(descriptor.gradients.shape, (18, 2))
 
         descriptor.densify("center")
-
         self.assertEqual(descriptor.values.shape, (1, 8))
         self.assertEqual(descriptor.gradients.shape, (12, 8))
+
+        descriptor = compute_descriptor()
+        descriptor.densify("center", [1, 3, 8])
+        self.assertEqual(descriptor.values.shape, (1, 6))
+        self.assertEqual(descriptor.gradients.shape, (12, 6))
+
+        descriptor = compute_descriptor()
+        with self.assertRaises(RascalError) as cm:
+            descriptor.densify("not there")
+
+        self.assertEqual(
+            str(cm.exception),
+            "invalid parameter: can not densify along 'not there' which is not "
+            + "present in the samples: [structure, center]",
+        )

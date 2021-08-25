@@ -240,7 +240,9 @@ TEST_CASE("rascal_descriptor_t") {
         CHECK(features == 2);
 
         const char* variables[] = { "center" };
-        CHECK_SUCCESS(rascal_descriptor_densify(descriptor, variables, 1));
+        CHECK_SUCCESS(rascal_descriptor_densify(
+            descriptor, variables, 1, NULL, 0
+        ));
 
         CHECK_SUCCESS(rascal_descriptor_values(
             descriptor, &data, &environments, &features
@@ -250,8 +252,21 @@ TEST_CASE("rascal_descriptor_t") {
         CHECK(features == 8);
 
         compute_descriptor(descriptor);
+        int32_t requested[] = {1, 3, 6};
+        CHECK_SUCCESS(rascal_descriptor_densify(
+            descriptor, variables, 1, requested, 3
+        ));
+
+        CHECK_SUCCESS(rascal_descriptor_values(
+            descriptor, &data, &environments, &features
+        ));
+        CHECK(data != nullptr);
+        CHECK(environments == 1);
+        CHECK(features == 3 * 2);
+
+        compute_descriptor(descriptor);
         variables[0] = "not there";
-        CHECK(rascal_descriptor_densify(descriptor, variables, 1) != RASCAL_SUCCESS);
+        CHECK(rascal_descriptor_densify(descriptor, variables, 1, NULL, 0) != RASCAL_SUCCESS);
 
         rascal_descriptor_free(descriptor);
     }

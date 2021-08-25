@@ -33,8 +33,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     calculator.compute(&mut systems, &mut descriptor, Default::default())?;
 
     // Transform the descriptor to dense representation,
-    // with one sample for each atom-centered environment
-    descriptor.densify(&["species_neighbor_1", "species_neighbor_2"]);
+    // with one sample for each atom-centered environment.
+    descriptor.densify(&["species_neighbor_1", "species_neighbor_2"], None)?;
 
     // you can now use descriptor.values as the
     // input of a machine learning algorithm

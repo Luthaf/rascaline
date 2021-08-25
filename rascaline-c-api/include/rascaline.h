@@ -481,8 +481,15 @@ rascal_status_t rascal_descriptor_indexes_names(const struct rascal_descriptor_t
  * Make the given `descriptor` dense along the given `variables`.
  *
  * The `variable` array should contain the name of the variables as
- * NULL-terminated strings, and `count` must be the number of variables in the
- * array.
+ * NULL-terminated strings, and `variables_count` must be the number of
+ * variables in the array.
+ *
+ * The `requested` parameter defines which set of values taken by the
+ * `variables` should be part of the new features. If it is `NULL`, this is the
+ * set of values taken by the variables in the samples. Otherwise, it must be a
+ * pointer to the first element of a 2D row-major array with one row for each
+ * new feature block, and one column for each variable. `requested_size` must
+ * be the number of rows in this array.
  *
  * This function "moves" the variables from the samples to the features,
  * filling the new features with zeros if the corresponding sample is missing.
@@ -526,13 +533,16 @@ rascal_status_t rascal_descriptor_indexes_names(const struct rascal_descriptor_t
  * |     1     |         | 0 | 0 | 5 | 6 | 7 | 8 |
  * +-----------+---------+---+---+---+---+---+---+
  * ```
+ *
  * Notice how there is only one row/sample for each structure now, and how each
  * value for `species` have created a full block of features. Missing values
  * (e.g. structure 0/species 8) have been filled with 0.
  */
 rascal_status_t rascal_descriptor_densify(struct rascal_descriptor_t *descriptor,
                                           const char *const *variables,
-                                          uintptr_t count);
+                                          uintptr_t variables_count,
+                                          const int32_t *requested,
+                                          uintptr_t requested_size);
 
 /**
  * Create a new calculator with the given `name` and `parameters`.

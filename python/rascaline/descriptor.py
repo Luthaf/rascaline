@@ -147,16 +147,25 @@ class Descriptor:
         """
         return self._indexes(rascal_indexes.RASCAL_INDEXES_GRADIENT_SAMPLES)
 
-    def densify(self, variables):
+    def densify(self, variables, requested=None):
         """
         Make this descriptor dense along the given ``variables``.
 
         :param variables: names of the variables to move
         :type variables: str | list[str]
 
+        :param requested: set values taken by the variables in the new features
+        :type requested: Optional[numpy.ndarray]
+
         This function "moves" the variables from the samples to the features,
         filling the new features with zeros if the corresponding sample is
         missing.
+
+        The ``requested`` parameter defines which set of values taken by the
+        ``variables`` should be part of the new features. If it is ``None``,
+        this is the set of values taken by the variables in the samples.
+        Otherwise, it must be an array with one row for each new feature block,
+        and one column for each variable.
 
         For example, take a descriptor containing two samples variables
         (``structure`` and ``species``) and two features (``n`` and ``l``).
@@ -180,8 +189,8 @@ class Descriptor:
         +-----------+---------+---+---+---+
         ```
 
-        Calling ``descriptor.densify(["species"])`` will move ``species`` out
-        of the samples and into the features, producing:
+        Calling ``descriptor.densify(["species"])`` will move ``species`` out of
+        the samples and into the features, producing:
 
         ```text
                     +---------+-------+-------+-------+
@@ -200,16 +209,40 @@ class Descriptor:
         ```
 
         Notice how there is only one row/sample for each structure now, and how
-        each value for ``species`` have created a full block of features. Missing
-        values (e.g. structure 0/species 8) have been filled with 0.
+        each value for ``species`` have created a full block of features.
+        Missing values (e.g. structure 0/species 8) have been filled with 0.
         """
         if isinstance(variables, str):
             variables = [variables]
 
+        if requested is not None:
+            requested = np.array(requested)
+            if len(requested.shape) == 1:
+                requested = requested.reshape(requested.shape[0], 1)
+
+            if len(requested.shape) != 2 or requested.shape[1] != len(variables):
+                raise ValueError(
+                    "invalid requested features array shape: expected "
+                    + f"(N, {len(variables)}); got {requested.shape}"
+                )
+
+            if not np.can_cast(requested, np.int32, casting="same_kind"):
+                raise ValueError("the requested features must contain int32 values")
+            requested = np.array(requested, dtype=np.int32)
+
+            ptr_int32 = POINTER(c_int32)
+
+            requested_size = requested.shape[0]
+            requested = requested.ctypes.data_as(ptr_int32)
+        else:
+            requested_size = 0
+
         c_variables = ARRAY(c_char_p, len(variables))()
         for i, v in enumerate(variables):
             c_variables[i] = v.encode("utf8")
-        self._lib.rascal_descriptor_densify(self, c_variables, c_variables._length_)
+        self._lib.rascal_descriptor_densify(
+            self, c_variables, c_variables._length_, requested, requested_size
+        )
 
 
 def _ptr_to_ndarray(ptr, shape):

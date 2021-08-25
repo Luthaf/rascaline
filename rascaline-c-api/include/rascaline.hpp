@@ -351,8 +351,6 @@ public:
     /// contiguous memory containing `shape[0] x shape[1]` elements, to be
     /// interpreted as a 2D array in row-major order. The resulting `ArrayView`
     /// is only valid for as long as `data` is.
-    ///
-    /// This function is intended for internal use only.
     ArrayView(const T* data, std::array<size_t, 2> shape):
         ArrayView(data, shape, true) {}
 
@@ -639,14 +637,82 @@ public:
         return this->indexes(RASCAL_INDEXES_GRADIENT_SAMPLES);
     }
 
-    /// Move the values with names in ``variables`` from samples to features.
-    void densify(std::vector<std::string> variables) {
+
+    /// Make the given `descriptor` dense along the given `variables`.
+    ///
+    /// The `variable` array should contain the name of the variables as
+    /// NULL-terminated strings, and `variables_count` must be the number of
+    /// variables in the array.
+    ///
+    /// The `requested` parameter defines which set of values taken by the
+    /// `variables` should be part of the new features. If it is `NULL`, this is the
+    /// set of values taken by the variables in the samples. Otherwise, it must be a
+    /// pointer to the first element of a 2D row-major array with one row for each
+    /// new feature block, and one column for each variable. `requested_size` must
+    /// be the number of rows in this array.
+    ///
+    /// This function "moves" the variables from the samples to the features,
+    /// filling the new features with zeros if the corresponding sample is missing.
+    ///
+    /// For example, take a descriptor containing two samples variables (`structure`
+    /// and `species`) and two features (`n` and `l`). Starting with this
+    /// descriptor:
+    ///
+    /// ```text
+    ///                       +---+---+---+
+    ///                       | n | 0 | 1 |
+    ///                       +---+---+---+
+    ///                       | l | 0 | 1 |
+    /// +-----------+---------+===+===+===+
+    /// | structure | species |           |
+    /// +===========+=========+   +---+---+
+    /// |     0     |    1    |   | 1 | 2 |
+    /// +-----------+---------+   +---+---+
+    /// |     0     |    6    |   | 3 | 4 |
+    /// +-----------+---------+   +---+---+
+    /// |     1     |    6    |   | 5 | 6 |
+    /// +-----------+---------+   +---+---+
+    /// |     1     |    8    |   | 7 | 8 |
+    /// +-----------+---------+---+---+---+
+    /// ```
+    ///
+    /// Calling `descriptor.densify(["species"])` will move `species` out of the
+    /// samples and into the features, producing:
+    /// ```text
+    ///             +---------+-------+-------+-------+
+    ///             | species |   1   |   6   |   8   |
+    ///             +---------+---+---+---+---+---+---+
+    ///             |    n    | 0 | 1 | 0 | 1 | 0 | 1 |
+    ///             +---------+---+---+---+---+---+---+
+    ///             |    l    | 0 | 1 | 0 | 1 | 0 | 1 |
+    /// +-----------+=========+===+===+===+===+===+===+
+    /// | structure |
+    /// +===========+         +---+---+---+---+---+---+
+    /// |     0     |         | 1 | 2 | 3 | 4 | 0 | 0 |
+    /// +-----------+         +---+---+---+---+---+---+
+    /// |     1     |         | 0 | 0 | 5 | 6 | 7 | 8 |
+    /// +-----------+---------+---+---+---+---+---+---+
+    /// ```
+    ///
+    /// Notice how there is only one row/sample for each structure now, and how each
+    /// value for `species` have created a full block of features. Missing values
+    /// (e.g. structure 0/species 8) have been filled with 0.
+    void densify(
+        std::vector<std::string> variables,
+        const ArrayView<int32_t>& requested = ArrayView<int32_t>(static_cast<const int32_t*>(nullptr), {0, 0})
+    ) {
         auto c_variables = std::vector<const char*>(variables.size());
         for (size_t i=0; i<variables.size(); i++) {
             c_variables[i] = variables[i].data();
         }
         details::check_status(
-            rascal_descriptor_densify(descriptor_, c_variables.data(), variables.size())
+            rascal_descriptor_densify(
+                descriptor_,
+                c_variables.data(),
+                variables.size(),
+                requested.data(),
+                requested.shape()[0]
+            )
         );
     }
 

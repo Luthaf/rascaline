@@ -147,10 +147,16 @@ TEST_CASE("Descriptor") {
         descriptor.densify({"center"});
         CHECK(descriptor.values().shape() == std::array<size_t, 2>{1, 8});
 
+        compute_descriptor(descriptor);
+        auto requested = std::vector<int32_t>{1, 3, 7};
+        descriptor.densify({"center"}, rascaline::ArrayView<int32_t>(requested.data(), {3, 1}));
+        CHECK(descriptor.values().shape() == std::array<size_t, 2>{1, 6});
+
+        compute_descriptor(descriptor);
         CHECK_THROWS_WITH(
             descriptor.densify({"not there"}),
-            "internal error: can not densify along 'not there' which is not "
-            "present in the samples: [structure]"
+            "invalid parameter: can not densify along 'not there' which is not "
+            "present in the samples: [structure, center]"
         );
     }
 }
