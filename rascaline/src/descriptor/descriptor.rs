@@ -77,18 +77,63 @@ impl Descriptor {
         }
     }
 
-    #[time_graph::instrument]
-    pub fn densify(&mut self, variables: Vec<&str>) {
-        if variables.is_empty() {
+    /// Make this descriptor dense along the given `variables`.
+    ///
+    /// This function "moves" the variables from the samples to the features,
+    /// filling the new features with zeros if the corresponding sample is
+    /// missing.
+    ///
+    /// For example, take a descriptor containing two samples variables
+    /// (`structure` and `species`) and two features (`n` and `l`). Starting
+    /// with this descriptor:
+    ///
+    /// ```text
+    ///                       +---+---+---+
+    ///                       | n | 0 | 1 |
+    ///                       +---+---+---+
+    ///                       | l | 0 | 1 |
+    /// +-----------+---------+===+===+===+
+    /// | structure | species |           |
+    /// +===========+=========+   +---+---+
+    /// |     0     |    1    |   | 1 | 2 |
+    /// +-----------+---------+   +---+---+
+    /// |     0     |    6    |   | 3 | 4 |
+    /// +-----------+---------+   +---+---+
+    /// |     1     |    6    |   | 5 | 6 |
+    /// +-----------+---------+   +---+---+
+    /// |     1     |    8    |   | 7 | 8 |
+    /// +-----------+---------+---+---+---+
+    /// ```
+    ///
+    /// Calling `descriptor.densify(["species"])` will move `species` out
+    /// of the samples and into the features, producing:
+    /// ```text
+    ///             +---------+-------+-------+-------+
+    ///             | species |   1   |   6   |   8   |
+    ///             +---------+---+---+---+---+---+---+
+    ///             |    n    | 0 | 1 | 0 | 1 | 0 | 1 |
+    ///             +---------+---+---+---+---+---+---+
+    ///             |    l    | 0 | 1 | 0 | 1 | 0 | 1 |
+    /// +-----------+=========+===+===+===+===+===+===+
+    /// | structure |
+    /// +===========+         +---+---+---+---+---+---+
+    /// |     0     |         | 1 | 2 | 3 | 4 | 0 | 0 |
+    /// +-----------+         +---+---+---+---+---+---+
+    /// |     1     |         | 0 | 0 | 5 | 6 | 7 | 8 |
+    /// +-----------+---------+---+---+---+---+---+---+
+    /// ```
+    /// Notice how there is only one row/sample for each structure now, and how
+    /// each value for `species` have created a full block of features. Missing
+    /// values (e.g. structure 0/species 8) have been filled with 0.
+    #[time_graph::instrument(name="Descriptor::densify")]
+    pub fn densify(&mut self, variables: &[&str]) {
+        if variables.is_empty() || self.features.size() == 0 {
             return;
         }
 
-        // TODO: return Result and convert this to Error
-        assert!(self.features.size() > 0);
-
-        let new_samples = remove_from_samples(&self.samples, &variables);
+        let new_samples = remove_from_samples(&self.samples, variables);
         let new_gradients_samples = self.gradients_samples.as_ref().map(|indexes| {
-            let new_gradients_samples = remove_from_samples(indexes, &variables);
+            let new_gradients_samples = remove_from_samples(indexes, variables);
 
             if new_gradients_samples.new_features != new_samples.new_features {
                 let name = if variables.len() == 1 {
@@ -106,7 +151,7 @@ impl Descriptor {
         // something like [n, l, m] to [species_neighbor, n, l, m]; and fill it
         // with the corresponding values from `new_samples.new_features`,
         // duplicating the `[n, l, m]` block as needed
-        let mut feature_names = variables;
+        let mut feature_names = variables.to_vec();
         feature_names.extend(self.features.names());
         let mut new_features = IndexesBuilder::new(feature_names);
         for new in new_samples.new_features {
@@ -374,7 +419,7 @@ mod tests {
         ]);
 
         // where the magic happens
-        descriptor.densify(vec!["species"]);
+        descriptor.densify(&["species"]);
 
         assert_eq!(descriptor.values.shape(), [2, 9]);
         assert_eq!(descriptor.samples.names(), ["structure"]);
@@ -477,7 +522,7 @@ mod tests {
         ]);
 
         // where the magic happens
-        descriptor.densify(vec!["species_center", "species_neighbor"]);
+        descriptor.densify(&["species_center", "species_neighbor"]);
 
         assert_eq!(descriptor.values.shape(), [3, 9]);
         assert_eq!(descriptor.samples.names(), ["structure", "center"]);

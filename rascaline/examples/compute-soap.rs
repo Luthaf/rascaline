@@ -34,7 +34,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Transform the descriptor to dense representation,
     // with one sample for each atom-centered environment
-    descriptor.densify(vec!["species_neighbor_1", "species_neighbor_2"]);
+    descriptor.densify(&["species_neighbor_1", "species_neighbor_2"]);
 
     // you can now use descriptor.values as the
     // input of a machine learning algorithm
