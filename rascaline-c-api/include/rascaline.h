@@ -477,6 +477,59 @@ rascal_status_t rascal_descriptor_indexes_names(const struct rascal_descriptor_t
                                                 const char **names,
                                                 uintptr_t size);
 
+/**
+ * Make the given `descriptor` dense along the given `variables`.
+ *
+ * The `variable` array should contain the name of the variables as
+ * NULL-terminated strings, and `count` must be the number of variables in the
+ * array.
+ *
+ * This function "moves" the variables from the samples to the features,
+ * filling the new features with zeros if the corresponding sample is missing.
+ *
+ * For example, take a descriptor containing two samples variables (`structure`
+ * and `species`) and two features (`n` and `l`). Starting with this
+ * descriptor:
+ *
+ * ```text
+ *                       +---+---+---+
+ *                       | n | 0 | 1 |
+ *                       +---+---+---+
+ *                       | l | 0 | 1 |
+ * +-----------+---------+===+===+===+
+ * | structure | species |           |
+ * +===========+=========+   +---+---+
+ * |     0     |    1    |   | 1 | 2 |
+ * +-----------+---------+   +---+---+
+ * |     0     |    6    |   | 3 | 4 |
+ * +-----------+---------+   +---+---+
+ * |     1     |    6    |   | 5 | 6 |
+ * +-----------+---------+   +---+---+
+ * |     1     |    8    |   | 7 | 8 |
+ * +-----------+---------+---+---+---+
+ * ```
+ *
+ * Calling `descriptor.densify(["species"])` will move `species` out of the
+ * samples and into the features, producing:
+ * ```text
+ *             +---------+-------+-------+-------+
+ *             | species |   1   |   6   |   8   |
+ *             +---------+---+---+---+---+---+---+
+ *             |    n    | 0 | 1 | 0 | 1 | 0 | 1 |
+ *             +---------+---+---+---+---+---+---+
+ *             |    l    | 0 | 1 | 0 | 1 | 0 | 1 |
+ * +-----------+=========+===+===+===+===+===+===+
+ * | structure |
+ * +===========+         +---+---+---+---+---+---+
+ * |     0     |         | 1 | 2 | 3 | 4 | 0 | 0 |
+ * +-----------+         +---+---+---+---+---+---+
+ * |     1     |         | 0 | 0 | 5 | 6 | 7 | 8 |
+ * +-----------+---------+---+---+---+---+---+---+
+ * ```
+ * Notice how there is only one row/sample for each structure now, and how each
+ * value for `species` have created a full block of features. Missing values
+ * (e.g. structure 0/species 8) have been filled with 0.
+ */
 rascal_status_t rascal_descriptor_densify(struct rascal_descriptor_t *descriptor,
                                           const char *const *variables,
                                           uintptr_t count);

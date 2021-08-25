@@ -149,10 +149,59 @@ class Descriptor:
 
     def densify(self, variables):
         """
-        Move the values with names in ``variables`` from samples to features.
+        Make this descriptor dense along the given ``variables``.
 
         :param variables: names of the variables to move
         :type variables: str | list[str]
+
+        This function "moves" the variables from the samples to the features,
+        filling the new features with zeros if the corresponding sample is
+        missing.
+
+        For example, take a descriptor containing two samples variables
+        (``structure`` and ``species``) and two features (``n`` and ``l``).
+        Starting with this descriptor:
+
+        ```text
+                              +---+---+---+
+                              | n | 0 | 1 |
+                              +---+---+---+
+                              | l | 0 | 1 |
+        +-----------+---------+===+===+===+
+        | structure | species |           |
+        +===========+=========+   +---+---+
+        |     0     |    1    |   | 1 | 2 |
+        +-----------+---------+   +---+---+
+        |     0     |    6    |   | 3 | 4 |
+        +-----------+---------+   +---+---+
+        |     1     |    6    |   | 5 | 6 |
+        +-----------+---------+   +---+---+
+        |     1     |    8    |   | 7 | 8 |
+        +-----------+---------+---+---+---+
+        ```
+
+        Calling ``descriptor.densify(["species"])`` will move ``species`` out
+        of the samples and into the features, producing:
+
+        ```text
+                    +---------+-------+-------+-------+
+                    | species |   1   |   6   |   8   |
+                    +---------+---+---+---+---+---+---+
+                    |    n    | 0 | 1 | 0 | 1 | 0 | 1 |
+                    +---------+---+---+---+---+---+---+
+                    |    l    | 0 | 1 | 0 | 1 | 0 | 1 |
+        +-----------+=========+===+===+===+===+===+===+
+        | structure |
+        +===========+         +---+---+---+---+---+---+
+        |     0     |         | 1 | 2 | 3 | 4 | 0 | 0 |
+        +-----------+         +---+---+---+---+---+---+
+        |     1     |         | 0 | 0 | 5 | 6 | 7 | 8 |
+        +-----------+---------+---+---+---+---+---+---+
+        ```
+
+        Notice how there is only one row/sample for each structure now, and how
+        each value for ``species`` have created a full block of features. Missing
+        values (e.g. structure 0/species 8) have been filled with 0.
         """
         if isinstance(variables, str):
             variables = [variables]
