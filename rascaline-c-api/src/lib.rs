@@ -11,7 +11,7 @@ mod status;
 pub use self::status::{catch_unwind, rascal_status_t};
 pub use self::status::{RASCAL_SUCCESS, RASCAL_INVALID_PARAMETER_ERROR, RASCAL_JSON_ERROR};
 pub use self::status::{RASCAL_UTF8_ERROR, RASCAL_CHEMFILES_ERROR, RASCAL_SYSTEM_ERROR};
-pub use self::status::{RASCAL_INTERNAL_ERROR};
+pub use self::status::{RASCAL_BUFFER_SIZE_ERROR, RASCAL_INTERNAL_ERROR};
 
 mod logging;
 pub use self::logging::{RASCAL_LOG_LEVEL_ERROR, RASCAL_LOG_LEVEL_WARN, RASCAL_LOG_LEVEL_INFO};

@@ -876,7 +876,7 @@ public:
                 calculator_, &buffer[0], buffer.size()
             );
 
-            if (status != RASCAL_INVALID_PARAMETER_ERROR) {
+            if (status != RASCAL_BUFFER_SIZE_ERROR) {
                 details::check_status(status);
                 return std::string(buffer.data());
             }
@@ -894,7 +894,7 @@ public:
                 calculator_, &buffer[0], buffer.size()
             );
 
-            if (status != RASCAL_INVALID_PARAMETER_ERROR) {
+            if (status != RASCAL_BUFFER_SIZE_ERROR) {
                 details::check_status(status);
                 return std::string(buffer.data());
             }
@@ -1029,7 +1029,7 @@ public:
                 format.c_str(), &buffer[0], buffer.size()
             );
 
-            if (status != RASCAL_INVALID_PARAMETER_ERROR) {
+            if (status != RASCAL_BUFFER_SIZE_ERROR) {
                 details::check_status(status);
                 return std::string(buffer.data());
             }

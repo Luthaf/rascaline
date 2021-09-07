@@ -54,7 +54,7 @@ pub unsafe extern fn rascal_profiling_enable(enabled: bool) -> rascal_status_t {
 ///              `"short_table"` and `"json"` are currently supported
 /// @param buffer pre-allocated buffer in which profiling data will be copied.
 ///               If the buffer is too small, this function will return
-///               `RASCAL_INVALID_PARAMETER_ERROR`
+///               `RASCAL_BUFFER_SIZE_ERROR`
 /// @param bufflen size of the `buffer`
 ///
 /// @returns The status code of this operation. If the status is not

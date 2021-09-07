@@ -9,7 +9,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     time_graph::clear_collected_data();
 
     // run the calculation
-    let descriptor = compute_soap(&path)?;
+    let _descriptor = compute_soap(&path)?;
 
     // get the call graph and display it
     let graph = time_graph::get_full_graph();

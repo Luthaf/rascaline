@@ -95,9 +95,9 @@ pub unsafe extern fn rascal_calculator_free(calculator: *mut rascal_calculator_t
 /// Get a copy of the name of this calculator in the `name` buffer of size
 /// `bufflen`.
 ///
-///`name` will be NULL-terminated by this function. If the buffer is too small
+/// `name` will be NULL-terminated by this function. If the buffer is too small
 /// to fit the whole name, this function will return
-/// `RASCAL_INVALID_PARAMETER_ERROR`
+/// `RASCAL_BUFFER_SIZE_ERROR`
 ///
 /// @param calculator pointer to an existing calculator
 /// @param name string buffer to fill with the calculator name
@@ -124,7 +124,7 @@ pub unsafe extern fn rascal_calculator_name(
 ///
 /// `parameters` will be NULL-terminated by this function. If the buffer is too
 /// small to fit the whole name, this function will return
-/// `RASCAL_INVALID_PARAMETER_ERROR`.
+/// `RASCAL_BUFFER_SIZE_ERROR`.
 ///
 /// @param calculator pointer to an existing calculator
 /// @param parameters string buffer to fill with the parameters used to create
