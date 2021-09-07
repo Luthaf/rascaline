@@ -19,6 +19,7 @@ rascaline = {path = "../rascaline", version = "0.1.0", default-features = false}
 ndarray = "0.15"
 log = { version = "0.4", features = ["std"] }
 lazy_static = "1"
+time-graph = {version = "0.1.3", features = ["table", "json"]}
 
 [build-dependencies]
 cbindgen = "0.20"

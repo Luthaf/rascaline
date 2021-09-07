@@ -198,3 +198,20 @@ def setup_functions(lib):
         rascal_calculation_options_t
     ]
     lib.rascal_calculator_compute.restype = _check_rascal_status_t
+
+    lib.rascal_profiling_clear.argtypes = [
+        
+    ]
+    lib.rascal_profiling_clear.restype = _check_rascal_status_t
+
+    lib.rascal_profiling_enable.argtypes = [
+        ctypes.c_bool
+    ]
+    lib.rascal_profiling_enable.restype = _check_rascal_status_t
+
+    lib.rascal_profiling_get.argtypes = [
+        ctypes.c_char_p,
+        ctypes.c_char_p,
+        c_uintptr_t
+    ]
+    lib.rascal_profiling_get.restype = _check_rascal_status_t

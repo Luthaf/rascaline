@@ -338,7 +338,7 @@ pub struct NeighborsList {
 }
 
 impl NeighborsList {
-    #[time_graph::instrument(name = "neighbor list")]
+    #[time_graph::instrument(name = "NeighborsList")]
     pub fn new(positions: &[Vector3D], unit_cell: UnitCell, cutoff: f64) -> NeighborsList {
         let mut cell_list = CellList::new(unit_cell, cutoff);
 

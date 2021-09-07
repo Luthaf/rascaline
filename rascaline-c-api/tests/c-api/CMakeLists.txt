@@ -71,4 +71,9 @@ add_test(
     COMMAND ${TEST_COMMAND} $<TARGET_FILE:example-compute-soap> ${XYZ_EXAMPLE_FILE}
 )
 
+add_test(
+    NAME example-c-profiling
+    COMMAND ${TEST_COMMAND} $<TARGET_FILE:example-profiling> ${XYZ_EXAMPLE_FILE}
+)
+
 add_subdirectory(cxx)

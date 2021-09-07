@@ -24,3 +24,8 @@ add_test(
     NAME example-cxx-compute-soap
     COMMAND ${TEST_COMMAND} $<TARGET_FILE:example-cxx-compute-soap> ${XYZ_EXAMPLE_FILE}
 )
+
+add_test(
+    NAME example-cxx-profiling
+    COMMAND ${TEST_COMMAND} $<TARGET_FILE:example-cxx-profiling> ${XYZ_EXAMPLE_FILE}
+)

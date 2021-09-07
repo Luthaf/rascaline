@@ -167,7 +167,7 @@ impl Calculator {
     ///
     /// This function computes the full descriptor, using all samples and all
     /// features.
-    #[allow(clippy::shadow_unrelated)]
+    #[time_graph::instrument(name = "Calculator::compute")]
     pub fn compute(
         &mut self,
         systems: &mut [Box<dyn System>],
@@ -188,15 +188,17 @@ impl Calculator {
         let features = options.selected_features.into_features(&*self.implementation)?;
         let samples = options.selected_samples.into_samples(&*self.implementation, systems)?;
 
-        let builder = self.implementation.samples_builder();
-        if self.implementation.compute_gradients() {
-            let gradients = builder
-                .gradients_for(systems, &samples)?
-                .expect("this samples definition do not support gradients");
-            descriptor.prepare_gradients(samples, gradients, features);
-        } else {
-            descriptor.prepare(samples, features);
-        }
+        time_graph::spanned!("Calculator::prepare", {
+            let builder = self.implementation.samples_builder();
+            if self.implementation.compute_gradients() {
+                let gradients = builder
+                    .gradients_for(systems, &samples)?
+                    .expect("this samples definition do not support gradients");
+                descriptor.prepare_gradients(samples, gradients, features);
+            } else {
+                descriptor.prepare(samples, features);
+            }
+        });
 
         self.implementation.compute(systems, descriptor)?;
         return Ok(());

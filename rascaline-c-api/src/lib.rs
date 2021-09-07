@@ -21,3 +21,5 @@ pub use self::logging::{rascal_logging_callback_t, rascal_set_logging_callback};
 pub mod system;
 pub mod descriptor;
 pub mod calculator;
+
+pub mod profiling;

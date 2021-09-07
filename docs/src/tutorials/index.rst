@@ -10,3 +10,4 @@ languages, including at least Rust and Python.
 
     descriptor
     computing-soap
+    profiling
