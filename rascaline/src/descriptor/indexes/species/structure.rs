@@ -23,7 +23,6 @@ impl SamplesBuilder for StructureSpeciesSamples {
         return Some(names);
     }
 
-    #[time_graph::instrument(name = "StructureSpeciesSamples::samples")]
     fn samples(&self, systems: &mut [Box<dyn System>]) -> Result<Indexes, Error> {
         let mut indexes = IndexesBuilder::new(self.names());
         for (i_system, system) in systems.iter().enumerate() {
@@ -36,7 +35,6 @@ impl SamplesBuilder for StructureSpeciesSamples {
         return Ok(indexes.finish());
     }
 
-    #[time_graph::instrument(name = "StructureSpeciesSamples::gradients_for")]
     fn gradients_for(&self, systems: &mut [Box<dyn System>], samples: &Indexes) -> Result<Option<Indexes>, Error> {
         assert_eq!(samples.names(), self.names());
 

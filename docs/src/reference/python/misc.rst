@@ -9,3 +9,7 @@ Miscelaneous
 .. autofunction:: rascaline.set_logging_callback
 
 .. autofunction:: rascaline.log.default_logging_callback
+
+.. autoclass:: rascaline.Profiler
+    :members:
+    :undoc-members:

@@ -35,3 +35,14 @@
    fun:_ZN10rayon_core8registry8Registry3new*
    ...
 }
+
+{
+   <Hashbrown HashMap alloc>
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   fun:_ZN9hashbrown3raw22RawTableInner$LT$A$GT$14prepare_resize*
+   fun:_ZN9hashbrown3raw21RawTable$LT$T$C$A$GT$14reserve_rehash*
+   ...
+   fun:_ZN10term_table10table_cell9TableCell15wrapped_content*
+}

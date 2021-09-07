@@ -5,3 +5,6 @@ recommonmark
 sphinx-tabs
 furo
 toml
+
+# required for autodoc
+numpy

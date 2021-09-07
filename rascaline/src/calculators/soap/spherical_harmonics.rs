@@ -288,7 +288,7 @@ impl SphericalHarmonics {
     /// Evaluate all spherical harmonics for the given `direction`, and store
     /// the results in `values`. If `gradients` is `Some`, then this function
     /// also computes cartesian gradients and store them in `gradients`.
-    #[time_graph::instrument(name = "spherical harmonics")]
+    #[time_graph::instrument(name = "SphericalHarmonics::compute")]
     pub fn compute(
         &mut self,
         direction: Vector3D,

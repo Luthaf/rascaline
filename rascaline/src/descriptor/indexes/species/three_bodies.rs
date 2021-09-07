@@ -83,7 +83,6 @@ impl SamplesBuilder for ThreeBodiesSpeciesSamples {
         return Some(names);
     }
 
-    #[time_graph::instrument(name = "ThreeBodiesSpeciesSamples::samples")]
     fn samples(&self, systems: &mut [Box<dyn System>]) -> Result<Indexes, Error> {
         // Accumulate indexes in a set first to ensure uniqueness of the indexes
         // even if their are multiple neighbors of the same specie around a
@@ -137,7 +136,6 @@ impl SamplesBuilder for ThreeBodiesSpeciesSamples {
         return Ok(indexes.finish());
     }
 
-    #[time_graph::instrument(name = "ThreeBodiesSpeciesSamples::gradients_for")]
     fn gradients_for(&self, systems: &mut [Box<dyn System>], samples: &Indexes) ->Result<Option<Indexes>, Error> {
         assert_eq!(samples.names(), self.names());
 

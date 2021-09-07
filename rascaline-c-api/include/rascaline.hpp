@@ -347,13 +347,21 @@ public:
     /// Create a new empty `ArrayView`, with shape `[0, 0]`.
     ArrayView(): ArrayView(nullptr, {0, 0}, true) {}
 
-    /// Create a new `ArrayView` with the given `shape`. `data` must point to
-    /// contiguous memory containing `shape[0] x shape[1]` elements, to be
-    /// interpreted as a 2D array in row-major order. The resulting `ArrayView`
-    /// is only valid for as long as `data` is.
+    /// Create a new `ArrayView` pointing to `const` memory with the given
+    /// `shape`.
+    ///
+    /// `data` must point to contiguous memory containing `shape[0] x shape[1]`
+    /// elements, to be interpreted as a 2D array in row-major order. The
+    /// resulting `ArrayView` is only valid for as long as `data` is.
     ArrayView(const T* data, std::array<size_t, 2> shape):
         ArrayView(data, shape, true) {}
 
+    /// Create a new `ArrayView` pointing to non-`const` memory with the given
+    /// `shape`.
+    ///
+    /// `data` must point to contiguous memory containing `shape[0] x shape[1]`
+    /// elements, to be interpreted as a 2D array in row-major order. The
+    /// resulting `ArrayView` is only valid for as long as `data` is.
     ArrayView(T* data, std::array<size_t, 2> shape):
         ArrayView(data, shape, false) {}
 
@@ -404,6 +412,10 @@ public:
     }
 
 private:
+    /// Create an ArrayView from a pointer to the (row-major) data & shape.
+    ///
+    /// The `is_const` parameter controls whether this class should allow
+    /// non-const access to the data.
     ArrayView(const T* data, std::array<size_t, 2> shape, bool is_const):
         data_(const_cast<T*>(data)),
         shape_(shape),
@@ -973,6 +985,64 @@ public:
 
 private:
     rascal_calculator_t* calculator_;
+};
+
+
+/// Rascaline uses the [`time_graph`](https://docs.rs/time-graph/) to collect
+/// timing information on the calculations. The `Profiler` static class provides
+/// access to this functionality.
+///
+/// The profiling code collects the total time spent inside the most important
+/// functions, as well as the function call graph (which function called which
+/// other function).
+class Profiler {
+public:
+    /// Enable or disable profiling data collection. By default, data collection
+    /// is disabled.
+    ///
+    /// You can use `Profiler::clear` to reset profiling data to an empty state,
+    /// and `Profiler::get` to extract the profiling data.
+    ///
+    /// @param enabled whether data collection should be enabled or not
+    static void enable(bool enabled) {
+        details::check_status(rascal_profiling_enable(enabled));
+    }
+
+    /// Clear all collected profiling data
+    ///
+    /// See also `Profiler::enable` and `Profiler::get`.
+    static void clear() {
+        details::check_status(rascal_profiling_clear());
+    }
+
+    /// Extract the current set of data collected for profiling.
+    ///
+    /// See also `Profiler::enable` and `Profiler::clear`.
+    ///
+    /// @param format in which format should the data be provided. `"table"`,
+    ///              `"short_table"` and `"json"` are currently supported
+    /// @returns the current profiling data, in the requested format
+    static std::string get(std::string format) {
+        auto buffer = std::vector<char>(1024, '\0');
+        while (true) {
+            auto status = rascal_profiling_get(
+                format.c_str(), &buffer[0], buffer.size()
+            );
+
+            if (status != RASCAL_INVALID_PARAMETER_ERROR) {
+                details::check_status(status);
+                return std::string(buffer.data());
+            }
+
+            // grow the buffer and retry
+            buffer.resize(buffer.size() * 2, '\0');
+        }
+    }
+
+private:
+    // make the constructor private and undefined since this class only offers
+    // static functions.
+    Profiler();
 };
 
 }

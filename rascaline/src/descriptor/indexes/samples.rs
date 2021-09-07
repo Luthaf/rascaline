@@ -25,7 +25,6 @@ impl SamplesBuilder for StructureSamples {
         return Some(names);
     }
 
-    #[time_graph::instrument(name = "StructureSamples::samples")]
     fn samples(&self, systems: &mut [Box<dyn System>]) -> Result<Indexes, Error> {
         let mut indexes = IndexesBuilder::new(self.names());
         for system in 0..systems.len() {
@@ -34,7 +33,6 @@ impl SamplesBuilder for StructureSamples {
         return Ok(indexes.finish());
     }
 
-    #[time_graph::instrument(name = "StructureSamples::gradients_for")]
     fn gradients_for(&self, systems: &mut [Box<dyn System>], samples: &Indexes) -> Result<Option<Indexes>, Error> {
         assert_eq!(samples.names(), self.names());
 
@@ -87,7 +85,6 @@ impl SamplesBuilder for AtomSamples {
         return Some(names);
     }
 
-    #[time_graph::instrument(name = "AtomSamples::samples")]
     fn samples(&self, systems: &mut [Box<dyn System>]) -> Result<Indexes, Error> {
         let mut indexes = IndexesBuilder::new(self.names());
         for (i_system, system) in systems.iter().enumerate() {
@@ -98,7 +95,6 @@ impl SamplesBuilder for AtomSamples {
         return Ok(indexes.finish());
     }
 
-    #[time_graph::instrument(name = "AtomSamples::gradients_for")]
     fn gradients_for(&self, systems: &mut [Box<dyn System>], samples: &Indexes) -> Result<Option<Indexes>, Error> {
         assert_eq!(samples.names(), self.names());
 

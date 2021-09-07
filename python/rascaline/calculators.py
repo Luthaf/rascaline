@@ -4,31 +4,11 @@ import ctypes
 import numpy as np
 
 from ._rascaline import rascal_system_t, rascal_calculation_options_t
-from ._rascaline import RASCAL_INVALID_PARAMETER_ERROR
 from .clib import _get_library
 from .status import _check_rascal_pointer, RascalError
 from .descriptor import Descriptor
 from .systems import wrap_system
-
-
-def _call_with_growing_buffer(callback, initial=1024):
-    bufflen = initial
-
-    while True:
-        buffer = ctypes.create_string_buffer(bufflen)
-        try:
-            callback(buffer, bufflen)
-            break
-        except RascalError as e:
-            if (
-                e.status == RASCAL_INVALID_PARAMETER_ERROR
-                and "string buffer is not big enough" in e.args[0]
-            ):
-                # grow the buffer and retry
-                bufflen *= 2
-            else:
-                raise
-    return buffer.value.decode("utf8")
+from .utils import _call_with_growing_buffer
 
 
 def _check_selected_indexes(indexes, kind):
