@@ -45,6 +45,11 @@
 #define RASCAL_SYSTEM_ERROR 128
 
 /**
+ * Status code used when a memory buffer is too small to fit the requested data
+ */
+#define RASCAL_BUFFER_SIZE_ERROR 254
+
+/**
  * Status code used when there was an internal error, i.e. there is a bug
  * inside rascaline
  */
@@ -586,9 +591,9 @@ rascal_status_t rascal_calculator_free(struct rascal_calculator_t *calculator);
  * Get a copy of the name of this calculator in the `name` buffer of size
  * `bufflen`.
  *
- *`name` will be NULL-terminated by this function. If the buffer is too small
+ * `name` will be NULL-terminated by this function. If the buffer is too small
  * to fit the whole name, this function will return
- * `RASCAL_INVALID_PARAMETER_ERROR`
+ * `RASCAL_BUFFER_SIZE_ERROR`
  *
  * @param calculator pointer to an existing calculator
  * @param name string buffer to fill with the calculator name
@@ -608,7 +613,7 @@ rascal_status_t rascal_calculator_name(const struct rascal_calculator_t *calcula
  *
  * `parameters` will be NULL-terminated by this function. If the buffer is too
  * small to fit the whole name, this function will return
- * `RASCAL_INVALID_PARAMETER_ERROR`.
+ * `RASCAL_BUFFER_SIZE_ERROR`.
  *
  * @param calculator pointer to an existing calculator
  * @param parameters string buffer to fill with the parameters used to create
@@ -701,7 +706,7 @@ rascal_status_t rascal_profiling_enable(bool enabled);
  *              `"short_table"` and `"json"` are currently supported
  * @param buffer pre-allocated buffer in which profiling data will be copied.
  *               If the buffer is too small, this function will return
- *               `RASCAL_INVALID_PARAMETER_ERROR`
+ *               `RASCAL_BUFFER_SIZE_ERROR`
  * @param bufflen size of the `buffer`
  *
  * @returns The status code of this operation. If the status is not

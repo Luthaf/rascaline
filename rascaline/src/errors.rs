@@ -17,6 +17,9 @@ pub enum Error {
         status: i32,
         message: String
     },
+    /// Error used when a memory buffer is too small to fit the requested data,
+    /// usually in the C API.
+    BufferSize(String),
     /// Error used for failed internal consistency check and panics, i.e. bugs
     /// in rascaline.
     Internal(String),
@@ -29,6 +32,7 @@ impl std::fmt::Display for Error {
             Error::Json(e) => write!(f, "json error: {}", e),
             Error::Utf8(e) => write!(f, "utf8 decoding error: {}", e),
             Error::Chemfiles(e) => write!(f, "chemfiles error: {}", e),
+            Error::BufferSize(e) => write!(f, "buffer is not big enough: {}", e),
             Error::External{status, message} => write!(f, "error from external code (status {}): {}", status, message),
             Error::Internal(e) => write!(f, "internal error: {}", e),
         }
@@ -41,6 +45,7 @@ impl std::error::Error for Error {
             Error::InvalidParameter(_) |
             Error::Internal(_) |
             Error::Chemfiles(_) |
+            Error::BufferSize(_) |
             Error::External{..} => None,
             Error::Json(e) => Some(e),
             Error::Utf8(e) => Some(e),

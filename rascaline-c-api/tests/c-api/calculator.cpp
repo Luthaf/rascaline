@@ -45,7 +45,7 @@ TEST_CASE("calculator name") {
 
         char* buffer = new char[4096];
         auto status = rascal_calculator_name(calculator, buffer, 256);
-        CHECK(status == RASCAL_INVALID_PARAMETER_ERROR);
+        CHECK(status == RASCAL_BUFFER_SIZE_ERROR);
 
         CHECK_SUCCESS(rascal_calculator_name(calculator, buffer, 4096));
         std::string expected = "dummy test calculator with cutoff: 3.5 - delta: 25 - ";
@@ -89,7 +89,7 @@ TEST_CASE("calculator parameters") {
 
         char* buffer = new char[4096];
         auto status = rascal_calculator_parameters(calculator, buffer, 256);
-        CHECK(status == RASCAL_INVALID_PARAMETER_ERROR);
+        CHECK(status == RASCAL_BUFFER_SIZE_ERROR);
 
         CHECK_SUCCESS(rascal_calculator_parameters(calculator, buffer, 4096));
         CHECK(buffer == HYPERS_JSON);

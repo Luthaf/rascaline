@@ -48,6 +48,8 @@ pub const RASCAL_CHEMFILES_ERROR: i32 = 4;
 /// Status code used for errors coming from the system implementation if we
 /// don't have a more specific status
 pub const RASCAL_SYSTEM_ERROR: i32 = 128;
+/// Status code used when a memory buffer is too small to fit the requested data
+pub const RASCAL_BUFFER_SIZE_ERROR: i32 = 254;
 /// Status code used when there was an internal error, i.e. there is a bug
 /// inside rascaline
 pub const RASCAL_INTERNAL_ERROR: i32 = 255;
@@ -64,7 +66,14 @@ impl From<Error> for rascal_status_t {
             Error::Json(_) => rascal_status_t(RASCAL_JSON_ERROR),
             Error::Utf8(_) => rascal_status_t(RASCAL_UTF8_ERROR),
             Error::Chemfiles(_) => rascal_status_t(RASCAL_CHEMFILES_ERROR),
-            Error::External{status, ..} => rascal_status_t(status),
+            Error::BufferSize(_) => rascal_status_t(RASCAL_BUFFER_SIZE_ERROR),
+            Error::External{status, ..} => {
+                if status < 0 {
+                    rascal_status_t(status)
+                } else {
+                    rascal_status_t(RASCAL_SYSTEM_ERROR)
+                }
+            },
             Error::Internal(_) => rascal_status_t(RASCAL_INTERNAL_ERROR),
             _ => rascal_status_t(RASCAL_INTERNAL_ERROR),
         }

@@ -2,7 +2,6 @@
 import json
 import ctypes
 
-from ._rascaline import RASCAL_INVALID_PARAMETER_ERROR
 from .clib import _get_library
 from .utils import _call_with_growing_buffer
 
