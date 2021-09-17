@@ -1,5 +1,3 @@
-#![allow(dead_code, unused_variables, clippy::pedantic, clippy::all)]
-
 use ndarray::{Array2, ArrayViewMut2, azip};
 use log::info;
 
@@ -44,6 +42,7 @@ pub struct SplinedRIParameters {
 }
 
 impl SplinedRadialIntegral {
+    #[allow(clippy::float_cmp)]
     fn new(
         parameters: SplinedRIParameters,
         mut points: Vec<HermitSplinePoint>,
@@ -141,19 +140,19 @@ impl SplinedRadialIntegral {
                     accuracy, spline.len(), max_absolute_error,
                 );
                 break;
-            } else {
-                if spline.len() + new_points.len() > MAX_SPLINE_SIZE {
-                    return Err(Error::Internal(format!(
-                        "failed to reach requested accuracy ({:e}) in spline interpolation for radial integral, \
-                        the best we got was {:e}",
-                        accuracy, max_absolute_error
-                    )));
-                }
+            }
 
-                // add more points and continue
-                for point in new_points {
-                    spline.add_point(point);
-                }
+            if spline.len() + new_points.len() > MAX_SPLINE_SIZE {
+                return Err(Error::Internal(format!(
+                    "failed to reach requested accuracy ({:e}) in spline interpolation for radial integral, \
+                    the best we got was {:e}",
+                    accuracy, max_absolute_error
+                )));
+            }
+
+            // add more points and continue
+            for point in new_points {
+                spline.add_point(point);
             }
         }
 
@@ -167,7 +166,7 @@ impl SplinedRadialIntegral {
         match self.points.binary_search_by(
             |v| v.position.partial_cmp(&point.position).expect("got NaN")
         ) {
-            Ok(k) => panic!("trying to add the same point twice to the spline"),
+            Ok(_) => panic!("trying to add the same point twice to the spline"),
             Err(k) => self.points.insert(k, point)
         }
     }
@@ -260,10 +259,11 @@ mod tests {
     #[test]
     fn evaluate_simple_spline() {
         let accuracy = 1e-9;
+        let cutoff = 6.0;
         let parameters = SplinedRIParameters {
             max_radial: 1,
             max_angular: 0,
-            cutoff: 6.0,
+            cutoff: cutoff,
         };
         let shape = (1, 1);
         let spline = SplinedRadialIntegral::with_accuracy(
@@ -279,11 +279,10 @@ mod tests {
             assert_relative_eq!(gradients[[0, 0]], f64::cos(x), max_relative=1e-5);
         }
 
-        // check that the values match exactly at the control points
-        let positions = spline.positions();
-        for i in 0..(positions.len() - 1) {
-            let x = positions[i];
-
+        // check that the values match exactly at the control points. The only
+        // exception is the last control point (i.e. the cutoff) were we can not
+        // compute the spline.
+        for &x in spline.positions().iter().filter(|&&x| x < cutoff) {
             let mut values = Array2::from_elem(shape, 0.0);
             let mut gradients = Array2::from_elem(shape, 0.0);
 
@@ -321,6 +320,7 @@ mod tests {
             atomic_gaussian_width: 0.5,
         }).unwrap();
 
+        // this test only check that this code runs without crashing
         SplinedRadialIntegral::with_accuracy(parameters, 1e-10, gto).unwrap();
     }
 
