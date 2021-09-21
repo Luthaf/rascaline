@@ -735,7 +735,7 @@ impl CalculatorBase for SphericalExpansion {
                     pairs.par_iter()
                         .map(|pair| (pair, sender_values.clone(), sender_grad.clone()))
                         .for_each(|(pair, sender_values, sender_grad)| {
-                            let pair = Pair {
+                            let mut pair = Pair {
                                 system: i_system,
                                 first: pair.first,
                                 second: pair.second,
@@ -744,6 +744,16 @@ impl CalculatorBase for SphericalExpansion {
                                 distance: pair.distance,
                                 direction: pair.vector / pair.distance,
                             };
+
+                            // Deal with the possibility that two atoms are at
+                            // the same position. While this is not usual, there
+                            // is no reason to prevent the calculation of
+                            // spherical expansion. The user will still get a
+                            // warning about atoms being very close together
+                            // when calculating the neighbor list.
+                            if pair.distance < 1e-6 {
+                                pair.direction = Vector3D::new(0.0, 0.0, 1.0);
+                            }
 
                             this.accumulate_for_pair(
                                 &sender_values,

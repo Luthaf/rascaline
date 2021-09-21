@@ -1,3 +1,4 @@
+use log::warn;
 use ndarray::Array3;
 
 use crate::{Matrix3, Vector3D};
@@ -360,6 +361,13 @@ impl NeighborsList {
 
             let distance2 = vector * vector;
             if distance2 < cutoff2 {
+                if distance2 < 1e-3 {
+                    warn!(
+                        "atoms {} and {} are very close to one another ({} A)",
+                        pair.first, pair.second, distance2.sqrt()
+                    );
+                }
+
                 let pair = Pair {
                     first: pair.first,
                     second: pair.second,
