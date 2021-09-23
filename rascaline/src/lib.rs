@@ -31,3 +31,8 @@ mod calculator;
 pub use calculator::{Calculator, CalculationOptions, SelectedIndexes};
 
 pub mod calculators;
+
+
+// only try to build the tutorials in test mode
+#[cfg(test)]
+mod tutorials;
