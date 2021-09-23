@@ -227,6 +227,9 @@ macro_rules! add_calculator {
     );
 }
 
+// this code is included in the calculator tutorial, the tags below indicate the
+// first/last line to include
+// [calculator-registration]
 lazy_static::lazy_static!{
     pub static ref REGISTERED_CALCULATORS: BTreeMap<&'static str, CalculatorCreator> = {
         let mut map = BTreeMap::new();
@@ -237,3 +240,4 @@ lazy_static::lazy_static!{
         return map;
     };
 }
+// [calculator-registration]

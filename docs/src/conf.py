@@ -68,6 +68,7 @@ extensions = [
     "breathe",
     "sphinx_tabs.tabs",
     "rascaline_json_schema",
+    "html_hidden",
 ]
 
 # Add any paths that contain templates here, relative to this directory.

@@ -1,3 +1,5 @@
+.. _dev-getting-started:
+
 Getting started
 ===============
 
