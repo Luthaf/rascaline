@@ -139,18 +139,14 @@ impl SamplesBuilder for TwoBodiesSpeciesSamples {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::systems::test_systems;
+    use crate::systems::test_utils::test_systems;
 
-    /// Convenience macro to create IndexValue
-    macro_rules! v {
-        ($value: expr) => {
-            crate::descriptor::indexes::IndexValue::from($value)
-        };
-    }
+    // small helper function to create IndexValue
+    fn v(i: i32) -> IndexValue { IndexValue::from(i) }
 
     #[test]
     fn samples() {
-        let mut systems = test_systems(&["CH", "water"]).boxed();
+        let mut systems = test_systems(&["CH", "water"]);
         let builder = TwoBodiesSpeciesSamples::new(2.0);
         assert_eq!(builder.names(), &["structure", "center", "species_center", "species_neighbor"]);
 
@@ -159,25 +155,25 @@ mod tests {
         assert_eq!(samples.count(), 7);
         assert_eq!(samples.iter().collect::<Vec<_>>(), vec![
             // C channel around H in CH
-            &[v!(0), v!(0), v!(1), v!(6)],
+            &[v(0), v(0), v(1), v(6)],
             // H channel around C in CH
-            &[v!(0), v!(1), v!(6), v!(1)],
+            &[v(0), v(1), v(6), v(1)],
             // H channel around O in water
-            &[v!(1), v!(0), v!(123456), v!(1)],
+            &[v(1), v(0), v(123456), v(1)],
             // H channel around the first H in water
-            &[v!(1), v!(1), v!(1), v!(1)],
+            &[v(1), v(1), v(1), v(1)],
             // O channel around the first H in water
-            &[v!(1), v!(1), v!(1), v!(123456)],
+            &[v(1), v(1), v(1), v(123456)],
             // H channel around the second H in water
-            &[v!(1), v!(2), v!(1), v!(1)],
+            &[v(1), v(2), v(1), v(1)],
             // O channel around the second H in water
-            &[v!(1), v!(2), v!(1), v!(123456)],
+            &[v(1), v(2), v(1), v(123456)],
         ]);
     }
 
     #[test]
     fn gradients() {
-        let mut systems = test_systems(&["CH"]).boxed();
+        let mut systems = test_systems(&["CH"]);
         let builder = TwoBodiesSpeciesSamples::new(2.0);
         assert_eq!(
             builder.gradients_names().unwrap(),
@@ -190,33 +186,33 @@ mod tests {
         assert_eq!(gradients.count(), 12);
         assert_eq!(gradients.iter().collect::<Vec<_>>(), vec![
             // C channel around H, derivative w.r.t. H
-            &[v!(0), v!(0), v!(1), v!(6), v!(0), v!(0)],
-            &[v!(0), v!(0), v!(1), v!(6), v!(0), v!(1)],
-            &[v!(0), v!(0), v!(1), v!(6), v!(0), v!(2)],
+            &[v(0), v(0), v(1), v(6), v(0), v(0)],
+            &[v(0), v(0), v(1), v(6), v(0), v(1)],
+            &[v(0), v(0), v(1), v(6), v(0), v(2)],
             // C channel around H, derivative w.r.t. C
-            &[v!(0), v!(0), v!(1), v!(6), v!(1), v!(0)],
-            &[v!(0), v!(0), v!(1), v!(6), v!(1), v!(1)],
-            &[v!(0), v!(0), v!(1), v!(6), v!(1), v!(2)],
+            &[v(0), v(0), v(1), v(6), v(1), v(0)],
+            &[v(0), v(0), v(1), v(6), v(1), v(1)],
+            &[v(0), v(0), v(1), v(6), v(1), v(2)],
             // H channel around C, derivative w.r.t. C
-            &[v!(0), v!(1), v!(6), v!(1), v!(1), v!(0)],
-            &[v!(0), v!(1), v!(6), v!(1), v!(1), v!(1)],
-            &[v!(0), v!(1), v!(6), v!(1), v!(1), v!(2)],
+            &[v(0), v(1), v(6), v(1), v(1), v(0)],
+            &[v(0), v(1), v(6), v(1), v(1), v(1)],
+            &[v(0), v(1), v(6), v(1), v(1), v(2)],
             // H channel around C, derivative w.r.t. H
-            &[v!(0), v!(1), v!(6), v!(1), v!(0), v!(0)],
-            &[v!(0), v!(1), v!(6), v!(1), v!(0), v!(1)],
-            &[v!(0), v!(1), v!(6), v!(1), v!(0), v!(2)]
+            &[v(0), v(1), v(6), v(1), v(0), v(0)],
+            &[v(0), v(1), v(6), v(1), v(0), v(1)],
+            &[v(0), v(1), v(6), v(1), v(0), v(2)]
         ]);
     }
 
     #[test]
     fn partial_gradients() {
         let mut samples = IndexesBuilder::new(vec!["structure", "center", "species_center", "species_neighbor"]);
-        samples.add(&[v!(1), v!(0), v!(123456), v!(1)]);
-        samples.add(&[v!(0), v!(0), v!(1), v!(6)]);
-        samples.add(&[v!(1), v!(1), v!(1), v!(1)]);
+        samples.add(&[v(1), v(0), v(123456), v(1)]);
+        samples.add(&[v(0), v(0), v(1), v(6)]);
+        samples.add(&[v(1), v(1), v(1), v(1)]);
         let samples = samples.finish();
 
-        let mut systems = test_systems(&["CH", "water"]).boxed();
+        let mut systems = test_systems(&["CH", "water"]);
         let builder = TwoBodiesSpeciesSamples::new(2.0);
         let gradients = builder.gradients_for(&mut systems, &samples).unwrap();
         let gradients = gradients.unwrap();
@@ -225,39 +221,39 @@ mod tests {
         assert_eq!(gradients.names(), builder.gradients_names().unwrap());
         assert_eq!(gradients.iter().collect::<Vec<_>>(), vec![
             // H channel around O in water, derivative w.r.t. O
-            &[v!(1), v!(0), v!(123456), v!(1), v!(0), v!(0)],
-            &[v!(1), v!(0), v!(123456), v!(1), v!(0), v!(1)],
-            &[v!(1), v!(0), v!(123456), v!(1), v!(0), v!(2)],
+            &[v(1), v(0), v(123456), v(1), v(0), v(0)],
+            &[v(1), v(0), v(123456), v(1), v(0), v(1)],
+            &[v(1), v(0), v(123456), v(1), v(0), v(2)],
             // H channel around O in water, derivative w.r.t. H1
-            &[v!(1), v!(0), v!(123456), v!(1), v!(1), v!(0)],
-            &[v!(1), v!(0), v!(123456), v!(1), v!(1), v!(1)],
-            &[v!(1), v!(0), v!(123456), v!(1), v!(1), v!(2)],
+            &[v(1), v(0), v(123456), v(1), v(1), v(0)],
+            &[v(1), v(0), v(123456), v(1), v(1), v(1)],
+            &[v(1), v(0), v(123456), v(1), v(1), v(2)],
             // H channel around O in water, derivative w.r.t. H2
-            &[v!(1), v!(0), v!(123456), v!(1), v!(2), v!(0)],
-            &[v!(1), v!(0), v!(123456), v!(1), v!(2), v!(1)],
-            &[v!(1), v!(0), v!(123456), v!(1), v!(2), v!(2)],
+            &[v(1), v(0), v(123456), v(1), v(2), v(0)],
+            &[v(1), v(0), v(123456), v(1), v(2), v(1)],
+            &[v(1), v(0), v(123456), v(1), v(2), v(2)],
             // C channel around H in CH, derivative w.r.t. H
-            &[v!(0), v!(0), v!(1), v!(6), v!(0), v!(0)],
-            &[v!(0), v!(0), v!(1), v!(6), v!(0), v!(1)],
-            &[v!(0), v!(0), v!(1), v!(6), v!(0), v!(2)],
+            &[v(0), v(0), v(1), v(6), v(0), v(0)],
+            &[v(0), v(0), v(1), v(6), v(0), v(1)],
+            &[v(0), v(0), v(1), v(6), v(0), v(2)],
             // C channel around H in CH, derivative w.r.t. C
-            &[v!(0), v!(0), v!(1), v!(6), v!(1), v!(0)],
-            &[v!(0), v!(0), v!(1), v!(6), v!(1), v!(1)],
-            &[v!(0), v!(0), v!(1), v!(6), v!(1), v!(2)],
+            &[v(0), v(0), v(1), v(6), v(1), v(0)],
+            &[v(0), v(0), v(1), v(6), v(1), v(1)],
+            &[v(0), v(0), v(1), v(6), v(1), v(2)],
             // H channel around H1 in water, derivative w.r.t. H1
-            &[v!(1), v!(1), v!(1), v!(1), v!(1), v!(0)],
-            &[v!(1), v!(1), v!(1), v!(1), v!(1), v!(1)],
-            &[v!(1), v!(1), v!(1), v!(1), v!(1), v!(2)],
+            &[v(1), v(1), v(1), v(1), v(1), v(0)],
+            &[v(1), v(1), v(1), v(1), v(1), v(1)],
+            &[v(1), v(1), v(1), v(1), v(1), v(2)],
             // H channel around H1 in water, derivative w.r.t. H2
-            &[v!(1), v!(1), v!(1), v!(1), v!(2), v!(0)],
-            &[v!(1), v!(1), v!(1), v!(1), v!(2), v!(1)],
-            &[v!(1), v!(1), v!(1), v!(1), v!(2), v!(2)]
+            &[v(1), v(1), v(1), v(1), v(2), v(0)],
+            &[v(1), v(1), v(1), v(1), v(2), v(1)],
+            &[v(1), v(1), v(1), v(1), v(2), v(2)]
         ]);
     }
 
     #[test]
     fn self_contribution() {
-        let mut systems = test_systems(&["CH"]).boxed();
+        let mut systems = test_systems(&["CH"]);
         let builder = TwoBodiesSpeciesSamples::new(2.0);
         assert_eq!(builder.names(), &["structure", "center", "species_center", "species_neighbor"]);
 
@@ -266,9 +262,9 @@ mod tests {
         assert_eq!(samples.count(), 2);
         assert_eq!(samples.iter().collect::<Vec<_>>(), vec![
             // C channel around H in CH
-            &[v!(0), v!(0), v!(1), v!(6)],
+            &[v(0), v(0), v(1), v(6)],
             // H channel around C in CH
-            &[v!(0), v!(1), v!(6), v!(1)],
+            &[v(0), v(1), v(6), v(1)],
         ]);
 
         let builder = TwoBodiesSpeciesSamples::with_self_contribution(2.0);
@@ -279,13 +275,13 @@ mod tests {
         assert_eq!(samples.count(), 4);
         assert_eq!(samples.iter().collect::<Vec<_>>(), vec![
             // H channel around H in CH
-            &[v!(0), v!(0), v!(1), v!(1)],
+            &[v(0), v(0), v(1), v(1)],
             // C channel around H in CH
-            &[v!(0), v!(0), v!(1), v!(6)],
+            &[v(0), v(0), v(1), v(6)],
             // H channel around C in CH
-            &[v!(0), v!(1), v!(6), v!(1)],
+            &[v(0), v(1), v(6), v(1)],
             // C channel around C in CH
-            &[v!(0), v!(1), v!(6), v!(6)],
+            &[v(0), v(1), v(6), v(6)],
         ]);
 
         // we get entries even without proper neighbors
@@ -295,15 +291,15 @@ mod tests {
         assert_eq!(samples.names(), &["structure", "center", "species_center", "species_neighbor"]);
         assert_eq!(samples.iter().collect::<Vec<_>>(), vec![
             // H channel around H in CH
-            &[v!(0), v!(0), v!(1), v!(1)],
+            &[v(0), v(0), v(1), v(1)],
             // C channel around C in CH
-            &[v!(0), v!(1), v!(6), v!(6)],
+            &[v(0), v(1), v(6), v(6)],
         ]);
     }
 
     #[test]
     fn self_contribution_gradients() {
-        let mut systems = test_systems(&["CH"]).boxed();
+        let mut systems = test_systems(&["CH"]);
         let builder = TwoBodiesSpeciesSamples::with_self_contribution(2.0);
 
         let (_, gradients) = builder.with_gradients(&mut systems).unwrap();
@@ -312,41 +308,41 @@ mod tests {
         assert_eq!(gradients.count(), 18);
         assert_eq!(gradients.iter().collect::<Vec<_>>(), vec![
             // H channel around H atom, gradient w.r.t. H positions
-            &[v!(0), v!(0), v!(1), v!(1), v!(0), v!(0)],
-            &[v!(0), v!(0), v!(1), v!(1), v!(0), v!(1)],
-            &[v!(0), v!(0), v!(1), v!(1), v!(0), v!(2)],
+            &[v(0), v(0), v(1), v(1), v(0), v(0)],
+            &[v(0), v(0), v(1), v(1), v(0), v(1)],
+            &[v(0), v(0), v(1), v(1), v(0), v(2)],
             // C channel around H atom, gradient w.r.t. H positions
-            &[v!(0), v!(0), v!(1), v!(6), v!(0), v!(0)],
-            &[v!(0), v!(0), v!(1), v!(6), v!(0), v!(1)],
-            &[v!(0), v!(0), v!(1), v!(6), v!(0), v!(2)],
+            &[v(0), v(0), v(1), v(6), v(0), v(0)],
+            &[v(0), v(0), v(1), v(6), v(0), v(1)],
+            &[v(0), v(0), v(1), v(6), v(0), v(2)],
             // C channel around H atom, gradient w.r.t. C positions
-            &[v!(0), v!(0), v!(1), v!(6), v!(1), v!(0)],
-            &[v!(0), v!(0), v!(1), v!(6), v!(1), v!(1)],
-            &[v!(0), v!(0), v!(1), v!(6), v!(1), v!(2)],
+            &[v(0), v(0), v(1), v(6), v(1), v(0)],
+            &[v(0), v(0), v(1), v(6), v(1), v(1)],
+            &[v(0), v(0), v(1), v(6), v(1), v(2)],
             // H channel around C atom, gradient w.r.t. C positions
-            &[v!(0), v!(1), v!(6), v!(1), v!(1), v!(0)],
-            &[v!(0), v!(1), v!(6), v!(1), v!(1), v!(1)],
-            &[v!(0), v!(1), v!(6), v!(1), v!(1), v!(2)],
+            &[v(0), v(1), v(6), v(1), v(1), v(0)],
+            &[v(0), v(1), v(6), v(1), v(1), v(1)],
+            &[v(0), v(1), v(6), v(1), v(1), v(2)],
             // H channel around C atom, gradient w.r.t. H positions
-            &[v!(0), v!(1), v!(6), v!(1), v!(0), v!(0)],
-            &[v!(0), v!(1), v!(6), v!(1), v!(0), v!(1)],
-            &[v!(0), v!(1), v!(6), v!(1), v!(0), v!(2)],
+            &[v(0), v(1), v(6), v(1), v(0), v(0)],
+            &[v(0), v(1), v(6), v(1), v(0), v(1)],
+            &[v(0), v(1), v(6), v(1), v(0), v(2)],
             // C channel around C atom, gradient w.r.t. C positions
-            &[v!(0), v!(1), v!(6), v!(6), v!(1), v!(0)],
-            &[v!(0), v!(1), v!(6), v!(6), v!(1), v!(1)],
-            &[v!(0), v!(1), v!(6), v!(6), v!(1), v!(2)],
+            &[v(0), v(1), v(6), v(6), v(1), v(0)],
+            &[v(0), v(1), v(6), v(6), v(1), v(1)],
+            &[v(0), v(1), v(6), v(6), v(1), v(2)],
         ]);
     }
 
     #[test]
     fn self_contribution_partial_gradients() {
         let mut samples = IndexesBuilder::new(vec!["structure", "center", "species_center", "species_neighbor"]);
-        samples.add(&[v!(1), v!(0), v!(123456), v!(1)]);
-        samples.add(&[v!(0), v!(0), v!(1), v!(6)]);
-        samples.add(&[v!(1), v!(1), v!(1), v!(1)]);
+        samples.add(&[v(1), v(0), v(123456), v(1)]);
+        samples.add(&[v(0), v(0), v(1), v(6)]);
+        samples.add(&[v(1), v(1), v(1), v(1)]);
         let samples = samples.finish();
 
-        let mut systems = test_systems(&["CH", "water"]).boxed();
+        let mut systems = test_systems(&["CH", "water"]);
         let builder = TwoBodiesSpeciesSamples::with_self_contribution(2.0);
 
         let gradients = builder.gradients_for(&mut systems, &samples).unwrap();
@@ -355,33 +351,33 @@ mod tests {
         assert_eq!(gradients.count(), 21);
         assert_eq!(gradients.iter().collect::<Vec<_>>(), vec![
             // H channel around O in water, gradient w.r.t. O positions
-            &[v!(1), v!(0), v!(123456), v!(1), v!(0), v!(0)],
-            &[v!(1), v!(0), v!(123456), v!(1), v!(0), v!(1)],
-            &[v!(1), v!(0), v!(123456), v!(1), v!(0), v!(2)],
+            &[v(1), v(0), v(123456), v(1), v(0), v(0)],
+            &[v(1), v(0), v(123456), v(1), v(0), v(1)],
+            &[v(1), v(0), v(123456), v(1), v(0), v(2)],
             // H channel around O in water, gradient w.r.t. H1 positions
-            &[v!(1), v!(0), v!(123456), v!(1), v!(1), v!(0)],
-            &[v!(1), v!(0), v!(123456), v!(1), v!(1), v!(1)],
-            &[v!(1), v!(0), v!(123456), v!(1), v!(1), v!(2)],
+            &[v(1), v(0), v(123456), v(1), v(1), v(0)],
+            &[v(1), v(0), v(123456), v(1), v(1), v(1)],
+            &[v(1), v(0), v(123456), v(1), v(1), v(2)],
             // H channel around O in water, gradient w.r.t. H2 positions
-            &[v!(1), v!(0), v!(123456), v!(1), v!(2), v!(0)],
-            &[v!(1), v!(0), v!(123456), v!(1), v!(2), v!(1)],
-            &[v!(1), v!(0), v!(123456), v!(1), v!(2), v!(2)],
+            &[v(1), v(0), v(123456), v(1), v(2), v(0)],
+            &[v(1), v(0), v(123456), v(1), v(2), v(1)],
+            &[v(1), v(0), v(123456), v(1), v(2), v(2)],
             // C channel around H in CH, gradient w.r.t. H positions
-            &[v!(0), v!(0), v!(1), v!(6), v!(0), v!(0)],
-            &[v!(0), v!(0), v!(1), v!(6), v!(0), v!(1)],
-            &[v!(0), v!(0), v!(1), v!(6), v!(0), v!(2)],
+            &[v(0), v(0), v(1), v(6), v(0), v(0)],
+            &[v(0), v(0), v(1), v(6), v(0), v(1)],
+            &[v(0), v(0), v(1), v(6), v(0), v(2)],
             // C channel around H in CH, gradient w.r.t. C positions
-            &[v!(0), v!(0), v!(1), v!(6), v!(1), v!(0)],
-            &[v!(0), v!(0), v!(1), v!(6), v!(1), v!(1)],
-            &[v!(0), v!(0), v!(1), v!(6), v!(1), v!(2)],
+            &[v(0), v(0), v(1), v(6), v(1), v(0)],
+            &[v(0), v(0), v(1), v(6), v(1), v(1)],
+            &[v(0), v(0), v(1), v(6), v(1), v(2)],
             // H channel around H1 in water, gradient w.r.t. H1 positions
-            &[v!(1), v!(1), v!(1), v!(1), v!(1), v!(0)],
-            &[v!(1), v!(1), v!(1), v!(1), v!(1), v!(1)],
-            &[v!(1), v!(1), v!(1), v!(1), v!(1), v!(2)],
+            &[v(1), v(1), v(1), v(1), v(1), v(0)],
+            &[v(1), v(1), v(1), v(1), v(1), v(1)],
+            &[v(1), v(1), v(1), v(1), v(1), v(2)],
             // H channel around H1 in water, gradient w.r.t. H2 positions
-            &[v!(1), v!(1), v!(1), v!(1), v!(2), v!(0)],
-            &[v!(1), v!(1), v!(1), v!(1), v!(2), v!(1)],
-            &[v!(1), v!(1), v!(1), v!(1), v!(2), v!(2)],
+            &[v(1), v(1), v(1), v(1), v(2), v(0)],
+            &[v(1), v(1), v(1), v(1), v(2), v(1)],
+            &[v(1), v(1), v(1), v(1), v(2), v(2)],
         ]);
     }
 }

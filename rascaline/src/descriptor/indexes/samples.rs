@@ -133,30 +133,26 @@ impl SamplesBuilder for AtomSamples {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::systems::test_systems;
+    use crate::systems::test_utils::test_systems;
 
-    /// Convenience macro to create IndexValue
-    macro_rules! v {
-        ($value: expr) => {
-            crate::descriptor::indexes::IndexValue::from($value)
-        };
-    }
+    // small helper function to create IndexValue
+    fn v(i: i32) -> IndexValue { IndexValue::from(i) }
 
     #[test]
     fn structure() {
-        let mut systems = test_systems(&["methane", "methane", "water"]).boxed();
+        let mut systems = test_systems(&["methane", "methane", "water"]);
         let builder = StructureSamples;
         assert_eq!(builder.names(), &["structure"]);
 
         let samples = builder.samples(&mut systems).unwrap();
         assert_eq!(samples.names(), builder.names());
         assert_eq!(samples.count(), 3);
-        assert_eq!(samples.iter().collect::<Vec<_>>(), vec![&[v!(0)], &[v!(1)], &[v!(2)]]);
+        assert_eq!(samples.iter().collect::<Vec<_>>(), vec![&[v(0)], &[v(1)], &[v(2)]]);
     }
 
     #[test]
     fn structure_gradient() {
-        let mut systems = test_systems(&["methane", "water"]).boxed();
+        let mut systems = test_systems(&["methane", "water"]);
 
         let (_, gradients) = StructureSamples.with_gradients(&mut systems).unwrap();
         let gradients = gradients.unwrap();
@@ -164,45 +160,45 @@ mod tests {
         assert_eq!(gradients.names(), &["structure", "atom", "spatial"]);
         assert_eq!(gradients.iter().collect::<Vec<_>>(), vec![
             // methane
-            &[v!(0), v!(0), v!(0)], &[v!(0), v!(0), v!(1)], &[v!(0), v!(0), v!(2)],
-            &[v!(0), v!(1), v!(0)], &[v!(0), v!(1), v!(1)], &[v!(0), v!(1), v!(2)],
-            &[v!(0), v!(2), v!(0)], &[v!(0), v!(2), v!(1)], &[v!(0), v!(2), v!(2)],
-            &[v!(0), v!(3), v!(0)], &[v!(0), v!(3), v!(1)], &[v!(0), v!(3), v!(2)],
-            &[v!(0), v!(4), v!(0)], &[v!(0), v!(4), v!(1)], &[v!(0), v!(4), v!(2)],
+            &[v(0), v(0), v(0)], &[v(0), v(0), v(1)], &[v(0), v(0), v(2)],
+            &[v(0), v(1), v(0)], &[v(0), v(1), v(1)], &[v(0), v(1), v(2)],
+            &[v(0), v(2), v(0)], &[v(0), v(2), v(1)], &[v(0), v(2), v(2)],
+            &[v(0), v(3), v(0)], &[v(0), v(3), v(1)], &[v(0), v(3), v(2)],
+            &[v(0), v(4), v(0)], &[v(0), v(4), v(1)], &[v(0), v(4), v(2)],
             // water
-            &[v!(1), v!(0), v!(0)], &[v!(1), v!(0), v!(1)], &[v!(1), v!(0), v!(2)],
-            &[v!(1), v!(1), v!(0)], &[v!(1), v!(1), v!(1)], &[v!(1), v!(1), v!(2)],
-            &[v!(1), v!(2), v!(0)], &[v!(1), v!(2), v!(1)], &[v!(1), v!(2), v!(2)],
+            &[v(1), v(0), v(0)], &[v(1), v(0), v(1)], &[v(1), v(0), v(2)],
+            &[v(1), v(1), v(0)], &[v(1), v(1), v(1)], &[v(1), v(1), v(2)],
+            &[v(1), v(2), v(0)], &[v(1), v(2), v(1)], &[v(1), v(2), v(2)],
         ]);
     }
 
     #[test]
     fn partial_structure_gradient() {
         let mut samples = IndexesBuilder::new(vec!["structure"]);
-        samples.add(&[v!(2)]);
-        samples.add(&[v!(0)]);
+        samples.add(&[v(2)]);
+        samples.add(&[v(0)]);
         let samples = samples.finish();
 
-        let mut systems = test_systems(&["water", "methane", "water", "methane"]).boxed();
+        let mut systems = test_systems(&["water", "methane", "water", "methane"]);
         let gradients = StructureSamples.gradients_for(&mut systems, &samples).unwrap();
         let gradients = gradients.unwrap();
 
         assert_eq!(gradients.names(), &["structure", "atom", "spatial"]);
         assert_eq!(gradients.iter().collect::<Vec<_>>(), vec![
             // water #2
-            &[v!(2), v!(0), v!(0)], &[v!(2), v!(0), v!(1)], &[v!(2), v!(0), v!(2)],
-            &[v!(2), v!(1), v!(0)], &[v!(2), v!(1), v!(1)], &[v!(2), v!(1), v!(2)],
-            &[v!(2), v!(2), v!(0)], &[v!(2), v!(2), v!(1)], &[v!(2), v!(2), v!(2)],
+            &[v(2), v(0), v(0)], &[v(2), v(0), v(1)], &[v(2), v(0), v(2)],
+            &[v(2), v(1), v(0)], &[v(2), v(1), v(1)], &[v(2), v(1), v(2)],
+            &[v(2), v(2), v(0)], &[v(2), v(2), v(1)], &[v(2), v(2), v(2)],
             // water #1
-            &[v!(0), v!(0), v!(0)], &[v!(0), v!(0), v!(1)], &[v!(0), v!(0), v!(2)],
-            &[v!(0), v!(1), v!(0)], &[v!(0), v!(1), v!(1)], &[v!(0), v!(1), v!(2)],
-            &[v!(0), v!(2), v!(0)], &[v!(0), v!(2), v!(1)], &[v!(0), v!(2), v!(2)],
+            &[v(0), v(0), v(0)], &[v(0), v(0), v(1)], &[v(0), v(0), v(2)],
+            &[v(0), v(1), v(0)], &[v(0), v(1), v(1)], &[v(0), v(1), v(2)],
+            &[v(0), v(2), v(0)], &[v(0), v(2), v(1)], &[v(0), v(2), v(2)],
         ]);
     }
 
     #[test]
     fn atoms() {
-        let mut systems = test_systems(&["methane", "water"]).boxed();
+        let mut systems = test_systems(&["methane", "water"]);
         let builder = AtomSamples { cutoff: 2.0 };
         assert_eq!(builder.names(), &["structure", "center"]);
 
@@ -210,14 +206,14 @@ mod tests {
         assert_eq!(builder.names(), samples.names());
         assert_eq!(samples.count(), 8);
         assert_eq!(samples.iter().collect::<Vec<_>>(), vec![
-            &[v!(0), v!(0)], &[v!(0), v!(1)], &[v!(0), v!(2)], &[v!(0), v!(3)], &[v!(0), v!(4)],
-            &[v!(1), v!(0)], &[v!(1), v!(1)], &[v!(1), v!(2)],
+            &[v(0), v(0)], &[v(0), v(1)], &[v(0), v(2)], &[v(0), v(3)], &[v(0), v(4)],
+            &[v(1), v(0)], &[v(1), v(1)], &[v(1), v(2)],
         ]);
     }
 
     #[test]
     fn atom_gradients() {
-        let mut systems = test_systems(&["methane"]).boxed();
+        let mut systems = test_systems(&["methane"]);
         let builder = AtomSamples { cutoff: 1.5 };
         assert_eq!(builder.gradients_names().unwrap(), &["structure", "center", "neighbor", "spatial"]);
 
@@ -229,37 +225,37 @@ mod tests {
         assert_eq!(gradients.iter().collect::<Vec<_>>(), vec![
             // Only C-H neighbors are within 1.3 A
             // C center
-            &[v!(0), v!(0), v!(1), v!(0)],
-            &[v!(0), v!(0), v!(1), v!(1)],
-            &[v!(0), v!(0), v!(1), v!(2)],
+            &[v(0), v(0), v(1), v(0)],
+            &[v(0), v(0), v(1), v(1)],
+            &[v(0), v(0), v(1), v(2)],
 
-            &[v!(0), v!(0), v!(2), v!(0)],
-            &[v!(0), v!(0), v!(2), v!(1)],
-            &[v!(0), v!(0), v!(2), v!(2)],
+            &[v(0), v(0), v(2), v(0)],
+            &[v(0), v(0), v(2), v(1)],
+            &[v(0), v(0), v(2), v(2)],
 
-            &[v!(0), v!(0), v!(3), v!(0)],
-            &[v!(0), v!(0), v!(3), v!(1)],
-            &[v!(0), v!(0), v!(3), v!(2)],
+            &[v(0), v(0), v(3), v(0)],
+            &[v(0), v(0), v(3), v(1)],
+            &[v(0), v(0), v(3), v(2)],
 
-            &[v!(0), v!(0), v!(4), v!(0)],
-            &[v!(0), v!(0), v!(4), v!(1)],
-            &[v!(0), v!(0), v!(4), v!(2)],
+            &[v(0), v(0), v(4), v(0)],
+            &[v(0), v(0), v(4), v(1)],
+            &[v(0), v(0), v(4), v(2)],
             // H centers
-            &[v!(0), v!(1), v!(0), v!(0)],
-            &[v!(0), v!(1), v!(0), v!(1)],
-            &[v!(0), v!(1), v!(0), v!(2)],
+            &[v(0), v(1), v(0), v(0)],
+            &[v(0), v(1), v(0), v(1)],
+            &[v(0), v(1), v(0), v(2)],
 
-            &[v!(0), v!(2), v!(0), v!(0)],
-            &[v!(0), v!(2), v!(0), v!(1)],
-            &[v!(0), v!(2), v!(0), v!(2)],
+            &[v(0), v(2), v(0), v(0)],
+            &[v(0), v(2), v(0), v(1)],
+            &[v(0), v(2), v(0), v(2)],
 
-            &[v!(0), v!(3), v!(0), v!(0)],
-            &[v!(0), v!(3), v!(0), v!(1)],
-            &[v!(0), v!(3), v!(0), v!(2)],
+            &[v(0), v(3), v(0), v(0)],
+            &[v(0), v(3), v(0), v(1)],
+            &[v(0), v(3), v(0), v(2)],
 
-            &[v!(0), v!(4), v!(0), v!(0)],
-            &[v!(0), v!(4), v!(0), v!(1)],
-            &[v!(0), v!(4), v!(0), v!(2)],
+            &[v(0), v(4), v(0), v(0)],
+            &[v(0), v(4), v(0), v(1)],
+            &[v(0), v(4), v(0), v(2)],
         ]);
     }
 
@@ -267,11 +263,11 @@ mod tests {
     fn partial_atom_gradient() {
         let mut samples = IndexesBuilder::new(vec!["structure", "center"]);
         // out of order values to ensure the gradients are also out of order
-        samples.add(&[v!(0), v!(2)]);
-        samples.add(&[v!(0), v!(0)]);
+        samples.add(&[v(0), v(2)]);
+        samples.add(&[v(0), v(0)]);
         let samples = samples.finish();
 
-        let mut systems = test_systems(&["methane"]).boxed();
+        let mut systems = test_systems(&["methane"]);
         let builder = AtomSamples { cutoff: 1.5 };
         assert_eq!(builder.gradients_names().unwrap(), &["structure", "center", "neighbor", "spatial"]);
 
@@ -281,25 +277,25 @@ mod tests {
         assert_eq!(gradients.names(), builder.gradients_names().unwrap());
         assert_eq!(gradients.iter().collect::<Vec<_>>(), vec![
             // H centers
-            &[v!(0), v!(2), v!(0), v!(0)],
-            &[v!(0), v!(2), v!(0), v!(1)],
-            &[v!(0), v!(2), v!(0), v!(2)],
+            &[v(0), v(2), v(0), v(0)],
+            &[v(0), v(2), v(0), v(1)],
+            &[v(0), v(2), v(0), v(2)],
             // C center
-            &[v!(0), v!(0), v!(1), v!(0)],
-            &[v!(0), v!(0), v!(1), v!(1)],
-            &[v!(0), v!(0), v!(1), v!(2)],
+            &[v(0), v(0), v(1), v(0)],
+            &[v(0), v(0), v(1), v(1)],
+            &[v(0), v(0), v(1), v(2)],
 
-            &[v!(0), v!(0), v!(2), v!(0)],
-            &[v!(0), v!(0), v!(2), v!(1)],
-            &[v!(0), v!(0), v!(2), v!(2)],
+            &[v(0), v(0), v(2), v(0)],
+            &[v(0), v(0), v(2), v(1)],
+            &[v(0), v(0), v(2), v(2)],
 
-            &[v!(0), v!(0), v!(3), v!(0)],
-            &[v!(0), v!(0), v!(3), v!(1)],
-            &[v!(0), v!(0), v!(3), v!(2)],
+            &[v(0), v(0), v(3), v(0)],
+            &[v(0), v(0), v(3), v(1)],
+            &[v(0), v(0), v(3), v(2)],
 
-            &[v!(0), v!(0), v!(4), v!(0)],
-            &[v!(0), v!(0), v!(4), v!(1)],
-            &[v!(0), v!(0), v!(4), v!(2)],
+            &[v(0), v(0), v(4), v(0)],
+            &[v(0), v(0), v(4), v(1)],
+            &[v(0), v(0), v(4), v(2)],
         ]);
     }
 }

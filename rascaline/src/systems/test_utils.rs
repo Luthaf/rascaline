@@ -1,29 +1,19 @@
 use crate::{System, Vector3D};
 use super::{UnitCell, SimpleSystem};
 
-#[derive(Clone, Debug)]
-pub struct SimpleSystems {
-    pub(crate) systems: Vec<SimpleSystem>
+pub fn test_systems(names: &[&str]) -> Vec<Box<dyn System>> {
+    return names.iter()
+        .map(|&name| Box::new(test_system(name)) as Box<dyn System>)
+        .collect();
 }
 
-impl SimpleSystems {
-    pub fn boxed(self) -> Vec<Box<dyn System>> {
-        self.systems.into_iter()
-            .map(|s| Box::new(s) as Box<dyn System>)
-            .collect()
+pub fn test_system(name: &str) -> SimpleSystem {
+    match name {
+        "methane" => get_methane(),
+        "water" => get_water(),
+        "CH" => get_ch(),
+        _ => panic!("unknown test system {}", name)
     }
-}
-
-pub fn test_systems(names: &[&str]) -> SimpleSystems {
-    let systems = names.iter().map(|&name| {
-        match name {
-            "methane" => get_methane(),
-            "water" => get_water(),
-            "CH" => get_ch(),
-            _ => panic!("unknown test system {}", name)
-        }
-    }).collect();
-    return SimpleSystems{ systems };
 }
 
 fn get_methane() -> SimpleSystem {

@@ -160,7 +160,7 @@ impl CalculatorBase for SortedDistances {
 
 #[cfg(test)]
 mod tests {
-    use crate::systems::test_systems;
+    use crate::systems::test_utils::test_systems;
     use crate::{Descriptor, Calculator};
     use crate::{CalculationOptions, SelectedIndexes};
     use crate::descriptor::{IndexesBuilder, IndexValue};
@@ -189,7 +189,7 @@ mod tests {
             max_neighbors: 3,
         }) as Box<dyn CalculatorBase>);
 
-        let mut systems = test_systems(&["water"]).boxed();
+        let mut systems = test_systems(&["water"]);
         let mut descriptor = Descriptor::new();
         calculator.compute(&mut systems, &mut descriptor, Default::default()).unwrap();
 
@@ -213,7 +213,7 @@ mod tests {
             max_neighbors: 3,
         }) as Box<dyn CalculatorBase>);
 
-        let mut systems = test_systems(&["water"]).boxed();
+        let mut systems = test_systems(&["water"]);
         let mut descriptor = Descriptor::new();
 
         let mut samples = IndexesBuilder::new(vec!["structure", "center", "species_center", "species_neighbor"]);
