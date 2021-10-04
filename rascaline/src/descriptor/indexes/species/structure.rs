@@ -63,18 +63,14 @@ impl SamplesBuilder for StructureSpeciesSamples {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::systems::test_systems;
+    use crate::systems::test_utils::test_systems;
 
-    /// Convenience macro to create IndexValue
-    macro_rules! v {
-        ($value: expr) => {
-            crate::descriptor::indexes::IndexValue::from($value)
-        };
-    }
+    // small helper function to create IndexValue
+    fn v(i: i32) -> IndexValue { IndexValue::from(i) }
 
     #[test]
     fn samples() {
-        let mut systems = test_systems(&["methane", "methane", "water"]).boxed();
+        let mut systems = test_systems(&["methane", "methane", "water"]);
         let builder = StructureSpeciesSamples;
         assert_eq!(builder.names(), &["structure", "species"]);
 
@@ -82,15 +78,15 @@ mod tests {
         assert_eq!(samples.names(), builder.names());
         assert_eq!(samples.count(), 6);
         assert_eq!(samples.iter().collect::<Vec<_>>(), vec![
-            &[v!(0), v!(1)], &[v!(0), v!(6)],
-            &[v!(1), v!(1)], &[v!(1), v!(6)],
-            &[v!(2), v!(1)], &[v!(2), v!(123456)],
+            &[v(0), v(1)], &[v(0), v(6)],
+            &[v(1), v(1)], &[v(1), v(6)],
+            &[v(2), v(1)], &[v(2), v(123456)],
         ]);
     }
 
     #[test]
     fn gradients() {
-        let mut systems = test_systems(&["CH", "water"]).boxed();
+        let mut systems = test_systems(&["CH", "water"]);
         let builder = StructureSpeciesSamples;
         assert_eq!(builder.gradients_names().unwrap(), &["structure", "species", "atom", "spatial"]);
 
@@ -101,38 +97,38 @@ mod tests {
 
         assert_eq!(gradients.iter().collect::<Vec<_>>(), vec![
             // H channel in CH
-            &[v!(0), v!(1), v!(0), v!(0)], &[v!(0), v!(1), v!(0), v!(1)], &[v!(0), v!(1), v!(0), v!(2)],
+            &[v(0), v(1), v(0), v(0)], &[v(0), v(1), v(0), v(1)], &[v(0), v(1), v(0), v(2)],
             // C channel in CH
-            &[v!(0), v!(6), v!(1), v!(0)], &[v!(0), v!(6), v!(1), v!(1)], &[v!(0), v!(6), v!(1), v!(2)],
+            &[v(0), v(6), v(1), v(0)], &[v(0), v(6), v(1), v(1)], &[v(0), v(6), v(1), v(2)],
             // H channel in water
-            &[v!(1), v!(1), v!(1), v!(0)], &[v!(1), v!(1), v!(1), v!(1)], &[v!(1), v!(1), v!(1), v!(2)],
-            &[v!(1), v!(1), v!(2), v!(0)], &[v!(1), v!(1), v!(2), v!(1)], &[v!(1), v!(1), v!(2), v!(2)],
+            &[v(1), v(1), v(1), v(0)], &[v(1), v(1), v(1), v(1)], &[v(1), v(1), v(1), v(2)],
+            &[v(1), v(1), v(2), v(0)], &[v(1), v(1), v(2), v(1)], &[v(1), v(1), v(2), v(2)],
             // O channel in water
-            &[v!(1), v!(123456), v!(0), v!(0)], &[v!(1), v!(123456), v!(0), v!(1)], &[v!(1), v!(123456), v!(0), v!(2)],
+            &[v(1), v(123456), v(0), v(0)], &[v(1), v(123456), v(0), v(1)], &[v(1), v(123456), v(0), v(2)],
         ]);
     }
 
     #[test]
     fn partial_gradients() {
         let mut samples = IndexesBuilder::new(vec!["structure", "species"]);
-        samples.add(&[v!(2), v!(1)]);
-        samples.add(&[v!(0), v!(6)]);
+        samples.add(&[v(2), v(1)]);
+        samples.add(&[v(0), v(6)]);
         let samples = samples.finish();
 
-        let mut systems = test_systems(&["CH", "water", "CH"]).boxed();
+        let mut systems = test_systems(&["CH", "water", "CH"]);
         let gradients = StructureSpeciesSamples.gradients_for(&mut systems, &samples).unwrap();
         let gradients = gradients.unwrap();
         assert_eq!(gradients.names(), StructureSpeciesSamples.gradients_names().unwrap());
 
         assert_eq!(gradients.iter().collect::<Vec<_>>(), vec![
             // H channel in CH #2
-            &[v!(2), v!(1), v!(0), v!(0)],
-            &[v!(2), v!(1), v!(0), v!(1)],
-            &[v!(2), v!(1), v!(0), v!(2)],
+            &[v(2), v(1), v(0), v(0)],
+            &[v(2), v(1), v(0), v(1)],
+            &[v(2), v(1), v(0), v(2)],
             // C channel in CH #1
-            &[v!(0), v!(6), v!(1), v!(0)],
-            &[v!(0), v!(6), v!(1), v!(1)],
-            &[v!(0), v!(6), v!(1), v!(2)],
+            &[v(0), v(6), v(1), v(0)],
+            &[v(0), v(6), v(1), v(1)],
+            &[v(0), v(6), v(1), v(2)],
         ]);
     }
 }

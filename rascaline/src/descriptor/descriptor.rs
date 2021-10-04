@@ -385,7 +385,7 @@ fn remove_from_samples(samples: &Indexes, variables: &[&str]) -> Result<RemovedS
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::systems::test_systems;
+    use crate::systems::test_utils::test_systems;
     use crate::descriptor::{TwoBodiesSpeciesSamples, StructureSpeciesSamples, SamplesBuilder};
     use ndarray::array;
 
@@ -397,18 +397,14 @@ mod tests {
         return features.finish();
     }
 
-    /// Convenience macro to create IndexValue
-    macro_rules! v {
-        ($value: expr) => {
-            crate::descriptor::indexes::IndexValue::from($value)
-        };
-    }
+    // small helper function to create IndexValue
+    fn v(i: i32) -> IndexValue { IndexValue::from(i) }
 
     #[test]
     fn prepare() {
         let mut descriptor = Descriptor::new();
 
-        let mut systems = test_systems(&["water", "CH"]).boxed();
+        let mut systems = test_systems(&["water", "CH"]);
         let features = dummy_features();
         let samples = StructureSpeciesSamples.samples(&mut systems).unwrap();
         descriptor.prepare(samples, features);
@@ -417,10 +413,10 @@ mod tests {
         assert_eq!(descriptor.values.shape(), [4, 3]);
 
         assert_eq!(descriptor.samples.names(), ["structure", "species"]);
-        assert_eq!(descriptor.samples[0], [v!(0), v!(1)]);
-        assert_eq!(descriptor.samples[1], [v!(0), v!(123456)]);
-        assert_eq!(descriptor.samples[2], [v!(1), v!(1)]);
-        assert_eq!(descriptor.samples[3], [v!(1), v!(6)]);
+        assert_eq!(descriptor.samples[0], [v(0), v(1)]);
+        assert_eq!(descriptor.samples[1], [v(0), v(123456)]);
+        assert_eq!(descriptor.samples[2], [v(1), v(1)]);
+        assert_eq!(descriptor.samples[3], [v(1), v(6)]);
 
         assert!(descriptor.gradients.is_none());
     }
@@ -429,7 +425,7 @@ mod tests {
     fn prepare_gradients() {
         let mut descriptor = Descriptor::new();
 
-        let mut systems = test_systems(&["water", "CH"]).boxed();
+        let mut systems = test_systems(&["water", "CH"]);
         let features = dummy_features();
         let (samples, gradients) = StructureSpeciesSamples.with_gradients(&mut systems).unwrap();
         descriptor.prepare_gradients(samples, gradients.unwrap(), features);
@@ -441,22 +437,22 @@ mod tests {
         assert_eq!(gradients_samples.names(), ["structure", "species", "atom", "spatial"]);
 
         let expected = [
-            [v!(0), v!(1), v!(1)],
-            [v!(0), v!(1), v!(2)],
-            [v!(0), v!(123456), v!(0)],
-            [v!(1), v!(1), v!(0)],
-            [v!(1), v!(6), v!(1)]
+            [v(0), v(1), v(1)],
+            [v(0), v(1), v(2)],
+            [v(0), v(123456), v(0)],
+            [v(1), v(1), v(0)],
+            [v(1), v(6), v(1)]
         ];
         // use a loop to simplify checking the spatial dimension
         for (i, &value) in expected.iter().enumerate() {
             assert_eq!(gradients_samples[3 * i][..3], value);
-            assert_eq!(gradients_samples[3 * i][3], v!(0));
+            assert_eq!(gradients_samples[3 * i][3], v(0));
 
             assert_eq!(gradients_samples[3 * i + 1][..3], value);
-            assert_eq!(gradients_samples[3 * i + 1][3], v!(1));
+            assert_eq!(gradients_samples[3 * i + 1][3], v(1));
 
             assert_eq!(gradients_samples[3 * i + 2][..3], value);
-            assert_eq!(gradients_samples[3 * i + 2][3], v!(2));
+            assert_eq!(gradients_samples[3 * i + 2][3], v(2));
         }
     }
 
@@ -464,7 +460,7 @@ mod tests {
     fn densify_single_variable() {
         let mut descriptor = Descriptor::new();
 
-        let mut systems = test_systems(&["water", "CH"]).boxed();
+        let mut systems = test_systems(&["water", "CH"]);
         let features = dummy_features();
         let (samples, gradients) = StructureSpeciesSamples.with_gradients(&mut systems).unwrap();
         descriptor.prepare_gradients(samples, gradients.unwrap(), features);
@@ -489,20 +485,20 @@ mod tests {
         descriptor.densify(&["species"], None).unwrap();
 
         assert_eq!(descriptor.features.names(), ["species", "foo", "bar"]);
-        assert_eq!(descriptor.features[0], [v!(1), v!(0), v!(-1)]);
-        assert_eq!(descriptor.features[1], [v!(1), v!(4), v!(-2)]);
-        assert_eq!(descriptor.features[2], [v!(1), v!(1), v!(-5)]);
-        assert_eq!(descriptor.features[3], [v!(6), v!(0), v!(-1)]);
-        assert_eq!(descriptor.features[4], [v!(6), v!(4), v!(-2)]);
-        assert_eq!(descriptor.features[5], [v!(6), v!(1), v!(-5)]);
-        assert_eq!(descriptor.features[6], [v!(123456), v!(0), v!(-1)]);
-        assert_eq!(descriptor.features[7], [v!(123456), v!(4), v!(-2)]);
-        assert_eq!(descriptor.features[8], [v!(123456), v!(1), v!(-5)]);
+        assert_eq!(descriptor.features[0], [v(1), v(0), v(-1)]);
+        assert_eq!(descriptor.features[1], [v(1), v(4), v(-2)]);
+        assert_eq!(descriptor.features[2], [v(1), v(1), v(-5)]);
+        assert_eq!(descriptor.features[3], [v(6), v(0), v(-1)]);
+        assert_eq!(descriptor.features[4], [v(6), v(4), v(-2)]);
+        assert_eq!(descriptor.features[5], [v(6), v(1), v(-5)]);
+        assert_eq!(descriptor.features[6], [v(123456), v(0), v(-1)]);
+        assert_eq!(descriptor.features[7], [v(123456), v(4), v(-2)]);
+        assert_eq!(descriptor.features[8], [v(123456), v(1), v(-5)]);
 
         assert_eq!(descriptor.values.shape(), [2, 9]);
         assert_eq!(descriptor.samples.names(), ["structure"]);
-        assert_eq!(descriptor.samples[0], [v!(0)]);
-        assert_eq!(descriptor.samples[1], [v!(1)]);
+        assert_eq!(descriptor.samples[0], [v(0)]);
+        assert_eq!(descriptor.samples[1], [v(1)]);
 
         assert_eq!(descriptor.values, array![
             [/* H */ 1.0, 2.0, 3.0, /* C */ 0.0, 0.0, 0.0,    /* O */ 4.0, 5.0, 6.0],
@@ -515,22 +511,22 @@ mod tests {
         assert_eq!(gradients_samples.names(), ["structure", "atom", "spatial"]);
 
         let expected = [
-            [v!(0), v!(1)],
-            [v!(0), v!(2)],
-            [v!(0), v!(0)],
-            [v!(1), v!(0)],
-            [v!(1), v!(1)]
+            [v(0), v(1)],
+            [v(0), v(2)],
+            [v(0), v(0)],
+            [v(1), v(0)],
+            [v(1), v(1)]
         ];
         // use a loop to simplify checking the spatial dimension
         for (i, &value) in expected.iter().enumerate() {
             assert_eq!(gradients_samples[3 * i][..2], value);
-            assert_eq!(gradients_samples[3 * i][2], v!(0));
+            assert_eq!(gradients_samples[3 * i][2], v(0));
 
             assert_eq!(gradients_samples[3 * i + 1][..2], value);
-            assert_eq!(gradients_samples[3 * i + 1][2], v!(1));
+            assert_eq!(gradients_samples[3 * i + 1][2], v(1));
 
             assert_eq!(gradients_samples[3 * i + 2][..2], value);
-            assert_eq!(gradients_samples[3 * i + 2][2], v!(2));
+            assert_eq!(gradients_samples[3 * i + 2][2], v(2));
         }
 
         assert_eq!(*gradients, array![
@@ -556,7 +552,7 @@ mod tests {
     fn densify_single_variable_user_values() {
         let mut descriptor = Descriptor::new();
 
-        let mut systems = test_systems(&["water", "CH"]).boxed();
+        let mut systems = test_systems(&["water", "CH"]);
         let features = dummy_features();
         let (samples, gradients) = StructureSpeciesSamples.with_gradients(&mut systems).unwrap();
         descriptor.prepare_gradients(samples, gradients.unwrap(), features);
@@ -578,25 +574,25 @@ mod tests {
         ]);
 
         let requested = Array2::from_shape_vec([3, 1], vec![
-            v!(6), v!(12), v!(123456)
+            v(6), v(12), v(123456)
         ]).unwrap();
         descriptor.densify(&["species"], requested.view()).unwrap();
 
         assert_eq!(descriptor.features.names(), ["species", "foo", "bar"]);
-        assert_eq!(descriptor.features[0], [v!(6), v!(0), v!(-1)]);
-        assert_eq!(descriptor.features[1], [v!(6), v!(4), v!(-2)]);
-        assert_eq!(descriptor.features[2], [v!(6), v!(1), v!(-5)]);
-        assert_eq!(descriptor.features[3], [v!(12), v!(0), v!(-1)]);
-        assert_eq!(descriptor.features[4], [v!(12), v!(4), v!(-2)]);
-        assert_eq!(descriptor.features[5], [v!(12), v!(1), v!(-5)]);
-        assert_eq!(descriptor.features[6], [v!(123456), v!(0), v!(-1)]);
-        assert_eq!(descriptor.features[7], [v!(123456), v!(4), v!(-2)]);
-        assert_eq!(descriptor.features[8], [v!(123456), v!(1), v!(-5)]);
+        assert_eq!(descriptor.features[0], [v(6), v(0), v(-1)]);
+        assert_eq!(descriptor.features[1], [v(6), v(4), v(-2)]);
+        assert_eq!(descriptor.features[2], [v(6), v(1), v(-5)]);
+        assert_eq!(descriptor.features[3], [v(12), v(0), v(-1)]);
+        assert_eq!(descriptor.features[4], [v(12), v(4), v(-2)]);
+        assert_eq!(descriptor.features[5], [v(12), v(1), v(-5)]);
+        assert_eq!(descriptor.features[6], [v(123456), v(0), v(-1)]);
+        assert_eq!(descriptor.features[7], [v(123456), v(4), v(-2)]);
+        assert_eq!(descriptor.features[8], [v(123456), v(1), v(-5)]);
 
         assert_eq!(descriptor.values.shape(), [2, 9]);
         assert_eq!(descriptor.samples.names(), ["structure"]);
-        assert_eq!(descriptor.samples[0], [v!(0)]);
-        assert_eq!(descriptor.samples[1], [v!(1)]);
+        assert_eq!(descriptor.samples[0], [v(0)]);
+        assert_eq!(descriptor.samples[1], [v(1)]);
 
         assert_eq!(descriptor.values, array![
             [/* C */ 0.0, 0.0, 0.0,    /* missing */ 0.0, 0.0, 0.0, /* O */ 4.0, 5.0, 6.0],
@@ -627,7 +623,7 @@ mod tests {
     fn densify_multiple_variables() {
         let mut descriptor = Descriptor::new();
 
-        let mut systems = test_systems(&["water"]).boxed();
+        let mut systems = test_systems(&["water"]);
         let features = dummy_features();
         let (samples, gradients) = TwoBodiesSpeciesSamples::new(3.0).with_gradients(&mut systems).unwrap();
         descriptor.prepare_gradients(samples, gradients.unwrap(), features);
@@ -676,20 +672,20 @@ mod tests {
 
         assert_eq!(descriptor.values.shape(), [3, 9]);
         assert_eq!(descriptor.samples.names(), ["structure", "center"]);
-        assert_eq!(descriptor.samples[0], [v!(0), v!(0)]);
-        assert_eq!(descriptor.samples[1], [v!(0), v!(1)]);
-        assert_eq!(descriptor.samples[2], [v!(0), v!(2)]);
+        assert_eq!(descriptor.samples[0], [v(0), v(0)]);
+        assert_eq!(descriptor.samples[1], [v(0), v(1)]);
+        assert_eq!(descriptor.samples[2], [v(0), v(2)]);
 
         assert_eq!(descriptor.features.names(), ["species_center", "species_neighbor", "foo", "bar"]);
-        assert_eq!(descriptor.features[0], [v!(1), v!(1), v!(0), v!(-1)]);
-        assert_eq!(descriptor.features[1], [v!(1), v!(1), v!(4), v!(-2)]);
-        assert_eq!(descriptor.features[2], [v!(1), v!(1), v!(1), v!(-5)]);
-        assert_eq!(descriptor.features[3], [v!(1), v!(123456), v!(0), v!(-1)]);
-        assert_eq!(descriptor.features[4], [v!(1), v!(123456), v!(4), v!(-2)]);
-        assert_eq!(descriptor.features[5], [v!(1), v!(123456), v!(1), v!(-5)]);
-        assert_eq!(descriptor.features[6], [v!(123456), v!(1), v!(0), v!(-1)]);
-        assert_eq!(descriptor.features[7], [v!(123456), v!(1), v!(4), v!(-2)]);
-        assert_eq!(descriptor.features[8], [v!(123456), v!(1), v!(1), v!(-5)]);
+        assert_eq!(descriptor.features[0], [v(1), v(1), v(0), v(-1)]);
+        assert_eq!(descriptor.features[1], [v(1), v(1), v(4), v(-2)]);
+        assert_eq!(descriptor.features[2], [v(1), v(1), v(1), v(-5)]);
+        assert_eq!(descriptor.features[3], [v(1), v(123456), v(0), v(-1)]);
+        assert_eq!(descriptor.features[4], [v(1), v(123456), v(4), v(-2)]);
+        assert_eq!(descriptor.features[5], [v(1), v(123456), v(1), v(-5)]);
+        assert_eq!(descriptor.features[6], [v(123456), v(1), v(0), v(-1)]);
+        assert_eq!(descriptor.features[7], [v(123456), v(1), v(4), v(-2)]);
+        assert_eq!(descriptor.features[8], [v(123456), v(1), v(1), v(-5)]);
 
         assert_eq!(descriptor.values, array![
             /*    H-H                    H-O                  O-H      */
@@ -707,26 +703,26 @@ mod tests {
         assert_eq!(gradients_samples.names(), ["structure", "center", "neighbor", "spatial"]);
 
         let expected = [
-            [v!(0), v!(0), v!(0)],
-            [v!(0), v!(0), v!(1)],
-            [v!(0), v!(0), v!(2)],
-            [v!(0), v!(1), v!(1)],
-            [v!(0), v!(1), v!(2)],
-            [v!(0), v!(1), v!(0)],
-            [v!(0), v!(2), v!(2)],
-            [v!(0), v!(2), v!(1)],
-            [v!(0), v!(2), v!(0)],
+            [v(0), v(0), v(0)],
+            [v(0), v(0), v(1)],
+            [v(0), v(0), v(2)],
+            [v(0), v(1), v(1)],
+            [v(0), v(1), v(2)],
+            [v(0), v(1), v(0)],
+            [v(0), v(2), v(2)],
+            [v(0), v(2), v(1)],
+            [v(0), v(2), v(0)],
         ];
         // use a loop to simplify checking the spatial dimension
         for (i, &value) in expected.iter().enumerate() {
             assert_eq!(gradients_samples[3 * i][..3], value);
-            assert_eq!(gradients_samples[3 * i][3], v!(0));
+            assert_eq!(gradients_samples[3 * i][3], v(0));
 
             assert_eq!(gradients_samples[3 * i + 1][..3], value);
-            assert_eq!(gradients_samples[3 * i + 1][3], v!(1));
+            assert_eq!(gradients_samples[3 * i + 1][3], v(1));
 
             assert_eq!(gradients_samples[3 * i + 2][..3], value);
-            assert_eq!(gradients_samples[3 * i + 2][3], v!(2));
+            assert_eq!(gradients_samples[3 * i + 2][3], v(2));
         }
 
         assert_eq!(*gradients, array![
@@ -774,7 +770,7 @@ mod tests {
     fn densify_multiple_variables_user_values() {
         let mut descriptor = Descriptor::new();
 
-        let mut systems = test_systems(&["water"]).boxed();
+        let mut systems = test_systems(&["water"]);
         let features = dummy_features();
         let (samples, gradients) = TwoBodiesSpeciesSamples::new(3.0).with_gradients(&mut systems).unwrap();
         descriptor.prepare_gradients(samples, gradients.unwrap(), features);
@@ -819,28 +815,28 @@ mod tests {
         ]);
 
         let requested = Array2::from_shape_vec([3, 2], vec![
-            v!(1), v!(1),       // H-H
-            v!(6), v!(1),       // missing
-            v!(123456), v!(1),  // O-H
+            v(1), v(1),       // H-H
+            v(6), v(1),       // missing
+            v(123456), v(1),  // O-H
         ]).unwrap();
         descriptor.densify(&["species_center", "species_neighbor"], requested.view()).unwrap();
 
         assert_eq!(descriptor.values.shape(), [3, 9]);
         assert_eq!(descriptor.samples.names(), ["structure", "center"]);
-        assert_eq!(descriptor.samples[0], [v!(0), v!(0)]);
-        assert_eq!(descriptor.samples[1], [v!(0), v!(1)]);
-        assert_eq!(descriptor.samples[2], [v!(0), v!(2)]);
+        assert_eq!(descriptor.samples[0], [v(0), v(0)]);
+        assert_eq!(descriptor.samples[1], [v(0), v(1)]);
+        assert_eq!(descriptor.samples[2], [v(0), v(2)]);
 
         assert_eq!(descriptor.features.names(), ["species_center", "species_neighbor", "foo", "bar"]);
-        assert_eq!(descriptor.features[0], [v!(1), v!(1), v!(0), v!(-1)]);
-        assert_eq!(descriptor.features[1], [v!(1), v!(1), v!(4), v!(-2)]);
-        assert_eq!(descriptor.features[2], [v!(1), v!(1), v!(1), v!(-5)]);
-        assert_eq!(descriptor.features[3], [v!(6), v!(1), v!(0), v!(-1)]);
-        assert_eq!(descriptor.features[4], [v!(6), v!(1), v!(4), v!(-2)]);
-        assert_eq!(descriptor.features[5], [v!(6), v!(1), v!(1), v!(-5)]);
-        assert_eq!(descriptor.features[6], [v!(123456), v!(1), v!(0), v!(-1)]);
-        assert_eq!(descriptor.features[7], [v!(123456), v!(1), v!(4), v!(-2)]);
-        assert_eq!(descriptor.features[8], [v!(123456), v!(1), v!(1), v!(-5)]);
+        assert_eq!(descriptor.features[0], [v(1), v(1), v(0), v(-1)]);
+        assert_eq!(descriptor.features[1], [v(1), v(1), v(4), v(-2)]);
+        assert_eq!(descriptor.features[2], [v(1), v(1), v(1), v(-5)]);
+        assert_eq!(descriptor.features[3], [v(6), v(1), v(0), v(-1)]);
+        assert_eq!(descriptor.features[4], [v(6), v(1), v(4), v(-2)]);
+        assert_eq!(descriptor.features[5], [v(6), v(1), v(1), v(-5)]);
+        assert_eq!(descriptor.features[6], [v(123456), v(1), v(0), v(-1)]);
+        assert_eq!(descriptor.features[7], [v(123456), v(1), v(4), v(-2)]);
+        assert_eq!(descriptor.features[8], [v(123456), v(1), v(1), v(-5)]);
 
         assert_eq!(descriptor.values, array![
             /*    H-H                 missing              O-H      */

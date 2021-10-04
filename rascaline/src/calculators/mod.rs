@@ -3,7 +3,7 @@ use crate::descriptor::{Descriptor, Indexes, SamplesBuilder};
 use crate::{Error, System};
 
 #[cfg(test)]
-mod tests_utils;
+pub(crate) mod tests_utils;
 
 /// TODO: docs
 ///

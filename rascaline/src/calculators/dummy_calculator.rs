@@ -132,7 +132,7 @@ impl CalculatorBase for DummyCalculator {
 
 #[cfg(test)]
 mod tests {
-    use crate::systems::test_systems;
+    use crate::systems::test_utils::test_systems;
     use crate::{Descriptor, Calculator};
     use crate::{CalculationOptions, SelectedIndexes};
     use crate::descriptor::{IndexesBuilder, IndexValue};
@@ -171,7 +171,7 @@ mod tests {
             gradients: false,
         }) as Box<dyn CalculatorBase>);
 
-        let mut systems = test_systems(&["water"]).boxed();
+        let mut systems = test_systems(&["water"]);
         let mut descriptor = Descriptor::new();
         calculator.compute(&mut systems, &mut descriptor, Default::default()).unwrap();
 
@@ -190,7 +190,7 @@ mod tests {
             gradients: true,
         }) as Box<dyn CalculatorBase>);
 
-        let mut systems = test_systems(&["water"]).boxed();
+        let mut systems = test_systems(&["water"]);
         let mut descriptor = Descriptor::new();
         calculator.compute(&mut systems, &mut descriptor, Default::default()).unwrap();
 
@@ -210,7 +210,7 @@ mod tests {
             gradients: true,
         }) as Box<dyn CalculatorBase>);
 
-        let mut systems = test_systems(&["water"]).boxed();
+        let mut systems = test_systems(&["water"]);
         let mut descriptor = Descriptor::new();
 
         let mut samples = IndexesBuilder::new(vec!["structure", "center"]);

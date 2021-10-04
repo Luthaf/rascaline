@@ -849,20 +849,16 @@ impl CalculatorBase for SphericalExpansion {
 
 #[cfg(test)]
 mod tests {
-    use crate::systems::test_systems;
-    use crate::descriptor::{Indexes, IndexValue, IndexesBuilder};
+    use crate::systems::test_utils::{test_systems, test_system};
+    use crate::descriptor::{IndexValue, IndexesBuilder};
     use crate::{Descriptor, Calculator};
 
     use super::{SphericalExpansion, SphericalExpansionParameters};
     use super::{CutoffFunction, RadialBasis};
-    use super::super::super::CalculatorBase;
+    use crate::calculators::CalculatorBase;
 
-    /// Convenience macro to create IndexValue
-    macro_rules! v {
-        ($value: expr) => {
-            crate::descriptor::IndexValue::from($value)
-        };
-    }
+    // small helper function to create IndexValue
+    fn v(i: i32) -> IndexValue { IndexValue::from(i) }
 
     fn parameters(gradients: bool) -> SphericalExpansionParameters {
         SphericalExpansionParameters {
@@ -882,7 +878,7 @@ mod tests {
             parameters(false)
         ).unwrap()) as Box<dyn CalculatorBase>);
 
-        let mut systems = test_systems(&["water"]).boxed();
+        let mut systems = test_systems(&["water"]);
         let mut descriptor = Descriptor::new();
         calculator.compute(&mut systems, &mut descriptor, Default::default()).unwrap();
 
@@ -906,33 +902,12 @@ mod tests {
 
     #[test]
     fn finite_differences() {
-        use super::super::super::tests_utils::{MovedAtomIndex, ChangedGradientIndex};
-
         let calculator = Calculator::from(Box::new(SphericalExpansion::new(
             parameters(true)
         ).unwrap()) as Box<dyn CalculatorBase>);
 
-        let mut systems = test_systems(&["water"]);
-        let system = systems.systems.pop().unwrap();
-
-        let compute_modified_indexes = |gradients_samples: &Indexes, moved: MovedAtomIndex| {
-            let mut results = Vec::new();
-            for (sample_i, sample) in gradients_samples.iter().enumerate() {
-                let neighbor = sample[4];
-                let spatial = sample[5];
-                if neighbor.usize() == moved.center && spatial.usize() == moved.spatial {
-                    results.push(ChangedGradientIndex {
-                        gradient_index: sample_i,
-                        sample: sample[..4].to_vec(),
-                    });
-                }
-            }
-            return results;
-        };
-
-        super::super::super::tests_utils::finite_difference(
-            calculator, system, compute_modified_indexes
-        );
+        let system = test_system("water");
+        crate::calculators::tests_utils::finite_difference(calculator, system);
     }
 
     #[test]
@@ -941,25 +916,25 @@ mod tests {
             parameters(true)
         ).unwrap()) as Box<dyn CalculatorBase>);
 
-        let mut systems = test_systems(&["water", "methane"]).boxed();
+        let mut systems = test_systems(&["water", "methane"]);
 
         let mut features = IndexesBuilder::new(vec!["n", "l", "m"]);
-        features.add(&[v!(0), v!(1), v!(0)]);
-        features.add(&[v!(3), v!(6), v!(-5)]);
-        features.add(&[v!(2), v!(3), v!(2)]);
-        features.add(&[v!(1), v!(4), v!(4)]);
-        features.add(&[v!(5), v!(2), v!(0)]);
-        features.add(&[v!(1), v!(1), v!(-1)]);
+        features.add(&[v(0), v(1), v(0)]);
+        features.add(&[v(3), v(6), v(-5)]);
+        features.add(&[v(2), v(3), v(2)]);
+        features.add(&[v(1), v(4), v(4)]);
+        features.add(&[v(5), v(2), v(0)]);
+        features.add(&[v(1), v(1), v(-1)]);
         let features = features.finish();
 
         let mut samples = IndexesBuilder::new(vec!["structure", "center", "species_center", "species_neighbor"]);
-        samples.add(&[v!(0), v!(1), v!(1), v!(1)]);
-        samples.add(&[v!(0), v!(2), v!(1), v!(123456)]);
-        samples.add(&[v!(1), v!(0), v!(6), v!(1)]);
-        samples.add(&[v!(1), v!(2), v!(1), v!(1)]);
+        samples.add(&[v(0), v(1), v(1), v(1)]);
+        samples.add(&[v(0), v(2), v(1), v(123456)]);
+        samples.add(&[v(1), v(0), v(6), v(1)]);
+        samples.add(&[v(1), v(2), v(1), v(1)]);
         let samples = samples.finish();
 
-        super::super::super::tests_utils::compute_partial(
+        crate::calculators::tests_utils::compute_partial(
             calculator, &mut systems, samples, features, true
         );
     }
