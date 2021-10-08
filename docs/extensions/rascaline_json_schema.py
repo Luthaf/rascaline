@@ -161,7 +161,7 @@ class JsonSchemaDirective(Directive):
                 return nodes.literal(text="boolean")
 
             else:
-                raise Exception("unsupported JSON type in schema")
+                raise Exception(f"unsupported JSON type ({schema['type']}) in schema")
 
         # enums values are represented as allOf
         if "allOf" in schema:
@@ -174,10 +174,10 @@ class JsonSchemaDirective(Directive):
 
             return nodes.reference(internal=True, refid=refid, text=type_name)
 
-        # Enum variants uses "anyOf"
-        if "anyOf" in schema:
+        # Enum variants uses "oneOf"
+        if "oneOf" in schema:
             bullet_list = nodes.bullet_list()
-            for possibility in schema["anyOf"]:
+            for possibility in schema["oneOf"]:
                 item = nodes.list_item()
                 item += self._json_schema_to_nodes(possibility, inline=True)
                 self._parse_md_to(item, possibility.get("description", ""))
@@ -185,7 +185,7 @@ class JsonSchemaDirective(Directive):
 
             return bullet_list
 
-        raise Exception("unsupported JSON schema")
+        raise Exception(f"unsupported JSON schema: {schema}")
 
     def _parse_md_to(self, node, content):
         # HACK: make the CommonMarkParser think that `node` is actually the full
