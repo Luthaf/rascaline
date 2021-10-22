@@ -34,10 +34,10 @@ pub fn read_from_file(path: impl AsRef<Path>) -> Result<Vec<SimpleSystem>, Error
             // use number assigned from the the atomic type, starting at 120
             // since that's larger than the number of elements in the periodic
             // table
-            let new_species = 120 + assigned_species.len();
+            let new_species = 120 + assigned_species.len() as i32;
             *assigned_species.entry(atom.atomic_type()).or_insert(new_species)
         } else {
-            atomic_number as usize
+            atomic_number as i32
         }
     };
 

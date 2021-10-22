@@ -8,7 +8,7 @@ use super::neighbors::NeighborsList;
 #[derive(Clone, Debug)]
 pub struct SimpleSystem {
     cell: UnitCell,
-    species: Vec<usize>,
+    species: Vec<i32>,
     positions: Vec<Vector3D>,
     neighbors: Option<NeighborsList>,
 }
@@ -25,7 +25,7 @@ impl SimpleSystem {
     }
 
     /// Add an atom with the given species and position to this system
-    pub fn add_atom(&mut self, species: usize, position: Vector3D) {
+    pub fn add_atom(&mut self, species: i32, position: Vector3D) {
         self.species.push(species);
         self.positions.push(position);
     }
@@ -47,7 +47,7 @@ impl System for SimpleSystem {
         Ok(&self.positions)
     }
 
-    fn species(&self) -> Result<&[usize], Error> {
+    fn species(&self) -> Result<&[i32], Error> {
         Ok(&self.species)
     }
 

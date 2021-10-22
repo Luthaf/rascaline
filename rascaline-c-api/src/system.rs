@@ -61,7 +61,7 @@ pub struct rascal_system_t {
     /// system. Different atomic species should be identified with a different
     /// value. These values are usually the atomic number, but don't have to be.
     /// The array should contain `rascal_system_t::size()` elements.
-    species: Option<unsafe extern fn(user_data: *const c_void, species: *mut *const usize) -> rascal_status_t>,
+    species: Option<unsafe extern fn(user_data: *const c_void, species: *mut *const i32) -> rascal_status_t>,
     /// This function should set `*positions` to a pointer to the first element
     /// of a contiguous array containing the atomic cartesian coordinates.
     /// `positions[0], positions[1], positions[2]` must contain the x, y, z
@@ -118,7 +118,7 @@ impl<'a> System for &'a mut rascal_system_t {
         return Ok(value);
     }
 
-    fn species(&self) -> Result<&[usize], Error> {
+    fn species(&self) -> Result<&[i32], Error> {
         let function = self.species.ok_or_else(|| Error::External {
             status: RASCAL_SYSTEM_ERROR,
             message: "rascal_system_t.species function is NULL".into(),
@@ -295,7 +295,7 @@ impl From<SimpleSystem> for rascal_system_t {
             })
         }
 
-        unsafe extern fn species(this: *const c_void, species: *mut *const usize) -> rascal_status_t {
+        unsafe extern fn species(this: *const c_void, species: *mut *const i32) -> rascal_status_t {
             catch_unwind(|| {
                 *species = (*this.cast::<SimpleSystem>()).species()?.as_ptr();
                 Ok(())

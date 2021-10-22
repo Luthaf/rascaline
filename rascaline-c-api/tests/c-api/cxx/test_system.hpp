@@ -10,8 +10,8 @@ class TestSystem: public rascaline::System {
         return 4;
     }
 
-    const uintptr_t* species() const override {
-        static uintptr_t SPECIES[4] = {6, 1, 1, 1};
+    const int32_t* species() const override {
+        static int32_t SPECIES[4] = {6, 1, 1, 1};
         return &SPECIES[0];
     }
 

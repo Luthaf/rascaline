@@ -43,9 +43,9 @@ pub trait System {
 
     /// Get the atomic species for all atoms in this system. The returned value
     /// must be a slice of length `self.size()`, where each different atomic
-    /// species is identified with a different usize value. These values are
+    /// species is identified with a different integer value. These values are
     /// usually the atomic number, but don't have to.
-    fn species(&self) -> Result<&[usize], Error>;
+    fn species(&self) -> Result<&[i32], Error>;
 
     /// Get the positions for all atoms in this system. The returned value must
     /// be a slice of length `self.size()` containing the cartesian coordinates

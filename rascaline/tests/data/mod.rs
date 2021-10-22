@@ -25,7 +25,7 @@ pub fn load_calculator_input(path: &str) -> (Vec<Box<dyn System>>, HyperParamete
         let positions = system["positions"].as_array().expect("positions must be an array");
 
         for (species, position) in species.iter().zip(positions) {
-            let species = species.as_u64().expect("species must be an integer") as usize;
+            let species = species.as_i64().expect("species must be an integer") as i32;
             let position = position.as_array().expect("position must be an array");
             let position = Vector3D::new(
                 position[0].as_f64().unwrap(),
