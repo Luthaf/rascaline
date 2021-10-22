@@ -48,6 +48,11 @@ rayon = "1.5"
 crossbeam = "0.8"
 chemfiles = {version = "0.10", optional = true}
 
+# pin cmake to 0.1.45 since 0.1.46 requires the --parallel flag which is not
+# available on the default cmake on ubuntu 18.04
+# https://github.com/alexcrichton/cmake-rs/issues/131
+cmake = "=0.1.45"
+
 [dev-dependencies]
 approx = "0.4"
 criterion = "0.3"
