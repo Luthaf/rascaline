@@ -47,7 +47,7 @@ impl SamplesBuilder for StructureSpeciesSamples {
             let species = system.species()?;
             for (i_atom, &species) in species.iter().enumerate() {
                 // only atoms with the same species participate to the gradient
-                if species == alpha.usize() {
+                if species == alpha.i32() {
                     gradients.add(&[i_system, alpha, IndexValue::from(i_atom), IndexValue::from(0)]);
                     gradients.add(&[i_system, alpha, IndexValue::from(i_atom), IndexValue::from(1)]);
                     gradients.add(&[i_system, alpha, IndexValue::from(i_atom), IndexValue::from(2)]);

@@ -198,7 +198,7 @@ typedef struct rascal_system_t {
    * value. These values are usually the atomic number, but don't have to be.
    * The array should contain `rascal_system_t::size()` elements.
    */
-  rascal_status_t (*species)(const void *user_data, const uintptr_t **species);
+  rascal_status_t (*species)(const void *user_data, const int32_t **species);
   /**
    * This function should set `*positions` to a pointer to the first element
    * of a contiguous array containing the atomic cartesian coordinates.

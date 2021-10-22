@@ -90,8 +90,8 @@ impl CalculatorBase for SortedDistances {
             // vector for each center) for each pair of species in the system
             let mut distances = HashMap::new();
             for sample in &descriptor.samples {
-                let alpha = sample[2].usize();
-                let beta = sample[3].usize();
+                let alpha = sample[2].i32();
+                let beta = sample[3].i32();
                 distances.entry((alpha, beta)).or_insert_with(
                     || vec![Vec::with_capacity(self.max_neighbors); system_size]
                 );
@@ -135,7 +135,7 @@ impl CalculatorBase for SortedDistances {
                         break;
                     }
 
-                    let distance_vector = &distances.get(&(alpha.usize(), beta.usize())).unwrap()[center.usize()];
+                    let distance_vector = &distances.get(&(alpha.i32(), beta.i32())).unwrap()[center.usize()];
                     if all_features {
                         descriptor.values.slice_mut(s![current, ..]).assign(&aview1(distance_vector));
                     } else {

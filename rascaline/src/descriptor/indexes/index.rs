@@ -59,6 +59,10 @@ impl IndexValue {
     pub fn isize(self) -> isize {
         self.0 as isize
     }
+
+    pub fn i32(self) -> i32 {
+        self.0 as i32
+    }
 }
 
 pub struct IndexesBuilder {

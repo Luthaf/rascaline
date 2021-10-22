@@ -98,8 +98,8 @@ impl SamplesBuilder for TwoBodiesSpeciesSamples {
         for requested in samples {
             let i_system = requested[0];
             let center = requested[1].usize();
-            let species_center = requested[2].usize();
-            let species_neighbor = requested[3].usize();
+            let species_center = requested[2].i32();
+            let species_neighbor = requested[3].i32();
 
             let system = &mut *systems[i_system.usize()];
             system.compute_neighbors(self.cutoff)?;

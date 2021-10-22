@@ -149,9 +149,9 @@ impl SamplesBuilder for ThreeBodiesSpeciesSamples {
         for requested in samples {
             let i_system = requested[0];
             let center = requested[1].usize();
-            let species_center = requested[2].usize();
-            let species_neighbor_1 = requested[3].usize();
-            let species_neighbor_2 = requested[4].usize();
+            let species_center = requested[2].i32();
+            let species_neighbor_1 = requested[3].i32();
+            let species_neighbor_2 = requested[4].i32();
 
             let system = &mut *systems[i_system.usize()];
             system.compute_neighbors(self.cutoff)?;

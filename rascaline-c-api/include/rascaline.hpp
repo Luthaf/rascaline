@@ -173,7 +173,7 @@ public:
     /// identified with a different value. These values are usually the atomic
     /// number, but don't have to be. The array should contain `System::size()`
     /// elements.
-    virtual const uintptr_t* species() const = 0;
+    virtual const int32_t* species() const = 0;
 
     /// Get a pointer to the first element of a contiguous array containing the
     /// atomic cartesian coordinates. `positions[0], positions[1], positions[2]`
@@ -228,7 +228,7 @@ public:
                 );
             },
             // species
-            [](const void* self, const uintptr_t** species) {
+            [](const void* self, const int32_t** species) {
                 RASCAL_SYSTEM_CATCH_EXCEPTIONS(
                     *species = static_cast<const System*>(self)->species();
                 );

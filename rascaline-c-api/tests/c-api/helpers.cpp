@@ -27,8 +27,8 @@ rascal_system_t simple_system() {
         return RASCAL_SUCCESS;
     };
 
-    system.species = [](const void* _, const uintptr_t** species) {
-        static uintptr_t SPECIES[4] = {6, 1, 1, 1};
+    system.species = [](const void* _, const int32_t** species) {
+        static int32_t SPECIES[4] = {6, 1, 1, 1};
         *species = SPECIES;
         return RASCAL_SUCCESS;
     };

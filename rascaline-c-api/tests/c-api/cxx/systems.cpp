@@ -14,7 +14,7 @@ TEST_CASE("basic systems") {
     system->size(system->user_data, &size);
     CHECK(size == 54);
 
-    const uintptr_t* species = nullptr;
+    const int32_t* species = nullptr;
     system->species(system->user_data, &species);
     for (size_t i=0; i<size; i++) {
         CHECK(species[i] == 14);
@@ -47,7 +47,7 @@ public:
         throw std::runtime_error("this is a test error");
     }
 
-    const uintptr_t* species() const override {
+    const int32_t* species() const override {
         throw std::runtime_error("unimplemented");
     }
 

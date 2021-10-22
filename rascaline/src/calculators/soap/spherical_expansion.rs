@@ -610,9 +610,9 @@ struct Pair {
     /// index of the second atom of the pair inside the system
     second: usize,
     /// species of the first atom of the pair
-    species_first: usize,
+    species_first: i32,
     /// species of the second atom of the pair
-    species_second: usize,
+    species_second: i32,
     /// distance between the first and second atom in the pair
     distance: f64,
     /// direction vector (normalized) from the first to the second atom in the
