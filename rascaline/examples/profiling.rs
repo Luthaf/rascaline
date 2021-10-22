@@ -51,5 +51,5 @@ fn compute_soap(path: &str) -> Result<Descriptor, Box<dyn std::error::Error>> {
     calculator.compute(&mut systems, &mut descriptor, Default::default())?;
     descriptor.densify(&["species_neighbor_1", "species_neighbor_2"], None)?;
 
-    return Ok(descriptor);
+    Ok(descriptor)
 }
