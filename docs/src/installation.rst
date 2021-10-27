@@ -2,7 +2,8 @@ Installation
 ============
 
 You can install rascaline in different ways depending on which language you plan
-to use it from.
+to use it from. In all cases you will need a Rust compiler, which you can
+install using `rustup <https://rustup.rs/>`_ or your OS package manager.
 
 .. warning::
 
