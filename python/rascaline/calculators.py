@@ -3,7 +3,7 @@ import json
 import ctypes
 import numpy as np
 
-from ._rascaline import rascal_system_t, rascal_calculation_options_t
+from ._rascaline import rascal_system_t, rascal_calculation_options_t, c_uintptr_t
 from .clib import _get_library
 from .status import _check_rascal_pointer, RascalError
 from .descriptor import Descriptor
@@ -120,11 +120,9 @@ class CalculatorBase:
         :py:class:`rascaline.Descriptor` returned by
         :py:func:`rascaline.calculators.CalculatorBase.compute`.
         """
-        return _call_with_growing_buffer(
-            lambda buffer, bufflen: self._lib.rascal_calculator_parameters(
-                self, buffer, bufflen
-            )
-        )
+        size = c_uintptr_t()
+        self._lib.rascal_calculator_features_count(self, size)
+        return size.value
 
     def compute(
         self,
