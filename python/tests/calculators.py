@@ -146,6 +146,10 @@ class TestDummyCalculator(unittest.TestCase):
         for i in range(gradients.shape[0]):
             self.assertTrue(np.all(gradients[i] == [0]))
 
+    def test_features_count(self):
+        calculator = DummyCalculator(cutoff=3.2, delta=2, name="", gradients=True)
+        self.assertEqual(calculator.features_count(), 2)
+
 
 class TestSortedDistances(unittest.TestCase):
     def test_name(self):
