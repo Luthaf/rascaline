@@ -54,8 +54,9 @@ passenv =
 deps =
     numpy
     chemfiles
+    ase
 
 commands =
     python setup.py --quiet install
-    python python/examples/compute-soap.py rascaline/examples/data/water.xyz
+    python python/tests/check_examples.py
 """
