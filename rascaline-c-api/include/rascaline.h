@@ -244,6 +244,30 @@ typedef struct rascal_system_t {
 } rascal_system_t;
 
 /**
+ * `rascal_densified_position_t` contains all the information to reconstruct
+ * the new position of the values/gradients associated with a single sample in
+ * the initial descriptor
+ */
+typedef struct rascal_densified_position_t {
+  /**
+   * Index of the old sample (respectively gradient sample) in the value
+   * (respectively gradients) array. Some samples might not be necessary in
+   * the new array if the user requested only a subset of the values taken by
+   * the densified variables
+   */
+  uintptr_t old_sample;
+  /**
+   * Index of the new sample (respectively gradient sample) in the value
+   * (respectively gradients) array
+   */
+  uintptr_t new_sample;
+  /**
+   * Index of the feature block in the new array
+   */
+  uintptr_t feature_block;
+} rascal_densified_position_t;
+
+/**
  * Options that can be set to change how a calculator operates.
  */
 typedef struct rascal_calculation_options_t {
@@ -548,6 +572,32 @@ rascal_status_t rascal_descriptor_densify(struct rascal_descriptor_t *descriptor
                                           uintptr_t variables_count,
                                           const int32_t *requested,
                                           uintptr_t requested_size);
+
+/**
+ * Make this descriptor dense along the given `variables`, only modifying the
+ * values array, and not the gradients array.
+ *
+ * This function behaves similarly to `rascal_descriptor_densify`, please refer
+ * to its documentation for more information.
+ *
+ * If this descriptor contains gradients, `gradients_positions` will point to
+ * an array allocated with `malloc` containing the list of samples in the old
+ * gradient array that should be used to reconstruct the dense gradient array;
+ * and the new position of the values associated with each of these samples.
+ * Users of this function are expected to `free` the corresponding memory when
+ * they no longer need it.
+ *
+ * This is an advanced function most users should not need to use, used to
+ * implement backward propagation without having to densify the full gradient
+ * array.
+ */
+rascal_status_t rascal_descriptor_densify_values(struct rascal_descriptor_t *descriptor,
+                                                 const char *const *variables,
+                                                 uintptr_t variables_count,
+                                                 const int32_t *requested,
+                                                 uintptr_t requested_size,
+                                                 struct rascal_densified_position_t **gradients_positions,
+                                                 uintptr_t *gradients_positions_count);
 
 /**
  * Create a new calculator with the given `name` and `parameters`.

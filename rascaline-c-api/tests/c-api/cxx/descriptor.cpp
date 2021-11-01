@@ -143,14 +143,17 @@ TEST_CASE("Descriptor") {
         compute_descriptor(descriptor);
 
         CHECK(descriptor.values().shape() == std::array<size_t, 2>{4, 2});
+        CHECK(descriptor.gradients().shape() == std::array<size_t, 2>{18, 2});
 
         descriptor.densify({"center"});
         CHECK(descriptor.values().shape() == std::array<size_t, 2>{1, 8});
+        CHECK(descriptor.gradients().shape() == std::array<size_t, 2>{12, 8});
 
         compute_descriptor(descriptor);
         auto requested = std::vector<int32_t>{1, 3, 7};
         descriptor.densify({"center"}, rascaline::ArrayView<int32_t>(requested.data(), {3, 1}));
         CHECK(descriptor.values().shape() == std::array<size_t, 2>{1, 6});
+        CHECK(descriptor.gradients().shape() == std::array<size_t, 2>{6, 6});
 
         compute_descriptor(descriptor);
         CHECK_THROWS_WITH(
@@ -158,5 +161,24 @@ TEST_CASE("Descriptor") {
             "invalid parameter: can not densify along 'not there' which is not "
             "present in the samples: [structure, center]"
         );
+
+        compute_descriptor(descriptor);
+        auto densified_positions = descriptor.densify_values({"center"});
+        CHECK(descriptor.values().shape() == std::array<size_t, 2>{1, 8});
+        // gradients are not changed
+        CHECK(descriptor.gradients().shape() == std::array<size_t, 2>{18, 2});
+
+        CHECK(densified_positions.size() == 18);
+        CHECK(densified_positions[0].old_sample == 0);
+        CHECK(densified_positions[0].new_sample == 0);
+        CHECK(densified_positions[0].feature_block == 0);
+
+        CHECK(densified_positions[6].old_sample == 6);
+        CHECK(densified_positions[6].new_sample == 6);
+        CHECK(densified_positions[6].feature_block == 1);
+
+        CHECK(densified_positions[15].old_sample == 15);
+        CHECK(densified_positions[15].new_sample == 6);
+        CHECK(densified_positions[15].feature_block == 3);
     }
 }

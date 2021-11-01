@@ -1,11 +1,15 @@
 #ifndef RASCALINE_HPP
 #define RASCALINE_HPP
 
+#include <cassert>
+#include <cstring>
+#include <cstdlib>
+
+#include <new>
+#include <limits>
 #include <array>
 #include <string>
 #include <vector>
-#include <cassert>
-#include <cstring>
 #include <mutex>
 #include <stdexcept>
 #include <exception>
@@ -557,6 +561,70 @@ private:
     std::vector<std::string> names_;
 };
 
+/// Small wrapper around `malloc`'ed array, taking ownership of this array and
+/// `free`ing it on destruction
+template<typename T>
+class MallocArray {
+public:
+    /// Create a new `MallocArray` with the given pointer and size. The pointer
+    /// MUST have been allocated with either `malloc`, `calloc` or `realloc`.
+    MallocArray(T* data, size_t size): data_(data), size_(size) {}
+
+    ~MallocArray() {
+        free(data_);
+    }
+
+    MallocArray(const MallocArray&) = delete;
+    MallocArray& operator=(const MallocArray&) = delete;
+
+    MallocArray(MallocArray&& other): MallocArray(nullptr, 0) {
+        *this = std::move(other);
+    }
+
+    MallocArray& operator=(MallocArray&& other) {
+        free(this->data_);
+
+        this->data_ = other.data_;
+        this->size_ = other.size_;
+
+        other.data_ = nullptr;
+        other.size_ = 0;
+
+        return *this;
+    }
+
+    /// Get the pointer to the first element in this `MallocArray`
+    T* data() {
+        return data_;
+    }
+
+    /// Get the pointer to the first element in this `MallocArray`
+    const T* data() const {
+        return data_;
+    }
+
+    /// Get the number of elements in this `MallocArray`
+    size_t size() {
+        return size_;
+    }
+
+    /// Get the element at the given `index` in this `MallocArray`
+    T& operator[](size_t index) {
+        assert(index < size_ && "out of bounds access");
+        return data_[index];
+    }
+
+    /// Get the element at the given `index` in this `MallocArray`
+    const T& operator[](size_t index) const {
+        assert(index < size_ && "out of bounds access");
+        return data_[index];
+    }
+
+private:
+    T* data_;
+    size_t size_;
+};
+
 /// Descriptors store the result of a single calculation on a set of systems.
 ///
 /// They contains the values produced by the calculation; as well as metdata to
@@ -725,6 +793,48 @@ public:
                 requested.data(),
                 requested.shape()[0]
             )
+        );
+    }
+
+    /// Make this descriptor dense along the given `variables`, only modifying
+    /// the values array, and not the gradients array.
+    ///
+    /// This function behaves similarly to `Descriptor::densify`, please refer
+    /// to its documentation for more information.
+    ///
+    /// If this descriptor contains gradients, this function will return an
+    /// array of `rascal_densified_position_t` containing for each sample in
+    /// `gradient_sample` the new position it should have in a densified
+    /// gradients array.
+    ///
+    /// This is an advanced function most users should not need to use, used to
+    /// implement backward propagation without having to densify the full
+    /// gradient array and waste memory.
+    MallocArray<rascal_densified_position_t> densify_values(
+        std::vector<std::string> variables,
+        const ArrayView<int32_t>& requested = ArrayView<int32_t>(static_cast<const int32_t*>(nullptr), {0, 0})
+    ) {
+        auto c_variables = std::vector<const char*>(variables.size());
+        for (size_t i=0; i<variables.size(); i++) {
+            c_variables[i] = variables[i].data();
+        }
+
+        rascal_densified_position_t* densified_positions = nullptr;
+        uintptr_t densified_positions_count = 0;
+        details::check_status(
+            rascal_descriptor_densify_values(
+                descriptor_,
+                c_variables.data(),
+                variables.size(),
+                requested.data(),
+                requested.shape()[0],
+                &densified_positions,
+                &densified_positions_count
+            )
+        );
+
+        return MallocArray<rascal_densified_position_t>(
+            densified_positions, densified_positions_count
         );
     }
 
