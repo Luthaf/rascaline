@@ -2,7 +2,7 @@
 import numpy as np
 from ctypes import c_double, c_int32, c_char_p, POINTER, ARRAY
 
-from ._rascaline import c_uintptr_t, rascal_indexes
+from ._rascaline import c_uintptr_t, rascal_indexes, rascal_densified_position_t
 from .clib import _get_library
 from .status import _check_rascal_pointer
 
@@ -215,27 +215,9 @@ class Descriptor:
         if isinstance(variables, str):
             variables = [variables]
 
-        if requested is not None:
-            requested = np.array(requested)
-            if len(requested.shape) == 1:
-                requested = requested.reshape(requested.shape[0], 1)
-
-            if len(requested.shape) != 2 or requested.shape[1] != len(variables):
-                raise ValueError(
-                    "invalid requested features array shape: expected "
-                    + f"(N, {len(variables)}); got {requested.shape}"
-                )
-
-            if not np.can_cast(requested, np.int32, casting="same_kind"):
-                raise ValueError("the requested features must contain int32 values")
-            requested = np.array(requested, dtype=np.int32)
-
-            ptr_int32 = POINTER(c_int32)
-
-            requested_size = requested.shape[0]
-            requested = requested.ctypes.data_as(ptr_int32)
-        else:
-            requested_size = 0
+        requested, requested_size = _densify_prepare_requested_features(
+            variables, requested
+        )
 
         c_variables = ARRAY(c_char_p, len(variables))()
         for i, v in enumerate(variables):
@@ -243,6 +225,53 @@ class Descriptor:
         self._lib.rascal_descriptor_densify(
             self, c_variables, c_variables._length_, requested, requested_size
         )
+
+    def densify_values(self, variables, requested=None):
+        """
+        Make this descriptor dense along the given ``variables``, only modifying
+        the values array, and not the gradients array.
+
+        This function behaves similarly to :py:func:`Descriptor.densify`, please
+        refer to its documentation for more information.
+
+        If this descriptor contains gradients, this function returns a vector
+        containing all the information required to densify the gradient array.
+
+        This is an advanced function most users should not need to use, used to
+        implement backward propagation without having to densify the full
+        gradient array.
+        """
+        if isinstance(variables, str):
+            variables = [variables]
+
+        requested, requested_size = _densify_prepare_requested_features(
+            variables, requested
+        )
+
+        c_variables = ARRAY(c_char_p, len(variables))()
+        for i, v in enumerate(variables):
+            c_variables[i] = v.encode("utf8")
+
+        densified_positions = POINTER(rascal_densified_position_t)()
+        densified_positions_size = c_uintptr_t()
+        self._lib.rascal_descriptor_densify_values(
+            self,
+            c_variables,
+            c_variables._length_,
+            requested,
+            requested_size,
+            densified_positions,
+            densified_positions_size,
+        )
+
+        result = np.ctypeslib.as_array(
+            densified_positions,
+            shape=(densified_positions_size.value,),
+        ).copy()
+
+        self._lib.free(densified_positions)
+
+        return result
 
 
 def _ptr_to_ndarray(ptr, shape):
@@ -255,3 +284,29 @@ def _ptr_to_ndarray(ptr, shape):
     else:
         data = np.array([], dtype=np.float64)
         return data.reshape(shape)
+
+
+def _densify_prepare_requested_features(variables, requested):
+    if requested is not None:
+        requested = np.array(requested)
+        if len(requested.shape) == 1:
+            requested = requested.reshape(requested.shape[0], 1)
+
+        if len(requested.shape) != 2 or requested.shape[1] != len(variables):
+            raise ValueError(
+                "invalid requested features array shape: expected "
+                + f"(N, {len(variables)}); got {requested.shape}"
+            )
+
+        if not np.can_cast(requested, np.int32, casting="same_kind"):
+            raise ValueError("the requested features must contain int32 values")
+        requested = np.array(requested, dtype=np.int32)
+
+        ptr_int32 = POINTER(c_int32)
+
+        requested_size = requested.shape[0]
+        requested = requested.ctypes.data_as(ptr_int32)
+    else:
+        requested_size = 0
+
+    return requested, requested_size

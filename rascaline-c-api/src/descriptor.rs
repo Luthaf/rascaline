@@ -387,3 +387,88 @@ pub unsafe extern fn rascal_descriptor_densify(
         Ok(())
     })
 }
+
+/// `rascal_densified_position_t` contains all the information to reconstruct
+/// the new position of the values/gradients associated with a single sample in
+/// the initial descriptor
+#[repr(C)]
+pub struct rascal_densified_position_t {
+    /// Index of the old sample (respectively gradient sample) in the value
+    /// (respectively gradients) array. Some samples might not be necessary in
+    /// the new array if the user requested only a subset of the values taken by
+    /// the densified variables
+    pub old_sample: usize,
+    /// Index of the new sample (respectively gradient sample) in the value
+    /// (respectively gradients) array
+    pub new_sample: usize,
+    /// Index of the feature block in the new array
+    pub feature_block: usize,
+}
+
+/// Make this descriptor dense along the given `variables`, only modifying the
+/// values array, and not the gradients array.
+///
+/// This function behaves similarly to `rascal_descriptor_densify`, please refer
+/// to its documentation for more information.
+///
+/// If this descriptor contains gradients, `gradients_positions` will point to
+/// an array allocated with `malloc` containing the list of samples in the old
+/// gradient array that should be used to reconstruct the dense gradient array;
+/// and the new position of the values associated with each of these samples.
+/// Users of this function are expected to `free` the corresponding memory when
+/// they no longer need it.
+///
+/// This is an advanced function most users should not need to use, used to
+/// implement backward propagation without having to densify the full gradient
+/// array.
+#[allow(clippy::identity_op, clippy::cast_possible_wrap)]
+#[no_mangle]
+pub unsafe extern fn rascal_descriptor_densify_values(
+    descriptor: *mut rascal_descriptor_t,
+    variables: *const *const c_char,
+    variables_count: usize,
+    requested: *const i32,
+    requested_size: usize,
+    gradients_positions: *mut *mut rascal_densified_position_t,
+    gradients_positions_count: *mut usize,
+) -> rascal_status_t {
+    catch_unwind(|| {
+        check_pointers!(descriptor, variables);
+        let mut rust_variables = Vec::new();
+        for &variable in std::slice::from_raw_parts(variables, variables_count) {
+            check_pointers!(variable);
+            let variable = CStr::from_ptr(variable).to_str()?;
+            rust_variables.push(variable);
+        }
+
+        let requested = if requested.is_null() {
+            None
+        } else {
+            Some(ndarray::ArrayView2::from_shape_ptr(
+                [requested_size, variables_count], requested.cast::<IndexValue>()
+            ))
+        };
+
+        let densified_positions = (*descriptor).densify_values(&rust_variables, requested)?;
+
+        *gradients_positions_count = densified_positions.len();
+        *gradients_positions = libc::calloc(
+            densified_positions.len(),
+            std::mem::size_of::<rascal_densified_position_t>()
+        ).cast();
+
+        if (*gradients_positions).is_null() {
+            return Err(Error::BufferSize(
+                "failed to allocate enough memory to store densified positions".into()
+            ));
+        }
+
+        for (i, position) in densified_positions.into_iter().enumerate() {
+            (*(*gradients_positions).add(i)).old_sample = position.old_sample;
+            (*(*gradients_positions).add(i)).new_sample = position.new_sample;
+            (*(*gradients_positions).add(i)).feature_block = position.features_block;
+        }
+
+        Ok(())
+    })
+}

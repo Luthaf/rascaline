@@ -63,12 +63,20 @@ class rascal_system_t(ctypes.Structure):
     _fields_ = [
         ("user_data", ctypes.c_void_p),
         ("size", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, POINTER(c_uintptr_t))),
-        ("species", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, POINTER(ndpointer(c_uintptr_t, flags='C_CONTIGUOUS')))),
+        ("species", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, POINTER(ndpointer(ctypes.c_int32, flags='C_CONTIGUOUS')))),
         ("positions", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, POINTER(ndpointer(ctypes.c_double, flags='C_CONTIGUOUS')))),
         ("cell", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, POINTER(ctypes.c_double))),
         ("compute_neighbors", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, ctypes.c_double)),
         ("pairs", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, POINTER(ndpointer(rascal_pair_t, flags='C_CONTIGUOUS')), POINTER(c_uintptr_t))),
         ("pairs_containing", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, c_uintptr_t, POINTER(ndpointer(rascal_pair_t, flags='C_CONTIGUOUS')), POINTER(c_uintptr_t))),
+    ]
+
+
+class rascal_densified_position_t(ctypes.Structure):
+    _fields_ = [
+        ("old_sample", c_uintptr_t),
+        ("new_sample", c_uintptr_t),
+        ("feature_block", c_uintptr_t),
     ]
 
 
@@ -159,6 +167,17 @@ def setup_functions(lib):
         c_uintptr_t
     ]
     lib.rascal_descriptor_densify.restype = _check_rascal_status_t
+
+    lib.rascal_descriptor_densify_values.argtypes = [
+        POINTER(rascal_descriptor_t),
+        POINTER(ctypes.c_char_p),
+        c_uintptr_t,
+        POINTER(ctypes.c_int32),
+        c_uintptr_t,
+        POINTER(POINTER(rascal_densified_position_t)),
+        POINTER(c_uintptr_t)
+    ]
+    lib.rascal_descriptor_densify_values.restype = _check_rascal_status_t
 
     lib.rascal_calculator.argtypes = [
         ctypes.c_char_p,

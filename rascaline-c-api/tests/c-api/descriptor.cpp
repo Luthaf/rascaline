@@ -226,47 +226,115 @@ TEST_CASE("rascal_descriptor_t") {
     SECTION("densify") {
         auto* descriptor = rascal_descriptor();
         REQUIRE(descriptor != nullptr);
-
         compute_descriptor(descriptor);
 
         double* data = nullptr;
-        uintptr_t environments = 0;
+        uintptr_t samples = 0;
         uintptr_t features = 0;
+
         CHECK_SUCCESS(rascal_descriptor_values(
-            descriptor, &data, &environments, &features
+            descriptor, &data, &samples, &features
         ));
         CHECK(data != nullptr);
-        CHECK(environments == 4);
+        CHECK(samples == 4);
         CHECK(features == 2);
 
-        const char* variables[] = { "center" };
-        CHECK_SUCCESS(rascal_descriptor_densify(
-            descriptor, variables, 1, NULL, 0
-        ));
-
-        CHECK_SUCCESS(rascal_descriptor_values(
-            descriptor, &data, &environments, &features
+        CHECK_SUCCESS(rascal_descriptor_gradients(
+            descriptor, &data, &samples, &features
         ));
         CHECK(data != nullptr);
-        CHECK(environments == 1);
-        CHECK(features == 8);
+        CHECK(samples == 18);
+        CHECK(features == 2);
 
-        compute_descriptor(descriptor);
-        int32_t requested[] = {1, 3, 6};
-        CHECK_SUCCESS(rascal_descriptor_densify(
-            descriptor, variables, 1, requested, 3
-        ));
+        SECTION("basic usage") {
+            const char* variables[] = { "center" };
+            CHECK_SUCCESS(rascal_descriptor_densify(
+                descriptor, variables, 1, NULL, 0
+            ));
 
-        CHECK_SUCCESS(rascal_descriptor_values(
-            descriptor, &data, &environments, &features
-        ));
-        CHECK(data != nullptr);
-        CHECK(environments == 1);
-        CHECK(features == 3 * 2);
+            CHECK_SUCCESS(rascal_descriptor_values(
+                descriptor, &data, &samples, &features
+            ));
+            CHECK(data != nullptr);
+            CHECK(samples == 1);
+            CHECK(features == 8);
 
-        compute_descriptor(descriptor);
-        variables[0] = "not there";
-        CHECK(rascal_descriptor_densify(descriptor, variables, 1, NULL, 0) != RASCAL_SUCCESS);
+            CHECK_SUCCESS(rascal_descriptor_gradients(
+                descriptor, &data, &samples, &features
+            ));
+            CHECK(data != nullptr);
+            CHECK(samples == 12);
+            CHECK(features == 8);
+        }
+
+        SECTION("specify the values taken by the variables") {
+            int32_t requested[] = {1, 3, 6};
+            const char* variables[] = { "center" };
+            CHECK_SUCCESS(rascal_descriptor_densify(
+                descriptor, variables, 1, requested, 3
+            ));
+
+            CHECK_SUCCESS(rascal_descriptor_values(
+                descriptor, &data, &samples, &features
+            ));
+            CHECK(data != nullptr);
+            CHECK(samples == 1);
+            CHECK(features == 3 * 2);
+
+            CHECK_SUCCESS(rascal_descriptor_gradients(
+                descriptor, &data, &samples, &features
+            ));
+            CHECK(data != nullptr);
+            CHECK(samples == 6);
+            CHECK(features == 3 * 2);
+        }
+
+        SECTION("error handling") {
+            compute_descriptor(descriptor);
+            const char* variables[] = { "not there" };
+            CHECK(rascal_descriptor_densify(descriptor, variables, 1, NULL, 0) != RASCAL_SUCCESS);
+        }
+
+        SECTION("densify_values") {
+            const char* variables[] = { "center" };
+
+            rascal_densified_position_t* densified_positions = nullptr;
+            uintptr_t densified_positions_count = 0;
+
+            CHECK_SUCCESS(rascal_descriptor_densify_values(
+                descriptor, variables, 1, NULL, 0, &densified_positions, &densified_positions_count
+            ));
+
+            CHECK_SUCCESS(rascal_descriptor_values(
+                descriptor, &data, &samples, &features
+            ));
+            CHECK(data != nullptr);
+            CHECK(samples == 1);
+            CHECK(features == 8);
+
+            // gradients don't change
+            CHECK_SUCCESS(rascal_descriptor_gradients(
+                descriptor, &data, &samples, &features
+            ));
+            CHECK(data != nullptr);
+            CHECK(samples == 18);
+            CHECK(features == 2);
+
+            CHECK(densified_positions_count == 18);
+            CHECK(densified_positions[0].old_sample == 0);
+            CHECK(densified_positions[0].new_sample == 0);
+            CHECK(densified_positions[0].feature_block == 0);
+
+            CHECK(densified_positions[6].old_sample == 6);
+            CHECK(densified_positions[6].new_sample == 6);
+            CHECK(densified_positions[6].feature_block == 1);
+
+            CHECK(densified_positions[15].old_sample == 15);
+            CHECK(densified_positions[15].new_sample == 6);
+            CHECK(densified_positions[15].feature_block == 3);
+
+            free(densified_positions);
+        }
 
         rascal_descriptor_free(descriptor);
     }

@@ -187,7 +187,7 @@ class TestDummyDescriptor(unittest.TestCase):
         descriptor = compute_descriptor()
         descriptor.densify("center", [1, 3, 8])
         self.assertEqual(descriptor.values.shape, (1, 6))
-        self.assertEqual(descriptor.gradients.shape, (12, 6))
+        self.assertEqual(descriptor.gradients.shape, (6, 6))
 
         descriptor = compute_descriptor()
         with self.assertRaises(RascalError) as cm:
@@ -198,3 +198,22 @@ class TestDummyDescriptor(unittest.TestCase):
             "invalid parameter: can not densify along 'not there' which is not "
             + "present in the samples: [structure, center]",
         )
+
+        descriptor = compute_descriptor()
+        densified_positions = descriptor.densify_values("center")
+        self.assertEqual(descriptor.values.shape, (1, 8))
+        # gradients were not changed
+        self.assertEqual(descriptor.gradients.shape, (18, 2))
+
+        self.assertEqual(densified_positions.shape, (18,))
+        self.assertEqual(densified_positions[0]["old_sample"], 0)
+        self.assertEqual(densified_positions[0]["new_sample"], 0)
+        self.assertEqual(densified_positions[0]["feature_block"], 0)
+
+        self.assertEqual(densified_positions[6]["old_sample"], 6)
+        self.assertEqual(densified_positions[6]["new_sample"], 6)
+        self.assertEqual(densified_positions[6]["feature_block"], 1)
+
+        self.assertEqual(densified_positions[15]["old_sample"], 15)
+        self.assertEqual(densified_positions[15]["new_sample"], 6)
+        self.assertEqual(densified_positions[15]["feature_block"], 3)
