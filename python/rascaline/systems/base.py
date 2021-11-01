@@ -71,7 +71,7 @@ class SystemBase:
             """
             self = get_self(user_data)
 
-            species = np.array(self.species(), dtype=c_uintptr_t)
+            species = np.array(self.species(), dtype=np.int32)
             data[0] = species.ctypes.data
             self._keepalive["species"] = species
 
