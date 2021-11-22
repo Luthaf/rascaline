@@ -3,7 +3,7 @@ from .status import RascalError
 from .log import set_logging_callback
 from .profiling import Profiler
 
-from .descriptor import Descriptor
+from .descriptor import Descriptor, Indexes
 
 from .systems import SystemBase
 

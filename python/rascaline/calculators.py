@@ -6,17 +6,9 @@ import numpy as np
 from ._rascaline import rascal_system_t, rascal_calculation_options_t, c_uintptr_t
 from .clib import _get_library
 from .status import _check_rascal_pointer, RascalError
-from .descriptor import Descriptor
+from .descriptor import Descriptor, Indexes
 from .systems import wrap_system
 from .utils import _call_with_growing_buffer
-
-
-def _check_selected_indexes(indexes, kind):
-    if len(indexes.shape) != 2:
-        raise ValueError(f"selected {kind} array must be a two-dimensional array")
-
-    if not np.can_cast(indexes.dtype, np.int32, "same_kind"):
-        raise ValueError(f"selected {kind} array must contain int32 values")
 
 
 def _convert_systems(systems):
@@ -30,43 +22,58 @@ def _convert_systems(systems):
 
 
 def _options_to_c(use_native_system, samples, features):
-    if samples is not None:
-        samples = np.array(samples)
-        if samples.dtype.fields is not None:
-            # convert structured array back to int32 array
-            size = len(samples)
-            samples = samples.view(dtype=np.int32).reshape((size, -1))
-        else:
-            _check_selected_indexes(samples, "samples")
-            samples = np.array(samples, dtype=np.int32)
-
-    if features is not None:
-        features = np.array(features)
-        if features.dtype.fields is not None:
-            # convert structured array back to int32 array
-            size = len(features)
-            features = features.view(dtype=np.int32).reshape((size, -1))
-        else:
-            _check_selected_indexes(features, "features")
-            features = np.array(features, dtype=np.int32)
-
     ptr_int32 = ctypes.POINTER(ctypes.c_int32)
     c_options = rascal_calculation_options_t()
     c_options.use_native_system = bool(use_native_system)
 
+    # store data to keep alive here
+    c_options.__keepalive = {}
+
     if samples is None:
-        c_options.selected_samples = None
-        c_options.selected_samples_count = 0
+        c_options.selected_samples.names = None
+        c_options.selected_samples.values = None
+        c_options.selected_samples.size = 0
+        c_options.selected_samples.count = 0
     else:
-        c_options.selected_samples = samples.ctypes.data_as(ptr_int32)
-        c_options.selected_samples_count = samples.size
+        if not isinstance(samples, Indexes):
+            raise ValueError(
+                "expected selected samples as an `Indexes` instance, "
+                f"got {type(samples)} instead"
+            )
+
+        samples_names = ctypes.ARRAY(ctypes.c_char_p, len(samples.names))()
+        for i, n in enumerate(samples.names):
+            samples_names[i] = n.encode("utf8")
+
+        c_options.__keepalive["samples_names"] = samples_names
+
+        c_options.selected_samples.names = samples_names
+        c_options.selected_samples.size = len(samples_names)
+        c_options.selected_samples.values = samples.ctypes.data_as(ptr_int32)
+        c_options.selected_samples.count = samples.shape[0]
 
     if features is None:
-        c_options.selected_features = None
-        c_options.selected_features_count = 0
+        c_options.selected_features.names = None
+        c_options.selected_features.values = None
+        c_options.selected_features.size = 0
+        c_options.selected_features.count = 0
     else:
-        c_options.selected_features = features.ctypes.data_as(ptr_int32)
-        c_options.selected_features_count = features.size
+        if not isinstance(features, Indexes):
+            raise ValueError(
+                "expected selected samples as an `Indexes` instance, "
+                f"got {type(features)} instead"
+            )
+
+        features_names = ctypes.ARRAY(ctypes.c_char_p, len(features.names))()
+        for i, n in enumerate(features.names):
+            features_names[i] = n.encode("utf8")
+
+        c_options.__keepalive["features_names"] = features_names
+
+        c_options.selected_features.names = features_names
+        c_options.selected_features.size = len(features.names)
+        c_options.selected_features.values = features.ctypes.data_as(ptr_int32)
+        c_options.selected_features.count = features.shape[0]
 
     return c_options, samples, features
 
@@ -168,8 +175,7 @@ class CalculatorBase:
             sample indexes used by this calculator. Each row of the array
             describes a single sample and will be validated by the calculator.
 
-        :type selected_samples:
-            Optional[numpy.ndarray | :py:class:`rascaline.descriptor.Indexes`]
+        :type selected_samples: Optional[:py:class:`rascaline.descriptor.Indexes`]
 
         :param selected_features: defaults to ``None``. List of features on
             which to run the calculation. Use ``None`` to run the calculation on
@@ -183,8 +189,7 @@ class CalculatorBase:
             of the features used by this calculator.  Each row of the array
             describes a single feature and will be validated by the calculator.
 
-        :type selected_features:
-            Optional[numpy.ndarray | :py:class:`rascaline.descriptor.Indexes`]
+        :type selected_features: Optional[:py:class:`rascaline.descriptor.Indexes`]
 
         :return: the ``descriptor`` parameter or the new new descriptor if
                  ``descriptor`` was ``None``.

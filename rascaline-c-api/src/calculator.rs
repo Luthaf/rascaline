@@ -2,12 +2,13 @@ use std::os::raw::c_char;
 use std::ffi::CStr;
 use std::ops::{Deref, DerefMut};
 
-use rascaline::{Calculator, System, CalculationOptions, SelectedIndexes};
+use rascaline::{Calculator, System, Error, CalculationOptions, SelectedIndexes};
+use rascaline::descriptor::IndexesBuilder;
 
 use super::utils::copy_str_to_c;
 use super::{catch_unwind, rascal_status_t};
 
-use super::descriptor::rascal_descriptor_t;
+use super::descriptor::{rascal_descriptor_t, rascal_indexes_t};
 use super::system::rascal_system_t;
 
 /// Opaque type representing a `Calculator`
@@ -148,7 +149,7 @@ pub unsafe extern fn rascal_calculator_parameters(
 }
 
 /// Get the default number of features this `calculator` will produce in the
-/// `count` parameter.
+/// `features` parameter.
 ///
 /// This number corresponds to the size of second dimension of the `values` and
 /// `gradients` arrays in the `rascal_descriptor_t` after a call to
@@ -178,57 +179,48 @@ pub struct rascal_calculation_options_t {
     /// Copy the data from systems into native `SimpleSystem`. This can be
     /// faster than having to cross the FFI boundary too often.
     use_native_system: bool,
-    /// List of samples on which to run the calculation. Use `NULL` to run the
-    /// calculation on all samples. The samples must be represented as a
-    /// row-major array, containing values similar to the samples index of a
-    /// descriptor. If necessary, gradients samples will be derived from the
+    /// List of samples on which to run the calculation. You can set
+    /// `selected_samples.values` to `NULL` to run the calculation on all
+    /// samples. If necessary, gradients samples will be derived from the
     /// values given in selected_samples.
-    selected_samples: *const i32,
-    /// If selected_samples is not `NULL`, this should be set to the size of the
-    /// selected_samples array
-    selected_samples_count: usize,
-    /// List of features on which to run the calculation. Use `NULL` to run the
-    /// calculation on all features. The features must be represented as a
-    /// row-major array, containing values similar to the features index of a
-    /// descriptor.
-    selected_features: *const i32,
-    /// If selected_features is not `NULL`, this should be set to the size of the
-    /// selected_features array
-    selected_features_count: usize,
+    selected_samples: rascal_indexes_t,
+    /// List of features on which to run the calculation. You can set
+    /// `selected_features.values` to `NULL` to run the calculation on all
+    /// features.
+    selected_features: rascal_indexes_t,
 }
 
-impl<'a> From<&'a rascal_calculation_options_t> for CalculationOptions<'a> {
-    fn from(options: &'a rascal_calculation_options_t) -> CalculationOptions {
-        let selected_samples = if options.selected_samples.is_null() {
-            SelectedIndexes::All
-        } else {
-            let slice = unsafe {
-                std::slice::from_raw_parts(
-                    options.selected_samples.cast(),
-                    options.selected_samples_count
-                )
-            };
-            SelectedIndexes::FromC(slice)
-        };
+fn selected_indexes(selected: &rascal_indexes_t) -> Result<SelectedIndexes, Error> {
+    if selected.values.is_null() {
+        return Ok(SelectedIndexes::All);
+    }
+    let names = unsafe {
+        std::slice::from_raw_parts(selected.names, selected.size)
+    };
+    let names = names.iter()
+        .map(|&s| unsafe {
+            CStr::from_ptr(s).to_str()
+        })
+        .collect::<Result<Vec<_>, _>>()?;
 
-        let selected_features = if options.selected_features.is_null() {
-            SelectedIndexes::All
-        } else {
-            let slice = unsafe {
-                std::slice::from_raw_parts(
-                    options.selected_features.cast(),
-                    options.selected_features_count
-                )
-            };
-            SelectedIndexes::FromC(slice)
-        };
-
-        CalculationOptions {
-            use_native_system: options.use_native_system,
-            selected_samples: selected_samples,
-            selected_features: selected_features,
+    for name in &names {
+        if !rascaline::descriptor::is_valid_index_name(name) {
+            return Err(Error::InvalidParameter(format!(
+                "got an invalid column name ('{}') in selected indexes", name
+            )))
         }
     }
+
+    let values = unsafe {
+        std::slice::from_raw_parts(selected.values.cast(), selected.size * selected.count)
+    };
+
+    let mut builder = IndexesBuilder::new(names);
+    for chunk in values.chunks(selected.size) {
+        builder.add(chunk);
+    }
+
+    return Ok(SelectedIndexes::Subset(builder.finish()));
 }
 
 #[allow(clippy::doc_markdown)]
@@ -266,7 +258,12 @@ pub unsafe extern fn rascal_calculator_compute(
             systems.push(Box::new(system) as Box<dyn System>);
         }
 
-        let options = (&options).into();
+        let options = CalculationOptions {
+            use_native_system: options.use_native_system,
+            selected_samples: selected_indexes(&options.selected_samples)?,
+            selected_features: selected_indexes(&options.selected_features)?,
+        };
+
         (*calculator).compute(&mut systems, &mut *descriptor, options)
     })
 }

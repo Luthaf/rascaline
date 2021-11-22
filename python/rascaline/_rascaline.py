@@ -92,10 +92,8 @@ class rascal_densified_position_t(ctypes.Structure):
 class rascal_calculation_options_t(ctypes.Structure):
     _fields_ = [
         ("use_native_system", ctypes.c_bool),
-        ("selected_samples", POINTER(ctypes.c_int32)),
-        ("selected_samples_count", c_uintptr_t),
-        ("selected_features", POINTER(ctypes.c_int32)),
-        ("selected_features_count", c_uintptr_t),
+        ("selected_samples", rascal_indexes_t),
+        ("selected_features", rascal_indexes_t),
     ]
 
 

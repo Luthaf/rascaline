@@ -23,22 +23,26 @@ class Indexes(np.ndarray):
         name of each column in this indexes array
     """
 
-    def __new__(cls, ptr, shape, names):
-        assert len(shape) == 2
-        assert len(names) == shape[1]
+    def __new__(cls, names, array):
+        if not isinstance(array, np.ndarray):
+            raise ValueError("array parameter must be a numpy ndarray")
 
-        dtype = [(name, np.int32) for name in names]
-        if ptr is not None:
-            array = np.ctypeslib.as_array(ptr, shape=shape)
-            array.flags.writeable = False
-            # view the array as a numpy structured array containing multiple
-            # entries
-            array = array.view(dtype=dtype).reshape((shape[0],))
-        else:
-            array = np.array([], dtype=dtype)
+        if len(array.shape) != 2 or array.dtype != np.int32:
+            raise ValueError("array parameter must be a 2D array of 32-bit integers")
+
+        names = tuple(str(n) for n in names)
+
+        if len(names) != array.shape[1]:
+            raise ValueError(
+                "names parameter must have an entry for each column of the array"
+            )
+
+        if array.shape != (0, 0):
+            dtype = [(name, np.int32) for name in names]
+            array = array.view(dtype=dtype).reshape((array.shape[0],))
 
         obj = array.view(cls)
-        obj.names = tuple(names)
+        obj.names = names
         return obj
 
     def __array_finalize__(self, obj):
@@ -84,7 +88,12 @@ class Descriptor:
         features = c_uintptr_t()
         data = POINTER(c_double)()
         self._lib.rascal_descriptor_values(self, data, samples, features)
-        return _ptr_to_ndarray(data, (samples.value, features.value))
+
+        return _ptr_to_ndarray(
+            ptr=data,
+            shape=(samples.value, features.value),
+            dtype=np.float64,
+        )
 
     @property
     def gradients(self):
@@ -101,7 +110,11 @@ class Descriptor:
         if not data:
             return None
 
-        return _ptr_to_ndarray(data, (samples.value, features.value))
+        return _ptr_to_ndarray(
+            ptr=data,
+            shape=(samples.value, features.value),
+            dtype=np.float64,
+        )
 
     def _indexes(self, kind):
         indexes = rascal_indexes_t()
@@ -110,7 +123,10 @@ class Descriptor:
         shape = (indexes.count, indexes.size)
         ptr = indexes.values if indexes.count != 0 else None
         names = [indexes.names[i].decode("utf8") for i in range(indexes.size)]
-        return Indexes(ptr=ptr, shape=shape, names=names)
+
+        array = _ptr_to_ndarray(ptr=ptr, shape=shape, dtype=np.int32)
+        array.flags.writeable = False
+        return Indexes(array=array, names=names)
 
     @property
     def samples(self):
@@ -276,15 +292,15 @@ class Descriptor:
         return result
 
 
-def _ptr_to_ndarray(ptr, shape):
+def _ptr_to_ndarray(ptr, shape, dtype):
     assert len(shape) == 2
-    if shape[0] != 0 and shape[1] != 0:
+    if shape[0] != 0 and shape[1] != 0 and ptr is not None:
         array = np.ctypeslib.as_array(ptr, shape=shape)
-        assert array.dtype == np.float64
+        assert array.dtype == dtype
         array.flags.writeable = True
         return array
     else:
-        data = np.array([], dtype=np.float64)
+        data = np.array([], dtype=dtype)
         return data.reshape(shape)
 
 

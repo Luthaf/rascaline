@@ -162,7 +162,6 @@ impl CalculatorBase for SortedDistances {
 mod tests {
     use crate::systems::test_utils::test_systems;
     use crate::{Descriptor, Calculator};
-    use crate::{CalculationOptions, SelectedIndexes};
     use crate::descriptor::{IndexesBuilder, IndexValue};
 
     use super::super::CalculatorBase;
@@ -208,43 +207,26 @@ mod tests {
 
     #[test]
     fn compute_partial() {
-        let mut calculator = Calculator::from(Box::new(SortedDistances{
+        let calculator = Calculator::from(Box::new(SortedDistances{
             cutoff: 1.5,
             max_neighbors: 3,
         }) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
-        let mut descriptor = Descriptor::new();
 
         let mut samples = IndexesBuilder::new(vec!["structure", "center", "species_center", "species_neighbor"]);
         samples.add(&[
             IndexValue::from(0_usize), IndexValue::from(1),
             IndexValue::from(1_usize), IndexValue::from(123456)
         ]);
-        let options = CalculationOptions {
-            selected_samples: SelectedIndexes::Some(samples.finish()),
-            selected_features: SelectedIndexes::All,
-            ..Default::default()
-        };
-        calculator.compute(&mut systems, &mut descriptor, options).unwrap();
-
-        assert_eq!(descriptor.values.shape(), [1, 3]);
-        assert_eq!(descriptor.values.slice(s![0, ..]), aview1(&[0.957897074324794, 1.5, 1.5]));
 
         let mut features = IndexesBuilder::new(vec!["neighbor"]);
         features.add(&[IndexValue::from(0)]);
         features.add(&[IndexValue::from(2)]);
 
-        let options = CalculationOptions {
-            selected_samples: SelectedIndexes::All,
-            selected_features: SelectedIndexes::Some(features.finish()),
-            ..Default::default()
-        };
-        calculator.compute(&mut systems, &mut descriptor, options).unwrap();
 
-        assert_eq!(descriptor.values.shape(), [3, 2]);
-        assert_eq!(descriptor.values.slice(s![0, ..]), aview1(&[0.957897074324794, 1.5]));
-        assert_eq!(descriptor.values.slice(s![1, ..]), aview1(&[0.957897074324794, 1.5]));
-        assert_eq!(descriptor.values.slice(s![2, ..]), aview1(&[0.957897074324794, 1.5]));
+        crate::calculators::tests_utils::compute_partial(
+            calculator, &mut systems, samples.finish(), features.finish()
+        );
     }
 }

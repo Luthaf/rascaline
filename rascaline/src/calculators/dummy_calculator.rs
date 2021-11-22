@@ -134,7 +134,6 @@ impl CalculatorBase for DummyCalculator {
 mod tests {
     use crate::systems::test_utils::test_systems;
     use crate::{Descriptor, Calculator};
-    use crate::{CalculationOptions, SelectedIndexes};
     use crate::descriptor::{IndexesBuilder, IndexValue};
 
     use ndarray::{s, aview1};
@@ -203,47 +202,22 @@ mod tests {
 
     #[test]
     fn compute_partial() {
-        let mut calculator = Calculator::from(Box::new(DummyCalculator{
+        let calculator = Calculator::from(Box::new(DummyCalculator{
             cutoff: 1.0,
             delta: 9,
             name: "".into(),
             gradients: true,
         }) as Box<dyn CalculatorBase>);
-
         let mut systems = test_systems(&["water"]);
-        let mut descriptor = Descriptor::new();
 
         let mut samples = IndexesBuilder::new(vec!["structure", "center"]);
         samples.add(&[IndexValue::from(0), IndexValue::from(1)]);
 
-        let options = CalculationOptions {
-            selected_samples: SelectedIndexes::Some(samples.finish()),
-            selected_features: SelectedIndexes::All,
-            ..Default::default()
-        };
-        calculator.compute(&mut systems, &mut descriptor, options).unwrap();
-
-        assert_eq!(descriptor.values.shape(), [1, 2]);
-        assert_eq!(descriptor.values.slice(s![0, ..]), aview1(&[10.0, 0.16649999999999998]));
-
         let mut features = IndexesBuilder::new(vec!["index_delta", "x_y_z"]);
         features.add(&[IndexValue::from(0), IndexValue::from(1)]);
-        let options = CalculationOptions {
-            selected_samples: SelectedIndexes::All,
-            selected_features: SelectedIndexes::Some(features.finish()),
-            ..Default::default()
-        };
-        calculator.compute(&mut systems, &mut descriptor, options).unwrap();
 
-        assert_eq!(descriptor.values.shape(), [3, 1]);
-        assert_eq!(descriptor.values.slice(s![0, ..]), aview1(&[-1.1778999999999997]));
-        assert_eq!(descriptor.values.slice(s![1, ..]), aview1(&[0.16649999999999998]));
-        assert_eq!(descriptor.values.slice(s![2, ..]), aview1(&[-1.3443999999999998]));
-
-        let gradients = descriptor.gradients.unwrap();
-        assert_eq!(gradients.shape(), [12, 1]);
-        for i in 0..gradients.shape()[0] {
-            assert_eq!(gradients.slice(s![i, ..]), aview1(&[1.0]));
-        }
+        crate::calculators::tests_utils::compute_partial(
+            calculator, &mut systems, samples.finish(), features.finish()
+        );
     }
 }

@@ -61,13 +61,7 @@ TEST_CASE("systems errors") {
     REQUIRE(calculator != nullptr);
 
     rascal_system_t system = {0};
-    auto options = rascal_calculation_options_t {
-        /* use_native_system */ false,
-        /* selected_samples */ nullptr,
-        /* selected_samples_count */ 0,
-        /* selected_features */ nullptr,
-        /* selected_features_count */ 0,
-    };
+    rascal_calculation_options_t options = {0};
 
     // default status code when function are not defined
     auto status = rascal_calculator_compute(

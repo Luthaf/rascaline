@@ -2,7 +2,7 @@
 import unittest
 import numpy as np
 
-from rascaline import SortedDistances
+from rascaline import SortedDistances, Indexes, RascalError
 from rascaline.calculators import DummyCalculator
 
 from test_systems import TestSystem
@@ -88,8 +88,11 @@ class TestDummyCalculator(unittest.TestCase):
         for i in range(gradients.shape[0]):
             self.assertTrue(np.all(gradients[i] == (0, 1)))
 
-        #  Manually constructing the selected samples
-        samples = [(0, 0), (0, 3), (0, 1)]
+        # Manually constructing the selected samples
+        samples = Indexes(
+            array=np.array([(0, 0), (0, 3), (0, 1)], dtype=np.int32),
+            names=["structure", "center"],
+        )
         descriptor = calculator.compute(
             system, use_native_system=False, selected_samples=samples
         )
@@ -100,10 +103,54 @@ class TestDummyCalculator(unittest.TestCase):
         self.assertTrue(np.all(values[1] == (5, 5)))
         self.assertTrue(np.all(values[2] == (3, 3)))
 
-        gradients = descriptor.gradients
-        self.assertEqual(gradients.shape, (12, 2))
-        for i in range(gradients.shape[0]):
-            self.assertTrue(np.all(gradients[i] == (0, 1)))
+        # Only a subset of the variables defined
+        samples = Indexes(
+            array=np.array([0, 3, 1], dtype=np.int32).reshape(3, 1),
+            names=["center"],
+        )
+        descriptor = calculator.compute(
+            system, use_native_system=False, selected_samples=samples
+        )
+
+        values = descriptor.values
+        self.assertEqual(values.shape, (3, 2))
+        self.assertTrue(np.all(values[0] == (2, 1)))
+        self.assertTrue(np.all(values[1] == (5, 5)))
+        self.assertTrue(np.all(values[2] == (3, 3)))
+
+    def test_compute_partial_samples_errors(self):
+        system = TestSystem()
+        calculator = DummyCalculator(cutoff=3.2, delta=2, name="", gradients=True)
+
+        samples = Indexes(
+            array=np.array([0, 3, 1], dtype=np.int32).reshape(3, 1),
+            names=["bad name"],
+        )
+
+        with self.assertRaises(RascalError) as cm:
+            calculator.compute(
+                system, use_native_system=False, selected_samples=samples
+            )
+
+        self.assertEqual(
+            str(cm.exception),
+            "invalid parameter: got an invalid column name ('bad name') in selected indexes",
+        )
+
+        samples = Indexes(
+            array=np.array([0, 3, 1], dtype=np.int32).reshape(3, 1),
+            names=["bad_name"],
+        )
+
+        with self.assertRaises(RascalError) as cm:
+            calculator.compute(
+                system, use_native_system=False, selected_samples=samples
+            )
+
+        self.assertEqual(
+            str(cm.exception),
+            "invalid parameter: 'bad_name' in requested samples is not part of the samples of this calculator",
+        )
 
     def test_compute_partial_features(self):
         system = TestSystem()
@@ -129,7 +176,10 @@ class TestDummyCalculator(unittest.TestCase):
             self.assertTrue(np.all(gradients[i] == [1]))
 
         # Manually constructing the selected features
-        features = [[1, 0]]
+        features = Indexes(
+            array=np.array([[1, 0]], dtype=np.int32),
+            names=["index_delta", "x_y_z"],
+        )
         descriptor = calculator.compute(
             system, use_native_system=False, selected_features=features
         )
@@ -145,6 +195,52 @@ class TestDummyCalculator(unittest.TestCase):
         self.assertEqual(gradients.shape, (18, 1))
         for i in range(gradients.shape[0]):
             self.assertTrue(np.all(gradients[i] == [0]))
+
+        # Only a subset of the variables defined
+        features = Indexes(
+            array=np.array([1], dtype=np.int32).reshape(1, 1),
+            names=["index_delta"],
+        )
+        descriptor = calculator.compute(
+            system, use_native_system=False, selected_features=features
+        )
+
+        values = descriptor.values
+        self.assertEqual(values.shape, (4, 1))
+
+    def test_compute_partial_features_errors(self):
+        system = TestSystem()
+        calculator = DummyCalculator(cutoff=3.2, delta=2, name="", gradients=True)
+
+        features = Indexes(
+            array=np.array([0, 3, 1], dtype=np.int32).reshape(3, 1),
+            names=["bad name"],
+        )
+
+        with self.assertRaises(RascalError) as cm:
+            calculator.compute(
+                system, use_native_system=False, selected_features=features
+            )
+
+        self.assertEqual(
+            str(cm.exception),
+            "invalid parameter: got an invalid column name ('bad name') in selected indexes",
+        )
+
+        features = Indexes(
+            array=np.array([0, 3, 1], dtype=np.int32).reshape(3, 1),
+            names=["bad_name"],
+        )
+
+        with self.assertRaises(RascalError) as cm:
+            calculator.compute(
+                system, use_native_system=False, selected_features=features
+            )
+
+        self.assertEqual(
+            str(cm.exception),
+            "invalid parameter: 'bad_name' in requested features is not part of the features of this calculator",
+        )
 
     def test_features_count(self):
         calculator = DummyCalculator(cutoff=3.2, delta=2, name="", gradients=True)

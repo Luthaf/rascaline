@@ -1,5 +1,6 @@
 mod indexes;
 pub use self::indexes::{Indexes, IndexesBuilder, IndexValue};
+pub use self::indexes::is_valid_index_name;
 
 pub use self::indexes::SamplesBuilder;
 pub use self::indexes::{StructureSamples, AtomSamples};

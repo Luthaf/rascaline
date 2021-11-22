@@ -160,7 +160,7 @@ TEST_CASE("Compute descriptor") {
 
     SECTION("Partial compute -- samples") {
         auto options = rascaline::CalculationOptions();
-        options.selected_samples = rascaline::SelectedIndexes(2);
+        options.selected_samples = rascaline::SelectedIndexes({"structure", "center"});
         options.selected_samples.add({0, 1});
         options.selected_samples.add({0, 3});
 
@@ -207,7 +207,7 @@ TEST_CASE("Compute descriptor") {
 
     SECTION("Partial compute -- features") {
         auto options = rascaline::CalculationOptions();
-        options.selected_features = rascaline::SelectedIndexes(2);
+        options.selected_features = rascaline::SelectedIndexes({"index_delta", "x_y_z"});
         options.selected_features.add({0, 1});
 
         auto descriptor = calculator.compute(systems, std::move(options));
@@ -253,21 +253,21 @@ TEST_CASE("Compute descriptor") {
 
     SECTION("Partial compute -- errors") {
         auto options = rascaline::CalculationOptions();
-        options.selected_samples = rascaline::SelectedIndexes(3);
+        options.selected_samples = rascaline::SelectedIndexes({"structure", "center", "species"});
         options.selected_samples.add({0, 1, 3});
 
         CHECK_THROWS_WITH(
             calculator.compute(systems, std::move(options)),
-            "invalid parameter: wrong size for partial samples list, expected a multiple of 2, got 3"
+            "invalid parameter: 'species' in requested samples is not part of the samples of this calculator"
         );
 
         options = rascaline::CalculationOptions();
-        options.selected_features = rascaline::SelectedIndexes(3);
+        options.selected_features = rascaline::SelectedIndexes({"index_delta", "x_y_z", "foo"});
         options.selected_features.add({0, 1, 3});
 
         CHECK_THROWS_WITH(
             calculator.compute(systems, std::move(options)),
-            "invalid parameter: wrong size for partial features list, expected a multiple of 2, got 3"
+            "invalid parameter: 'foo' in requested features is not part of the features of this calculator"
         );
     }
 }

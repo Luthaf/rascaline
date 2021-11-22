@@ -456,22 +456,44 @@ public:
     /// Create a `SelectedIndexes` indicating that we want to run the
     /// calculation on all possible indexes, leaving the determination of these
     /// indexes to the calculator class.
-    SelectedIndexes(): SelectedIndexes(0) {}
+    SelectedIndexes(): SelectedIndexes(std::vector<std::string>()) {}
 
-    /// Create an empty set of `SelectedIndexes` with the given `size`. The
-    /// `size` must match the second dimension of the expected indexes (sample
-    /// or features).
-    SelectedIndexes(size_t size): size_(size), indexes_() {}
+    /// Create an empty set of `SelectedIndexes` with the given variables
+    /// `names`.
+    SelectedIndexes(std::vector<std::string> names) {
+        names_.resize(names.size());
+        for (size_t i=0; i<names.size(); i++) {
+            // allocate 1 extra char to NULL-terminate the string
+            auto size = names[i].size() + 1;
+            names_[i] = static_cast<char*>(std::calloc(size, 1));
+            std::strncpy(names_[i], names[i].data(), size);
+        }
+    }
 
-    ~SelectedIndexes() = default;
-    /// SelectedIndexes is copy-constructible
-    SelectedIndexes(const SelectedIndexes&) = default;
+    ~SelectedIndexes() {
+        for (auto variable: this->names_) {
+            free(variable);
+        }
+    }
+    /// SelectedIndexes is not copy-constructible
+    SelectedIndexes(const SelectedIndexes&) = delete;
+    /// SelectedIndexes can not be copy-assigned
+    SelectedIndexes& operator=(const SelectedIndexes&) = delete;
+
     /// SelectedIndexes is move-constructible
-    SelectedIndexes(SelectedIndexes&&) = default;
-    /// SelectedIndexes can be copy-assigned
-    SelectedIndexes& operator=(const SelectedIndexes&) = default;
+    SelectedIndexes(SelectedIndexes&& other): SelectedIndexes() {
+        *this = std::move(other);
+    }
     /// SelectedIndexes can be move-assigned
-    SelectedIndexes& operator=(SelectedIndexes&&) = default;
+    SelectedIndexes& operator=(SelectedIndexes&& other) {
+        for (auto variable: this->names_) {
+            free(variable);
+        }
+
+        this->names_ = std::move(other.names_);
+        this->values_ = std::move(other.values_);
+        return *this;
+    }
 
     /// Add a single set of indexes to the selected indexes. The number of
     /// elements in `indexes` must match the size passed when constructing this
@@ -490,37 +512,42 @@ public:
     template<typename Iterator>
     void add(Iterator begin, Iterator end) {
         auto iterator_size = std::distance(begin, end);
-        if (iterator_size != size_) {
+        if (iterator_size != this->size()) {
             throw RascalError(
                 "invalid size for new selected vector, expected " +
-                std::to_string(size_) + " got " + std::to_string(iterator_size)
+                std::to_string(this->size()) + " got " + std::to_string(iterator_size)
             );
         }
-        indexes_.reserve(indexes_.size() + size_);
-        indexes_.insert(indexes_.end(), begin, end);
+        values_.reserve(values_.size() + this->size());
+        values_.insert(values_.end(), begin, end);
     }
 
     /// Get a pointer to the first element of the underlying array.
     ///
     /// This function is intended for internal use only.
     const int32_t* data() const {
-        return indexes_.data();
+        return values_.data();
     }
 
-    /// Get the number of indexes in this array. Each index is a vector of size
+    /// Get the names used by these selected indexes
+    const std::vector<char*>& names() const {
+        return names_;
+    }
+
+    /// Get the number of entries in this array. Each entry is a vector of size
     /// `Indexes.size`.
     size_t count() const {
-        return indexes_.size() / size_;
+        return values_.size() / this->size();
     }
 
     /// Get the size of the indexes in this array.
     size_t size() const {
-        return size_;
+        return names_.size();
     }
 
 private:
-    size_t size_;
-    std::vector<int32_t> indexes_;
+    std::vector<char*> names_;
+    std::vector<int32_t> values_;
 };
 
 
@@ -548,8 +575,8 @@ public:
     /// Construct a `SelectedIndexes` containing only values from the requested
     /// `indexes`.
     SelectedIndexes select(std::vector<size_t> indexes) {
-        auto size = this->shape()[1];
-        auto selected = SelectedIndexes(size);
+        auto size = this->names().size();
+        auto selected = SelectedIndexes(this->names());
         auto data = this->data();
         for (auto i: indexes) {
             selected.add(data + i * size, data + (i + 1) * size);
@@ -899,21 +926,21 @@ public:
         options.use_native_system = this->use_native_system;
 
         if (this->selected_samples.size() == 0) {
-            options.selected_samples = nullptr;
-            options.selected_samples_count = 0;
+            std::memset(&options.selected_samples, 0, sizeof(rascal_indexes_t));
         } else {
-            options.selected_samples = this->selected_samples.data();
-            options.selected_samples_count = this->selected_samples.count();
-            options.selected_samples_count *= this->selected_samples.size();
+            options.selected_samples.names = this->selected_samples.names().data();
+            options.selected_samples.values = this->selected_samples.data();
+            options.selected_samples.count = this->selected_samples.count();
+            options.selected_samples.size = this->selected_samples.size();
         }
 
         if (this->selected_features.size() == 0) {
-            options.selected_features = nullptr;
-            options.selected_features_count = 0;
+            std::memset(&options.selected_features, 0, sizeof(rascal_indexes_t));
         } else {
-            options.selected_features = this->selected_features.data();
-            options.selected_features_count = this->selected_features.count();
-            options.selected_features_count *= this->selected_features.size();
+            options.selected_features.names = this->selected_features.names().data();
+            options.selected_features.values = this->selected_features.data();
+            options.selected_features.count = this->selected_features.count();
+            options.selected_features.size = this->selected_features.size();
         }
 
         return options;
@@ -1040,7 +1067,7 @@ public:
     /// calculation can be passed in `options`.
     Descriptor compute(std::vector<System*> systems, CalculationOptions options = CalculationOptions()) const {
         auto descriptor = Descriptor();
-        this->compute(std::move(systems), descriptor, options);
+        this->compute(std::move(systems), descriptor, std::move(options));
         return descriptor;
     }
 
@@ -1062,7 +1089,7 @@ public:
     /// calculation can be passed in `options`.
     Descriptor compute(BasicSystems systems, CalculationOptions options = CalculationOptions()) const {
         auto descriptor = Descriptor();
-        this->compute(std::move(systems), descriptor, options);
+        this->compute(std::move(systems), descriptor, std::move(options));
         return descriptor;
     }
 
