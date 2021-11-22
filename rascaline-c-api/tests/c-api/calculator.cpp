@@ -7,7 +7,7 @@
 
 static void check_indexes(
     rascal_descriptor_t* descriptor,
-    rascal_indexes kind,
+    rascal_indexes_kind kind,
     std::vector<std::string> names,
     std::vector<int32_t> values,
     uintptr_t count,
@@ -358,36 +358,27 @@ TEST_CASE("Compute descriptor") {
 
 void check_indexes(
     rascal_descriptor_t* descriptor,
-    rascal_indexes kind,
+    rascal_indexes_kind kind,
     std::vector<std::string> names,
     std::vector<int32_t> values,
     uintptr_t count,
     uintptr_t size
 ) {
-    const int32_t* actual_values = nullptr;
-    uintptr_t actual_count = 0;
-    uintptr_t actual_size = 0;
-
-    CHECK_SUCCESS(rascal_descriptor_indexes(
-        descriptor, kind, &actual_values, &actual_count, &actual_size
-    ));
-    REQUIRE(actual_values != nullptr);
+    rascal_indexes_t actual = {0};
+    CHECK_SUCCESS(rascal_descriptor_indexes(descriptor, kind, &actual));
+    REQUIRE(actual.values != nullptr);
 
     REQUIRE(values.size() == count * size);
-    CHECK(actual_count == count);
-    CHECK(actual_size == size);
+    CHECK(actual.count == count);
+    CHECK(actual.size == size);
 
     for (size_t i=0; i<count; i++) {
         for (size_t j=0; j<size; j++) {
-            CHECK(actual_values[i * size + j] == values[i * size + j]);
+            CHECK(actual.values[i * size + j] == values[i * size + j]);
         }
     }
 
-    const char** actual_names = static_cast<const char**>(std::malloc(actual_size * sizeof(const char*)));
-    rascal_descriptor_indexes_names(descriptor, kind, actual_names, actual_size);
-
     for (size_t i=0; i<size; i++) {
-        CHECK(actual_names[i] == names[i]);
+        CHECK(std::string(actual.names[i]) == names[i]);
     }
-    std::free(actual_names);
 }

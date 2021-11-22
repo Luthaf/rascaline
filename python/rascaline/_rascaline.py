@@ -36,7 +36,7 @@ rascal_status_t = ctypes.c_int32
 rascal_logging_callback_t = CFUNCTYPE(None, ctypes.c_int32, ctypes.c_char_p)
 
 
-class rascal_indexes(enum.Enum):
+class rascal_indexes_kind(enum.Enum):
     RASCAL_INDEXES_FEATURES = 0
     RASCAL_INDEXES_SAMPLES = 1
     RASCAL_INDEXES_GRADIENT_SAMPLES = 2
@@ -69,6 +69,15 @@ class rascal_system_t(ctypes.Structure):
         ("compute_neighbors", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, ctypes.c_double)),
         ("pairs", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, POINTER(ndpointer(rascal_pair_t, flags='C_CONTIGUOUS')), POINTER(c_uintptr_t))),
         ("pairs_containing", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, c_uintptr_t, POINTER(ndpointer(rascal_pair_t, flags='C_CONTIGUOUS')), POINTER(c_uintptr_t))),
+    ]
+
+
+class rascal_indexes_t(ctypes.Structure):
+    _fields_ = [
+        ("names", POINTER(ctypes.c_char_p)),
+        ("values", POINTER(ctypes.c_int32)),
+        ("size", c_uintptr_t),
+        ("count", c_uintptr_t),
     ]
 
 
@@ -145,19 +154,9 @@ def setup_functions(lib):
     lib.rascal_descriptor_indexes.argtypes = [
         POINTER(rascal_descriptor_t),
         ctypes.c_int,
-        POINTER(POINTER(ctypes.c_int32)),
-        POINTER(c_uintptr_t),
-        POINTER(c_uintptr_t)
+        POINTER(rascal_indexes_t)
     ]
     lib.rascal_descriptor_indexes.restype = _check_rascal_status_t
-
-    lib.rascal_descriptor_indexes_names.argtypes = [
-        POINTER(rascal_descriptor_t),
-        ctypes.c_int,
-        POINTER(ctypes.c_char_p),
-        c_uintptr_t
-    ]
-    lib.rascal_descriptor_indexes_names.restype = _check_rascal_status_t
 
     lib.rascal_descriptor_densify.argtypes = [
         POINTER(rascal_descriptor_t),

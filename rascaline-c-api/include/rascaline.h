@@ -90,7 +90,7 @@
 /**
  * The different kinds of indexes that can exist on a `rascal_descriptor_t`
  */
-typedef enum rascal_indexes {
+typedef enum rascal_indexes_kind {
   /**
    * The feature index, describing the features of the representation
    */
@@ -104,7 +104,7 @@ typedef enum rascal_indexes {
    * representation with respect to other atoms
    */
   RASCAL_INDEXES_GRADIENT_SAMPLES = 2,
-} rascal_indexes;
+} rascal_indexes_kind;
 
 /**
  * Opaque type representing a `Calculator`
@@ -242,6 +242,33 @@ typedef struct rascal_system_t {
    */
   rascal_status_t (*pairs_containing)(const void *user_data, uintptr_t center, const struct rascal_pair_t **pairs, uintptr_t *count);
 } rascal_system_t;
+
+/**
+ * Indexes representing metadata associated with either samples or features in
+ * a given descriptor.
+ */
+typedef struct rascal_indexes_t {
+  /**
+   * Names of the variables composing this set of indexes. There are `size`
+   * elements in this array, each being a NULL terminated string.
+   */
+  const char *const *names;
+  /**
+   * Pointer to the first element of a 2D row-major array of 32-bit signed
+   * integer containing the values taken by the different variables in
+   * `names`. Each row has `size` elements, and there are `count` rows in
+   * total.
+   */
+  const int32_t *values;
+  /**
+   * Number of variables/size of a single entry in the set of indexes
+   */
+  uintptr_t size;
+  /**
+   * Number entries in the set of indexes
+   */
+  uintptr_t count;
+} rascal_indexes_t;
 
 /**
  * `rascal_densified_position_t` contains all the information to reconstruct
@@ -450,61 +477,27 @@ rascal_status_t rascal_descriptor_gradients(struct rascal_descriptor_t *descript
  * Get the values associated with one of the `indexes` in the given
  * `descriptor`.
  *
- * This function sets `*data` to to a **read only** pointer containing the
- * address of the first element of the 2D array containing the index values,
- * `*count` to the number of indexes (first dimension of the array) and `*size`
- * to the size of each index (second dimension of the array). The array is
- * stored using a row-major layout.
+ * This function sets `indexes->names` to to a **read only** array containing
+ * the names of the variables in this set of indexes; `indexes->values` to to a
+ * **read only** 2D array containing values taken by these variables,
+ * `indexes->count` to the number of indexes (first dimension of the array) and
+ * `indexes->values` to the size of each index (second dimension of the array).
+ * The array is stored using a row-major layout.
  *
  * If this `descriptor` does not contain gradient data, and `indexes` is
- * `RASCAL_INDEXES_GRADIENTS`, `*data` is set to `NULL`, while
- * `*count` and `*size` are set to 0.
+ * `RASCAL_INDEXES_GRADIENTS`, all members of `indexes` are set to `NULL` or 0.
  *
  * @param descriptor pointer to an existing descriptor
- * @param indexes type of indexes requested
- * @param data pointer to a pointer to a double, will be set to the address of
- *             the first element in the index array
- * @param count pointer to a single integer, will be set to the number of
- *              index values
- * @param size pointer to a single integer, will be set to the size of each
- *              index value
+ * @param kind type of indexes requested
+ * @param indexes pointer to `rascal_indexes_t` that will be filled by this function
  *
  * @returns The status code of this operation. If the status is not
  *          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the full
  *          error message.
  */
 rascal_status_t rascal_descriptor_indexes(const struct rascal_descriptor_t *descriptor,
-                                          enum rascal_indexes indexes,
-                                          const int32_t **data,
-                                          uintptr_t *count,
-                                          uintptr_t *size);
-
-/**
- * Get the names associated with one of the `indexes` in the given
- * `descriptor`.
- *
- * If this `descriptor` does not contain gradient data, and `indexes` is
- * `RASCAL_INDEXES_GRADIENTS`, each pointer in `*names` is set to `NULL`.
- *
- * The `size` value should correspond to the value set by
- * `rascal_descriptor_indexes` in the `size` parameter.
- *
- * @param descriptor pointer to an existing descriptor
- * @param indexes type of indexes requested
- * @param names pointer to the first element of an array of `const char*`
- *              that will be filled with **read only** pointers to the index
- *              names
- * @param size size of the `names` array, i.e. number of elements inside
- *             the array
- *
- * @returns The status code of this operation. If the status is not
- *          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the full
- *          error message.
- */
-rascal_status_t rascal_descriptor_indexes_names(const struct rascal_descriptor_t *descriptor,
-                                                enum rascal_indexes indexes,
-                                                const char **names,
-                                                uintptr_t size);
+                                          enum rascal_indexes_kind kind,
+                                          struct rascal_indexes_t *indexes);
 
 /**
  * Make the given `descriptor` dense along the given `variables`.

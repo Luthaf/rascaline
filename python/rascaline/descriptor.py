@@ -1,8 +1,13 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-from ctypes import c_double, c_int32, c_char_p, POINTER, ARRAY
+from ctypes import c_double, c_int32, c_char_p, pointer, POINTER, ARRAY
 
-from ._rascaline import c_uintptr_t, rascal_indexes, rascal_densified_position_t
+from ._rascaline import (
+    c_uintptr_t,
+    rascal_densified_position_t,
+    rascal_indexes_t,
+    rascal_indexes_kind,
+)
 from .clib import _get_library
 from .status import _check_rascal_pointer
 
@@ -63,7 +68,10 @@ class Descriptor:
         _check_rascal_pointer(self._as_parameter_)
 
     def __del__(self):
-        self._lib.rascal_descriptor_free(self)
+        if hasattr(self, "_lib"):
+            # if we failed to load the lib, don't double error by trying to call
+            # ``self._lib.rascal_descriptor_free``
+            self._lib.rascal_descriptor_free(self)
         self._as_parameter_ = 0
 
     @property
@@ -96,18 +104,12 @@ class Descriptor:
         return _ptr_to_ndarray(data, (samples.value, features.value))
 
     def _indexes(self, kind):
-        count = c_uintptr_t()
-        size = c_uintptr_t()
-        data = POINTER(c_int32)()
-        self._lib.rascal_descriptor_indexes(self, kind.value, data, count, size)
+        indexes = rascal_indexes_t()
+        self._lib.rascal_descriptor_indexes(self, kind.value, pointer(indexes))
 
-        StringArray = c_char_p * size.value
-        names = StringArray()
-        self._lib.rascal_descriptor_indexes_names(self, kind.value, names, size)
-        names = list(map(lambda n: n.decode("utf8"), names))
-
-        shape = (count.value, size.value)
-        ptr = data if count.value != 0 else None
+        shape = (indexes.count, indexes.size)
+        ptr = indexes.values if indexes.count != 0 else None
+        names = [indexes.names[i].decode("utf8") for i in range(indexes.size)]
         return Indexes(ptr=ptr, shape=shape, names=names)
 
     @property
@@ -119,7 +121,7 @@ class Descriptor:
         **read only** 2D numpy ndarray with ``dtype=np.float64``. Each column of
         the array is named, and the names are available in ``Indexes.names``.
         """
-        return self._indexes(rascal_indexes.RASCAL_INDEXES_SAMPLES)
+        return self._indexes(rascal_indexes_kind.RASCAL_INDEXES_SAMPLES)
 
     @property
     def features(self):
@@ -131,7 +133,7 @@ class Descriptor:
         **read only** 2D numpy ndarray with ``dtype=np.float64``. Each column of
         the array is named, and the names are available in ``Indexes.names``.
         """
-        return self._indexes(rascal_indexes.RASCAL_INDEXES_FEATURES)
+        return self._indexes(rascal_indexes_kind.RASCAL_INDEXES_FEATURES)
 
     @property
     def gradients_samples(self):
@@ -145,7 +147,7 @@ class Descriptor:
         **read only** 2D numpy ndarray with ``dtype=np.float64``. Each column of
         the array is named, and the names are available in ``Indexes.names``.
         """
-        return self._indexes(rascal_indexes.RASCAL_INDEXES_GRADIENT_SAMPLES)
+        return self._indexes(rascal_indexes_kind.RASCAL_INDEXES_GRADIENT_SAMPLES)
 
     def densify(self, variables, requested=None):
         """

@@ -1,10 +1,60 @@
-use std::ffi::CString;
+use std::ffi::{CString, CStr};
 use std::collections::{BTreeSet, HashMap};
 use std::hash::BuildHasherDefault;
 
 use twox_hash::XxHash64;
 
 use crate::{Error, System};
+
+#[repr(transparent)]
+pub struct ConstCString(*const std::os::raw::c_char);
+
+impl ConstCString {
+    pub fn new(str: CString) -> ConstCString {
+        ConstCString(CString::into_raw(str))
+    }
+
+    pub fn as_c_str(&self) -> &CStr {
+        // SAFETY: `CStr::from_ptr` is OK since we created this pointer with
+        // `CString::into_raw`, which fulfils all the requirements of
+        // `CStr::from_ptr`
+        unsafe {
+            CStr::from_ptr(self.0)
+        }
+    }
+
+    pub fn as_str(&self) -> &str {
+        return self.as_c_str().to_str().expect("invalid UTF8");
+    }
+}
+
+impl Drop for ConstCString {
+    fn drop(&mut self) {
+        // SAFETY: `CString::from_raw` is OK since we created this pointer with
+        // `CString::into_raw`
+        unsafe {
+            let str = CString::from_raw(self.0 as *mut _);
+            drop(str);
+        }
+    }
+}
+
+impl PartialEq for ConstCString {
+    fn eq(&self, other: &Self) -> bool {
+        self.as_c_str() == other.as_c_str()
+    }
+}
+
+impl Clone for ConstCString {
+    fn clone(&self) -> Self {
+        let str = self.as_c_str().to_owned();
+        return ConstCString::new(str);
+    }
+}
+
+// SAFETY: Sync is ok since `ConstCString` is immutable, so sharing it between
+// threads causes no issue
+unsafe impl Sync for ConstCString {}
 
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -130,8 +180,8 @@ impl IndexesBuilder {
         };
 
         let names = self.names.into_iter()
-            .map(|s| CString::new(s).expect("invalid C string"))
-            .collect();
+            .map(|s| ConstCString::new(CString::new(s).expect("invalid C string")))
+            .collect::<Vec<_>>();
 
         return Indexes {
             names: names,
@@ -161,9 +211,9 @@ fn is_valid_ident(name: &str) -> bool {
 
 #[derive(Clone, PartialEq)]
 pub struct Indexes {
-    /// Names of the indexes, stored as C strings for easier integration
+    /// Names of the indexes, stored as const C strings for easier integration
     /// with the C API
-    names: Vec<CString>,
+    names: Vec<ConstCString>,
     /// Values of the indexes, as a linearized 2D array in row-major order
     values: Vec<IndexValue>,
     /// Store the position of all the known indexes, for faster access later.
@@ -200,11 +250,11 @@ impl Indexes {
 
     /// Names of the indexes
     pub fn names(&self) -> Vec<&str> {
-        self.names.iter().map(|s| s.to_str().expect("invalid UTF8")).collect()
+        self.names.iter().map(|s| s.as_str()).collect()
     }
 
     /// Names of the indexes as C-compatible (null terminated) strings
-    pub fn c_names(&self) -> &[CString] {
+    pub fn c_names(&self) -> &[ConstCString] {
         &self.names
     }
 
