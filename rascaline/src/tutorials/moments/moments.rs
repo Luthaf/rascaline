@@ -311,7 +311,7 @@ mod more_tests {
         // this function will check that selecting samples/features or both will
         // not change the result of the calculation
         crate::calculators::tests_utils::compute_partial(
-            calculator, &mut systems, samples, features, /*check_gradients*/ true
+            calculator, &mut systems, samples, features
         );
     }
     // [partial-test]

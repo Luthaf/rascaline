@@ -83,11 +83,11 @@ int compute_soap(rascal_descriptor_t* descriptor, const char* path) {
     rascal_calculator_t* calculator;
     rascal_system_t* systems = NULL;
     uintptr_t n_systems = 0;
-    rascal_calculation_options_t options;
     double* values = NULL;
     uintptr_t n_samples = 0;
     uintptr_t n_features = 0;
     const char* densify_variables[] = {"species_neighbor_1", "species_neighbor_2"};
+    rascal_calculation_options_t options = {0};
 
     const char* parameters = "{\n"
         "\"cutoff\": 5.0,\n"
@@ -115,12 +115,6 @@ int compute_soap(rascal_descriptor_t* descriptor, const char* path) {
         printf("Error: %s\n", rascal_last_error());
         goto cleanup;
     }
-
-    options.use_native_system = false;
-    options.selected_samples = NULL;
-    options.selected_samples_count = 0;
-    options.selected_features = NULL;
-    options.selected_features_count = 0;
 
     status = rascal_calculator_compute(
         calculator, descriptor, systems, n_systems, options

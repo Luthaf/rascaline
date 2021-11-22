@@ -1,5 +1,6 @@
 #include <vector>
 #include <string>
+#include <cstring>
 
 #include "rascaline.h"
 #include "catch.hpp"
@@ -163,13 +164,7 @@ TEST_CASE("Compute descriptor") {
     SECTION("Full compute") {
         auto system = simple_system();
 
-        auto options = rascal_calculation_options_t {
-            /* use_native_system */ false,
-            /* selected_samples */ nullptr,
-            /* selected_samples_count */ 0,
-            /* selected_features */ nullptr,
-            /* selected_features_count */ 0,
-        };
+        rascal_calculation_options_t options = {0};
         CHECK_SUCCESS(rascal_calculator_compute(
             calculator, descriptor, &system, 1, options
         ));
@@ -220,14 +215,16 @@ TEST_CASE("Compute descriptor") {
         auto samples = std::vector<int32_t>{
             0, 1, /**/ 0, 3,
         };
-
-        auto options = rascal_calculation_options_t {
-            /* use_native_system */ false,
-            /* selected_samples */ samples.data(),
-            /* selected_samples_count */ samples.size(),
-            /* selected_features */ nullptr,
-            /* selected_features_count */ 0,
+        auto names = std::vector<const char*>{
+            "structure", "center"
         };
+
+        rascal_calculation_options_t options = {0};
+        options.selected_samples.names = names.data();
+        options.selected_samples.values = samples.data();
+        options.selected_samples.count = 2;
+        options.selected_samples.size = 2;
+
         CHECK_SUCCESS(rascal_calculator_compute(
             calculator, descriptor, &system, 1, options
         ));
@@ -275,13 +272,15 @@ TEST_CASE("Compute descriptor") {
         auto features = std::vector<int32_t>{
             0, 1
         };
-        auto options = rascal_calculation_options_t {
-            /* use_native_system */ false,
-            /* selected_samples */ nullptr,
-            /* selected_samples_count */ 0,
-            /* selected_features */ features.data(),
-            /* selected_features_count */ features.size(),
+        auto names = std::vector<const char*> {
+            "index_delta", "x_y_z"
         };
+        rascal_calculation_options_t options = {0};
+        options.selected_features.names = names.data();
+        options.selected_features.size = 2;
+        options.selected_features.values = features.data();
+        options.selected_features.count = 1;
+
         CHECK_SUCCESS(rascal_calculator_compute(
             calculator, descriptor, &system, 1, options
         ));
@@ -324,32 +323,37 @@ TEST_CASE("Compute descriptor") {
         auto system = simple_system();
 
         auto samples = std::vector<int32_t>{0, 1, 3};
-        auto options = rascal_calculation_options_t {
-            /* use_native_system */ false,
-            /* selected_samples */ samples.data(),
-            /* selected_samples_count */ samples.size(),
-            /* selected_features */ nullptr,
-            /* selected_features_count */ 0,
+        auto names = std::vector<const char*> {
+            "structure", "center", "species"
         };
+
+        rascal_calculation_options_t options = {0};
+        options.selected_samples.names = names.data();
+        options.selected_samples.size = 3;
+        options.selected_samples.values = samples.data();
+        options.selected_samples.count = 1;
+
         auto status = rascal_calculator_compute(
             calculator, descriptor, &system, 1, options
         );
         CHECK(status != RASCAL_SUCCESS);
-        CHECK(std::string(rascal_last_error()) == "invalid parameter: wrong size for partial samples list, expected a multiple of 2, got 3");
+        CHECK(std::string(rascal_last_error()) == "invalid parameter: 'species' in requested samples is not part of the samples of this calculator");
 
         auto features = std::vector<int32_t>{0, 1, 1};
-        options = rascal_calculation_options_t {
-            /* use_native_system */ false,
-            /* selected_samples */ nullptr,
-            /* selected_samples_count */ 0,
-            /* selected_features */ features.data(),
-            /* selected_features_count */ features.size(),
+        names = std::vector<const char*> {
+            "index_delta", "x_y_z", "foo"
         };
+        std::memset(&options, 0, sizeof(rascal_calculation_options_t));
+        options.selected_features.names = names.data();
+        options.selected_features.size = 3;
+        options.selected_features.values = features.data();
+        options.selected_features.count = 1;
+
         status = rascal_calculator_compute(
             calculator, descriptor, &system, 1, options
         );
         CHECK(status != RASCAL_SUCCESS);
-        CHECK(std::string(rascal_last_error()) == "invalid parameter: wrong size for partial features list, expected a multiple of 2, got 3");
+        CHECK(std::string(rascal_last_error()) == "invalid parameter: 'foo' in requested features is not part of the features of this calculator");
     }
 
     rascal_calculator_free(calculator);

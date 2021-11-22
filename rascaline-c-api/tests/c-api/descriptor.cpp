@@ -14,13 +14,7 @@ static void compute_descriptor(rascal_descriptor_t* descriptor) {
     REQUIRE(calculator);
     auto system = simple_system();
 
-    auto options = rascal_calculation_options_t {
-        /* use_native_system */ false,
-        /* selected_samples */ nullptr,
-        /* selected_samples_count */ 0,
-        /* selected_features */ nullptr,
-        /* selected_features_count */ 0,
-    };
+    rascal_calculation_options_t options = {0};
     CHECK_SUCCESS(rascal_calculator_compute(calculator, descriptor, &system, 1, options));
     CHECK_SUCCESS(rascal_calculator_free(calculator));
 }

@@ -925,17 +925,15 @@ mod tests {
         features.add(&[v(1), v(4), v(4)]);
         features.add(&[v(5), v(2), v(0)]);
         features.add(&[v(1), v(1), v(-1)]);
-        let features = features.finish();
 
         let mut samples = IndexesBuilder::new(vec!["structure", "center", "species_center", "species_neighbor"]);
         samples.add(&[v(0), v(1), v(1), v(1)]);
         samples.add(&[v(0), v(2), v(1), v(123456)]);
         samples.add(&[v(1), v(0), v(6), v(1)]);
         samples.add(&[v(1), v(2), v(1), v(1)]);
-        let samples = samples.finish();
 
         crate::calculators::tests_utils::compute_partial(
-            calculator, &mut systems, samples, features, true
+            calculator, &mut systems, samples.finish(), features.finish()
         );
     }
 

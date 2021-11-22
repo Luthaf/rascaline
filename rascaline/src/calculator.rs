@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, convert::TryFrom};
 
-use crate::{SimpleSystem, descriptor::{Descriptor, Indexes, IndexValue, IndexesBuilder}};
+use crate::{SimpleSystem, descriptor::{Descriptor, Indexes, IndexesBuilder}};
 use crate::systems::System;
 use crate::Error;
 
@@ -13,46 +13,70 @@ pub struct Calculator {
 
 /// List of pre-selected indexes on which the user wants to run a calculation
 #[derive(Clone, Debug)]
-pub enum SelectedIndexes<'a> {
+pub enum SelectedIndexes {
     /// Default, all indexes
     All,
-    /// Only the list of selected indexes
-    Some(Indexes),
-    /// Internal use: list of selected indexes as passed through the C API
-    #[doc(hidden)]
-    FromC(&'a [IndexValue]),
+    /// Only the list of selected indexes. The indexes can contains the same
+    /// variable as the full set of indexes, or only a subset of them. In the
+    /// latter case, all entries from the full set of indexes matching the set
+    /// of variables specified will be used.
+    Subset(Indexes),
 }
 
-impl<'a> SelectedIndexes<'a> {
+impl SelectedIndexes {
+    /// Transform a set of selected indexes into actual indexes usable as
+    /// feature indexes by a calculator
     fn into_features(self, calculator: &dyn CalculatorBase) -> Result<Indexes, Error> {
         let indexes = match self {
             SelectedIndexes::All => calculator.features(),
-            SelectedIndexes::Some(indexes) => {
-                calculator.check_features(&indexes)?;
-                indexes
+            SelectedIndexes::Subset(indexes) => {
+                let default_features = calculator.features();
+                if indexes.names() == default_features.names() {
+                    calculator.check_features(&indexes)?;
+                    indexes
+                } else {
+                    let mut variables_to_match = Vec::new();
+                    for variable in indexes.names() {
+                        let i = match default_features.names().iter().position(|&v| v == variable) {
+                            Some(index) => index,
+                            None => {
+                                return Err(Error::InvalidParameter(format!(
+                                    "'{}' in requested features is not part of the features of this calculator",
+                                    variable
+                                )))
+                            }
+                        };
+                        variables_to_match.push(i);
+                    }
+
+                    let mut filtered = IndexesBuilder::new(default_features.names());
+                    for selected in indexes.iter() {
+                        for features in default_features.iter() {
+                            // only take the features if they match
+                            let mut matches = true;
+                            for (i, &v) in variables_to_match.iter().enumerate() {
+                                if selected[i] != features[v] {
+                                    matches = false;
+                                    break;
+                                }
+                            }
+
+                            if matches {
+                                filtered.add(features);
+                            }
+                        }
+                    }
+
+                    filtered.finish()
+                }
             },
-            SelectedIndexes::FromC(list) => {
-                let mut builder = IndexesBuilder::new(calculator.features_names());
-
-                if list.len() % builder.size() != 0 {
-                    return Err(Error::InvalidParameter(format!(
-                        "wrong size for partial features list, expected a multiple of {}, got {}",
-                        builder.size(), list.len()
-                    )))
-                }
-
-                for chunk in list.chunks(builder.size()) {
-                    builder.add(chunk);
-                }
-                let indexes = builder.finish();
-                calculator.check_features(&indexes)?;
-                indexes
-            }
         };
 
         return Ok(indexes);
     }
 
+    /// Transform a set of selected indexes into actual indexes usable as sample
+    /// indexes by a calculator for the given set of systems
     fn into_samples(
         self,
         calculator: &dyn CalculatorBase,
@@ -62,27 +86,47 @@ impl<'a> SelectedIndexes<'a> {
             SelectedIndexes::All => {
                 calculator.samples_builder().samples(systems)?
             },
-            SelectedIndexes::Some(indexes) => {
-                calculator.check_samples(&indexes, systems)?;
-                indexes
+            SelectedIndexes::Subset(indexes) => {
+                let default_samples = calculator.samples_builder().samples(systems)?;
+                if indexes.names() == default_samples.names() {
+                    calculator.check_samples(&indexes, systems)?;
+                    indexes
+                } else {
+                    let mut variables_to_match = Vec::new();
+                    for variable in indexes.names() {
+                        let i = match default_samples.names().iter().position(|&v| v == variable) {
+                            Some(index) => index,
+                            None => {
+                                return Err(Error::InvalidParameter(format!(
+                                    "'{}' in requested samples is not part of the samples of this calculator",
+                                    variable
+                                )))
+                            }
+                        };
+                        variables_to_match.push(i);
+                    }
+
+                    let mut filtered = IndexesBuilder::new(default_samples.names());
+                    for selected in indexes.iter() {
+                        for sample in default_samples.iter() {
+                            // only take the samples if they match
+                            let mut matches = true;
+                            for (i, &v) in variables_to_match.iter().enumerate() {
+                                if selected[i] != sample[v] {
+                                    matches = false;
+                                    break;
+                                }
+                            }
+
+                            if matches {
+                                filtered.add(sample);
+                            }
+                        }
+                    }
+
+                    filtered.finish()
+                }
             },
-            SelectedIndexes::FromC(list) => {
-                let mut builder = IndexesBuilder::new(calculator.samples_builder().names());
-
-                if list.len() % builder.size() != 0 {
-                    return Err(Error::InvalidParameter(format!(
-                        "wrong size for partial samples list, expected a multiple of {}, got {}",
-                        builder.size(), list.len()
-                    )))
-                }
-
-                for chunk in list.chunks(builder.size()) {
-                    builder.add(chunk);
-                }
-                let indexes = builder.finish();
-                calculator.check_samples(&indexes, systems)?;
-                indexes
-            }
         };
 
         return Ok(indexes);
@@ -90,18 +134,18 @@ impl<'a> SelectedIndexes<'a> {
 }
 
 /// Parameters specific to a single call to `compute`
-pub struct CalculationOptions<'a> {
+pub struct CalculationOptions {
     /// Copy the data from systems into native `SimpleSystem`. This can be
     /// faster than having to cross the FFI boundary too often.
     pub use_native_system: bool,
     /// List of selected samples on which to run the computation
-    pub selected_samples: SelectedIndexes<'a>,
+    pub selected_samples: SelectedIndexes,
     /// List of selected features on which to run the computation
-    pub selected_features: SelectedIndexes<'a>,
+    pub selected_features: SelectedIndexes,
 }
 
-impl<'a> Default for CalculationOptions<'a> {
-    fn default() -> CalculationOptions<'a> {
+impl Default for CalculationOptions {
+    fn default() -> CalculationOptions {
         CalculationOptions {
             use_native_system: false,
             selected_samples: SelectedIndexes::All,
@@ -155,6 +199,11 @@ impl Calculator {
     /// as JSON.
     pub fn parameters(&self) -> &str {
         &self.parameters
+    }
+
+    /// Does this calculator computes gradients?
+    pub fn gradients(&self) -> bool {
+        self.implementation.compute_gradients()
     }
 
     /// Get the default set of features for this calculator
@@ -241,3 +290,73 @@ lazy_static::lazy_static!{
     };
 }
 // [calculator-registration]
+
+
+#[cfg(test)]
+mod tests {
+    use super::SelectedIndexes;
+
+    use crate::calculators::{CalculatorBase, DummyCalculator};
+    use crate::descriptor::{IndexesBuilder, IndexValue};
+
+    #[test]
+    fn selected_features() {
+        let calculator = DummyCalculator {
+            cutoff: 3.4, delta: 0, name: "".into(), gradients: false,
+        };
+
+        let selected = SelectedIndexes::All;
+        let indexes = selected.into_features(&calculator).unwrap();
+        let expected = calculator.features();
+        assert_eq!(indexes, expected);
+
+        // full specification of the rows
+        let mut selected = IndexesBuilder::new(vec!["index_delta", "x_y_z"]);
+        selected.add(&[IndexValue::from(0), IndexValue::from(1)]);
+        let expected = selected.finish();
+
+        let selected = SelectedIndexes::Subset(expected.clone());
+        let indexes = selected.into_features(&calculator).unwrap();
+        assert_eq!(indexes, expected);
+
+        // partial specification of the rows
+        let mut selected = IndexesBuilder::new(vec!["index_delta"]);
+        selected.add(&[IndexValue::from(0)]);
+
+        let selected = SelectedIndexes::Subset(selected.finish());
+        let indexes = selected.into_features(&calculator).unwrap();
+        assert_eq!(indexes, expected);
+    }
+
+    #[test]
+    fn selected_samples() {
+        let calculator = DummyCalculator {
+            cutoff: 3.4, delta: 0, name: "".into(), gradients: false,
+        };
+        let mut systems = crate::systems::test_utils::test_systems(&["water"]);
+
+        let selected = SelectedIndexes::All;
+        let indexes = selected.into_samples(&calculator, &mut systems).unwrap();
+        let expected = calculator.samples_builder().samples(&mut systems).unwrap();
+        assert_eq!(indexes, expected);
+
+        // full specification of the rows
+        let mut selected = IndexesBuilder::new(vec!["structure", "center"]);
+        selected.add(&[IndexValue::from(0), IndexValue::from(2)]);
+        selected.add(&[IndexValue::from(0), IndexValue::from(0)]);
+        let expected = selected.finish();
+
+        let selected = SelectedIndexes::Subset(expected.clone());
+        let indexes = selected.into_samples(&calculator, &mut systems).unwrap();
+        assert_eq!(indexes, expected);
+
+        // partial specification of the rows
+        let mut selected = IndexesBuilder::new(vec!["center"]);
+        selected.add(&[IndexValue::from(2)]);
+        selected.add(&[IndexValue::from(0)]);
+
+        let selected = SelectedIndexes::Subset(selected.finish());
+        let indexes = selected.into_samples(&calculator, &mut systems).unwrap();
+        assert_eq!(indexes, expected);
+    }
+}

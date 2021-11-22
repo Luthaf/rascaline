@@ -304,30 +304,18 @@ typedef struct rascal_calculation_options_t {
    */
   bool use_native_system;
   /**
-   * List of samples on which to run the calculation. Use `NULL` to run the
-   * calculation on all samples. The samples must be represented as a
-   * row-major array, containing values similar to the samples index of a
-   * descriptor. If necessary, gradients samples will be derived from the
+   * List of samples on which to run the calculation. You can set
+   * `selected_samples.values` to `NULL` to run the calculation on all
+   * samples. If necessary, gradients samples will be derived from the
    * values given in selected_samples.
    */
-  const int32_t *selected_samples;
+  struct rascal_indexes_t selected_samples;
   /**
-   * If selected_samples is not `NULL`, this should be set to the size of the
-   * selected_samples array
+   * List of features on which to run the calculation. You can set
+   * `selected_features.values` to `NULL` to run the calculation on all
+   * features.
    */
-  uintptr_t selected_samples_count;
-  /**
-   * List of features on which to run the calculation. Use `NULL` to run the
-   * calculation on all features. The features must be represented as a
-   * row-major array, containing values similar to the features index of a
-   * descriptor.
-   */
-  const int32_t *selected_features;
-  /**
-   * If selected_features is not `NULL`, this should be set to the size of the
-   * selected_features array
-   */
-  uintptr_t selected_features_count;
+  struct rascal_indexes_t selected_features;
 } rascal_calculation_options_t;
 
 #ifdef __cplusplus
@@ -673,7 +661,7 @@ rascal_status_t rascal_calculator_parameters(const struct rascal_calculator_t *c
 
 /**
  * Get the default number of features this `calculator` will produce in the
- * `count` parameter.
+ * `features` parameter.
  *
  * This number corresponds to the size of second dimension of the `values` and
  * `gradients` arrays in the `rascal_descriptor_t` after a call to

@@ -126,7 +126,7 @@ impl IndexesBuilder {
     /// Create a new empty `IndexesBuilder` with the given `names`
     pub fn new(names: Vec<&str>) -> IndexesBuilder {
         for name in &names {
-            if !is_valid_ident(name) {
+            if !is_valid_index_name(name) {
                 panic!("all indexes names must be valid identifiers, '{}' is not", name);
             }
         }
@@ -191,7 +191,9 @@ impl IndexesBuilder {
     }
 }
 
-fn is_valid_ident(name: &str) -> bool {
+/// Check if the given name is a valid index variable name, to be used as a
+/// column name in `Indexes`.
+pub fn is_valid_index_name(name: &str) -> bool {
     if name.is_empty() {
         return false;
     }

@@ -223,8 +223,8 @@ impl CalculatorBase for SoapPowerSpectrum {
         assert_eq!(descriptor.features.names(), self.features_names());
 
         let options = CalculationOptions {
-            selected_samples: SelectedIndexes::Some(self.get_expansion_samples(&descriptor.samples)),
-            selected_features: SelectedIndexes::Some(self.get_expansion_features(&descriptor.features)),
+            selected_samples: SelectedIndexes::Subset(self.get_expansion_samples(&descriptor.samples)),
+            selected_features: SelectedIndexes::Subset(self.get_expansion_features(&descriptor.features)),
             ..Default::default()
         };
 
@@ -451,7 +451,6 @@ mod tests {
         samples.add(&[v(0), v(2), v(1), v(123456), v(123456)]);
         samples.add(&[v(1), v(0), v(6), v(1), v(6)]);
         samples.add(&[v(1), v(2), v(1), v(1), v(1)]);
-        let samples = samples.finish();
 
         let mut features = IndexesBuilder::new(vec!["n1", "n2", "l"]);
         features.add(&[v(0), v(1), v(0)]);
@@ -460,10 +459,9 @@ mod tests {
         features.add(&[v(1), v(4), v(4)]);
         features.add(&[v(5), v(2), v(0)]);
         features.add(&[v(1), v(1), v(2)]);
-        let features = features.finish();
 
         crate::calculators::tests_utils::compute_partial(
-            calculator, &mut systems, samples, features, false
+            calculator, &mut systems, samples.finish(), features.finish()
         );
     }
 

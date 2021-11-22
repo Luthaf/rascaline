@@ -9,12 +9,13 @@ int main(int argc, char* argv[]) {
     rascal_descriptor_t* descriptor = NULL;
     rascal_system_t* systems = NULL;
     uintptr_t n_systems = 0;
-    rascal_calculation_options_t options;
     double* values = NULL;
     uintptr_t n_samples = 0;
     uintptr_t n_features = 0;
     bool got_error = true;
     const char* densify_variables[] = {"species_neighbor_1", "species_neighbor_2"};
+    // use the default set of options, computing all samples and all features
+    rascal_calculation_options_t options = {0};
 
     // hyper-parameters for the calculation as JSON
     const char* parameters = "{\n"
@@ -55,13 +56,6 @@ int main(int argc, char* argv[]) {
         printf("Error: %s\n", rascal_last_error());
         goto cleanup;
     }
-
-    // use the default set of options, computing all samples and all features
-    options.use_native_system = false;
-    options.selected_samples = NULL;
-    options.selected_samples_count = 0;
-    options.selected_features = NULL;
-    options.selected_features_count = 0;
 
     // run the calculation
     status = rascal_calculator_compute(
