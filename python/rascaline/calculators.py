@@ -85,7 +85,10 @@ class CalculatorBase:
         self._selected_features = None
 
     def __del__(self):
-        self._lib.rascal_calculator_free(self)
+        if hasattr(self, "_lib"):
+            # if we failed to load the lib, don't double error by trying to call
+            # ``self._lib.rascal_calculator_free``
+            self._lib.rascal_calculator_free(self)
         self._as_parameter_ = 0
 
     @property

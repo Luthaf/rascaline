@@ -30,41 +30,31 @@ TEST_CASE("rascal_descriptor_t") {
         auto* descriptor = rascal_descriptor();
         REQUIRE(descriptor != nullptr);
 
-        const int32_t* data = nullptr;
-        uintptr_t count = 0;
-        uintptr_t size = 0;
-
+        rascal_indexes_t indexes = {0};
         CHECK_SUCCESS(rascal_descriptor_indexes(
-            descriptor, RASCAL_INDEXES_FEATURES, &data, &count, &size
+            descriptor, RASCAL_INDEXES_FEATURES, &indexes
         ));
-        CHECK(data == nullptr);
-        CHECK(count == 0);
-        CHECK(size == 0);
-
-        const char* names[2] = {"foo", "bar"};
-        auto status = rascal_descriptor_indexes_names(
-            descriptor, RASCAL_INDEXES_FEATURES, names, 2
-        );
-        CHECK(status != RASCAL_SUCCESS);
+        CHECK(indexes.values == nullptr);
+        CHECK(indexes.names == nullptr);
+        CHECK(indexes.count == 0);
+        CHECK(indexes.size == 0);
 
         compute_descriptor(descriptor);
         CHECK_SUCCESS(rascal_descriptor_indexes(
-            descriptor, RASCAL_INDEXES_FEATURES, &data, &count, &size
+            descriptor, RASCAL_INDEXES_FEATURES, &indexes
         ));
-        CHECK(data != nullptr);
-        CHECK(count == 2);
-        CHECK(size == 2);
+        CHECK(indexes.values != nullptr);
+        CHECK(indexes.names != nullptr);
+        CHECK(indexes.count == 2);
+        CHECK(indexes.size == 2);
 
-        CHECK(data[0 * size + 0] == 1);
-        CHECK(data[0 * size + 1] == 0);
-        CHECK(data[1 * size + 0] == 0);
-        CHECK(data[1 * size + 1] == 1);
+        CHECK(indexes.values[0 * indexes.size + 0] == 1);
+        CHECK(indexes.values[0 * indexes.size + 1] == 0);
+        CHECK(indexes.values[1 * indexes.size + 0] == 0);
+        CHECK(indexes.values[1 * indexes.size + 1] == 1);
 
-        CHECK_SUCCESS(rascal_descriptor_indexes_names(
-            descriptor, RASCAL_INDEXES_FEATURES, names, 2
-        ));
-        CHECK(names[0] == std::string("index_delta"));
-        CHECK(names[1] == std::string("x_y_z"));
+        CHECK(indexes.names[0] == std::string("index_delta"));
+        CHECK(indexes.names[1] == std::string("x_y_z"));
 
         rascal_descriptor_free(descriptor);
     }
@@ -73,43 +63,32 @@ TEST_CASE("rascal_descriptor_t") {
         auto* descriptor = rascal_descriptor();
         REQUIRE(descriptor != nullptr);
 
-        const int32_t* data = nullptr;
-        uintptr_t count = 0;
-        uintptr_t size = 0;
-
+        rascal_indexes_t indexes = {0};
         CHECK_SUCCESS(rascal_descriptor_indexes(
-            descriptor, RASCAL_INDEXES_SAMPLES, &data, &count, &size
+            descriptor, RASCAL_INDEXES_SAMPLES, &indexes
         ));
-        CHECK(data == nullptr);
-        CHECK(count == 0);
-        CHECK(size == 0);
-
-        const char* names[2] = {"foo", "bar"};
-        auto status = rascal_descriptor_indexes_names(
-            descriptor, RASCAL_INDEXES_FEATURES, names, 2
-        );
-        CHECK(status != RASCAL_SUCCESS);
-
+        CHECK(indexes.names == nullptr);
+        CHECK(indexes.values == nullptr);
+        CHECK(indexes.count == 0);
+        CHECK(indexes.size == 0);
 
         compute_descriptor(descriptor);
         CHECK_SUCCESS(rascal_descriptor_indexes(
-            descriptor, RASCAL_INDEXES_SAMPLES, &data, &count, &size
+            descriptor, RASCAL_INDEXES_SAMPLES, &indexes
         ));
-        CHECK(data != nullptr);
-        CHECK(count == 4);
-        CHECK(size == 2);
+        CHECK(indexes.names != nullptr);
+        CHECK(indexes.values != nullptr);
+        CHECK(indexes.count == 4);
+        CHECK(indexes.size == 2);
 
-        for (size_t i=0; i<count; i++) {
+        for (size_t i=0; i<indexes.count; i++) {
             // structure 0, atom i
-            CHECK(data[i * size + 0] == 0);
-            CHECK(data[i * size + 1] == i);
+            CHECK(indexes.values[i * indexes.size + 0] == 0);
+            CHECK(indexes.values[i * indexes.size + 1] == i);
         }
 
-        CHECK_SUCCESS(rascal_descriptor_indexes_names(
-            descriptor, RASCAL_INDEXES_SAMPLES, names, 2
-        ));
-        CHECK(names[0] == std::string("structure"));
-        CHECK(names[1] == std::string("center"));
+        CHECK(indexes.names[0] == std::string("structure"));
+        CHECK(indexes.names[1] == std::string("center"));
 
         rascal_descriptor_free(descriptor);
     }
@@ -149,32 +128,23 @@ TEST_CASE("rascal_descriptor_t") {
         auto* descriptor = rascal_descriptor();
         REQUIRE(descriptor != nullptr);
 
-        const int32_t* data = nullptr;
-        uintptr_t count = 0;
-        uintptr_t size = 0;
-
+        rascal_indexes_t indexes = {0};
         CHECK_SUCCESS(rascal_descriptor_indexes(
-            descriptor, RASCAL_INDEXES_GRADIENT_SAMPLES, &data, &count, &size
+            descriptor, RASCAL_INDEXES_GRADIENT_SAMPLES, &indexes
         ));
-        CHECK(data == nullptr);
-        CHECK(count == 0);
-        CHECK(size == 0);
-
-        const char* names[4] = {"foo", "bar", "fizz", "buzz"};
-        rascal_descriptor_indexes_names(descriptor, RASCAL_INDEXES_GRADIENT_SAMPLES, names, 4);
-        CHECK(names[0] == nullptr);
-        CHECK(names[1] == nullptr);
-        CHECK(names[2] == nullptr);
-        CHECK(names[3] == nullptr);
-
+        CHECK(indexes.names == nullptr);
+        CHECK(indexes.values == nullptr);
+        CHECK(indexes.count == 0);
+        CHECK(indexes.size == 0);
 
         compute_descriptor(descriptor);
         CHECK_SUCCESS(rascal_descriptor_indexes(
-            descriptor, RASCAL_INDEXES_GRADIENT_SAMPLES, &data, &count, &size
+            descriptor, RASCAL_INDEXES_GRADIENT_SAMPLES, &indexes
         ));
-        CHECK(data != nullptr);
-        CHECK(count == 18);
-        CHECK(size == 4);
+        CHECK(indexes.names != nullptr);
+        CHECK(indexes.values != nullptr);
+        CHECK(indexes.count == 18);
+        CHECK(indexes.size == 4);
 
         auto expected = std::vector<int32_t> {
             // structure, atom, neighbor atom, spatial
@@ -185,16 +155,16 @@ TEST_CASE("rascal_descriptor_t") {
             /* x */ 0, 2, 3, 0, /* y */ 0, 2, 3, 1, /* z */ 0, 2, 3, 2,
             /* x */ 0, 3, 2, 0, /* y */ 0, 3, 2, 1, /* z */ 0, 3, 2, 2,
         };
+        auto actual = std::vector<int32_t>(
+            indexes.values,
+            indexes.values + (indexes.count * indexes.size)
+        );
+        CHECK(actual == expected);
 
-        CHECK(std::vector<int32_t>(data, data + (count * size)) == expected);
-
-        CHECK_SUCCESS(rascal_descriptor_indexes_names(
-            descriptor, RASCAL_INDEXES_GRADIENT_SAMPLES, names, 4
-        ));
-        CHECK(names[0] == std::string("structure"));
-        CHECK(names[1] == std::string("center"));
-        CHECK(names[2] == std::string("neighbor"));
-        CHECK(names[3] == std::string("spatial"));
+        CHECK(indexes.names[0] == std::string("structure"));
+        CHECK(indexes.names[1] == std::string("center"));
+        CHECK(indexes.names[2] == std::string("neighbor"));
+        CHECK(indexes.names[3] == std::string("spatial"));
 
         rascal_descriptor_free(descriptor);
     }

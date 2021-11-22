@@ -856,26 +856,15 @@ public:
 
 private:
     /// Generic function to get a set of `Indexes` out of this descriptor.
-    Indexes indexes(rascal_indexes indexes) const {
-        const int32_t* data = nullptr;
-        uintptr_t count = 0;
-        uintptr_t size = 0;
-        details::check_status(rascal_descriptor_indexes(
-            descriptor_, indexes, &data, &count, &size
-        ));
+    Indexes indexes(rascal_indexes_kind kind) const {
+        rascal_indexes_t indexes = {0};
+        details::check_status(rascal_descriptor_indexes(descriptor_, kind, &indexes));
 
-        auto array = ArrayView<int32_t>(data, {count, size});
-
-        auto names = std::vector<std::string>();
-        if (size != 0) {
-            auto c_names = std::vector<const char*>(size, nullptr);
-            details::check_status(rascal_descriptor_indexes_names(
-                descriptor_, indexes, c_names.data(), size
-            ));
-            for (const auto name: c_names) {
-                names.push_back(std::string(name));
-            }
-        }
+        auto array = ArrayView<int32_t>(indexes.values, {indexes.count, indexes.size});
+        auto names = std::vector<std::string>(
+            indexes.names,
+            indexes.names + indexes.size
+        );
 
         return Indexes(std::move(names), std::move(array));
     }

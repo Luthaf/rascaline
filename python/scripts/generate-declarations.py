@@ -102,7 +102,7 @@ def parse(file):
 def c_type_name(name):
     if name.startswith("rascal_"):
         # enums are represented as int
-        if name == "rascal_indexes":
+        if name == "rascal_indexes_kind":
             return "ctypes.c_int"
         else:
             return name
