@@ -96,7 +96,10 @@ macro_rules! check_pointers {
     ($pointer: ident) => {
         if $pointer.is_null() {
             return Err(rascaline::Error::InvalidParameter(
-                format!("got invalid NULL pointer for {}", stringify!($pointer))
+                format!(
+                    "got invalid NULL pointer for {} at {}:{}",
+                    stringify!($pointer), file!(), line!()
+                )
             ));
         }
     };
