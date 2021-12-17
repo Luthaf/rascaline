@@ -133,9 +133,7 @@ struct ChangedGradientIndex {
 pub fn finite_difference(mut calculator: Calculator, mut system: SimpleSystem) {
     let mut reference = Descriptor::new();
 
-    println!("----------- first compute -----------");
     calculator.compute(&mut [Box::new(system.clone())], &mut reference, Default::default()).unwrap();
-    println!("----------- first compute end -----------");
 
     let gradients_samples = reference.gradients_samples.as_ref().unwrap();
 
