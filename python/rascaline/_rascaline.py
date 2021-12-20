@@ -83,9 +83,9 @@ class rascal_indexes_t(ctypes.Structure):
 
 class rascal_densified_position_t(ctypes.Structure):
     _fields_ = [
-        ("old_sample", c_uintptr_t),
         ("new_sample", c_uintptr_t),
         ("feature_block", c_uintptr_t),
+        ("used", ctypes.c_bool),
     ]
 
 

@@ -138,16 +138,16 @@ TEST_CASE("rascal_descriptor_t") {
         CHECK(indexes.names != nullptr);
         CHECK(indexes.values != nullptr);
         CHECK(indexes.count == 18);
-        CHECK(indexes.size == 4);
+        CHECK(indexes.size == 3);
 
+        // the indexes are "sample", "atom", "spatial"
         auto expected = std::vector<int32_t> {
-            // structure, atom, neighbor atom, spatial
-            /* x */ 0, 0, 1, 0, /* y */ 0, 0, 1, 1, /* z */ 0, 0, 1, 2,
-            /* x */ 0, 1, 0, 0, /* y */ 0, 1, 0, 1, /* z */ 0, 1, 0, 2,
-            /* x */ 0, 1, 2, 0, /* y */ 0, 1, 2, 1, /* z */ 0, 1, 2, 2,
-            /* x */ 0, 2, 1, 0, /* y */ 0, 2, 1, 1, /* z */ 0, 2, 1, 2,
-            /* x */ 0, 2, 3, 0, /* y */ 0, 2, 3, 1, /* z */ 0, 2, 3, 2,
-            /* x */ 0, 3, 2, 0, /* y */ 0, 3, 2, 1, /* z */ 0, 3, 2, 2,
+            0, 1, 0, /**/ 0, 1, 1, /**/ 0, 1, 2,
+            1, 0, 0, /**/ 1, 0, 1, /**/ 1, 0, 2,
+            1, 2, 0, /**/ 1, 2, 1, /**/ 1, 2, 2,
+            2, 1, 0, /**/ 2, 1, 1, /**/ 2, 1, 2,
+            2, 3, 0, /**/ 2, 3, 1, /**/ 2, 3, 2,
+            3, 2, 0, /**/ 3, 2, 1, /**/ 3, 2, 2,
         };
         auto actual = std::vector<int32_t>(
             indexes.values,
@@ -155,10 +155,9 @@ TEST_CASE("rascal_descriptor_t") {
         );
         CHECK(actual == expected);
 
-        CHECK(indexes.names[0] == std::string("structure"));
-        CHECK(indexes.names[1] == std::string("center"));
-        CHECK(indexes.names[2] == std::string("neighbor"));
-        CHECK(indexes.names[3] == std::string("spatial"));
+        CHECK(indexes.names[0] == std::string("sample"));
+        CHECK(indexes.names[1] == std::string("atom"));
+        CHECK(indexes.names[2] == std::string("spatial"));
 
         rascal_descriptor_free(descriptor);
     }
@@ -284,18 +283,22 @@ TEST_CASE("rascal_descriptor_t") {
             CHECK(samples == 18);
             CHECK(features == 2);
 
-            CHECK(densified_positions_count == 18);
-            CHECK(densified_positions[0].old_sample == 0);
+            CHECK(densified_positions_count == 4);
+            CHECK(densified_positions[0].used == true);
             CHECK(densified_positions[0].new_sample == 0);
             CHECK(densified_positions[0].feature_block == 0);
 
-            CHECK(densified_positions[6].old_sample == 6);
-            CHECK(densified_positions[6].new_sample == 6);
-            CHECK(densified_positions[6].feature_block == 1);
+            CHECK(densified_positions[1].used == true);
+            CHECK(densified_positions[1].new_sample == 0);
+            CHECK(densified_positions[1].feature_block == 1);
 
-            CHECK(densified_positions[15].old_sample == 15);
-            CHECK(densified_positions[15].new_sample == 6);
-            CHECK(densified_positions[15].feature_block == 3);
+            CHECK(densified_positions[2].used == true);
+            CHECK(densified_positions[2].new_sample == 0);
+            CHECK(densified_positions[2].feature_block == 2);
+
+            CHECK(densified_positions[3].used == true);
+            CHECK(densified_positions[3].new_sample == 0);
+            CHECK(densified_positions[3].feature_block == 3);
 
             free(densified_positions);
         }

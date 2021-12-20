@@ -95,16 +95,15 @@ TEST_CASE("Descriptor") {
 
         compute_descriptor(descriptor);
         gradients_samples = descriptor.gradients_samples();
-        CHECK(gradients_samples.shape() == std::array<size_t, 2>{18, 4});
+        CHECK(gradients_samples.shape() == std::array<size_t, 2>{18, 3});
 
         auto expected = std::vector<int32_t> {
-            // structure, atom, neighbor atom, spatial
-            /* x */ 0, 0, 1, 0, /* y */ 0, 0, 1, 1, /* z */ 0, 0, 1, 2,
-            /* x */ 0, 1, 0, 0, /* y */ 0, 1, 0, 1, /* z */ 0, 1, 0, 2,
-            /* x */ 0, 1, 2, 0, /* y */ 0, 1, 2, 1, /* z */ 0, 1, 2, 2,
-            /* x */ 0, 2, 1, 0, /* y */ 0, 2, 1, 1, /* z */ 0, 2, 1, 2,
-            /* x */ 0, 2, 3, 0, /* y */ 0, 2, 3, 1, /* z */ 0, 2, 3, 2,
-            /* x */ 0, 3, 2, 0, /* y */ 0, 3, 2, 1, /* z */ 0, 3, 2, 2,
+            0, 1, 0, /**/ 0, 1, 1, /**/ 0, 1, 2,
+            1, 0, 0, /**/ 1, 0, 1, /**/ 1, 0, 2,
+            1, 2, 0, /**/ 1, 2, 1, /**/ 1, 2, 2,
+            2, 1, 0, /**/ 2, 1, 1, /**/ 2, 1, 2,
+            2, 3, 0, /**/ 2, 3, 1, /**/ 2, 3, 2,
+            3, 2, 0, /**/ 3, 2, 1, /**/ 3, 2, 2,
         };
 
         auto count = gradients_samples.shape()[0];
@@ -115,10 +114,9 @@ TEST_CASE("Descriptor") {
             }
         }
 
-        CHECK(gradients_samples.names()[0] == "structure");
-        CHECK(gradients_samples.names()[1] == "center");
-        CHECK(gradients_samples.names()[2] == "neighbor");
-        CHECK(gradients_samples.names()[3] == "spatial");
+        CHECK(gradients_samples.names()[0] == "sample");
+        CHECK(gradients_samples.names()[1] == "atom");
+        CHECK(gradients_samples.names()[2] == "spatial");
     }
 
     SECTION("gradients") {
@@ -168,17 +166,21 @@ TEST_CASE("Descriptor") {
         // gradients are not changed
         CHECK(descriptor.gradients().shape() == std::array<size_t, 2>{18, 2});
 
-        CHECK(densified_positions.size() == 18);
-        CHECK(densified_positions[0].old_sample == 0);
+        CHECK(densified_positions.size() == 4);
+        CHECK(densified_positions[0].used == true);
         CHECK(densified_positions[0].new_sample == 0);
         CHECK(densified_positions[0].feature_block == 0);
 
-        CHECK(densified_positions[6].old_sample == 6);
-        CHECK(densified_positions[6].new_sample == 6);
-        CHECK(densified_positions[6].feature_block == 1);
+        CHECK(densified_positions[1].used == true);
+        CHECK(densified_positions[1].new_sample == 0);
+        CHECK(densified_positions[1].feature_block == 1);
 
-        CHECK(densified_positions[15].old_sample == 15);
-        CHECK(densified_positions[15].new_sample == 6);
-        CHECK(densified_positions[15].feature_block == 3);
+        CHECK(densified_positions[2].used == true);
+        CHECK(densified_positions[2].new_sample == 0);
+        CHECK(densified_positions[2].feature_block == 2);
+
+        CHECK(densified_positions[3].used == true);
+        CHECK(densified_positions[3].new_sample == 0);
+        CHECK(densified_positions[3].feature_block == 3);
     }
 }

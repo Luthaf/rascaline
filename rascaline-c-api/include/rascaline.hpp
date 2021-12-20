@@ -830,9 +830,9 @@ public:
     /// to its documentation for more information.
     ///
     /// If this descriptor contains gradients, this function will return an
-    /// array of `rascal_densified_position_t` containing for each sample in
-    /// `gradient_sample` the new position it should have in a densified
-    /// gradients array.
+    /// array of `rascal_densified_position_t` containing the modifiation
+    /// performed on the values array, which can be used to apply the same
+    /// modification to the gradients array.
     ///
     /// This is an advanced function most users should not need to use, used to
     /// implement backward propagation without having to densify the full

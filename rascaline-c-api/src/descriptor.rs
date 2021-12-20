@@ -333,20 +333,18 @@ pub unsafe extern fn rascal_descriptor_densify(
 }
 
 /// `rascal_densified_position_t` contains all the information to reconstruct
-/// the new position of the values/gradients associated with a single sample in
-/// the initial descriptor
+/// the new position of the values associated with a single sample in the
+/// initial descriptor after a call to `rascal_descriptor_densify_values`
 #[repr(C)]
 pub struct rascal_densified_position_t {
-    /// Index of the old sample (respectively gradient sample) in the value
-    /// (respectively gradients) array. Some samples might not be necessary in
-    /// the new array if the user requested only a subset of the values taken by
-    /// the densified variables
-    pub old_sample: usize,
-    /// Index of the new sample (respectively gradient sample) in the value
-    /// (respectively gradients) array
+    /// if `used` is `true`, index of the new sample in the value array
     pub new_sample: usize,
-    /// Index of the feature block in the new array
+    /// if `used` is `true`, index of the feature block in the new array
     pub feature_block: usize,
+    /// indicate whether this sample was needed to construct the new value
+    /// array. This might be `false` when the value of densified variables
+    /// specified by the user does not match the sample.
+    pub used: bool,
 }
 
 /// Make this descriptor dense along the given `variables`, only modifying the
@@ -356,16 +354,14 @@ pub struct rascal_densified_position_t {
 /// to its documentation for more information.
 ///
 /// If this descriptor contains gradients, `gradients_positions` will point to
-/// an array allocated with `malloc` containing the list of samples in the old
-/// gradient array that should be used to reconstruct the dense gradient array;
-/// and the new position of the values associated with each of these samples.
+/// an array allocated with `malloc` containing the changes made to the values
+/// array, which can be used to reconstruct the change to make to the gradients.
 /// Users of this function are expected to `free` the corresponding memory when
 /// they no longer need it.
 ///
 /// This is an advanced function most users should not need to use, used to
 /// implement backward propagation without having to densify the full gradient
 /// array.
-#[allow(clippy::identity_op, clippy::cast_possible_wrap)]
 #[no_mangle]
 pub unsafe extern fn rascal_descriptor_densify_values(
     descriptor: *mut rascal_descriptor_t,
@@ -373,8 +369,8 @@ pub unsafe extern fn rascal_descriptor_densify_values(
     variables_count: usize,
     requested: *const i32,
     requested_size: usize,
-    gradients_positions: *mut *mut rascal_densified_position_t,
-    gradients_positions_count: *mut usize,
+    densified_positions: *mut *mut rascal_densified_position_t,
+    densified_positions_count: *mut usize,
 ) -> rascal_status_t {
     catch_unwind(|| {
         check_pointers!(descriptor, variables);
@@ -393,24 +389,35 @@ pub unsafe extern fn rascal_descriptor_densify_values(
             ))
         };
 
-        let densified_positions = (*descriptor).densify_values(&rust_variables, requested)?;
+        let densified_positions_rust = (*descriptor).densify_values(&rust_variables, requested)?;
+        if densified_positions_rust.is_empty() {
+            *densified_positions_count = 0;
+            *densified_positions = std::ptr::null_mut();
+            return Ok(());
+        }
 
-        *gradients_positions_count = densified_positions.len();
-        *gradients_positions = libc::calloc(
-            densified_positions.len(),
+        *densified_positions_count = densified_positions_rust.len();
+        *densified_positions = libc::calloc(
+            densified_positions_rust.len(),
             std::mem::size_of::<rascal_densified_position_t>()
         ).cast();
 
-        if (*gradients_positions).is_null() {
+        if (*densified_positions).is_null() {
             return Err(Error::BufferSize(
                 "failed to allocate enough memory to store densified positions".into()
             ));
         }
 
-        for (i, position) in densified_positions.into_iter().enumerate() {
-            (*(*gradients_positions).add(i)).old_sample = position.old_sample;
-            (*(*gradients_positions).add(i)).new_sample = position.new_sample;
-            (*(*gradients_positions).add(i)).feature_block = position.features_block;
+        for (old_sample_i, position) in densified_positions_rust.iter().enumerate() {
+            if let Some(position) = position {
+                (*(*densified_positions).add(old_sample_i)).new_sample = position.sample;
+                (*(*densified_positions).add(old_sample_i)).feature_block = position.features_block;
+                (*(*densified_positions).add(old_sample_i)).used = true;
+            } else {
+                (*(*densified_positions).add(old_sample_i)).new_sample = 0;
+                (*(*densified_positions).add(old_sample_i)).feature_block = 0;
+                (*(*densified_positions).add(old_sample_i)).used = false;
+            }
         }
 
         Ok(())

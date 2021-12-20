@@ -59,18 +59,23 @@ pub fn compute_partial(
 
     assert_eq!(full.features, partial.features);
     for (partial_i, sample) in samples.iter().enumerate() {
-        let index = full.samples.position(sample).unwrap();
+        let full_i = full.samples.position(sample).unwrap();
         assert_ulps_eq!(
-            full.values.slice(s![index, ..]),
+            full.values.slice(s![full_i, ..]),
             partial.values.slice(s![partial_i, ..])
         );
     }
 
     if calculator.gradients() {
-        for (partial_i, sample) in partial.gradients_samples.as_ref().unwrap().iter().enumerate() {
-            let index = full.gradients_samples.as_ref().unwrap().position(sample).unwrap();
+        for (partial_i, grad_sample) in partial.gradients_samples.as_ref().unwrap().iter().enumerate() {
+            let sample = &samples[grad_sample[0].usize()];
+            let sample_i = full.samples.position(sample).unwrap();
+
+            let full_i = full.gradients_samples.as_ref().unwrap().position(
+                &[IndexValue::from(sample_i), grad_sample[1], grad_sample[2]]
+            ).unwrap();
             assert_ulps_eq!(
-                full.gradients.as_ref().unwrap().slice(s![index, ..]),
+                full.gradients.as_ref().unwrap().slice(s![full_i, ..]),
                 partial.gradients.as_ref().unwrap().slice(s![partial_i, ..])
             );
         }
@@ -95,36 +100,23 @@ pub fn compute_partial(
     }
 
     if calculator.gradients() {
-        for (sample_i, sample) in partial.gradients_samples.as_ref().unwrap().iter().enumerate() {
+        for (sample_i, grad_sample) in partial.gradients_samples.as_ref().unwrap().iter().enumerate() {
+            let sample = &samples[grad_sample[0].usize()];
+            let full_sample_i = full.samples.position(sample).unwrap();
+
+            let full_grad_sample_i = full.gradients_samples.as_ref().unwrap().position(
+                &[IndexValue::from(full_sample_i), grad_sample[1], grad_sample[2]]
+            ).unwrap();
+
             for (feature_i, feature) in features.iter().enumerate() {
-                let full_sample_i = full.gradients_samples.as_ref().unwrap().position(sample).unwrap();
                 let full_feature_i = full.features.position(feature).unwrap();
                 assert_ulps_eq!(
-                    full.gradients.as_ref().unwrap()[[full_sample_i, full_feature_i]],
+                    full.gradients.as_ref().unwrap()[[full_grad_sample_i, full_feature_i]],
                     partial.gradients.as_ref().unwrap()[[sample_i, feature_i]]
                 );
             }
         }
     }
-}
-
-/// Index of an atom moved during finite difference calculation
-#[derive(Copy, Clone, Debug)]
-struct MovedAtomIndex {
-    /// index of the atomic center in the structure
-    center: usize,
-    /// spatial dimension index (0 for x, 1 for y and 2 for z)
-    spatial: usize,
-}
-
-/// Metadata about of one of the gradient sample changed when moving one atom
-#[derive(Clone, Debug)]
-struct ChangedGradientIndex {
-    /// Position of the changed sample in the full gradients matrix
-    gradient_index: usize,
-    /// Sample (NOT gradient) descriptor to which this gradient sample is
-    /// associated
-    sample: Vec<IndexValue>,
 }
 
 /// Check that analytical gradients agree with a finite difference calculation
@@ -136,6 +128,7 @@ pub fn finite_difference(mut calculator: Calculator, mut system: SimpleSystem) {
     calculator.compute(&mut [Box::new(system.clone())], &mut reference, Default::default()).unwrap();
 
     let gradients_samples = reference.gradients_samples.as_ref().unwrap();
+    assert_eq!(gradients_samples.names(), &["sample", "atom", "spatial"]);
 
     let mut checked_gradient_samples = BTreeSet::new();
 
@@ -151,29 +144,23 @@ pub fn finite_difference(mut calculator: Calculator, mut system: SimpleSystem) {
             let mut updated_neg = Descriptor::new();
             calculator.compute(&mut [Box::new(system.clone())], &mut updated_neg, Default::default()).unwrap();
 
-            let moved = MovedAtomIndex {
-                center: atom_i,
-                spatial: spatial,
-            };
 
-            for changed in compute_modified_indexes(gradients_samples, moved) {
-                let sample_i = reference.samples.position(&changed.sample).expect(
-                    "missing sample in reference values"
-                );
-                assert_eq!(
-                    updated_pos.samples.position(&changed.sample).unwrap(),
-                    sample_i
-                );
-                assert_eq!(
-                    updated_neg.samples.position(&changed.sample).unwrap(),
-                    sample_i
-                );
+            for (gradient_i, gradients_sample) in gradients_samples.iter().enumerate() {
+                if gradients_sample[1].usize() != atom_i || gradients_sample[2].usize() != spatial {
+                    continue;
+                }
 
-                checked_gradient_samples.insert(changed.gradient_index);
+                let sample_i = gradients_sample[0].usize();
+
+                // check that the same sample is here in both descriptors
+                assert_eq!(updated_pos.samples[sample_i], reference.samples[sample_i]);
+                assert_eq!(updated_neg.samples[sample_i], reference.samples[sample_i]);
+
+                checked_gradient_samples.insert(gradient_i);
 
                 let value_pos = updated_pos.values.slice(s![sample_i, ..]);
                 let value_neg = updated_neg.values.slice(s![sample_i, ..]);
-                let gradient = gradients.slice(s![changed.gradient_index, ..]);
+                let gradient = gradients.slice(s![gradient_i, ..]);
 
                 assert_eq!(value_pos.shape(), value_neg.shape());
                 assert_eq!(value_pos.shape(), gradient.shape());
@@ -195,24 +182,4 @@ pub fn finite_difference(mut calculator: Calculator, mut system: SimpleSystem) {
 
     // ensure that all values in the gradient have been checked
     assert_eq!(checked_gradient_samples.len(), gradients.shape()[0]);
-}
-
-fn compute_modified_indexes(gradients_samples: &Indexes, moved: MovedAtomIndex) -> Vec<ChangedGradientIndex> {
-    let sample_size = gradients_samples.size() - 2;
-
-    assert!(["neighbor", "atom"].contains(&gradients_samples.names()[sample_size]));
-    assert!(gradients_samples.names()[sample_size + 1] == "spatial");
-
-    let mut results = Vec::new();
-    for (sample_i, sample) in gradients_samples.iter().enumerate() {
-        let neighbor = sample[sample_size];
-        let spatial = sample[sample_size + 1];
-        if neighbor.usize() == moved.center && spatial.usize() == moved.spatial {
-            results.push(ChangedGradientIndex {
-                gradient_index: sample_i,
-                sample: sample[..sample_size].to_vec(),
-            });
-        }
-    }
-    return results;
 }

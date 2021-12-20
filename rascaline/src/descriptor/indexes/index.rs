@@ -285,7 +285,7 @@ impl Indexes {
     /// Get the position of the given value on this set of indexes, or None.
     pub fn position(&self, value: &[IndexValue]) -> Option<usize> {
         if value.len() != self.size() {
-            return None;
+            panic!("invalid size of index in Indexes::position");
         }
 
         self.positions.get(value).copied()
@@ -345,9 +345,6 @@ impl std::ops::Index<usize> for Indexes {
 pub trait SamplesBuilder {
     /// The list of names used by the sample indexes
     fn names(&self) -> Vec<&str>;
-
-    /// The list of names used by the sample gradients indexes, if any
-    fn gradients_names(&self) -> Option<Vec<&str>>;
 
     /// Create an `Indexes` instance containing all the samples corresponding to
     /// the given list of systems.
