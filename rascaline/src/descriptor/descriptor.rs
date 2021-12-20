@@ -6,7 +6,7 @@ use ndarray::{Array2, ArrayView2, s};
 
 use log::warn;
 
-use crate::Error;
+use crate::{Error};
 use super::{Indexes, IndexesBuilder, IndexValue};
 
 /// A Descriptor contains the representation of atomistic systems, as computed
@@ -120,8 +120,8 @@ impl Descriptor {
     /// This function behaves similarly to [`Descriptor::densify`], please refer
     /// to its documentation for more information.
     ///
-    /// If this descriptor contains gradients, this function returns a vector
-    /// containing all the information required to densify the gradient array.
+    /// This does not change the gradients themselves, instead returning a
+    /// vector containing the changes made to the value array.
     ///
     /// This is an advanced function most users should not need to use, used to
     /// implement backward propagation without having to densify the full
@@ -131,21 +131,21 @@ impl Descriptor {
         &mut self,
         variables: &[&str],
         requested: impl Into<Option<ArrayView2<'a, IndexValue>>>,
-    ) -> Result<Vec<DensifiedPosition>, Error> {
+    ) -> Result<DensifiedPositions, Error> {
         self.densify_impl(variables, requested, /*do_gradient*/ false)
     }
 
     /// Common implementation of `densify` & `densify_value`. This function
-    /// returns the vector of densified indexes for gradients if `do_gradient`
-    /// is false and gradients are present in the descriptor.
+    /// returns the vector of new positions for values if `do_gradient` is
+    /// false.
     fn densify_impl<'a>(
         &mut self,
         variables: &[&str],
         requested: impl Into<Option<ArrayView2<'a, IndexValue>>>,
         do_gradient: bool
-    ) -> Result<Vec<DensifiedPosition>, Error> {
+    ) -> Result<DensifiedPositions, Error> {
         if variables.is_empty() || self.features.size() == 0 {
-            return Ok(Vec::new());
+            return Ok(DensifiedPositions::new(0));
         }
 
         // if the user provided them, extract the set of values to use for the
@@ -169,36 +169,15 @@ impl Descriptor {
             None
         };
 
-        let variables_fmt = if variables.len() == 1 {
-            variables[0].to_owned()
-        } else {
-            format!("({})", variables.join(", "))
-        };
-
-        let new_indexes = remove_from_samples(&self.samples, variables, requested_features.clone())?;
-        let new_gradients_indexes = if let Some(ref gradients_samples) = self.gradients_samples {
-            let new_gradients_indexes = remove_from_samples(gradients_samples, variables, requested_features)?;
-
-            if new_gradients_indexes.features != new_indexes.features {
-                panic!(
-                    "gradient samples contains different values for {} than the \
-                    samples themselves", variables_fmt
-                );
-            }
-
-            Some(new_gradients_indexes)
-        } else {
-            None
-        };
-
+        let updated_samples = remove_from_samples(&self.samples, variables, requested_features)?;
         // new features, adding `variables` in the front. This transforms
         // something like [n, l, m] to [species_neighbor, n, l, m]; and fill it
-        // with the corresponding values from `new_samples.new_features`,
+        // with the corresponding values from `new_samples.features`,
         // duplicating the `[n, l, m]` block as needed
         let mut feature_names = variables.to_vec();
         feature_names.extend(self.features.names());
         let mut new_features = IndexesBuilder::new(feature_names);
-        for new in new_indexes.features {
+        for new in updated_samples.features {
             for feature in self.features.iter() {
                 let mut new = new.clone();
                 new.extend(feature);
@@ -208,49 +187,78 @@ impl Descriptor {
         let new_features = new_features.finish();
         let new_features_count = new_features.count();
 
-        let old_feature_size = self.features.count();
+        let feature_block_size = self.features.count();
         // copy values themselves as needed
-        let mut new_values = Array2::zeros((new_indexes.samples.count(), new_features_count));
-        for dense_position in new_indexes.dense_positions {
-            let start = old_feature_size * dense_position.features_block;
-            let stop = old_feature_size * (dense_position.features_block + 1);
+        let mut new_values = Array2::zeros((updated_samples.samples.count(), new_features_count));
+        for (old_sample, new_position) in updated_samples.new_positions.iter().enumerate() {
+            if let Some(new_position) = new_position {
+                let start = feature_block_size * new_position.features_block;
+                let stop = feature_block_size * (new_position.features_block + 1);
 
-            let value = self.values.slice(s![dense_position.old_sample, ..]);
-            new_values.slice_mut(s![dense_position.new_sample, start..stop]).assign(&value);
+                let value = self.values.slice(s![old_sample, ..]);
+                new_values.slice_mut(s![new_position.sample, start..stop]).assign(&value);
+            }
         }
 
         self.features = new_features;
-        self.samples = new_indexes.samples;
+        self.samples = updated_samples.samples;
         self.values = new_values;
 
         if !do_gradient {
-            let dense_positions = match new_gradients_indexes {
-                Some(indexes) =>  indexes.dense_positions,
-                None => Vec::new(),
-            };
-            return Ok(dense_positions);
+            return Ok(updated_samples.new_positions);
         }
 
-        if let Some(new_gradients_indexes) = new_gradients_indexes {
-            let gradients = self.gradients.as_ref().expect("missing gradients storage");
+        if let Some(ref mut gradients) = self.gradients {
+            let gradients_samples = self.gradients_samples.as_ref().expect("missing gradients samples");
 
-            let mut new_gradients = Array2::zeros(
-                (new_gradients_indexes.samples.count(), new_features_count)
-            );
+            // we need to use indexmap::IndexSet here to get the new positions
+            // of the sample as we go over the old samples
+            let mut new_gradient_samples = IndexSet::new();
+            for gradient_sample in gradients_samples {
+                let sample_i = gradient_sample[0].usize();
+                let atom = gradient_sample[1];
 
-            for dense_position in new_gradients_indexes.dense_positions {
-                let start = old_feature_size * dense_position.features_block;
-                let stop = old_feature_size * (dense_position.features_block + 1);
-
-                let value = gradients.slice(s![dense_position.old_sample, ..]);
-                new_gradients.slice_mut(s![dense_position.new_sample, start..stop]).assign(&value);
+                if let Some(ref position) = updated_samples.new_positions[sample_i] {
+                    new_gradient_samples.insert(
+                        (IndexValue::from(position.sample), atom)
+                    );
+                }
             }
 
+            let mut new_gradients = Array2::zeros(
+                (3 * new_gradient_samples.len(), new_features_count)
+            );
+
+            for (old_grad_sample_i, gradient_sample) in gradients_samples.iter().enumerate() {
+                let sample = gradient_sample[0].usize();
+                let atom = gradient_sample[1];
+                let spatial = gradient_sample[2].usize();
+
+                if let Some(ref position) = updated_samples.new_positions[sample] {
+                    let new_grad_sample_i = new_gradient_samples.get_index_of(
+                        &(IndexValue::from(position.sample), atom)
+                    ).expect("missing entry in new gradient samples");
+                    let new_grad_position = 3 * new_grad_sample_i + spatial;
+
+                    let start = feature_block_size * position.features_block;
+                    let stop = feature_block_size * (position.features_block + 1);
+
+                    let value = gradients.slice(s![old_grad_sample_i, ..]);
+                    new_gradients.slice_mut(s![new_grad_position, start..stop]).assign(&value);
+                }
+            }
+
+            let mut builder = IndexesBuilder::new(vec!["sample", "atom", "spatial"]);
+            for (sample, atom) in new_gradient_samples {
+                builder.add(&[sample, atom, IndexValue::from(0)]);
+                builder.add(&[sample, atom, IndexValue::from(1)]);
+                builder.add(&[sample, atom, IndexValue::from(2)]);
+            }
+            self.gradients_samples = Some(builder.finish());
             self.gradients = Some(new_gradients);
-            self.gradients_samples = Some(new_gradients_indexes.samples);
         }
 
-        return Ok(Vec::new());
+        return Ok(DensifiedPositions::new(0));
     }
 
     /// Initialize this descriptor with the given `samples` and `features`,
@@ -282,7 +290,7 @@ impl Descriptor {
         features: Indexes,
     ) {
         // basic sanity check
-        assert_eq!(gradients_samples.names().last(), Some(&"spatial"), "the last index of gradient should be spatial");
+        debug_assert_eq!(gradients_samples.names(), vec!["sample", "atom", "spatial"]);
 
         self.samples = samples;
         self.features = features;
@@ -323,17 +331,40 @@ fn resize_and_reset(array: &mut Array2<f64>, shape: (usize, usize)) {
 /// initial descriptor
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct DensifiedPosition {
-    /// Index of the old sample (respectively gradient sample) in the value
-    /// (respectively gradients) array. Some samples might not be necessary in
-    /// the new array if the user requested only a subset of the values taken by
-    /// the densified variables
-    pub old_sample: usize,
     /// Index of the new sample (respectively gradient sample) in the value
     /// (respectively gradients) array
-    pub new_sample: usize,
+    pub sample: usize,
     /// Index of the feature block in the new array
     pub features_block: usize,
 }
+
+/// Mapping from the old position of a sample to the new position after
+/// densifying. `None` indicates that this row was not selected by the user
+/// (which can happen if the user requests a subset of the values taken by the
+/// densified variables)
+#[derive(Debug, Clone)]
+pub struct DensifiedPositions(Vec<Option<DensifiedPosition>>);
+
+impl DensifiedPositions {
+    fn new(size: usize) -> DensifiedPositions {
+        DensifiedPositions(vec![None; size])
+    }
+}
+
+impl std::ops::Deref for DensifiedPositions {
+    type Target = [Option<DensifiedPosition>];
+
+    fn deref(&self) -> &[Option<DensifiedPosition>] {
+        &*self.0
+    }
+}
+
+impl std::ops::DerefMut for DensifiedPositions {
+    fn deref_mut(&mut self) -> &mut [Option<DensifiedPosition>] {
+        &mut *self.0
+    }
+}
+
 
 /// Results of removing a set of variables from samples
 struct RemovedSamples {
@@ -341,13 +372,18 @@ struct RemovedSamples {
     samples: Indexes,
     /// Values taken by the variables in the original samples
     features: BTreeSet<Vec<IndexValue>>,
-    /// mapping contains the position in which each old sample should be placed
-    /// in the new values or gradients array
-    dense_positions: Vec<DensifiedPosition>
+    /// mapping containing the position in which each old sample should be
+    /// placed in the new values or gradients array. If the dense position is
+    /// `None`, that means that this row was not selected by the user (which can
+    /// happen if the user requested only a subset of the values taken by the
+    /// densified variables)
+    new_positions: DensifiedPositions
 }
 
 /// Remove the given `variables` from the `samples`, returning the updated
-/// `samples` and a set of all the values taken by the removed variables.
+/// `samples`, the set of all the values taken by the removed variables, and the
+/// mapping from the old position to the new position in the corresponding
+/// values array.
 fn remove_from_samples(
     samples: &Indexes,
     variables: &[&str],
@@ -405,7 +441,9 @@ fn remove_from_samples(
         .collect::<BTreeMap<_, _>>();
 
     // build the new samples & the mapping from old to new samples
-    let mut dense_positions = Vec::new();
+    let mut new_positions = DensifiedPositions::new(samples.count());
+    // we need to use indexmap::IndexSet here to get the new positions of the
+    // sample as we go over the old samples
     let mut new_samples = IndexSet::new();
     for (old_sample_i, sample) in samples.iter().enumerate() {
         let mut new_feature = Vec::new();
@@ -429,9 +467,8 @@ fn remove_from_samples(
         }
         let (new_sample_i, _) = new_samples.insert_full(new_sample);
 
-        dense_positions.push(DensifiedPosition {
-            old_sample: old_sample_i,
-            new_sample: new_sample_i,
+        new_positions[old_sample_i] = Some(DensifiedPosition {
+            sample: new_sample_i,
             features_block: features_block,
         });
     }
@@ -450,7 +487,7 @@ fn remove_from_samples(
     return Ok(RemovedSamples {
         samples: builder.finish(),
         features: features,
-        dense_positions: dense_positions
+        new_positions: new_positions
     });
 }
 
@@ -504,29 +541,8 @@ mod tests {
         descriptor.prepare_gradients(samples, gradients.unwrap(), features);
 
         let gradients = descriptor.gradients.unwrap();
-        assert_eq!(gradients.shape(), [15, 3]);
-
         let gradients_samples = descriptor.gradients_samples.as_ref().unwrap();
-        assert_eq!(gradients_samples.names(), ["structure", "species", "atom", "spatial"]);
-
-        let expected = [
-            [v(0), v(1), v(1)],
-            [v(0), v(1), v(2)],
-            [v(0), v(123456), v(0)],
-            [v(1), v(1), v(0)],
-            [v(1), v(6), v(1)]
-        ];
-        // use a loop to simplify checking the spatial dimension
-        for (i, &value) in expected.iter().enumerate() {
-            assert_eq!(gradients_samples[3 * i][..3], value);
-            assert_eq!(gradients_samples[3 * i][3], v(0));
-
-            assert_eq!(gradients_samples[3 * i + 1][..3], value);
-            assert_eq!(gradients_samples[3 * i + 1][3], v(1));
-
-            assert_eq!(gradients_samples[3 * i + 2][..3], value);
-            assert_eq!(gradients_samples[3 * i + 2][3], v(2));
-        }
+        assert_eq!(gradients.shape(), [gradients_samples.count(), descriptor.features.count()]);
     }
 
     #[test]
@@ -563,17 +579,17 @@ mod tests {
             [10.0, 0.10, -10.0], [11.0, 0.11, -11.0], [12.0, 0.12, -12.0],
             // H channel around H1, derivatives w.r.t. H2
             [13.0, 0.13, -13.0], [14.0, 0.14, -14.0], [15.0, 0.15, -15.0],
-            // O channel around H1, derivatives w.r.t. H1
-            [16.0, 0.16, -16.0], [17.0, 0.17, -17.0], [18.0, 0.18, -18.0],
             // O channel around H1, derivatives w.r.t. O
+            [16.0, 0.16, -16.0], [17.0, 0.17, -17.0], [18.0, 0.18, -18.0],
+            // O channel around H1, derivatives w.r.t. H1
             [19.0, 0.19, -19.0], [20.0, 0.20, -20.0], [21.0, 0.21, -21.0],
-            // H channel around H2, derivatives w.r.t. H2
-            [22.0, 0.22, -22.0], [23.0, 0.23, -23.0], [24.0, 0.24, -24.0],
             // H channel around H2, derivatives w.r.t. H1
+            [22.0, 0.22, -22.0], [23.0, 0.23, -23.0], [24.0, 0.24, -24.0],
+            // H channel around H2, derivatives w.r.t. H2
             [25.0, 0.25, -25.0], [26.0, 0.26, -26.0], [27.0, 0.27, -27.0],
-            // O channel around H2, derivatives w.r.t. H2
-            [28.0, 0.28, -28.0], [29.0, 0.29, -29.0], [30.0, 0.30, -30.0],
             // O channel around H2, derivatives w.r.t. O
+            [28.0, 0.28, -28.0], [29.0, 0.29, -29.0], [30.0, 0.30, -30.0],
+            // O channel around H2, derivatives w.r.t. H2
             [31.0, 0.31, -31.0], [32.0, 0.32, -32.0], [33.0, 0.33, -33.0],
         ]);
 
@@ -610,30 +626,23 @@ mod tests {
         let gradients = descriptor.gradients.as_ref().unwrap();
         assert_eq!(gradients.shape(), [27, 9]);
         let gradients_samples = descriptor.gradients_samples.as_ref().unwrap();
-        assert_eq!(gradients_samples.names(), ["structure", "center", "neighbor", "spatial"]);
+        assert_eq!(gradients_samples.names(), ["sample", "atom", "spatial"]);
 
-        let expected = [
-            [v(0), v(0), v(0)],
-            [v(0), v(0), v(1)],
-            [v(0), v(0), v(2)],
-            [v(0), v(1), v(1)],
-            [v(0), v(1), v(2)],
-            [v(0), v(1), v(0)],
-            [v(0), v(2), v(2)],
-            [v(0), v(2), v(1)],
-            [v(0), v(2), v(0)],
-        ];
-        // use a loop to simplify checking the spatial dimension
-        for (i, &value) in expected.iter().enumerate() {
-            assert_eq!(gradients_samples[3 * i][..3], value);
-            assert_eq!(gradients_samples[3 * i][3], v(0));
+        // TODO: this is not lexicographically sorted but rather sorted in the
+        // same order as features are processed. Is this an issue?
+        assert_eq!(gradients_samples.iter().collect::<Vec<_>>(), vec![
+            &[v(0), v(0), v(0)], &[v(0), v(0), v(1)], &[v(0), v(0), v(2)],
+            &[v(0), v(1), v(0)], &[v(0), v(1), v(1)], &[v(0), v(1), v(2)],
+            &[v(0), v(2), v(0)], &[v(0), v(2), v(1)], &[v(0), v(2), v(2)],
 
-            assert_eq!(gradients_samples[3 * i + 1][..3], value);
-            assert_eq!(gradients_samples[3 * i + 1][3], v(1));
+            &[v(1), v(1), v(0)], &[v(1), v(1), v(1)], &[v(1), v(1), v(2)],
+            &[v(1), v(2), v(0)], &[v(1), v(2), v(1)], &[v(1), v(2), v(2)],
+            &[v(1), v(0), v(0)], &[v(1), v(0), v(1)], &[v(1), v(0), v(2)],
 
-            assert_eq!(gradients_samples[3 * i + 2][..3], value);
-            assert_eq!(gradients_samples[3 * i + 2][3], v(2));
-        }
+            &[v(2), v(1), v(0)], &[v(2), v(1), v(1)], &[v(2), v(1), v(2)],
+            &[v(2), v(2), v(0)], &[v(2), v(2), v(1)], &[v(2), v(2), v(2)],
+            &[v(2), v(0), v(0)], &[v(2), v(0), v(1)], &[v(2), v(0), v(2)],
+        ]);
 
         assert_eq!(*gradients, array![
             /*    H-H                  H-O                  O-H       */
@@ -650,29 +659,29 @@ mod tests {
             [0.0, 0.0, 0.0,        0.0, 0.0, 0.0,       8.0, 0.8, -8.0],
             [0.0, 0.0, 0.0,        0.0, 0.0, 0.0,       9.0, 0.9, -9.0],
             // H1 in water, derivatives w.r.t. H1
-            [10.0, 0.10, -10.0,    16.0, 0.16, -16.0,   0.0, 0.0, 0.0],
-            [11.0, 0.11, -11.0,    17.0, 0.17, -17.0,   0.0, 0.0, 0.0],
-            [12.0, 0.12, -12.0,    18.0, 0.18, -18.0,   0.0, 0.0, 0.0],
+            [10.0, 0.10, -10.0,    19.0, 0.19, -19.0,   0.0, 0.0, 0.0],
+            [11.0, 0.11, -11.0,    20.0, 0.20, -20.0,   0.0, 0.0, 0.0],
+            [12.0, 0.12, -12.0,    21.0, 0.21, -21.0,   0.0, 0.0, 0.0],
             // H1 in water, derivatives w.r.t. H2
             [13.0, 0.13, -13.0,    0.0, 0.0, 0.0,       0.0, 0.0, 0.0],
             [14.0, 0.14, -14.0,    0.0, 0.0, 0.0,       0.0, 0.0, 0.0],
             [15.0, 0.15, -15.0,    0.0, 0.0, 0.0,       0.0, 0.0, 0.0],
             // H1 in water, derivatives w.r.t. O
-            [0.0, 0.0, 0.0,        19.0, 0.19, -19.0,   0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0,        20.0, 0.20, -20.0,   0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0,        21.0, 0.21, -21.0,   0.0, 0.0, 0.0],
-            // H2 in water, derivatives w.r.t. H2
-            [22.0, 0.22, -22.0,    28.0, 0.28, -28.0,   0.0, 0.0, 0.0],
-            [23.0, 0.23, -23.0,    29.0, 0.29, -29.0,   0.0, 0.0, 0.0],
-            [24.0, 0.24, -24.0,    30.0, 0.30, -30.0,   0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0,        16.0, 0.16, -16.0,   0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0,        17.0, 0.17, -17.0,   0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0,        18.0, 0.18, -18.0,   0.0, 0.0, 0.0],
             // H2 in water, derivatives w.r.t. H1
-            [25.0, 0.25, -25.0,    0.0, 0.0, 0.0,       0.0, 0.0, 0.0],
-            [26.0, 0.26, -26.0,    0.0, 0.0, 0.0,       0.0, 0.0, 0.0],
-            [27.0, 0.27, -27.0,    0.0, 0.0, 0.0,       0.0, 0.0, 0.0],
+            [22.0, 0.22, -22.0,    0.0, 0.0, 0.0,       0.0, 0.0, 0.0],
+            [23.0, 0.23, -23.0,    0.0, 0.0, 0.0,       0.0, 0.0, 0.0],
+            [24.0, 0.24, -24.0,    0.0, 0.0, 0.0,       0.0, 0.0, 0.0],
+            // H2 in water, derivatives w.r.t. H2
+            [25.0, 0.25, -25.0,    31.0, 0.31, -31.0,   0.0, 0.0, 0.0],
+            [26.0, 0.26, -26.0,    32.0, 0.32, -32.0,   0.0, 0.0, 0.0],
+            [27.0, 0.27, -27.0,    33.0, 0.33, -33.0,   0.0, 0.0, 0.0],
             // H2 in water, derivatives w.r.t. O
-            [0.0, 0.0, 0.0,        31.0, 0.31, -31.0,   0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0,        32.0, 0.32, -32.0,   0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0,        33.0, 0.33, -33.0,   0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0,        28.0, 0.28, -28.0,   0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0,        29.0, 0.29, -29.0,   0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0,        30.0, 0.30, -30.0,   0.0, 0.0, 0.0],
         ]);
     }
 
@@ -843,7 +852,7 @@ mod tests {
         let mut descriptor_dense = descriptor.clone();
         descriptor_dense.densify(&["species_neighbor"], None).unwrap();
 
-        let densified_positions = descriptor.densify_values(&["species_neighbor"], None).unwrap();
+        let new_positions = descriptor.densify_values(&["species_neighbor"], None).unwrap();
 
         assert_eq!(descriptor.samples, descriptor_dense.samples);
         assert_eq!(descriptor.features, descriptor_dense.features);
@@ -854,18 +863,30 @@ mod tests {
         assert_eq!(gradients.shape(), [33, 3]);
 
         let reference_gradients = descriptor_dense.gradients.as_ref().unwrap();
+        let reference_gradients_samples = descriptor_dense.gradients_samples.as_ref().unwrap();
 
         // check that applying the transformation leads to the right array
         let shape = reference_gradients.shape();
         let feature_block_size = gradients.shape()[1];
         let mut dense_gradients = Array2::zeros((shape[0], shape[1]));
-        for position in densified_positions {
-            let feature_start = feature_block_size * position.features_block;
-            let feature_stop = feature_block_size * (position.features_block + 1);
-            let feature = feature_start..feature_stop;
 
-            let slice = gradients.slice(s![position.old_sample, ..]);
-            dense_gradients.slice_mut(s![position.new_sample, feature]).assign(&slice);
+        let gradients_samples = descriptor.gradients_samples.as_ref().unwrap();
+        for (old_grad_sample_i, gradient_sample) in gradients_samples.iter().enumerate() {
+            let sample = gradient_sample[0].usize();
+            let atom = gradient_sample[1];
+            let spatial = gradient_sample[2];
+
+            if let Some(ref position) = new_positions[sample] {
+                let new_grad_position = reference_gradients_samples.position(
+                    &[IndexValue::from(position.sample), atom, spatial]
+                ).expect("missing entry in reference gradient samples");
+
+                let start = feature_block_size * position.features_block;
+                let stop = feature_block_size * (position.features_block + 1);
+
+                let value = gradients.slice(s![old_grad_sample_i, ..]);
+                dense_gradients.slice_mut(s![new_grad_position, start..stop]).assign(&value);
+            }
         }
 
         assert_eq!(dense_gradients, reference_gradients);

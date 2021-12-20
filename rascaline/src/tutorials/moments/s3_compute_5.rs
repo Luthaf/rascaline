@@ -15,6 +15,8 @@ struct GeometricMoments {
 const species: &[usize] = &[];
 const n_neighbors_first: f64 = 0.0;
 const n_neighbors_second: f64 = 0.0;
+const first_sample_position: Option<usize> = None;
+const second_sample_position: Option<usize> = None;
 
 impl CalculatorBase for GeometricMoments {
     fn name(&self) -> String {
@@ -59,50 +61,41 @@ impl CalculatorBase for GeometricMoments {
                     let gradients_samples = descriptor.gradients_samples.as_ref().expect("missing gradient samples");
                     let gradients = descriptor.gradients.as_mut().expect("missing gradient storage");
 
-                    // gradient of the descriptor around pair.first w.r.t. pair.second
-                    let first_gradient = [
-                        IndexValue::from(i_system),             // system
-                        IndexValue::from(pair.first),           // center
-                        IndexValue::from(species[pair.first]),  // species_center
-                        IndexValue::from(species[pair.second]), // species_neighbor
-                        IndexValue::from(pair.second),          // neighbor, i.e. moved atom
-                        IndexValue::from(0),                    // spatial, i.e. cartesian direction
-                    ];
+                    let mut first_gradient_position = None;
+                    let mut first_gradient_self_position = None;
+                    if let Some(i_first_sample) = first_sample_position {
+                        // gradient of the descriptor around `pair.first` w.r.t. `pair.second`
+                        first_gradient_position = gradients_samples.position(&[
+                            IndexValue::from(i_first_sample),
+                            IndexValue::from(pair.second),
+                            IndexValue::from(0),
+                        ]);
 
-                    // gradient of the descriptor around pair.first w.r.t. pair.first
-                    let first_gradient_self = [
-                        IndexValue::from(i_system),
-                        IndexValue::from(pair.first),
-                        IndexValue::from(species[pair.first]),
-                        IndexValue::from(species[pair.second]),
-                        IndexValue::from(pair.first),
-                        IndexValue::from(0),
-                    ];
+                        // gradient of the descriptor around `pair.first` w.r.t. `pair.first`
+                        first_gradient_self_position = gradients_samples.position(&[
+                            IndexValue::from(i_first_sample),
+                            IndexValue::from(pair.first),
+                            IndexValue::from(0),
+                        ]);
+                    }
 
-                    // gradient of the descriptor around pair.second w.r.t. pair.first
-                    let second_gradient = [
-                        IndexValue::from(i_system),
-                        IndexValue::from(pair.second),
-                        IndexValue::from(species[pair.second]),
-                        IndexValue::from(species[pair.first]),
-                        IndexValue::from(pair.first),
-                        IndexValue::from(0),
-                    ];
+                    let mut second_gradient_position = None;
+                    let mut second_gradient_self_position = None;
+                    if let Some(i_second_sample) = second_sample_position {
+                        // gradient of the descriptor around `pair.second` w.r.t. `pair.first`
+                        second_gradient_position = gradients_samples.position(&[
+                            IndexValue::from(i_second_sample),
+                            IndexValue::from(pair.first),
+                            IndexValue::from(0),
+                        ]);
 
-                    // gradient of the descriptor around pair.second w.r.t. pair.second
-                    let second_gradient_self = [
-                        IndexValue::from(i_system),
-                        IndexValue::from(pair.second),
-                        IndexValue::from(species[pair.second]),
-                        IndexValue::from(species[pair.first]),
-                        IndexValue::from(pair.second),
-                        IndexValue::from(0),
-                    ];
-
-                    let first_gradient_position = gradients_samples.position(&first_gradient);
-                    let first_gradient_self_position = gradients_samples.position(&first_gradient_self);
-                    let second_gradient_position = gradients_samples.position(&second_gradient);
-                    let second_gradient_self_position = gradients_samples.position(&second_gradient_self);
+                        // gradient of the descriptor around `pair.second` w.r.t. `pair.second`
+                        second_gradient_self_position = gradients_samples.position(&[
+                            IndexValue::from(i_second_sample),
+                            IndexValue::from(pair.second),
+                            IndexValue::from(0),
+                        ]);
+                    }
 
                     for (i_feature, feature) in descriptor.features.iter().enumerate() {
                         let k = feature[0].usize();

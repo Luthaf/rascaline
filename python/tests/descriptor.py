@@ -110,14 +110,11 @@ class TestDummyDescriptor(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "assignment destination is read-only"):
             gradients_samples[0] = (3, 4)
 
-        expected = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        self.assertTrue(np.all(gradients_samples["structure"] == expected))
-
         expected = [0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3]
-        self.assertTrue(np.all(gradients_samples["center"] == expected))
+        self.assertTrue(np.all(gradients_samples["sample"] == expected))
 
         expected = [1, 1, 1, 0, 0, 0, 2, 2, 2, 1, 1, 1, 3, 3, 3, 2, 2, 2]
-        self.assertTrue(np.all(gradients_samples["neighbor"] == expected))
+        self.assertTrue(np.all(gradients_samples["atom"] == expected))
 
         expected = [0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2]
         self.assertTrue(np.all(gradients_samples["spatial"] == expected))
@@ -129,24 +126,24 @@ class TestDummyDescriptor(unittest.TestCase):
             (gradients_samples.shape[0], -1)
         )
 
-        self.assertTrue(np.all(gradients_samples[0] == [0, 0, 1, 0]))
-        self.assertTrue(np.all(gradients_samples[1] == [0, 0, 1, 1]))
-        self.assertTrue(np.all(gradients_samples[2] == [0, 0, 1, 2]))
-        self.assertTrue(np.all(gradients_samples[3] == [0, 1, 0, 0]))
-        self.assertTrue(np.all(gradients_samples[4] == [0, 1, 0, 1]))
-        self.assertTrue(np.all(gradients_samples[5] == [0, 1, 0, 2]))
-        self.assertTrue(np.all(gradients_samples[6] == [0, 1, 2, 0]))
-        self.assertTrue(np.all(gradients_samples[7] == [0, 1, 2, 1]))
-        self.assertTrue(np.all(gradients_samples[8] == [0, 1, 2, 2]))
-        self.assertTrue(np.all(gradients_samples[9] == [0, 2, 1, 0]))
-        self.assertTrue(np.all(gradients_samples[10] == [0, 2, 1, 1]))
-        self.assertTrue(np.all(gradients_samples[11] == [0, 2, 1, 2]))
-        self.assertTrue(np.all(gradients_samples[12] == [0, 2, 3, 0]))
-        self.assertTrue(np.all(gradients_samples[13] == [0, 2, 3, 1]))
-        self.assertTrue(np.all(gradients_samples[14] == [0, 2, 3, 2]))
-        self.assertTrue(np.all(gradients_samples[15] == [0, 3, 2, 0]))
-        self.assertTrue(np.all(gradients_samples[16] == [0, 3, 2, 1]))
-        self.assertTrue(np.all(gradients_samples[17] == [0, 3, 2, 2]))
+        self.assertTrue(np.all(gradients_samples[0] == [0, 1, 0]))
+        self.assertTrue(np.all(gradients_samples[1] == [0, 1, 1]))
+        self.assertTrue(np.all(gradients_samples[2] == [0, 1, 2]))
+        self.assertTrue(np.all(gradients_samples[3] == [1, 0, 0]))
+        self.assertTrue(np.all(gradients_samples[4] == [1, 0, 1]))
+        self.assertTrue(np.all(gradients_samples[5] == [1, 0, 2]))
+        self.assertTrue(np.all(gradients_samples[6] == [1, 2, 0]))
+        self.assertTrue(np.all(gradients_samples[7] == [1, 2, 1]))
+        self.assertTrue(np.all(gradients_samples[8] == [1, 2, 2]))
+        self.assertTrue(np.all(gradients_samples[9] == [2, 1, 0]))
+        self.assertTrue(np.all(gradients_samples[10] == [2, 1, 1]))
+        self.assertTrue(np.all(gradients_samples[11] == [2, 1, 2]))
+        self.assertTrue(np.all(gradients_samples[12] == [2, 3, 0]))
+        self.assertTrue(np.all(gradients_samples[13] == [2, 3, 1]))
+        self.assertTrue(np.all(gradients_samples[14] == [2, 3, 2]))
+        self.assertTrue(np.all(gradients_samples[15] == [3, 2, 0]))
+        self.assertTrue(np.all(gradients_samples[16] == [3, 2, 1]))
+        self.assertTrue(np.all(gradients_samples[17] == [3, 2, 2]))
 
     def test_features(self):
         system = TestSystem()
@@ -205,15 +202,8 @@ class TestDummyDescriptor(unittest.TestCase):
         # gradients were not changed
         self.assertEqual(descriptor.gradients.shape, (18, 2))
 
-        self.assertEqual(densified_positions.shape, (18,))
-        self.assertEqual(densified_positions[0]["old_sample"], 0)
-        self.assertEqual(densified_positions[0]["new_sample"], 0)
-        self.assertEqual(densified_positions[0]["feature_block"], 0)
-
-        self.assertEqual(densified_positions[6]["old_sample"], 6)
-        self.assertEqual(densified_positions[6]["new_sample"], 6)
-        self.assertEqual(densified_positions[6]["feature_block"], 1)
-
-        self.assertEqual(densified_positions[15]["old_sample"], 15)
-        self.assertEqual(densified_positions[15]["new_sample"], 6)
-        self.assertEqual(densified_positions[15]["feature_block"], 3)
+        self.assertEqual(densified_positions.shape, (4,))
+        for i in range(4):
+            self.assertEqual(densified_positions[i]["used"], True)
+            self.assertEqual(densified_positions[i]["new_sample"], 0)
+            self.assertEqual(densified_positions[i]["feature_block"], i)

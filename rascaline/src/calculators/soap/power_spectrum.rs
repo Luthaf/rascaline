@@ -318,28 +318,31 @@ impl CalculatorBase for SoapPowerSpectrum {
             gradients.axis_iter_mut(ndarray::Axis(0))
                 .into_par_iter()
                 .enumerate()
-                .for_each(|(sample_i, mut gradient)| {
-                    let sample = &gradient_samples[sample_i];
+                .for_each(|(gradient_sample_i, mut gradient)| {
+                    let gradient_sample = &gradient_samples[gradient_sample_i];
+                    let sample_i = gradient_sample[0].usize();
+                    let grad_atom = gradient_sample[1];
+                    let spatial = gradient_sample[2];
+
+                    let sample = &samples[sample_i];
                     let structure = sample[0];
                     let center = sample[1];
                     let species_center = sample[2];
                     let species_neighbor_1 = sample[3];
                     let species_neighbor_2 = sample[4];
-                    let neighbor = sample[5];
-                    let spatial = sample[6];
 
-                    let neighbor_1 = spherical_expansion_samples.position(&[
+                    let sample_neighbor_1 = spherical_expansion_samples.position(&[
                         structure, center, species_center, species_neighbor_1
                     ]).expect("missing data for the first neighbor");
-                    let neighbor_2 = spherical_expansion_samples.position(&[
+                    let sample_neighbor_2 = spherical_expansion_samples.position(&[
                         structure, center, species_center, species_neighbor_2
                     ]).expect("missing data for the second neighbor");
 
                     let grad_neighbor_1 = se_gradients_samples.position(&[
-                        structure, center, species_center, species_neighbor_1, neighbor, spatial
+                        IndexValue::from(sample_neighbor_1), grad_atom, spatial
                     ]);
                     let grad_neighbor_2 = se_gradients_samples.position(&[
-                        structure, center, species_center, species_neighbor_2, neighbor, spatial
+                        IndexValue::from(sample_neighbor_2), grad_atom, spatial
                     ]);
 
                     for (feature_i, block) in feature_blocks.iter().enumerate() {
@@ -357,13 +360,13 @@ impl CalculatorBase for SoapPowerSpectrum {
                             if let Some(grad_neighbor_1) = grad_neighbor_1 {
                                 unsafe {
                                     sum += se_gradients.uget([grad_neighbor_1, feature_1])
-                                         * spherical_expansion_values.uget([neighbor_2, feature_2]);
+                                         * spherical_expansion_values.uget([sample_neighbor_2, feature_2]);
                                 }
                             }
 
                             if let Some(grad_neighbor_2) = grad_neighbor_2 {
                                 unsafe {
-                                    sum += spherical_expansion_values.uget([neighbor_1, feature_1])
+                                    sum += spherical_expansion_values.uget([sample_neighbor_1, feature_1])
                                          * se_gradients.uget([grad_neighbor_2, feature_2]);
                                 }
                             }
@@ -378,7 +381,6 @@ impl CalculatorBase for SoapPowerSpectrum {
                         gradient[feature_i] = sum / normalization;
                     }
                 });
-
         }
 
         Ok(())

@@ -272,26 +272,24 @@ typedef struct rascal_indexes_t {
 
 /**
  * `rascal_densified_position_t` contains all the information to reconstruct
- * the new position of the values/gradients associated with a single sample in
- * the initial descriptor
+ * the new position of the values associated with a single sample in the
+ * initial descriptor after a call to `rascal_descriptor_densify_values`
  */
 typedef struct rascal_densified_position_t {
   /**
-   * Index of the old sample (respectively gradient sample) in the value
-   * (respectively gradients) array. Some samples might not be necessary in
-   * the new array if the user requested only a subset of the values taken by
-   * the densified variables
-   */
-  uintptr_t old_sample;
-  /**
-   * Index of the new sample (respectively gradient sample) in the value
-   * (respectively gradients) array
+   * if `used` is `true`, index of the new sample in the value array
    */
   uintptr_t new_sample;
   /**
-   * Index of the feature block in the new array
+   * if `used` is `true`, index of the feature block in the new array
    */
   uintptr_t feature_block;
+  /**
+   * indicate whether this sample was needed to construct the new value
+   * array. This might be `false` when the value of densified variables
+   * specified by the user does not match the sample.
+   */
+  bool used;
 } rascal_densified_position_t;
 
 /**
@@ -562,9 +560,8 @@ rascal_status_t rascal_descriptor_densify(struct rascal_descriptor_t *descriptor
  * to its documentation for more information.
  *
  * If this descriptor contains gradients, `gradients_positions` will point to
- * an array allocated with `malloc` containing the list of samples in the old
- * gradient array that should be used to reconstruct the dense gradient array;
- * and the new position of the values associated with each of these samples.
+ * an array allocated with `malloc` containing the changes made to the values
+ * array, which can be used to reconstruct the change to make to the gradients.
  * Users of this function are expected to `free` the corresponding memory when
  * they no longer need it.
  *
@@ -577,8 +574,8 @@ rascal_status_t rascal_descriptor_densify_values(struct rascal_descriptor_t *des
                                                  uintptr_t variables_count,
                                                  const int32_t *requested,
                                                  uintptr_t requested_size,
-                                                 struct rascal_densified_position_t **gradients_positions,
-                                                 uintptr_t *gradients_positions_count);
+                                                 struct rascal_densified_position_t **densified_positions,
+                                                 uintptr_t *densified_positions_count);
 
 /**
  * Create a new calculator with the given `name` and `parameters`.

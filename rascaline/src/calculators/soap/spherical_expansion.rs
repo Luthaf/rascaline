@@ -394,7 +394,7 @@ impl SphericalExpansion {
         samples: &Indexes,
         features: &Indexes,
         pair: &Pair
-    ) {
+    ) -> (Option<usize>, Option<usize>) {
         let first_sample_i = samples.position(&[
             IndexValue::from(pair.system),
             IndexValue::from(pair.first),
@@ -418,7 +418,7 @@ impl SphericalExpansion {
 
         if first_sample_i.is_none() && second_sample_i.is_none() {
             // nothing to do
-            return;
+            return (None, None);
         }
 
         let mut radial_integral = self.radial_integral.get_or(|| {
@@ -459,80 +459,67 @@ impl SphericalExpansion {
         }
 
         sender.send(pair_contribution).expect("receiver hanged up");
+        return (first_sample_i, second_sample_i);
     }
 
     /// Accumulate the spherical expansion gradients for the given pair.
     ///
     /// This function assumes that the radial integral and spherical harmonics
-    /// have just been computed for this pair.
+    /// have just been computed for this pair in the current thread.
     #[allow(clippy::needless_range_loop)]
     fn accumulate_gradient_for_pair(
         &self,
         sender: &Sender<GradientsPairContribution>,
         gradients_samples: &Indexes,
         features: &Indexes,
-        pair: &Pair
+        pair: &Pair,
+        samples: (Option<usize>, Option<usize>),
     ) {
         debug_assert!(self.parameters.gradients);
+
+        // Check if any of the sample corresponding to the current pair
+        // actually contributes to the selected samples, or exit early
+        if samples.0.is_none() && samples.1.is_none() {
+            return;
+        }
 
         // get the positions in the gradients array where to store the
         // contributions to the gradient for this specific pair, if they
         // exist in the set of requested samples
 
         // store derivative w.r.t. `second` of the environment around `first`
-        let first_grad_i = gradients_samples.position(&[
-            IndexValue::from(pair.system),
-            IndexValue::from(pair.first),
-            IndexValue::from(pair.species_first),
-            IndexValue::from(pair.species_second),
-            IndexValue::from(pair.second),
-            IndexValue::from(0)
-        ]);
+        let first_grad_i = samples.0.map(|i_sample| {
+            gradients_samples.position(&[
+                IndexValue::from(i_sample), IndexValue::from(pair.second), IndexValue::from(0)
+            ]).expect("this pair should contribute to this gradient")
+        });
 
         // store derivative w.r.t. `first` of the environment around `first`
-        let first_self_grad_i = gradients_samples.position(&[
-            IndexValue::from(pair.system),
-            IndexValue::from(pair.first),
-            IndexValue::from(pair.species_first),
-            IndexValue::from(pair.species_second),
-            IndexValue::from(pair.first),
-            IndexValue::from(0),
-        ]);
+        let first_self_grad_i = samples.0.map(|i_sample| {
+            gradients_samples.position(&[
+                IndexValue::from(i_sample), IndexValue::from(pair.first), IndexValue::from(0)
+            ]).expect("this pair should contribute to this gradient")
+        });
 
         // store derivative w.r.t. `first` of the environment around `second`
-        let second_grad_i;
+        let second_grad_i = samples.1.map(|i_sample| {
+            gradients_samples.position(&[
+                IndexValue::from(i_sample), IndexValue::from(pair.first), IndexValue::from(0)
+            ]).expect("this pair should contribute to this gradient")
+        });
         // store derivative w.r.t. `second` of the environment around `second`
-        let second_self_grad_i;
-        if pair.first == pair.second {
-            // do not compute for the reversed pair if the pair is between an
-            // atom and its image
-            second_grad_i = None;
-            second_self_grad_i = None;
-        } else {
-            second_grad_i = gradients_samples.position(&[
-                IndexValue::from(pair.system),
-                IndexValue::from(pair.second),
-                IndexValue::from(pair.species_second),
-                IndexValue::from(pair.species_first),
-                IndexValue::from(pair.first),
-                IndexValue::from(0)
-            ]);
+        let second_self_grad_i = samples.1.map(|i_sample| {
+            gradients_samples.position(&[
+                IndexValue::from(i_sample), IndexValue::from(pair.second), IndexValue::from(0)
+            ]).expect("this pair should contribute to this gradient")
+        });
 
-            second_self_grad_i = gradients_samples.position(&[
-                IndexValue::from(pair.system),
-                IndexValue::from(pair.second),
-                IndexValue::from(pair.species_second),
-                IndexValue::from(pair.species_first),
-                IndexValue::from(pair.second),
-                IndexValue::from(0),
-            ]);
-        }
-
-        if first_grad_i.is_none() && first_self_grad_i.is_none()
-           && second_grad_i.is_none() && second_self_grad_i.is_none()  {
-            // nothing to do
-            return;
-        }
+        debug_assert!(!(
+            first_grad_i.is_none() &&
+            first_self_grad_i.is_none() &&
+            second_grad_i.is_none() &&
+            second_self_grad_i.is_none()
+        ));
 
         let mut pair_contribution = GradientsPairContribution::new(features.count());
         if let Some(index) = first_grad_i {
@@ -755,7 +742,7 @@ impl CalculatorBase for SphericalExpansion {
                                 pair.direction = Vector3D::new(0.0, 0.0, 1.0);
                             }
 
-                            this.accumulate_for_pair(
+                            let samples = this.accumulate_for_pair(
                                 &sender_values,
                                 samples,
                                 features,
@@ -768,6 +755,7 @@ impl CalculatorBase for SphericalExpansion {
                                     gradient_samples.expect("missing gradient samples"),
                                     features,
                                     &pair,
+                                    samples,
                                 );
                             }
                         });

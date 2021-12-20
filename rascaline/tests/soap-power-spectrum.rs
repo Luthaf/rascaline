@@ -51,16 +51,12 @@ fn gradients() {
 fn sum_gradients(n_atoms: usize, descriptor: &Descriptor) -> Array3<f64> {
     let gradients = descriptor.gradients.as_ref().unwrap();
     let gradients_samples = descriptor.gradients_samples.as_ref().unwrap();
-
-    let neighbor_i = gradients_samples.size() - 2;
-    let spatial_i = gradients_samples.size() - 1;
-    assert_eq!(gradients_samples.names()[neighbor_i], "neighbor");
-    assert_eq!(gradients_samples.names()[spatial_i], "spatial");
+    assert_eq!(gradients_samples.names(), &["sample", "atom", "spatial"]);
 
     let mut sum = Array3::from_elem((n_atoms, 3, gradients.shape()[1]), 0.0);
     for (sample, gradient) in gradients_samples.iter().zip(gradients.rows()) {
-        let neighbor = sample[neighbor_i].usize();
-        let spatial = sample[spatial_i].usize();
+        let neighbor = sample[1].usize();
+        let spatial = sample[2].usize();
         let mut slice = sum.slice_mut(s![neighbor, spatial, ..]);
         slice += &gradient;
     }

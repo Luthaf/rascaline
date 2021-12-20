@@ -112,7 +112,7 @@ impl CalculatorBase for DummyCalculator {
             let gradients = descriptor.gradients.as_mut().expect("missing gradient values");
             let gradients_samples = descriptor.gradients_samples.as_ref().expect("missing gradient index");
 
-            assert_eq!(gradients_samples.names(), ["structure", "center", "neighbor", "spatial"]);
+            assert_eq!(gradients_samples.names(), ["sample", "atom", "spatial"]);
 
             for i_grad in 0..gradients_samples.count() {
                 for (feature_i, feature) in descriptor.features.iter().enumerate() {

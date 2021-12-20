@@ -108,46 +108,37 @@ impl CalculatorBase for GeometricMoments {
                     let gradients_samples = descriptor.gradients_samples.as_ref().expect("missing gradient samples");
                     let gradients = descriptor.gradients.as_mut().expect("missing gradient storage");
 
-                    let first_gradient = [
-                        IndexValue::from(i_system),
-                        IndexValue::from(pair.first),
-                        IndexValue::from(species[pair.first]),
-                        IndexValue::from(species[pair.second]),
-                        IndexValue::from(pair.second),
-                        IndexValue::from(0),
-                    ];
+                    let mut first_gradient_position = None;
+                    let mut first_gradient_self_position = None;
+                    if let Some(i_first_sample) = first_sample_position {
+                        first_gradient_position = gradients_samples.position(&[
+                            IndexValue::from(i_first_sample),
+                            IndexValue::from(pair.second),
+                            IndexValue::from(0),
+                        ]);
 
-                    let first_gradient_self = [
-                        IndexValue::from(i_system),
-                        IndexValue::from(pair.first),
-                        IndexValue::from(species[pair.first]),
-                        IndexValue::from(species[pair.second]),
-                        IndexValue::from(pair.first),
-                        IndexValue::from(0),
-                    ];
+                        first_gradient_self_position = gradients_samples.position(&[
+                            IndexValue::from(i_first_sample),
+                            IndexValue::from(pair.first),
+                            IndexValue::from(0),
+                        ]);
+                    }
 
-                    let second_gradient = [
-                        IndexValue::from(i_system),
-                        IndexValue::from(pair.second),
-                        IndexValue::from(species[pair.second]),
-                        IndexValue::from(species[pair.first]),
-                        IndexValue::from(pair.first),
-                        IndexValue::from(0),
-                    ];
+                    let mut second_gradient_position = None;
+                    let mut second_gradient_self_position = None;
+                    if let Some(i_second_sample) = second_sample_position {
+                        second_gradient_position = gradients_samples.position(&[
+                            IndexValue::from(i_second_sample),
+                            IndexValue::from(pair.first),
+                            IndexValue::from(0),
+                        ]);
 
-                    let second_gradient_self = [
-                        IndexValue::from(i_system),
-                        IndexValue::from(pair.second),
-                        IndexValue::from(species[pair.second]),
-                        IndexValue::from(species[pair.first]),
-                        IndexValue::from(pair.second),
-                        IndexValue::from(0),
-                    ];
-
-                    let first_gradient_position = gradients_samples.position(&first_gradient);
-                    let first_gradient_self_position = gradients_samples.position(&first_gradient_self);
-                    let second_gradient_position = gradients_samples.position(&second_gradient);
-                    let second_gradient_self_position = gradients_samples.position(&second_gradient_self);
+                        second_gradient_self_position = gradients_samples.position(&[
+                            IndexValue::from(i_second_sample),
+                            IndexValue::from(pair.second),
+                            IndexValue::from(0),
+                        ]);
+                    }
 
                     for (i_feature, feature) in descriptor.features.iter().enumerate() {
                         let k = feature[0].usize();
