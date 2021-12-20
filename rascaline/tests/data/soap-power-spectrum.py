@@ -1,3 +1,4 @@
+import numpy as np
 import ase
 
 from rascaline import SoapPowerSpectrum
@@ -53,8 +54,18 @@ hyperparameters["gradients"] = True
 calculator = SoapPowerSpectrum(**hyperparameters)
 descriptor = calculator.compute(frame, use_native_system=True)
 
+
+def sum_gradient(descriptor):
+    """compute the gradient w.r.t. each atom of the sum of all rows"""
+    result = np.zeros((len(frame), 3, descriptor.gradients.shape[1]))
+    for sample, gradient in zip(descriptor.gradients_samples, descriptor.gradients):
+        result[sample["neighbor"], sample["spatial"], :] += gradient[:]
+
+    return result
+
+
 save_calculator_input("soap-power-spectrum-gradients", frame, hyperparameters)
-save_numpy_array("soap-power-spectrum-gradients", descriptor.gradients)
+save_numpy_array("soap-power-spectrum-gradients", sum_gradient(descriptor))
 
 descriptor.densify(["species_neighbor_1", "species_neighbor_2"])
-save_numpy_array("soap-power-spectrum-dense-gradients", descriptor.gradients)
+save_numpy_array("soap-power-spectrum-dense-gradients", sum_gradient(descriptor))
