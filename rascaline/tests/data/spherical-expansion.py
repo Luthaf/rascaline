@@ -1,4 +1,5 @@
 import os
+import numpy as np
 
 import ase
 from ase import io  # noqa
@@ -51,11 +52,21 @@ hyperparameters["max_radial"] = 4
 hyperparameters["max_angular"] = 4
 hyperparameters["gradients"] = True
 
+
+def sum_gradient(descriptor):
+    """compute the gradient w.r.t. each atom of the sum of all rows"""
+    result = np.zeros((len(frame), 3, descriptor.gradients.shape[1]))
+    for sample, gradient in zip(descriptor.gradients_samples, descriptor.gradients):
+        result[sample["neighbor"], sample["spatial"], :] += gradient[:]
+
+    return result
+
+
 calculator = SphericalExpansion(**hyperparameters)
 descriptor = calculator.compute(frame, use_native_system=True)
 
 save_calculator_input("spherical-expansion-gradients", frame, hyperparameters)
-save_numpy_array("spherical-expansion-gradients", descriptor.gradients)
+save_numpy_array("spherical-expansion-gradients", sum_gradient(descriptor))
 
 # structure with periodic boundary condition. Some atoms in this structure are
 # neighbors twice with a cutoff of 4.5 (pairs 0-19, 1-18, 9-16, 12-13 after the
