@@ -31,7 +31,7 @@ jobs:
             cargo-build-flags: --release
             do-valgrind: true
           - os: ubuntu-18.04
-            rust-version: 1.46
+            rust-version: 1.53
             rust-target: x86_64-unknown-linux-gnu
             build-type: debug
           - os: ubuntu-18.04
@@ -73,6 +73,7 @@ jobs:
         with:
           profile: minimal
           toolchain: ${{ matrix.rust-version }}
+          default: true
           target: ${{ matrix.rust-target }}
 
       - name: install tests dependencies

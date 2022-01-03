@@ -81,13 +81,15 @@ if(CARGO_STATUS AND NOT CARGO_STATUS EQUAL 0)
     )
 endif()
 
-set(REQUIRED_RUST_VERSION "1.46.0")
+set(REQUIRED_RUST_VERSION "1.53.0")
 string(REGEX REPLACE "cargo ([0-9]+\\.[0-9]+\\.[0-9]+).*" "\\1" CARGO_VERSION ${CARGO_VERSION})
 if (${CARGO_VERSION} VERSION_LESS ${REQUIRED_RUST_VERSION})
     message(FATAL_ERROR
         "your Rust installation is too old (you have version ${CARGO_VERSION}), \
         at least ${REQUIRED_RUST_VERSION} is required"
     )
+else()
+    message(STATUS "Using cargo version ${CARGO_VERSION} at ${CARGO_EXE}")
 endif()
 
 file(GLOB_RECURSE ALL_RUST_SOURCES
