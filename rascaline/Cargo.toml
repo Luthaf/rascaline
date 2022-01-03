@@ -28,11 +28,7 @@ harness = false
 
 [dependencies]
 ndarray = {version = "0.15", features = ["approx", "rayon"]}
-
-# this is an old version, but the newer one only builds with rustc 1.51 and later.
-# we can update this when we are ready to move to more recent rustc version
-nalgebra = "0.25"
-
+nalgebra = "0.30"
 lazy_static = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
