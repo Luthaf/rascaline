@@ -1,5 +1,5 @@
 /// Types that can be used as the backing store for a `StackVec`
-pub unsafe trait Array: Default {
+pub trait Array: Default {
     /// The type of the array's elements.
     type Item;
     /// Returns the number of items the array can hold.
@@ -11,7 +11,7 @@ pub unsafe trait Array: Default {
 macro_rules! impl_array(
     ($($size:expr),+) => {
         $(
-            unsafe impl<T: Default> Array for [T; $size] {
+            impl<T: Default> Array for [T; $size] {
                 type Item = T;
                 fn capacity() -> usize { $size }
                 fn ptr(&self) -> *const T {
