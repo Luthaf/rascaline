@@ -15,7 +15,23 @@ fn values_no_pbc() {
 
     let expected: Array2<f64> = data::load_expected_values("spherical-expansion-values.npy.gz");
     assert_eq!(descriptor.values.shape(), expected.shape());
-    assert_relative_eq!(descriptor.values, expected, max_relative=1e-9);
+
+    // reshape the array features from `lmn` (produced by the current version of
+    // the code) to `nlm` (used by the code at the time when the array was
+    // saved). This reshaping code should be removed next time we have to update
+    // the saved data.
+    let n_samples = descriptor.values.shape()[0];
+    let n_features = descriptor.values.shape()[1];
+
+    let n_radial = 8;
+    let n_angular = n_features / n_radial;
+
+    let mut values = descriptor.values.to_shape((n_samples, n_angular, n_radial)).unwrap();
+    values.swap_axes(1, 2);
+    let values = values.to_shape((n_samples, n_features)).unwrap();
+    // end of reshaping code
+
+    assert_relative_eq!(values, expected, max_relative=1e-9);
 }
 
 #[test]
@@ -29,7 +45,23 @@ fn values_pbc() {
 
     let expected: Array2<f64> = data::load_expected_values("spherical-expansion-pbc-values.npy.gz");
     assert_eq!(descriptor.values.shape(), expected.shape());
-    assert_relative_eq!(descriptor.values, expected, max_relative=1e-9);
+
+    // reshape the array features from `lmn` (produced by the current version of
+    // the code) to `nlm` (used by the code at the time when the array was
+    // saved). This reshaping code should be removed next time we have to update
+    // the saved data.
+    let n_samples = descriptor.values.shape()[0];
+    let n_features = descriptor.values.shape()[1];
+
+    let n_radial = 6;
+    let n_angular = n_features / n_radial;
+
+    let mut values = descriptor.values.to_shape((n_samples, n_angular, n_radial)).unwrap();
+    values.swap_axes(1, 2);
+    let values = values.to_shape((n_samples, n_features)).unwrap();
+    // end of reshaping code
+
+    assert_relative_eq!(values, expected, max_relative=1e-9);
 }
 
 #[test]
@@ -45,6 +77,21 @@ fn gradients_no_pbc() {
     let expected: Array3<f64> = data::load_expected_values("spherical-expansion-gradients.npy.gz");
     let gradients = sum_gradients(n_atoms, &descriptor);
     assert_eq!(gradients.shape(), expected.shape());
+
+    // reshape the array features from `lmn` (produced by the current version of
+    // the code) to `nlm` (used by the code at the time when the array was
+    // saved). This reshaping code should be removed next time we have to update
+    // the saved data.
+    let n_features = gradients.shape()[2];
+
+    let n_radial = 4;
+    let n_angular = n_features / n_radial;
+
+    let mut gradients = gradients.to_shape((n_atoms, 3, n_angular, n_radial)).unwrap();
+    gradients.swap_axes(2, 3);
+    let gradients = gradients.to_shape((n_atoms, 3, n_features)).unwrap();
+    // end of reshaping code
+
     assert_relative_eq!(gradients, expected, max_relative=1e-9);
 }
 
