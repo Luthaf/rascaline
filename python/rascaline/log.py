@@ -36,6 +36,21 @@ def set_logging_callback(function):
     function return value is ignored.
     """
 
+    from .clib import _get_library
+
+    library = _get_library()
+    _set_logging_callback_impl(library, function)
+
+
+def _set_logging_callback_impl(library, function):
+    """
+    Implementation of :py:func:`set_logging_callback` getting the instance of
+    :py:class:`ctypes.CDLL` for ``librascaline`` as a parameter.
+
+    This is used to setup the default logging callback when loading the library,
+    without a recursive call to :py:func:`_get_library` in this function.
+    """
+
     def wrapper(log_level, message):
         try:
             function(log_level, message.decode("utf8"))
@@ -47,7 +62,4 @@ def set_logging_callback(function):
     global _CURRENT_CALLBACK
     _CURRENT_CALLBACK = rascal_logging_callback_t(wrapper)
 
-    from .clib import _get_library
-
-    library = _get_library()
     library.rascal_set_logging_callback(_CURRENT_CALLBACK)

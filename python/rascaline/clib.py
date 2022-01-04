@@ -4,7 +4,7 @@ import sys
 from ctypes import cdll
 
 from ._rascaline import setup_functions
-from .log import set_logging_callback, default_logging_callback
+from .log import _set_logging_callback_impl, default_logging_callback
 
 _HERE = os.path.realpath(os.path.dirname(__file__))
 
@@ -21,7 +21,7 @@ class RascalFinder(object):
             path = _lib_path()
             self._cached_dll = cdll.LoadLibrary(path)
             setup_functions(self._cached_dll)
-            set_logging_callback(default_logging_callback)
+            _set_logging_callback_impl(self._cached_dll, default_logging_callback)
         return self._cached_dll
 
 
