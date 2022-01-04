@@ -597,6 +597,8 @@ public:
     /// MUST have been allocated with either `malloc`, `calloc` or `realloc`.
     MallocArray(T* data, size_t size): data_(data), size_(size) {}
 
+    MallocArray(): MallocArray(nullptr, 0) {}
+
     ~MallocArray() {
         free(data_);
     }
@@ -604,7 +606,7 @@ public:
     MallocArray(const MallocArray&) = delete;
     MallocArray& operator=(const MallocArray&) = delete;
 
-    MallocArray(MallocArray&& other): MallocArray(nullptr, 0) {
+    MallocArray(MallocArray&& other): MallocArray() {
         *this = std::move(other);
     }
 
@@ -631,7 +633,7 @@ public:
     }
 
     /// Get the number of elements in this `MallocArray`
-    size_t size() {
+    size_t size() const {
         return size_;
     }
 
