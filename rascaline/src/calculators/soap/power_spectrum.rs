@@ -75,6 +75,8 @@ impl SoapPowerSpectrum {
         });
     }
 
+    /// Create the list of spherical expansion samples required to compute the
+    /// power spectrum `samples` requested by the user
     fn get_expansion_samples(&self, samples: &Indexes) -> Indexes {
         assert_eq!(samples.names(), self.samples_builder().names());
 
@@ -104,27 +106,39 @@ impl SoapPowerSpectrum {
         return spherical_expansion_samples.finish()
     }
 
-    fn get_expansion_features(&self, features: &Indexes) -> Indexes {
+    /// Create the list of spherical expansion features required to compute the
+    /// power spectrum `features` requested by the user
+    fn get_expansion_features(&self, features: &Indexes) -> (Indexes, usize) {
         assert_eq!(features.names(), self.features_names());
 
-        let mut set = BTreeSet::new();
-        for feature in features {
-            let n1 = feature[0];
-            let n2 = feature[1];
-            let l = feature[2].isize();
+        let radial_values = features
+            .iter()
+            .flat_map(|feature| [feature[0].usize(), feature[1].usize()])
+            .collect::<BTreeSet<_>>();
 
+        let n_radial_values = radial_values.len();
+
+        let angular_values = features
+            .iter()
+            .map(|feature| feature[2].isize())
+            .collect::<BTreeSet<_>>();
+
+        let mut set = BTreeSet::new();
+
+        for l in angular_values {
             for m in -l..=l {
-                set.insert([n1, IndexValue::from(l), IndexValue::from(m)]);
-                set.insert([n2, IndexValue::from(l), IndexValue::from(m)]);
+                for &n in &radial_values {
+                    set.insert([IndexValue::from(l), IndexValue::from(m), IndexValue::from(n)]);
+                }
             }
         }
 
-        let mut spherical_expansion_features = IndexesBuilder::new(vec!["n", "l", "m"]);
+        let mut spherical_expansion_features = IndexesBuilder::new(vec!["l", "m", "n"]);
         for index in set {
             spherical_expansion_features.add(&index);
         }
 
-        return spherical_expansion_features.finish()
+        return (spherical_expansion_features.finish(), n_radial_values);
     }
 }
 
@@ -222,9 +236,13 @@ impl CalculatorBase for SoapPowerSpectrum {
         assert_eq!(descriptor.samples.names(), self.samples_builder().names());
         assert_eq!(descriptor.features.names(), self.features_names());
 
+        // `n_different_radial` is the number of different radial indexes. This
+        // will be the size of a given lm block in spherical expansion
+        let (selected_features, n_different_radial) = self.get_expansion_features(&descriptor.features);
+
         let options = CalculationOptions {
             selected_samples: SelectedIndexes::Subset(self.get_expansion_samples(&descriptor.samples)),
-            selected_features: SelectedIndexes::Subset(self.get_expansion_features(&descriptor.features)),
+            selected_features: SelectedIndexes::Subset(selected_features),
             ..Default::default()
         };
 
@@ -242,11 +260,11 @@ impl CalculatorBase for SoapPowerSpectrum {
             let l = feature[2].isize();
 
             let start_n1_l = self.spherical_expansion.features.position(
-                &[n1, IndexValue::from(l), IndexValue::from(-l)]
-            ).expect("missing feature `n1, l, m` in spherical expansion");
+                &[IndexValue::from(l), IndexValue::from(-l), n1]
+            ).expect("missing feature `l, m, n1` in spherical expansion");
             let start_n2_l = self.spherical_expansion.features.position(
-                &[n2, IndexValue::from(l), IndexValue::from(-l)]
-            ).expect("missing feature `n2, l, m` in spherical expansion");
+                &[IndexValue::from(l), IndexValue::from(-l), n2]
+            ).expect("missing feature `l, m, n2` in spherical expansion");
 
             feature_blocks.push(FeatureBlock { l, start_n1_l, start_n2_l });
         }
@@ -280,13 +298,15 @@ impl CalculatorBase for SoapPowerSpectrum {
 
                     let mut sum = 0.0;
                     for (index_m, m) in (-l..=l).enumerate() {
-                        let feature_1 = start_n1_l + index_m;
-                        let feature_2 = start_n2_l + index_m;
-                        // this code assumes that all m values for a given n/l are
-                        // consecutive, let's double check it
-                        debug_assert_eq!(spherical_expansion_features[feature_1][2].isize(), m);
-                        debug_assert_eq!(spherical_expansion_features[feature_2][2].isize(), m);
+                        let feature_1 = start_n1_l + index_m * n_different_radial;
+                        let feature_2 = start_n2_l + index_m * n_different_radial;
+                        // check that we are accessing the right value of m
+                        debug_assert_eq!(spherical_expansion_features[feature_1][1].isize(), m);
+                        debug_assert_eq!(spherical_expansion_features[feature_2][1].isize(), m);
 
+                        // unsafe is required to remove the bound checking in
+                        // release mode (`uget` still checks bounds in debug
+                        // mode)
                         unsafe {
                             sum += spherical_expansion_values.uget([neighbor_1, feature_1])
                                 * spherical_expansion_values.uget([neighbor_2, feature_2]);
@@ -350,14 +370,16 @@ impl CalculatorBase for SoapPowerSpectrum {
 
                         let mut sum = 0.0;
                         for (index_m, m) in (-l..=l).enumerate() {
-                            let feature_1 = start_n1_l + index_m;
-                            let feature_2 = start_n2_l + index_m;
-                            // this code assumes that all m values for a given n/l are
-                            // consecutive, let's double check it
-                            debug_assert_eq!(spherical_expansion_features[feature_1][2].isize(), m);
-                            debug_assert_eq!(spherical_expansion_features[feature_2][2].isize(), m);
+                            let feature_1 = start_n1_l + index_m * n_different_radial;
+                            let feature_2 = start_n2_l + index_m * n_different_radial;
+                            // check that we are accessing the right value of m
+                            debug_assert_eq!(spherical_expansion_features[feature_1][1].isize(), m);
+                            debug_assert_eq!(spherical_expansion_features[feature_2][1].isize(), m);
 
                             if let Some(grad_neighbor_1) = grad_neighbor_1 {
+                                // unsafe is required to remove the bound
+                                // checking in release mode (`uget` still checks
+                                // bounds in debug mode)
                                 unsafe {
                                     sum += se_gradients.uget([grad_neighbor_1, feature_1])
                                          * spherical_expansion_values.uget([sample_neighbor_2, feature_2]);
@@ -457,9 +479,9 @@ mod tests {
         let mut features = IndexesBuilder::new(vec!["n1", "n2", "l"]);
         features.add(&[v(0), v(1), v(0)]);
         features.add(&[v(3), v(3), v(3)]);
-        features.add(&[v(2), v(3), v(2)]);
+        features.add(&[v(4), v(3), v(2)]);
         features.add(&[v(1), v(4), v(4)]);
-        features.add(&[v(5), v(2), v(0)]);
+        features.add(&[v(5), v(1), v(0)]);
         features.add(&[v(1), v(1), v(2)]);
 
         crate::calculators::tests_utils::compute_partial(

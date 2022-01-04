@@ -372,9 +372,9 @@ impl SphericalExpansion {
                 let f_cut = self.parameters.cutoff_function.compute(0.0, self.parameters.cutoff);
 
                 for (feature_i, feature) in descriptor.features.iter().enumerate() {
-                    let n = feature[0].usize();
-                    let l = feature[1].usize();
-                    let m = feature[2].isize();
+                    let l = feature[0].usize();
+                    let m = feature[1].isize();
+                    let n = feature[2].usize();
 
                     let n_l_m_value = f_cut
                         * radial_integral.values[[n, l]]
@@ -447,9 +447,9 @@ impl SphericalExpansion {
         }
 
         for (feature_i, feature) in features.iter().enumerate() {
-            let n = feature[0].usize();
-            let l = feature[1].usize();
-            let m = feature[2].isize();
+            let l = feature[0].usize();
+            let m = feature[1].isize();
+            let n = feature[2].usize();
 
             let n_l_m_value = f_cut
                 * radial_integral.values[[n, l]]
@@ -566,9 +566,9 @@ impl SphericalExpansion {
             let gradients = &mut pair_contribution.gradients[spatial];
 
             for (feature_i, feature) in features.iter().enumerate() {
-                let n = feature[0].usize();
-                let l = feature[1].usize();
-                let m = feature[2].isize();
+                let l = feature[0].usize();
+                let m = feature[1].isize();
+                let n = feature[2].usize();
 
                 let sph_value = sph_values[[l as isize, m]];
                 let sph_grad = sph_gradient[[l as isize, m]];
@@ -617,16 +617,16 @@ impl CalculatorBase for SphericalExpansion {
     }
 
     fn features_names(&self) -> Vec<&str> {
-        vec!["n", "l", "m"]
+        vec!["l", "m", "n"]
     }
 
     fn features(&self) -> Indexes {
         let mut features = IndexesBuilder::new(self.features_names());
-        for n in 0..(self.parameters.max_radial as isize) {
-            for l in 0..((self.parameters.max_angular + 1) as isize) {
-                for m in -l..=l {
+        for l in 0..((self.parameters.max_angular + 1) as isize) {
+            for m in -l..=l {
+                for n in 0..(self.parameters.max_radial as isize) {
                     features.add(&[
-                        IndexValue::from(n), IndexValue::from(l), IndexValue::from(m)
+                        IndexValue::from(l), IndexValue::from(m), IndexValue::from(n)
                     ]);
                 }
             }
@@ -645,16 +645,9 @@ impl CalculatorBase for SphericalExpansion {
     fn check_features(&self, indexes: &Indexes) -> Result<(), Error> {
         assert_eq!(indexes.names(), self.features_names());
         for value in indexes {
-            let n = value[0].usize();
-            let l = value[1].isize();
-            let m = value[2].isize();
-
-            if n >= self.parameters.max_radial {
-                return Err(Error::InvalidParameter(format!(
-                    "'n' is too large for this SphericalExpansion: \
-                    expected value below {}, got {}", self.parameters.max_radial, n
-                )))
-            }
+            let l = value[0].isize();
+            let m = value[1].isize();
+            let n = value[2].usize();
 
             if l > self.parameters.max_angular as isize {
                 return Err(Error::InvalidParameter(format!(
@@ -668,6 +661,13 @@ impl CalculatorBase for SphericalExpansion {
                     "'m' is not inside [-l, l]: got m={} but l={}", m, l
                 )))
             }
+
+            if n >= self.parameters.max_radial {
+                return Err(Error::InvalidParameter(format!(
+                    "'n' is too large for this SphericalExpansion: \
+                    expected value below {}, got {}", self.parameters.max_radial, n
+                )))
+            }
         }
 
         Ok(())
@@ -677,7 +677,7 @@ impl CalculatorBase for SphericalExpansion {
     #[allow(clippy::enum_glob_use)]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor) -> Result<(), Error> {
         assert_eq!(descriptor.samples.names(), &["structure", "center", "species_center", "species_neighbor"]);
-        assert_eq!(descriptor.features.names(), &["n", "l", "m"]);
+        assert_eq!(descriptor.features.names(), &["l", "m", "n"]);
 
         self.do_self_contributions(descriptor);
 
@@ -764,7 +764,7 @@ impl CalculatorBase for SphericalExpansion {
                 // Start a thread to receive and collect values
                 s.spawn(move |_| {
                     let m_1_pow_l = features.iter()
-                        .map(|feature| m_1_pow(feature[1].usize()))
+                        .map(|feature| m_1_pow(feature[0].usize()))
                         .collect::<Array1<f64>>();
 
                     for contribution in receiver_values {
@@ -793,7 +793,7 @@ impl CalculatorBase for SphericalExpansion {
                         use self::AtomInPair::*;
 
                         let m_1_pow_l = features.iter()
-                            .map(|feature| m_1_pow(feature[1].usize()))
+                            .map(|feature| m_1_pow(feature[0].usize()))
                             .collect::<Array1<f64>>();
 
                         for contribution in receiver_grad {
@@ -871,13 +871,13 @@ mod tests {
         calculator.compute(&mut systems, &mut descriptor, Default::default()).unwrap();
 
         assert_eq!(descriptor.samples.names(), ["structure", "center", "species_center", "species_neighbor"]);
-        assert_eq!(descriptor.features.names(), ["n", "l", "m"]);
+        assert_eq!(descriptor.features.names(), ["l", "m", "n"]);
 
         let mut index = 0;
-        for n in 0..6_usize {
-            for l in 0..=6_isize {
-                for m in -l..=l {
-                    let expected = [IndexValue::from(n), IndexValue::from(l), IndexValue::from(m)];
+        for l in 0..=6_isize {
+            for m in -l..=l {
+                for n in 0..6_usize {
+                    let expected = [IndexValue::from(l), IndexValue::from(m), IndexValue::from(n)];
                     assert_eq!(descriptor.features[index], expected);
                     index += 1;
                 }
@@ -906,13 +906,13 @@ mod tests {
 
         let mut systems = test_systems(&["water", "methane"]);
 
-        let mut features = IndexesBuilder::new(vec!["n", "l", "m"]);
-        features.add(&[v(0), v(1), v(0)]);
-        features.add(&[v(3), v(6), v(-5)]);
-        features.add(&[v(2), v(3), v(2)]);
-        features.add(&[v(1), v(4), v(4)]);
-        features.add(&[v(5), v(2), v(0)]);
-        features.add(&[v(1), v(1), v(-1)]);
+        let mut features = IndexesBuilder::new(vec!["l", "m", "n"]);
+        features.add(&[v(1), v(0), v(0)]);
+        features.add(&[v(6), v(-5), v(3)]);
+        features.add(&[v(3), v(2), v(2)]);
+        features.add(&[v(4), v(4), v(1)]);
+        features.add(&[v(2), v(0), v(5)]);
+        features.add(&[v(1), v(-1), v(1)]);
 
         let mut samples = IndexesBuilder::new(vec!["structure", "center", "species_center", "species_neighbor"]);
         samples.add(&[v(0), v(1), v(1), v(1)]);
