@@ -15,6 +15,8 @@ all required functions; and then passing one or more systems to
 .. doxygenstruct:: rascal_pair_t
     :members:
 
+---------------------------------------------------------------------
+
 .. doxygenfunction:: rascal_basic_systems_read
 
 .. doxygenfunction:: rascal_basic_systems_free

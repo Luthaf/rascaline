@@ -1,4 +1,4 @@
-/* workaround furo style causing function parameters to float on right */
-dl.function > dt span.sig-paren + a.reference.internal {
-  float: none;
+/* increase spacing between entries in the C reference documentation */
+dl.function, dl.struct {
+  margin-bottom: 2em;
 }

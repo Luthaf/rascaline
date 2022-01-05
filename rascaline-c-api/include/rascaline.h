@@ -524,7 +524,7 @@ rascal_status_t rascal_descriptor_indexes(const struct rascal_descriptor_t *desc
  * +-----------+---------+---+---+---+
  * ```
  *
- * Calling `descriptor.densify(["species"])` will move `species` out of the
+ * Calling `descriptor.densify({"species"})` will move `species` out of the
  * samples and into the features, producing:
  * ```text
  *             +---------+-------+-------+-------+
@@ -559,9 +559,11 @@ rascal_status_t rascal_descriptor_densify(struct rascal_descriptor_t *descriptor
  * This function behaves similarly to `rascal_descriptor_densify`, please refer
  * to its documentation for more information.
  *
- * If this descriptor contains gradients, `gradients_positions` will point to
- * an array allocated with `malloc` containing the changes made to the values
- * array, which can be used to reconstruct the change to make to the gradients.
+ * If this descriptor contains gradients, `densified_positions` will point to
+ * an array allocated with `malloc` containing the changes made to the values,
+ * which can be used to reconstruct the change to make to the gradients. The
+ * size of this array will be stored in `densified_positions_count`.
+ *
  * Users of this function are expected to `free` the corresponding memory when
  * they no longer need it.
  *
