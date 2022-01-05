@@ -96,6 +96,21 @@ pub enum CutoffFunction {
 }
 
 impl CutoffFunction {
+    pub fn validate(&self) -> Result<(), Error> {
+        match self {
+            CutoffFunction::Step {} => {},
+            CutoffFunction::ShiftedCosine { width } => {
+                if *width <= 0.0 {
+                    return Err(Error::InvalidParameter(format!(
+                        "expected positive width for shifted cosine cutoff function, got {}",
+                        width
+                    )));
+                }
+            }
+        }
+        return Ok(());
+    }
+
     /// Evaluate the cutoff function at the distance `r` for the given `cutoff`
     pub fn compute(&self, r: f64, cutoff: f64) -> f64 {
         match self {
@@ -132,6 +147,84 @@ impl CutoffFunction {
     }
 }
 
+/// Implemented options for radial scaling of the atomic density around an atom
+#[derive(Debug, Clone, Copy)]
+#[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+pub enum RadialScaling {
+    /// No radial scaling
+    None {},
+    /// Use the radial scaling functional introduced in <https://doi.org/10.1039/C8CP05921G>:
+    ///
+    /// `f(r) = rate / (rate + (r / scale) ^ exponent)`
+    Willatt2018 {
+        scale: f64,
+        rate: f64,
+        exponent: i32,
+    },
+}
+
+impl Default for RadialScaling {
+    fn default() -> RadialScaling {
+        RadialScaling::None {}
+    }
+}
+
+impl RadialScaling {
+    pub fn validate(&self) -> Result<(), Error> {
+        match self {
+            RadialScaling::None {} => {},
+            RadialScaling::Willatt2018 { scale, rate, exponent } => {
+                if *scale <= 0.0 {
+                    return Err(Error::InvalidParameter(format!(
+                        "expected positive scale for TODO radial scaling function, got {}",
+                        scale
+                    )));
+                }
+
+                if *rate <= 0.0 {
+                    return Err(Error::InvalidParameter(format!(
+                        "expected positive rate for TODO radial scaling function, got {}",
+                        rate
+                    )));
+                }
+
+                if *exponent <= 0 {
+                    return Err(Error::InvalidParameter(format!(
+                        "expected positive exponent for TODO radial scaling function, got {}",
+                        exponent
+                    )));
+                }
+            }
+        }
+        return Ok(());
+    }
+
+    /// Evaluate the radial scaling function at the distance `r`
+    pub fn compute(&self, r: f64) -> f64 {
+        match self {
+            RadialScaling::None {} => 1.0,
+            RadialScaling::Willatt2018 { rate, scale, exponent } => {
+                rate / (rate + (r / scale).powi(*exponent))
+            }
+        }
+    }
+
+    /// Evaluate the derivative of the radial scaling function at the distance `r`
+    pub fn derivative(&self, r: f64) -> f64 {
+        match self {
+            RadialScaling::None {} => 0.0,
+            RadialScaling::Willatt2018 { scale, rate, exponent } => {
+                let rs = r / scale;
+                let rs_m1 = rs.powi(exponent - 1);
+                let rs_m = rs * rs_m1;
+                let factor = - rate * (*exponent as f64) / scale;
+
+                factor * rs_m1 / ((rate + rs_m) * (rate + rs_m))
+            }
+        }
+    }
+}
+
 /// Parameters for spherical expansion calculator.
 ///
 /// The spherical expansion is at the core of representations in the SOAP
@@ -156,6 +249,11 @@ pub struct SphericalExpansionParameters {
     pub radial_basis: RadialBasis,
     /// Cutoff function used to smooth the behavior around the cutoff radius
     pub cutoff_function: CutoffFunction,
+    /// radial scaling can be used to reduce the importance of neighbor atoms
+    /// further away from the center, usually improving the performance of the
+    /// model
+    #[serde(default)]
+    pub radial_scaling: RadialScaling,
 }
 
 struct RadialIntegralImpl {
@@ -333,8 +431,9 @@ impl std::fmt::Debug for SphericalExpansion {
 impl SphericalExpansion {
     /// Create a new `SphericalExpansion` calculator with the given parameters
     pub fn new(parameters: SphericalExpansionParameters) -> Result<SphericalExpansion, Error> {
-        // validate parameters once in the constructor, so that we can use
-        // expect("invalid parameters") in the main code.
+        // validate parameters once in the constructor
+        parameters.cutoff_function.validate()?;
+        parameters.radial_scaling.validate()?;
         RadialIntegralImpl::new(&parameters)?;
 
         return Ok(SphericalExpansion {
@@ -342,6 +441,24 @@ impl SphericalExpansion {
             radial_integral: ThreadLocal::new(),
             spherical_harmonics: ThreadLocal::new(),
         });
+    }
+
+    /// Compute the product of radial scaling & cutoff smoothing functions
+    fn scaling_functions(&self, r: f64) -> f64 {
+        let cutoff = self.parameters.cutoff_function.compute(r, self.parameters.cutoff);
+        let scaling = self.parameters.radial_scaling.compute(r);
+        return cutoff * scaling;
+    }
+
+    /// Compute the gradient of the product of radial scaling & cutoff smoothing functions
+    fn scaling_functions_gradient(&self, r: f64) -> f64 {
+        let cutoff = self.parameters.cutoff_function.compute(r, self.parameters.cutoff);
+        let cutoff_grad = self.parameters.cutoff_function.derivative(r, self.parameters.cutoff);
+
+        let scaling = self.parameters.radial_scaling.compute(r);
+        let scaling_grad = self.parameters.radial_scaling.derivative(r);
+
+        return cutoff_grad * scaling + cutoff * scaling_grad;
     }
 
     /// Compute the self contribution to spherical expansion, i.e. the
@@ -369,14 +486,14 @@ impl SphericalExpansion {
             if species_center == species_neighbor {
                 radial_integral.compute_no_gradients(0.0);
                 spherical_harmonics.compute_no_gradients(Vector3D::new(0.0, 0.0, 1.0));
-                let f_cut = self.parameters.cutoff_function.compute(0.0, self.parameters.cutoff);
+                let f_scaling = self.scaling_functions(0.0);
 
                 for (feature_i, feature) in descriptor.features.iter().enumerate() {
                     let l = feature[0].usize();
                     let m = feature[1].isize();
                     let n = feature[2].usize();
 
-                    let n_l_m_value = f_cut
+                    let n_l_m_value = f_scaling
                         * radial_integral.values[[n, l]]
                         * spherical_harmonics.values[[l as isize, m]];
                     descriptor.values[[i_env, feature_i]] += n_l_m_value;
@@ -432,10 +549,7 @@ impl SphericalExpansion {
 
         radial_integral.compute(pair.distance);
         spherical_harmonics.compute(pair.direction);
-
-        let f_cut = self.parameters.cutoff_function.compute(
-            pair.distance, self.parameters.cutoff
-        );
+        let f_scaling = self.scaling_functions(pair.distance);
 
         let mut pair_contribution = PairContribution::new(features.count());
         if let Some(index) = first_sample_i {
@@ -451,7 +565,7 @@ impl SphericalExpansion {
             let m = feature[1].isize();
             let n = feature[2].usize();
 
-            let n_l_m_value = f_cut
+            let n_l_m_value = f_scaling
                 * radial_integral.values[[n, l]]
                 * spherical_harmonics.values[[l as isize, m]];
 
@@ -553,12 +667,8 @@ impl SphericalExpansion {
         let sph_values = &spherical_harmonics.values;
         let sph_gradients = spherical_harmonics.gradients.as_ref().expect("missing spherical harmonics gradients");
 
-        let f_cut = self.parameters.cutoff_function.compute(
-            pair.distance, self.parameters.cutoff
-        );
-        let f_cut_grad = self.parameters.cutoff_function.derivative(
-            pair.distance, self.parameters.cutoff
-        );
+        let f_scaling = self.scaling_functions(pair.distance);
+        let f_scaling_grad = self.scaling_functions_gradient(pair.distance);
 
         for spatial in 0..3 {
             let dr_d_spatial = pair.direction[spatial];
@@ -576,9 +686,9 @@ impl SphericalExpansion {
                 let ri_value = ri_values[[n, l]];
                 let ri_grad = ri_gradients[[n, l]];
 
-                gradients[feature_i] = f_cut_grad * dr_d_spatial * ri_value * sph_value
-                                     + f_cut * ri_grad * dr_d_spatial * sph_value
-                                     + f_cut * ri_value * sph_grad / pair.distance;
+                gradients[feature_i] = f_scaling_grad * dr_d_spatial * ri_value * sph_value
+                                     + f_scaling * ri_grad * dr_d_spatial * sph_value
+                                     + f_scaling * ri_value * sph_grad / pair.distance;
             }
         }
 
@@ -842,7 +952,7 @@ mod tests {
     use crate::{Descriptor, Calculator};
 
     use super::{SphericalExpansion, SphericalExpansionParameters};
-    use super::{CutoffFunction, RadialBasis};
+    use super::{CutoffFunction, RadialBasis, RadialScaling};
     use crate::calculators::CalculatorBase;
 
     // small helper function to create IndexValue
@@ -856,7 +966,8 @@ mod tests {
             gradients: gradients,
             max_radial: 6,
             max_angular: 6,
-            radial_basis: RadialBasis::Gto {}
+            radial_basis: RadialBasis::Gto {},
+            radial_scaling: RadialScaling::Willatt2018 { scale: 1.5, rate: 0.8, exponent: 2},
         }
     }
 

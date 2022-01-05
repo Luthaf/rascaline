@@ -9,7 +9,7 @@ pub use self::spherical_harmonics::{SphericalHarmonics, SphericalHarmonicsArray}
 
 mod spherical_expansion;
 pub use self::spherical_expansion::{SphericalExpansion, SphericalExpansionParameters};
-pub use self::spherical_expansion::{RadialBasis, CutoffFunction};
+pub use self::spherical_expansion::{RadialBasis, CutoffFunction, RadialScaling};
 
 mod power_spectrum;
 pub use self::power_spectrum::{SoapPowerSpectrum, PowerSpectrumParameters};

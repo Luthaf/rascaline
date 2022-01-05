@@ -9,7 +9,7 @@ use crate::{CalculationOptions, Calculator, SelectedIndexes};
 use crate::{Descriptor, Error, System};
 
 use super::{super::CalculatorBase, SphericalExpansionParameters};
-use super::{SphericalExpansion, RadialBasis, CutoffFunction};
+use super::{SphericalExpansion, RadialBasis, CutoffFunction, RadialScaling};
 
 
 /// Parameters for SOAP power spectrum calculator.
@@ -42,6 +42,11 @@ pub struct PowerSpectrumParameters {
     pub radial_basis: RadialBasis,
     /// cutoff function used to smooth the behavior around the cutoff radius
     pub cutoff_function: CutoffFunction,
+    /// radial scaling can be used to reduce the importance of neighbor atoms
+    /// further away from the center, usually improving the performance of the
+    /// model
+    #[serde(default)]
+    pub radial_scaling: RadialScaling,
 }
 
 /// Calculator implementing the Smooth Overlap of Atomic Position (SOAP) power
@@ -62,6 +67,7 @@ impl SoapPowerSpectrum {
             gradients: parameters.gradients,
             radial_basis: parameters.radial_basis,
             cutoff_function: parameters.cutoff_function,
+            radial_scaling: parameters.radial_scaling,
         };
 
         let spherical_expansion = SphericalExpansion::new(expansion_parameters)?;
@@ -430,7 +436,8 @@ mod tests {
             gradients: gradients,
             max_radial: 6,
             max_angular: 6,
-            radial_basis: RadialBasis::Gto {}
+            radial_basis: RadialBasis::Gto {},
+            radial_scaling: RadialScaling::None {},
         }
     }
 
