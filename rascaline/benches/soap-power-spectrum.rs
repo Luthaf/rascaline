@@ -2,7 +2,7 @@
 
 use rascaline::calculators::CalculatorBase;
 use rascaline::calculators::{SoapPowerSpectrum, PowerSpectrumParameters};
-use rascaline::calculators::soap::{RadialBasis, CutoffFunction};
+use rascaline::calculators::soap::{RadialBasis, CutoffFunction, RadialScaling};
 
 use rascaline::{Descriptor, System};
 
@@ -50,6 +50,7 @@ fn run_soap_power_spectrum(
                 atomic_gaussian_width: 0.3,
                 radial_basis: RadialBasis::Gto {},
                 cutoff_function: CutoffFunction::ShiftedCosine{ width: 0.5 },
+                radial_scaling: RadialScaling::None {},
             };
             let mut calculator = SoapPowerSpectrum::new(parameters).unwrap();
 

@@ -2,7 +2,7 @@
 
 use rascaline::calculators::CalculatorBase;
 use rascaline::calculators::{SphericalExpansion, SphericalExpansionParameters};
-use rascaline::calculators::soap::{RadialBasis, CutoffFunction};
+use rascaline::calculators::soap::{RadialBasis, CutoffFunction, RadialScaling};
 
 use rascaline::{Descriptor, System};
 
@@ -48,6 +48,7 @@ fn run_spherical_expansion(mut group: BenchmarkGroup<WallTime>,
                 atomic_gaussian_width: 0.3,
                 radial_basis: RadialBasis::Gto {},
                 cutoff_function: CutoffFunction::ShiftedCosine{ width: 0.5 },
+                radial_scaling: RadialScaling::None {},
             };
             let mut calculator = SphericalExpansion::new(parameters).unwrap();
 

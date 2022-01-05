@@ -125,6 +125,9 @@ class JsonSchemaDirective(Directive):
                         field += nodes.Text(f"{name}: ")
 
                         subfields = self._json_schema_to_nodes(content, inline=True)
+                        if isinstance(subfields, nodes.literal):
+                            subfields = [subfields]
+
                         for (i, sf) in enumerate(subfields):
                             field += sf
 
@@ -132,7 +135,6 @@ class JsonSchemaDirective(Directive):
                                 if i != len(subfields) - 2:
                                     # len(xxx) - 2 to account for the final }
                                     field += nodes.Text(", ")
-
                         object_node += field
 
                     if self._inline_call_count > 1:
@@ -146,12 +148,12 @@ class JsonSchemaDirective(Directive):
                 return nodes.literal(text="number")
 
             elif schema["type"] == "integer":
-                if schema["format"] == "int":
-                    return nodes.literal(text="signed integer")
-                elif schema["format"] == "uint":
+                if schema["format"].startswith("int"):
+                    return nodes.literal(text="integer")
+                elif schema["format"].startswith("uint"):
                     return nodes.literal(text="unsigned integer")
                 else:
-                    raise Exception("unknown integer format")
+                    raise Exception(f"unknown integer format: {schema['format']}")
 
             elif schema["type"] == "string":
                 # TODO enums?
