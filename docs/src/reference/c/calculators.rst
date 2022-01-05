@@ -12,6 +12,8 @@ The following functions operate on :c:type:`rascal_calculator_t`:
 - :c:func:`rascal_calculator_parameters`: get the hyper-parameters of a calculator
 - :c:func:`rascal_calculator_features_count`: get the default number of features
 
+---------------------------------------------------------------------
+
 .. doxygenfunction:: rascal_calculator
 
 .. doxygenfunction:: rascal_calculator_free
@@ -23,6 +25,8 @@ The following functions operate on :c:type:`rascal_calculator_t`:
 .. doxygenfunction:: rascal_calculator_parameters
 
 .. doxygenfunction:: rascal_calculator_features_count
+
+---------------------------------------------------------------------
 
 .. doxygenstruct:: rascal_calculation_options_t
     :members:
