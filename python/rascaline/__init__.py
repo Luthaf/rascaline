@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
-from .status import RascalError
-from .log import set_logging_callback
-from .profiling import Profiler
+from .status import RascalError  # noqa
+from .log import set_logging_callback  # noqa
+from .profiling import Profiler  # noqa
 
-from .descriptor import Descriptor, Indexes
+from .descriptor import Descriptor, Indexes  # noqa
 
-from .systems import SystemBase
+from .systems import SystemBase  # noqa
 
-from .calculators import CalculatorBase
-from .calculators import SortedDistances
-from .calculators import SphericalExpansion
-from .calculators import SoapPowerSpectrum
+from .calculators import CalculatorBase  # noqa
+from .calculators import SortedDistances  # noqa
+from .calculators import SphericalExpansion  # noqa
+from .calculators import SoapPowerSpectrum  # noqa
 
 # Get the __version__ attribute from setuptools metadata (which took it from
 # Cargo.toml) cf https://stackoverflow.com/a/17638236/4692076

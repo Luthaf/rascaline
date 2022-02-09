@@ -146,7 +146,8 @@ class TestDummyCalculator(unittest.TestCase):
 
         self.assertEqual(
             str(cm.exception),
-            "invalid parameter: got an invalid column name ('bad name') in selected indexes",
+            "invalid parameter: got an invalid column name ('bad name') "
+            "in selected indexes",
         )
 
         samples = Indexes(
@@ -161,7 +162,8 @@ class TestDummyCalculator(unittest.TestCase):
 
         self.assertEqual(
             str(cm.exception),
-            "invalid parameter: 'bad_name' in requested samples is not part of the samples of this calculator",
+            "invalid parameter: 'bad_name' in requested samples is not part "
+            "of the samples of this calculator",
         )
 
     def test_compute_partial_features(self):
@@ -248,7 +250,8 @@ class TestDummyCalculator(unittest.TestCase):
 
         self.assertEqual(
             str(cm.exception),
-            "invalid parameter: got an invalid column name ('bad name') in selected indexes",
+            "invalid parameter: got an invalid column name ('bad name') in "
+            "selected indexes",
         )
 
         features = Indexes(
@@ -263,7 +266,8 @@ class TestDummyCalculator(unittest.TestCase):
 
         self.assertEqual(
             str(cm.exception),
-            "invalid parameter: 'bad_name' in requested features is not part of the features of this calculator",
+            "invalid parameter: 'bad_name' in requested features is not part "
+            "of the features of this calculator",
         )
 
     def test_features_count(self):
