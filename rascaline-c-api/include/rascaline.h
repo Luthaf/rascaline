@@ -303,14 +303,14 @@ typedef struct rascal_calculation_options_t {
   bool use_native_system;
   /**
    * List of samples on which to run the calculation. You can set
-   * `selected_samples.values` to `NULL` to run the calculation on all
-   * samples. If necessary, gradients samples will be derived from the
-   * values given in selected_samples.
+   * `selected_samples.names` to `NULL` to run the calculation on all
+   * samples. If necessary, gradients samples will be derived from the values
+   * given in selected_samples.
    */
   struct rascal_indexes_t selected_samples;
   /**
    * List of features on which to run the calculation. You can set
-   * `selected_features.values` to `NULL` to run the calculation on all
+   * `selected_features.names` to `NULL` to run the calculation on all
    * features.
    */
   struct rascal_indexes_t selected_features;
