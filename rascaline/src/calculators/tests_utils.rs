@@ -6,7 +6,7 @@ use approx::{assert_relative_eq, assert_ulps_eq};
 
 use crate::{CalculationOptions, Calculator, SelectedIndexes};
 use crate::systems::{System, SimpleSystem};
-use crate::descriptor::{Descriptor, Indexes, IndexValue};
+use crate::descriptor::{Descriptor, Indexes, IndexValue, IndexesBuilder};
 
 /// Check that computing a partial subset of features/samples works as intended
 /// for the given `calculator` and `systems`.
@@ -117,6 +117,30 @@ pub fn compute_partial(
             }
         }
     }
+
+    // check that the calculator works when selecting an empty set of
+    // samples/features
+    let empty_samples = IndexesBuilder::new(samples.names()).finish();
+    let options = CalculationOptions {
+        selected_samples: SelectedIndexes::Subset(empty_samples),
+        selected_features: SelectedIndexes::All,
+        ..Default::default()
+    };
+    calculator.compute(systems, &mut partial, options).unwrap();
+
+    assert_eq!(partial.values.shape()[0], 0);
+    assert_eq!(partial.values.shape()[1], full.values.shape()[1]);
+
+    let empty_features = IndexesBuilder::new(features.names()).finish();
+    let options = CalculationOptions {
+        selected_samples: SelectedIndexes::All,
+        selected_features: SelectedIndexes::Subset(empty_features),
+        ..Default::default()
+    };
+    calculator.compute(systems, &mut partial, options).unwrap();
+
+    assert_eq!(partial.values.shape()[0], full.values.shape()[0]);
+    assert_eq!(partial.values.shape()[1], 0);
 }
 
 /// Check that analytical gradients agree with a finite difference calculation

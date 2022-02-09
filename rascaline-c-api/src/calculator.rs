@@ -180,18 +180,18 @@ pub struct rascal_calculation_options_t {
     /// faster than having to cross the FFI boundary too often.
     use_native_system: bool,
     /// List of samples on which to run the calculation. You can set
-    /// `selected_samples.values` to `NULL` to run the calculation on all
-    /// samples. If necessary, gradients samples will be derived from the
-    /// values given in selected_samples.
+    /// `selected_samples.names` to `NULL` to run the calculation on all
+    /// samples. If necessary, gradients samples will be derived from the values
+    /// given in selected_samples.
     selected_samples: rascal_indexes_t,
     /// List of features on which to run the calculation. You can set
-    /// `selected_features.values` to `NULL` to run the calculation on all
+    /// `selected_features.names` to `NULL` to run the calculation on all
     /// features.
     selected_features: rascal_indexes_t,
 }
 
 fn selected_indexes(selected: &rascal_indexes_t) -> Result<SelectedIndexes, Error> {
-    if selected.values.is_null() {
+    if selected.names.is_null() {
         return Ok(SelectedIndexes::All);
     }
     let names = unsafe {

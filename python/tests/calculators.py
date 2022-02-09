@@ -118,6 +118,18 @@ class TestDummyCalculator(unittest.TestCase):
         self.assertTrue(np.all(values[1] == (5, 5)))
         self.assertTrue(np.all(values[2] == (3, 3)))
 
+        # empty selected samples
+        samples = Indexes(
+            array=np.array([], dtype=np.int32).reshape(0, 2),
+            names=["structure", "center"],
+        )
+        descriptor = calculator.compute(
+            system, use_native_system=False, selected_samples=samples
+        )
+
+        values = descriptor.values
+        self.assertEqual(values.shape, (0, 2))
+
     def test_compute_partial_samples_errors(self):
         system = TestSystem()
         calculator = DummyCalculator(cutoff=3.2, delta=2, name="", gradients=True)
@@ -207,6 +219,18 @@ class TestDummyCalculator(unittest.TestCase):
 
         values = descriptor.values
         self.assertEqual(values.shape, (4, 1))
+
+        # empty selected features
+        features = Indexes(
+            array=np.array([], dtype=np.int32).reshape(0, 2),
+            names=["index_delta", "x_y_z"],
+        )
+        descriptor = calculator.compute(
+            system, use_native_system=False, selected_features=features
+        )
+
+        values = descriptor.values
+        self.assertEqual(values.shape, (4, 0))
 
     def test_compute_partial_features_errors(self):
         system = TestSystem()

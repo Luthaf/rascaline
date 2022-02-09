@@ -319,6 +319,48 @@ TEST_CASE("Compute descriptor") {
         }
     }
 
+    SECTION("Partial compute -- empty") {
+        auto system = simple_system();
+
+        auto samples_names = std::vector<const char*> {
+            "structure", "center"
+        };
+        rascal_calculation_options_t options_no_samples = {0};
+        options_no_samples.selected_samples.names = samples_names.data();
+        options_no_samples.selected_samples.size = 2;
+        options_no_samples.selected_samples.values = nullptr;
+        options_no_samples.selected_samples.count = 0;
+
+        CHECK_SUCCESS(rascal_calculator_compute(
+            calculator, descriptor, &system, 1, options_no_samples
+        ));
+
+        double* data = nullptr;
+        uintptr_t shape[2] = {0};
+        CHECK_SUCCESS(rascal_descriptor_values(descriptor, &data, &shape[0], &shape[1]));
+
+        CHECK(shape[0] == 0);
+        CHECK(shape[1] == 2);
+
+        auto features_names = std::vector<const char*> {
+            "index_delta", "x_y_z"
+        };
+        rascal_calculation_options_t options_no_features = {0};
+        options_no_features.selected_features.names = features_names.data();
+        options_no_features.selected_features.size = 2;
+        options_no_features.selected_features.values = nullptr;
+        options_no_features.selected_features.count = 0;
+
+        CHECK_SUCCESS(rascal_calculator_compute(
+            calculator, descriptor, &system, 1, options_no_features
+        ));
+
+        CHECK_SUCCESS(rascal_descriptor_values(descriptor, &data, &shape[0], &shape[1]));
+
+        CHECK(shape[0] == 4);
+        CHECK(shape[1] == 0);
+    }
+
     SECTION("Partial compute -- errors") {
         auto system = simple_system();
 
