@@ -1,7 +1,4 @@
 # -*- coding: utf-8 -*-
-import json
-import ctypes
-
 from .clib import _get_library
 from .utils import _call_with_growing_buffer
 
