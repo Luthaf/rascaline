@@ -22,8 +22,7 @@ endif()
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../.. ${CMAKE_CURRENT_BINARY_DIR}/rascaline)
 
-add_library(catch STATIC catch/catch.cpp)
-target_include_directories(catch PUBLIC catch)
+add_subdirectory(external)
 
 add_library(tests_helpers STATIC helpers.cpp)
 target_link_libraries(tests_helpers rascaline)
@@ -48,7 +47,7 @@ enable_testing()
 foreach(_file_ ${ALL_TESTS})
     get_filename_component(_name_ ${_file_} NAME_WE)
     add_executable(${_name_} ${_file_})
-    target_link_libraries(${_name_} rascaline catch tests_helpers)
+    target_link_libraries(${_name_} rascaline Catch2WithMain tests_helpers)
     add_test(
         NAME ${_name_}
         COMMAND ${TEST_COMMAND} $<TARGET_FILE:${_name_}>

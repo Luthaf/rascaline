@@ -1,9 +1,10 @@
 #include <vector>
 #include <string>
 
-#include "rascaline.hpp"
-#include "catch.hpp"
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers.hpp>
 
+#include "rascaline.hpp"
 #include "test_system.hpp"
 
 static void check_indexes(

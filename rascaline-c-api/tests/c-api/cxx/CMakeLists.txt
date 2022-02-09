@@ -4,7 +4,7 @@ foreach(_file_ ${ALL_TESTS})
     get_filename_component(_name_ ${_file_} NAME_WE)
     set(_name_ cxx-${_name_})
     add_executable(${_name_} ${_file_})
-    target_link_libraries(${_name_} rascaline catch)
+    target_link_libraries(${_name_} rascaline Catch2WithMain)
     add_test(
         NAME ${_name_}
         COMMAND ${TEST_COMMAND} $<TARGET_FILE:${_name_}>

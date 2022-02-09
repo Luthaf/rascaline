@@ -1,5 +1,6 @@
+#include <catch2/catch_test_macros.hpp>
+
 #include "rascaline.h"
-#include "catch.hpp"
 #include "helpers.hpp"
 
 const char* HYPERS_JSON = R"({

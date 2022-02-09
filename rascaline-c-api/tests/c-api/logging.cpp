@@ -1,8 +1,9 @@
 #include <vector>
 #include <string>
 
+#include <catch2/catch_test_macros.hpp>
+
 #include "rascaline.h"
-#include "catch.hpp"
 #include "helpers.hpp"
 
 static std::vector<std::tuple<int, std::string>> RECORDED_LOG_EVENTS;
