@@ -342,6 +342,17 @@ TEST_CASE("Compute descriptor") {
         CHECK(shape[0] == 0);
         CHECK(shape[1] == 2);
 
+        rascal_indexes_t indexes = {0};
+        CHECK_SUCCESS(rascal_descriptor_indexes(
+            descriptor, RASCAL_INDEXES_SAMPLES, &indexes
+        ));
+        CHECK(indexes.values == nullptr);
+        CHECK(indexes.names != nullptr);
+        CHECK(indexes.count == 0);
+        CHECK(indexes.size == 2);
+
+        /**********************************************************************/
+
         auto features_names = std::vector<const char*> {
             "index_delta", "x_y_z"
         };
@@ -359,6 +370,14 @@ TEST_CASE("Compute descriptor") {
 
         CHECK(shape[0] == 4);
         CHECK(shape[1] == 0);
+
+        CHECK_SUCCESS(rascal_descriptor_indexes(
+            descriptor, RASCAL_INDEXES_FEATURES, &indexes
+        ));
+        CHECK(indexes.values == nullptr);
+        CHECK(indexes.names != nullptr);
+        CHECK(indexes.count == 0);
+        CHECK(indexes.size == 2);
     }
 
     SECTION("Partial compute -- errors") {

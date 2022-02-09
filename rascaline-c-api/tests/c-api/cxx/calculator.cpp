@@ -251,6 +251,30 @@ TEST_CASE("Compute descriptor") {
         }
     }
 
+    SECTION("Partial compute -- empty") {
+        auto options = rascaline::CalculationOptions();
+        options.selected_samples = rascaline::SelectedIndexes({"structure", "center"});
+        auto descriptor = calculator.compute(systems, std::move(options));
+
+        CHECK(descriptor.values().shape()[0] == 0);
+        CHECK(descriptor.values().shape()[1] == 2);
+
+        auto samples = descriptor.samples();
+        CHECK(samples.shape()[0] == 0);
+        CHECK(samples.shape()[1] == 2);
+
+        options = rascaline::CalculationOptions();
+        options.selected_features = rascaline::SelectedIndexes({"index_delta", "x_y_z"});
+        descriptor = calculator.compute(systems, std::move(options));
+
+        CHECK(descriptor.values().shape()[0] == 4);
+        CHECK(descriptor.values().shape()[1] == 0);
+
+        auto features = descriptor.features();
+        CHECK(features.shape()[0] == 0);
+        CHECK(features.shape()[1] == 2);
+    }
+
     SECTION("Partial compute -- errors") {
         auto options = rascaline::CalculationOptions();
         options.selected_samples = rascaline::SelectedIndexes({"structure", "center", "species"});

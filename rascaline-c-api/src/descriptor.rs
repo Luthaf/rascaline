@@ -232,9 +232,13 @@ pub unsafe extern fn rascal_descriptor_indexes(
 
         if rust_indexes.count() == 0 {
             (*indexes).values = std::ptr::null();
-            (*indexes).names = std::ptr::null();
         } else {
             (*indexes).values = (&rust_indexes[0][0] as *const IndexValue).cast();
+        }
+
+        if rust_indexes.size() == 0 {
+            (*indexes).names = std::ptr::null();
+        } else {
             (*indexes).names = rust_indexes.c_names().as_ptr().cast();
         }
 
