@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 #include <mutex>
+#include <utility>
 #include <stdexcept>
 #include <exception>
 #include <type_traits>
@@ -296,6 +297,10 @@ public:
         details::check_status(rascal_basic_systems_read(path.c_str(), &systems_, &count_));
     }
 
+    ~BasicSystems() {
+        details::check_status(rascal_basic_systems_free(systems_, count_));
+    }
+
     /// BasicSystems is **NOT** copy-constructible
     BasicSystems(const BasicSystems&) = delete;
     /// BasicSystems can **NOT** be copy-assigned
@@ -308,15 +313,14 @@ public:
 
     /// BasicSystems can be move-assigned
     BasicSystems& operator=(BasicSystems&& other) {
-        this->systems_ = other.systems_;
-        this->count_ = other.count_;
-        other.systems_ = nullptr;
-        other.count_ = 0;
-        return *this;
-    }
+        this->~BasicSystems();
+        this->systems_ = nullptr;
+        this->count_ = 0;
 
-    ~BasicSystems() {
-        details::check_status(rascal_basic_systems_free(systems_, count_));
+        std::swap(this->systems_, other.systems_);
+        std::swap(this->count_, other.count_);
+
+        return *this;
     }
 
     /// Get a pointer to the first element of the underlying array of systems
@@ -332,8 +336,8 @@ public:
     }
 
 private:
-    rascal_system_t* systems_;
-    uintptr_t count_;
+    rascal_system_t* systems_ = nullptr;
+    uintptr_t count_ = 0;
 };
 
 
@@ -437,9 +441,9 @@ private:
         );
     }
 
-    bool is_const_;
-    T* data_;
-    std::array<size_t, 2> shape_;
+    bool is_const_ = true;
+    T* data_ = nullptr;
+    std::array<size_t, 2> shape_ = {0};
 };
 
 
@@ -475,6 +479,7 @@ public:
             free(variable);
         }
     }
+
     /// SelectedIndexes is not copy-constructible
     SelectedIndexes(const SelectedIndexes&) = delete;
     /// SelectedIndexes can not be copy-assigned
@@ -486,12 +491,15 @@ public:
     }
     /// SelectedIndexes can be move-assigned
     SelectedIndexes& operator=(SelectedIndexes&& other) {
+        // don't call ~SelectedIndexes() here since it would run the destructor
+        // of `this->names_` and `this->values_` twice
         for (auto variable: this->names_) {
             free(variable);
         }
 
         this->names_ = std::move(other.names_);
         this->values_ = std::move(other.values_);
+
         return *this;
     }
 
@@ -600,7 +608,7 @@ public:
     MallocArray(): MallocArray(nullptr, 0) {}
 
     ~MallocArray() {
-        free(data_);
+        std::free(data_);
     }
 
     MallocArray(const MallocArray&) = delete;
@@ -611,13 +619,12 @@ public:
     }
 
     MallocArray& operator=(MallocArray&& other) {
-        free(this->data_);
+        this->~MallocArray();
+        this->data_ = nullptr;
+        this->size_ = 0;
 
-        this->data_ = other.data_;
-        this->size_ = other.size_;
-
-        other.data_ = nullptr;
-        other.size_ = 0;
+        std::swap(this->data_, other.data_);
+        std::swap(this->size_, other.size_);
 
         return *this;
     }
@@ -650,8 +657,8 @@ public:
     }
 
 private:
-    T* data_;
-    size_t size_;
+    T* data_ = nullptr;
+    size_t size_ = 0;
 };
 
 /// Descriptors store the result of a single calculation on a set of systems.
@@ -690,8 +697,11 @@ public:
 
     /// Descriptor can be move-assigned
     Descriptor& operator=(Descriptor&& other) {
-        this->descriptor_ = other.descriptor_;
-        other.descriptor_ = nullptr;
+        this->~Descriptor();
+        this->descriptor_ = nullptr;
+
+        std::swap(this->descriptor_, other.descriptor_);
+
         return *this;
     }
 
@@ -898,7 +908,7 @@ private:
         return Indexes(std::move(names), std::move(array));
     }
 
-    rascal_descriptor_t* descriptor_;
+    rascal_descriptor_t* descriptor_ = nullptr;
 };
 
 
@@ -991,8 +1001,11 @@ public:
 
     /// Calculator can be move-assigned
     Calculator& operator=(Calculator&& other) {
-        this->calculator_ = other.calculator_;
-        other.calculator_ = nullptr;
+        this->~Calculator();
+        this->calculator_ = nullptr;
+
+        std::swap(this->calculator_, other.calculator_);
+
         return *this;
     }
 
@@ -1112,7 +1125,7 @@ public:
     }
 
 private:
-    rascal_calculator_t* calculator_;
+    rascal_calculator_t* calculator_ = nullptr;
 };
 
 
