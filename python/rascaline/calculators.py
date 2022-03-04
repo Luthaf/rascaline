@@ -272,6 +272,7 @@ class SphericalExpansion(CalculatorBase):
         radial_basis,
         gradients,
         cutoff_function,
+        radial_scaling=None,
     ):
         parameters = {
             "cutoff": cutoff,
@@ -282,6 +283,10 @@ class SphericalExpansion(CalculatorBase):
             "gradients": gradients,
             "cutoff_function": cutoff_function,
         }
+
+        if radial_scaling is not None:
+            parameters["radial_scaling"] = radial_scaling
+
         super().__init__("spherical_expansion", parameters)
 
 
@@ -310,6 +315,7 @@ class SoapPowerSpectrum(CalculatorBase):
         radial_basis,
         gradients,
         cutoff_function,
+        radial_scaling=None,
     ):
         parameters = {
             "cutoff": cutoff,
@@ -320,4 +326,8 @@ class SoapPowerSpectrum(CalculatorBase):
             "gradients": gradients,
             "cutoff_function": cutoff_function,
         }
+
+        if radial_scaling is not None:
+            parameters["radial_scaling"] = radial_scaling
+
         super().__init__("soap_power_spectrum", parameters)
