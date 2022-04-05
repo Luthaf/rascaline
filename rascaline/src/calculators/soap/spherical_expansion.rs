@@ -519,19 +519,18 @@ impl SphericalExpansion {
             IndexValue::from(pair.species_second),
         ]);
 
-        let second_sample_i;
-        if pair.first == pair.second {
+        let second_sample_i = if pair.first == pair.second {
             // do not compute for the reversed pair if the pair is between an
             // atom and its image
-            second_sample_i = None;
+            None
         } else {
-            second_sample_i = samples.position(&[
+            samples.position(&[
                 IndexValue::from(pair.system),
                 IndexValue::from(pair.second),
                 IndexValue::from(pair.species_second),
                 IndexValue::from(pair.species_first),
-            ]);
-        }
+            ])
+        };
 
         if first_sample_i.is_none() && second_sample_i.is_none() {
             // nothing to do
