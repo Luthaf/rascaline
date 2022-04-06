@@ -3,36 +3,13 @@ import json
 
 from docutils.parsers.rst import Directive
 from docutils import nodes
+import myst_parser.main
 
-from recommonmark.parser import CommonMarkParser
+from html_hidden import html_hidden
 
 
 def _target_id(text):
     return nodes.make_id("json-schema-" + text)
-
-
-class html_hidden(nodes.Element):
-    """
-    A node that will be hidden by default in HTML output
-    """
-
-    pass
-
-
-def visit_html_hidden_latex(self, node):
-    pass
-
-
-def depart_html_hidden_latex(self, node):
-    pass
-
-
-def visit_html_hidden_html(self, node):
-    self.body.append("<details><summary><a>{}</a></summary>".format(node["toggle"]))
-
-
-def depart_html_hidden_html(self, node):
-    self.body.append("</details>")
 
 
 class JsonSchemaDirective(Directive):
@@ -69,7 +46,8 @@ class JsonSchemaDirective(Directive):
         section = nodes.section()
         section += nodes.title(text=name)
 
-        self._parse_md_to(section, schema.get("description", ""))
+        description = schema.get("description", "")
+        section.extend(myst_parser.main.to_docutils(description))
 
         section += self._json_schema_to_nodes(schema)
 
@@ -107,7 +85,8 @@ class JsonSchemaDirective(Directive):
                         field_list += name
                         body = nodes.field_body()
 
-                        self._parse_md_to(body, content.get("description", ""))
+                        description = content.get("description", "")
+                        body.extend(myst_parser.main.to_docutils(description))
 
                         field_list += body
 
@@ -182,35 +161,17 @@ class JsonSchemaDirective(Directive):
             for possibility in schema["oneOf"]:
                 item = nodes.list_item()
                 item += self._json_schema_to_nodes(possibility, inline=True)
-                self._parse_md_to(item, possibility.get("description", ""))
+
+                description = possibility.get("description", "")
+                item.extend(myst_parser.main.to_docutils(description))
+
                 bullet_list += item
 
             return bullet_list
 
         raise Exception(f"unsupported JSON schema: {schema}")
 
-    def _parse_md_to(self, node, content):
-        # HACK: make the CommonMarkParser think that `node` is actually the full
-        # document
-        assert not hasattr(node, "reporter")
-        assert not hasattr(node, "note_parse_message")
-
-        node.reporter = self.state.document.reporter
-        node.note_parse_message = self.state.document.note_parse_message
-
-        md_parser = CommonMarkParser()
-        md_parser.parse(content, node)
-
-        del node.reporter
-        del node.note_parse_message
-
 
 def setup(app):
     app.require_sphinx("3.3")
     app.add_directive("rascaline-json-schema", JsonSchemaDirective)
-
-    app.add_node(
-        html_hidden,
-        html=(visit_html_hidden_html, depart_html_hidden_html),
-        latex=(visit_html_hidden_latex, depart_html_hidden_latex),
-    )
