@@ -36,6 +36,10 @@ pub struct PowerSpectrumParameters {
     pub max_angular: usize,
     /// Width of the atom-centered gaussian creating the atomic density
     pub atomic_gaussian_width: f64,
+    /// Weight of the center atom contribution to the features. 
+    /// If `1` the center atom contribution is weighted the same as any other
+    /// contribution.
+    pub center_atom_weight: f64,
     /// Should we also compute gradients of the feature?
     pub gradients: bool,
     /// radial basis to use for the radial integral
@@ -64,6 +68,7 @@ impl SoapPowerSpectrum {
             max_radial: parameters.max_radial,
             max_angular: parameters.max_angular,
             atomic_gaussian_width: parameters.atomic_gaussian_width,
+            center_atom_weight: parameters.center_atom_weight,
             gradients: parameters.gradients,
             radial_basis: parameters.radial_basis,
             cutoff_function: parameters.cutoff_function,
@@ -430,14 +435,15 @@ mod tests {
 
     fn parameters(gradients: bool) -> PowerSpectrumParameters {
         PowerSpectrumParameters {
-            atomic_gaussian_width: 0.3,
             cutoff: 3.5,
-            cutoff_function: CutoffFunction::ShiftedCosine { width: 0.5 },
-            gradients: gradients,
             max_radial: 6,
             max_angular: 6,
+            atomic_gaussian_width: 0.3,
+            center_atom_weight: 1.,
+            gradients: gradients,
             radial_basis: RadialBasis::Gto {},
             radial_scaling: RadialScaling::None {},
+            cutoff_function: CutoffFunction::ShiftedCosine { width: 0.5 },
         }
     }
 

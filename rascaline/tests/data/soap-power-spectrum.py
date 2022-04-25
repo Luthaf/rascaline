@@ -26,6 +26,7 @@ hyperparameters = {
     "max_radial": 8,
     "max_angular": 8,
     "atomic_gaussian_width": 0.3,
+    "center_atom_weight": 1.0,
     "radial_basis": {
         "Gto": {},
     },
