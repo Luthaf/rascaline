@@ -4,9 +4,7 @@ from .clib import _get_library
 
 
 class RascalError(Exception):
-    """
-    This class is used to throw exceptions for all errors in rascaline.
-    """
+    """Throw exceptions for all errors in rascaline."""
 
     def __init__(self, message, status=None):
         super(Exception, self).__init__(message)
@@ -44,7 +42,7 @@ def _check_rascal_pointer(pointer):
 
 
 def last_error():
-    """Get the last error message on this thread"""
+    """Get the last error message on this thread."""
     lib = _get_library()
     message = lib.rascal_last_error()
     return message.decode("utf8")

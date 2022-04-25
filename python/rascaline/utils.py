@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import ctypes
 
 from ._rascaline import RASCAL_BUFFER_SIZE_ERROR

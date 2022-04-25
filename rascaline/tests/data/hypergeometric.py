@@ -1,7 +1,6 @@
-import numpy as np
 import mpmath as math
-
-from save_data import save_numpy_array, save_json
+import numpy as np
+from save_data import save_json, save_numpy_array
 
 
 def gto_gaussian_constants(max_radial, cutoff=3.333333):

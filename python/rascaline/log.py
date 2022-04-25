@@ -1,9 +1,15 @@
 import logging
 import warnings
 
-from ._rascaline import RASCAL_LOG_LEVEL_ERROR, RASCAL_LOG_LEVEL_WARN
-from ._rascaline import RASCAL_LOG_LEVEL_INFO, RASCAL_LOG_LEVEL_DEBUG
-from ._rascaline import RASCAL_LOG_LEVEL_TRACE, rascal_logging_callback_t
+from ._rascaline import (
+    RASCAL_LOG_LEVEL_DEBUG,
+    RASCAL_LOG_LEVEL_ERROR,
+    RASCAL_LOG_LEVEL_INFO,
+    RASCAL_LOG_LEVEL_TRACE,
+    RASCAL_LOG_LEVEL_WARN,
+    rascal_logging_callback_t,
+    )
+
 
 _CURRENT_CALLBACK = None
 

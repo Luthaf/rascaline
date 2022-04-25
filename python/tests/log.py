@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 import unittest
 
-from rascaline.calculators import DummyCalculator
+from test_systems import TestSystem
 
 from rascaline import set_logging_callback
-from rascaline.log import default_logging_callback
-from rascaline.log import RASCAL_LOG_LEVEL_INFO, RASCAL_LOG_LEVEL_WARN
-
-from test_systems import TestSystem
+from rascaline.calculators import DummyCalculator
+from rascaline.log import (
+    RASCAL_LOG_LEVEL_INFO,
+    RASCAL_LOG_LEVEL_WARN,
+    default_logging_callback,
+    )
 
 
 class TestLogging(unittest.TestCase):

@@ -1,10 +1,9 @@
-import os
 import json
+import os
 
-from docutils.parsers.rst import Directive
-from docutils import nodes
 import myst_parser.main
-
+from docutils import nodes
+from docutils.parsers.rst import Directive
 from html_hidden import html_hidden
 
 

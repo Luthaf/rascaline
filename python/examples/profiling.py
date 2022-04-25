@@ -1,4 +1,6 @@
+"""Profiling of the Python API."""
 import sys
+
 import ase.io
 
 import rascaline
@@ -6,9 +8,9 @@ from rascaline import SoapPowerSpectrum
 
 
 def compute_soap(path):
-    """
-    Compute SOAP power spectrum, this is the same code as the 'compute-soap'
-    example
+    """Compute SOAP power spectrum.
+
+    This is the same code as the 'compute-soap' example
     """
     frames = ase.io.read(sys.argv[1], ":")
 

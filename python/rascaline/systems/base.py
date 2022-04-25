@@ -1,13 +1,16 @@
 # -*- coding: utf-8 -*-
-import numpy as np
+"""Base class for calculating features."""
 import ctypes
-from ctypes import POINTER, pointer, c_void_p, c_double
+from ctypes import POINTER, c_double, c_void_p, pointer
 
-from .._rascaline import rascal_system_t, rascal_pair_t, c_uintptr_t
+import numpy as np
+
+from .._rascaline import c_uintptr_t, rascal_pair_t, rascal_system_t
 from ..status import _save_exception
 
 
 def catch_exceptions(function):
+    """Decorate a function catching any exception."""
     def inner(*args, **kwargs):
         try:
             function(*args, **kwargs)
@@ -20,11 +23,12 @@ def catch_exceptions(function):
 
 
 class SystemBase:
-    """
-    Base class implementing the ``System`` trait in rascaline. Developers should
-    implement this class to add new kinds of system that work with rascaline.
+    """Base class implementing the ``System`` trait in rascaline.
 
-    Most users should use one of the already provided implementation, such as
+    Developers should implement this class to add new kinds of system that
+    work with rascaline.
+
+    Most users should use one of the already provided Implement, such as
     :py:class:`rascaline.systems.AseSystem` or
     :py:class:`rascaline.systems.ChemfilesSystem` instead of using this class
     directly.
@@ -36,27 +40,28 @@ class SystemBase:
         self._keepalive = {}
 
     def _as_rascal_system_t(self):
-        """
-        Convert a child instance of :py:class:`SystemBase` to a C compatible
-        ``rascal_system_t``.
+        """Convert a child instance of :py:class:`SystemBase`.
+
+        Instances are converted to a C compatible ``rascal_system_t``.
         """
         struct = rascal_system_t()
         self._keepalive["c_struct"] = struct
 
         # user_data is a pointer to the PyObject `self`
-        struct.user_data = ctypes.cast(pointer(ctypes.py_object(self)), c_void_p)
+        struct.user_data = ctypes.cast(pointer(ctypes.py_object(self)),
+                                       c_void_p)
 
         def get_self(ptr):
-            """Extract ``self`` from a pointer to the PyObject"""
+            """Extract ``self`` from a pointer to the PyObject."""
             self = ctypes.cast(ptr, POINTER(ctypes.py_object)).contents.value
             assert isinstance(self, SystemBase)
             return self
 
         @catch_exceptions
         def rascal_system_size(user_data, size):
-            """
-            Implementation of ``rascal_system_t::size`` using
-            :py:func:`SystemBase.size`.
+            """Implement ``rascal_system_t::size``.
+
+            Uses :py:func:`SystemBase.size`.
             """
             size[0] = get_self(user_data).size()
 
@@ -65,9 +70,9 @@ class SystemBase:
 
         @catch_exceptions
         def rascal_system_species(user_data, data):
-            """
-            Implementation of ``rascal_system_t::species`` using
-            :py:func:`SystemBase.species`.
+            """Implement ``rascal_system_t::species``.
+
+            Uses :py:func:`SystemBase.species`.
             """
             self = get_self(user_data)
 
@@ -79,9 +84,9 @@ class SystemBase:
 
         @catch_exceptions
         def rascal_system_positions(user_data, data):
-            """
-            Implementation of ``rascal_system_t::positions`` using
-            :py:func:`SystemBase.positions`.
+            """Implement ``rascal_system_t::positions``.
+
+            Uses :py:func:`SystemBase.positions`.
             """
             self = get_self(user_data)
             positions = np.array(self.positions(), dtype=c_double)
@@ -96,9 +101,9 @@ class SystemBase:
 
         @catch_exceptions
         def rascal_system_cell(user_data, data):
-            """
-            Implementation of ``rascal_system_t::cell`` using
-            :py:func:`SystemBase.cell`.
+            """Implement ``rascal_system_t::cell``.
+
+            Uses :py:func:`SystemBase.cell`.
             """
             self = get_self(user_data)
             cell = np.array(self.cell(), dtype=c_double)
@@ -118,9 +123,9 @@ class SystemBase:
 
         @catch_exceptions
         def rascal_system_compute_neighbors(user_data, cutoff):
-            """
-            Implementation of ``rascal_system_t::compute_neighbors`` using
-            :py:func:`SystemBase.compute_neighbors`.
+            """Implement ``rascal_system_t::compute_neighbors``.
+
+            Uses :py:func:`SystemBase.compute_neighbors`.
             """
             self = get_self(user_data)
             self.compute_neighbors(cutoff)
@@ -131,9 +136,9 @@ class SystemBase:
 
         @catch_exceptions
         def rascal_system_pairs(user_data, data, count):
-            """
-            Implementation of ``rascal_system_t::pairs`` using
-            :py:func:`SystemBase.pairs`.
+            """Implement ``rascal_system_t::pairs``.
+
+            Uses :py:func:`SystemBase.pairs`.
             """
             self = get_self(user_data)
 
@@ -147,13 +152,14 @@ class SystemBase:
 
         @catch_exceptions
         def rascal_system_pairs_containing(user_data, center, data, count):
-            """
-            Implementation of ``rascal_system_t::pairs_containing`` using
-            :py:func:`SystemBase.pairs_containing`.
+            """Implement ``rascal_system_t::pairs_containing``.
+
+            Uses :py:func:`SystemBase.pairs_containing`.
             """
             self = get_self(user_data)
 
-            pairs = np.array(self.pairs_containing(center), dtype=rascal_pair_t)
+            pairs = np.array(self.pairs_containing(center),
+                             dtype=rascal_pair_t)
 
             count[0] = c_uintptr_t(len(pairs))
             data[0] = pairs.ctypes.data
@@ -166,51 +172,52 @@ class SystemBase:
         return struct
 
     def size(self):
-        """
-        Get the number of atoms in this system as an integer
-        """
+        """Get the number of atoms in this system as an integer."""
         raise NotImplementedError("System.size method is not implemented")
 
     def species(self):
-        """
-        Get a list of integers or a 1D numpy array of integers containing the
-        atomic species for each atom in the system. Each different atomic
-        species should be identified with a different value. These values are
-        usually the atomic number, but don't have to be.
+        """Get a list of integers or a 1D numpy array of integers.
+
+        List contains the atomic species for each atom in the system.
+        Each different atomic species should be identified with a different
+        value. These values are usually the atomic number, but don't
+        have to be.
         """
         raise NotImplementedError("System.species method is not implemented")
 
     def positions(self):
-        """
-        Get the cartesian position of all atoms in this system. The returned
-        positions must be convertible to a numpy array of shape ``(self.size(),
-        3)``.
+        """Get the cartesian position of all atoms in this system.
+
+        The returned positions must be convertible to a numpy array of
+        shape ``(self.size(), 3)``.
         """
         raise NotImplementedError("System.positions method is not implemented")
 
     def cell(self):
-        """
-        Get the 3x3 matrix representing unit cell of the system. The cell should
-        be written in row major order, i.e. `[[ax, ay, az], [bx, by, bz], [cx,
-        cy, cz]]`, where a/b/c are the unit cell vectors.
+        """Get the 3x3 matrix representing unit cell of the system.
+
+        The cell should be written in row major order, i.e. `[[ax, ay, az],
+        [bx, by, bz], [cx, cy, cz]]`, where a/b/c are the unit cell vectors.
         """
         raise NotImplementedError("System.cell method is not implemented")
 
     def compute_neighbors(self, cutoff):
+        """Compute the neighbor list with the given ``cutoff``.
+
+        Store it for later access using :py:func:`rascaline.SystemBase.pairs`
+        or :py:func:`rascaline.SystemBase.pairs_containing`.
         """
-        Compute the neighbor list with the given ``cutoff``, and store it for
-        later access using :py:func:`rascaline.SystemBase.pairs` or
-        :py:func:`rascaline.SystemBase.pairs_containing`.
-        """
-        raise NotImplementedError("System.compute_neighbors method is not implemented")
+        raise NotImplementedError("System.compute_neighbors method is not "
+                                  "implemented")
 
     def pairs(self):
-        """
+        """Get tuples of neighbor.
+
         Get all neighbor pairs in this system as a list of tuples ``(int, int,
         float, (float, float, float))`` containing the indexes of the first and
-        second atom in the pair, the distance between the atoms, and the wrapped
-        between them. Alternatively, this function can return a numpy array with
-        ``dtype=rascal_pair_t``.
+        second atom in the pair, the distance between the atoms, and the
+        wrapped between them. Alternatively, this function can return a numpy
+        array with ``dtype=rascal_pair_t``.
 
         The list of pair should only contain each pair once (and not twice as
         ``i-j`` and ``j-i``), should not contain self pairs (``i-i``); and
@@ -224,13 +231,12 @@ class SystemBase:
         raise NotImplementedError("System.pairs method is not implemented")
 
     def pairs_containing(self, center):
-        """
-        Get all neighbor pairs in this system containing the atom with index
-        ``center``.
+        """Get tuples of neighbor with index index ``center``.
 
         The same restrictions on the list of pairs as
         :py:func:`rascaline.SystemBase.pairs` applies, with the additional
         condition that the pair ``i-j`` should be included both in the list
         returned by ``pairs_containing(i)`` and ``pairs_containing(j)``.
         """
-        raise NotImplementedError("System.pairs_containing method is not implemented")
+        raise NotImplementedError("System.pairs_containing method is not "
+                                  "implemented")

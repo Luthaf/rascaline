@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 import unittest
+
 import numpy as np
+from test_systems import EmptySystem, TestSystem
 
 from rascaline import Descriptor, RascalError
 from rascaline.calculators import DummyCalculator
-
-from test_systems import TestSystem, EmptySystem
 
 
 class TestEmptyDescriptor(unittest.TestCase):

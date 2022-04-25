@@ -1,21 +1,20 @@
 # -*- coding: utf-8 -*-
-from .status import RascalError  # noqa
-from .log import set_logging_callback  # noqa
-from .profiling import Profiler  # noqa
-
-from .descriptor import Descriptor, Indexes  # noqa
-
-from .systems import SystemBase  # noqa
-
-from .calculators import CalculatorBase  # noqa
-from .calculators import SortedDistances  # noqa
-from .calculators import SphericalExpansion  # noqa
-from .calculators import SoapPowerSpectrum  # noqa
+import os
 
 # Get the __version__ attribute from setuptools metadata (which took it from
 # Cargo.toml) cf https://stackoverflow.com/a/17638236/4692076
-from pkg_resources import get_distribution, DistributionNotFound
-import os
+from pkg_resources import DistributionNotFound, get_distribution
+
+from .calculators import CalculatorBase  # noqa
+from .calculators import SoapPowerSpectrum  # noqa
+from .calculators import SortedDistances  # noqa
+from .calculators import SphericalExpansion  # noqa
+from .descriptor import Descriptor, Indexes  # noqa
+from .log import set_logging_callback  # noqa
+from .profiling import Profiler  # noqa
+from .status import RascalError  # noqa
+from .systems import SystemBase  # noqa
+
 
 try:
     dist = get_distribution("rascaline")

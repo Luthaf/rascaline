@@ -1,10 +1,18 @@
-import os
-import sys
-import subprocess
+"""Setuptools-based setup script for rascaline.
 
-from setuptools import setup, Extension
-from wheel.bdist_wheel import bdist_wheel
+For a basic installation just type the command::
+
+  python setup.py install
+
+"""
+import os
+import subprocess
+import sys
 from distutils.command.build_ext import build_ext  # type: ignore
+
+from setuptools import Extension, setup
+from wheel.bdist_wheel import bdist_wheel
+
 
 ROOT = os.path.realpath(os.path.dirname(__file__))
 
@@ -21,24 +29,28 @@ if RASCALINE_BUILD_TYPE not in ["debug", "release"]:
 
 
 class universal_wheel(bdist_wheel):
-    # When building the wheel, the `wheel` package assumes that if we have a
-    # binary extension then we are linking to `libpython.so`; and thus the wheel
-    # is only usable with a single python version. This is not the case for
-    # here, and the wheel will be compatible with any Python >=3.6. This is
-    # tracked in https://github.com/pypa/wheel/issues/185, but until then we
-    # manually override the wheel tag.
+    """Helper class for override wheel tag.
+
+    When building the wheel, the `wheel` package assumes that if we have a
+    binary extension then we are linking to `libpython.so`; and thus the wheel
+    is only usable with a single python version. This is not the case for
+    here, and the wheel will be compatible with any Python >=3.6. This is
+    tracked in https://github.com/pypa/wheel/issues/185, but until then we
+    manually override the wheel tag.
+    """
+
     def get_tag(self):
+        """Get the tag for override."""
         tag = bdist_wheel.get_tag(self)
         # tag[2:] contains the os/arch tags, we want to keep them
         return ("py3", "none") + tag[2:]
 
 
 class cmake_ext(build_ext):
-    """
-    Build the native library using cmake
-    """
+    """Build the native library using cmake."""
 
     def run(self):
+        """Run cmake build."""
         source_dir = os.path.join(ROOT, "rascaline-c-api")
         build_dir = os.path.join(ROOT, "build", "cmake-build")
         install_dir = os.path.join(os.path.realpath(self.build_lib), "rascaline")

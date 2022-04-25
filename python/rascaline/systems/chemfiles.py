@@ -1,5 +1,7 @@
 import warnings
+
 import numpy as np
+
 
 try:
     import chemfiles
@@ -15,8 +17,8 @@ try:
 except ImportError:
     HAVE_CHEMFILES = False
 
-from .base import SystemBase
 from .._rascaline import c_uintptr_t
+from .base import SystemBase
 
 
 # global cache of species number for atoms outside of the periodic table

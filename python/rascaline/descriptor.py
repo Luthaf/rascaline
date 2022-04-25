@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
+from ctypes import ARRAY, POINTER, c_char_p, c_double, c_int32, pointer
+
 import numpy as np
-from ctypes import c_double, c_int32, c_char_p, pointer, POINTER, ARRAY
 
 from ._rascaline import (
     c_uintptr_t,
     rascal_densified_position_t,
-    rascal_indexes_t,
     rascal_indexes_kind,
-)
+    rascal_indexes_t,
+    )
 from .clib import _get_library
 from .status import _check_rascal_pointer
 

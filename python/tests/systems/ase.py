@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 import unittest
+
 import numpy as np
 
-from rascaline.systems import AseSystem, HAVE_ASE
+from rascaline.systems import HAVE_ASE, AseSystem
+
 
 try:
     import ase

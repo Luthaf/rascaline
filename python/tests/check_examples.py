@@ -1,6 +1,7 @@
 import os
 import sys
 
+
 EXAMPLES_SCRIPTS_PATH = os.path.realpath(
     os.path.join(os.path.dirname(__file__), "..", "examples")
 )

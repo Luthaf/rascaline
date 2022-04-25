@@ -1,11 +1,15 @@
 # -*- coding: utf-8 -*-
-import json
 import ctypes
+import json
 
-from ._rascaline import rascal_system_t, rascal_calculation_options_t, c_uintptr_t
+from ._rascaline import (
+    c_uintptr_t,
+    rascal_calculation_options_t,
+    rascal_system_t,
+    )
 from .clib import _get_library
-from .status import _check_rascal_pointer
 from .descriptor import Descriptor, Indexes
+from .status import _check_rascal_pointer
 from .systems import wrap_system
 from .utils import _call_with_growing_buffer
 
