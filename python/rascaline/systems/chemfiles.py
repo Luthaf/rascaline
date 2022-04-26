@@ -1,3 +1,4 @@
+"""Base class System implementation for chemfiles."""
 import warnings
 
 import numpy as np
@@ -9,7 +10,7 @@ try:
     if not chemfiles.__version__.startswith("0.10"):
         warnings.warn(
             "found chemfiles, but the version is not supported: "
-            + "we need chemfiles v0.10."
+            "we need chemfiles v0.10."
         )
         HAVE_CHEMFILES = False
     else:
@@ -26,10 +27,7 @@ SPECIES_CACHE = {}
 
 
 def get_species_for_non_element(name):
-    """
-    Get a species number to associate with an atom which is not inside the
-    periodic table.
-    """
+    """Get species number associated with atom that is not in the periodic table."""
     if name in SPECIES_CACHE:
         return SPECIES_CACHE[name]
     else:
@@ -40,15 +38,18 @@ def get_species_for_non_element(name):
 
 
 class ChemfilesSystem(SystemBase):
-    """
-    This class implements :py:class:`rascaline.SystemBase` wrapping a
-    `chemfiles.Frame`_. Since chemfiles does not offer a neighbors list, this
+    """Implements :py:class:`rascaline.SystemBase` wrapping a `chemfiles.Frame`_.
+
+    Since chemfiles does not offer a neighbors list, this
     implementation of system can only be used with ``use_native_system=True`` in
     :py:func:`rascaline.calculators.CalculatorBase.compute`.
 
     Atomic species are assigned as the atomic number if the atom ``type`` is one
     of the periodic table elements; or as a value above 120 if the atom type is
     not in the periodic table.
+
+    :param frame : `chemfiles.Frame`_ object object to be wrapped
+        in this ``ChemfilesSystem``
 
     .. _chemfiles.Frame: http://chemfiles.org/chemfiles.py/latest/reference/frame.html
     """
@@ -58,11 +59,6 @@ class ChemfilesSystem(SystemBase):
         return isinstance(o, chemfiles.Frame)
 
     def __init__(self, frame):
-        """
-        :param frame: `chemfiles.Frame`_ object to be wrapped in this
-            ``ChemfilesSystem``
-
-        """
         super().__init__()
         if not isinstance(frame, chemfiles.Frame):
             raise Exception("this class expects chemfiles.Frame objects")

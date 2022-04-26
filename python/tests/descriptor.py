@@ -2,10 +2,11 @@
 import unittest
 
 import numpy as np
-from test_systems import EmptySystem, TestSystem
 
 from rascaline import Descriptor, RascalError
 from rascaline.calculators import DummyCalculator
+
+from .test_systems import EmptySystem, TestSystem
 
 
 class TestEmptyDescriptor(unittest.TestCase):
@@ -193,7 +194,7 @@ class TestDummyDescriptor(unittest.TestCase):
         self.assertEqual(
             str(cm.exception),
             "invalid parameter: can not densify along 'not there' which is not "
-            + "present in the samples: [structure, center]",
+            "present in the samples: [structure, center]",
         )
 
         descriptor = compute_descriptor()

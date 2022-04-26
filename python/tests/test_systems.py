@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Implementation of very basis systems for tests
-"""
+"""Implementation of very basis systems for tests."""
 
 from rascaline import SystemBase
 

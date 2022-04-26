@@ -8,15 +8,13 @@ from ._rascaline import (
     rascal_densified_position_t,
     rascal_indexes_kind,
     rascal_indexes_t,
-    )
+)
 from .clib import _get_library
 from .status import _check_rascal_pointer
 
 
 class Indexes(np.ndarray):
-    """
-    This is a small wrapper around ``numpy.ndarray`` that adds a ``names``
-    attribute containing the names of the indexes.
+    """Wrapper for ``numpy.ndarray`` adding ``names`` attribute containing indices names.
 
     .. py:attribute:: name
         :type: Tuple[str]
@@ -53,8 +51,7 @@ class Indexes(np.ndarray):
 
 
 class Descriptor:
-    """
-    Descriptors store the result of a single calculation on a set of systems.
+    """Descriptors store the result of a single calculation on a set of systems.
 
     They contains the values produced by the calculation; as well as metdata to
     interpret these values. In particular, it contains two additional named
@@ -81,9 +78,9 @@ class Descriptor:
 
     @property
     def values(self):
-        """
-        The values stored in this descriptor by a calculator, as a **read only**
-        2D numpy ndarray with ``dtype=np.float64``.
+        """The values stored in this descriptor by a calculator.
+
+        Values are stored as a **read only** 2D numpy ndarray with ``dtype=np.float64``.
         """
         samples = c_uintptr_t()
         features = c_uintptr_t()
@@ -98,10 +95,10 @@ class Descriptor:
 
     @property
     def gradients(self):
-        """
-        The gradients stored in this descriptor by a calculator, as a **read
-        only** 2D numpy ndarray with ``dtype=np.float64``, or ``None`` if no
-        value was stored.
+        """The gradients stored in this descriptor by a calculator.
+
+        Gradients are stored as a **read only** 2D numpy ndarray
+        with ``dtype=np.float64``, or ``None`` if no value was stored.
         """
         samples = c_uintptr_t()
         features = c_uintptr_t()
@@ -131,10 +128,11 @@ class Descriptor:
 
     @property
     def samples(self):
-        """
+        """Sample metadata.
+
         Metdata describing the samples/rows in :py:attr:`Descriptor.values`.
 
-        This is stored as a :py:class:`rascaline.descriptor.Indexes` wrapping a
+        The data is stored as a :py:class:`rascaline.descriptor.Indexes` wrapping a
         **read only** 2D numpy ndarray with ``dtype=np.float64``. Each column of
         the array is named, and the names are available in ``Indexes.names``.
         """
@@ -142,11 +140,12 @@ class Descriptor:
 
     @property
     def features(self):
-        """
-        Metdata describing the features/columns in :py:attr:`Descriptor.values`
+        """Feature metdata.
+
+        Metdata describing the features/columns :py:attr:`Descriptor.values`
         and :py:attr:`Descriptor.gradients`.
 
-        This is stored as a :py:class:`rascaline.descriptor.Indexes` wrapping a
+        The data is stored as a :py:class:`rascaline.descriptor.Indexes` wrapping a
         **read only** 2D numpy ndarray with ``dtype=np.float64``. Each column of
         the array is named, and the names are available in ``Indexes.names``.
         """
@@ -154,21 +153,21 @@ class Descriptor:
 
     @property
     def gradients_samples(self):
-        """
+        """Gradient sample metadata.
+
         Metdata describing the rows in :py:attr:`Descriptor.gradients`.
 
         If there are no gradients stored in this descriptor,
         ``gradients_samples`` is ``None``.
 
-        This is stored as a :py:class:`rascaline.descriptor.Indexes` wrapping a
+        The data is stored as a :py:class:`rascaline.descriptor.Indexes` wrapping a
         **read only** 2D numpy ndarray with ``dtype=np.float64``. Each column of
         the array is named, and the names are available in ``Indexes.names``.
         """
         return self._indexes(rascal_indexes_kind.RASCAL_INDEXES_GRADIENT_SAMPLES)
 
     def densify(self, variables, requested=None):
-        """
-        Make this descriptor dense along the given ``variables``.
+        """Make this descriptor dense along the given ``variables``.
 
         :param variables: names of the variables to move
         :type variables: str | list[str]
@@ -246,7 +245,8 @@ class Descriptor:
         )
 
     def densify_values(self, variables, requested=None):
-        """
+        """Densifiy descriptor values.
+
         Make this descriptor dense along the given ``variables``, only modifying
         the values array, and not the gradients array.
 
@@ -314,7 +314,7 @@ def _densify_prepare_requested_features(variables, requested):
         if len(requested.shape) != 2 or requested.shape[1] != len(variables):
             raise ValueError(
                 "invalid requested features array shape: expected "
-                + f"(N, {len(variables)}); got {requested.shape}"
+                f"(N, {len(variables)}); got {requested.shape}"
             )
 
         if not np.can_cast(requested, np.int32, casting="same_kind"):

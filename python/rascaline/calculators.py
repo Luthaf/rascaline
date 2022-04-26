@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+"""Calculator classes."""
 import ctypes
 import json
 
@@ -99,7 +100,7 @@ class CalculatorBase:
 
     @property
     def name(self):
-        """The name of this calculator"""
+        """The name of this calculator."""
         return _call_with_growing_buffer(
             lambda buffer, bufflen: self._lib.rascal_calculator_name(
                 self, buffer, bufflen
@@ -108,12 +109,12 @@ class CalculatorBase:
 
     @property
     def c_name(self):
-        """The name used to register & create this calculator"""
+        """The name used to register & create this calculator."""
         return self._c_name
 
     @property
     def parameters(self):
-        """The parameters (formatted as JSON) used to create this calculator"""
+        """The parameters (formatted as JSON) used to create this calculator."""
         return _call_with_growing_buffer(
             lambda buffer, bufflen: self._lib.rascal_calculator_parameters(
                 self, buffer, bufflen
@@ -121,8 +122,7 @@ class CalculatorBase:
         )
 
     def features_count(self):
-        """
-        Get the default number of features this calculator will produce.
+        """Get the default number of features this calculator will produce.
 
         This number corresponds to the size of second dimension of the
         ``values`` and ``gradients`` arrays of the
@@ -141,8 +141,9 @@ class CalculatorBase:
         selected_samples=None,
         selected_features=None,
     ):
-        """
-        Run a calculation with this calculator on the given ``systems``, storing
+        """Compute features and gradients.
+
+        Runs a calculation with this calculator on the given ``systems``, storing
         the resulting data in the ``descriptor``.
 
         :param systems: single system or list of systems on which to run the
@@ -193,7 +194,6 @@ class CalculatorBase:
         :return: the ``descriptor`` parameter or the new new descriptor if
                  ``descriptor`` was ``None``.
         """
-
         if descriptor is None:
             descriptor = Descriptor()
 
@@ -224,8 +224,7 @@ class DummyCalculator(CalculatorBase):
 
 
 class SortedDistances(CalculatorBase):
-    """
-    Sorted distances vector representation of an atomic environment.
+    """Sorted distances vector representation of an atomic environment.
 
     Each atomic center is represented by a vector of distance to its neighbors
     within the spherical ``cutoff``, sorted from smallest to largest. If there
@@ -245,9 +244,10 @@ class SortedDistances(CalculatorBase):
 
 
 class SphericalExpansion(CalculatorBase):
-    """
+    """Spherical expansion of Smooth Overlap of Atomic Positions (SOAP).
+
     The spherical expansion is at the core of representations in the SOAP
-    (Smooth Overlap of Atomic Positions) family of descriptors. The spherical
+    family of descriptors. The spherical
     expansion represent atomic density as a collection of gaussian functions
     centered on each atom, and then represent the local density around each atom
     (up to a cutoff) on a basis of radial functions and spherical harmonics.
@@ -291,9 +291,10 @@ class SphericalExpansion(CalculatorBase):
 
 
 class SoapPowerSpectrum(CalculatorBase):
-    """
-    The SOAP power spectrum is the main member of the SOAP (Smooth Overlap of
-    Atomic Positions) family of descriptors. The power spectrum is based on the
+    """Power spectrumm of Smooth Overlap of Atomic Positions (SOAP).
+
+    The SOAP power spectrum is the main member of the SOAP
+    family of descriptors. The power spectrum is based on the
     :py:class:`SphericalExpansion` coefficients, which are combined to create a
     rotationally invariant three-body descriptor.
 

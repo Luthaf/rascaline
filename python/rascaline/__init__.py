@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+
 from pkg_resources import DistributionNotFound, get_distribution
 
 from .calculators import CalculatorBase  # noqa
@@ -11,6 +12,7 @@ from .log import set_logging_callback  # noqa
 from .profiling import Profiler  # noqa
 from .status import RascalError  # noqa
 from .systems import SystemBase  # noqa
+
 
 # Get the __version__ attribute from setuptools metadata (which took it from
 # Cargo.toml) cf https://stackoverflow.com/a/17638236/4692076

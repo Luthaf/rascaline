@@ -9,7 +9,7 @@ from rascaline.log import (
     RASCAL_LOG_LEVEL_INFO,
     RASCAL_LOG_LEVEL_WARN,
     default_logging_callback,
-    )
+)
 
 
 class TestLogging(unittest.TestCase):

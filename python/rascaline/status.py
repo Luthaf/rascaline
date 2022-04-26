@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+"""Check status of rascaline."""
 from ._rascaline import RASCAL_SUCCESS
 from .clib import _get_library
 
