@@ -6,6 +6,9 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
+[tool.black]
+exclude = ["_rascaline.py"]
+
 [tool.isort]
 profile = "black"
 line_length = 88

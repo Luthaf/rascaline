@@ -234,9 +234,7 @@ def generate_declarations():
     with open(outpath, "w") as file:
         file.write(
             """# -*- coding: utf-8 -*-
-'''
-Automatically-generated file, do not edit!!!
-'''
+'''Automatically-generated file, do not edit!!!'''
 # flake8: noqa
 
 import ctypes
