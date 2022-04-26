@@ -8,7 +8,7 @@ def wrap_system(system):
     """Wrap different systems implementation into the right class.
 
     This function is automatically called on all systems passed to
-    :py:func:`rascaline.calculators.CalculatorBase.compute`. The function
+    :py:func:`rascaline.calculators.CalculatorBase.compute`. This function
     make different systems compatible with rascaline.
     The following system types are supported:
 
