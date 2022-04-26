@@ -240,7 +240,8 @@ def generate_declarations():
 import ctypes
 import enum
 import platform
-from ctypes import POINTER, CFUNCTYPE
+from ctypes import CFUNCTYPE, POINTER
+
 from numpy.ctypeslib import ndpointer
 
 
