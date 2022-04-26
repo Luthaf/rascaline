@@ -15,7 +15,7 @@ _CURRENT_CALLBACK = None
 
 
 def default_logging_callback(level, message):
-    """Default callback function, to redirect message to the ``logging`` module."""
+    """Redirect message to the ``logging`` module."""
     if level == RASCAL_LOG_LEVEL_ERROR:
         logging.error(message)
     elif level == RASCAL_LOG_LEVEL_WARN:
@@ -44,7 +44,7 @@ def set_logging_callback(function):
 
 
 def _set_logging_callback_impl(library, function):
-    """Logging callback implementation.
+    """Log a callback.
 
     Implementation of :py:func:`set_logging_callback` getting the instance of
     :py:class:`ctypes.CDLL` for ``librascaline`` as a parameter.

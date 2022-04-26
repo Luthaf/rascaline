@@ -78,9 +78,10 @@ class Descriptor:
 
     @property
     def values(self):
-        """The values stored in this descriptor by a calculator.
+        """Values stored in this descriptor by a calculator.
 
-        Values are stored as a **read only** 2D numpy ndarray with ``dtype=np.float64``.
+        The values are stored as a **read only** 2D numpy ndarray with
+        ``dtype=np.float64``.
         """
         samples = c_uintptr_t()
         features = c_uintptr_t()
@@ -95,9 +96,9 @@ class Descriptor:
 
     @property
     def gradients(self):
-        """The gradients stored in this descriptor by a calculator.
+        """Gradients stored in this descriptor by a calculator.
 
-        Gradients are stored as a **read only** 2D numpy ndarray
+        The gradients are stored as a **read only** 2D numpy ndarray
         with ``dtype=np.float64``, or ``None`` if no value was stored.
         """
         samples = c_uintptr_t()
@@ -140,7 +141,7 @@ class Descriptor:
 
     @property
     def features(self):
-        """Feature metdata.
+        """Feature metadata.
 
         Metdata describing the features/columns :py:attr:`Descriptor.values`
         and :py:attr:`Descriptor.gradients`.

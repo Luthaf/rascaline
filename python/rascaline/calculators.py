@@ -99,7 +99,7 @@ class CalculatorBase:
 
     @property
     def name(self):
-        """The name of this calculator."""
+        """Name of this calculator."""
         return _call_with_growing_buffer(
             lambda buffer, bufflen: self._lib.rascal_calculator_name(
                 self, buffer, bufflen
@@ -108,12 +108,12 @@ class CalculatorBase:
 
     @property
     def c_name(self):
-        """The name used to register & create this calculator."""
+        """Name used to register & create this calculator."""
         return self._c_name
 
     @property
     def parameters(self):
-        """The parameters (formatted as JSON) used to create this calculator."""
+        """Parameters (formatted as JSON) used to create this calculator."""
         return _call_with_growing_buffer(
             lambda buffer, bufflen: self._lib.rascal_calculator_parameters(
                 self, buffer, bufflen
