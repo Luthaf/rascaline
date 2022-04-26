@@ -3,9 +3,10 @@ import os
 import ase
 import numpy as np
 from ase import io  # noqa
-from save_data import save_calculator_input, save_numpy_array
 
 from rascaline import SphericalExpansion
+
+from save_data import save_calculator_input, save_numpy_array
 
 
 # structure without periodic boundary condition

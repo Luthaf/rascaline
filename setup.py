@@ -1,10 +1,3 @@
-"""Setuptools-based setup script for rascaline.
-
-For a basic installation just type the command::
-
-  python setup.py install
-
-"""
 import os
 import subprocess
 import sys

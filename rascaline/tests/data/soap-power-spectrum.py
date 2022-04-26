@@ -1,8 +1,9 @@
 import ase
 import numpy as np
-from save_data import save_calculator_input, save_numpy_array
 
 from rascaline import SoapPowerSpectrum
+
+from save_data import save_calculator_input, save_numpy_array
 
 
 frame = ase.Atoms(
