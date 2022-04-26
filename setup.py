@@ -50,7 +50,7 @@ class cmake_ext(build_ext):
     """Build the native library using cmake."""
 
     def run(self):
-        """Run cmake build."""
+        """Run cmake build and install the resulting library"""
         source_dir = os.path.join(ROOT, "rascaline-c-api")
         build_dir = os.path.join(ROOT, "build", "cmake-build")
         install_dir = os.path.join(os.path.realpath(self.build_lib), "rascaline")
