@@ -5,6 +5,7 @@ name: Lint
 
 on:
   pull_request:
+    # Only check PRs to master
     branches: [master]
 
 jobs:
