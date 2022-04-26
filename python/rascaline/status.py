@@ -4,7 +4,7 @@ from .clib import _get_library
 
 
 class RascalError(Exception):
-    """Throw exceptions for all errors in rascaline."""
+    """Exceptions thrown for all errors in rascaline."""
 
     def __init__(self, message, status=None):
         super(Exception, self).__init__(message)

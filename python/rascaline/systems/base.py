@@ -174,12 +174,12 @@ class SystemBase:
         raise NotImplementedError("System.size method is not implemented")
 
     def species(self):
-        """Get a list of integers or a 1D numpy array of integers.
-
-        List contains the atomic species for each atom in the system.
-        Each different atomic species should be identified with a different
-        value. These values are usually the atomic number, but don't
-        have to be.
+        """
+        Get a list of integers or a 1D numpy array of integers containing the atomic 
+        species for each atom in the system.
+        
+        Each different atomic species should be identified with a different value. 
+        These values are usually the atomic number, but don't have to be.
         """
         raise NotImplementedError("System.species method is not implemented")
 
@@ -210,7 +210,7 @@ class SystemBase:
         )
 
     def pairs(self):
-        """Get tuples of neighbor.
+        """Get the pairs of atoms in this system, as computed by the last call :py:func:`SystemBase.compute_neighbors` 
 
         Get all neighbor pairs in this system as a list of tuples ``(int, int,
         float, (float, float, float))`` containing the indexes of the first and
