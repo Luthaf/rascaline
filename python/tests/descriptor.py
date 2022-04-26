@@ -6,7 +6,7 @@ import numpy as np
 from rascaline import Descriptor, RascalError
 from rascaline.calculators import DummyCalculator
 
-from .test_systems import EmptySystem, TestSystem
+from test_systems import EmptySystem, TestSystem
 
 
 class TestEmptyDescriptor(unittest.TestCase):

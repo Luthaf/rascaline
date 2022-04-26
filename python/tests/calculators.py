@@ -2,10 +2,11 @@
 import unittest
 
 import numpy as np
-from test_systems import TestSystem
 
 from rascaline import Indexes, RascalError, SortedDistances
 from rascaline.calculators import DummyCalculator
+
+from test_systems import TestSystem
 
 
 class TestDummyCalculator(unittest.TestCase):

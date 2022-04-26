@@ -1,4 +1,3 @@
-"""Base class System implementation for chemfiles."""
 import warnings
 
 import numpy as np

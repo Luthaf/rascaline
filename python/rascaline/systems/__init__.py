@@ -1,4 +1,3 @@
-"""init file for systems."""
 from .ase import HAVE_ASE, AseSystem
 from .base import SystemBase
 from .chemfiles import HAVE_CHEMFILES, ChemfilesSystem

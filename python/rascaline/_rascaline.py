@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-'''
+"""
 Automatically-generated file, do not edit!!!
-'''
+"""
 # flake8: noqa
 
 import ctypes
@@ -64,12 +64,46 @@ class rascal_system_t(ctypes.Structure):
     _fields_ = [
         ("user_data", ctypes.c_void_p),
         ("size", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, POINTER(c_uintptr_t))),
-        ("species", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, POINTER(ndpointer(ctypes.c_int32, flags='C_CONTIGUOUS')))),
-        ("positions", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, POINTER(ndpointer(ctypes.c_double, flags='C_CONTIGUOUS')))),
+        (
+            "species",
+            CFUNCTYPE(
+                rascal_status_t,
+                ctypes.c_void_p,
+                POINTER(ndpointer(ctypes.c_int32, flags="C_CONTIGUOUS")),
+            ),
+        ),
+        (
+            "positions",
+            CFUNCTYPE(
+                rascal_status_t,
+                ctypes.c_void_p,
+                POINTER(ndpointer(ctypes.c_double, flags="C_CONTIGUOUS")),
+            ),
+        ),
         ("cell", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, POINTER(ctypes.c_double))),
-        ("compute_neighbors", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, ctypes.c_double)),
-        ("pairs", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, POINTER(ndpointer(rascal_pair_t, flags='C_CONTIGUOUS')), POINTER(c_uintptr_t))),
-        ("pairs_containing", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, c_uintptr_t, POINTER(ndpointer(rascal_pair_t, flags='C_CONTIGUOUS')), POINTER(c_uintptr_t))),
+        (
+            "compute_neighbors",
+            CFUNCTYPE(rascal_status_t, ctypes.c_void_p, ctypes.c_double),
+        ),
+        (
+            "pairs",
+            CFUNCTYPE(
+                rascal_status_t,
+                ctypes.c_void_p,
+                POINTER(ndpointer(rascal_pair_t, flags="C_CONTIGUOUS")),
+                POINTER(c_uintptr_t),
+            ),
+        ),
+        (
+            "pairs_containing",
+            CFUNCTYPE(
+                rascal_status_t,
+                ctypes.c_void_p,
+                c_uintptr_t,
+                POINTER(ndpointer(rascal_pair_t, flags="C_CONTIGUOUS")),
+                POINTER(c_uintptr_t),
+            ),
+        ),
     ]
 
 
@@ -101,44 +135,33 @@ class rascal_calculation_options_t(ctypes.Structure):
 def setup_functions(lib):
     from .status import _check_rascal_status_t
 
-    lib.rascal_last_error.argtypes = [
-        
-    ]
+    lib.rascal_last_error.argtypes = []
     lib.rascal_last_error.restype = ctypes.c_char_p
 
-    lib.rascal_set_logging_callback.argtypes = [
-        rascal_logging_callback_t
-    ]
+    lib.rascal_set_logging_callback.argtypes = [rascal_logging_callback_t]
     lib.rascal_set_logging_callback.restype = _check_rascal_status_t
 
     lib.rascal_basic_systems_read.argtypes = [
         ctypes.c_char_p,
         POINTER(POINTER(rascal_system_t)),
-        POINTER(c_uintptr_t)
+        POINTER(c_uintptr_t),
     ]
     lib.rascal_basic_systems_read.restype = _check_rascal_status_t
 
-    lib.rascal_basic_systems_free.argtypes = [
-        POINTER(rascal_system_t),
-        c_uintptr_t
-    ]
+    lib.rascal_basic_systems_free.argtypes = [POINTER(rascal_system_t), c_uintptr_t]
     lib.rascal_basic_systems_free.restype = _check_rascal_status_t
 
-    lib.rascal_descriptor.argtypes = [
-        
-    ]
+    lib.rascal_descriptor.argtypes = []
     lib.rascal_descriptor.restype = POINTER(rascal_descriptor_t)
 
-    lib.rascal_descriptor_free.argtypes = [
-        POINTER(rascal_descriptor_t)
-    ]
+    lib.rascal_descriptor_free.argtypes = [POINTER(rascal_descriptor_t)]
     lib.rascal_descriptor_free.restype = _check_rascal_status_t
 
     lib.rascal_descriptor_values.argtypes = [
         POINTER(rascal_descriptor_t),
         POINTER(POINTER(ctypes.c_double)),
         POINTER(c_uintptr_t),
-        POINTER(c_uintptr_t)
+        POINTER(c_uintptr_t),
     ]
     lib.rascal_descriptor_values.restype = _check_rascal_status_t
 
@@ -146,14 +169,14 @@ def setup_functions(lib):
         POINTER(rascal_descriptor_t),
         POINTER(POINTER(ctypes.c_double)),
         POINTER(c_uintptr_t),
-        POINTER(c_uintptr_t)
+        POINTER(c_uintptr_t),
     ]
     lib.rascal_descriptor_gradients.restype = _check_rascal_status_t
 
     lib.rascal_descriptor_indexes.argtypes = [
         POINTER(rascal_descriptor_t),
         ctypes.c_int,
-        POINTER(rascal_indexes_t)
+        POINTER(rascal_indexes_t),
     ]
     lib.rascal_descriptor_indexes.restype = _check_rascal_status_t
 
@@ -162,7 +185,7 @@ def setup_functions(lib):
         POINTER(ctypes.c_char_p),
         c_uintptr_t,
         POINTER(ctypes.c_int32),
-        c_uintptr_t
+        c_uintptr_t,
     ]
     lib.rascal_descriptor_densify.restype = _check_rascal_status_t
 
@@ -173,38 +196,33 @@ def setup_functions(lib):
         POINTER(ctypes.c_int32),
         c_uintptr_t,
         POINTER(POINTER(rascal_densified_position_t)),
-        POINTER(c_uintptr_t)
+        POINTER(c_uintptr_t),
     ]
     lib.rascal_descriptor_densify_values.restype = _check_rascal_status_t
 
-    lib.rascal_calculator.argtypes = [
-        ctypes.c_char_p,
-        ctypes.c_char_p
-    ]
+    lib.rascal_calculator.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
     lib.rascal_calculator.restype = POINTER(rascal_calculator_t)
 
-    lib.rascal_calculator_free.argtypes = [
-        POINTER(rascal_calculator_t)
-    ]
+    lib.rascal_calculator_free.argtypes = [POINTER(rascal_calculator_t)]
     lib.rascal_calculator_free.restype = _check_rascal_status_t
 
     lib.rascal_calculator_name.argtypes = [
         POINTER(rascal_calculator_t),
         ctypes.c_char_p,
-        c_uintptr_t
+        c_uintptr_t,
     ]
     lib.rascal_calculator_name.restype = _check_rascal_status_t
 
     lib.rascal_calculator_parameters.argtypes = [
         POINTER(rascal_calculator_t),
         ctypes.c_char_p,
-        c_uintptr_t
+        c_uintptr_t,
     ]
     lib.rascal_calculator_parameters.restype = _check_rascal_status_t
 
     lib.rascal_calculator_features_count.argtypes = [
         POINTER(rascal_calculator_t),
-        POINTER(c_uintptr_t)
+        POINTER(c_uintptr_t),
     ]
     lib.rascal_calculator_features_count.restype = _check_rascal_status_t
 
@@ -213,23 +231,15 @@ def setup_functions(lib):
         POINTER(rascal_descriptor_t),
         POINTER(rascal_system_t),
         c_uintptr_t,
-        rascal_calculation_options_t
+        rascal_calculation_options_t,
     ]
     lib.rascal_calculator_compute.restype = _check_rascal_status_t
 
-    lib.rascal_profiling_clear.argtypes = [
-        
-    ]
+    lib.rascal_profiling_clear.argtypes = []
     lib.rascal_profiling_clear.restype = _check_rascal_status_t
 
-    lib.rascal_profiling_enable.argtypes = [
-        ctypes.c_bool
-    ]
+    lib.rascal_profiling_enable.argtypes = [ctypes.c_bool]
     lib.rascal_profiling_enable.restype = _check_rascal_status_t
 
-    lib.rascal_profiling_get.argtypes = [
-        ctypes.c_char_p,
-        ctypes.c_char_p,
-        c_uintptr_t
-    ]
+    lib.rascal_profiling_get.argtypes = [ctypes.c_char_p, ctypes.c_char_p, c_uintptr_t]
     lib.rascal_profiling_get.restype = _check_rascal_status_t

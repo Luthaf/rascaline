@@ -1,8 +1,4 @@
 # -*- coding: utf-8 -*-
-"""Base class System implementation.
-
-Contains positions, unit cell & species information.
-"""
 import ctypes
 from ctypes import POINTER, c_double, c_void_p, pointer
 
@@ -14,6 +10,7 @@ from ..status import _save_exception
 
 def catch_exceptions(function):
     """Decorate a function catching any exception."""
+
     def inner(*args, **kwargs):
         try:
             function(*args, **kwargs)
@@ -51,8 +48,7 @@ class SystemBase:
         self._keepalive["c_struct"] = struct
 
         # user_data is a pointer to the PyObject `self`
-        struct.user_data = ctypes.cast(pointer(ctypes.py_object(self)),
-                                       c_void_p)
+        struct.user_data = ctypes.cast(pointer(ctypes.py_object(self)), c_void_p)
 
         def get_self(ptr):
             """Extract ``self`` from a pointer to the PyObject."""
@@ -161,8 +157,7 @@ class SystemBase:
             """
             self = get_self(user_data)
 
-            pairs = np.array(self.pairs_containing(center),
-                             dtype=rascal_pair_t)
+            pairs = np.array(self.pairs_containing(center), dtype=rascal_pair_t)
 
             count[0] = c_uintptr_t(len(pairs))
             data[0] = pairs.ctypes.data
@@ -210,8 +205,9 @@ class SystemBase:
         Store it for later access using :py:func:`rascaline.SystemBase.pairs`
         or :py:func:`rascaline.SystemBase.pairs_containing`.
         """
-        raise NotImplementedError("System.compute_neighbors method is not "
-                                  "implemented")
+        raise NotImplementedError(
+            "System.compute_neighbors method is not " "implemented"
+        )
 
     def pairs(self):
         """Get tuples of neighbor.
@@ -241,5 +237,6 @@ class SystemBase:
         condition that the pair ``i-j`` should be included both in the list
         returned by ``pairs_containing(i)`` and ``pairs_containing(j)``.
         """
-        raise NotImplementedError("System.pairs_containing method is not "
-                                  "implemented")
+        raise NotImplementedError(
+            "System.pairs_containing method is not " "implemented"
+        )

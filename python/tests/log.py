@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 import unittest
 
-from test_systems import TestSystem
-
 from rascaline import set_logging_callback
 from rascaline.calculators import DummyCalculator
 from rascaline.log import (
@@ -10,6 +8,8 @@ from rascaline.log import (
     RASCAL_LOG_LEVEL_WARN,
     default_logging_callback,
 )
+
+from test_systems import TestSystem
 
 
 class TestLogging(unittest.TestCase):

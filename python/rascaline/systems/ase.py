@@ -1,4 +1,3 @@
-"""Base class System implementation for ase."""
 import copy
 import warnings
 

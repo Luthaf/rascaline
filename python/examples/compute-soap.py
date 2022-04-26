@@ -1,4 +1,3 @@
-"""Example file for computing SOAP features."""
 import sys
 
 import chemfiles
