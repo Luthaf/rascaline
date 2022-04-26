@@ -2,11 +2,7 @@
 import ctypes
 import json
 
-from ._rascaline import (
-    c_uintptr_t,
-    rascal_calculation_options_t,
-    rascal_system_t,
-    )
+from ._rascaline import c_uintptr_t, rascal_calculation_options_t, rascal_system_t
 from .clib import _get_library
 from .descriptor import Descriptor, Indexes
 from .status import _check_rascal_pointer

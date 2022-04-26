@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Base class for calculating features."""
+"""Base class System implementation.
+
+Contains positions, unit cell & species information.
+"""
 import ctypes
 from ctypes import POINTER, c_double, c_void_p, pointer
 
@@ -28,7 +31,7 @@ class SystemBase:
     Developers should implement this class to add new kinds of system that
     work with rascaline.
 
-    Most users should use one of the already provided Implement, such as
+    Most users should use one of the already provided implementation, such as
     :py:class:`rascaline.systems.AseSystem` or
     :py:class:`rascaline.systems.ChemfilesSystem` instead of using this class
     directly.

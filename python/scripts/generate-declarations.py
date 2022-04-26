@@ -239,12 +239,12 @@ Automatically-generated file, do not edit!!!
 '''
 # flake8: noqa
 
+import ctypes
 import enum
 import platform
-
-import ctypes
 from ctypes import POINTER, CFUNCTYPE
 from numpy.ctypeslib import ndpointer
+
 
 arch = platform.architecture()[0]
 if arch == "32bit":

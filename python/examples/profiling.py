@@ -1,4 +1,4 @@
-"""Profiling of the Python API."""
+"""Use internal profiler for timing data on SOAP calculations."""
 import sys
 
 import ase.io
