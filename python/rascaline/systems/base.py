@@ -58,9 +58,9 @@ class SystemBase:
 
         @catch_exceptions
         def rascal_system_size(user_data, size):
-            """Implement ``rascal_system_t::size``.
-
-            Uses :py:func:`SystemBase.size`.
+            """
+            Implementation of ``rascal_system_t::size`` using
+            :py:func:`SystemBase.size`.
             """
             size[0] = get_self(user_data).size()
 
@@ -69,9 +69,9 @@ class SystemBase:
 
         @catch_exceptions
         def rascal_system_species(user_data, data):
-            """Implement ``rascal_system_t::species``.
-
-            Uses :py:func:`SystemBase.species`.
+            """
+            Implementation of ``rascal_system_t::species`` using
+            :py:func:`SystemBase.species`.
             """
             self = get_self(user_data)
 
@@ -83,9 +83,9 @@ class SystemBase:
 
         @catch_exceptions
         def rascal_system_positions(user_data, data):
-            """Implement ``rascal_system_t::positions``.
-
-            Uses :py:func:`SystemBase.positions`.
+            """
+            Implementation of ``rascal_system_t::positions`` using
+            :py:func:`SystemBase.positions`.
             """
             self = get_self(user_data)
             positions = np.array(self.positions(), dtype=c_double)
@@ -100,9 +100,9 @@ class SystemBase:
 
         @catch_exceptions
         def rascal_system_cell(user_data, data):
-            """Implement ``rascal_system_t::cell``.
-
-            Uses :py:func:`SystemBase.cell`.
+            """
+            Implementation of ``rascal_system_t::cell`` using
+            :py:func:`SystemBase.cell`.
             """
             self = get_self(user_data)
             cell = np.array(self.cell(), dtype=c_double)
@@ -122,9 +122,9 @@ class SystemBase:
 
         @catch_exceptions
         def rascal_system_compute_neighbors(user_data, cutoff):
-            """Implement ``rascal_system_t::compute_neighbors``.
-
-            Uses :py:func:`SystemBase.compute_neighbors`.
+            """
+            Implementation of ``rascal_system_t::compute_neighbors`` using
+            :py:func:`SystemBase.compute_neighbors`.
             """
             self = get_self(user_data)
             self.compute_neighbors(cutoff)
@@ -135,9 +135,9 @@ class SystemBase:
 
         @catch_exceptions
         def rascal_system_pairs(user_data, data, count):
-            """Implement ``rascal_system_t::pairs``.
-
-            Uses :py:func:`SystemBase.pairs`.
+            """
+            Implementation of ``rascal_system_t::pairs`` using
+            :py:func:`SystemBase.pairs`.
             """
             self = get_self(user_data)
 
@@ -151,9 +151,9 @@ class SystemBase:
 
         @catch_exceptions
         def rascal_system_pairs_containing(user_data, center, data, count):
-            """Implement ``rascal_system_t::pairs_containing``.
-
-            Uses :py:func:`SystemBase.pairs_containing`.
+            """
+            Implementation of ``rascal_system_t::pairs_containing`` using
+            :py:func:`SystemBase.pairs_containing`.
             """
             self = get_self(user_data)
 
@@ -174,7 +174,7 @@ class SystemBase:
         raise NotImplementedError("System.size method is not implemented")
 
     def species(self):
-        """Atomic species for each atom in the system.
+        """Get the atomic species of all atoms in the system.
 
         Get a list of integers or a 1D numpy array of integers containing the atomic
         species for each atom in the system. Each different atomic species
@@ -205,9 +205,7 @@ class SystemBase:
         Store it for later access using :py:func:`rascaline.SystemBase.pairs`
         or :py:func:`rascaline.SystemBase.pairs_containing`.
         """
-        raise NotImplementedError(
-            "System.compute_neighbors method is not " "implemented"
-        )
+        raise NotImplementedError("System.compute_neighbors method is not implemented")
 
     def pairs(self):
         """Atoms pairs in this system.
@@ -240,6 +238,4 @@ class SystemBase:
         condition that the pair ``i-j`` should be included both in the list
         returned by ``pairs_containing(i)`` and ``pairs_containing(j)``.
         """
-        raise NotImplementedError(
-            "System.pairs_containing method is not " "implemented"
-        )
+        raise NotImplementedError("System.pairs_containing method is not implemented")

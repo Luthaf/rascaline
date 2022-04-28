@@ -4,11 +4,11 @@ from .utils import _call_with_growing_buffer
 
 
 class Profiler:
-    """Class for profiling Rascaline.
+    """Profiler recording execution time of rascaline functions.
 
-    Rascaline uses the `time_graph <https://docs.rs/time-graph/>`_ to
-    collect timing information on the calculations. The ``Profiler`` context
-    manager provides access to this functionality.
+    Rascaline uses the `time_graph <https://docs.rs/time-graph/>`_ to collect
+    timing information on the calculations. The ``Profiler`` class can be used
+    as a context manager to access to this functionality.
 
     The profiling code collects the total time spent inside the most important
     functions, as well as the function call graph (which function called which
@@ -36,19 +36,21 @@ class Profiler:
         self._lib.rascal_profiling_enable(False)
 
     def as_json(self):
-        """Get current profiling data as JSON string."""
+        """Get current profiling data formatted as JSON."""
         return _call_with_growing_buffer(
             lambda b, s: self._lib.rascal_profiling_get("json".encode("utf8"), b, s)
         )
 
     def as_table(self):
-        """Get current profiling data as table displayed to the user."""
+        """Get current profiling data formatted as a table."""
         return _call_with_growing_buffer(
             lambda b, s: self._lib.rascal_profiling_get("table".encode("utf8"), b, s)
         )
 
     def as_short_table(self):
-        """Get current profiling data as short names table displayed to the user."""
+        """
+        Get current profiling data formatted as a table, using short functions names.
+        """
         return _call_with_growing_buffer(
             lambda b, s: self._lib.rascal_profiling_get(
                 "short_table".encode("utf8"), b, s
