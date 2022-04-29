@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 import unittest
+
 import numpy as np
 
-from rascaline.systems import AseSystem, HAVE_ASE
+from rascaline.systems import HAVE_ASE, AseSystem
+
 
 try:
     import ase
@@ -100,8 +102,8 @@ class TestAseSystemErrors(unittest.TestCase):
     def test_pbc_no_cell(self):
         message = (
             "periodic boundary conditions are enabled, but the cell "
-            + "matrix is zero everywhere. You should set pbc to `False`, "
-            + "or the cell to its value."
+            "matrix is zero everywhere. You should set pbc to `False`, "
+            "or the cell to its value."
         )
 
         atoms = ase.Atoms("C", positions=[(0, 0, 0)])
@@ -131,7 +133,7 @@ class TestAseSystemErrors(unittest.TestCase):
 
         message = (
             "different periodic boundary conditions on different axis "
-            + "are not supported"
+            "are not supported"
         )
 
         self.assertEqual(cm.exception.args[0], message)
@@ -147,7 +149,7 @@ class TestAseSystemErrors(unittest.TestCase):
 
         message = (
             "periodic boundary conditions are disabled, but the cell matrix is "
-            + "not zero, we will set the cell to zero."
+            "not zero, we will set the cell to zero."
         )
 
         self.assertEqual(cm.warning.args[0], message)

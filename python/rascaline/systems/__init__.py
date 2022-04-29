@@ -1,14 +1,16 @@
+from .ase import HAVE_ASE, AseSystem
 from .base import SystemBase
-from .ase import AseSystem, HAVE_ASE
-from .chemfiles import ChemfilesSystem, HAVE_CHEMFILES
+from .chemfiles import HAVE_CHEMFILES, ChemfilesSystem
 
 
 def wrap_system(system):
-    """
+    """Wrap different systems implementation into the right class.
+
     This function is automatically called on all systems passed to
-    :py:func:`rascaline.calculators.CalculatorBase.compute`. It wraps different
-    systems implementation into the right class to make them compatible with
-    rascaline. The following system types are supported:
+    :py:func:`rascaline.calculators.CalculatorBase.compute`. This function makes
+    different systems compatible with rascaline.
+
+    The following system types are currently supported:
 
     - `ase.Atoms`_: the Atomistic Simulation Environment Atoms class
     - `chemfiles.Frame`_: chemfiles' Frame type

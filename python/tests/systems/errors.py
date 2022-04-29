@@ -2,8 +2,8 @@
 import unittest
 
 from rascaline import RascalError
-from rascaline.systems import SystemBase
 from rascaline.calculators import DummyCalculator
+from rascaline.systems import SystemBase
 
 
 class UnimplementedSystem(SystemBase):

@@ -1,5 +1,7 @@
 import warnings
+
 import numpy as np
+
 
 try:
     import chemfiles
@@ -7,7 +9,7 @@ try:
     if not chemfiles.__version__.startswith("0.10"):
         warnings.warn(
             "found chemfiles, but the version is not supported: "
-            + "we need chemfiles v0.10."
+            "we need chemfiles v0.10."
         )
         HAVE_CHEMFILES = False
     else:
@@ -15,8 +17,8 @@ try:
 except ImportError:
     HAVE_CHEMFILES = False
 
-from .base import SystemBase
 from .._rascaline import c_uintptr_t
+from .base import SystemBase
 
 
 # global cache of species number for atoms outside of the periodic table
@@ -24,10 +26,7 @@ SPECIES_CACHE = {}
 
 
 def get_species_for_non_element(name):
-    """
-    Get a species number to associate with an atom which is not inside the
-    periodic table.
-    """
+    """Get species number associated with atom that is not in the periodic table."""
     if name in SPECIES_CACHE:
         return SPECIES_CACHE[name]
     else:
@@ -38,9 +37,9 @@ def get_species_for_non_element(name):
 
 
 class ChemfilesSystem(SystemBase):
-    """
-    This class implements :py:class:`rascaline.SystemBase` wrapping a
-    `chemfiles.Frame`_. Since chemfiles does not offer a neighbors list, this
+    """Implements :py:class:`rascaline.SystemBase` wrapping a `chemfiles.Frame`_.
+
+    Since chemfiles does not offer a neighbors list, this
     implementation of system can only be used with ``use_native_system=True`` in
     :py:func:`rascaline.calculators.CalculatorBase.compute`.
 
@@ -57,9 +56,8 @@ class ChemfilesSystem(SystemBase):
 
     def __init__(self, frame):
         """
-        :param frame: `chemfiles.Frame`_ object to be wrapped in this
-            ``ChemfilesSystem``
-
+        :param frame : `chemfiles.Frame`_ object object to be wrapped
+            in this ``ChemfilesSystem``
         """
         super().__init__()
         if not isinstance(frame, chemfiles.Frame):

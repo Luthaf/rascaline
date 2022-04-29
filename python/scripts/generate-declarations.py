@@ -5,6 +5,7 @@ import sys
 
 from pycparser import c_ast, parse_file
 
+
 ROOT = os.path.dirname(__file__)
 FAKE_INCLUDES = os.path.join(ROOT, "include")
 RASCALINE_HEADER = os.path.relpath(
@@ -233,17 +234,16 @@ def generate_declarations():
     with open(outpath, "w") as file:
         file.write(
             """# -*- coding: utf-8 -*-
-'''
-Automatically-generated file, do not edit!!!
-'''
+'''Automatically-generated file, do not edit!!!'''
 # flake8: noqa
 
+import ctypes
 import enum
 import platform
+from ctypes import CFUNCTYPE, POINTER
 
-import ctypes
-from ctypes import POINTER, CFUNCTYPE
 from numpy.ctypeslib import ndpointer
+
 
 arch = platform.architecture()[0]
 if arch == "32bit":
