@@ -44,13 +44,14 @@ def set_logging_callback(function):
 
 
 def _set_logging_callback_impl(library, function):
-    """Log a callback.
+    """Implementation of :py:func:`set_logging_callback`
 
-    Implementation of :py:func:`set_logging_callback` getting the instance of
-    :py:class:`ctypes.CDLL` for ``librascaline`` as a parameter.
+    This function gets the :py:class:`ctypes.CDLL` instance for ``librascaline``
+    as a parameter.
 
-    This is used to setup the default logging callback when loading the library,
-    without a recursive call to :py:func:`_get_library` in this function.
+    This is used to be able to setup the default logging callback when loading
+    the library, without a recursive call to :py:func:`_get_library` in this
+    function.
     """
 
     def wrapper(log_level, message):
