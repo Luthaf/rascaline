@@ -47,9 +47,6 @@ class ChemfilesSystem(SystemBase):
     of the periodic table elements; or as a value above 120 if the atom type is
     not in the periodic table.
 
-    :param frame : `chemfiles.Frame`_ object object to be wrapped
-        in this ``ChemfilesSystem``
-
     .. _chemfiles.Frame: http://chemfiles.org/chemfiles.py/latest/reference/frame.html
     """
 
@@ -58,6 +55,10 @@ class ChemfilesSystem(SystemBase):
         return isinstance(o, chemfiles.Frame)
 
     def __init__(self, frame):
+        """
+        :param frame : `chemfiles.Frame`_ object object to be wrapped
+            in this ``ChemfilesSystem``
+        """
         super().__init__()
         if not isinstance(frame, chemfiles.Frame):
             raise Exception("this class expects chemfiles.Frame objects")
