@@ -433,13 +433,13 @@ mod tests {
     // small helper function to create IndexValue
     fn v(i: i32) -> IndexValue { IndexValue::from(i) }
 
-    fn parameters(gradients: bool) -> PowerSpectrumParameters {
+    fn parameters(cutoff: f64, center_atom_weight: f64, gradients: bool, ) -> PowerSpectrumParameters {
         PowerSpectrumParameters {
-            cutoff: 3.5,
+            cutoff: cutoff,
             max_radial: 6,
             max_angular: 6,
             atomic_gaussian_width: 0.3,
-            center_atom_weight: 1.,
+            center_atom_weight: center_atom_weight,
             gradients: gradients,
             radial_basis: RadialBasis::Gto {},
             radial_scaling: RadialScaling::None {},
@@ -450,7 +450,7 @@ mod tests {
     #[test]
     fn values() {
         let mut calculator = Calculator::from(Box::new(SoapPowerSpectrum::new(
-            parameters(false)
+            parameters(3.5, 1., false)
         ).unwrap()) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
@@ -478,7 +478,7 @@ mod tests {
     #[test]
     fn compute_partial() {
         let calculator = Calculator::from(Box::new(SoapPowerSpectrum::new(
-            parameters(false)
+            parameters(3.5, 1., false)
         ).unwrap()) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water", "methane"]);
@@ -505,10 +505,31 @@ mod tests {
     #[test]
     fn finite_differences() {
         let calculator = Calculator::from(Box::new(SoapPowerSpectrum::new(
-            parameters(true)
+            parameters(3.5, 1., true)
         ).unwrap()) as Box<dyn CalculatorBase>);
 
         let system = test_system("water");
         crate::calculators::tests_utils::finite_difference(calculator, system);
+    }
+
+    #[test]
+    fn center_atom_weight() {
+        let calculator = Calculator::from(Box::new(SoapPowerSpectrum::new(
+            parameters(0.5, 1., false)
+        ).unwrap()) as Box<dyn CalculatorBase>);
+
+        let calculator_scaled = Calculator::from(Box::new(SoapPowerSpectrum::new(
+            parameters(0.5, 0.5, false)
+        ).unwrap()) as Box<dyn CalculatorBase>);
+
+        let systems: &mut [Box<dyn System>] = &[test_system("ch")];
+
+        let mut descriptor = Descriptor::new();
+        let mut descriptor_scaled = Descriptor::new();
+
+        calculator.compute(systems, &mut descriptor, Default::default());
+        calculator_scaled.compute(systems, &mut descriptor_scaled, Default::default());
+
+        assert_eq!(descriptor.values, 2 * descriptor_scaled.values);
     }
 }
