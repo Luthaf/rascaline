@@ -36,6 +36,10 @@ pub struct PowerSpectrumParameters {
     pub max_angular: usize,
     /// Width of the atom-centered gaussian creating the atomic density
     pub atomic_gaussian_width: f64,
+    /// Weight of the center atom contribution to the features. 
+    /// If `1` the center atom contribution is weighted the same as any other
+    /// contribution.
+    pub center_atom_weight: f64,
     /// Should we also compute gradients of the feature?
     pub gradients: bool,
     /// radial basis to use for the radial integral
@@ -64,6 +68,7 @@ impl SoapPowerSpectrum {
             max_radial: parameters.max_radial,
             max_angular: parameters.max_angular,
             atomic_gaussian_width: parameters.atomic_gaussian_width,
+            center_atom_weight: parameters.center_atom_weight,
             gradients: parameters.gradients,
             radial_basis: parameters.radial_basis,
             cutoff_function: parameters.cutoff_function,
@@ -428,23 +433,24 @@ mod tests {
     // small helper function to create IndexValue
     fn v(i: i32) -> IndexValue { IndexValue::from(i) }
 
-    fn parameters(gradients: bool) -> PowerSpectrumParameters {
+    fn parameters(cutoff: f64, center_atom_weight: f64, gradients: bool, ) -> PowerSpectrumParameters {
         PowerSpectrumParameters {
-            atomic_gaussian_width: 0.3,
-            cutoff: 3.5,
-            cutoff_function: CutoffFunction::ShiftedCosine { width: 0.5 },
-            gradients: gradients,
+            cutoff: cutoff,
             max_radial: 6,
             max_angular: 6,
+            atomic_gaussian_width: 0.3,
+            center_atom_weight: center_atom_weight,
+            gradients: gradients,
             radial_basis: RadialBasis::Gto {},
             radial_scaling: RadialScaling::None {},
+            cutoff_function: CutoffFunction::ShiftedCosine { width: 0.5 },
         }
     }
 
     #[test]
     fn values() {
         let mut calculator = Calculator::from(Box::new(SoapPowerSpectrum::new(
-            parameters(false)
+            parameters(3.5, 1., false)
         ).unwrap()) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
@@ -472,7 +478,7 @@ mod tests {
     #[test]
     fn compute_partial() {
         let calculator = Calculator::from(Box::new(SoapPowerSpectrum::new(
-            parameters(false)
+            parameters(3.5, 1., false)
         ).unwrap()) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water", "methane"]);
@@ -499,10 +505,32 @@ mod tests {
     #[test]
     fn finite_differences() {
         let calculator = Calculator::from(Box::new(SoapPowerSpectrum::new(
-            parameters(true)
+            parameters(3.5, 1., true)
         ).unwrap()) as Box<dyn CalculatorBase>);
 
         let system = test_system("water");
         crate::calculators::tests_utils::finite_difference(calculator, system);
+    }
+
+    #[test]
+    fn center_atom_weight() {
+        let mut calculator = Calculator::from(Box::new(
+            SoapPowerSpectrum::new(parameters(0.5, 1., false)).unwrap(),
+        ) as Box<dyn CalculatorBase>);
+
+        let mut calculator_scaled = Calculator::from(Box::new(
+            SoapPowerSpectrum::new(parameters(0.5, 0.5, false)).unwrap(),
+        ) as Box<dyn CalculatorBase>);
+
+        let system = &mut test_systems(&["CH"]);
+        let mut descriptor = Descriptor::new();
+        let mut descriptor_scaled = Descriptor::new();
+
+        calculator.compute(system, &mut descriptor, Default::default())
+            .unwrap();
+        calculator_scaled.compute(system, &mut descriptor_scaled, Default::default())
+            .unwrap();
+
+        assert_eq!(descriptor.values, 4. * descriptor_scaled.values);
     }
 }

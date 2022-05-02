@@ -94,6 +94,7 @@ int compute_soap(rascal_descriptor_t* descriptor, const char* path) {
         "\"max_radial\": 6,\n"
         "\"max_angular\": 4,\n"
         "\"atomic_gaussian_width\": 0.3,\n"
+        "\"center_atom_weight\": 1.0,\n"
         "\"gradients\": false,\n"
         "\"radial_basis\": {\n"
         "    \"Gto\": {}\n"

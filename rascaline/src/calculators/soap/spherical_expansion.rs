@@ -243,6 +243,10 @@ pub struct SphericalExpansionParameters {
     pub max_angular: usize,
     /// Width of the atom-centered gaussian used to create the atomic density
     pub atomic_gaussian_width: f64,
+    /// Weight of the center atom contribution to the features. 
+    /// If `1` the center atom contribution is weighted the same as any other
+    /// contribution.
+    pub center_atom_weight: f64,
     /// Should we also compute gradients of the feature?
     pub gradients: bool,
     /// Radial basis to use for the radial integral
@@ -493,7 +497,8 @@ impl SphericalExpansion {
                     let m = feature[1].isize();
                     let n = feature[2].usize();
 
-                    let n_l_m_value = f_scaling
+                    let n_l_m_value = self.parameters.center_atom_weight
+                        * f_scaling
                         * radial_integral.values[[n, l]]
                         * spherical_harmonics.values[[l as isize, m]];
                     descriptor.values[[i_env, feature_i]] += n_l_m_value;
@@ -959,14 +964,15 @@ mod tests {
 
     fn parameters(gradients: bool) -> SphericalExpansionParameters {
         SphericalExpansionParameters {
-            atomic_gaussian_width: 0.3,
             cutoff: 3.5,
-            cutoff_function: CutoffFunction::ShiftedCosine { width: 0.5 },
-            gradients: gradients,
             max_radial: 6,
             max_angular: 6,
+            atomic_gaussian_width: 0.3,
+            center_atom_weight: 1.,
+            gradients: gradients,
             radial_basis: RadialBasis::Gto {},
             radial_scaling: RadialScaling::Willatt2018 { scale: 1.5, rate: 0.8, exponent: 2},
+            cutoff_function: CutoffFunction::ShiftedCosine { width: 0.5 },
         }
     }
 

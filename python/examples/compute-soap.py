@@ -17,6 +17,7 @@ HYPER_PARAMETERS = {
     "max_radial": 6,
     "max_angular": 4,
     "atomic_gaussian_width": 0.3,
+    "center_atom_weight": 1.0,
     "gradients": False,
     "radial_basis": {
         "Gto": {},
