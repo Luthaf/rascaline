@@ -7,7 +7,9 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.black]
-exclude = ["_rascaline.py"]
+extend-exclude = """
+    /python/rascaline/_c_api\\.py
+"""
 
 [tool.isort]
 profile = "black"
@@ -22,3 +24,8 @@ known_local_folder = [
 include_trailing_comma = true
 lines_after_imports = 2
 known_first_party = "rascaline"
+
+[tool.check-manifest]
+# we want to include Cargo.lock in the sdist to ensure the same version of
+# depencencies will be picked when building wheels from source
+ignore = ["Cargo.lock"]
