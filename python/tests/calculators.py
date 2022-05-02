@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 import unittest
+
 import numpy as np
 
-from rascaline import SortedDistances, Indexes, RascalError
+from rascaline import Indexes, RascalError, SortedDistances
 from rascaline.calculators import DummyCalculator
 
 from test_systems import TestSystem

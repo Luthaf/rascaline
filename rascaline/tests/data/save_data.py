@@ -1,10 +1,12 @@
-import io
-import os
-import ase
-import math
 import gzip
+import io
 import json
+import math
+import os
+
+import ase
 import numpy as np
+
 
 ROOT = os.path.abspath(os.path.dirname(__file__))
 

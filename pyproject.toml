@@ -6,57 +6,19 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
-[tool.tox]
-legacy_tox_ini = """
-[tox]
+[tool.black]
+exclude = ["_rascaline.py"]
 
-[testenv:all-deps]
-# skip install to avoid rebuilding the world, do the install with setup.py
-# instead of pip below
-skip_install = True
-passenv =
-    RASCALINE_BUILD_TYPE
-    RUSTUP_HOME
-    CARGO*
-
-deps =
-    discover
-    numpy
-    ase
-    chemfiles
-
-commands =
-    python setup.py --quiet install
-    discover -p "*.py" -s python/tests
-
-[testenv:min-deps]
-skip_install = True
-passenv =
-    RASCALINE_BUILD_TYPE
-    RUSTUP_HOME
-    CARGO*
-
-deps =
-    discover
-    numpy
-
-commands =
-    python setup.py --quiet install
-    discover -p "*.py" -s python/tests
-
-[testenv:examples]
-skip_install = True
-passenv =
-    RASCALINE_BUILD_TYPE
-    RUSTUP_HOME
-    CARGO*
-
-deps =
-    numpy
-    chemfiles
-    ase
-
-commands =
-    python setup.py --quiet install
-    python python/tests/check_examples.py
-"""
+[tool.isort]
+profile = "black"
+line_length = 88
+indent = 4
+known_local_folder = [
+    "html_hidden",
+    "myst_parser",
+    "save_data",
+    "test_systems",
+]
+include_trailing_comma = true
+lines_after_imports = 2
+known_first_party = "rascaline"

@@ -6,6 +6,7 @@ from ctypes import cdll
 from ._rascaline import setup_functions
 from .log import _set_logging_callback_impl, default_logging_callback
 
+
 _HERE = os.path.realpath(os.path.dirname(__file__))
 
 # path that can be used with cmake to access the rascaline library and headers
@@ -48,11 +49,9 @@ def _lib_path():
 
 
 def _check_dll(path):
-    """
-    Check if the DLL pointer size matches Python (32-bit or 64-bit)
-    """
-    import struct
+    """Check if the DLL pointer size matches Python (32-bit or 64-bit)."""
     import platform
+    import struct
 
     IMAGE_FILE_MACHINE_I386 = 332
     IMAGE_FILE_MACHINE_AMD64 = 34404

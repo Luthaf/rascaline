@@ -1,13 +1,16 @@
 # -*- coding: utf-8 -*-
-import numpy as np
 import ctypes
-from ctypes import POINTER, pointer, c_void_p, c_double
+from ctypes import POINTER, c_double, c_void_p, pointer
 
-from .._rascaline import rascal_system_t, rascal_pair_t, c_uintptr_t
+import numpy as np
+
+from .._rascaline import c_uintptr_t, rascal_pair_t, rascal_system_t
 from ..status import _save_exception
 
 
 def catch_exceptions(function):
+    """Decorate a function catching any exception."""
+
     def inner(*args, **kwargs):
         try:
             function(*args, **kwargs)
@@ -20,9 +23,10 @@ def catch_exceptions(function):
 
 
 class SystemBase:
-    """
-    Base class implementing the ``System`` trait in rascaline. Developers should
-    implement this class to add new kinds of system that work with rascaline.
+    """Base class implementing the ``System`` trait in rascaline.
+
+    Developers should implement this class to add new kinds of system that
+    work with rascaline.
 
     Most users should use one of the already provided implementation, such as
     :py:class:`rascaline.systems.AseSystem` or
@@ -36,9 +40,9 @@ class SystemBase:
         self._keepalive = {}
 
     def _as_rascal_system_t(self):
-        """
-        Convert a child instance of :py:class:`SystemBase` to a C compatible
-        ``rascal_system_t``.
+        """Convert a child instance of :py:class:`SystemBase`.
+
+        Instances are converted to a C compatible ``rascal_system_t``.
         """
         struct = rascal_system_t()
         self._keepalive["c_struct"] = struct
@@ -47,7 +51,7 @@ class SystemBase:
         struct.user_data = ctypes.cast(pointer(ctypes.py_object(self)), c_void_p)
 
         def get_self(ptr):
-            """Extract ``self`` from a pointer to the PyObject"""
+            """Extract ``self`` from a pointer to the PyObject."""
             self = ctypes.cast(ptr, POINTER(ctypes.py_object)).contents.value
             assert isinstance(self, SystemBase)
             return self
@@ -166,51 +170,54 @@ class SystemBase:
         return struct
 
     def size(self):
-        """
-        Get the number of atoms in this system as an integer
-        """
+        """Get the number of atoms in this system as an integer."""
         raise NotImplementedError("System.size method is not implemented")
 
     def species(self):
-        """
-        Get a list of integers or a 1D numpy array of integers containing the
-        atomic species for each atom in the system. Each different atomic
-        species should be identified with a different value. These values are
-        usually the atomic number, but don't have to be.
+        """Get the atomic species of all atoms in the system.
+
+        Get a list of integers or a 1D numpy array of integers containing the atomic
+        species for each atom in the system. Each different atomic species
+        should be identified with a different value.
+        These values are usually the atomic number, but don't have to be.
         """
         raise NotImplementedError("System.species method is not implemented")
 
     def positions(self):
-        """
-        Get the cartesian position of all atoms in this system. The returned
-        positions must be convertible to a numpy array of shape ``(self.size(),
-        3)``.
+        """Get the cartesian position of all atoms in this system.
+
+        The returned positions must be convertible to a numpy array of
+        shape ``(self.size(), 3)``.
         """
         raise NotImplementedError("System.positions method is not implemented")
 
     def cell(self):
-        """
-        Get the 3x3 matrix representing unit cell of the system. The cell should
-        be written in row major order, i.e. `[[ax, ay, az], [bx, by, bz], [cx,
-        cy, cz]]`, where a/b/c are the unit cell vectors.
+        """Get the 3x3 matrix representing unit cell of the system.
+
+        The cell should be written in row major order, i.e. `[[ax, ay, az],
+        [bx, by, bz], [cx, cy, cz]]`, where a/b/c are the unit cell vectors.
         """
         raise NotImplementedError("System.cell method is not implemented")
 
     def compute_neighbors(self, cutoff):
-        """
-        Compute the neighbor list with the given ``cutoff``, and store it for
-        later access using :py:func:`rascaline.SystemBase.pairs` or
-        :py:func:`rascaline.SystemBase.pairs_containing`.
+        """Compute the neighbor list with the given ``cutoff``.
+
+        Store it for later access using :py:func:`rascaline.SystemBase.pairs`
+        or :py:func:`rascaline.SystemBase.pairs_containing`.
         """
         raise NotImplementedError("System.compute_neighbors method is not implemented")
 
     def pairs(self):
-        """
+        """Atoms pairs in this system.
+
+        The pairs are those which were
+        computed by the last call :py:func:`SystemBase.compute_neighbors`
+
         Get all neighbor pairs in this system as a list of tuples ``(int, int,
         float, (float, float, float))`` containing the indexes of the first and
-        second atom in the pair, the distance between the atoms, and the wrapped
-        between them. Alternatively, this function can return a numpy array with
-        ``dtype=rascal_pair_t``.
+        second atom in the pair, the distance between the atoms, and the
+        wrapped between them. Alternatively, this function can return a numpy
+        array with ``dtype=rascal_pair_t``.
 
         The list of pair should only contain each pair once (and not twice as
         ``i-j`` and ``j-i``), should not contain self pairs (``i-i``); and
@@ -224,9 +231,7 @@ class SystemBase:
         raise NotImplementedError("System.pairs method is not implemented")
 
     def pairs_containing(self, center):
-        """
-        Get all neighbor pairs in this system containing the atom with index
-        ``center``.
+        """Get all neighbor pairs in this system containing the atom with index ``center``.
 
         The same restrictions on the list of pairs as
         :py:func:`rascaline.SystemBase.pairs` applies, with the additional

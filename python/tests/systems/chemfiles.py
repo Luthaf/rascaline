@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 import unittest
-import numpy as np
-from rascaline.status import RascalError
 
-from rascaline.systems import ChemfilesSystem, HAVE_CHEMFILES
+import numpy as np
+
 from rascaline.calculators import DummyCalculator
+from rascaline.status import RascalError
+from rascaline.systems import HAVE_CHEMFILES, ChemfilesSystem
+
 
 try:
     import chemfiles

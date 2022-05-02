@@ -1,7 +1,9 @@
 import sys
+
 import chemfiles
 
 from rascaline import SoapPowerSpectrum
+
 
 # read structures using chemfiles
 with chemfiles.Trajectory(sys.argv[1]) as trajectory:
