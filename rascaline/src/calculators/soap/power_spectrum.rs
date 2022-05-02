@@ -514,22 +514,23 @@ mod tests {
 
     #[test]
     fn center_atom_weight() {
-        let calculator = Calculator::from(Box::new(SoapPowerSpectrum::new(
-            parameters(0.5, 1., false)
-        ).unwrap()) as Box<dyn CalculatorBase>);
+        let mut calculator = Calculator::from(Box::new(
+            SoapPowerSpectrum::new(parameters(0.5, 1., false)).unwrap(),
+        ) as Box<dyn CalculatorBase>);
 
-        let calculator_scaled = Calculator::from(Box::new(SoapPowerSpectrum::new(
-            parameters(0.5, 0.5, false)
-        ).unwrap()) as Box<dyn CalculatorBase>);
+        let mut calculator_scaled = Calculator::from(Box::new(
+            SoapPowerSpectrum::new(parameters(0.5, 0.5, false)).unwrap(),
+        ) as Box<dyn CalculatorBase>);
 
-        let systems: &mut [Box<dyn System>] = &[test_system("ch")];
-
+        let system = &mut test_systems(&["CH"]);
         let mut descriptor = Descriptor::new();
         let mut descriptor_scaled = Descriptor::new();
 
-        calculator.compute(systems, &mut descriptor, Default::default());
-        calculator_scaled.compute(systems, &mut descriptor_scaled, Default::default());
+        calculator.compute(system, &mut descriptor, Default::default())
+            .unwrap();
+        calculator_scaled.compute(system, &mut descriptor_scaled, Default::default())
+            .unwrap();
 
-        assert_eq!(descriptor.values, 2 * descriptor_scaled.values);
+        assert_eq!(descriptor.values, 4. * descriptor_scaled.values);
     }
 }
