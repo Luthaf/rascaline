@@ -1,4 +1,25 @@
+global-exclude *.pyc
+global-exclude .DS_Store
+
+prune docs
+
 recursive-include rascaline *
 recursive-include rascaline-c-api *
+recursive-include docs/rascaline-json-schema *
 include Cargo.*
 include pyproject.toml
+
+prune python/tests
+prune python/*.egg-info
+
+prune rascaline/tests
+prune rascaline/benches/data
+prune rascaline/examples
+
+prune rascaline-c-api/tests
+prune rascaline-c-api/examples
+prune rascaline-c-api/target
+
+
+
+exclude tox.ini
