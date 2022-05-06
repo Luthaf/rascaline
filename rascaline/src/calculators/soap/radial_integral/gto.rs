@@ -11,8 +11,6 @@ use crate::Error;
 use super::RadialIntegral;
 use super::{HyperGeometricSphericalExpansion, HyperGeometricParameters};
 
-const PI_TO_THREE_HALF: f64 = 15.503138340149908;
-
 /// Parameters controlling GTO radial basis
 #[derive(Debug, Clone, Copy)]
 pub struct GtoParameters {
@@ -115,11 +113,6 @@ impl GtoRadialIntegral {
             .map(|&sigma| 1.0 / (2.0 * sigma * sigma))
             .collect::<Vec<_>>();
 
-        let gaussian_normalization = gto_gaussian_widths.iter()
-            .zip(0..parameters.max_radial)
-            .map(|(sigma, n)| PI_TO_THREE_HALF * 0.25 * f64::sqrt(2.0 / (sigma.powi(2 * n as i32 + 3) * gamma(n as f64 + 1.5))))
-            .collect::<Vec<_>>();
-
         let mut overlap = na::DMatrix::from_element(
             parameters.max_radial, parameters.max_radial, 0.0
         );
@@ -132,18 +125,11 @@ impl GtoRadialIntegral {
                 let sigma2_sq = sigma2 * sigma2;
 
                 let n1_n2_3_over_2 = 0.5 * (3.0 + n1 as f64 + n2 as f64);
-                let value =
-                    (0.5 / sigma1_sq + 0.5 / sigma2_sq).powf(-n1_n2_3_over_2)
-                    / (sigma1.powi(n1 as i32) * sigma2.powi(n2 as i32))
-                    * gamma(n1_n2_3_over_2)
-                    / ((sigma1 * sigma2).powf(1.5) * f64::sqrt(gamma(n1 as f64 + 1.5) * gamma(n2 as f64 + 1.5)));
-
+                let s1_sq_s2_sq = 0.5 / sigma1_sq + 0.5 / sigma2_sq;
 
                 // we don't have to write to the upper half of the matrix since
                 // we use symmetric_eigen in sorted_eigen.
-                // overlap[(n1, n2)] = value;
-
-                overlap[(n2, n1)] = value;
+                overlap[(n2, n1)] = 0.5 * (s1_sq_s2_sq).powf(-n1_n2_3_over_2) * gamma(n1_n2_3_over_2);
             }
         }
 
@@ -159,12 +145,7 @@ impl GtoRadialIntegral {
             }
             eigen.eigenvalues[n] = 1.0 / f64::sqrt(eigen.eigenvalues[n]);
         }
-
-        let na_gaussian_normalization = na::DMatrix::from_diagonal(
-            &na::Vector::from(gaussian_normalization)
-        );
-
-        let gto_orthonormalization = na_gaussian_normalization * eigen.recompose();
+        let gto_orthonormalization = eigen.recompose();
 
         let gto_orthonormalization = Array2::from_shape_vec(
             (parameters.max_radial, parameters.max_radial),
