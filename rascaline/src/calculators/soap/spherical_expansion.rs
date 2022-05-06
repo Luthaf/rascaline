@@ -25,6 +25,8 @@ use super::{SphericalHarmonics, SphericalHarmonicsArray};
 
 use super::{CutoffFunction, RadialScaling};
 
+const FOUR_PI: f64 = 4.0 * std::f64::consts::PI;
+
 #[derive(Debug, Clone, Copy)]
 #[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 /// Radial basis that can be used in the spherical expansion
@@ -377,7 +379,12 @@ impl SphericalExpansion {
             // compute the full spherical expansion coefficients & gradients
             for (m, sph_value) in spherical_harmonics.iter().enumerate() {
                 for (n, ri_value) in radial_integral.iter().enumerate() {
-                    coefficients[[m, n]] = f_scaling * sph_value * ri_value;
+                    // The first factor of 4pi arises from the integration over
+                    // the angular variables. It is included here as a global
+                    // factor since it is not part of the spherical harmonics,
+                    // and to keep the radial_integral class about the radial
+                    // part of the integration only.
+                    coefficients[[m, n]] = FOUR_PI * f_scaling * sph_value * ri_value;
                 }
             }
 
@@ -396,20 +403,23 @@ impl SphericalExpansion {
                         let ri_value = radial_integral[n];
                         let ri_grad = radial_integral_grad[n];
 
-                        coefficients_grad[[0, m, n]] =
+                        coefficients_grad[[0, m, n]] = FOUR_PI * (
                             f_scaling_grad * dr_d_spatial[0] * ri_value * sph_value
                             + f_scaling * ri_grad * dr_d_spatial[0] * sph_value
-                            + f_scaling * ri_value * sph_grad_x / pair.distance;
+                            + f_scaling * ri_value * sph_grad_x / pair.distance
+                        );
 
-                        coefficients_grad[[1, m, n]] =
+                        coefficients_grad[[1, m, n]] = FOUR_PI * (
                             f_scaling_grad * dr_d_spatial[1] * ri_value * sph_value
                             + f_scaling * ri_grad * dr_d_spatial[1] * sph_value
-                            + f_scaling * ri_value * sph_grad_y / pair.distance;
+                            + f_scaling * ri_value * sph_grad_y / pair.distance
+                        );
 
-                        coefficients_grad[[2, m, n]] =
+                        coefficients_grad[[2, m, n]] = FOUR_PI * (
                             f_scaling_grad * dr_d_spatial[2] * ri_value * sph_value
                             + f_scaling * ri_grad * dr_d_spatial[2] * sph_value
-                            + f_scaling * ri_value * sph_grad_z / pair.distance;
+                            + f_scaling * ri_value * sph_grad_z / pair.distance
+                        );
                     }
                 }
             }

@@ -8,7 +8,7 @@ use crate::Error;
 use super::RadialIntegral;
 use super::{HyperGeometricSphericalExpansion, HyperGeometricParameters};
 
-const PI_TO_THREE_HALF: f64 = 15.503138340149908;
+const SQRT_PI_OVER_4: f64 = 0.44311346272637897;
 
 /// Parameters controlling GTO radial basis
 #[derive(Debug, Clone, Copy)]
@@ -55,8 +55,32 @@ pub struct GtoRadialIntegral {
     atomic_gaussian_constant: f64,
     /// 1/2σ_n^2, with σ_n the GTO gaussian width, i.e. `cutoff * max(√n, 1) / n_max`
     gto_gaussian_constants: Vec<f64>,
-    /// `n_max * n_max` matrix to orthonormalize the GTO basis
+    /// `n_max * n_max` matrix to orthonormalize the GTO
     gto_orthonormalization: Array2<f64>,
+}
+
+fn gto_overlap_matrix(max_radial: usize, gto_gaussian_widths: &[f64]) -> Array2<f64> {
+    let mut overlap = Array2::from_elem((max_radial, max_radial), 0.0);
+    for n1 in 0..max_radial {
+        let sigma1 = gto_gaussian_widths[n1];
+        let sigma1_sq = sigma1 * sigma1;
+        for n2 in n1..max_radial {
+            let sigma2 = gto_gaussian_widths[n2];
+            let sigma2_sq = sigma2 * sigma2;
+
+            let n1_n2_3_over_2 = 0.5 * (3.0 + n1 as f64 + n2 as f64);
+            let value =
+                (0.5 / sigma1_sq + 0.5 / sigma2_sq).powf(-n1_n2_3_over_2)
+                / (sigma1.powi(n1 as i32) * sigma2.powi(n2 as i32))
+                * gamma(n1_n2_3_over_2)
+                / ((sigma1 * sigma2).powf(1.5) * f64::sqrt(gamma(n1 as f64 + 1.5) * gamma(n2 as f64 + 1.5)));
+
+
+            overlap[(n2, n1)] = value;
+            overlap[(n1, n2)] = value;
+        }
+    }
+    return overlap;
 }
 
 impl GtoRadialIntegral {
@@ -75,32 +99,11 @@ impl GtoRadialIntegral {
 
         let gto_normalization = gto_gaussian_widths.iter()
             .zip(0..parameters.max_radial)
-            .map(|(sigma, n)| PI_TO_THREE_HALF * 0.25 * f64::sqrt(2.0 / (sigma.powi(2 * n as i32 + 3) * gamma(n as f64 + 1.5))))
+            .map(|(sigma, n)| f64::sqrt(2.0 / (sigma.powi(2 * n as i32 + 3) * gamma(n as f64 + 1.5))))
             .collect::<Array1<_>>();
 
-        let shape = (parameters.max_radial, parameters.max_radial);
-        let mut overlap = Array2::from_elem(shape, 0.0);
-        for n1 in 0..parameters.max_radial {
-            let sigma1 = gto_gaussian_widths[n1];
-            let sigma1_sq = sigma1 * sigma1;
-            for n2 in n1..parameters.max_radial {
-                let sigma2 = gto_gaussian_widths[n2];
-                let sigma2_sq = sigma2 * sigma2;
-
-                let n1_n2_3_over_2 = 0.5 * (3.0 + n1 as f64 + n2 as f64);
-                let value =
-                    (0.5 / sigma1_sq + 0.5 / sigma2_sq).powf(-n1_n2_3_over_2)
-                    / (sigma1.powi(n1 as i32) * sigma2.powi(n2 as i32))
-                    * gamma(n1_n2_3_over_2)
-                    / ((sigma1 * sigma2).powf(1.5) * f64::sqrt(gamma(n1 as f64 + 1.5) * gamma(n2 as f64 + 1.5)));
-
-
-                overlap[(n2, n1)] = value;
-                overlap[(n1, n2)] = value;
-            }
-        }
-
-        // compute overlap^-1/2 through its eigen decomposition
+        let overlap = gto_overlap_matrix(parameters.max_radial, &gto_gaussian_widths);
+        // compute overlap^-1/2 through its eigendecomposition
         let mut eigen = crate::math::SymmetricEigen::new(overlap);
         for n in 0..parameters.max_radial {
             if eigen.eigenvalues[n] <= f64::EPSILON {
@@ -156,6 +159,16 @@ impl RadialIntegral for GtoRadialIntegral {
         };
         self.hypergeometric.compute(distance, hyperg_parameters, values.view_mut(), gradients.as_mut().map(|g| g.view_mut()));
 
+        // Define global factor of radial integral arising from two parts:
+        // - a global factor of sqrt(pi)/4 from the integral itself
+        // - the normalization constant of the atomic Gaussian density.
+        //   We use a factor of 1/(pi*sigma^2)^0.75 which leads to
+        //   Gaussian densities that are normalized in the L2-sense, i.e.
+        //   integral_{R^3} |g(r)|^2 d^3r = 1.
+        let atomic_sigma_sq = 0.5 / self.atomic_gaussian_constant;
+        let atomic_gaussian_normalization = (std::f64::consts::PI * atomic_sigma_sq).powf(-0.75);
+        let global_factor = SQRT_PI_OVER_4 * atomic_gaussian_normalization;
+
         let c = self.atomic_gaussian_constant;
         let c_rij = c * distance;
 
@@ -167,7 +180,7 @@ impl RadialIntegral for GtoRadialIntegral {
             for l in 0..(self.parameters.max_angular + 1) {
                 let n_l_3_over_2 = 0.5 * (n + l) as f64 + 1.5;
                 let c_dn = (c + gto_constant).powf(-n_l_3_over_2);
-                let factor = c_rij_l * c_dn;
+                let factor = global_factor * c_rij_l * c_dn;
                 c_rij_l *= c_rij;
 
                 values[[l, n]] *= factor;
@@ -192,7 +205,7 @@ impl RadialIntegral for GtoRadialIntegral {
                         let a = 0.5 * (n + l) as f64 + 1.5;
                         let b = 2.5;
                         let c_dn = (c + gto_constant).powf(-a);
-                        let factor = c * c_dn;
+                        let factor = global_factor * c * c_dn;
 
                         gradients[[l, n]] = gamma(a) / gamma(b) * factor;
                     }
@@ -209,7 +222,9 @@ impl RadialIntegral for GtoRadialIntegral {
 
 #[cfg(test)]
 mod tests {
-    use approx::assert_relative_eq;
+    use approx::{assert_relative_eq, assert_ulps_eq};
+
+    use super::*;
 
     use super::super::{GtoRadialIntegral, GtoParameters, RadialIntegral};
     use ndarray::Array2;
@@ -329,7 +344,7 @@ mod tests {
 
         assert_relative_eq!(
             gradients, gradients_plus,
-            epsilon=1e-9, max_relative=1e-6,
+            epsilon=1e-8, max_relative=1e-6,
         );
     }
 
@@ -362,6 +377,34 @@ mod tests {
                     finite_differences[[l, n]], gradients[[l, n]],
                     epsilon=1e-5, max_relative=5e-5
                 );
+            }
+        }
+    }
+
+    #[test]
+    fn overlap() {
+        // some basic sanity checks on the overlap matrix
+        let max_radial = 8;
+        let cutoff = 6.3;
+
+        let gto_gaussian_widths = (0..max_radial).into_iter().map(|n| {
+            let n = n as f64;
+            let n_max = max_radial as f64;
+            cutoff * f64::max(f64::sqrt(n), 1.0) / n_max
+        }).collect::<Vec<_>>();
+
+        let overlap = gto_overlap_matrix(
+            max_radial,
+            &gto_gaussian_widths,
+        );
+
+        for i in 0..max_radial {
+            assert_ulps_eq!(overlap[(i, i)], 1.0);
+        }
+
+        for i in 0..max_radial {
+            for j in i..max_radial {
+                assert!(overlap[(j, i)] > 0.0);
             }
         }
     }
