@@ -7,8 +7,8 @@ use ndarray::ArrayView1;
 
 use crate::Vector3D;
 
-/// `\sqrt{\frac{1}{4 \pi}}`
-const SQRT_1_OVER_4PI: f64 = 0.28209479177387814;
+/// `\sqrt{\frac{1}{2 \pi}}`
+const SQRT_1_OVER_2PI: f64 = 0.3989422804014327;
 /// `\sqrt{3}`
 const SQRT_3: f64 = 1.7320508075688772;
 /// `\sqrt{3 / 2}`
@@ -225,7 +225,7 @@ impl SphericalHarmonics {
     /// Evaluate the Legendre polynomials at `cos(θ)`, and fill
     /// `self.legendre_polynomials` with the resulting values
     fn compute_legendre_polynomials(&mut self, cos_theta: f64, sin_theta: f64) {
-        let mut value = SQRT_1_OVER_4PI;
+        let mut value = SQRT_1_OVER_2PI;
         self.legendre_polynomials[[0, 0]] = value;
 
         if self.max_angular > 0 {
@@ -253,7 +253,6 @@ impl SphericalHarmonics {
     /// `cos(θ)`, and fill `self.delta_legendre_polynomials` and
     /// `self.legendre_over_theta` with the values.
     fn compute_derivative_factors(&mut self, cos_theta: f64, sin_theta: f64) {
-        // delta_legendre_polynomials
         let compute_delta_legendre = |l, m, p_m_l_minus_1, p_m_l_plus_1| {
             f64::sqrt(((l + m) * (l - m + 1)) as f64) * p_m_l_minus_1
             - f64::sqrt(((l - m) * (l + m + 1)) as f64) * p_m_l_plus_1
