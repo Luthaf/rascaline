@@ -1,13 +1,8 @@
 #![allow(clippy::needless_return)]
-
-use rascaline::calculators::CalculatorBase;
-use rascaline::calculators::{SphericalExpansion, SphericalExpansionParameters};
-use rascaline::calculators::soap::{RadialBasis, CutoffFunction, RadialScaling};
-
-use rascaline::{Descriptor, System};
+use rascaline::{Calculator, Descriptor, System};
 
 use criterion::{BenchmarkGroup, Criterion, measurement::WallTime, SamplingMode};
-use criterion::{black_box, criterion_group, criterion_main};
+use criterion::{criterion_group, criterion_main};
 
 fn load_systems(path: &str) -> Vec<Box<dyn System>> {
     let systems = rascaline::systems::read_from_file(&format!("benches/data/{}", path))
@@ -38,38 +33,37 @@ fn run_spherical_expansion(mut group: BenchmarkGroup<WallTime>,
         system.compute_neighbors(cutoff).unwrap();
     }
 
-    for &max_radial in black_box(&[2, 8, 14]) {
-        for &max_angular in black_box(&[1, 7, 15]) {
-            let parameters = SphericalExpansionParameters {
-                max_radial,
-                max_angular,
-                cutoff,
-                gradients,
-                atomic_gaussian_width: 0.3,
-                center_atom_weight: 1.0,
-                radial_basis: RadialBasis::Gto {},
-                cutoff_function: CutoffFunction::ShiftedCosine{ width: 0.5 },
-                radial_scaling: RadialScaling::None {},
-            };
-            let mut calculator = SphericalExpansion::new(parameters).unwrap();
-
-            let mut descriptor = Descriptor::new();
-            if gradients {
-                let (samples, gradients) = calculator.samples_builder().with_gradients(&mut systems).unwrap();
-                descriptor.prepare_gradients(samples, gradients.unwrap(), calculator.features());
-            } else {
-                let samples = calculator.samples_builder().samples(&mut systems).unwrap();
-                descriptor.prepare(samples, calculator.features());
+    for &(max_radial, max_angular) in &[(2, 1), (8, 7), (15, 14)] {
+        // keep the memory requirements under control
+        if max_radial == 15 {
+            systems.truncate(10);
+            n_centers = 0;
+            for system in &mut systems {
+                n_centers += system.size().unwrap();
             }
-
-            group.bench_function(&format!("n_max = {}, l_max = {}", max_radial, max_angular), |b| b.iter_custom(|repeat| {
-                let start = std::time::Instant::now();
-                for _ in 0..repeat {
-                    calculator.compute(&mut systems, &mut descriptor).unwrap();
-                }
-                start.elapsed() / n_centers as u32
-            }));
         }
+
+
+        let parameters = format!(r#"{{
+            "max_radial": {max_radial},
+            "max_angular": {max_angular},
+            "cutoff": {cutoff},
+            "gradients": {gradients},
+            "atomic_gaussian_width": 0.3,
+            "center_atom_weight": 1.0,
+            "radial_basis": {{ "Gto": {{}} }},
+            "cutoff_function": {{ "ShiftedCosine": {{ "width": 0.5 }} }}
+        }}"#);
+        let mut calculator = Calculator::new("spherical_expansion", parameters).unwrap();
+
+        group.bench_function(&format!("n_max = {}, l_max = {}", max_radial, max_angular), |b| b.iter_custom(|repeat| {
+            let start = std::time::Instant::now();
+            let mut descriptor = Descriptor::new();
+            for _ in 0..repeat {
+                calculator.compute(&mut systems, &mut descriptor, Default::default()).unwrap();
+            }
+            start.elapsed() / n_centers as u32
+        }));
     }
 }
 
