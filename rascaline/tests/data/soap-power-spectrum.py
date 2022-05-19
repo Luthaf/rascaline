@@ -61,7 +61,7 @@ def sum_gradient(descriptor):
     """compute the gradient w.r.t. each atom of the sum of all rows"""
     result = np.zeros((len(frame), 3, descriptor.gradients.shape[1]))
     for sample, gradient in zip(descriptor.gradients_samples, descriptor.gradients):
-        result[sample["neighbor"], sample["spatial"], :] += gradient[:]
+        result[sample["atom"], sample["spatial"], :] += gradient[:]
 
     return result
 

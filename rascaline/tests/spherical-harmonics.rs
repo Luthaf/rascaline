@@ -1,4 +1,3 @@
-use ndarray::Array3;
 use approx::assert_relative_eq;
 
 use rascaline::Vector3D;
@@ -17,7 +16,7 @@ struct SphericalHarmonicsInput {
 
 #[test]
 fn spherical_harmonics() {
-    let expected: Array3<f64> = data::load_expected_values("spherical-harmonics-values.npy.gz");
+    let expected = data::load_expected_values("spherical-harmonics-values.npy.gz");
 
     let input = std::fs::read_to_string("tests/data/generated/spherical-harmonics-input.json").expect("failed to read file");
     let input: SphericalHarmonicsInput = serde_json::from_str(&input).expect("failed to decode JSON");

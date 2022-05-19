@@ -2,6 +2,7 @@
 
 use serde_json::Value;
 use ndarray_npy::ReadNpyExt;
+use ndarray::ArrayD;
 use flate2::read::GzDecoder;
 
 use rascaline::{SimpleSystem, System, Matrix3, Vector3D};
@@ -57,9 +58,9 @@ fn read_cell(cell: &Value) -> UnitCell {
     }
 }
 
-pub fn load_expected_values<T: ReadNpyExt>(path: &str) -> T {
+pub fn load_expected_values(path: &str) -> ArrayD<f64> {
     let file = std::fs::File::open(&format!("tests/data/generated/{}", path))
         .expect("failed to open file");
 
-    T::read_npy(GzDecoder::new(file)).expect("failed to convert data to ndarray")
+    ArrayD::<f64>::read_npy(GzDecoder::new(file)).expect("failed to convert data to ndarray")
 }

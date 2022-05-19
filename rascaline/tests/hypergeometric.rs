@@ -1,4 +1,4 @@
-use ndarray::{Array2, Array4, s};
+use ndarray::{Array2, s};
 use approx::assert_relative_eq;
 
 use rascaline::calculators::soap::{
@@ -19,8 +19,8 @@ struct HyperGeometricInput {
 
 #[test]
 fn hypergeometric() {
-    let expected_values: Array4<f64> = data::load_expected_values("hypergeometric-values.npy.gz");
-    let expected_gradients: Array4<f64> = data::load_expected_values("hypergeometric-gradients.npy.gz");
+    let expected_values = data::load_expected_values("hypergeometric-values.npy.gz");
+    let expected_gradients = data::load_expected_values("hypergeometric-gradients.npy.gz");
 
     let input = std::fs::read_to_string("tests/data/generated/hypergeometric-input.json").expect("failed to read file");
     let input: HyperGeometricInput = serde_json::from_str(&input).expect("failed to decode JSON");
