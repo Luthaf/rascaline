@@ -1,5 +1,5 @@
 use approx::assert_relative_eq;
-use ndarray::{Array2, Array3, s};
+use ndarray::{ArrayD, s};
 use rascaline::{Calculator, Descriptor};
 
 mod data;
@@ -13,7 +13,7 @@ fn values_no_pbc() {
     calculator.compute(&mut systems, &mut descriptor, Default::default())
         .expect("failed to run calculation");
 
-    let expected: Array2<f64> = data::load_expected_values("spherical-expansion-values.npy.gz");
+    let expected = data::load_expected_values("spherical-expansion-values.npy.gz");
     assert_eq!(descriptor.values.shape(), expected.shape());
 
     // reshape the array features from `lmn` (produced by the current version of
@@ -28,10 +28,10 @@ fn values_no_pbc() {
 
     let mut values = descriptor.values.to_shape((n_samples, n_angular, n_radial)).unwrap();
     values.swap_axes(1, 2);
-    let values = values.to_shape((n_samples, n_features)).unwrap();
+    let values = values.to_shape(vec![n_samples, n_features]).unwrap();
     // end of reshaping code
 
-    assert_relative_eq!(values, expected, max_relative=1e-9);
+    assert_relative_eq!(values, expected, max_relative=1e-8);
 }
 
 #[test]
@@ -43,7 +43,7 @@ fn values_pbc() {
     calculator.compute(&mut systems, &mut descriptor, Default::default())
         .expect("failed to run calculation");
 
-    let expected: Array2<f64> = data::load_expected_values("spherical-expansion-pbc-values.npy.gz");
+    let expected = data::load_expected_values("spherical-expansion-pbc-values.npy.gz");
     assert_eq!(descriptor.values.shape(), expected.shape());
 
     // reshape the array features from `lmn` (produced by the current version of
@@ -61,7 +61,7 @@ fn values_pbc() {
     let values = values.to_shape((n_samples, n_features)).unwrap();
     // end of reshaping code
 
-    assert_relative_eq!(values, expected, max_relative=1e-9);
+    assert_relative_eq!(values.into_dyn(), expected, max_relative=1e-8);
 }
 
 #[test]
@@ -74,7 +74,7 @@ fn gradients_no_pbc() {
     calculator.compute(&mut systems, &mut descriptor, Default::default())
         .expect("failed to run calculation");
 
-    let expected: Array3<f64> = data::load_expected_values("spherical-expansion-gradients.npy.gz");
+    let expected = data::load_expected_values("spherical-expansion-gradients.npy.gz");
     let gradients = sum_gradients(n_atoms, &descriptor);
     assert_eq!(gradients.shape(), expected.shape());
 
@@ -89,18 +89,18 @@ fn gradients_no_pbc() {
 
     let mut gradients = gradients.to_shape((n_atoms, 3, n_angular, n_radial)).unwrap();
     gradients.swap_axes(2, 3);
-    let gradients = gradients.to_shape((n_atoms, 3, n_features)).unwrap();
+    let gradients = gradients.to_shape(vec![n_atoms, 3, n_features]).unwrap();
     // end of reshaping code
 
-    assert_relative_eq!(gradients, expected, max_relative=1e-9);
+    assert_relative_eq!(gradients, expected, max_relative=1e-8);
 }
 
-fn sum_gradients(n_atoms: usize, descriptor: &Descriptor) -> Array3<f64> {
+fn sum_gradients(n_atoms: usize, descriptor: &Descriptor) -> ArrayD<f64> {
     let gradients = descriptor.gradients.as_ref().unwrap();
     let gradients_samples = descriptor.gradients_samples.as_ref().unwrap();
     assert_eq!(gradients_samples.names(), &["sample", "atom", "spatial"]);
 
-    let mut sum = Array3::from_elem((n_atoms, 3, gradients.shape()[1]), 0.0);
+    let mut sum = ArrayD::from_elem(vec![n_atoms, 3, gradients.shape()[1]], 0.0);
     for (sample, gradient) in gradients_samples.iter().zip(gradients.rows()) {
         let neighbor = sample[1].usize();
         let spatial = sample[2].usize();

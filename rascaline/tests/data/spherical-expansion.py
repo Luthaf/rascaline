@@ -45,6 +45,7 @@ hyperparameters = {
 
 calculator = SphericalExpansion(**hyperparameters)
 descriptor = calculator.compute(frame, use_native_system=True)
+descriptor.densify("species_neighbor")
 
 save_calculator_input("spherical-expansion-values", frame, hyperparameters)
 save_numpy_array("spherical-expansion-values", descriptor.values)
@@ -59,13 +60,14 @@ def sum_gradient(descriptor):
     """compute the gradient w.r.t. each atom of the sum of all rows"""
     result = np.zeros((len(frame), 3, descriptor.gradients.shape[1]))
     for sample, gradient in zip(descriptor.gradients_samples, descriptor.gradients):
-        result[sample["neighbor"], sample["spatial"], :] += gradient[:]
+        result[sample["atom"], sample["spatial"], :] += gradient[:]
 
     return result
 
 
 calculator = SphericalExpansion(**hyperparameters)
 descriptor = calculator.compute(frame, use_native_system=True)
+descriptor.densify("species_neighbor")
 
 save_calculator_input("spherical-expansion-gradients", frame, hyperparameters)
 save_numpy_array("spherical-expansion-gradients", sum_gradient(descriptor))
@@ -89,6 +91,7 @@ hyperparameters = {
     "max_radial": 6,
     "max_angular": 6,
     "atomic_gaussian_width": 0.5,
+    "center_atom_weight": 1.0,
     "radial_basis": {
         "Gto": {},
     },
@@ -102,6 +105,7 @@ hyperparameters = {
 
 calculator = SphericalExpansion(**hyperparameters)
 descriptor = calculator.compute(frame, use_native_system=True)
+descriptor.densify("species_neighbor")
 
 save_calculator_input("spherical-expansion-pbc-values", frame, hyperparameters)
 save_numpy_array("spherical-expansion-pbc-values", descriptor.values)

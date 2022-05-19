@@ -1,9 +1,6 @@
 use std::f64;
 
-use ndarray::{Array2, ArrayViewMut2};
-
-use nalgebra as na;
-use nalgebra::linalg::SymmetricEigen;
+use ndarray::{Array2, ArrayViewMut2, Array1};
 
 use crate::math::gamma;
 use crate::Error;
@@ -50,45 +47,6 @@ impl GtoParameters {
     }
 }
 
-fn permute_columns<T>(mat: &mut na::DMatrix<f64>, perm: &[(T, usize)]) {
-    assert!(mat.ncols() == perm.len());
-    let n = mat.ncols();
-    let mut already_permuted = vec![0; n];
-    for i in 0..n {
-        if already_permuted[i] == 0 {
-            let (mut j, mut k) = (i, perm[i].1);
-            while k != i {
-                mat.swap_columns(j, k);
-                already_permuted[k] = 1;
-                j = k;
-                k = perm[k].1;
-            }
-            already_permuted[i] = 1;
-        }
-    }
-}
-
-// We have to sort eigenvalues because this is not done by default,
-// see https://github.com/dimforge/nalgebra/issues/349
-fn sort_eigen(eigen: &mut SymmetricEigen<f64, na::Dynamic>) {
-    let mut s: Vec<(_, _)> = eigen
-        .eigenvalues
-        .into_iter()
-        .enumerate()
-        .map(|(idx, &v)| (v, idx))
-        .collect();
-    s.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
-
-    permute_columns(&mut eigen.eigenvectors, &s);
-    eigen.eigenvalues = na::DVector::from_vec(s.into_iter().map(|(v, _)| v).collect());
-}
-
-fn sorted_eigen(mat: na::DMatrix<f64>) -> SymmetricEigen<f64, na::Dynamic> {
-    let mut eigen = mat.symmetric_eigen();
-    sort_eigen(&mut eigen);
-    return eigen;
-}
-
 #[derive(Debug, Clone)]
 pub struct GtoRadialIntegral {
     parameters: GtoParameters,
@@ -115,15 +73,13 @@ impl GtoRadialIntegral {
             .map(|&sigma| 1.0 / (2.0 * sigma * sigma))
             .collect::<Vec<_>>();
 
-        let gaussian_normalization = gto_gaussian_widths.iter()
+        let gto_normalization = gto_gaussian_widths.iter()
             .zip(0..parameters.max_radial)
             .map(|(sigma, n)| PI_TO_THREE_HALF * 0.25 * f64::sqrt(2.0 / (sigma.powi(2 * n as i32 + 3) * gamma(n as f64 + 1.5))))
-            .collect::<Vec<_>>();
+            .collect::<Array1<_>>();
 
-        let mut overlap = na::DMatrix::from_element(
-            parameters.max_radial, parameters.max_radial, 0.0
-        );
-
+        let shape = (parameters.max_radial, parameters.max_radial);
+        let mut overlap = Array2::from_elem(shape, 0.0);
         for n1 in 0..parameters.max_radial {
             let sigma1 = gto_gaussian_widths[n1];
             let sigma1_sq = sigma1 * sigma1;
@@ -139,19 +95,15 @@ impl GtoRadialIntegral {
                     / ((sigma1 * sigma2).powf(1.5) * f64::sqrt(gamma(n1 as f64 + 1.5) * gamma(n2 as f64 + 1.5)));
 
 
-                // we don't have to write to the upper half of the matrix since
-                // we use symmetric_eigen in sorted_eigen.
-                // overlap[(n1, n2)] = value;
-
                 overlap[(n2, n1)] = value;
+                overlap[(n1, n2)] = value;
             }
         }
 
-        // compute overlap^-1/2 through its eigendecomposition. We use
-        // sorted_eigen for agreement with librascal
-        let mut eigen = sorted_eigen(overlap);
+        // compute overlap^-1/2 through its eigen decomposition
+        let mut eigen = crate::math::SymmetricEigen::new(overlap);
         for n in 0..parameters.max_radial {
-            if eigen.eigenvalues[n] <= 0.0 {
+            if eigen.eigenvalues[n] <= f64::EPSILON {
                 panic!(
                     "radial overlap matrix is singular, try with a lower \
                     max_radial (current value is {})", parameters.max_radial
@@ -159,17 +111,7 @@ impl GtoRadialIntegral {
             }
             eigen.eigenvalues[n] = 1.0 / f64::sqrt(eigen.eigenvalues[n]);
         }
-
-        let na_gaussian_normalization = na::DMatrix::from_diagonal(
-            &na::Vector::from(gaussian_normalization)
-        );
-
-        let gto_orthonormalization = na_gaussian_normalization * eigen.recompose();
-
-        let gto_orthonormalization = Array2::from_shape_vec(
-            (parameters.max_radial, parameters.max_radial),
-            gto_orthonormalization.data.as_vec().clone()
-        ).expect("wrong matrix size for gto_orthonormalization");
+        let gto_orthonormalization = eigen.recompose().dot(&Array2::from_diag(&gto_normalization));
 
         let hypergeometric = HyperGeometricSphericalExpansion::new(parameters.max_radial, parameters.max_angular);
 
