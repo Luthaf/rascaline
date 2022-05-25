@@ -1,26 +1,27 @@
 #include <vector>
 #include <string>
 
-#include "rascaline.h"
 #include "catch.hpp"
 #include "helpers.hpp"
+
+#include "equistore.h"
+#include "rascaline.h"
 
 static std::vector<std::tuple<int, std::string>> RECORDED_LOG_EVENTS;
 
 static void run_calculation(const char* hypers) {
-    auto* descriptor = rascal_descriptor();
-    REQUIRE(descriptor != nullptr);
     auto* calculator = rascal_calculator("dummy_calculator", hypers);
     REQUIRE(calculator != nullptr);
     auto system = simple_system();
     rascal_calculation_options_t options = {0};
 
+    eqs_tensormap_t* descriptor = nullptr;
     CHECK_SUCCESS(rascal_calculator_compute(
-        calculator, descriptor, &system, 1, options
+        calculator, &descriptor, &system, 1, options
     ));
 
     rascal_calculator_free(calculator);
-    rascal_descriptor_free(descriptor);
+    eqs_tensormap_free(descriptor);
 }
 
 TEST_CASE("Logging") {

@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 import ctypes
 import json
+from typing import List, Optional, Union
 
-from ._rascaline import c_uintptr_t, rascal_calculation_options_t, rascal_system_t
-from .clib import _get_library
-from .descriptor import Descriptor, Indexes
+from equistore import Labels, TensorMap
+from equistore._c_api import eqs_tensormap_t
+
+from ._c_api import rascal_calculation_options_t, rascal_system_t
+from ._c_lib import _get_library
 from .status import _check_rascal_pointer
-from .systems import wrap_system
+from .systems import IntoSystem, wrap_system
 from .utils import _call_with_growing_buffer
 
 
@@ -20,61 +23,50 @@ def _convert_systems(systems):
         )
 
 
-def _options_to_c(use_native_system, samples, features):
-    ptr_int32 = ctypes.POINTER(ctypes.c_int32)
+def _options_to_c(
+    use_native_system,
+    selected_samples,
+    selected_properties,
+):
     c_options = rascal_calculation_options_t()
     c_options.use_native_system = bool(use_native_system)
 
     # store data to keep alive here
     c_options.__keepalive = {}
 
-    if samples is None:
-        c_options.selected_samples.names = None
-        c_options.selected_samples.values = None
-        c_options.selected_samples.size = 0
-        c_options.selected_samples.count = 0
+    if selected_samples is None:
+        # nothing to do, all pointers are already NULL
+        pass
+    elif isinstance(selected_samples, Labels):
+        selected_samples = selected_samples._as_eqs_labels_t()
+        c_options.selected_samples.subset = ctypes.pointer(selected_samples)
+        c_options.__keepalive["selected_samples"] = selected_samples
+    elif isinstance(selected_samples, TensorMap):
+        c_options.selected_samples.predefined = selected_samples._ptr
     else:
-        if not isinstance(samples, Indexes):
-            raise ValueError(
-                "expected selected samples as an `Indexes` instance, "
-                f"got {type(samples)} instead"
-            )
+        raise ValueError(
+            "expected selected samples to be either an `equistore.Labels` "
+            "instance, or an got `equistore.TensorMap` instance, got "
+            f"{type(selected_samples)} instead"
+        )
 
-        samples_names = ctypes.ARRAY(ctypes.c_char_p, len(samples.names))()
-        for i, n in enumerate(samples.names):
-            samples_names[i] = n.encode("utf8")
-
-        c_options.__keepalive["samples_names"] = samples_names
-
-        c_options.selected_samples.names = samples_names
-        c_options.selected_samples.size = len(samples_names)
-        c_options.selected_samples.values = samples.ctypes.data_as(ptr_int32)
-        c_options.selected_samples.count = samples.shape[0]
-
-    if features is None:
-        c_options.selected_features.names = None
-        c_options.selected_features.values = None
-        c_options.selected_features.size = 0
-        c_options.selected_features.count = 0
+    if selected_properties is None:
+        # nothing to do, all pointers are already NULL
+        pass
+    elif isinstance(selected_properties, Labels):
+        selected_properties = selected_properties._as_eqs_labels_t()
+        c_options.selected_properties.subset = ctypes.pointer(selected_properties)
+        c_options.__keepalive["selected_properties"] = selected_properties
+    elif isinstance(selected_properties, TensorMap):
+        c_options.selected_properties.predefined = selected_properties._ptr
     else:
-        if not isinstance(features, Indexes):
-            raise ValueError(
-                "expected selected samples as an `Indexes` instance, "
-                f"got {type(features)} instead"
-            )
+        raise ValueError(
+            "expected selected properties to be either an `equistore.Labels` "
+            "instance, or an got `equistore.TensorMap` instance, got "
+            f"{type(selected_properties)} instead"
+        )
 
-        features_names = ctypes.ARRAY(ctypes.c_char_p, len(features.names))()
-        for i, n in enumerate(features.names):
-            features_names[i] = n.encode("utf8")
-
-        c_options.__keepalive["features_names"] = features_names
-
-        c_options.selected_features.names = features_names
-        c_options.selected_features.size = len(features.names)
-        c_options.selected_features.values = features.ctypes.data_as(ptr_int32)
-        c_options.selected_features.count = features.shape[0]
-
-    return c_options, samples, features
+    return c_options
 
 
 class CalculatorBase:
@@ -120,95 +112,65 @@ class CalculatorBase:
             )
         )
 
-    def features_count(self):
-        """Get the default number of features this calculator will produce.
-
-        This number corresponds to the size of second dimension of the
-        ``values`` and ``gradients`` arrays of the
-        :py:class:`rascaline.Descriptor` returned by
-        :py:func:`rascaline.calculators.CalculatorBase.compute`.
-        """
-        size = c_uintptr_t()
-        self._lib.rascal_calculator_features_count(self, size)
-        return size.value
-
     def compute(
         self,
-        systems,
-        descriptor=None,
-        use_native_system=True,
-        selected_samples=None,
-        selected_features=None,
-    ):
-        """Compute features and gradients.
-
-        Runs a calculation with this calculator on the given ``systems``, storing
-        the resulting data in the ``descriptor``.
+        systems: Union[IntoSystem, List[IntoSystem]],
+        use_native_system: bool = True,
+        selected_samples: Optional[Union[Labels, TensorMap]] = None,
+        selected_properties: Optional[Union[Labels, TensorMap]] = None,
+    ) -> TensorMap:
+        """Runs a calculation with this calculator on the given ``systems``.
 
         :param systems: single system or list of systems on which to run the
-                        calculation. Multiple types of systems are supported,
-                        see the documentation for
-                        :py:func:`rascaline.systems.wrap_system` to get the full
-                        list.
+            calculation. The systems will automatically be wrapped into
+            compatible classes (using :py:func:`rascaline.systems.wrap_system`).
+            Multiple types of systems are supported, see the documentation of
+            :py:class:`rascaline.IntoSystem` to get the full list.
 
-        :param descriptor: Descriptor in which the result of the calculation are
-                           stored. If this parameter is ``None``, a new
-                           desriptor is created and returned by this function.
+        :param use_native_system: If ``True`` (this is the default), copy data
+            from the ``systems`` into Rust ``SimpleSystem``. This can be a lot
+            faster than having to cross the FFI boundary often when accessing
+            the neighbor list. Otherwise the Python neighbor list is used.
 
-        :type descriptor: :py:class:`Descriptor`, optional
+        :param selected_samples: Set of samples on which to run the calculation.
+            Use ``None`` to run the calculation on all samples in the
+            ``systems`` (this is the default).
 
-        :param bool use_native_system: defaults to ``True``. If ``True``, copy
-            data from the ``systems`` into Rust ``SimpleSystem``. This can be a
-            lot faster than having to cross the FFI boundary often when acessing
-            the neighbor list.
+            If the :py:class:`equistore.Labels` contains the same variables as
+            the default set of samples for this calculator, then only entries
+            from the full set that also appear in this selection will be used.
 
-        :param selected_samples: defaults to ``None``. List of samples on which
-            to run the calculation. Use ``None`` to run the calculation on all
-            samples in the ``systems`` (this is the default).
+            If the labels contains a subset of the variables of the full set of
+            samples, then only entries from the full set which match one of the
+            entry in this selection for all of the selection variable will be
+            used. TODO
 
-            This should be either a numpy ndarray with ``dtype=np.int32`` and
-            two dimensions; or a slice of a :py:class:`rascaline.descriptor.Indexes`
-            instance extracted from a calculator. If a raw ndarray is used, the
-            first dimension of the array is the list of all samples to consider;
-            and the second dimension of the array must match the size of the
-            sample indexes used by this calculator. Each row of the array
-            describes a single sample and will be validated by the calculator.
+        :param selected_properties: Set of properties to compute. Use ``None``
+            to run the calculation on all properties (this is the default).
 
-        :type selected_samples: Optional[:py:class:`rascaline.descriptor.Indexes`]
+            If the :py:class:`equistore.Labels` contains the same variables as
+            the default set of properties for this calculator, then only entries
+            from the full set that also appear in this selection will be used.
 
-        :param selected_features: defaults to ``None``. List of features on
-            which to run the calculation. Use ``None`` to run the calculation on
-            all features (this is the default).
-
-            This should be either a numpy ndarray with ``dtype=np.int32`` and
-            two dimensions; or a slice of a :py:class:`rascaline.descriptor.Indexes`
-            instance extracted from a calculator. If a raw ndarray is used, the
-            first dimension of the array is the list of all features to
-            consider; and the second dimension of the array must match the size
-            of the features used by this calculator.  Each row of the array
-            describes a single feature and will be validated by the calculator.
-
-        :type selected_features: Optional[:py:class:`rascaline.descriptor.Indexes`]
-
-        :return: the ``descriptor`` parameter or the new new descriptor if
-                 ``descriptor`` was ``None``.
+            If the labels contains a subset of the variables of the full set of
+            properties, then only entries from the full set which match one of
+            the entry in this selection for all of the selection variable will
+            be used. TODO
         """
-        if descriptor is None:
-            descriptor = Descriptor()
 
         c_systems = _convert_systems(systems)
+        tensor_map_ptr = ctypes.POINTER(eqs_tensormap_t)()
 
-        # keep the selected samples & features arrays in scope to prevent them
-        # from being garbage collected
-        c_options, samples, features = _options_to_c(
+        c_options = _options_to_c(
             use_native_system=use_native_system,
-            samples=selected_samples,
-            features=selected_features,
+            selected_samples=selected_samples,
+            selected_properties=selected_properties,
         )
         self._lib.rascal_calculator_compute(
-            self, descriptor, c_systems, c_systems._length_, c_options
+            self, tensor_map_ptr, c_systems, c_systems._length_, c_options
         )
-        return descriptor
+
+        return TensorMap._from_ptr(tensor_map_ptr)
 
 
 class DummyCalculator(CalculatorBase):
@@ -237,8 +199,12 @@ class SortedDistances(CalculatorBase):
     :ref:`documentation <sorted-distances>`.
     """
 
-    def __init__(self, cutoff, max_neighbors):
-        parameters = {"cutoff": cutoff, "max_neighbors": max_neighbors}
+    def __init__(self, cutoff, max_neighbors, separate_neighbor_species):
+        parameters = {
+            "cutoff": cutoff,
+            "max_neighbors": max_neighbors,
+            "separate_neighbor_species": separate_neighbor_species,
+        }
         super().__init__("sorted_distances", parameters)
 
 

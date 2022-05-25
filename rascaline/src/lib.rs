@@ -23,16 +23,14 @@ mod errors;
 pub use self::errors::Error;
 
 pub mod systems;
-pub use systems::{System, SimpleSystem};
+pub use self::systems::{System, SimpleSystem};
 
-pub mod descriptor;
-pub use descriptor::Descriptor;
+pub mod labels;
 
 mod calculator;
-pub use calculator::{Calculator, CalculationOptions, SelectedIndexes};
+pub use self::calculator::{Calculator, CalculationOptions, LabelsSelection};
 
 pub mod calculators;
-
 
 // only try to build the tutorials in test mode
 #[cfg(test)]

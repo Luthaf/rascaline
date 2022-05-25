@@ -1,7 +1,19 @@
-use crate::{System, Descriptor, Error};
-use crate::descriptor::{SamplesBuilder, TwoBodiesSpeciesSamples};
-use crate::descriptor::{Indexes, IndexesBuilder, IndexValue};
+use std::sync::Arc;
+
+use equistore::{Labels, TensorMap, LabelsBuilder, LabelValue};
+
+use crate::{System, Error};
+use crate::labels::{CenterSingleNeighborsSpeciesKeys, KeysBuilder};
+use crate::labels::{AtomCenteredSamples, SamplesBuilder, SpeciesFilter};
 use crate::calculators::CalculatorBase;
+
+// these are here just to make the code below compile
+const first_sample_position: Option<usize> = None;
+const second_sample_position: Option<usize> = None;
+const first_block_id: usize = 0;
+const second_block_id: usize = 0;
+const n_neighbors_first: f64 = 0.0;
+const n_neighbors_second: f64 = 0.0;
 
 #[derive(Clone, Debug)]
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -11,122 +23,119 @@ struct GeometricMoments {
     gradients: bool,
 }
 
-// declared as const to make the code compile
-const species: &[usize] = &[];
-const n_neighbors_first: f64 = 0.0;
-const n_neighbors_second: f64 = 0.0;
-const first_sample_position: Option<usize> = None;
-const second_sample_position: Option<usize> = None;
-
 impl CalculatorBase for GeometricMoments {
     fn name(&self) -> String {
         todo!()
     }
 
-    fn get_parameters(&self) -> String {
+    fn parameters(&self) -> String {
         todo!()
     }
 
-    fn compute_gradients(&self) -> bool {
+    fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
         todo!()
     }
 
-    fn features_names(&self) -> Vec<&str> {
+    fn samples_names(&self) -> Vec<&str> {
         todo!()
     }
 
-    fn features(&self) -> Indexes {
+    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
         todo!()
     }
 
-    fn check_features(&self, indexes: &Indexes) -> Result<(), Error> {
+    fn gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Option<Vec<Arc<Labels>>>, Error> {
         todo!()
     }
 
-    fn samples_builder(&self) -> Box<dyn SamplesBuilder> {
+    fn components(&self, keys: &Labels) -> Vec<Vec<Arc<Labels>>> {
+        todo!()
+    }
+
+    fn properties_names(&self) -> Vec<&str> {
+        todo!()
+    }
+
+    fn properties(&self, keys: &Labels) -> Vec<Arc<Labels>> {
         todo!()
     }
 
     // [compute]
-    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor) -> Result<(), Error> {
+    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
         // ...
-
-        for (i_system, system) in systems.iter_mut().enumerate() {
+        for (system_i, system) in systems.iter_mut().enumerate() {
             // ...
-
             for pair in system.pairs()? {
                 // ...
 
                 if self.gradients {
-                    let gradients_samples = descriptor.gradients_samples.as_ref().expect("missing gradient samples");
-                    let gradients = descriptor.gradients.as_mut().expect("missing gradient storage");
-
-                    let mut first_gradient_position = None;
-                    let mut first_gradient_self_position = None;
-                    if let Some(i_first_sample) = first_sample_position {
-                        // gradient of the descriptor around `pair.first` w.r.t. `pair.second`
-                        first_gradient_position = gradients_samples.position(&[
-                            IndexValue::from(i_first_sample),
-                            IndexValue::from(pair.second),
-                            IndexValue::from(0),
-                        ]);
-
-                        // gradient of the descriptor around `pair.first` w.r.t. `pair.first`
-                        first_gradient_self_position = gradients_samples.position(&[
-                            IndexValue::from(i_first_sample),
-                            IndexValue::from(pair.first),
-                            IndexValue::from(0),
+                    let mut moment_gradients = Vec::new();
+                    for k in 0..=self.max_moment {
+                        moment_gradients.push([
+                            pair.vector[0] * k as f64 * f64::powi(pair.distance, (k as i32) - 2),
+                            pair.vector[1] * k as f64 * f64::powi(pair.distance, (k as i32) - 2),
+                            pair.vector[2] * k as f64 * f64::powi(pair.distance, (k as i32) - 2),
                         ]);
                     }
 
-                    let mut second_gradient_position = None;
-                    let mut second_gradient_self_position = None;
-                    if let Some(i_second_sample) = second_sample_position {
-                        // gradient of the descriptor around `pair.second` w.r.t. `pair.first`
-                        second_gradient_position = gradients_samples.position(&[
-                            IndexValue::from(i_second_sample),
-                            IndexValue::from(pair.first),
-                            IndexValue::from(0),
+                    if let Some(sample_position) = first_sample_position {
+                        let mut block = descriptor.block_mut(first_block_id);
+                        let gradient = block.gradient_mut("positions").expect("missing gradient storage");
+                        let array = gradient.data.as_array_mut();
+
+                        let gradient_wrt_second = gradient.samples.position(&[
+                            sample_position.into(), system_i.into(), pair.second.into()
+                        ]);
+                        let gradient_wrt_self = gradient.samples.position(&[
+                            sample_position.into(), system_i.into(), pair.first.into()
                         ]);
 
-                        // gradient of the descriptor around `pair.second` w.r.t. `pair.second`
-                        second_gradient_self_position = gradients_samples.position(&[
-                            IndexValue::from(i_second_sample),
-                            IndexValue::from(pair.second),
-                            IndexValue::from(0),
-                        ]);
+                        for (property_i, [k]) in gradient.properties.iter_fixed_size().enumerate() {
+                            if let Some(sample_i) = gradient_wrt_second {
+                                let grad = moment_gradients[k.usize()];
+                                // There is one extra dimension in the gradients
+                                // array compared to the values, accounting for
+                                // each of the Cartesian directions.
+                                array[[sample_i, 0, property_i]] += grad[0] / n_neighbors_first;
+                                array[[sample_i, 1, property_i]] += grad[1] / n_neighbors_first;
+                                array[[sample_i, 2, property_i]] += grad[2] / n_neighbors_first;
+                            }
+
+                            if let Some(sample_i) = gradient_wrt_self {
+                                let grad = moment_gradients[k.usize()];
+                                array[[sample_i, 0, property_i]] -= grad[0] / n_neighbors_first;
+                                array[[sample_i, 1, property_i]] -= grad[1] / n_neighbors_first;
+                                array[[sample_i, 2, property_i]] -= grad[2] / n_neighbors_first;
+                            }
+                        }
                     }
 
-                    for (i_feature, feature) in descriptor.features.iter().enumerate() {
-                        let k = feature[0].usize();
-                        let grad_factor = k as f64 * f64::powi(pair.distance, (k as i32) - 2);
+                    if let Some(sample_position) = second_sample_position {
+                        let mut block = descriptor.block_mut(second_block_id);
+                        let gradient = block.gradient_mut("positions").expect("missing gradient storage");
+                        let array = gradient.data.as_array_mut();
 
-                        let grad_x = pair.vector[0] * grad_factor;
-                        let grad_y = pair.vector[1] * grad_factor;
-                        let grad_z = pair.vector[2] * grad_factor;
+                        let gradient_wrt_first = gradient.samples.position(&[
+                            sample_position.into(), system_i.into(), pair.first.into()
+                        ]);
+                        let gradient_wrt_self = gradient.samples.position(&[
+                            sample_position.into(), system_i.into(), pair.second.into()
+                        ]);
 
-                        if let Some(i_first) = first_gradient_position {
-                            gradients[[i_first + 0, i_feature]] += grad_x / n_neighbors_first;
-                            gradients[[i_first + 1, i_feature]] += grad_y / n_neighbors_first;
-                            gradients[[i_first + 2, i_feature]] += grad_z / n_neighbors_first;
-                        }
+                        for (property_i, [k]) in gradient.properties.iter_fixed_size().enumerate() {
+                            if let Some(sample_i) = gradient_wrt_first {
+                                let grad = moment_gradients[k.usize()];
+                                array[[sample_i, 0, property_i]] -= grad[0] / n_neighbors_second;
+                                array[[sample_i, 1, property_i]] -= grad[1] / n_neighbors_second;
+                                array[[sample_i, 2, property_i]] -= grad[2] / n_neighbors_second;
+                            }
 
-                        if let Some(i_first_self) = first_gradient_self_position {
-                            gradients[[i_first_self + 0, i_feature]] += -grad_x / n_neighbors_first;
-                            gradients[[i_first_self + 1, i_feature]] += -grad_y / n_neighbors_first;
-                            gradients[[i_first_self + 2, i_feature]] += -grad_z / n_neighbors_first;
-                        }
-
-                        if let Some(i_second) = second_gradient_position {
-                            gradients[[i_second + 0, i_feature]] += -grad_x / n_neighbors_second;
-                            gradients[[i_second + 1, i_feature]] += -grad_y / n_neighbors_second;
-                            gradients[[i_second + 2, i_feature]] += -grad_z / n_neighbors_second;
-                        }
-
-                        if let Some(i_second_self) = second_gradient_self_position {
-                            gradients[[i_second_self + 0, i_feature]] += grad_x / n_neighbors_second;
-                            gradients[[i_second_self + 1, i_feature]] += grad_y / n_neighbors_second;
-                            gradients[[i_second_self + 2, i_feature]] += grad_z / n_neighbors_second;
+                            if let Some(sample_i) = gradient_wrt_self {
+                                let grad = moment_gradients[k.usize()];
+                                array[[sample_i, 0, property_i]] += grad[0] / n_neighbors_second;
+                                array[[sample_i, 1, property_i]] += grad[1] / n_neighbors_second;
+                                array[[sample_i, 2, property_i]] += grad[2] / n_neighbors_second;
+                            }
                         }
                     }
                 }

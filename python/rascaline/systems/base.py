@@ -4,7 +4,7 @@ from ctypes import POINTER, c_double, c_void_p, pointer
 
 import numpy as np
 
-from .._rascaline import c_uintptr_t, rascal_pair_t, rascal_system_t
+from .._c_api import c_uintptr_t, rascal_pair_t, rascal_system_t
 from ..status import _save_exception
 
 

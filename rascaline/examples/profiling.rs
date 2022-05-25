@@ -1,4 +1,5 @@
-use rascaline::{Calculator, Descriptor, System};
+use equistore::{TensorMap, LabelsBuilder};
+use rascaline::{Calculator, System};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let path = std::env::args().nth(1).expect("expected a command line argument");
@@ -26,7 +27,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 /// Compute SOAP power spectrum, this is the same code as the 'compute-soap'
 /// example
-fn compute_soap(path: &str) -> Result<Descriptor, Box<dyn std::error::Error>> {
+fn compute_soap(path: &str) -> Result<TensorMap, Box<dyn std::error::Error>> {
     let systems = rascaline::systems::read_from_file(path)?;
     let mut systems = systems.into_iter()
         .map(|s| Box::new(s) as Box<dyn System>)
@@ -47,10 +48,16 @@ fn compute_soap(path: &str) -> Result<Descriptor, Box<dyn std::error::Error>> {
         }
     }"#;
 
-    let mut calculator = Calculator::new("soap_power_spectrum", parameters.to_owned())?;
-    let mut descriptor = Descriptor::new();
-    calculator.compute(&mut systems, &mut descriptor, Default::default())?;
-    descriptor.densify(&["species_neighbor_1", "species_neighbor_2"], None)?;
+    let mut descriptor = time_graph::spanned!("Full calculation", {
+        let mut calculator = Calculator::new("soap_power_spectrum", parameters.to_owned())?;
+        calculator.compute(&mut systems, Default::default())?
+    });
+
+    let keys_to_move = LabelsBuilder::new(vec!["species_center"]).finish();
+    descriptor.keys_to_samples(&keys_to_move, /* sort_samples */ true)?;
+
+    let keys_to_move = LabelsBuilder::new(vec!["species_neighbor_1", "species_neighbor_2"]).finish();
+    descriptor.keys_to_properties(&keys_to_move, /* sort_samples */ true)?;
 
     Ok(descriptor)
 }

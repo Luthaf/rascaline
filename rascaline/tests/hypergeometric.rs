@@ -26,7 +26,7 @@ fn hypergeometric() {
     let input: HyperGeometricInput = serde_json::from_str(&input).expect("failed to decode JSON");
 
     let hypergeometric = HyperGeometricSphericalExpansion::new(input.max_radial, input.max_angular);
-    let shape = (input.max_radial, input.max_angular + 1);
+    let shape = (input.max_angular + 1, input.max_radial);
     let mut values = Array2::from_elem(shape, 0.0);
     let mut gradients = Array2::from_elem(shape, 0.0);
 
@@ -40,12 +40,14 @@ fn hypergeometric() {
             hypergeometric.compute(rij, parameters, values.view_mut(), Some(gradients.view_mut()));
 
             assert_relative_eq!(
-                values, expected_values.slice(s![i_gaussian_constant, i_rij, .., ..]),
+                // Transpose since the data layout changed since the reference
+                // values where saved
+                values.t(), expected_values.slice(s![i_gaussian_constant, i_rij, .., ..]),
                 max_relative=1e-11
             );
 
             assert_relative_eq!(
-                gradients, expected_gradients.slice(s![i_gaussian_constant, i_rij, .., ..]),
+                gradients.t(), expected_gradients.slice(s![i_gaussian_constant, i_rij, .., ..]),
                 max_relative=1e-11
             );
         }

@@ -32,10 +32,12 @@ calculator = SoapPowerSpectrum(**HYPER_PARAMETERS)
 # run the actual calculation
 descriptor = calculator.compute(frames)
 
-# Transform the descriptor to dense representation,
-# with one sample for each atom-centered environment
-descriptor.densify(["species_neighbor_1", "species_neighbor_2"])
+# The descriptor is an equistore `TensorMap`, containing multiple blocks.
+# We can transform it to a single block containing a dense representation, with
+# one sample for each atom-centered environment.
+descriptor.keys_to_samples("species_center")
+descriptor.keys_to_properties(["species_neighbor_1", "species_neighbor_2"])
 
-# you can now use descriptor.values as the
+# you can now use descriptor.block(0).values as the
 # input of a machine learning algorithm
-print(descriptor.values.shape)
+print(descriptor.block(0).values.shape)

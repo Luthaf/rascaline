@@ -71,4 +71,4 @@ class TestChemfilesSystem(unittest.TestCase):
 
         # use_native_system=True should work fine
         descriptor = calculator.compute(frame, use_native_system=True)
-        self.assertEqual(descriptor.values.shape, (4, 2))
+        self.assertEqual(len(descriptor.keys), 1)

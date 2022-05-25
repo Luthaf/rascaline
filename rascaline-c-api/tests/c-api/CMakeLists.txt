@@ -76,4 +76,5 @@ add_test(
     COMMAND ${TEST_COMMAND} $<TARGET_FILE:example-profiling> ${XYZ_EXAMPLE_FILE}
 )
 
-add_subdirectory(cxx)
+# TODO: remove or re-enable
+# add_subdirectory(cxx)

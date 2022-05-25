@@ -11,6 +11,8 @@ pub enum Error {
     Utf8(Utf8Error),
     /// Error related to reading files with chemfiles
     Chemfiles(String),
+    /// Error related to saving files in equistore format
+    Serialization(String),
     /// Errors coming from external callbacks, typically inside the System
     /// implementation
     External {
@@ -32,6 +34,7 @@ impl std::fmt::Display for Error {
             Error::Json(e) => write!(f, "json error: {}", e),
             Error::Utf8(e) => write!(f, "utf8 decoding error: {}", e),
             Error::Chemfiles(e) => write!(f, "chemfiles error: {}", e),
+            Error::Serialization(e) => write!(f, "serialization error: {}", e),
             Error::BufferSize(e) => write!(f, "buffer is not big enough: {}", e),
             Error::External{status, message} => write!(f, "error from external code (status {}): {}", status, message),
             Error::Internal(e) => write!(f, "internal error: {}", e),
@@ -45,6 +48,7 @@ impl std::error::Error for Error {
             Error::InvalidParameter(_) |
             Error::Internal(_) |
             Error::Chemfiles(_) |
+            Error::Serialization(_) |
             Error::BufferSize(_) |
             Error::External{..} => None,
             Error::Json(e) => Some(e),
@@ -62,6 +66,19 @@ impl From<serde_json::Error> for Error {
 impl From<Utf8Error> for Error {
     fn from(error: Utf8Error) -> Error {
         Error::Utf8(error)
+    }
+}
+
+impl From<equistore::Error> for Error {
+    fn from(error: equistore::Error) -> Error {
+        match error {
+            equistore::Error::InvalidParameter(e) => Error::InvalidParameter(e),
+            equistore::Error::BufferSize(e) => Error::BufferSize(e),
+            equistore::Error::Io(e) => Error::Serialization(e.to_string()),
+            equistore::Error::Serialization(e) => Error::Serialization(e),
+            equistore::Error::External { status, context } => Error::External { status: status.as_i32(), message: context},
+            equistore::Error::Internal(e) => Error::Internal(e),
+        }
     }
 }
 

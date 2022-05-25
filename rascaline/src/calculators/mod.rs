@@ -1,11 +1,14 @@
-use crate::descriptor::{Descriptor, Indexes, SamplesBuilder};
+use std::sync::Arc;
+
+use equistore::{TensorMap, Labels};
 
 use crate::{Error, System};
 
-#[cfg(test)]
-pub(crate) mod tests_utils;
-
-/// TODO: docs
+/// The `CalculatorBase` trait is the interface shared by all calculator
+/// implementations; and used by [`crate::Calculator`] to run the calculation.
+///
+/// This should not be used directly by end users, who should use the facilities
+/// in [`crate::Calculator`] instead.
 ///
 /// `std::panic::RefUnwindSafe` is a required super-trait to enable passing
 /// calculators across the C API.
@@ -14,67 +17,56 @@ pub trait CalculatorBase: std::panic::RefUnwindSafe {
     fn name(&self) -> String;
 
     /// Get the parameters used to create this Calculator as a JSON string
-    fn get_parameters(&self) -> String;
+    fn parameters(&self) -> String;
 
-    /// Get the names of features for this Calculator
-    fn features_names(&self) -> Vec<&str>;
-    /// Get the default set of features for this Calculator
-    fn features(&self) -> Indexes;
+    /// Get the set of keys for this calculator and the given systems
+    fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error>;
 
-    /// Get the default sample builder for this Calculator
-    fn samples_builder(&self) -> Box<dyn SamplesBuilder>;
-    /// Does this calculator compute gradients?
-    fn compute_gradients(&self) -> bool;
+    /// Get the names used for sample labels by this calculator
+    fn samples_names(&self) -> Vec<&str>;
 
-    /// Check that the given indexes are valid feature indexes for this
-    /// Calculator. This is used by to ensure only valid features are requested
-    fn check_features(&self, indexes: &Indexes) -> Result<(), Error>;
+    /// Get the full list of samples this calculator would create for the given
+    /// systems. This function should return one set of samples for each key.
+    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error>;
 
-    /// Check that the given indexes are valid samples indexes for this
-    /// Calculator. This is used by to ensure only valid samples are requested
+    /// Get the gradient samples corresponding the given samples. The samples
+    /// slice contains one set of samples for each key.
     ///
-    /// The default implementation recompute the full set of samples using
-    /// `Self::samples()`, and check that all requested samples are part of the
-    /// full sample set.
-    fn check_samples(&self, indexes: &Indexes, systems: &mut [Box<dyn System>]) -> Result<(), Error> {
-        let builder = self.samples_builder();
-        if indexes.names() != builder.names() {
-            return Err(Error::InvalidParameter(format!(
-                "invalid sample names for {}, expected [{}], got [{}]",
-                self.name(),
-                builder.names().join(", "),
-                indexes.names().join(", "),
-            )))
-        }
+    /// This function should return `None` if no gradients are to be computed,
+    /// or `Some(Vec<>)`, with one set of gradient samples for each key.
+    fn gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Option<Vec<Arc<Labels>>>, Error>;
 
-        let allowed = builder.samples(systems)?;
-        for value in indexes.iter() {
-            if !allowed.contains(value) {
-                return Err(Error::InvalidParameter(format!(
-                    "{:?} is not a valid sample for {}", value, self.name()
-                )))
-            };
-        }
+    /// Get the components this calculator computes for each key.
+    fn components(&self, keys: &Labels) -> Vec<Vec<Arc<Labels>>>;
 
-        Ok(())
-    }
+    /// Get the names used for property labels by this calculator
+    fn properties_names(&self) -> Vec<&str>;
 
-    /// Core implementation of the descriptor.
+    /// Get the properties this calculator computes for each key.
+    fn properties(&self, keys: &Labels) -> Vec<Arc<Labels>>;
+
+    /// Actually run the calculation.
     ///
-    /// This function should compute the descriptor only for samples in
-    /// `descriptor.samples` and computing only features in
-    /// `descriptor.features`. By default, these would correspond to the samples
-    /// and features coming from `Descriptor::samples()` and
-    /// `Descriptor::features()` respectively; but the user can request only a
-    /// subset of them.
-    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor) -> Result<(), Error>;
+    /// This function is given a pre-allocated descriptor, filled with zeros.
+    /// The samples/properties in each blocks might not match the values
+    /// returned by [`CalculatorBase::samples`] and
+    /// [`CalculatorBase::properties`]: instead they will only contain the
+    /// values that where requested by the end user.
+    ///
+    /// Gradients are allocated if [`CalculatorBase::gradient_samples`] returned
+    /// `Some`.
+    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error>;
 }
 
-mod sorted_distances;
-pub use self::sorted_distances::SortedDistances;
+
+#[cfg(test)]
+pub(crate) mod tests_utils;
 
 mod dummy_calculator;
 pub use self::dummy_calculator::DummyCalculator;
+
+mod sorted_distances;
+pub use self::sorted_distances::SortedDistances;
 
 pub mod soap;
 pub use self::soap::{SphericalExpansion, SphericalExpansionParameters};

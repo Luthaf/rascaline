@@ -42,6 +42,11 @@ pub struct rascal_pair_t {
 /// setting `user_data` to the actual data storage, and setting all function
 /// pointers to the correct functions. For an example of code doing this, see
 /// the `SystemBase` class in the Python interface to rascaline.
+///
+/// **WARNING**: all function implementations **MUST** be thread-safe, function
+/// taking `const` pointer parameters can be called from multiple threads at the
+/// same time. The `rascal_system_t` itself might be moved from one thread to
+/// another.
 
 // Function pointers have type `Option<unsafe extern fn(XXX)>`, where `Option`
 // ensure that the `impl System for rascal_system_t` is forced to deal with the
@@ -95,6 +100,9 @@ pub struct rascal_system_t {
     /// `pairs_containing(j)`.
     pairs_containing: Option<unsafe extern fn(user_data: *const c_void, center: usize, pairs: *mut *const rascal_pair_t, count: *mut usize) -> rascal_status_t>,
 }
+
+unsafe impl Send for rascal_system_t {}
+unsafe impl Sync for rascal_system_t {}
 
 impl<'a> System for &'a mut rascal_system_t {
     fn size(&self) -> Result<usize, Error> {

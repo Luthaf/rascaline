@@ -16,6 +16,7 @@ fn main() {
         .with_config(cbindgen::Config {
             language: cbindgen::Language::C,
             cpp_compat: true,
+            includes: vec!["equistore.h".into()],
             include_guard: Some("RASCALINE_H".into()),
             include_version: false,
             documentation: true,
@@ -29,6 +30,10 @@ fn main() {
             path.push("rascaline.h");
             data.write_to_file(&path);
         });
+
+    let mut path = PathBuf::from("include");
+    path.push("equistore.h");
+    std::fs::write(path, equistore::c_api::header_content()).expect("failed to write equistore.h");
 
     // if not ok, rerun the build script unconditionally
     if result.is_ok() {

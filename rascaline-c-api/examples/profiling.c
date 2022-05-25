@@ -1,15 +1,15 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#include <equistore.h>
 #include <rascaline.h>
 
 /// Compute SOAP power spectrum, this is the same code as the 'compute-soap'
 /// example
-static rascal_status_t compute_soap(rascal_descriptor_t* descriptor, const char* path);
+static eqs_tensormap_t* compute_soap(const char* path);
 
 int main(int argc, char* argv[]) {
     rascal_status_t status = RASCAL_SUCCESS;
-    rascal_descriptor_t* descriptor = NULL;
     char* buffer = NULL;
     size_t buffer_size = 8192;
     bool got_error = true;
@@ -33,14 +33,8 @@ int main(int argc, char* argv[]) {
         goto cleanup;
     }
 
-    descriptor = rascal_descriptor();
+    eqs_tensormap_t* descriptor = compute_soap(argv[1]);
     if (descriptor == NULL) {
-        printf("Error: %s\n", rascal_last_error());
-        goto cleanup;
-    }
-
-    status = compute_soap(descriptor, argv[1]);
-    if (status != RASCAL_SUCCESS) {
         goto cleanup;
     }
 
@@ -69,7 +63,7 @@ int main(int argc, char* argv[]) {
     got_error = false;
 cleanup:
     free(buffer);
-    rascal_descriptor_free(descriptor);
+    eqs_tensormap_free(descriptor);
 
     if (got_error) {
         return 1;
@@ -78,16 +72,25 @@ cleanup:
     }
 }
 
-int compute_soap(rascal_descriptor_t* descriptor, const char* path) {
-    rascal_status_t status = RASCAL_SUCCESS;
-    rascal_calculator_t* calculator;
+// this is the same function as in the compute-soap.c example
+eqs_tensormap_t* compute_soap(const char* path) {
+    int status = RASCAL_SUCCESS;
+    rascal_calculator_t* calculator = NULL;
     rascal_system_t* systems = NULL;
     uintptr_t n_systems = 0;
-    double* values = NULL;
-    uintptr_t n_samples = 0;
-    uintptr_t n_features = 0;
-    const char* densify_variables[] = {"species_neighbor_1", "species_neighbor_2"};
+    const double* values = NULL;
+    const uintptr_t* shape = NULL;
+    uintptr_t shape_count = 0;
+    bool got_error = true;
+    const char* keys_to_samples[] = {"species_center"};
+    const char* keys_to_properties[] = {"species_neighbor_1", "species_neighbor_2"};
+    // use the default set of options, computing all samples and all features
     rascal_calculation_options_t options = {0};
+
+    eqs_tensormap_t* descriptor = NULL;
+    const eqs_block_t* block = NULL;
+    eqs_array_t data = {0};
+    eqs_labels_t keys_to_move = {0};
 
     const char* parameters = "{\n"
         "\"cutoff\": 5.0,\n"
@@ -118,22 +121,30 @@ int compute_soap(rascal_descriptor_t* descriptor, const char* path) {
     }
 
     status = rascal_calculator_compute(
-        calculator, descriptor, systems, n_systems, options
+        calculator, &descriptor, systems, n_systems, options
     );
     if (status != RASCAL_SUCCESS) {
         printf("Error: %s\n", rascal_last_error());
         goto cleanup;
     }
 
-    status = rascal_descriptor_densify(descriptor, densify_variables, 1, NULL, 0);
-    if (status != RASCAL_SUCCESS) {
-        printf("Error: %s\n", rascal_last_error());
+    keys_to_move.names = keys_to_samples;
+    keys_to_move.size = 1;
+    keys_to_move.values = NULL;
+    keys_to_move.count = 0;
+    status = eqs_tensormap_keys_to_samples(descriptor, keys_to_move, true);
+    if (status != EQS_SUCCESS) {
+        printf("Error: %s\n", eqs_last_error());
         goto cleanup;
     }
 
-    status = rascal_descriptor_values(descriptor, &values, &n_samples, &n_features);
-    if (status != RASCAL_SUCCESS) {
-        printf("Error: %s\n", rascal_last_error());
+    keys_to_move.names = keys_to_properties;
+    keys_to_move.size = 2;
+    keys_to_move.values = NULL;
+    keys_to_move.count = 0;
+    status = eqs_tensormap_keys_to_properties(descriptor, keys_to_move, true);
+    if (status != EQS_SUCCESS) {
+        printf("Error: %s\n", eqs_last_error());
         goto cleanup;
     }
 
@@ -141,5 +152,5 @@ cleanup:
     rascal_calculator_free(calculator);
     rascal_basic_systems_free(systems, n_systems);
 
-    return status;
+    return descriptor;
 }

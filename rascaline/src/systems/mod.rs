@@ -34,7 +34,7 @@ pub struct Pair {
 
 /// A `System` deals with the storage of atoms and related information, as well
 /// as the computation of neighbor lists.
-pub trait System {
+pub trait System: Send + Sync {
     /// Get the unit cell for this system
     fn cell(&self) -> Result<UnitCell, Error>;
 
@@ -48,7 +48,7 @@ pub trait System {
     fn species(&self) -> Result<&[i32], Error>;
 
     /// Get the positions for all atoms in this system. The returned value must
-    /// be a slice of length `self.size()` containing the cartesian coordinates
+    /// be a slice of length `self.size()` containing the Cartesian coordinates
     /// of all atoms in the system.
     fn positions(&self) -> Result<&[Vector3D], Error>;
 

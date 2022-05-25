@@ -3,6 +3,8 @@
 use std::f64;
 use std::f64::consts::SQRT_2;
 
+use ndarray::ArrayView1;
+
 use crate::Vector3D;
 
 /// `\sqrt{\frac{1}{4 \pi}}`
@@ -123,6 +125,16 @@ impl SphericalHarmonicsArray {
         let [l, m] = index;
         debug_assert!(l <= self.max_angular && -l <= m && m <= l);
         return (m + l + (l * l)) as usize;
+    }
+
+    /// Get the slice of the full array containing values for a given `l`. The
+    /// size of the resulting view is `2 * l + 1`, and contains value for `m`
+    /// from `-l` to `l` in order.
+    #[inline]
+    pub fn slice(&self, l: isize) -> ArrayView1<'_, f64> {
+        let start = self.linear_index([l, -l]);
+        let stop = self.linear_index([l, l]);
+        return ArrayView1::from(&self.data[start..=stop]);
     }
 }
 

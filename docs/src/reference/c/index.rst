@@ -26,12 +26,11 @@ file, allowing you to do use rascaline like this (after installation):
     # Link to rascaline, this makes the header accessible
     target_link_libraries(MyExecutable rascaline)
 
-The functions and types provided in ``rascaline.h`` can be grouped in four main groups:
+The functions and types provided in ``rascaline.h`` can be grouped in three main groups:
 
 .. toctree::
     :maxdepth: 1
 
     systems
     calculators
-    descriptor
     misc

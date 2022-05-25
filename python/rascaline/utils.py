@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import ctypes
 
-from ._rascaline import RASCAL_BUFFER_SIZE_ERROR
+from ._c_api import RASCAL_BUFFER_SIZE_ERROR
 from .status import RascalError
 
 

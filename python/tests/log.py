@@ -75,3 +75,7 @@ class TestLogging(unittest.TestCase):
             cm.warnings[0].message.args[0],
             "exception raised in logging callback: this is an exception",
         )
+
+
+if __name__ == "__main__":
+    unittest.main()

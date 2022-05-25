@@ -11,21 +11,19 @@ functions. All the example should output something similar to the table below.
     ╔════╦══════════════════════════════╦════════════╦═══════════╦══════════╦═════════════╗
     ║ id ║ span name                    ║ call count ║ called by ║ total    ║ mean        ║
     ╠════╬══════════════════════════════╬════════════╬═══════════╬══════════╬═════════════╣
-    ║  1 ║ Calculator::compute          ║          2 ║         6 ║  18.45ms ║      9.23ms ║
+    ║  2 ║ Full calculation             ║          1 ║         — ║ 660.58ms ║    660.58ms ║
     ╠════╬══════════════════════════════╬════════════╬═══════════╬══════════╬═════════════╣
-    ║  6 ║ SoapPowerSpectrum::compute   ║          1 ║         1 ║   9.74ms ║      9.74ms ║
+    ║  3 ║ SoapPowerSpectrum::compute   ║          1 ║         2 ║ 584.02ms ║    584.02ms ║
     ╠════╬══════════════════════════════╬════════════╬═══════════╬══════════╬═════════════╣
-    ║  0 ║ NeighborsList                ║          1 ║         1 ║ 146.63µs ║    146.63µs ║
+    ║  1 ║ Calculator::prepare          ║          2 ║      3, 2 ║ 148.15ms ║     74.08ms ║
     ╠════╬══════════════════════════════╬════════════╬═══════════╬══════════╬═════════════╣
-    ║  2 ║ Calculator::prepare          ║          2 ║         1 ║   3.48ms ║      1.74ms ║
+    ║  0 ║ NeighborsList                ║         20 ║         1 ║  20.82ms ║      1.04ms ║
     ╠════╬══════════════════════════════╬════════════╬═══════════╬══════════╬═════════════╣
-    ║  4 ║ SphericalExpansion::compute  ║          1 ║         1 ║   4.65ms ║      4.65ms ║
+    ║  5 ║ SphericalExpansion::compute  ║          1 ║         3 ║ 196.38ms ║    196.38ms ║
     ╠════╬══════════════════════════════╬════════════╬═══════════╬══════════╬═════════════╣
-    ║  3 ║ GtoRadialIntegral::compute   ║        299 ║         4 ║   1.76ms ║      5.88µs ║
+    ║  4 ║ GtoRadialIntegral::compute   ║      74448 ║         5 ║ 117.04ms ║      1.57µs ║
     ╠════╬══════════════════════════════╬════════════╬═══════════╬══════════╬═════════════╣
-    ║  5 ║ SphericalHarmonics::compute  ║        299 ║         4 ║ 193.73µs ║ 647.00ns ⚠️  ║
-    ╠════╬══════════════════════════════╬════════════╬═══════════╬══════════╬═════════════╣
-    ║  7 ║ Descriptor::densify          ║          1 ║         — ║   8.44ms ║      8.44ms ║
+    ║  6 ║ SphericalHarmonics::compute  ║      74448 ║         5 ║   9.95ms ║ 133.00ns ⚠️ ║
     ╚════╩══════════════════════════════╩════════════╩═══════════╩══════════╩═════════════╝
 
 In this table, the first columns assign a unique numeric identifier to each
@@ -35,13 +33,12 @@ function/section called the current one, and finally the total and mean time
 spent in this function.
 
 The ⚠️ symbol is added when the mean cost of the function is close to the
-profiling overhead (around 100ns per function call), and thus the measurement
+profiling overhead (30 to 80ns per function call), and thus the measurement
 might not be very reliable.
 
 Some of the most important sections are:
 
-- ``Calculator::compute``: the entry point of all calculations
-- ``Calculator::prepare``: building the list of samples that will be in the descriptor
+- ``Calculator::prepare``: building the list of samples/properties that will be in the descriptor
 - ``XXX::compute``: building blocks for the overall calculation
 - ``NeighborsList``: construction of the list of neighbors
 

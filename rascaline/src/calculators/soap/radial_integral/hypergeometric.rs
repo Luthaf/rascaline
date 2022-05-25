@@ -422,8 +422,8 @@ impl HyperGeometricSphericalExpansion {
         let mut hypergeometric = Vec::new();
         hypergeometric.reserve(max_angular * (max_radial + 1));
 
-        for n in 0..max_radial {
-            for l in 0..(max_angular + 1) {
+        for l in 0..(max_angular + 1) {
+            for n in 0..max_radial {
                 let a = 0.5 * (n + l + 3) as f64;
                 let b = l as f64 + 1.5;
                 hypergeometric.push(HyperGeometric::new(a, b));
@@ -431,7 +431,7 @@ impl HyperGeometricSphericalExpansion {
         }
 
         let hypergeometric = Array2::from_shape_vec(
-            (max_radial, max_angular + 1), hypergeometric
+            (max_angular + 1, max_radial), hypergeometric
         ).expect("wrong shape in Array2::from_shape_vec");
         return HyperGeometricSphericalExpansion {
             max_angular: max_angular,
@@ -448,10 +448,11 @@ impl HyperGeometricSphericalExpansion {
         values: ArrayViewMut2<f64>,
         gradients: Option<ArrayViewMut2<f64>>,
     ) {
-        assert_eq!(parameters.gto_gaussian_constants.len(), self.max_radial);
-        assert_eq!(values.shape(), [self.max_radial, self.max_angular + 1]);
+        debug_assert_eq!(parameters.gto_gaussian_constants.len(), self.max_radial);
+        let expected_shape = [self.max_angular + 1, self.max_radial];
+        debug_assert_eq!(values.shape(), expected_shape);
         if let Some(ref gradients) = gradients {
-            assert_eq!(gradients.shape(), [self.max_radial, self.max_angular + 1]);
+            debug_assert_eq!(gradients.shape(), expected_shape);
         }
 
         if self.max_angular < 3 {
@@ -474,22 +475,26 @@ impl HyperGeometricSphericalExpansion {
         let alpha_rij = alpha * rij;
         let z2 = -rij * alpha_rij;
 
-        for n in 0..self.max_radial {
-            let z = alpha_rij * alpha_rij / (alpha + parameters.gto_gaussian_constants[n]);
-            for l in 0..(self.max_angular + 1) {
-                values[[n, l]] = self.hypergeometric[[n, l]].compute(z, z2, false);
+        let all_z = parameters.gto_gaussian_constants.iter().map(|sigma| {
+            alpha_rij * alpha_rij / (alpha + sigma)
+        }).collect::<Vec<_>>();
+
+        for l in 0..(self.max_angular + 1) {
+            for (n, &z) in all_z.iter().enumerate() {
+                values[[l, n]] = self.hypergeometric[[l, n]].compute(z, z2, false);
             }
         }
 
         if let Some(ref mut gradients) = gradients {
-            for n in 0..self.max_radial {
-                let z = alpha_rij * alpha_rij / (alpha + parameters.gto_gaussian_constants[n]);
-
-                for l in 0..(self.max_angular + 1) {
-                    gradients[[n, l]] = self.hypergeometric[[n, l]].compute(z, z2, true);
+            for l in 0..(self.max_angular + 1) {
+                for (n, &z) in all_z.iter().enumerate() {
+                    gradients[[l, n]] = self.hypergeometric[[l, n]].compute(z, z2, true);
                 }
-                let mut row = gradients.index_axis_mut(Axis(0), n);
-                row *= 2.0 * z / rij;
+            }
+
+            for (n, &z) in all_z.iter().enumerate() {
+                let mut column = gradients.index_axis_mut(Axis(1), n);
+                column *= 2.0 * z / rij;
             }
 
             azip!((gradient in gradients, &value in &values)
@@ -512,53 +517,53 @@ impl HyperGeometricSphericalExpansion {
         let alpha_rij = alpha * rij;
         let z2 = -alpha_rij * rij;
 
-        let get_ab = |n, l| (0.5 * (n + l + 3) as f64, l as f64 + 1.5);
+        let get_ab = |l, n| (0.5 * (n + l + 3) as f64, l as f64 + 1.5);
 
         for n in 0..self.max_radial {
             // get the starting points for the recursion
             let z = alpha_rij * alpha_rij / (alpha + parameters.gto_gaussian_constants[n]);
 
             let l = self.max_angular;
-            let mut m1p2p = self.hypergeometric[[n, l]].compute(z, z2, false);
-            values[[n, l]] = m1p2p;
+            let mut m1p2p = self.hypergeometric[[l, n]].compute(z, z2, false);
+            values[[l, n]] = m1p2p;
 
-            let mut m2p3p = self.hypergeometric[[n, l]].compute(z, z2, true);
+            let mut m2p3p = self.hypergeometric[[l, n]].compute(z, z2, true);
             if let Some(ref mut gradients) = gradients {
-                gradients[[n, l]] = m2p3p;
+                gradients[[l, n]] = m2p3p;
             }
 
             let l = self.max_angular - 1;
-            let mut mp1p2p = self.hypergeometric[[n, l]].compute(z, z2, false);
-            values[[n, l]] = mp1p2p;
+            let mut mp1p2p = self.hypergeometric[[l, n]].compute(z, z2, false);
+            values[[l, n]] = mp1p2p;
 
-            let mut mp2p3p = self.hypergeometric[[n, l]].compute(z, z2, true);
+            let mut mp2p3p = self.hypergeometric[[l, n]].compute(z, z2, true);
             if let Some(ref mut gradients) = gradients {
-                gradients[[n, l]] = mp2p3p;
+                gradients[[l, n]] = mp2p3p;
             }
 
             let mut l = self.max_angular;
             while l > 2 {
                 l -= 2;
 
-                let (a, b) = get_ab(n, l);
+                let (a, b) = get_ab(l, n);
                 let m1p1p = g_gradient_recursive_step(a, b, z, m2p3p, m1p2p);
                 let m00 = g_value_recursive_step(a, b, z, m1p2p, m1p1p);
 
-                values[[n, l]] = m00;
+                values[[l, n]] = m00;
                 if let Some(ref mut gradients) = gradients {
-                    gradients[[n, l]] = m1p1p;
+                    gradients[[l, n]] = m1p1p;
                 }
 
                 m2p3p = m1p1p;
                 m1p2p = m00;
 
-                let (a, b) = get_ab(n, l - 1);
+                let (a, b) = get_ab(l - 1, n);
                 let mp1p1p = g_gradient_recursive_step(a, b, z, mp2p3p, mp1p2p);
                 let mp00 = g_value_recursive_step(a, b, z, mp1p2p, mp1p1p);
 
-                values[[n, l - 1]] = mp00;
+                values[[l - 1, n]] = mp00;
                 if let Some(ref mut gradients) = gradients {
-                    gradients[[n, l - 1]] = mp1p1p;
+                    gradients[[l - 1, n]] = mp1p1p;
                 }
                 mp2p3p = mp1p1p;
                 mp1p2p = mp00;
@@ -566,18 +571,18 @@ impl HyperGeometricSphericalExpansion {
 
             // makes sure l == 0 is taken care of
             if self.max_angular % 2 == 0 {
-                let (a, b) = get_ab(n, 0);
+                let (a, b) = get_ab(0, n);
                 let m1p1p = g_gradient_recursive_step(a, b, z, m2p3p, m1p2p);
                 let m00 = g_value_recursive_step(a, b, z, m1p2p, m1p1p);
-                values[[n, 0]] = m00;
+                values[[0, n]] = m00;
                 if let Some(ref mut gradients) = gradients {
-                    gradients[[n, 0]] = m1p1p;
+                    gradients[[0, n]] = m1p1p;
                 }
             }
 
             if let Some(ref mut gradients) = gradients {
-                let mut row = gradients.index_axis_mut(Axis(0), n);
-                row *= 2.0 * z / rij;
+                let mut column = gradients.index_axis_mut(Axis(1), n);
+                column *= 2.0 * z / rij;
             }
         }
 
@@ -622,9 +627,11 @@ mod tests {
         for &max_radial in &[1, 2, 8, 12] {
             for &max_angular in &[0, 2, 8, 12] {
                 let hyper = HyperGeometricSphericalExpansion::new(max_radial, max_angular);
-                let mut values = Array2::from_elem((max_radial, max_angular + 1), 0.0);
-                let mut values_delta = Array2::from_elem((max_radial, max_angular + 1), 0.0);
-                let mut gradients = Array2::from_elem((max_radial, max_angular + 1), 0.0);
+
+                let shape = (max_angular + 1, max_radial);
+                let mut values = Array2::from_elem(shape, 0.0);
+                let mut values_delta = Array2::from_elem(shape, 0.0);
+                let mut gradients = Array2::from_elem(shape, 0.0);
 
                 for atomic_gaussian_width in &[0.2, 0.3, 0.5, 3.0] {
                     let parameters = HyperGeometricParameters {

@@ -5,6 +5,5 @@ API reference
     :maxdepth: 2
 
     python/index
-    cxx/index
     c/index
     rust

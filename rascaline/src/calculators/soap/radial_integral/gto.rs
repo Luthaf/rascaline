@@ -122,7 +122,7 @@ impl GtoRadialIntegral {
             hypergeometric: hypergeometric,
             atomic_gaussian_constant: 1.0 / (2.0 * sigma2),
             gto_gaussian_constants: gto_gaussian_constants,
-            gto_orthonormalization: gto_orthonormalization,
+            gto_orthonormalization: gto_orthonormalization.t().to_owned(),
         })
     }
 }
@@ -135,7 +135,7 @@ impl RadialIntegral for GtoRadialIntegral {
         mut values: ArrayViewMut2<f64>,
         mut gradients: Option<ArrayViewMut2<f64>>
     ) {
-        let expected_shape = [self.parameters.max_radial, self.parameters.max_angular + 1];
+        let expected_shape = [self.parameters.max_angular + 1, self.parameters.max_radial];
         assert_eq!(
             values.shape(), expected_shape,
             "wrong size for values array, expected [{}, {}] but got [{}, {}]",
@@ -170,10 +170,10 @@ impl RadialIntegral for GtoRadialIntegral {
                 let factor = c_rij_l * c_dn;
                 c_rij_l *= c_rij;
 
-                values[[n, l]] *= factor;
+                values[[l, n]] *= factor;
                 if let Some(ref mut gradients) = gradients {
-                    gradients[[n, l]] *= factor;
-                    gradients[[n, l]] += values[[n, l]] * l as f64 / distance;
+                    gradients[[l, n]] *= factor;
+                    gradients[[l, n]] += values[[l, n]] * l as f64 / distance;
                 }
             }
         }
@@ -194,15 +194,15 @@ impl RadialIntegral for GtoRadialIntegral {
                         let c_dn = (c + gto_constant).powf(-a);
                         let factor = c * c_dn;
 
-                        gradients[[n, l]] = gamma(a) / gamma(b) * factor;
+                        gradients[[l, n]] = gamma(a) / gamma(b) * factor;
                     }
                 }
             }
         }
 
-        values.assign(&self.gto_orthonormalization.dot(&values));
+        values.assign(&values.dot(&self.gto_orthonormalization));
         if let Some(ref mut gradients) = gradients {
-            gradients.assign(&self.gto_orthonormalization.dot(&*gradients));
+            gradients.assign(&gradients.dot(&self.gto_orthonormalization));
         }
     }
 }
@@ -281,7 +281,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic = "wrong size for values array, expected [2, 4] but got [2, 3]"]
+    #[should_panic = "wrong size for values array, expected [4, 2] but got [3, 2]"]
     fn values_array_size() {
         let gto = GtoRadialIntegral::new(GtoParameters {
             max_radial: 2,
@@ -289,13 +289,13 @@ mod tests {
             cutoff: 5.0,
             atomic_gaussian_width: 0.5,
         }).unwrap();
-        let mut values = Array2::from_elem((2, 3), 0.0);
+        let mut values = Array2::from_elem((3, 2), 0.0);
 
         gto.compute(1.0, values.view_mut(), None);
     }
 
     #[test]
-    #[should_panic = "wrong size for gradients array, expected [2, 4] but got [2, 3]"]
+    #[should_panic = "wrong size for gradients array, expected [4, 2] but got [3, 2]"]
     fn gradient_array_size() {
         let gto = GtoRadialIntegral::new(GtoParameters {
             max_radial: 2,
@@ -303,8 +303,8 @@ mod tests {
             cutoff: 5.0,
             atomic_gaussian_width: 0.5,
         }).unwrap();
-        let mut values = Array2::from_elem((2, 4), 0.0);
-        let mut gradients = Array2::from_elem((2, 3), 0.0);
+        let mut values = Array2::from_elem((4, 2), 0.0);
+        let mut gradients = Array2::from_elem((3, 2), 0.0);
 
         gto.compute(1.0, values.view_mut(), Some(gradients.view_mut()));
     }
@@ -320,9 +320,10 @@ mod tests {
             atomic_gaussian_width: 0.5,
         }).unwrap();
 
-        let mut values = Array2::from_elem((max_radial, max_angular + 1), 0.0);
-        let mut gradients = Array2::from_elem((max_radial, max_angular + 1), 0.0);
-        let mut gradients_plus = Array2::from_elem((max_radial, max_angular + 1), 0.0);
+        let shape = (max_angular + 1, max_radial);
+        let mut values = Array2::from_elem(shape, 0.0);
+        let mut gradients = Array2::from_elem(shape, 0.0);
+        let mut gradients_plus = Array2::from_elem(shape, 0.0);
         gto.compute(0.0, values.view_mut(), Some(gradients.view_mut()));
         gto.compute(1e-12, values.view_mut(), Some(gradients_plus.view_mut()));
 
@@ -346,9 +347,10 @@ mod tests {
         let rij = 3.4;
         let delta = 1e-9;
 
-        let mut values = Array2::from_elem((max_radial, max_angular + 1), 0.0);
-        let mut values_delta = Array2::from_elem((max_radial, max_angular + 1), 0.0);
-        let mut gradients = Array2::from_elem((max_radial, max_angular + 1), 0.0);
+        let shape = (max_angular + 1, max_radial);
+        let mut values = Array2::from_elem(shape, 0.0);
+        let mut values_delta = Array2::from_elem(shape, 0.0);
+        let mut gradients = Array2::from_elem(shape, 0.0);
         gto.compute(rij, values.view_mut(), Some(gradients.view_mut()));
         gto.compute(rij + delta, values_delta.view_mut(), None);
 
@@ -357,7 +359,7 @@ mod tests {
         for n in 0..max_radial {
             for l in 0..(max_angular + 1) {
                 assert_relative_eq!(
-                    finite_differences[[n, l]], gradients[[n, l]],
+                    finite_differences[[l, n]], gradients[[l, n]],
                     epsilon=1e-5, max_relative=5e-5
                 );
             }

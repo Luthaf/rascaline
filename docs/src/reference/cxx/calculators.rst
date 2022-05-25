@@ -1,11 +1,11 @@
-Dealing with calculators
-========================
+.. Dealing with calculators
+.. ========================
 
-.. doxygenclass:: rascaline::Calculator
-    :members:
+.. .. doxygenclass:: rascaline::Calculator
+..     :members:
 
-.. doxygenclass:: rascaline::CalculationOptions
-    :members:
+.. .. doxygenclass:: rascaline::CalculationOptions
+..     :members:
 
-.. doxygenclass:: rascaline::SelectedIndexes
-    :members:
+.. .. doxygenclass:: rascaline::SelectedIndexes
+..     :members:

@@ -44,21 +44,22 @@ The traits we'll use
 
 Two of the three :ref:`core concepts <core-concepts>` in rascaline are
 represented in the code as Rust traits: systems implements the `System`_ trait,
-and calculators implement the `CalculatorBase`_ trait. `Descriptor`_ for their
-part are implemented as a concrete struct. Traits (also called interfaces in
-other languages) define contracts that the implementing code must follow, in the
-form of a set of function and documented behavior for these functions.
-Fulfilling this contract allow to add new systems which work with all
+and calculators implement the `CalculatorBase`_ trait. Traits (also called
+interfaces in other languages) define contracts that the implementing code must
+follow, in the form of a set of function and documented behavior for these
+functions. Fulfilling this contract allow to add new systems which work with all
 calculators, already implement or not; and new calculators which can use any
 system, already implemented or not.
 
 In this tutorial, our goal is to write a new struct implementing
 `CalculatorBase`_. This implementation will take as input a slice of boxed
-`System`_ trait objects, and using data from those fill up a `Descriptor`_.
+`System`_ trait objects, and using data from those fill up a `TensorMap`_
+(defined in the equistore crate).
 
 .. _System: ../reference/rust/rascaline/systems/trait.System.html
 .. _CalculatorBase: ../reference/rust/rascaline/calculators/trait.CalculatorBase.html
-.. _Descriptor: ../reference/rust/rascaline/struct.Descriptor.html
+.. _Calculator: ../reference/rust/rascaline/struct.Calculator.html
+.. _TensorMap: ../reference/rust/equistore/tensor/struct.TensorMap.html
 
 Implementation
 --------------
@@ -94,10 +95,9 @@ which uses a ``Box<dyn CalculatorBase>`` (i.e. a pointer to a
    :start-after: [impl]
    :end-before: [impl]
 
-We'll go over these functions one by one, explaining what they do as we go.
-There are two groups of functions --- used to communicate metadata about the
-calculator and the descriptor --- and the main function is ``compute``, which
-does the main part of the work.
+We'll go over these functions one by one, explaining what they do as we go. Most
+of the functions here are used to communicate metadata about the calculator and
+the representation, and the ``compute`` function does the main part of the work.
 
 Calculator metadata
 ^^^^^^^^^^^^^^^^^^^
@@ -132,8 +132,8 @@ definition of ``GeometricMoments``, and use it to implement the function.
 
 .. literalinclude:: ../../../rascaline/src/tutorials/moments/s2_metadata.rs
    :language: rust
-   :start-after: [CalculatorBase::get_parameters]
-   :end-before: [CalculatorBase::get_parameters]
+   :start-after: [CalculatorBase::parameters]
+   :end-before: [CalculatorBase::parameters]
    :dedent: 4
 
 One interesting thing here is that ``serde_json::to_string`` returns a
@@ -147,84 +147,125 @@ message (using a `panic`_).
 .. _Result: https://doc.rust-lang.org/std/result/index.html
 .. _panic: https://doc.rust-lang.org/std/macro.panic.html
 
-Descriptor metadata
-^^^^^^^^^^^^^^^^^^^
+Representation metadata
+^^^^^^^^^^^^^^^^^^^^^^^
 
 The next set of functions in the `CalculatorBase`_ trait is used to communicate
-metadata about the descriptor itself, and called by the concrete `Calculator`_
+metadata about the representation, and called by the concrete `Calculator`_
 struct when initializing and allocating the corresponding memory.
 
-.. _CalculatorBase: ../reference/rust/rascaline/calculators/trait.CalculatorBase.html
-.. _Calculator: ../reference/rust/rascaline/struct.Calculator.html
+Keys
+++++
 
-First, ``compute_gradients`` indicates wether this calculator instance does or
-not compute gradients. In our case, this is controlled by the value of
-``self.gradients``.
+First, we have one function defining the set of keys that will be in the final
+``TensorMap``. In our case, we will want to have the center atom species and the
+neighbor atom species as keys. This allow to only store data if a given neighbor
+is actually present around a given center.
+
+We could manually create a set of `Labels`_ with a `LabelsBuilder`_ and return
+them. But since multiple calculators will create the same kind of keys, there
+are already implementation of typical species keys. Here we use
+``CenterSingleNeighborsSpeciesKeys`` to create a set of keys containing the
+center species and one neighbor species. This key builder requires a ``cutoff``
+(to determine which neighbors it should use) and ``self_pairs`` indicated
+whether atoms should be considered to be their own neighbor or not.
+
+.. _Labels: ../reference/rust/equistore/labels/struct.Labels.html
+.. _LabelsBuilder: ../reference/rust/equistore/labels/struct.LabelsBuilder.html
 
 .. literalinclude:: ../../../rascaline/src/tutorials/moments/s2_metadata.rs
    :language: rust
-   :start-after: [CalculatorBase::compute_gradients]
-   :end-before: [CalculatorBase::compute_gradients]
+   :start-after: [CalculatorBase::keys]
+   :end-before: [CalculatorBase::keys]
    :dedent: 4
 
-Then, we have three functions which work together to define what features are
-computed by he current descriptor. ``features_names`` defines the name
-associated with the different indexes in the features. In our case, there is
-only one such index, giving the power :math:`k` used to compute the moment.
+Samples
++++++++
+
+Having defined the keys, we need to define the metadata associated with each
+block. For each block, the first set of metadata — called the **samples** --
+describes the rows of the data. Three functions are used to define the samples:
+first, ``features_names`` defines the name associated with the different columns
+in the sample labels. Then, ``samples`` determines the set of samples associated
+with each key/block. The return type of the ``samples`` function takes some
+unpacking: we are returning a `Result`_ since any call to a `System`_ function
+can fail. The non-error case of the result is a ``Vec<Arc<Labels>>``: we need
+one set of `Labels`_ for each key/block. Finally, the labels can be the same
+between different keys, and ``Arc`` allow using the same set of labels for
+different keys without duplicating memory.
 
 .. literalinclude:: ../../../rascaline/src/tutorials/moments/s2_metadata.rs
    :language: rust
-   :start-after: [CalculatorBase::features_names]
-   :end-before: [CalculatorBase::features_names]
+   :start-after: [CalculatorBase::samples]
+   :end-before: [CalculatorBase::samples]
    :dedent: 4
 
-The ``features`` function creates the set of `Indexes`_ used by default by this
-calculator. This set of features will be used if the user does not pass a set of
-selected features to `Calculator::compute`_. Here, we simply compute all moments
-up to ``self.max_moment``. We build the set of indexes using an
-`IndexesBuilder`_, and fill it with slices of `IndexValue`_ containing only 1
-element (since we only have one index in the features).
+Like for ``CalculatorBase::keys``, we could manually write code to detect the
+right set of samples for each key. But since a lot of representation are built
+on atom-centered neighborhoods, there is already a tool to create the right set
+of samples in the form of ``AtomCenteredSamples``.
 
-.. _Indexes: ../reference/rust/rascaline/descriptor/struct.Indexes.html
-.. _IndexValue: ../reference/rust/rascaline/descriptor/struct.IndexValue.html
-.. _IndexesBuilder: ../reference/rust/rascaline/descriptor/struct.IndexesBuilder.html
-.. _Calculator::compute: ../reference/rust/rascaline/struct.Calculator.html#method.compute
+Gradients samples
++++++++++++++++++
+
+Continuing with the samples, the ``gradient_samples`` function is here to
+determine the samples associated with the gradients of the values with respect
+to the positions of the atoms. This function get as input the set of keys, the
+list of samples associated with each key, and the list of systems on which we
+want to run the calculation. Compared to the ``CalculatorBase::samples``
+function, there is an extra ``Option`` in the return type. If the calculator
+does not implement samples, or the user did not request gradients with respect
+to positions, this function should return ``None``. Otherwise, it should return
+``Some(vec_of_gradient_samples_per_key)``.
+
+We are again using the ``AtomCenteredSamples`` here to share code between
+multiple calculators all using atom-centered samples.
 
 .. literalinclude:: ../../../rascaline/src/tutorials/moments/s2_metadata.rs
    :language: rust
-   :start-after: [CalculatorBase::features]
-   :end-before: [CalculatorBase::features]
+   :start-after: [CalculatorBase::gradient_samples]
+   :end-before: [CalculatorBase::gradient_samples]
    :dedent: 4
 
-Finally, the ``check_features`` function will be called to verify that
-user-provided features are valid, for example to request the calculation of only
-a subset of values after feature selection. For the example, we check that the
-value of :math:`k` is below ``self.max_moment``, although we could iin theory
-accept any positive integer here.
+Components
+++++++++++
+
+The next set of metadata associated with a block are the components. Each block
+can have 0 or more components, that should be used to store metadata and
+information about symmetry operations or any kind of tensorial components. For
+examples, all gradients with respect to positions have a set of
+``gradient_direction`` Labels, running from 0 to 2 and indicating the Cartesian
+direction of the gradient.
+
+Here, we dont' have any components (the ``GeometricMoments`` representation is
+invariant), so we just return a list (one for each key) of empty vectors.
 
 .. literalinclude:: ../../../rascaline/src/tutorials/moments/s2_metadata.rs
    :language: rust
-   :start-after: [CalculatorBase::check_features]
-   :end-before: [CalculatorBase::check_features]
+   :start-after: [CalculatorBase::components]
+   :end-before: [CalculatorBase::components]
    :dedent: 4
 
-The only remaining piece of metadata required to create a `Descriptor`_ is the
-definition of samples. Here, we could have used the same strategy as for
-features with the three functions we just wrote. However since we expect that
-multiple calculators will create the same kind of samples, we provide some
-pre-defined `SamplesBuilder`_. For a two body representation which includes
-species information (our case here), we can use `TwoBodiesSpeciesSamples`_. We
-don't have self contribution (pair between the center and itself), so we can use
-``TwoBodiesSpeciesSamples::new()`` instead of
-``TwoBodiesSpeciesSamples::with_self_contribution()``.
 
-.. _SamplesBuilder: ../reference/rust/rascaline/descriptor/trait.SamplesBuilder.html
-.. _TwoBodiesSpeciesSamples: ../reference/rust/rascaline/descriptor/struct.TwoBodiesSpeciesSamples.html
+Properties
+++++++++++
+
+The only remaining piece of metadata required to create a `TensorMap`_ is the
+definition of properties, i.e. the metadata associated with the columns of the
+data arrays. Like for the samples, we have one function to define the set of
+names associated with each variable in the properties `Labels`_, and one
+function to compute the set of properties defined for each key.
+
+In our case, there is only one variable in the properties labels, the power
+:math:`k` used to compute the moment. When building the full list of Labels for
+each key in ``CalculatorBase::properties``, we use the fact that the properties
+are the same for each key/block; and return multiple references to the same
+``Arc<Labels>``.
 
 .. literalinclude:: ../../../rascaline/src/tutorials/moments/s2_metadata.rs
    :language: rust
-   :start-after: [CalculatorBase::samples_builder]
-   :end-before: [CalculatorBase::samples_builder]
+   :start-after: [CalculatorBase::properties]
+   :end-before: [CalculatorBase::properties]
    :dedent: 4
 
 We are now done defining the metadata associated with our ``GeometricMoments``
@@ -235,21 +276,21 @@ The compute function
 ^^^^^^^^^^^^^^^^^^^^
 
 We are finally approaching the most important function in `CalculatorBase`_,
-``compute``. This function takes as input a list of systems and a descriptor in
-which to write the results of the calculation. The function also returns a
+``compute``. This function takes as input a list of systems and a `TensorMap`_
+in which to write the results of the calculation. The function also returns a
 `Result`_, to be able to indicate that an error was reached during the
 calculation.
 
-The descriptor is initialized by the concrete `Calculator`_ struct, according to
-the parameters provided by the user. In particular, the descriptor will only
-contain samples and features requested by th user, meaning that the code in
-``compute`` should check whether a particular sample (respectively feature) is
-present in ``descriptor.samples`` (resp. ``descriptor.features``) before
-computing it.
+The `TensorMap`_ is initialized by the concrete `Calculator`_ struct, according
+to parameters provided by the user. In particular, the tensor map will only
+contain samples and properties requested by th user, meaning that the code in
+``compute`` should check for each block whether a particular sample
+(respectively property) is present in ``block.samples`` (resp.
+``block.property``) before computing it.
 
 This being said, let's start writing our ``compute`` function. We'll defensively
-check that the descriptor samples & features match what we expect from them, and
-return a unit value ``()`` wrapped in ``Ok`` at the end of the function.
+check that the tensor map keys match what we expect from them, and return a unit
+value ``()`` wrapped in ``Ok`` at the end of the function.
 
 .. literalinclude:: ../../../rascaline/src/tutorials/moments/s3_compute_1.rs
    :language: rust
@@ -259,17 +300,17 @@ return a unit value ``()`` wrapped in ``Ok`` at the end of the function.
 
 From here, the easiest way to implement our geometric moments descriptor is to
 iterate over the systems, and then iterate over the pairs in the system. Before
-we can get the pairs with ``system.pairs``, we need to compute the neighbors
-list for our current cutoff, using ``system.compute_neighbors``, which requires
-a mutable reference to the system to be able to store the list of computed pairs
-(hence the iteration using ``systems.iter_mut()``).
+we can get the pairs with ``system.pairs()``, we need to compute the neighbors
+list for our current cutoff, using ``system.compute_neighbors()``, which
+requires a mutable reference to the system to be able to store the list of
+computed pairs (hence the iteration using ``systems.iter_mut()``).
 
 All the functions on the `System`_ trait return `Result`_, but in contrary to
-the ``get_parameters`` function above, we want to send the possible errors back
-to the user so that they can deal with them as they want. The question mark
-``?`` operator does exactly that: if the value returned by the called function
-is ``Err(e)``, ``?`` immediately returns ``Err(e)``; and if the result is
-``Ok(v)``, ``?`` extract the ``v`` and the execution continues.
+the ``CalculatorBase::parameters`` function above, we want to send the possible
+errors back to the user so that they can deal with them as they want. The
+question mark ``?`` operator does exactly that: if the value returned by the
+called function is ``Err(e)``, ``?`` immediately returns ``Err(e)``; and if the
+result is ``Ok(v)``, ``?`` extract the ``v`` and the execution continues.
 
 .. literalinclude:: ../../../rascaline/src/tutorials/moments/s3_compute_2.rs
    :language: rust
@@ -277,25 +318,27 @@ is ``Err(e)``, ``?`` immediately returns ``Err(e)``; and if the result is
    :end-before: [compute]
    :dedent: 4
 
-For each pair, we now have to check wether the corresponding sample was
-requested by the user and is present in the descriptor. To this end, we can use
-``descriptor.samples.position``, which gives us an ``Option<usize>``. This
-option will be ``None`` is the sample was not found, and ``Some(position)``
-where ``position`` is an unsigned integer if the sample was found. From the
-documentation of `TwoBodiesSpeciesSamples`_, we know that the samples contains
-four index values, corresponding to the index of the system, the index of the
-central atom in this system, the species of this central atom and the species of
-the neighboring atom.
+For each pair, we now have to find the corresponding block (using the center and
+neighbor species values), and check wether the corresponding sample was
+requested by the user.
+
+To find blocks and check for samples, we can use the `Labels::position`_
+function on the keys and the samples `Labels`_. This function returns an
+``Option<usize>``, which will be ``None`` is the label (key or sample) was not
+found, and ``Some(position)`` where ``position`` is an unsigned integer if the
+label was found. For the keys, we know the blocks must exists, so we again use
+``expect`` to immediately extract the value of the block index and access the
+block. For the samples, we keep them as ``Option<usize>`` and will deal with
+missing samples later.
 
 One thing to keep in mind is that a given pair can participate to two different
 samples. If two atoms ``i`` and ``j`` are closer than the cutoff, the list of
 pairs will only contain the ``i-j`` pair, and not the ``j-i`` pair (it is a
 so-called half neighbors list). That being said, we can get the list of species
 with ``system.species()`` before the loop over pairs, and then construct the two
-potential samples and check for their presence. If neither of the sample was
-requested in the descriptor, then we can skip the calculation for this pair. We
-also use ``system.pairs_containing`` to get the number of neighbors a given
-center has.
+candidate samples and check for their presence. If neither of the samples was
+requested, then we can skip the calculation for this pair. We also use
+``system.pairs_containing()`` to get the number of neighbors a given center has.
 
 .. literalinclude:: ../../../rascaline/src/tutorials/moments/s3_compute_3.rs
    :language: rust
@@ -304,8 +347,11 @@ center has.
    :dedent: 4
 
 
-Now, we can iterate over the requested features, compute the moment for the
-current pair distance, and accumulate it in the descriptor values:
+.. _Labels::position: ../reference/rust/equistore/labels/struct.Labels.html#method.position
+
+Now, we can check if the samples are present, and if they are, iterate over the
+requested features, compute the moments for the current pair distance, and
+accumulate it in the descriptor values array:
 
 .. literalinclude:: ../../../rascaline/src/tutorials/moments/s3_compute_4.rs
    :language: rust
@@ -313,7 +359,14 @@ current pair distance, and accumulate it in the descriptor values:
    :end-before: [compute]
    :dedent: 4
 
-The code to compute gradients is very similar, checking the positions of a given
+
+The gradient with respect to positions of our representation are computed with:
+
+.. math::
+
+    \frac{\partial}{\partial \vec{r_{j}}} \braket{\alpha k | \chi_i} = \frac{\vec{r_{ij}}}{r_{ij}} \cdot \frac{k \ r_{ij}^{k - 1} \ \delta_{\alpha, \alpha_j}}{N_\text{neighbors}} = \vec{r_{ij}} \frac{k \ r_{ij}^{k - 2} \ \delta_{\alpha, \alpha_j}}{N_\text{neighbors}}
+
+The code to compute gradients is very similar, checking the existence of a given
 gradient sample before writing to it. There are now four possible contributions
 for a given pair: :math:`\partial \ket{\chi_i} / \partial r_j`, :math:`\partial
 \ket{\chi_j} / \partial r_i`, :math:`\partial \ket{\chi_i} / \partial r_i` and
@@ -323,30 +376,13 @@ to the gradients of the descriptor centered on :math:`i` with respect to atom
 :math:`j`, we also need to account for the gradient of the descriptor centered
 on atom :math:`i` with respect to its own position.
 
-There are three samples for each contribution to the gradient (one for each
-cartesian direction), but we know that they are stored one after the other in
-the ``gradients`` array. We can exploit this and only look for the sample
-corresponding to :math:`x` (which will be in a given ``row``), and then store
-the gradients in the :math:`y` and :math:`z` directions at ``row + 1`` and ``row
-+ 2``.
-
-Since they are optional, we need to use ``as_ref``/``as_mut`` to get references
-out of the ``descriptor.gradients`` and ``descriptor.gradients_samples`` fields.
-These fields contains ``Option<T>`` values, and we use ``expect`` to
-unconditionally extract the value since these fields should be set during the
-initialization by the concrete ``Calculator``.
-
-Putting everything together, the gradients contributions are computed using:
-
-.. math::
-
-    \frac{\partial}{\partial \vec{r_{j}}} \braket{\alpha k | \mathcal{A}_i} = \frac{\vec{r_{ij}}}{r_{ij}} \cdot \frac{k \ r_{ij}^{k - 1} \ \delta_{\alpha, \alpha_j}}{N_\text{neighbors}} = \vec{r_{ij}} \frac{k \ r_{ij}^{k - 2} \ \delta_{\alpha, \alpha_j}}{N_\text{neighbors}}
-
 .. literalinclude:: ../../../rascaline/src/tutorials/moments/s3_compute_5.rs
    :language: rust
    :start-after: [compute]
    :end-before: [compute]
    :dedent: 4
+
+--------------------------------------------------------------------------------
 
 .. html_hidden::
     :toggle: Here is the final implementation for the compute function
@@ -366,7 +402,7 @@ available to users. The entry point for users is the `Calculator`_ struct, which
 needs to be constructed from a calculator name and hyper-parameters in JSON
 format.
 
-When the user calls ``Calculator::new("calculator_name", "{\"json_parameters\":
+When the user calls ``Calculator::new("calculator_name", "{\"hyper_parameters\":
 1}")``, rascaline looks for ``"calculator_name"`` in the global calculator
 registry, and tries to create an instance using the hyper-parameters. In order
 to make our calculator available to all users, we need to add it to this
@@ -380,7 +416,7 @@ registry, in ``rascaline/src/calculator.rs``. The registry looks like this:
 ``add_calculator!`` is a local macro that takes three or four arguments: the
 registry itself (a ``BTreeMap``), the calculator name, the struct implementing
 `CalculatorBase`_ and optionally a struct to use as parameters to create the
-`CalculatorBase`_. In our case, we want to use the three arguments version in
+previous one. In our case, we want to use the three arguments version in
 something like ``add_calculator!(map, "geometric_moments", GeometricMoments);``.
 
 Additionally, you may want to add a convenience class in Python for our new

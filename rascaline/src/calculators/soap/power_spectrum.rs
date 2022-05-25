@@ -1,15 +1,22 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
+use std::sync::Arc;
 
+use ndarray::ArrayD;
 use ndarray::parallel::prelude::*;
 
-use crate::descriptor::{SamplesBuilder, IndexValue, Indexes, IndexesBuilder};
-use crate::descriptor::{TwoBodiesSpeciesSamples, ThreeBodiesSpeciesSamples};
+use equistore::{TensorMap, TensorBlock, EmptyArray};
+use equistore::{LabelsBuilder, Labels, LabelValue};
 
-use crate::{CalculationOptions, Calculator, SelectedIndexes};
-use crate::{Descriptor, Error, System};
+use crate::calculators::CalculatorBase;
+use crate::{CalculationOptions, Calculator, LabelsSelection};
+use crate::{Error, System};
 
-use super::{super::CalculatorBase, SphericalExpansionParameters};
+use super::SphericalExpansionParameters;
 use super::{SphericalExpansion, RadialBasis, CutoffFunction, RadialScaling};
+
+use crate::labels::{SpeciesFilter, SamplesBuilder};
+use crate::labels::AtomCenteredSamples;
+use crate::labels::{KeysBuilder, CenterTwoNeighborsSpeciesKeys};
 
 
 /// Parameters for SOAP power spectrum calculator.
@@ -36,7 +43,7 @@ pub struct PowerSpectrumParameters {
     pub max_angular: usize,
     /// Width of the atom-centered gaussian creating the atomic density
     pub atomic_gaussian_width: f64,
-    /// Weight of the center atom contribution to the features. 
+    /// Weight of the center atom contribution to the features.
     /// If `1` the center atom contribution is weighted the same as any other
     /// contribution.
     pub center_atom_weight: f64,
@@ -57,8 +64,13 @@ pub struct PowerSpectrumParameters {
 /// spectrum representation of atomistic systems.
 pub struct SoapPowerSpectrum {
     parameters: PowerSpectrumParameters,
-    spherical_expansion_calculator: Calculator,
-    spherical_expansion: Descriptor,
+    spherical_expansion: Calculator,
+}
+
+impl std::fmt::Debug for SoapPowerSpectrum {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.parameters)
+    }
 }
 
 impl SoapPowerSpectrum {
@@ -79,100 +91,275 @@ impl SoapPowerSpectrum {
 
         return Ok(SoapPowerSpectrum {
             parameters: parameters,
-            spherical_expansion_calculator: Calculator::from(
+            spherical_expansion: Calculator::from(
                 Box::new(spherical_expansion) as Box<dyn CalculatorBase>
             ),
-            spherical_expansion: Descriptor::new(),
         });
     }
 
-    /// Create the list of spherical expansion samples required to compute the
-    /// power spectrum `samples` requested by the user
-    fn get_expansion_samples(&self, samples: &Indexes) -> Indexes {
-        assert_eq!(samples.names(), self.samples_builder().names());
+    /// Construct a `TensorMap` containing the set of samples/properties we want the
+    /// spherical expansion to compute.
+    ///
+    /// For each block, samples will contain the same set of samples as the power
+    /// spectrum, even if a neighbor species might not be around, since that
+    /// simplifies the accumulation loops quite a lot.
+    fn selected_spx_labels(&self, descriptor: &TensorMap) -> TensorMap {
+        assert_eq!(descriptor.keys().names(), ["species_center", "species_neighbor_1", "species_neighbor_2"]);
 
-        let mut set = BTreeSet::new();
-        for sample in samples {
-            let structure = sample[0];
-            let center = sample[1];
-            let species_center = sample[2];
-            let species_neighbor_1 = sample[3];
-            let species_neighbor_2 = sample[4];
+        let mut requested = HashMap::new();
+        let mut requested_spherical_harmonics_l = BTreeSet::new();
+        for (&[center, neighbor_1, neighbor_2], block) in descriptor.keys().iter_fixed_size().zip(descriptor.blocks()) {
+            let values = block.values();
+            for &[l, n1, n2] in values.properties.iter_fixed_size() {
+                requested_spherical_harmonics_l.insert(l.usize());
 
-            set.insert([
-                structure, center, species_center, species_neighbor_1,
-            ]);
-            set.insert([
-                structure, center, species_center, species_neighbor_2,
-            ]);
+                let (_, properties) = requested.entry([l, center, neighbor_1]).or_insert_with(|| {
+                    (BTreeSet::new(), BTreeSet::new())
+                });
+                properties.insert([n1]);
+
+                let (_, properties) = requested.entry([l, center, neighbor_2]).or_insert_with(|| {
+                    (BTreeSet::new(), BTreeSet::new())
+                });
+                properties.insert([n2]);
+            }
         }
 
-        let mut spherical_expansion_samples = IndexesBuilder::new(
-            TwoBodiesSpeciesSamples::new(1.0).names()
-        );
-        for index in set {
-            spherical_expansion_samples.add(&index);
-        }
+        for (&[center, neighbor_1, neighbor_2], block) in descriptor.keys().iter_fixed_size().zip(descriptor.blocks()) {
+            let values = block.values();
+            for &l in &requested_spherical_harmonics_l {
+                let (samples_1, _) = requested.get_mut(&[l.into(), center, neighbor_1])
+                    .expect("missing entry while constructing spherical expansion selection");
 
-        return spherical_expansion_samples.finish()
-    }
+                for sample in &*values.samples {
+                    samples_1.insert(sample);
+                }
 
-    /// Create the list of spherical expansion features required to compute the
-    /// power spectrum `features` requested by the user
-    fn get_expansion_features(&self, features: &Indexes) -> (Indexes, usize) {
-        assert_eq!(features.names(), self.features_names());
+                let (samples_2, _) = requested.get_mut(&[l.into(), center, neighbor_2])
+                    .expect("missing entry while constructing spherical expansion selection");
 
-        let radial_values = features
-            .iter()
-            .flat_map(|feature| [feature[0].usize(), feature[1].usize()])
-            .collect::<BTreeSet<_>>();
-
-        let n_radial_values = radial_values.len();
-
-        let angular_values = features
-            .iter()
-            .map(|feature| feature[2].isize())
-            .collect::<BTreeSet<_>>();
-
-        let mut set = BTreeSet::new();
-
-        for l in angular_values {
-            for m in -l..=l {
-                for &n in &radial_values {
-                    set.insert([IndexValue::from(l), IndexValue::from(m), IndexValue::from(n)]);
+                for sample in &*values.samples {
+                    samples_2.insert(sample);
                 }
             }
         }
 
-        let mut spherical_expansion_features = IndexesBuilder::new(vec!["l", "m", "n"]);
-        for index in set {
-            spherical_expansion_features.add(&index);
+        let mut keys_builder = LabelsBuilder::new(vec!["spherical_harmonics_l", "species_center", "species_neighbor"]);
+        let mut blocks = Vec::new();
+        for (key, (samples, properties)) in requested {
+            keys_builder.add(&key);
+
+            let mut samples_builder = LabelsBuilder::new(vec!["structure", "center"]);
+            for entry in samples {
+                samples_builder.add(entry);
+            }
+            let samples = Arc::new(samples_builder.finish());
+
+            let mut properties_builder = LabelsBuilder::new(vec!["n"]);
+            for entry in properties {
+                properties_builder.add(&entry);
+            }
+            let properties = Arc::new(properties_builder.finish());
+
+            blocks.push(TensorBlock::new(
+                EmptyArray::new(vec![samples.count(), properties.count()]),
+                samples,
+                Vec::new(),
+                properties,
+            ).expect("invalid TensorBlock"));
         }
 
-        return (spherical_expansion_features.finish(), n_radial_values);
+        // if the user selected only a subset of l entries, make sure there are
+        // empty blocks for the corresponding keys in the spherical expansion
+        // selection
+        let mut missing_keys = BTreeSet::new();
+        for &[center, neighbor_1, neighbor_2] in descriptor.keys().iter_fixed_size() {
+            for spherical_harmonics_l in 0..=(self.parameters.max_angular) {
+                if !requested_spherical_harmonics_l.contains(&spherical_harmonics_l) {
+                    missing_keys.insert([spherical_harmonics_l.into(), center, neighbor_1]);
+                    missing_keys.insert([spherical_harmonics_l.into(), center, neighbor_2]);
+                }
+            }
+        }
+        for key in missing_keys {
+            keys_builder.add(&key);
+
+            let samples = Arc::new(LabelsBuilder::new(vec!["structure", "center"]).finish());
+            let properties = Arc::new(LabelsBuilder::new(vec!["n"]).finish());
+            blocks.push(TensorBlock::new(
+                EmptyArray::new(vec![samples.count(), properties.count()]),
+                samples,
+                Vec::new(),
+                properties,
+            ).expect("invalid TensorBlock"));
+        }
+
+        return TensorMap::new(keys_builder.finish(), blocks).expect("invalid TensorMap")
+    }
+
+    /// Pre-compute the correspondance between samples of the spherical
+    /// expansion & the power spectrum, both for values and gradients.
+    ///
+    /// For example, the key `center, neighbor_1, neighbor_2 = 1, 6, 8` will
+    /// have a very different set of samples from `c, n_1, n_2 = 1, 6, 6`; but
+    /// both will use the spherical expansion `center, neighbor = 1, 6`.
+    ///
+    /// This function returns the list of spherical expansion sample indexes
+    /// corresponding to the requested samples in `descriptor` for each block.
+    fn samples_mapping(
+        &self,
+        descriptor: &TensorMap,
+        spherical_expansion: &TensorMap
+    ) -> HashMap<Vec<LabelValue>, SamplesMapping> {
+        let mut mapping = HashMap::new();
+        for (key, block) in descriptor.iter() {
+            let species_center = key[0];
+            let species_neighbor_1 = key[1];
+            let species_neighbor_2 = key[2];
+
+            let mut values_mapping = Vec::new();
+            let values = block.values();
+            assert!(values.properties.count() > 0);
+
+            // the spherical expansion samples are the same for all
+            // `spherical_harmonics_l` values, so we only need to compute it for
+            // the first one.
+            let first_l = values.properties[0][0];
+
+            let block_id_1 = spherical_expansion.keys().position(&[
+                first_l, species_center, species_neighbor_1
+            ]).expect("missing block in spherical expansion");
+            let spx_block_1 = &spherical_expansion.blocks()[block_id_1];
+            let spx_samples_1 = &spx_block_1.values().samples;
+
+            let block_id_2 = spherical_expansion.keys().position(&[
+                first_l, species_center, species_neighbor_2
+            ]).expect("missing block in spherical expansion");
+            let spx_block_2 = &spherical_expansion.blocks()[block_id_2];
+            let spx_samples_2 = &spx_block_2.values().samples;
+
+            values_mapping.reserve(values.samples.count());
+            for sample in &*values.samples {
+                let sample_1 = spx_samples_1.position(sample).expect("missing spherical expansion sample");
+                let sample_2 = spx_samples_2.position(sample).expect("missing spherical expansion sample");
+                values_mapping.push((sample_1, sample_2));
+            }
+
+            let mut gradient_mapping = Vec::new();
+            if self.parameters.gradients {
+                let gradient = block.gradient("positions").expect("missing gradient");
+
+                let spx_gradient_1 = spx_block_1.gradient("positions").expect("missing spherical expansion gradients");
+                let spx_gradient_2 = spx_block_2.gradient("positions").expect("missing spherical expansion gradients");
+
+                gradient_mapping.reserve(gradient.samples.count());
+
+                for gradient_sample in gradient.samples.iter() {
+                    gradient_mapping.push((
+                        spx_gradient_1.samples.position(gradient_sample),
+                        spx_gradient_2.samples.position(gradient_sample),
+                    ));
+                }
+            }
+
+            mapping.insert(key.to_vec(), SamplesMapping {
+                values: values_mapping,
+                gradients: gradient_mapping
+            });
+        }
+
+        return mapping;
+    }
+
+    /// Get the list of spherical expansion to combine when computing a single
+    /// block (associated with the given key) of the power spectrum.
+    fn spx_properties_to_combine<'a>(
+        &self,
+        key: &[LabelValue],
+        properties: &Labels,
+        spherical_expansion: &'a TensorMap,
+    ) -> Vec<SpxPropertiesToCombine<'a>> {
+        let species_center = key[0];
+        let species_neighbor_1 = key[1];
+        let species_neighbor_2 = key[2];
+
+        let mut spx_to_combine = Vec::with_capacity(properties.count());
+        for &[l, n1, n2] in properties.iter_fixed_size() {
+            let block_1 = spherical_expansion.keys().position(
+                &[l, species_center, species_neighbor_1]
+            ).expect("missing first neighbor species block in spherical expansion");
+            let block_1 = &spherical_expansion.blocks()[block_1];
+
+            let block_2 = spherical_expansion.keys().position(
+                &[l, species_center, species_neighbor_2]
+            ).expect("missing second neighbor species block in spherical expansion");
+            let block_2 = &spherical_expansion.blocks()[block_2];
+
+            let values_1 = block_1.values().data.as_array();
+            let values_2 = block_2.values().data.as_array();
+
+            // both blocks should had the same number of m components
+            debug_assert_eq!(values_1.shape()[1], values_2.shape()[1]);
+
+            let property_1 = block_1.values().properties.position(&[n1]).expect("missing n1");
+            let property_2 = block_2.values().properties.position(&[n2]).expect("missing n2");
+
+            let (gradient_1, gradient_2) = if self.parameters.gradients {
+                let spx_gradient_1 = block_1.gradient("positions").expect("missing spherical expansion gradients");
+                let spx_gradient_2 = block_2.gradient("positions").expect("missing spherical expansion gradients");
+
+                (Some(spx_gradient_1.data.as_array()), Some(spx_gradient_2.data.as_array()))
+            } else {
+                (None, None)
+            };
+
+            spx_to_combine.push(SpxPropertiesToCombine {
+                spherical_harmonics_l: l.usize(),
+                property_1,
+                property_2,
+                values_1,
+                values_2,
+                gradient_1,
+                gradient_2,
+            });
+        }
+
+        return spx_to_combine;
     }
 }
 
-impl std::fmt::Debug for SoapPowerSpectrum {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.parameters)
-    }
+
+/// Data about the two spherical expansion block that will get combined to
+/// produce a single (l, n1, n2) property in a single power spectrum block
+struct SpxPropertiesToCombine<'a> {
+    /// value of l
+    spherical_harmonics_l: usize,
+    /// position of n1 in the first spherical expansion properties
+    property_1: usize,
+    /// position of n2 in the second spherical expansion properties
+    property_2: usize,
+    /// array of values for the first spherical expansion
+    values_1: &'a ArrayD<f64>,
+    /// array of values for the second spherical expansion
+    values_2: &'a ArrayD<f64>,
+    /// array of gradients for the first spherical expansion
+    gradient_1: Option<&'a ArrayD<f64>>,
+    /// array of gradients for second first spherical expansion
+    gradient_2: Option<&'a ArrayD<f64>>,
 }
 
-/// Mapping between the feature index of the power spectrum (indexed with `n1,
-/// n2, l`) and the spherical expansion (indexed with `n, l, m`). Each power
-/// spectrum feature corresponds to a block (m from -l to l) of spherical
-/// expansion features.
-struct FeatureBlock {
-    /// angular basis number for this feature block. The block size is 2l + 1,
-    /// corresponding to all m values from -l to l
-    l: isize,
-    /// Index of the first feature in the spherical expansion (corresponding to
-    /// `n1, l, m=-l`)
-    start_n1_l: usize,
-    /// Index of the second feature in the spherical expansion (corresponding to
-    /// `n2, l, m=-l`)
-    start_n2_l: usize,
+/// Indexes of the spherical expansion samples/rows corresponding to each power
+/// spectrum row.
+struct SamplesMapping {
+    /// Mapping for the values.
+    values: Vec<(usize, usize)>,
+    /// Mapping for the gradients.
+    ///
+    /// Some samples might not be defined in both of the spherical expansion
+    /// blocks being considered, for examples when dealing with two different
+    /// neighbor species, only one the sample corresponding to the right
+    /// neighbor species will be `Some`.
+    gradients: Vec<(Option<usize>, Option<usize>)>,
 }
 
 impl CalculatorBase for SoapPowerSpectrum {
@@ -180,240 +367,222 @@ impl CalculatorBase for SoapPowerSpectrum {
         "SOAP power spectrum".into()
     }
 
-    fn get_parameters(&self) -> String {
+    fn parameters(&self) -> String {
         serde_json::to_string(&self.parameters).expect("failed to serialize to JSON")
     }
 
-    fn features_names(&self) -> Vec<&str> {
-        vec!["n1", "n2", "l"]
+    fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<equistore::Labels, Error> {
+        let builder = CenterTwoNeighborsSpeciesKeys {
+            cutoff: self.parameters.cutoff,
+            self_pairs: true,
+            symmetric: true,
+        };
+        return builder.keys(systems);
     }
 
-    fn features(&self) -> Indexes {
-        let mut features = IndexesBuilder::new(self.features_names());
-        for n1 in 0..self.parameters.max_radial {
-            for n2 in 0..self.parameters.max_radial {
-                for l in 0..(self.parameters.max_angular + 1) {
-                    features.add(&[
-                        IndexValue::from(n1), IndexValue::from(n2), IndexValue::from(l)
-                    ]);
+    fn samples_names(&self) -> Vec<&str> {
+        AtomCenteredSamples::samples_names()
+    }
+
+    fn samples(&self, keys: &equistore::Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+        assert_eq!(keys.names(), ["species_center", "species_neighbor_1", "species_neighbor_2"]);
+        let mut result = Vec::new();
+        for [species_center, species_neighbor_1, species_neighbor_2] in keys.iter_fixed_size() {
+
+            let builder = AtomCenteredSamples {
+                cutoff: self.parameters.cutoff,
+                species_center: SpeciesFilter::Single(species_center.i32()),
+                // we only want center with both neighbor species present
+                species_neighbor: SpeciesFilter::AllOf(
+                    [
+                        species_neighbor_1.i32(),
+                        species_neighbor_2.i32()
+                    ].iter().copied().collect()
+                ),
+                self_pairs: true,
+            };
+
+            result.push(builder.samples(systems)?);
+        }
+
+        return Ok(result);
+    }
+
+    fn gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Option<Vec<Arc<Labels>>>, Error> {
+        assert_eq!(keys.names(), ["species_center", "species_neighbor_1", "species_neighbor_2"]);
+        assert_eq!(keys.count(), samples.len());
+
+        if !self.parameters.gradients {
+            return Ok(None);
+        }
+
+        let mut gradient_samples = Vec::new();
+        for ([species_center, species_neighbor_1, species_neighbor_2], samples) in keys.iter_fixed_size().zip(samples) {
+            let builder = AtomCenteredSamples {
+                cutoff: self.parameters.cutoff,
+                species_center: SpeciesFilter::Single(species_center.i32()),
+                // gradients samples should contain either neighbor species
+                species_neighbor: SpeciesFilter::OneOf(vec![
+                    species_neighbor_1.i32(),
+                    species_neighbor_2.i32()
+                ]),
+                self_pairs: true,
+            };
+
+            gradient_samples.push(builder.gradients_for(systems, samples)?);
+        }
+
+        return Ok(Some(gradient_samples));
+    }
+
+    fn components(&self, keys: &equistore::Labels) -> Vec<Vec<Arc<Labels>>> {
+        return vec![vec![]; keys.count()];
+    }
+
+    fn properties_names(&self) -> Vec<&str> {
+        vec!["l", "n1", "n2"]
+    }
+
+    fn properties(&self, keys: &equistore::Labels) -> Vec<Arc<Labels>> {
+        let mut properties = LabelsBuilder::new(self.properties_names());
+        for l in 0..=self.parameters.max_angular {
+            for n1 in 0..self.parameters.max_radial {
+                for n2 in 0..self.parameters.max_radial {
+                    properties.add(&[l, n1, n2]);
                 }
             }
         }
-        return features.finish();
-    }
 
-    fn samples_builder(&self) -> Box<dyn SamplesBuilder> {
-        Box::new(ThreeBodiesSpeciesSamples::with_self_contribution(self.parameters.cutoff))
-    }
+        let properties = Arc::new(properties.finish());
 
-    fn compute_gradients(&self) -> bool {
-        self.parameters.gradients
-    }
-
-    fn check_features(&self, indexes: &Indexes) -> Result<(), Error> {
-        assert_eq!(indexes.names(), self.features_names());
-        for value in indexes {
-            let n1 = value[0].usize();
-            let n2 = value[1].usize();
-            let l = value[2].usize();
-
-            if n1 >= self.parameters.max_radial {
-                return Err(Error::InvalidParameter(format!(
-                    "'n1' is too large for this SoapPowerSpectrum: \
-                    expected value below {}, got {}", self.parameters.max_radial, n1
-                )))
-            }
-
-            if n2 >= self.parameters.max_radial {
-                return Err(Error::InvalidParameter(format!(
-                    "'n2' is too large for this SoapPowerSpectrum: \
-                    expected value below {}, got {}", self.parameters.max_radial, n2
-                )))
-            }
-
-            if l > self.parameters.max_angular {
-                return Err(Error::InvalidParameter(format!(
-                    "'l' is too large for this SoapPowerSpectrum: \
-                    expected value below {}, got {}", self.parameters.max_angular + 1, l
-                )))
-            }
-        }
-
-        Ok(())
+        return vec![properties; keys.count()];
     }
 
     #[time_graph::instrument(name = "SoapPowerSpectrum::compute")]
-    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor) -> Result<(), Error> {
-        assert_eq!(descriptor.samples.names(), self.samples_builder().names());
-        assert_eq!(descriptor.features.names(), self.features_names());
-
-        // `n_different_radial` is the number of different radial indexes. This
-        // will be the size of a given lm block in spherical expansion
-        let (selected_features, n_different_radial) = self.get_expansion_features(&descriptor.features);
-
+    #[allow(clippy::too_many_lines)]
+    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
+        let selected = self.selected_spx_labels(descriptor);
         let options = CalculationOptions {
-            selected_samples: SelectedIndexes::Subset(self.get_expansion_samples(&descriptor.samples)),
-            selected_features: SelectedIndexes::Subset(selected_features),
+            selected_samples: LabelsSelection::Predefined(&selected),
+            selected_properties: LabelsSelection::Predefined(&selected),
             ..Default::default()
         };
 
-        self.spherical_expansion_calculator.compute(
+        let spherical_expansion = self.spherical_expansion.compute(
             systems,
-            &mut self.spherical_expansion,
             options,
         ).expect("failed to compute spherical expansion");
 
-        // Find out where feature blocks of the spherical expansion are located
-        let mut feature_blocks = Vec::with_capacity(descriptor.features.count());
-        for feature in descriptor.features.iter() {
-            let n1 = feature[0];
-            let n2 = feature[1];
-            let l = feature[2].isize();
+        let samples_mapping = self.samples_mapping(descriptor, &spherical_expansion);
 
-            let start_n1_l = self.spherical_expansion.features.position(
-                &[IndexValue::from(l), IndexValue::from(-l), n1]
-            ).expect("missing feature `l, m, n1` in spherical expansion");
-            let start_n2_l = self.spherical_expansion.features.position(
-                &[IndexValue::from(l), IndexValue::from(-l), n2]
-            ).expect("missing feature `l, m, n2` in spherical expansion");
+        for (key, mut block) in descriptor.iter_mut() {
+            let species_neighbor_1 = key[1];
+            let species_neighbor_2 = key[2];
 
-            feature_blocks.push(FeatureBlock { l, start_n1_l, start_n2_l });
-        }
+            let values = block.values();
+            let properties_to_combine = self.spx_properties_to_combine(
+                key,
+                &values.properties,
+                &spherical_expansion,
+            );
 
-        let spherical_expansion_samples = &self.spherical_expansion.samples;
-        let spherical_expansion_features = &self.spherical_expansion.features;
-        let spherical_expansion_values = &self.spherical_expansion.values;
+            let mapping = samples_mapping.get(key).expect("missing sample mapping");
 
-        let samples = &descriptor.samples;
-
-        descriptor.values.axis_iter_mut(ndarray::Axis(0))
-            .into_par_iter()
-            .enumerate()
-            .for_each(|(sample_i, mut value)| {
-                let sample = &samples[sample_i];
-                let structure = sample[0];
-                let center = sample[1];
-                let species_center = sample[2];
-                let species_neighbor_1 = sample[3];
-                let species_neighbor_2 = sample[4];
-
-                let neighbor_1 = spherical_expansion_samples.position(&[
-                    structure, center, species_center, species_neighbor_1
-                ]).expect("missing data for one of the neighbor species");
-                let neighbor_2 = spherical_expansion_samples.position(&[
-                    structure, center, species_center, species_neighbor_2
-                ]).expect("missing data for one of the neighbor species");
-
-                for (feature_i, block) in feature_blocks.iter().enumerate() {
-                    let &FeatureBlock { l, start_n1_l, start_n2_l } = block;
-
-                    let mut sum = 0.0;
-                    for (index_m, m) in (-l..=l).enumerate() {
-                        let feature_1 = start_n1_l + index_m * n_different_radial;
-                        let feature_2 = start_n2_l + index_m * n_different_radial;
-                        // check that we are accessing the right value of m
-                        debug_assert_eq!(spherical_expansion_features[feature_1][1].isize(), m);
-                        debug_assert_eq!(spherical_expansion_features[feature_2][1].isize(), m);
-
-                        // unsafe is required to remove the bound checking in
-                        // release mode (`uget` still checks bounds in debug
-                        // mode)
-                        unsafe {
-                            sum += spherical_expansion_values.uget([neighbor_1, feature_1])
-                                * spherical_expansion_values.uget([neighbor_2, feature_2]);
-                        }
-                    }
-
-                    if species_neighbor_1 != species_neighbor_2 {
-                        // We only store values for `species_neighbor_1 <
-                        // species_neighbor_2` because the values are the same for
-                        // pairs `species_neighbor_1 <-> species_neighbor_2` and
-                        // `species_neighbor_2 <-> species_neighbor_1`. To ensure
-                        // the final kernels are correct, we have to multiply the
-                        // corresponding values.
-                        sum *= std::f64::consts::SQRT_2;
-                    }
-
-                    let normalization = f64::sqrt(2.0 * l as f64 + 1.0);
-                    value[feature_i] = sum / normalization;
-                }
-            });
-
-        if self.parameters.gradients {
-            let gradients = descriptor.gradients.as_mut().expect("missing power spectrum gradients");
-            let gradient_samples = descriptor.gradients_samples.as_ref().expect("missing power spectrum gradient samples");
-
-            let se_gradients_samples = self.spherical_expansion.gradients_samples.as_ref().expect("missing spherical expansion gradient samples");
-            let se_gradients = self.spherical_expansion.gradients.as_ref().expect("missing spherical expansion gradients");
-
-            gradients.axis_iter_mut(ndarray::Axis(0))
+            block.values_mut().data.as_array_mut()
+                .axis_iter_mut(ndarray::Axis(0))
                 .into_par_iter()
-                .enumerate()
-                .for_each(|(gradient_sample_i, mut gradient)| {
-                    let gradient_sample = &gradient_samples[gradient_sample_i];
-                    let sample_i = gradient_sample[0].usize();
-                    let grad_atom = gradient_sample[1];
-                    let spatial = gradient_sample[2];
-
-                    let sample = &samples[sample_i];
-                    let structure = sample[0];
-                    let center = sample[1];
-                    let species_center = sample[2];
-                    let species_neighbor_1 = sample[3];
-                    let species_neighbor_2 = sample[4];
-
-                    let sample_neighbor_1 = spherical_expansion_samples.position(&[
-                        structure, center, species_center, species_neighbor_1
-                    ]).expect("missing data for the first neighbor");
-                    let sample_neighbor_2 = spherical_expansion_samples.position(&[
-                        structure, center, species_center, species_neighbor_2
-                    ]).expect("missing data for the second neighbor");
-
-                    let grad_neighbor_1 = se_gradients_samples.position(&[
-                        IndexValue::from(sample_neighbor_1), grad_atom, spatial
-                    ]);
-                    let grad_neighbor_2 = se_gradients_samples.position(&[
-                        IndexValue::from(sample_neighbor_2), grad_atom, spatial
-                    ]);
-
-                    for (feature_i, block) in feature_blocks.iter().enumerate() {
-                        let &FeatureBlock { l, start_n1_l, start_n2_l } = block;
-
+                .zip_eq(&mapping.values)
+                .for_each(|(mut values, &(spx_sample_1, spx_sample_2))| {
+                    for (property_i, spx) in properties_to_combine.iter().enumerate() {
                         let mut sum = 0.0;
-                        for (index_m, m) in (-l..=l).enumerate() {
-                            let feature_1 = start_n1_l + index_m * n_different_radial;
-                            let feature_2 = start_n2_l + index_m * n_different_radial;
-                            // check that we are accessing the right value of m
-                            debug_assert_eq!(spherical_expansion_features[feature_1][1].isize(), m);
-                            debug_assert_eq!(spherical_expansion_features[feature_2][1].isize(), m);
 
-                            if let Some(grad_neighbor_1) = grad_neighbor_1 {
-                                // unsafe is required to remove the bound
-                                // checking in release mode (`uget` still checks
-                                // bounds in debug mode)
-                                unsafe {
-                                    sum += se_gradients.uget([grad_neighbor_1, feature_1])
-                                         * spherical_expansion_values.uget([sample_neighbor_2, feature_2]);
-                                }
-                            }
-
-                            if let Some(grad_neighbor_2) = grad_neighbor_2 {
-                                unsafe {
-                                    sum += spherical_expansion_values.uget([sample_neighbor_1, feature_1])
-                                         * se_gradients.uget([grad_neighbor_2, feature_2]);
-                                }
+                        for m in 0..(2 * spx.spherical_harmonics_l + 1) {
+                            // unsafe is required to remove the bound checking
+                            // in release mode (`uget` still checks bounds in
+                            // debug mode)
+                            unsafe {
+                                sum += spx.values_1.uget([spx_sample_1, m, spx.property_1])
+                                     * spx.values_2.uget([spx_sample_2, m, spx.property_2]);
                             }
                         }
 
                         if species_neighbor_1 != species_neighbor_2 {
-                            // see above
+                            // We only store values for `species_neighbor_1 <
+                            // species_neighbor_2` because the values are the
+                            // same for pairs `species_neighbor_1 <->
+                            // species_neighbor_2` and `species_neighbor_2 <->
+                            // species_neighbor_1`. To ensure the final kernels
+                            // are correct, we have to multiply the
+                            // corresponding values.
                             sum *= std::f64::consts::SQRT_2;
                         }
 
-                        let normalization = f64::sqrt(2.0 * l as f64 + 1.0);
-                        gradient[feature_i] = sum / normalization;
+                        unsafe {
+                            *values.uget_mut(property_i) = sum / f64::sqrt((2 * spx.spherical_harmonics_l + 1) as f64);
+                        }
                     }
                 });
+
+            if self.parameters.gradients {
+                let gradients = block.gradient_mut("positions").expect("missing power spectrum gradients");
+
+                gradients.data.as_array_mut()
+                    .axis_iter_mut(ndarray::Axis(0))
+                    .into_par_iter()
+                    .zip_eq(gradients.samples.par_iter())
+                    .zip_eq(&mapping.gradients)
+                    .for_each(|((mut values, gradient_sample), &(spx_grad_sample_1, spx_grad_sample_2))| {
+                        for (property_i, spx) in properties_to_combine.iter().enumerate() {
+                            let spx_gradient_1 = spx.gradient_1.as_ref().expect("missing spherical expansion gradients");
+                            let spx_gradient_2 = spx.gradient_2.as_ref().expect("missing spherical expansion gradients");
+
+                            let sample_i = gradient_sample[0].usize();
+                            let (spx_sample_1, spx_sample_2) = mapping.values[sample_i];
+
+                            let mut sum_x = 0.0;
+                            let mut sum_y = 0.0;
+                            let mut sum_z = 0.0;
+                            if let Some(grad_sample_1) = spx_grad_sample_1 {
+                                for m in 0..(2 * spx.spherical_harmonics_l + 1) {
+                                    // SAFETY: see same loop for values
+                                    unsafe {
+                                        let value_2 = spx.values_2.uget([spx_sample_2, m, spx.property_2]);
+                                        sum_x += value_2 * spx_gradient_1.uget([grad_sample_1, 0, m, spx.property_1]);
+                                        sum_y += value_2 * spx_gradient_1.uget([grad_sample_1, 1, m, spx.property_1]);
+                                        sum_z += value_2 * spx_gradient_1.uget([grad_sample_1, 2, m, spx.property_1]);
+                                    }
+                                }
+                            }
+
+                            if let Some(grad_sample_2) = spx_grad_sample_2 {
+                                for m in 0..(2 * spx.spherical_harmonics_l + 1) {
+                                    // SAFETY: see same loop for values
+                                    unsafe {
+                                        let value_1 = spx.values_1.uget([spx_sample_1, m, spx.property_1]);
+                                        sum_x += value_1 * spx_gradient_2.uget([grad_sample_2, 0, m, spx.property_2]);
+                                        sum_y += value_1 * spx_gradient_2.uget([grad_sample_2, 1, m, spx.property_2]);
+                                        sum_z += value_1 * spx_gradient_2.uget([grad_sample_2, 2, m, spx.property_2]);
+                                    }
+                                }
+                            }
+
+                            if species_neighbor_1 != species_neighbor_2 {
+                                // see above
+                                sum_x *= std::f64::consts::SQRT_2;
+                                sum_y *= std::f64::consts::SQRT_2;
+                                sum_z *= std::f64::consts::SQRT_2;
+                            }
+
+                            let normalization = f64::sqrt((2 * spx.spherical_harmonics_l + 1) as f64);
+
+                            unsafe {
+                                *values.uget_mut([0, property_i]) = sum_x / normalization;
+                                *values.uget_mut([1, property_i]) = sum_y / normalization;
+                                *values.uget_mut([2, property_i]) = sum_z / normalization;
+                            }
+                        }
+                    });
+            }
         }
 
         Ok(())
@@ -423,23 +592,21 @@ impl CalculatorBase for SoapPowerSpectrum {
 
 #[cfg(test)]
 mod tests {
+    use equistore::LabelValue;
+
     use crate::systems::test_utils::{test_systems, test_system};
-    use crate::descriptor::{IndexValue, IndexesBuilder};
-    use crate::{Descriptor, Calculator};
+    use crate::Calculator;
 
     use super::*;
     use crate::calculators::CalculatorBase;
 
-    // small helper function to create IndexValue
-    fn v(i: i32) -> IndexValue { IndexValue::from(i) }
-
-    fn parameters(cutoff: f64, center_atom_weight: f64, gradients: bool, ) -> PowerSpectrumParameters {
+    fn parameters(gradients: bool) -> PowerSpectrumParameters {
         PowerSpectrumParameters {
-            cutoff: cutoff,
+            cutoff: 3.5,
             max_radial: 6,
             max_angular: 6,
             atomic_gaussian_width: 0.3,
-            center_atom_weight: center_atom_weight,
+            center_atom_weight: 1.0,
             gradients: gradients,
             radial_basis: RadialBasis::Gto {},
             radial_scaling: RadialScaling::None {},
@@ -450,87 +617,101 @@ mod tests {
     #[test]
     fn values() {
         let mut calculator = Calculator::from(Box::new(SoapPowerSpectrum::new(
-            parameters(3.5, 1., false)
+            parameters(false)
         ).unwrap()) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
-        let mut descriptor = Descriptor::new();
-        calculator.compute(&mut systems, &mut descriptor, Default::default()).unwrap();
+        let descriptor = calculator.compute(&mut systems, Default::default()).unwrap();
 
-        assert_eq!(descriptor.samples.names(), ["structure", "center", "species_center", "species_neighbor_1", "species_neighbor_2"]);
-        assert_eq!(descriptor.features.names(), ["n1", "n2", "l"]);
+        assert_eq!(descriptor.keys().count(), 6);
+        assert!(descriptor.keys().contains(
+            &[LabelValue::new(1), LabelValue::new(1), LabelValue::new(1)]
+        ));
+        assert!(descriptor.keys().contains(
+            &[LabelValue::new(1), LabelValue::new(-42), LabelValue::new(1)]
+        ));
+        assert!(descriptor.keys().contains(
+            &[LabelValue::new(1), LabelValue::new(-42), LabelValue::new(-42)]
+        ));
 
-        let mut index = 0;
-        for n1 in 0..6_usize {
-            for n2 in 0..6_usize {
-                for l in 0..=6_isize {
-                    let expected = [IndexValue::from(n1), IndexValue::from(n2), IndexValue::from(l)];
-                    assert_eq!(descriptor.features[index], expected);
-                    index += 1;
-                }
-            }
-        }
+        assert!(descriptor.keys().contains(
+            &[LabelValue::new(-42), LabelValue::new(1), LabelValue::new(1)]
+        ));
+        assert!(descriptor.keys().contains(
+            &[LabelValue::new(-42), LabelValue::new(-42), LabelValue::new(1)]
+        ));
+        assert!(descriptor.keys().contains(
+            &[LabelValue::new(-42), LabelValue::new(-42), LabelValue::new(-42)]
+        ));
 
         // exact values for power spectrum are regression-tested in
         // `rascaline/tests/soap-power-spectrum.rs`
     }
 
     #[test]
+    fn finite_differences() {
+        let calculator = Calculator::from(Box::new(SoapPowerSpectrum::new(
+            parameters(true)
+        ).unwrap()) as Box<dyn CalculatorBase>);
+
+        let system = test_system("water");
+        let options = crate::calculators::tests_utils::FinalDifferenceOptions {
+            displacement: 1e-6,
+            max_relative: 5e-5,
+            epsilon: 1e-16,
+        };
+        crate::calculators::tests_utils::finite_difference(calculator, system, options);
+    }
+
+    #[test]
     fn compute_partial() {
         let calculator = Calculator::from(Box::new(SoapPowerSpectrum::new(
-            parameters(3.5, 1., false)
+            parameters(false)
         ).unwrap()) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water", "methane"]);
 
-        let mut samples = IndexesBuilder::new(vec!["structure", "center", "species_center", "species_neighbor_1", "species_neighbor_2"]);
-        samples.add(&[v(0), v(1), v(1), v(1), v(1)]);
-        samples.add(&[v(0), v(2), v(1), v(123456), v(123456)]);
-        samples.add(&[v(1), v(0), v(6), v(1), v(6)]);
-        samples.add(&[v(1), v(2), v(1), v(1), v(1)]);
+        let mut properties = LabelsBuilder::new(vec!["l", "n1", "n2"]);
+        properties.add(&[LabelValue::new(0), LabelValue::new(0), LabelValue::new(1)]);
+        properties.add(&[LabelValue::new(3), LabelValue::new(3), LabelValue::new(3)]);
+        properties.add(&[LabelValue::new(2), LabelValue::new(4), LabelValue::new(3)]);
+        properties.add(&[LabelValue::new(1), LabelValue::new(4), LabelValue::new(4)]);
+        properties.add(&[LabelValue::new(5), LabelValue::new(1), LabelValue::new(0)]);
+        properties.add(&[LabelValue::new(1), LabelValue::new(1), LabelValue::new(2)]);
 
-        let mut features = IndexesBuilder::new(vec!["n1", "n2", "l"]);
-        features.add(&[v(0), v(1), v(0)]);
-        features.add(&[v(3), v(3), v(3)]);
-        features.add(&[v(4), v(3), v(2)]);
-        features.add(&[v(1), v(4), v(4)]);
-        features.add(&[v(5), v(1), v(0)]);
-        features.add(&[v(1), v(1), v(2)]);
+        let mut samples = LabelsBuilder::new(vec!["structure", "center"]);
+        samples.add(&[LabelValue::new(0), LabelValue::new(1)]);
+        samples.add(&[LabelValue::new(0), LabelValue::new(2)]);
+        samples.add(&[LabelValue::new(1), LabelValue::new(0)]);
+        samples.add(&[LabelValue::new(1), LabelValue::new(2)]);
 
         crate::calculators::tests_utils::compute_partial(
-            calculator, &mut systems, samples.finish(), features.finish()
+            calculator, &mut systems, &samples.finish(), &properties.finish()
         );
     }
 
     #[test]
-    fn finite_differences() {
-        let calculator = Calculator::from(Box::new(SoapPowerSpectrum::new(
-            parameters(3.5, 1., true)
-        ).unwrap()) as Box<dyn CalculatorBase>);
-
-        let system = test_system("water");
-        crate::calculators::tests_utils::finite_difference(calculator, system);
-    }
-
-    #[test]
     fn center_atom_weight() {
-        let mut calculator = Calculator::from(Box::new(
-            SoapPowerSpectrum::new(parameters(0.5, 1., false)).unwrap(),
-        ) as Box<dyn CalculatorBase>);
-
-        let mut calculator_scaled = Calculator::from(Box::new(
-            SoapPowerSpectrum::new(parameters(0.5, 0.5, false)).unwrap(),
-        ) as Box<dyn CalculatorBase>);
-
         let system = &mut test_systems(&["CH"]);
-        let mut descriptor = Descriptor::new();
-        let mut descriptor_scaled = Descriptor::new();
 
-        calculator.compute(system, &mut descriptor, Default::default())
-            .unwrap();
-        calculator_scaled.compute(system, &mut descriptor_scaled, Default::default())
-            .unwrap();
+        let mut parameters = parameters(false);
+        parameters.cutoff = 0.5;
+        parameters.center_atom_weight = 1.0;
 
-        assert_eq!(descriptor.values, 4. * descriptor_scaled.values);
+        let mut calculator = Calculator::from(Box::new(
+            SoapPowerSpectrum::new(parameters.clone()).unwrap(),
+        ) as Box<dyn CalculatorBase>);
+        let descriptor = calculator.compute(system, Default::default()).unwrap();
+
+        parameters.center_atom_weight = 0.5;
+        let mut calculator = Calculator::from(Box::new(
+            SoapPowerSpectrum::new(parameters).unwrap(),
+        ) as Box<dyn CalculatorBase>);
+
+        let descriptor_scaled = calculator.compute(system, Default::default()).unwrap();
+
+        for (block, block_scaled) in descriptor.blocks().iter().zip(descriptor_scaled.blocks()) {
+            assert_eq!(block.values().data.as_array(), 4.0 * block_scaled.values().data.as_array());
+        }
     }
 }

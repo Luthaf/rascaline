@@ -1,6 +1,10 @@
-use crate::{System, Descriptor, Error};
-use crate::descriptor::{SamplesBuilder, TwoBodiesSpeciesSamples};
-use crate::descriptor::{Indexes, IndexesBuilder, IndexValue};
+use std::sync::Arc;
+
+use equistore::{Labels, TensorMap, LabelsBuilder, LabelValue};
+
+use crate::{System, Error};
+use crate::labels::{CenterSingleNeighborsSpeciesKeys, KeysBuilder};
+use crate::labels::{AtomCenteredSamples, SamplesBuilder, SpeciesFilter};
 use crate::calculators::CalculatorBase;
 
 #[derive(Clone, Debug)]
@@ -16,36 +20,43 @@ impl CalculatorBase for GeometricMoments {
         todo!()
     }
 
-    fn get_parameters(&self) -> String {
+    fn parameters(&self) -> String {
         todo!()
     }
 
-    fn compute_gradients(&self) -> bool {
+    fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
         todo!()
     }
 
-    fn features_names(&self) -> Vec<&str> {
+    fn samples_names(&self) -> Vec<&str> {
         todo!()
     }
 
-    fn features(&self) -> Indexes {
+    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
         todo!()
     }
 
-    fn check_features(&self, indexes: &Indexes) -> Result<(), Error> {
+    fn gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Option<Vec<Arc<Labels>>>, Error> {
         todo!()
     }
 
-    fn samples_builder(&self) -> Box<dyn SamplesBuilder> {
+    fn components(&self, keys: &Labels) -> Vec<Vec<Arc<Labels>>> {
+        todo!()
+    }
+
+    fn properties_names(&self) -> Vec<&str> {
+        todo!()
+    }
+
+    fn properties(&self, keys: &Labels) -> Vec<Arc<Labels>> {
         todo!()
     }
 
     // [compute]
-    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor) -> Result<(), Error> {
-        assert_eq!(descriptor.samples.names(), self.samples_builder().names());
-        assert_eq!(descriptor.features.names(), self.features_names());
+    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
+        assert_eq!(descriptor.keys().names(), ["species_center", "species_neighbor"]);
 
-        // we'll write more code here
+        // we'll add more code here
 
         return Ok(());
     }

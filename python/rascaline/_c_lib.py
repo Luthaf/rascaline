@@ -3,7 +3,9 @@ import os
 import sys
 from ctypes import cdll
 
-from ._rascaline import setup_functions
+import equistore
+
+from ._c_api import setup_functions
 from .log import _set_logging_callback_impl, default_logging_callback
 
 
@@ -20,6 +22,8 @@ class RascalFinder(object):
     def __call__(self):
         if self._cached_dll is None:
             path = _lib_path()
+            equistore._set_equistore_library_path(path)
+
             self._cached_dll = cdll.LoadLibrary(path)
             setup_functions(self._cached_dll)
             _set_logging_callback_impl(self._cached_dll, default_logging_callback)

@@ -20,10 +20,10 @@ class TestSystemExceptions(unittest.TestCase):
 
         self.assertEqual(
             cm.exception.args[0],
-            "error from external code (status -1): call to rascal_system_t.size failed",
+            "error from external code (status -1): call to rascal_system_t.species failed",  # noqa
         )
 
         self.assertEqual(
             cm.exception.__cause__.args[0],
-            "System.size method is not implemented",
+            "System.species method is not implemented",
         )
