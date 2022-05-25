@@ -83,7 +83,7 @@ impl SplinedRadialIntegral {
         let grid_step = parameters.cutoff / (initial_grid_size - 1) as f64;
 
         let mut points = Vec::new();
-        let shape = (parameters.max_radial, parameters.max_angular + 1);
+        let shape = (parameters.max_angular + 1, parameters.max_radial);
         for k in 0..initial_grid_size {
             let position = k as f64 * grid_step;
             let mut value = Array2::from_elem(shape, 0.0);
@@ -241,7 +241,7 @@ impl RadialIntegral for SplinedRadialIntegral {
 
 #[cfg(test)]
 mod tests {
-    use approx::assert_relative_eq;
+    use approx::{assert_relative_eq, assert_ulps_eq};
 
     use super::*;
     use super::super::{GtoRadialIntegral, GtoParameters};
@@ -287,8 +287,8 @@ mod tests {
             let mut gradients = Array2::from_elem(shape, 0.0);
 
             spline.compute(x, values.view_mut(), Some(gradients.view_mut()));
-            assert_eq!(values[[0, 0]], f64::sin(x));
-            assert_eq!(gradients[[0, 0]], f64::cos(x));
+            assert_ulps_eq!(values[[0, 0]], f64::sin(x));
+            assert_ulps_eq!(gradients[[0, 0]], f64::cos(x));
         }
     }
 
@@ -316,7 +316,7 @@ mod tests {
         let gto = GtoRadialIntegral::new(GtoParameters {
             max_radial: parameters.max_radial,
             max_angular: parameters.max_angular,
-            cutoff: 12.0,
+            cutoff: parameters.cutoff,
             atomic_gaussian_width: 0.5,
         }).unwrap();
 
@@ -349,9 +349,10 @@ mod tests {
         let rij = 3.4;
         let delta = 1e-9;
 
-        let mut values = Array2::from_elem((max_radial, max_angular + 1), 0.0);
-        let mut values_delta = Array2::from_elem((max_radial, max_angular + 1), 0.0);
-        let mut gradients = Array2::from_elem((max_radial, max_angular + 1), 0.0);
+        let shape = (max_angular + 1, max_radial);
+        let mut values = Array2::from_elem(shape, 0.0);
+        let mut values_delta = Array2::from_elem(shape, 0.0);
+        let mut gradients = Array2::from_elem(shape, 0.0);
         spline.compute(rij, values.view_mut(), Some(gradients.view_mut()));
         spline.compute(rij + delta, values_delta.view_mut(), None);
 

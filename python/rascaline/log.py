@@ -1,7 +1,7 @@
 import logging
 import warnings
 
-from ._rascaline import (
+from ._c_api import (
     RASCAL_LOG_LEVEL_DEBUG,
     RASCAL_LOG_LEVEL_ERROR,
     RASCAL_LOG_LEVEL_INFO,
@@ -37,7 +37,7 @@ def set_logging_callback(function):
     representing the log level and a string containing the log message. The
     function return value is ignored.
     """
-    from .clib import _get_library
+    from ._c_lib import _get_library
 
     library = _get_library()
     _set_logging_callback_impl(library, function)

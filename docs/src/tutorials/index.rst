@@ -8,6 +8,5 @@ languages, including at least Rust and Python.
 .. toctree::
     :maxdepth: 2
 
-    descriptor
     computing-soap
     profiling

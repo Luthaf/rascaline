@@ -4,7 +4,6 @@ import sys
 from distutils.command.build_ext import build_ext  # type: ignore
 from distutils.command.install import install as distutils_install  # type: ignore
 
-
 from setuptools import Extension, setup
 from wheel.bdist_wheel import bdist_wheel
 

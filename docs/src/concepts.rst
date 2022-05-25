@@ -58,37 +58,24 @@ and the corresponding parameters are documented.
 From a user perspective, calculators are black boxes that take systems as input
 and returns a descriptor object, described below.
 
-Descriptor: data storage for calculation results
-------------------------------------------------
+Descriptors: data storage for atomistic machine learning
+--------------------------------------------------------
 
 After using a calculator on one or multiple systems, users will get the
-numerical representation of their atomic systems in a `descriptor` object. This
-object contains two main data arrays, and three metadata arrays. The first data
-array contains the ``values`` of the representation, and is a two dimensional
-array with different samples (different atomic environment/structures/etc.)
-represented as rows; and different features represented as columns.
+numerical representation of their atomic systems in a ``descriptor`` object.
+Rascaline uses `equistore`_ ``TensorMap`` type when returning descriptors.
 
-Each row is further described in the ``samples`` metadata array. This array
-contains one row for each sample, fully describing this sample. Each column is
-named and contains one piece of data used to identify this sample. For example,
-the first row in the schematic below represent the fourth atom inside the third
-structure passed to the calculator. This atom species is 8 (usually meaning
-nitrogen), and this sample describe neighboring atoms of species 2.
+.. _equistore: https://lab-cosmo.github.io/equistore/latest/
 
-In the same way, each column in the ``values`` array is described by one row in
-the ``features`` metadata array. The exact meaning of the features depend on the
-representation used, and users should refer to the corresponding documentation
-for more information.
+A ``TensorMap`` can be seen as a dictionary mapping some keys to a set of data
+blocks. Each block contains both data (and gradients) arrays — i.e.
+multidimensional arrays containing the descriptor values — and metadata
+describing the different dimensions of these arrays. Which keys are present in a
+``TensorMap`` will depend on ``Calculator`` being used. Typically,
+representation using one-hot encoding of atomic species will have species keys
+(for example ``species_center``, ``species_neighbor``, *etc.*), and equivariant
+representations will have keys for the different equivariance classes
+(``spherical_harmonics_l`` for SO(3) equivariants, *etc.*).
 
-Optionally, a descriptor can also contain a ``gradients`` data array, containing
-the gradients of the values with respect to relevant atomic positions. If the
-gradients array is present, an additional metadata array describes each row in
-the gradients, in the same way the ``samples`` metadata describes rows in
-``values``. The columns of the gradients are described by the same ``features``
-metadata array as the values.
-
-.. figure:: ../static/images/descriptor.*
-    :width: 80%
-    :align: center
-
-    Graphical representation of all data and metadata stored in a descriptor.
+For more information on ``TensorMap`` and what can be done with one, please see
+the `equistore`_ documentation.

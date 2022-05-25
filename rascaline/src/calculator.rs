@@ -1,8 +1,14 @@
-use std::{collections::BTreeMap, convert::TryFrom};
+use std::collections::BTreeMap;
+use std::convert::TryFrom;
+use std::sync::Arc;
 
-use crate::{SimpleSystem, descriptor::{Descriptor, Indexes, IndexesBuilder}};
-use crate::systems::System;
-use crate::Error;
+use once_cell::sync::Lazy;
+
+use equistore::{Labels, LabelsBuilder, LabelValue};
+use equistore::{TensorBlock, TensorMap};
+use ndarray::ArrayD;
+
+use crate::{SimpleSystem, System, Error};
 
 use crate::calculators::CalculatorBase;
 
@@ -11,152 +17,165 @@ pub struct Calculator {
     parameters: String,
 }
 
-/// List of pre-selected indexes on which the user wants to run a calculation
-#[derive(Clone, Debug)]
-pub enum SelectedIndexes {
-    /// Default, all indexes
+/// Rules to select labels (either samples or properties) on which the user
+/// wants to run a calculation
+#[derive(Clone, Copy, Debug)]
+pub enum LabelsSelection<'a> {
+    /// Default, use all possible labels
     All,
-    /// Only the list of selected indexes. The indexes can contains the same
-    /// variable as the full set of indexes, or only a subset of them. In the
-    /// latter case, all entries from the full set of indexes matching the set
-    /// of variables specified will be used.
-    Subset(Indexes),
+    /// Select a subset of labels, using the same selection criterion for all
+    /// keys in the final `TensorMap`.
+    ///
+    /// If the inner `Labels` contains the same variables as the full set of
+    /// labels, then only entries from the full set that also appear in this
+    /// selection will be used.
+    ///
+    /// If the inner `Labels` contains a subset of the variables of the full set
+    /// of labels, then only entries from the full set which match one of the
+    /// entry in this selection for all of the selection variable will be used.
+    Subset(&'a Labels),
+    /// Use a predefined subset of labels, with different entries for different
+    /// keys of the final `TensorMap`.
+    ///
+    /// For each key, the corresponding labels are fetched out of the inner
+    /// `TensorMap`. The inner `TensorMap` must have the same set of keys as the
+    /// full calculation.
+    Predefined(&'a TensorMap),
 }
 
-impl SelectedIndexes {
-    /// Transform a set of selected indexes into actual indexes usable as
-    /// feature indexes by a calculator
-    fn into_features(self, calculator: &dyn CalculatorBase) -> Result<Indexes, Error> {
-        let indexes = match self {
-            SelectedIndexes::All => calculator.features(),
-            SelectedIndexes::Subset(indexes) => {
-                let default_features = calculator.features();
-                if indexes.names() == default_features.names() {
-                    calculator.check_features(&indexes)?;
-                    indexes
+impl<'a> LabelsSelection<'a> {
+    fn select<'call, F, G, H>(
+        &self,
+        label_kind: &str,
+        keys: &Labels,
+        get_default_names: F,
+        get_default_labels: G,
+        get_from_block: H,
+    ) -> Result<Vec<Arc<Labels>>, Error>
+        where F: FnOnce() -> Vec<&'call str>,
+              G: FnOnce(&Labels) -> Result<Vec<Arc<Labels>>, Error>,
+              H: Fn(&TensorBlock) -> Arc<Labels>,
+    {
+        assert_ne!(keys.count(), 0);
+
+        match self {
+            LabelsSelection::All => {
+                return get_default_labels(keys);
+            },
+            LabelsSelection::Subset(selection) => {
+                let default_labels = get_default_labels(keys)?;
+                let default_names = get_default_names();
+
+                let mut results = Vec::new();
+                if selection.names() == default_names {
+                    for labels in default_labels {
+                        let mut builder = LabelsBuilder::new(default_names.clone());
+                        for entry in selection.iter() {
+                            if labels.contains(entry) {
+                                builder.add(entry);
+                            }
+                        }
+                        results.push(Arc::new(builder.finish()));
+                    }
                 } else {
                     let mut variables_to_match = Vec::new();
-                    for variable in indexes.names() {
-                        let i = match default_features.names().iter().position(|&v| v == variable) {
+                    for variable in selection.names() {
+                        let i = match default_names.iter().position(|&v| v == variable) {
                             Some(index) => index,
                             None => {
                                 return Err(Error::InvalidParameter(format!(
-                                    "'{}' in requested features is not part of the features of this calculator",
-                                    variable
+                                    "'{}' in {} selection is not one of the {} of this calculator",
+                                    variable, label_kind, label_kind
                                 )))
                             }
                         };
                         variables_to_match.push(i);
                     }
 
-                    let mut filtered = IndexesBuilder::new(default_features.names());
-                    for selected in indexes.iter() {
-                        for features in default_features.iter() {
-                            // only take the features if they match
-                            let mut matches = true;
-                            for (i, &v) in variables_to_match.iter().enumerate() {
-                                if selected[i] != features[v] {
-                                    matches = false;
-                                    break;
+                    for labels in default_labels {
+                        let mut builder = LabelsBuilder::new(default_names.clone());
+                        for entry in labels.iter() {
+                            for selected in selection.iter() {
+                                let mut matches = true;
+                                for (i, &v) in variables_to_match.iter().enumerate() {
+                                    if selected[i] != entry[v] {
+                                        matches = false;
+                                        break;
+                                    }
+                                }
+
+                                if matches {
+                                    builder.add(entry);
                                 }
                             }
-
-                            if matches {
-                                filtered.add(features);
-                            }
                         }
+                        results.push(Arc::new(builder.finish()));
                     }
 
-                    filtered.finish()
                 }
+
+                return Ok(results);
             },
-        };
-
-        return Ok(indexes);
-    }
-
-    /// Transform a set of selected indexes into actual indexes usable as sample
-    /// indexes by a calculator for the given set of systems
-    fn into_samples(
-        self,
-        calculator: &dyn CalculatorBase,
-        systems: &mut [Box<dyn System>],
-    ) -> Result<Indexes, Error> {
-        let indexes = match self {
-            SelectedIndexes::All => {
-                calculator.samples_builder().samples(systems)?
-            },
-            SelectedIndexes::Subset(indexes) => {
-                let default_samples = calculator.samples_builder().samples(systems)?;
-                if indexes.names() == default_samples.names() {
-                    calculator.check_samples(&indexes, systems)?;
-                    indexes
-                } else {
-                    let mut variables_to_match = Vec::new();
-                    for variable in indexes.names() {
-                        let i = match default_samples.names().iter().position(|&v| v == variable) {
-                            Some(index) => index,
-                            None => {
-                                return Err(Error::InvalidParameter(format!(
-                                    "'{}' in requested samples is not part of the samples of this calculator",
-                                    variable
-                                )))
-                            }
-                        };
-                        variables_to_match.push(i);
-                    }
-
-                    let mut filtered = IndexesBuilder::new(default_samples.names());
-                    for selected in indexes.iter() {
-                        for sample in default_samples.iter() {
-                            // only take the samples if they match
-                            let mut matches = true;
-                            for (i, &v) in variables_to_match.iter().enumerate() {
-                                if selected[i] != sample[v] {
-                                    matches = false;
-                                    break;
-                                }
-                            }
-
-                            if matches {
-                                filtered.add(sample);
-                            }
-                        }
-                    }
-
-                    filtered.finish()
+            LabelsSelection::Predefined(tensor) => {
+                if tensor.keys().names() != keys.names() {
+                    return Err(Error::InvalidParameter(format!(
+                        "invalid key names in predefined {}: expected [{}], but got [{}]",
+                        label_kind,
+                        keys.names().join(","),
+                        tensor.keys().names().join(", ")
+                    )));
                 }
-            },
-        };
+                let default_names = get_default_names();
 
-        return Ok(indexes);
+                let mut results = Vec::new();
+                for key in keys {
+                    let mut selection = LabelsBuilder::new(keys.names());
+                    selection.add(key);
+                    let block = tensor.block(&selection.finish()).expect("could not find a block in predefined selection");
+                    let labels = get_from_block(block);
+                    if labels.names() != default_names {
+                        return Err(Error::InvalidParameter(format!(
+                            "invalid predefined {} names: expected [{}], but got [{}]",
+                            label_kind,
+                            default_names.join(","),
+                            labels.names().join(", ")
+                        )));
+                    }
+
+                    results.push(labels);
+                }
+
+                return Ok(results);
+            }
+        }
     }
 }
 
 /// Parameters specific to a single call to `compute`
-pub struct CalculationOptions {
+#[derive(Debug, Clone, Copy)]
+pub struct CalculationOptions<'a> {
     /// Copy the data from systems into native `SimpleSystem`. This can be
     /// faster than having to cross the FFI boundary too often.
     pub use_native_system: bool,
-    /// List of selected samples on which to run the computation
-    pub selected_samples: SelectedIndexes,
-    /// List of selected features on which to run the computation
-    pub selected_features: SelectedIndexes,
+    /// Selection of samples on which to run the computation
+    pub selected_samples: LabelsSelection<'a>,
+    /// Selection of properties to compute for the samples
+    pub selected_properties: LabelsSelection<'a>,
 }
 
-impl Default for CalculationOptions {
-    fn default() -> CalculationOptions {
+impl<'a> Default for CalculationOptions<'a> {
+    fn default() -> CalculationOptions<'a> {
         CalculationOptions {
             use_native_system: false,
-            selected_samples: SelectedIndexes::All,
-            selected_features: SelectedIndexes::All,
+            selected_samples: LabelsSelection::All,
+            selected_properties: LabelsSelection::All,
         }
     }
 }
 
 impl From<Box<dyn CalculatorBase>> for Calculator {
     fn from(implementation: Box<dyn CalculatorBase>) -> Calculator {
-        let parameters = implementation.get_parameters();
+        let parameters = implementation.parameters();
         Calculator {
             implementation: implementation,
             parameters: parameters,
@@ -201,14 +220,9 @@ impl Calculator {
         &self.parameters
     }
 
-    /// Does this calculator computes gradients?
-    pub fn gradients(&self) -> bool {
-        self.implementation.compute_gradients()
-    }
-
-    /// Get the default set of features for this calculator
-    pub fn default_features(&self) -> Indexes {
-        self.implementation.features()
+    /// Get the set of keys this calculator would produce for the given systems
+    pub fn default_keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
+        self.implementation.keys(systems)
     }
 
     /// Compute the descriptor for all the given `systems` and store it in
@@ -216,13 +230,11 @@ impl Calculator {
     ///
     /// This function computes the full descriptor, using all samples and all
     /// features.
-    #[time_graph::instrument(name = "Calculator::compute")]
     pub fn compute(
         &mut self,
         systems: &mut [Box<dyn System>],
-        descriptor: &mut Descriptor,
         options: CalculationOptions,
-    ) -> Result<(), Error> {
+    ) -> Result<TensorMap, Error> {
         let mut native_systems;
         let systems = if options.use_native_system {
             native_systems = Vec::with_capacity(systems.len());
@@ -234,29 +246,100 @@ impl Calculator {
             systems
         };
 
-        let features = options.selected_features.into_features(&*self.implementation)?;
-        let samples = options.selected_samples.into_samples(&*self.implementation, systems)?;
+        let mut tensor = time_graph::spanned!("Calculator::prepare", {
+            // TODO: allow selecting a subset of keys?
+            let keys = self.implementation.keys(systems)?;
 
-        time_graph::spanned!("Calculator::prepare", {
-            let builder = self.implementation.samples_builder();
-            if self.implementation.compute_gradients() {
-                let gradients = builder
-                    .gradients_for(systems, &samples)?
-                    .expect("this samples definition do not support gradients");
-                descriptor.prepare_gradients(samples, gradients, features);
-            } else {
-                descriptor.prepare(samples, features);
+            let samples = options.selected_samples.select(
+                "samples",
+                &keys,
+                || self.implementation.samples_names(),
+                |keys| self.implementation.samples(keys, systems),
+                |block| Arc::clone(&block.values().samples)
+            )?;
+
+            let gradient_samples = self.implementation.gradient_samples(&keys, &samples, systems)?;
+
+            // no selection on the components
+            let components = self.implementation.components(&keys);
+
+            let properties = options.selected_properties.select(
+                "properties",
+                &keys,
+                || self.implementation.properties_names(),
+                |keys| Ok(self.implementation.properties(keys)),
+                |block| Arc::clone(&block.values().properties),
+            )?;
+
+            assert_eq!(keys.count(), samples.len());
+            assert_eq!(keys.count(), components.len());
+            assert_eq!(keys.count(), properties.len());
+
+            let mut spatial_component = LabelsBuilder::new(vec!["gradient_direction"]);
+            spatial_component.add(&[LabelValue::new(0)]);
+            spatial_component.add(&[LabelValue::new(1)]);
+            spatial_component.add(&[LabelValue::new(2)]);
+            let spatial_component = Arc::new(spatial_component.finish());
+
+            let mut blocks = Vec::new();
+            for (block_i, ((samples, mut components), properties)) in samples.into_iter().zip(components).zip(properties).enumerate() {
+                let shape = shape_from_labels(
+                    &samples, &components, &properties
+                );
+                let mut new_block = TensorBlock::new(
+                    ArrayD::from_elem(shape, 0.0),
+                    samples,
+                    components.clone(),
+                    Arc::clone(&properties),
+                )?;
+
+                if let Some(ref gradient_samples) = gradient_samples {
+                    let gradient_samples = &gradient_samples[block_i];
+                    assert_eq!(gradient_samples.names(), ["sample", "structure", "atom"]);
+
+                    // add the x/y/z component for gradients
+                    components.insert(0, Arc::clone(&spatial_component));
+                    let shape = shape_from_labels(
+                        gradient_samples, &components, &properties
+                    );
+
+                    new_block.add_gradient(
+                        "positions",
+                        ArrayD::from_elem(shape, 0.0),
+                        Arc::clone(gradient_samples),
+                        components,
+                    )?;
+                }
+
+                blocks.push(new_block);
             }
+
+            TensorMap::new(keys, blocks)?
         });
 
-        self.implementation.compute(systems, descriptor)?;
-        return Ok(());
+        self.implementation.compute(systems, &mut tensor)?;
+
+        return Ok(tensor);
     }
 }
 
+fn shape_from_labels(samples: &Labels, components: &[Arc<Labels>], properties: &Labels) -> Vec<usize> {
+    let mut shape = vec![0; components.len() + 2];
+    shape[0] = samples.count();
+    let mut i = 1;
+    for component in components {
+        shape[i] = component.count();
+        i += 1;
+    }
+    shape[i] = properties.count();
 
-/// Registration of calculator implementations
-use crate::calculators::{DummyCalculator, SortedDistances};
+    return shape;
+}
+
+
+// Registration of calculator implementations
+use crate::calculators::DummyCalculator;
+use crate::calculators::SortedDistances;
 use crate::calculators::{SphericalExpansion, SphericalExpansionParameters};
 use crate::calculators::{SoapPowerSpectrum, PowerSpectrumParameters};
 type CalculatorCreator = fn(&str) -> Result<Box<dyn CalculatorBase>, Error>;
@@ -279,84 +362,12 @@ macro_rules! add_calculator {
 // this code is included in the calculator tutorial, the tags below indicate the
 // first/last line to include
 // [calculator-registration]
-lazy_static::lazy_static!{
-    pub static ref REGISTERED_CALCULATORS: BTreeMap<&'static str, CalculatorCreator> = {
-        let mut map = BTreeMap::new();
-        add_calculator!(map, "dummy_calculator", DummyCalculator);
-        add_calculator!(map, "sorted_distances", SortedDistances);
-        add_calculator!(map, "spherical_expansion", SphericalExpansion, SphericalExpansionParameters);
-        add_calculator!(map, "soap_power_spectrum", SoapPowerSpectrum, PowerSpectrumParameters);
-        return map;
-    };
-}
+static REGISTERED_CALCULATORS: Lazy<BTreeMap<&'static str, CalculatorCreator>> = Lazy::new(|| {
+    let mut map = BTreeMap::new();
+    add_calculator!(map, "dummy_calculator", DummyCalculator);
+    add_calculator!(map, "sorted_distances", SortedDistances);
+    add_calculator!(map, "spherical_expansion", SphericalExpansion, SphericalExpansionParameters);
+    add_calculator!(map, "soap_power_spectrum", SoapPowerSpectrum, PowerSpectrumParameters);
+    return map;
+});
 // [calculator-registration]
-
-
-#[cfg(test)]
-mod tests {
-    use super::SelectedIndexes;
-
-    use crate::calculators::{CalculatorBase, DummyCalculator};
-    use crate::descriptor::{IndexesBuilder, IndexValue};
-
-    #[test]
-    fn selected_features() {
-        let calculator = DummyCalculator {
-            cutoff: 3.4, delta: 0, name: "".into(), gradients: false,
-        };
-
-        let selected = SelectedIndexes::All;
-        let indexes = selected.into_features(&calculator).unwrap();
-        let expected = calculator.features();
-        assert_eq!(indexes, expected);
-
-        // full specification of the rows
-        let mut selected = IndexesBuilder::new(vec!["index_delta", "x_y_z"]);
-        selected.add(&[IndexValue::from(0), IndexValue::from(1)]);
-        let expected = selected.finish();
-
-        let selected = SelectedIndexes::Subset(expected.clone());
-        let indexes = selected.into_features(&calculator).unwrap();
-        assert_eq!(indexes, expected);
-
-        // partial specification of the rows
-        let mut selected = IndexesBuilder::new(vec!["index_delta"]);
-        selected.add(&[IndexValue::from(0)]);
-
-        let selected = SelectedIndexes::Subset(selected.finish());
-        let indexes = selected.into_features(&calculator).unwrap();
-        assert_eq!(indexes, expected);
-    }
-
-    #[test]
-    fn selected_samples() {
-        let calculator = DummyCalculator {
-            cutoff: 3.4, delta: 0, name: "".into(), gradients: false,
-        };
-        let mut systems = crate::systems::test_utils::test_systems(&["water"]);
-
-        let selected = SelectedIndexes::All;
-        let indexes = selected.into_samples(&calculator, &mut systems).unwrap();
-        let expected = calculator.samples_builder().samples(&mut systems).unwrap();
-        assert_eq!(indexes, expected);
-
-        // full specification of the rows
-        let mut selected = IndexesBuilder::new(vec!["structure", "center"]);
-        selected.add(&[IndexValue::from(0), IndexValue::from(2)]);
-        selected.add(&[IndexValue::from(0), IndexValue::from(0)]);
-        let expected = selected.finish();
-
-        let selected = SelectedIndexes::Subset(expected.clone());
-        let indexes = selected.into_samples(&calculator, &mut systems).unwrap();
-        assert_eq!(indexes, expected);
-
-        // partial specification of the rows
-        let mut selected = IndexesBuilder::new(vec!["center"]);
-        selected.add(&[IndexValue::from(2)]);
-        selected.add(&[IndexValue::from(0)]);
-
-        let selected = SelectedIndexes::Subset(selected.finish());
-        let indexes = selected.into_samples(&calculator, &mut systems).unwrap();
-        assert_eq!(indexes, expected);
-    }
-}

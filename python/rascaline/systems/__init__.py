@@ -3,27 +3,50 @@ from .base import SystemBase
 from .chemfiles import HAVE_CHEMFILES, ChemfilesSystem
 
 
-def wrap_system(system):
+class IntoSystem:
+    """
+    Possible types that can be used as a rascaline System.
+    """
+
+    def __init__(self):
+        raise ValueError(
+            "this class is for documentation purposes only and should not "
+            "be instantiated"
+        )
+
+
+if HAVE_ASE:
+    IntoSystem.__doc__ += """
+    - `ase.Atoms`_: the Atomistic Simulation Environment (ASE) Atoms class. The
+      ASE neighbor list is used to find neighbors.
+
+    .. _ase.Atoms: https://wiki.fysik.dtu.dk/ase/ase/atoms.html
+    """
+
+if HAVE_CHEMFILES:
+    IntoSystem.__doc__ += """
+    - `chemfiles.Frame`_: chemfiles' Frame type. There is no associated neighbor
+      list implementation, the system will only be usable with
+      ``use_native_system=True``
+
+    .. _chemfiles.Frame: http://chemfiles.org/chemfiles.py/latest/reference/frame.html
+    """
+
+
+def wrap_system(system: IntoSystem) -> SystemBase:
     """Wrap different systems implementation into the right class.
 
     This function is automatically called on all systems passed to
     :py:func:`rascaline.calculators.CalculatorBase.compute`. This function makes
     different systems compatible with rascaline.
 
-    The following system types are currently supported:
+    The supported system types are documented in the
+    py:class:`rascaline.IntoSystem` class. If ``system`` is already a subclass
+    of :py:class:`rascaline.SystemBase`, it is returned as-is.
 
-    - `ase.Atoms`_: the Atomistic Simulation Environment Atoms class
-    - `chemfiles.Frame`_: chemfiles' Frame type
-
-    If ``system`` is already a subclass of :py:class:`rascaline.SystemBase`, it
-    is returned as-is.
-
-    :param system: external system of one of the above type
+    :param system: external system to wrap
 
     :returns: a specialized instance of :py:class:`rascaline.SystemBase`
-
-    .. _ase.Atoms: https://wiki.fysik.dtu.dk/ase/ase/atoms.html
-    .. _chemfiles.Frame: http://chemfiles.org/chemfiles.py/latest/reference/frame.html
     """
     if isinstance(system, SystemBase):
         return system

@@ -6,13 +6,14 @@
 #include "catch.hpp"
 #include "helpers.hpp"
 
-static void check_indexes(
-    rascal_descriptor_t* descriptor,
-    rascal_indexes_kind kind,
-    std::vector<std::string> names,
-    std::vector<int32_t> values,
-    uintptr_t count,
-    uintptr_t size
+static void check_block(
+    eqs_tensormap_t* descriptor,
+    size_t block_id,
+    std::vector<int32_t> samples,
+    std::vector<int32_t> properties,
+    std::vector<double> values,
+    std::vector<int32_t> gradient_samples,
+    std::vector<double> gradients
 );
 
 TEST_CASE("calculator name") {
@@ -101,40 +102,6 @@ TEST_CASE("calculator parameters") {
     }
 }
 
-TEST_CASE("calculator features count") {
-    SECTION("dummy_calculator") {
-        std::string HYPERS_JSON = R"({
-            "cutoff": 3.5,
-            "delta": 25,
-            "name": "bar",
-            "gradients": false
-        })";
-        auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON.c_str());
-        REQUIRE(calculator != nullptr);
-
-        uintptr_t count = 0;
-        CHECK_SUCCESS(rascal_calculator_features_count(calculator, &count));
-        CHECK(count == 2);
-
-        rascal_calculator_free(calculator);
-    }
-
-    SECTION("sorted distances vector") {
-        std::string HYPERS_JSON = R"({
-            "cutoff": 3.5,
-            "max_neighbors": 25
-        })";
-        auto* calculator = rascal_calculator("sorted_distances", HYPERS_JSON.c_str());
-        REQUIRE(calculator != nullptr);
-
-        uintptr_t count = 0;
-        CHECK_SUCCESS(rascal_calculator_features_count(calculator, &count));
-        CHECK(count == 25);
-
-        rascal_calculator_free(calculator);
-    }
-}
-
 TEST_CASE("calculator creation errors") {
     const char* HYPERS_JSON = R"({
         "cutoff": "532",
@@ -156,294 +123,462 @@ TEST_CASE("Compute descriptor") {
         "gradients": true
     })";
 
-    auto* descriptor = rascal_descriptor();
-    REQUIRE(descriptor != nullptr);
-    auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);
-    REQUIRE(calculator != nullptr);
-
     SECTION("Full compute") {
         auto system = simple_system();
 
         rascal_calculation_options_t options = {0};
-        CHECK_SUCCESS(rascal_calculator_compute(
-            calculator, descriptor, &system, 1, options
-        ));
+        auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);
+        REQUIRE(calculator != nullptr);
 
-        auto expected = std::vector<int32_t>{
-            0, 0, /**/ 0, 1, /**/ 0, 2, /**/ 0, 3,
+        eqs_tensormap_t* descriptor = nullptr;
+        auto status = rascal_calculator_compute(
+            calculator, &descriptor, &system, 1, options
+        );
+        CHECK_SUCCESS(status);
+
+        eqs_labels_t keys = {0};
+        status = eqs_tensormap_keys(descriptor, &keys);
+        CHECK_SUCCESS(status);
+
+        CHECK(keys.size == 1);
+        CHECK(keys.names[0] == std::string("species_center"));
+        CHECK(keys.count == 2);
+        CHECK(keys.values[0] == 1);
+        CHECK(keys.values[1] == 6);
+
+        auto samples = std::vector<int32_t>{
+            0, 1, /**/ 0, 2, /**/ 0, 3,
         };
-        check_indexes(descriptor, RASCAL_INDEXES_SAMPLES, {"structure", "center"}, expected, 4, 2);
-
-        expected = std::vector<int32_t>{
+        auto properties = std::vector<int32_t>{
             1, 0, /**/ 0, 1,
         };
-        check_indexes(descriptor, RASCAL_INDEXES_FEATURES, {"index_delta", "x_y_z"}, expected, 2, 2);
-
-        double* data = nullptr;
-        uintptr_t shape[2] = {0};
-        CHECK_SUCCESS(rascal_descriptor_values(descriptor, &data, &shape[0], &shape[1]));
-
-        CHECK(shape[0] == 4);
-        CHECK(shape[1] == 2);
-        auto expected_data = std::vector<double>{
-            4, 3, /**/ 5, 9, /**/ 6, 18, /**/ 7, 15,
+        auto values = std::vector<double>{
+            5, 9, /**/ 6, 18, /**/ 7, 15,
         };
-        for (size_t i=0; i<shape[0]; i++) {
-            for (size_t j=0; j<shape[1]; j++) {
-                CHECK(data[i * shape[1] + j] == expected_data[i * shape[1] + j]);
-            }
-        }
-
-        CHECK_SUCCESS(rascal_descriptor_gradients(descriptor, &data, &shape[0], &shape[1]));
-        CHECK(shape[0] == 18);
-        CHECK(shape[1] == 2);
-        expected_data = std::vector<double>{
-            0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1,
-            0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1,
-            0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1,
+        auto gradient_samples = std::vector<int32_t>{
+            0, 0, 0, /**/ 0, 0, 1, /**/ 0, 0, 2,
+            1, 0, 1, /**/ 1, 0, 2, /**/ 1, 0, 3,
+            2, 0, 2, /**/ 2, 0, 3,
         };
-        for (size_t i=0; i<shape[0]; i++) {
-            for (size_t j=0; j<shape[1]; j++) {
-                CHECK(data[i * shape[1] + j] == expected_data[i * shape[1] + j]);
-            }
-        }
+        auto gradients = std::vector<double>{
+            0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
+            0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
+            0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
+            0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
+            0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
+            0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
+            0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
+            0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0
+        };
+
+        // H block
+        check_block(descriptor, 0, samples, properties, values, gradient_samples, gradients);
+
+        samples = std::vector<int32_t>{
+            0, 0,
+        };
+        values = std::vector<double>{
+            4, 3,
+        };
+        gradient_samples = std::vector<int32_t>{
+            0, 0, 0, /**/ 0, 0, 1,
+        };
+        gradients = std::vector<double>{
+            0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
+            0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0
+        };
+
+        // C block
+        check_block(descriptor, 1, samples, properties, values, gradient_samples, gradients);
+
+        eqs_tensormap_free(descriptor);
+        rascal_calculator_free(calculator);
     }
 
     SECTION("Partial compute -- samples") {
+        auto selected_samples_values = std::vector<int32_t>{
+            0, 1, /**/ 0, 3,
+        };
+        auto selected_samples_names = std::vector<const char*>{
+            "structure", "center"
+        };
+
+        eqs_labels_t selected_samples = {0};
+        selected_samples.names = selected_samples_names.data();
+        selected_samples.values = selected_samples_values.data();
+        selected_samples.count = 2;
+        selected_samples.size = 2;
+
         auto system = simple_system();
+
+        rascal_calculation_options_t options = {0};
+        options.selected_samples.subset = &selected_samples;
+        auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);
+        REQUIRE(calculator != nullptr);
+
+        eqs_tensormap_t* descriptor = nullptr;
+        auto status = rascal_calculator_compute(
+            calculator, &descriptor, &system, 1, options
+        );
+        CHECK_SUCCESS(status);
+
+        eqs_labels_t keys = {0};
+        status = eqs_tensormap_keys(descriptor, &keys);
+        CHECK_SUCCESS(status);
+
+        CHECK(keys.size == 1);
+        CHECK(keys.names[0] == std::string("species_center"));
+        CHECK(keys.count == 2);
+        CHECK(keys.values[0] == 1);
+        CHECK(keys.values[1] == 6);
 
         auto samples = std::vector<int32_t>{
             0, 1, /**/ 0, 3,
         };
-        auto names = std::vector<const char*>{
-            "structure", "center"
+        auto properties = std::vector<int32_t>{
+            1, 0, /**/ 0, 1,
         };
-
-        rascal_calculation_options_t options = {0};
-        options.selected_samples.names = names.data();
-        options.selected_samples.values = samples.data();
-        options.selected_samples.count = 2;
-        options.selected_samples.size = 2;
-
-        CHECK_SUCCESS(rascal_calculator_compute(
-            calculator, descriptor, &system, 1, options
-        ));
-
-        check_indexes(descriptor, RASCAL_INDEXES_SAMPLES, {"structure", "center"}, samples, 2, 2);
-
-        auto expected = std::vector<int32_t>{
-            1, 0, /**/ 0, 1
-        };
-        check_indexes(descriptor, RASCAL_INDEXES_FEATURES, {"index_delta", "x_y_z"}, expected, 2, 2);
-
-        double* data = nullptr;
-        uintptr_t shape[2] = {0};
-        CHECK_SUCCESS(rascal_descriptor_values(descriptor, &data, &shape[0], &shape[1]));
-
-        CHECK(shape[0] == 2);
-        CHECK(shape[1] == 2);
-
-        auto expected_data = std::vector<double>{
+        auto values = std::vector<double>{
             5, 9, /**/ 7, 15,
         };
-        for (size_t i=0; i<shape[0]; i++) {
-            for (size_t j=0; j<shape[1]; j++) {
-                CHECK(data[i * shape[1] + j] == expected_data[i * shape[1] + j]);
-            }
-        }
-
-        CHECK_SUCCESS(rascal_descriptor_gradients(descriptor, &data, &shape[0], &shape[1]));
-        CHECK(shape[0] == 9);
-        CHECK(shape[1] == 2);
-        expected_data = std::vector<double>{
-            0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1,
-            0, 1, /**/ 0, 1, /**/ 0, 1,
+        auto gradient_samples = std::vector<int32_t>{
+            0, 0, 0, /**/ 0, 0, 1, /**/ 0, 0, 2,
+            1, 0, 2, /**/ 1, 0, 3,
         };
-        for (size_t i=0; i<shape[0]; i++) {
-            for (size_t j=0; j<shape[1]; j++) {
-                CHECK(data[i * shape[1] + j] == expected_data[i * shape[1] + j]);
-            }
-        }
+        auto gradients = std::vector<double>{
+            0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
+            0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
+            0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
+            0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
+            0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0
+        };
+
+        // H block
+        check_block(descriptor, 0, samples, properties, values, gradient_samples, gradients);
+
+        samples = std::vector<int32_t>{};
+        values = std::vector<double>{};
+        gradient_samples = std::vector<int32_t>{};
+        gradients = std::vector<double>{};
+
+        // C block
+        check_block(descriptor, 1, samples, properties, values, gradient_samples, gradients);
+
+        eqs_tensormap_free(descriptor);
+        rascal_calculator_free(calculator);
     }
 
     SECTION("Partial compute -- features") {
-        auto system = simple_system();
-
-        auto features = std::vector<int32_t>{
-            0, 1
+        auto selected_properties_values = std::vector<int32_t>{
+            0, 1,
         };
-        auto names = std::vector<const char*> {
+        auto selected_properties_names = std::vector<const char*>{
             "index_delta", "x_y_z"
         };
-        rascal_calculation_options_t options = {0};
-        options.selected_features.names = names.data();
-        options.selected_features.size = 2;
-        options.selected_features.values = features.data();
-        options.selected_features.count = 1;
 
-        CHECK_SUCCESS(rascal_calculator_compute(
-            calculator, descriptor, &system, 1, options
-        ));
+        eqs_labels_t selected_properties = {0};
+        selected_properties.names = selected_properties_names.data();
+        selected_properties.values = selected_properties_values.data();
+        selected_properties.count = 1;
+        selected_properties.size = 2;
 
-        auto expected = std::vector<int32_t>{
-            0, 0, /**/ 0, 1, /**/ 0, 2, /**/ 0, 3,
-        };
-        check_indexes(descriptor, RASCAL_INDEXES_SAMPLES, {"structure", "center"}, expected, 4, 2);
-
-        check_indexes(descriptor, RASCAL_INDEXES_FEATURES, {"index_delta", "x_y_z"}, features, 1, 2);
-
-        double* data = nullptr;
-        uintptr_t shape[2] = {0};
-        CHECK_SUCCESS(rascal_descriptor_values(descriptor, &data, &shape[0], &shape[1]));
-
-        CHECK(shape[0] == 4);
-        CHECK(shape[1] == 1);
-
-        auto expected_data = std::vector<double>{
-            3, /**/ 9, /**/ 18, /**/ 15,
-        };
-        for (size_t i=0; i<shape[0]; i++) {
-            for (size_t j=0; j<shape[1]; j++) {
-                CHECK(data[i * shape[1] + j] == expected_data[i * shape[1] + j]);
-            }
-        }
-
-        CHECK_SUCCESS(rascal_descriptor_gradients(descriptor, &data, &shape[0], &shape[1]));
-        CHECK(shape[0] == 18);
-        CHECK(shape[1] == 1);
-        expected_data = std::vector<double>(18, 1.0);
-        for (size_t i=0; i<shape[0]; i++) {
-            for (size_t j=0; j<shape[1]; j++) {
-                CHECK(data[i * shape[1] + j] == expected_data[i * shape[1] + j]);
-            }
-        }
-    }
-
-    SECTION("Partial compute -- empty") {
         auto system = simple_system();
 
-        auto samples_names = std::vector<const char*> {
+        rascal_calculation_options_t options = {0};
+        options.selected_properties.subset = &selected_properties;
+        auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);
+        REQUIRE(calculator != nullptr);
+
+        eqs_tensormap_t* descriptor = nullptr;
+        auto status = rascal_calculator_compute(
+            calculator, &descriptor, &system, 1, options
+        );
+        CHECK_SUCCESS(status);
+
+        eqs_labels_t keys = {0};
+        status = eqs_tensormap_keys(descriptor, &keys);
+        CHECK_SUCCESS(status);
+
+        CHECK(keys.size == 1);
+        CHECK(keys.names[0] == std::string("species_center"));
+        CHECK(keys.count == 2);
+        CHECK(keys.values[0] == 1);
+        CHECK(keys.values[1] == 6);
+
+        auto samples = std::vector<int32_t>{
+            0, 1, /**/ 0, 2, /**/ 0, 3,
+        };
+        auto properties = std::vector<int32_t>{
+            0, 1,
+        };
+        auto values = std::vector<double>{
+            9, /**/ 18, /**/ 15,
+        };
+        auto gradient_samples = std::vector<int32_t>{
+            0, 0, 0, /**/ 0, 0, 1, /**/ 0, 0, 2,
+            1, 0, 1, /**/ 1, 0, 2, /**/ 1, 0, 3,
+            2, 0, 2, /**/ 2, 0, 3,
+        };
+        auto gradients = std::vector<double>{
+            1.0, /**/ 1.0, /**/ 1.0,
+            1.0, /**/ 1.0, /**/ 1.0,
+            1.0, /**/ 1.0, /**/ 1.0,
+            1.0, /**/ 1.0, /**/ 1.0,
+            1.0, /**/ 1.0, /**/ 1.0,
+            1.0, /**/ 1.0, /**/ 1.0,
+            1.0, /**/ 1.0, /**/ 1.0,
+            1.0, /**/ 1.0, /**/ 1.0
+        };
+
+        // H block
+        check_block(descriptor, 0, samples, properties, values, gradient_samples, gradients);
+
+        samples = std::vector<int32_t>{
+            0, 0,
+        };
+        values = std::vector<double>{
+            3,
+        };
+        gradient_samples = std::vector<int32_t>{
+            0, 0, 0, /**/ 0, 0, 1,
+        };
+        gradients = std::vector<double>{
+            1.0, /**/ 1.0, /**/ 1.0,
+            1.0, /**/ 1.0, /**/ 1.0
+        };
+
+        // C block
+        check_block(descriptor, 1, samples, properties, values, gradient_samples, gradients);
+
+        eqs_tensormap_free(descriptor);
+        rascal_calculator_free(calculator);
+    }
+
+    SECTION("Partial compute -- preselected") {
+        auto samples_names = std::vector<const char*>{
             "structure", "center"
         };
-        rascal_calculation_options_t options_no_samples = {0};
-        options_no_samples.selected_samples.names = samples_names.data();
-        options_no_samples.selected_samples.size = 2;
-        options_no_samples.selected_samples.values = nullptr;
-        options_no_samples.selected_samples.count = 0;
-
-        CHECK_SUCCESS(rascal_calculator_compute(
-            calculator, descriptor, &system, 1, options_no_samples
-        ));
-
-        double* data = nullptr;
-        uintptr_t shape[2] = {0};
-        CHECK_SUCCESS(rascal_descriptor_values(descriptor, &data, &shape[0], &shape[1]));
-
-        CHECK(shape[0] == 0);
-        CHECK(shape[1] == 2);
-
-        rascal_indexes_t indexes = {0};
-        CHECK_SUCCESS(rascal_descriptor_indexes(
-            descriptor, RASCAL_INDEXES_SAMPLES, &indexes
-        ));
-        CHECK(indexes.values == nullptr);
-        CHECK(indexes.names != nullptr);
-        CHECK(indexes.count == 0);
-        CHECK(indexes.size == 2);
-
-        /**********************************************************************/
-
-        auto features_names = std::vector<const char*> {
+        auto properties_names = std::vector<const char*>{
             "index_delta", "x_y_z"
         };
-        rascal_calculation_options_t options_no_features = {0};
-        options_no_features.selected_features.names = features_names.data();
-        options_no_features.selected_features.size = 2;
-        options_no_features.selected_features.values = nullptr;
-        options_no_features.selected_features.count = 0;
 
-        CHECK_SUCCESS(rascal_calculator_compute(
-            calculator, descriptor, &system, 1, options_no_features
-        ));
+        auto h_samples_values = std::vector<int32_t>{
+            0, 3,
+        };
+        auto h_properties_values = std::vector<int32_t>{
+            0, 1,
+        };
 
-        CHECK_SUCCESS(rascal_descriptor_values(descriptor, &data, &shape[0], &shape[1]));
+        eqs_block_t* blocks[2] = {nullptr, nullptr};
 
-        CHECK(shape[0] == 4);
-        CHECK(shape[1] == 0);
+        eqs_labels_t h_samples = {0};
+        h_samples.size = 2;
+        h_samples.names = samples_names.data();
+        h_samples.count = 1;
+        h_samples.values = h_samples_values.data();
 
-        CHECK_SUCCESS(rascal_descriptor_indexes(
-            descriptor, RASCAL_INDEXES_FEATURES, &indexes
-        ));
-        CHECK(indexes.values == nullptr);
-        CHECK(indexes.names != nullptr);
-        CHECK(indexes.count == 0);
-        CHECK(indexes.size == 2);
-    }
+        eqs_labels_t h_properties = {0};
+        h_properties.size = 2;
+        h_properties.names = properties_names.data();
+        h_properties.count = 1;
+        h_properties.values = h_properties_values.data();
+        blocks[0] = eqs_block(empty_array({1, 1}), h_samples, nullptr, 0, h_properties);
+        REQUIRE(blocks[0] != nullptr);
 
-    SECTION("Partial compute -- errors") {
+
+        auto c_samples_values = std::vector<int32_t>{
+            0, 0,
+        };
+        auto c_properties_values = std::vector<int32_t>{
+            1, 0,
+        };
+
+        eqs_labels_t c_samples = {0};
+        c_samples.size = 2;
+        c_samples.names = samples_names.data();
+        c_samples.count = 1;
+        c_samples.values = c_samples_values.data();
+
+        eqs_labels_t c_properties = {0};
+        c_properties.size = 2;
+        c_properties.names = properties_names.data();
+        c_properties.count = 1;
+        c_properties.values = c_properties_values.data();
+        blocks[1] = eqs_block(empty_array({1, 1}), c_samples, nullptr, 0, c_properties);
+        REQUIRE(blocks[1] != nullptr);
+
+        auto keys_names = std::vector<const char*>{"species_center"};
+        auto keys_values = std::vector<int32_t>{1, 6};
+
+        eqs_labels_t keys = {0};
+        keys.size = 1;
+        keys.names = keys_names.data();
+        keys.count = 2;
+        keys.values = keys_values.data();
+
+        auto predefined = eqs_tensormap(keys, blocks, 2);
+        REQUIRE(predefined != nullptr);
+
         auto system = simple_system();
-
-        auto samples = std::vector<int32_t>{0, 1, 3};
-        auto names = std::vector<const char*> {
-            "structure", "center", "species"
-        };
-
         rascal_calculation_options_t options = {0};
-        options.selected_samples.names = names.data();
-        options.selected_samples.size = 3;
-        options.selected_samples.values = samples.data();
-        options.selected_samples.count = 1;
+        options.selected_samples.predefined = predefined;
+        options.selected_properties.predefined = predefined;
+        auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);
+        REQUIRE(calculator != nullptr);
 
+        eqs_tensormap_t* descriptor = nullptr;
         auto status = rascal_calculator_compute(
-            calculator, descriptor, &system, 1, options
+            calculator, &descriptor, &system, 1, options
         );
-        CHECK(status != RASCAL_SUCCESS);
-        CHECK(std::string(rascal_last_error()) == "invalid parameter: 'species' in requested samples is not part of the samples of this calculator");
+        CHECK_SUCCESS(status);
 
-        auto features = std::vector<int32_t>{0, 1, 1};
-        names = std::vector<const char*> {
-            "index_delta", "x_y_z", "foo"
+        status = eqs_tensormap_keys(descriptor, &keys);
+        CHECK_SUCCESS(status);
+
+        CHECK(keys.size == 1);
+        CHECK(keys.names[0] == std::string("species_center"));
+        CHECK(keys.count == 2);
+        CHECK(keys.values[0] == 1);
+        CHECK(keys.values[1] == 6);
+
+        auto samples = std::vector<int32_t>{
+            0, 3,
         };
-        std::memset(&options, 0, sizeof(rascal_calculation_options_t));
-        options.selected_features.names = names.data();
-        options.selected_features.size = 3;
-        options.selected_features.values = features.data();
-        options.selected_features.count = 1;
+        auto properties = std::vector<int32_t>{
+            0, 1,
+        };
+        auto values = std::vector<double>{
+            15,
+        };
+        auto gradient_samples = std::vector<int32_t>{
+            0, 0, 2, /**/ 0, 0, 3,
+        };
+        auto gradients = std::vector<double>{
+            1.0, /**/ 1.0, /**/ 1.0,
+            1.0, /**/ 1.0, /**/ 1.0
+        };
 
-        status = rascal_calculator_compute(
-            calculator, descriptor, &system, 1, options
-        );
-        CHECK(status != RASCAL_SUCCESS);
-        CHECK(std::string(rascal_last_error()) == "invalid parameter: 'foo' in requested features is not part of the features of this calculator");
+        // H block
+        check_block(descriptor, 0, samples, properties, values, gradient_samples, gradients);
+
+        samples = std::vector<int32_t>{
+            0, 0,
+        };
+        properties = std::vector<int32_t>{
+            1, 0,
+        };
+        values = std::vector<double>{
+            4,
+        };
+        gradient_samples = std::vector<int32_t>{
+            0, 0, 0, /**/ 0, 0, 1,
+        };
+        gradients = std::vector<double>{
+            0.0, /**/ 0.0, /**/ 0.0,
+            0.0, /**/ 0.0, /**/ 0.0,
+        };
+
+        // C block
+        check_block(descriptor, 1, samples, properties, values, gradient_samples, gradients);
+
+        eqs_tensormap_free(predefined);
+        eqs_tensormap_free(descriptor);
+        rascal_calculator_free(calculator);
     }
-
-    rascal_calculator_free(calculator);
-    rascal_descriptor_free(descriptor);
 }
 
-void check_indexes(
-    rascal_descriptor_t* descriptor,
-    rascal_indexes_kind kind,
-    std::vector<std::string> names,
-    std::vector<int32_t> values,
-    uintptr_t count,
-    uintptr_t size
+void check_block(
+    eqs_tensormap_t* descriptor,
+    size_t block_id,
+    std::vector<int32_t> samples,
+    std::vector<int32_t> properties,
+    std::vector<double> values,
+    std::vector<int32_t> gradient_samples,
+    std::vector<double> gradients
 ) {
-    rascal_indexes_t actual = {0};
-    CHECK_SUCCESS(rascal_descriptor_indexes(descriptor, kind, &actual));
-    REQUIRE(actual.values != nullptr);
+    const eqs_block_t* block = nullptr;
 
-    REQUIRE(values.size() == count * size);
-    CHECK(actual.count == count);
-    CHECK(actual.size == size);
+    auto status = eqs_tensormap_block_by_id(descriptor, &block, block_id);
+    CHECK_SUCCESS(status);
 
-    for (size_t i=0; i<count; i++) {
-        for (size_t j=0; j<size; j++) {
-            CHECK(actual.values[i * size + j] == values[i * size + j]);
-        }
-    }
+    /**************************************************************************/
+    eqs_labels_t labels = {0};
+    status = eqs_block_labels(block, "values", 0, &labels);
+    CHECK_SUCCESS(status);
 
-    for (size_t i=0; i<size; i++) {
-        CHECK(std::string(actual.names[i]) == names[i]);
-    }
+    CHECK(labels.size == 2);
+    CHECK(labels.names[0] == std::string("structure"));
+    CHECK(labels.names[1] == std::string("center"));
+    auto n_samples = labels.count;
+
+    auto label_values = std::vector<int32_t>(
+        labels.values, labels.values + labels.count * labels.size
+    );
+    CHECK(label_values == samples);
+
+    /**************************************************************************/
+    status = eqs_block_labels(block, "values", 1, &labels);
+    CHECK_SUCCESS(status);
+
+    CHECK(labels.size == 2);
+    CHECK(labels.names[0] == std::string("index_delta"));
+    CHECK(labels.names[1] == std::string("x_y_z"));
+    auto n_properties = labels.count;
+
+    label_values = std::vector<int32_t>(
+        labels.values, labels.values + labels.count * labels.size
+    );
+    CHECK(label_values == properties);
+
+    /**************************************************************************/
+    eqs_array_t data = {0};
+    status = eqs_block_data(block, "values", &data);
+    CHECK_SUCCESS(status);
+
+    const double* values_ptr = nullptr;
+    const uintptr_t* shape = nullptr;
+    uintptr_t shape_count = 0;
+    status = eqs_get_rust_array(&data, &values_ptr, &shape, &shape_count);
+    CHECK_SUCCESS(status);
+
+    CHECK(shape_count == 2);
+    CHECK(shape[0] == n_samples);
+    CHECK(shape[1] == n_properties);
+
+    auto actual_values = std::vector<double>(
+        values_ptr, values_ptr + n_samples * n_properties
+    );
+    CHECK(actual_values == values);
+
+    /**************************************************************************/
+    status = eqs_block_labels(block, "positions", 0, &labels);
+    CHECK_SUCCESS(status);
+
+    CHECK(labels.size == 3);
+    CHECK(labels.names[0] == std::string("sample"));
+    CHECK(labels.names[1] == std::string("structure"));
+    CHECK(labels.names[2] == std::string("atom"));
+    auto n_gradient_samples = labels.count;
+
+    label_values = std::vector<int32_t>(
+        labels.values, labels.values + labels.count * labels.size
+    );
+    CHECK(label_values == gradient_samples);
+
+    /**************************************************************************/
+    status = eqs_block_data(block, "positions", &data);
+    CHECK_SUCCESS(status);
+
+    status = eqs_get_rust_array(&data, &values_ptr, &shape, &shape_count);
+    CHECK_SUCCESS(status);
+
+    CHECK(shape_count == 3);
+    CHECK(shape[0] == n_gradient_samples);
+    CHECK(shape[1] == 3);
+    CHECK(shape[2] == n_properties);
+
+    auto actual_gradients = std::vector<double>(
+        values_ptr, values_ptr + n_gradient_samples * 3 * n_properties
+    );
+    CHECK(actual_gradients == gradients);
 }

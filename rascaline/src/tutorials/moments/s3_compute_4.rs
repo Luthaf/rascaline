@@ -1,7 +1,18 @@
-use crate::{System, Descriptor, Error};
-use crate::descriptor::{SamplesBuilder, TwoBodiesSpeciesSamples};
-use crate::descriptor::{Indexes, IndexesBuilder, IndexValue};
+
+use std::sync::Arc;
+
+use equistore::{Labels, TensorMap, LabelsBuilder, LabelValue};
+
+use crate::{System, Error};
+use crate::labels::{CenterSingleNeighborsSpeciesKeys, KeysBuilder};
+use crate::labels::{AtomCenteredSamples, SamplesBuilder, SpeciesFilter};
 use crate::calculators::CalculatorBase;
+
+// these are here just to make the code below compile
+const first_sample_position: Option<usize> = None;
+const second_sample_position: Option<usize> = None;
+const first_block_id: usize = 0;
+const second_block_id: usize = 0;
 
 #[derive(Clone, Debug)]
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -11,68 +22,81 @@ struct GeometricMoments {
     gradients: bool,
 }
 
-// variables declared as const to make the code compile
-const first_sample_position: Option<usize> = None;
-const second_sample_position: Option<usize> = None;
-
 impl CalculatorBase for GeometricMoments {
     fn name(&self) -> String {
         todo!()
     }
 
-    fn get_parameters(&self) -> String {
+    fn parameters(&self) -> String {
         todo!()
     }
 
-    fn compute_gradients(&self) -> bool {
+    fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
         todo!()
     }
 
-    fn features_names(&self) -> Vec<&str> {
+    fn samples_names(&self) -> Vec<&str> {
         todo!()
     }
 
-    fn features(&self) -> Indexes {
+    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
         todo!()
     }
 
-    fn check_features(&self, indexes: &Indexes) -> Result<(), Error> {
+    fn gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Option<Vec<Arc<Labels>>>, Error> {
         todo!()
     }
 
-    fn samples_builder(&self) -> Box<dyn SamplesBuilder> {
+    fn components(&self, keys: &Labels) -> Vec<Vec<Arc<Labels>>> {
+        todo!()
+    }
+
+    fn properties_names(&self) -> Vec<&str> {
+        todo!()
+    }
+
+    fn properties(&self, keys: &Labels) -> Vec<Arc<Labels>> {
         todo!()
     }
 
     // [compute]
-    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor) -> Result<(), Error> {
+    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
         // ...
-
-        for (i_system, system) in systems.iter_mut().enumerate() {
+        for (system_i, system) in systems.iter_mut().enumerate() {
             // ...
-
             for pair in system.pairs()? {
                 // ...
 
                 let n_neighbors_first = system.pairs_containing(pair.first)?.len() as f64;
                 let n_neighbors_second = system.pairs_containing(pair.second)?.len() as f64;
 
-                for (i_feature, feature) in descriptor.features.iter().enumerate() {
-                    let k = feature[0].usize();
-                    let moment = f64::powi(pair.distance, k as i32);
+                if let Some(sample_i) = first_sample_position {
+                    let mut block = descriptor.block_mut(first_block_id);
+                    let values = block.values_mut();
+                    let array = values.data.as_array_mut();
 
-                    if let Some(i_first_sample) = first_sample_position {
-                        descriptor.values[[i_first_sample, i_feature]] += moment / n_neighbors_first;
-                    }
-
-                    if let Some(i_second_sample) = second_sample_position {
-                        descriptor.values[[i_second_sample, i_feature]] += moment / n_neighbors_second;
+                    for (property_i, [k]) in values.properties.iter_fixed_size().enumerate() {
+                        let value = f64::powi(pair.distance, k.i32()) / n_neighbors_first;
+                        array[[sample_i, property_i]] += value;
                     }
                 }
 
+                if let Some(sample_i) = second_sample_position {
+                    let mut block = descriptor.block_mut(second_block_id);
+                    let values = block.values_mut();
+                    let array = values.data.as_array_mut();
+
+                    for (property_i, [k]) in values.properties.iter_fixed_size().enumerate() {
+                        let value = f64::powi(pair.distance, k.i32()) / n_neighbors_second;
+                        array[[sample_i, property_i]] += value;
+                    }
+                }
+
+                if self.gradients {
+                    // more code coming up
+                }
             }
         }
-
         return Ok(());
     }
     // [compute]

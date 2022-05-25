@@ -1,6 +1,10 @@
-use crate::{System, Descriptor, Error};
-use crate::descriptor::{SamplesBuilder, TwoBodiesSpeciesSamples};
-use crate::descriptor::{Indexes, IndexesBuilder, IndexValue};
+use std::sync::Arc;
+
+use equistore::{Labels, TensorMap, LabelsBuilder, LabelValue};
+
+use crate::{System, Error};
+use crate::labels::{CenterSingleNeighborsSpeciesKeys, KeysBuilder};
+use crate::labels::{AtomCenteredSamples, SamplesBuilder, SpeciesFilter};
 use crate::calculators::CalculatorBase;
 
 // [struct]
@@ -20,59 +24,103 @@ impl CalculatorBase for GeometricMoments {
     }
     // [CalculatorBase::name]
 
-    // [CalculatorBase::get_parameters]
-    fn get_parameters(&self) -> String {
+    // [CalculatorBase::parameters]
+    fn parameters(&self) -> String {
         serde_json::to_string(self).expect("failed to serialize to JSON")
     }
-    // [CalculatorBase::get_parameters]
+    // [CalculatorBase::parameters]
 
-    // [CalculatorBase::compute_gradients]
-    fn compute_gradients(&self) -> bool {
-        self.gradients
+    // [CalculatorBase::keys]
+    fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
+        let builder = CenterSingleNeighborsSpeciesKeys {
+            cutoff: self.cutoff,
+            // self pairs would have a distance of 0 and would not contribute
+            // anything meaningful to a GeometricMoments representation
+            self_pairs: false,
+        };
+        return builder.keys(systems);
     }
-    // [CalculatorBase::compute_gradients]
+    // [CalculatorBase::keys]
 
-    // [CalculatorBase::features_names]
-    fn features_names(&self) -> Vec<&str> {
+    // [CalculatorBase::samples]
+    fn samples_names(&self) -> Vec<&str> {
+        AtomCenteredSamples::samples_names()
+    }
+
+    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+        assert_eq!(keys.names(), ["species_center", "species_neighbor"]);
+
+        let mut samples = Vec::new();
+        for [species_center, species_neighbor] in keys.iter_fixed_size() {
+            let builder = AtomCenteredSamples {
+                cutoff: self.cutoff,
+                // only include centers of this species
+                species_center: SpeciesFilter::Single(species_center.i32()),
+                // with a neighbor of this species somewhere in the neighborhood
+                // defined by the spherical `cutoff`.
+                species_neighbor: SpeciesFilter::Single(species_neighbor.i32()),
+                self_pairs: false,
+            };
+
+            samples.push(builder.samples(systems)?);
+        }
+
+        return Ok(samples);
+    }
+    // [CalculatorBase::samples]
+
+    // [CalculatorBase::gradient_samples]
+    fn gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Option<Vec<Arc<Labels>>>, Error> {
+        assert_eq!(keys.names(), ["species_center", "species_neighbor"]);
+        debug_assert_eq!(keys.count(), samples.len());
+
+        if !self.gradients {
+            return Ok(None);
+        }
+
+        let mut gradient_samples = Vec::new();
+        for ([center_species, species_neighbor], samples_for_key) in keys.iter_fixed_size().zip(samples) {
+            let builder = AtomCenteredSamples {
+                cutoff: self.cutoff,
+                species_center: SpeciesFilter::Single(center_species.i32()),
+                // only include gradients with respect to neighbor atoms with
+                // this species (the other atoms do not contribute to the
+                // gradients in the current block).
+                species_neighbor: SpeciesFilter::Single(species_neighbor.i32()),
+                self_pairs: false,
+            };
+
+            gradient_samples.push(builder.gradients_for(systems, samples_for_key)?);
+        }
+
+        return Ok(Some(gradient_samples));
+    }
+    // [CalculatorBase::gradient_samples]
+
+    // [CalculatorBase::components]
+    fn components(&self, keys: &Labels) -> Vec<Vec<Arc<Labels>>> {
+        return vec![vec![]; keys.count()];
+    }
+    // [CalculatorBase::components]
+
+    // [CalculatorBase::properties]
+    fn properties_names(&self) -> Vec<&str> {
         vec!["k"]
     }
-    // [CalculatorBase::features_names]
 
-    // [CalculatorBase::features]
-    fn features(&self) -> Indexes {
-        let mut builder = IndexesBuilder::new(self.features_names());
+    fn properties(&self, keys: &Labels) -> Vec<Arc<Labels>> {
+        let mut builder = LabelsBuilder::new(self.properties_names());
         for k in 0..=self.max_moment {
-            builder.add(&[IndexValue::from(k)]);
+            builder.add(&[k]);
         }
+        let properties = Arc::new(builder.finish());
 
-        return builder.finish();
+        return vec![properties; keys.count()];
     }
-    // [CalculatorBase::features]
+    // [CalculatorBase::properties]
 
-    // [CalculatorBase::check_features]
-    fn check_features(&self, indexes: &Indexes) -> Result<(), Error> {
-        assert_eq!(indexes.names(), self.features_names());
-
-        for value in indexes {
-            if value[0].usize() > self.max_moment {
-                return Err(Error::InvalidParameter(format!(
-                    "'k' is too large for this GeometricMoments calculator: \
-                    expected value below {}, got {}", self.max_moment, value[0]
-                )));
-            }
-        }
-
-        return Ok(());
-    }
-    // [CalculatorBase::check_features]
-
-    // [CalculatorBase::samples_builder]
-    fn samples_builder(&self) -> Box<dyn SamplesBuilder> {
-        Box::new(TwoBodiesSpeciesSamples::new(self.cutoff))
-    }
-    // [CalculatorBase::samples_builder]
-
-    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor) -> Result<(), Error> {
+    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
         todo!()
     }
+
 }

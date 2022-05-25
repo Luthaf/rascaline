@@ -2,7 +2,7 @@ use std::ffi::{CString};
 use std::sync::Mutex;
 
 use log::{Record, Metadata};
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 
 use crate::status::{rascal_status_t, catch_unwind};
 
@@ -38,11 +38,7 @@ pub const RASCAL_LOG_LEVEL_TRACE: i32 = 5;
 #[allow(non_camel_case_types)]
 pub type rascal_logging_callback_t = Option<unsafe extern fn(level: i32, message: *const std::os::raw::c_char)>;
 
-// Mutex cannot use rust static
-// see https://stackoverflow.com/a/27826181
-lazy_static! {
-    static ref GLOBAL_CALLBACK: Mutex<rascal_logging_callback_t> = Mutex::new(None);
-}
+static GLOBAL_CALLBACK: Lazy<Mutex<rascal_logging_callback_t>> = Lazy::new(|| Mutex::new(None));
 
 /// Implementation of `log::Log` that forward all log messages to the global
 /// `rascal_logging_callback_t`.

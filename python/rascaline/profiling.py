@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from .clib import _get_library
+from ._c_lib import _get_library
 from .utils import _call_with_growing_buffer
 
 

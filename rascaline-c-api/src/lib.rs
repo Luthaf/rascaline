@@ -19,7 +19,6 @@ pub use self::logging::{RASCAL_LOG_LEVEL_DEBUG, RASCAL_LOG_LEVEL_TRACE};
 pub use self::logging::{rascal_logging_callback_t, rascal_set_logging_callback};
 
 pub mod system;
-pub mod descriptor;
 pub mod calculator;
 
 pub mod profiling;

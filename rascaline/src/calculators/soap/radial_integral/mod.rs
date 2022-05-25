@@ -10,7 +10,7 @@ use ndarray::ArrayViewMut2;
 /// enable passing radial integrals between threads.
 pub trait RadialIntegral: std::panic::RefUnwindSafe + Send {
     /// Compute the radial integral for a single `distance` between two atoms
-    /// and store the resulting data in the `max_radial x (max_angular + 1)`
+    /// and store the resulting data in the `(max_angular + 1) x max_radial`
     /// array `values`. If `gradients` is `Some`, also compute and store
     /// gradients there.
     fn compute(&self, rij: f64, values: ArrayViewMut2<f64>, gradients: Option<ArrayViewMut2<f64>>);

@@ -1,5 +1,5 @@
 #![allow(clippy::needless_return)]
-use rascaline::{Calculator, Descriptor, System};
+use rascaline::{Calculator, System};
 
 use criterion::{BenchmarkGroup, Criterion, measurement::WallTime, SamplingMode};
 use criterion::{criterion_group, criterion_main};
@@ -58,9 +58,8 @@ fn run_spherical_expansion(mut group: BenchmarkGroup<WallTime>,
 
         group.bench_function(&format!("n_max = {}, l_max = {}", max_radial, max_angular), |b| b.iter_custom(|repeat| {
             let start = std::time::Instant::now();
-            let mut descriptor = Descriptor::new();
             for _ in 0..repeat {
-                calculator.compute(&mut systems, &mut descriptor, Default::default()).unwrap();
+                calculator.compute(&mut systems, Default::default()).unwrap();
             }
             start.elapsed() / n_centers as u32
         }));

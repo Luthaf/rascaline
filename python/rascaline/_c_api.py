@@ -7,6 +7,7 @@ import enum
 import platform
 from ctypes import CFUNCTYPE, POINTER
 
+from equistore._c_api import eqs_labels_t, eqs_tensormap_t
 from numpy.ctypeslib import ndpointer
 
 
@@ -35,17 +36,7 @@ rascal_status_t = ctypes.c_int32
 rascal_logging_callback_t = CFUNCTYPE(None, ctypes.c_int32, ctypes.c_char_p)
 
 
-class rascal_indexes_kind(enum.Enum):
-    RASCAL_INDEXES_FEATURES = 0
-    RASCAL_INDEXES_SAMPLES = 1
-    RASCAL_INDEXES_GRADIENT_SAMPLES = 2
-
-
 class rascal_calculator_t(ctypes.Structure):
-    pass
-
-
-class rascal_descriptor_t(ctypes.Structure):
     pass
 
 
@@ -71,28 +62,18 @@ class rascal_system_t(ctypes.Structure):
     ]
 
 
-class rascal_indexes_t(ctypes.Structure):
+class rascal_labels_selection_t(ctypes.Structure):
     _fields_ = [
-        ("names", POINTER(ctypes.c_char_p)),
-        ("values", POINTER(ctypes.c_int32)),
-        ("size", c_uintptr_t),
-        ("count", c_uintptr_t),
-    ]
-
-
-class rascal_densified_position_t(ctypes.Structure):
-    _fields_ = [
-        ("new_sample", c_uintptr_t),
-        ("feature_block", c_uintptr_t),
-        ("used", ctypes.c_bool),
+        ("subset", POINTER(eqs_labels_t)),
+        ("predefined", POINTER(eqs_tensormap_t)),
     ]
 
 
 class rascal_calculation_options_t(ctypes.Structure):
     _fields_ = [
         ("use_native_system", ctypes.c_bool),
-        ("selected_samples", rascal_indexes_t),
-        ("selected_features", rascal_indexes_t),
+        ("selected_samples", rascal_labels_selection_t),
+        ("selected_properties", rascal_labels_selection_t),
     ]
 
 
@@ -122,59 +103,6 @@ def setup_functions(lib):
     ]
     lib.rascal_basic_systems_free.restype = _check_rascal_status_t
 
-    lib.rascal_descriptor.argtypes = [
-        
-    ]
-    lib.rascal_descriptor.restype = POINTER(rascal_descriptor_t)
-
-    lib.rascal_descriptor_free.argtypes = [
-        POINTER(rascal_descriptor_t)
-    ]
-    lib.rascal_descriptor_free.restype = _check_rascal_status_t
-
-    lib.rascal_descriptor_values.argtypes = [
-        POINTER(rascal_descriptor_t),
-        POINTER(POINTER(ctypes.c_double)),
-        POINTER(c_uintptr_t),
-        POINTER(c_uintptr_t)
-    ]
-    lib.rascal_descriptor_values.restype = _check_rascal_status_t
-
-    lib.rascal_descriptor_gradients.argtypes = [
-        POINTER(rascal_descriptor_t),
-        POINTER(POINTER(ctypes.c_double)),
-        POINTER(c_uintptr_t),
-        POINTER(c_uintptr_t)
-    ]
-    lib.rascal_descriptor_gradients.restype = _check_rascal_status_t
-
-    lib.rascal_descriptor_indexes.argtypes = [
-        POINTER(rascal_descriptor_t),
-        ctypes.c_int,
-        POINTER(rascal_indexes_t)
-    ]
-    lib.rascal_descriptor_indexes.restype = _check_rascal_status_t
-
-    lib.rascal_descriptor_densify.argtypes = [
-        POINTER(rascal_descriptor_t),
-        POINTER(ctypes.c_char_p),
-        c_uintptr_t,
-        POINTER(ctypes.c_int32),
-        c_uintptr_t
-    ]
-    lib.rascal_descriptor_densify.restype = _check_rascal_status_t
-
-    lib.rascal_descriptor_densify_values.argtypes = [
-        POINTER(rascal_descriptor_t),
-        POINTER(ctypes.c_char_p),
-        c_uintptr_t,
-        POINTER(ctypes.c_int32),
-        c_uintptr_t,
-        POINTER(POINTER(rascal_densified_position_t)),
-        POINTER(c_uintptr_t)
-    ]
-    lib.rascal_descriptor_densify_values.restype = _check_rascal_status_t
-
     lib.rascal_calculator.argtypes = [
         ctypes.c_char_p,
         ctypes.c_char_p
@@ -200,15 +128,9 @@ def setup_functions(lib):
     ]
     lib.rascal_calculator_parameters.restype = _check_rascal_status_t
 
-    lib.rascal_calculator_features_count.argtypes = [
-        POINTER(rascal_calculator_t),
-        POINTER(c_uintptr_t)
-    ]
-    lib.rascal_calculator_features_count.restype = _check_rascal_status_t
-
     lib.rascal_calculator_compute.argtypes = [
         POINTER(rascal_calculator_t),
-        POINTER(rascal_descriptor_t),
+        POINTER(POINTER(eqs_tensormap_t)),
         POINTER(rascal_system_t),
         c_uintptr_t,
         rascal_calculation_options_t

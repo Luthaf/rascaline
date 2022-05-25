@@ -107,6 +107,9 @@ def c_type_name(name):
             return "ctypes.c_int"
         else:
             return name
+    if name.startswith("eqs_"):
+        # equistore types
+        return name
     elif name == "uintptr_t":
         return "c_uintptr_t"
     elif name == "void":
@@ -230,7 +233,7 @@ def generate_functions(file, functions):
 def generate_declarations():
     data = parse(RASCALINE_HEADER)
 
-    outpath = os.path.join(ROOT, "..", "rascaline", "_rascaline.py")
+    outpath = os.path.join(ROOT, "..", "rascaline", "_c_api.py")
     with open(outpath, "w") as file:
         file.write(
             """# -*- coding: utf-8 -*-
@@ -242,6 +245,7 @@ import enum
 import platform
 from ctypes import CFUNCTYPE, POINTER
 
+from equistore._c_api import eqs_labels_t, eqs_tensormap_t
 from numpy.ctypeslib import ndpointer
 
 

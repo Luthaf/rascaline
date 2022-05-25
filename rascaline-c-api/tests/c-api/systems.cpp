@@ -55,8 +55,6 @@ TEST_CASE("systems errors") {
         "gradients": true
     })";
 
-    auto* descriptor = rascal_descriptor();
-    REQUIRE(descriptor != nullptr);
     auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);
     REQUIRE(calculator != nullptr);
 
@@ -64,25 +62,27 @@ TEST_CASE("systems errors") {
     rascal_calculation_options_t options = {0};
 
     // default status code when function are not defined
+    eqs_tensormap_t* descriptor = nullptr;
     auto status = rascal_calculator_compute(
-        calculator, descriptor, &system, 1, options
+        calculator, &descriptor, &system, 1, options
     );
+    CHECK(descriptor == nullptr);
     CHECK(status == RASCAL_SYSTEM_ERROR);
 
-    std::string expected = "error from external code (status 128): rascal_system_t.size function is NULL";
+    std::string expected = "error from external code (status 128): rascal_system_t.species function is NULL";
     CHECK(rascal_last_error() == expected);
 
-    system.size = [](const void* _, uintptr_t* size) {
+    system.species = [](const void* _, const int32_t** species) {
         return -5242832;
     };
 
     status = rascal_calculator_compute(
-        calculator, descriptor, &system, 1, options
+        calculator, &descriptor, &system, 1, options
     );
+    CHECK(descriptor == nullptr);
     CHECK(status == -5242832);
-    expected = "error from external code (status -5242832): call to rascal_system_t.size failed";
+    expected = "error from external code (status -5242832): call to rascal_system_t.species failed";
     CHECK(rascal_last_error() == expected);
 
-    rascal_descriptor_free(descriptor);
     rascal_calculator_free(calculator);
 }

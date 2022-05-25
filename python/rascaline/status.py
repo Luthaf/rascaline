@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-from ._rascaline import RASCAL_SUCCESS
-from .clib import _get_library
+from ._c_api import RASCAL_SUCCESS
+from ._c_lib import _get_library
 
 
 class RascalError(Exception):

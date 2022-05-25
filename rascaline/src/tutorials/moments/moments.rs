@@ -1,6 +1,10 @@
-use crate::{System, Descriptor, Error};
-use crate::descriptor::{SamplesBuilder, TwoBodiesSpeciesSamples};
-use crate::descriptor::{Indexes, IndexesBuilder, IndexValue};
+use std::sync::Arc;
+
+use equistore::{Labels, TensorMap, LabelsBuilder, LabelValue};
+
+use crate::{System, Error};
+use crate::labels::{CenterSingleNeighborsSpeciesKeys, KeysBuilder};
+use crate::labels::{AtomCenteredSamples, SamplesBuilder, SpeciesFilter};
 use crate::calculators::CalculatorBase;
 
 #[derive(Clone, Debug)]
@@ -16,74 +20,108 @@ impl CalculatorBase for GeometricMoments {
         "geometric moments".to_string()
     }
 
-    fn get_parameters(&self) -> String {
+    fn parameters(&self) -> String {
         serde_json::to_string(self).expect("failed to serialize to JSON")
     }
 
-    fn compute_gradients(&self) -> bool {
-        self.gradients
+    fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
+        let builder = CenterSingleNeighborsSpeciesKeys {
+            cutoff: self.cutoff,
+            self_pairs: false,
+        };
+        return builder.keys(systems);
     }
 
-    fn features_names(&self) -> Vec<&str> {
+    fn samples_names(&self) -> Vec<&str> {
+        AtomCenteredSamples::samples_names()
+    }
+
+    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+        assert_eq!(keys.names(), ["species_center", "species_neighbor"]);
+
+        let mut samples = Vec::new();
+        for [species_center, species_neighbor] in keys.iter_fixed_size() {
+            let builder = AtomCenteredSamples {
+                cutoff: self.cutoff,
+                species_center: SpeciesFilter::Single(species_center.i32()),
+                species_neighbor: SpeciesFilter::Single(species_neighbor.i32()),
+                self_pairs: false,
+            };
+
+            samples.push(builder.samples(systems)?);
+        }
+
+        return Ok(samples);
+    }
+
+    fn gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Option<Vec<Arc<Labels>>>, Error> {
+        assert_eq!(keys.names(), ["species_center", "species_neighbor"]);
+        debug_assert_eq!(keys.count(), samples.len());
+
+        if !self.gradients {
+            return Ok(None);
+        }
+
+        let mut gradient_samples = Vec::new();
+        for ([center_species, species_neighbor], samples_for_key) in keys.iter_fixed_size().zip(samples) {
+            let builder = AtomCenteredSamples {
+                cutoff: self.cutoff,
+                species_center: SpeciesFilter::Single(center_species.i32()),
+                species_neighbor: SpeciesFilter::Single(species_neighbor.i32()),
+                self_pairs: false,
+            };
+
+            gradient_samples.push(builder.gradients_for(systems, samples_for_key)?);
+        }
+
+        return Ok(Some(gradient_samples));
+    }
+
+    fn components(&self, keys: &Labels) -> Vec<Vec<Arc<Labels>>> {
+        return vec![vec![]; keys.count()];
+    }
+
+    fn properties_names(&self) -> Vec<&str> {
         vec!["k"]
     }
 
-    fn features(&self) -> Indexes {
-        let mut builder = IndexesBuilder::new(self.features_names());
+    fn properties(&self, keys: &Labels) -> Vec<Arc<Labels>> {
+        let mut builder = LabelsBuilder::new(self.properties_names());
         for k in 0..=self.max_moment {
-            builder.add(&[IndexValue::from(k)]);
+            builder.add(&[k]);
         }
+        let properties = Arc::new(builder.finish());
 
-        return builder.finish();
-    }
-
-    fn check_features(&self, indexes: &Indexes) -> Result<(), Error> {
-        assert_eq!(indexes.names(), self.features_names());
-
-        for value in indexes {
-            if value[0].usize() > self.max_moment {
-                return Err(Error::InvalidParameter(format!(
-                    "'k' is too large for this GeometricMoments calculator: \
-                    expected value below {}, got {}", self.max_moment, value[0]
-                )));
-            }
-        }
-
-        return Ok(());
-    }
-
-    fn samples_builder(&self) -> Box<dyn SamplesBuilder> {
-        Box::new(TwoBodiesSpeciesSamples::new(self.cutoff))
+        return vec![properties; keys.count()];
     }
 
     // [compute]
-    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut Descriptor) -> Result<(), Error> {
-        assert_eq!(descriptor.samples.names(), self.samples_builder().names());
-        assert_eq!(descriptor.features.names(), self.features_names());
+    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
+        assert_eq!(descriptor.keys().names(), ["species_center", "species_neighbor"]);
 
-        for (i_system, system) in systems.iter_mut().enumerate() {
+        for (system_i, system) in systems.iter_mut().enumerate() {
             system.compute_neighbors(self.cutoff)?;
             let species = system.species()?;
 
             for pair in system.pairs()? {
-                let first_sample = [
-                    IndexValue::from(i_system),
-                    IndexValue::from(pair.first),
-                    IndexValue::from(species[pair.first]),
-                    IndexValue::from(species[pair.second]),
-                ];
+                let first_block_id = descriptor.keys().position(&[
+                    species[pair.first].into(), species[pair.second].into(),
+                ]).expect("missing block for the first atom");
+                let first_block = &descriptor.blocks()[first_block_id];
 
-                let second_sample = [
-                    IndexValue::from(i_system),
-                    IndexValue::from(pair.second),
-                    IndexValue::from(species[pair.second]),
-                    IndexValue::from(species[pair.first]),
-                ];
+                let second_block_id = descriptor.keys().position(&[
+                    species[pair.second].into(), species[pair.first].into(),
+                ]).expect("missing block for the second atom");
+                let second_block = &descriptor.blocks()[second_block_id];
 
-                let first_sample_position = descriptor.samples.position(&first_sample);
-                let second_sample_position = descriptor.samples.position(&second_sample);
 
-                // skip calculation if neither of the samples is present
+                let first_sample_position = first_block.values().samples.position(&[
+                    system_i.into(), pair.first.into()
+                ]);
+                let second_sample_position = second_block.values().samples.position(&[
+                    system_i.into(), pair.second.into()
+                ]);
+
                 if first_sample_position.is_none() && second_sample_position.is_none() {
                     continue;
                 }
@@ -91,92 +129,98 @@ impl CalculatorBase for GeometricMoments {
                 let n_neighbors_first = system.pairs_containing(pair.first)?.len() as f64;
                 let n_neighbors_second = system.pairs_containing(pair.second)?.len() as f64;
 
-                for (i_feature, feature) in descriptor.features.iter().enumerate() {
-                    let k = feature[0].usize();
-                    let moment = f64::powi(pair.distance, k as i32);
+                if let Some(sample_i) = first_sample_position {
+                    let mut block = descriptor.block_mut(first_block_id);
+                    let values = block.values_mut();
+                    let array = values.data.as_array_mut();
 
-                    if let Some(i_first_sample) = first_sample_position {
-                        descriptor.values[[i_first_sample, i_feature]] += moment / n_neighbors_first;
+                    for (property_i, [k]) in values.properties.iter_fixed_size().enumerate() {
+                        let value = f64::powi(pair.distance, k.i32()) / n_neighbors_first;
+                        array[[sample_i, property_i]] += value;
                     }
+                }
 
-                    if let Some(i_second_sample) = second_sample_position {
-                        descriptor.values[[i_second_sample, i_feature]] += moment / n_neighbors_second;
+                if let Some(sample_i) = second_sample_position {
+                    let mut block = descriptor.block_mut(second_block_id);
+                    let values = block.values_mut();
+                    let array = values.data.as_array_mut();
+
+                    for (property_i, [k]) in values.properties.iter_fixed_size().enumerate() {
+                        let value = f64::powi(pair.distance, k.i32()) / n_neighbors_second;
+                        array[[sample_i, property_i]] += value;
                     }
                 }
 
                 if self.gradients {
-                    let gradients_samples = descriptor.gradients_samples.as_ref().expect("missing gradient samples");
-                    let gradients = descriptor.gradients.as_mut().expect("missing gradient storage");
-
-                    let mut first_gradient_position = None;
-                    let mut first_gradient_self_position = None;
-                    if let Some(i_first_sample) = first_sample_position {
-                        first_gradient_position = gradients_samples.position(&[
-                            IndexValue::from(i_first_sample),
-                            IndexValue::from(pair.second),
-                            IndexValue::from(0),
-                        ]);
-
-                        first_gradient_self_position = gradients_samples.position(&[
-                            IndexValue::from(i_first_sample),
-                            IndexValue::from(pair.first),
-                            IndexValue::from(0),
+                    let mut moment_gradients = Vec::new();
+                    for k in 0..=self.max_moment {
+                        moment_gradients.push([
+                            pair.vector[0] * k as f64 * f64::powi(pair.distance, (k as i32) - 2),
+                            pair.vector[1] * k as f64 * f64::powi(pair.distance, (k as i32) - 2),
+                            pair.vector[2] * k as f64 * f64::powi(pair.distance, (k as i32) - 2),
                         ]);
                     }
 
-                    let mut second_gradient_position = None;
-                    let mut second_gradient_self_position = None;
-                    if let Some(i_second_sample) = second_sample_position {
-                        second_gradient_position = gradients_samples.position(&[
-                            IndexValue::from(i_second_sample),
-                            IndexValue::from(pair.first),
-                            IndexValue::from(0),
+                    if let Some(sample_position) = first_sample_position {
+                        let mut block = descriptor.block_mut(first_block_id);
+                        let gradient = block.gradient_mut("positions").expect("missing gradient storage");
+                        let array = gradient.data.as_array_mut();
+
+                        let gradient_wrt_second = gradient.samples.position(&[
+                            sample_position.into(), system_i.into(), pair.second.into()
+                        ]);
+                        let gradient_wrt_self = gradient.samples.position(&[
+                            sample_position.into(), system_i.into(), pair.first.into()
                         ]);
 
-                        second_gradient_self_position = gradients_samples.position(&[
-                            IndexValue::from(i_second_sample),
-                            IndexValue::from(pair.second),
-                            IndexValue::from(0),
-                        ]);
+                        for (property_i, [k]) in gradient.properties.iter_fixed_size().enumerate() {
+                            if let Some(sample_i) = gradient_wrt_second {
+                                let grad = moment_gradients[k.usize()];
+                                array[[sample_i, 0, property_i]] += grad[0] / n_neighbors_first;
+                                array[[sample_i, 1, property_i]] += grad[1] / n_neighbors_first;
+                                array[[sample_i, 2, property_i]] += grad[2] / n_neighbors_first;
+                            }
+
+                            if let Some(sample_i) = gradient_wrt_self {
+                                let grad = moment_gradients[k.usize()];
+                                array[[sample_i, 0, property_i]] -= grad[0] / n_neighbors_first;
+                                array[[sample_i, 1, property_i]] -= grad[1] / n_neighbors_first;
+                                array[[sample_i, 2, property_i]] -= grad[2] / n_neighbors_first;
+                            }
+                        }
                     }
 
-                    for (i_feature, feature) in descriptor.features.iter().enumerate() {
-                        let k = feature[0].usize();
-                        let grad_factor = k as f64 * f64::powi(pair.distance, (k as i32) - 2);
+                    if let Some(sample_position) = second_sample_position {
+                        let mut block = descriptor.block_mut(second_block_id);
+                        let gradient = block.gradient_mut("positions").expect("missing gradient storage");
+                        let array = gradient.data.as_array_mut();
 
-                        let grad_x = pair.vector[0] * grad_factor;
-                        let grad_y = pair.vector[1] * grad_factor;
-                        let grad_z = pair.vector[2] * grad_factor;
+                        let gradient_wrt_first = gradient.samples.position(&[
+                            sample_position.into(), system_i.into(), pair.first.into()
+                        ]);
+                        let gradient_wrt_self = gradient.samples.position(&[
+                            sample_position.into(), system_i.into(), pair.second.into()
+                        ]);
 
-                        if let Some(i_first) = first_gradient_position {
-                            gradients[[i_first + 0, i_feature]] += grad_x / n_neighbors_first;
-                            gradients[[i_first + 1, i_feature]] += grad_y / n_neighbors_first;
-                            gradients[[i_first + 2, i_feature]] += grad_z / n_neighbors_first;
-                        }
+                        for (property_i, [k]) in gradient.properties.iter_fixed_size().enumerate() {
+                            if let Some(sample_i) = gradient_wrt_first {
+                                let grad = moment_gradients[k.usize()];
+                                array[[sample_i, 0, property_i]] -= grad[0] / n_neighbors_second;
+                                array[[sample_i, 1, property_i]] -= grad[1] / n_neighbors_second;
+                                array[[sample_i, 2, property_i]] -= grad[2] / n_neighbors_second;
+                            }
 
-                        if let Some(i_first_self) = first_gradient_self_position {
-                            gradients[[i_first_self + 0, i_feature]] += -grad_x / n_neighbors_first;
-                            gradients[[i_first_self + 1, i_feature]] += -grad_y / n_neighbors_first;
-                            gradients[[i_first_self + 2, i_feature]] += -grad_z / n_neighbors_first;
-                        }
-
-                        if let Some(i_second) = second_gradient_position {
-                            gradients[[i_second + 0, i_feature]] += -grad_x / n_neighbors_second;
-                            gradients[[i_second + 1, i_feature]] += -grad_y / n_neighbors_second;
-                            gradients[[i_second + 2, i_feature]] += -grad_z / n_neighbors_second;
-                        }
-
-                        if let Some(i_second_self) = second_gradient_self_position {
-                            gradients[[i_second_self + 0, i_feature]] += grad_x / n_neighbors_second;
-                            gradients[[i_second_self + 1, i_feature]] += grad_y / n_neighbors_second;
-                            gradients[[i_second_self + 2, i_feature]] += grad_z / n_neighbors_second;
+                            if let Some(sample_i) = gradient_wrt_self {
+                                let grad = moment_gradients[k.usize()];
+                                array[[sample_i, 0, property_i]] += grad[0] / n_neighbors_second;
+                                array[[sample_i, 1, property_i]] += grad[1] / n_neighbors_second;
+                                array[[sample_i, 2, property_i]] += grad[2] / n_neighbors_second;
+                            }
                         }
                     }
                 }
-
             }
         }
-
         return Ok(());
     }
     // [compute]
@@ -191,15 +235,14 @@ mod tests {
     use crate::Calculator;
     use crate::systems::test_utils::test_systems;
 
-    // small helper function to create IndexValue
-    fn v(i: i32) -> IndexValue { IndexValue::from(i) }
+    use ndarray::array;
 
     #[test]
     fn zeroth_moment() {
         // Create a Calculator wrapping a GeometricMoments instance
         let mut calculator = Calculator::from(Box::new(GeometricMoments{
             cutoff: 3.4,
-            max_moment: 2,
+            max_moment: 0,
             gradients: false,
         }) as Box<dyn CalculatorBase>);
 
@@ -209,54 +252,86 @@ mod tests {
         let mut systems = test_systems(&["water", "CH"]);
 
         // run the calculation using default parameters
-        let mut descriptor = Descriptor::new();
-        calculator.compute(&mut systems, &mut descriptor, Default::default()).unwrap();
+        let descriptor = calculator.compute(&mut systems, Default::default()).unwrap();
 
         // check the results
-        assert_eq!(descriptor.features.names(), &["k"]);
-        assert_eq!(descriptor.features.count(), 3);
-        assert_eq!(&descriptor.features[0], &[v(0)]);
-        assert_eq!(&descriptor.features[1], &[v(1)]);
-        assert_eq!(&descriptor.features[2], &[v(2)]);
-
-        assert_eq!(
-            descriptor.samples.names(),
-            ["structure", "center", "species_center", "species_neighbor"]
-        );
-        assert_eq!(descriptor.samples.count(), 7);
-
-        // H neighbors around the oxygen atom in the water molecule
-        assert_eq!(&descriptor.samples[0], &[
-            v(0),        // structure 0
-            v(0),        // center 0
-            v(123456),   // species for oxygen in the test system
-            v(1),        // species for hydrogen in the test system
+        assert_eq!(descriptor.keys().names(), &["species_center", "species_neighbor"]);
+        assert_eq!(descriptor.keys().iter().collect::<Vec<_>>(), [
+            &[-42, 1],
+            &[1, -42],
+            &[1, 1],
+            &[1, 6],
+            &[6, 1]
         ]);
-        assert_eq!(descriptor.values[[0, 0]], 2.0 / 2.0);
 
-        // H neighbors around the first H atom in the water molecule
-        assert_eq!(&descriptor.samples[1], &[v(0), v(1), v(1), v(1)]);
-        assert_eq!(descriptor.values[[1, 0]], 1.0 / 2.0);
+        let mut expected_properties = LabelsBuilder::new(vec!["k"]);
+        expected_properties.add(&[0]);
+        let expected_properties = Arc::new(expected_properties.finish());
 
-        // O neighbors around the first H atom in the water molecule
-        assert_eq!(&descriptor.samples[2], &[v(0), v(1), v(1), v(123456)]);
-        assert_eq!(descriptor.values[[2, 0]], 1.0 / 2.0);
+        /**********************************************************************/
+        // O center, H neighbor
+        let block = &descriptor.blocks()[0];
+        let samples = &block.values().samples;
+        assert_eq!(samples.names(), ["structure", "center"]);
+        assert_eq!(samples.iter().collect::<Vec<_>>(), [
+            &[0, 0],
+        ]);
 
-        // H neighbors around the second H atom in the water molecule
-        assert_eq!(&descriptor.samples[3], &[v(0), v(2), v(1), v(1)]);
-        assert_eq!(descriptor.values[[3, 0]], 1.0 / 2.0);
+        assert_eq!(block.values().properties, expected_properties);
 
-        // O neighbors around the second H atom in the water molecule
-        assert_eq!(&descriptor.samples[4], &[v(0), v(2), v(1), v(123456)]);
-        assert_eq!(descriptor.values[[4, 0]], 1.0 / 2.0);
+        assert_eq!(block.values().data.as_array(), array![[2.0 / 2.0]].into_dyn());
 
-        // C neighbors around the H atom in the CH molecule
-        assert_eq!(&descriptor.samples[5], &[v(1), v(0), v(1), v(6)]);
-        assert_eq!(descriptor.values[[5, 0]], 1.0 / 1.0);
+        /**********************************************************************/
+        // H center, O neighbor
+        let block = &descriptor.blocks()[1];
+        let samples = &block.values().samples;
+        assert_eq!(samples.names(), ["structure", "center"]);
+        assert_eq!(samples.iter().collect::<Vec<_>>(), [
+            &[0, 1], &[0, 2],
+        ]);
 
-        // H neighbors around the C atom in the CH molecule
-        assert_eq!(&descriptor.samples[6], &[v(1), v(1), v(6), v(1)]);
-        assert_eq!(descriptor.values[[6, 0]], 1.0 / 1.0);
+        assert_eq!(block.values().properties, expected_properties);
+
+        assert_eq!(block.values().data.as_array(), array![[1.0 / 2.0], [1.0 / 2.0]].into_dyn());
+
+        /**********************************************************************/
+        // H center, H neighbor
+        let block = &descriptor.blocks()[2];
+        let samples = &block.values().samples;
+        assert_eq!(samples.names(), ["structure", "center"]);
+        assert_eq!(samples.iter().collect::<Vec<_>>(), [
+            &[0, 1], &[0, 2],
+        ]);
+
+        assert_eq!(block.values().properties, expected_properties);
+
+        assert_eq!(block.values().data.as_array(), array![[1.0 / 2.0], [1.0 / 2.0]].into_dyn());
+
+        /**********************************************************************/
+        // H center, C neighbor
+        let block = &descriptor.blocks()[3];
+        let samples = &block.values().samples;
+        assert_eq!(samples.names(), ["structure", "center"]);
+        assert_eq!(samples.iter().collect::<Vec<_>>(), [
+            &[1, 1],
+        ]);
+
+        assert_eq!(block.values().properties, expected_properties);
+
+        assert_eq!(block.values().data.as_array(), array![[1.0 / 1.0]].into_dyn());
+
+        /**********************************************************************/
+        // C center, H neighbor
+        let block = &descriptor.blocks()[4];
+        let samples = &block.values().samples;
+        assert_eq!(samples.names(), ["structure", "center"]);
+        assert_eq!(samples.iter().collect::<Vec<_>>(), [
+            &[1, 0],
+        ]);
+
+        assert_eq!(block.values().properties, expected_properties);
+
+        assert_eq!(block.values().data.as_array(), array![[1.0 / 1.0]].into_dyn());
     }
 }
 // [property-test]
@@ -266,9 +341,6 @@ mod more_tests {
     use super::*;
     use crate::Calculator;
     use crate::systems::test_utils::{test_systems, test_system};
-
-    // small helper function to create IndexValue
-    fn v(i: i32) -> IndexValue { IndexValue::from(i) }
 
     // [partial-test]
     #[test]
@@ -282,27 +354,27 @@ mod more_tests {
         let mut systems = test_systems(&["water", "methane"]);
 
         // build a list of samples to compute
-        let mut samples = IndexesBuilder::new(vec![
-            "structure", "center", "species_center", "species_neighbor"
+        let mut samples = LabelsBuilder::new(vec![
+            "structure", "center"
         ]);
-        samples.add(&[v(0), v(1), v(1), v(1)]);
-        samples.add(&[v(0), v(2), v(1), v(123456)]);
-        samples.add(&[v(1), v(0), v(6), v(1)]);
-        samples.add(&[v(1), v(2), v(1), v(1)]);
+        samples.add(&[0, 1]);
+        samples.add(&[0, 2]);
+        samples.add(&[1, 0]);
+        samples.add(&[1, 2]);
         let samples = samples.finish();
 
-        // create some features. There is no need to order them in the same way
+        // create some properties. There is no need to order them in the same way
         // as the default calculator
-        let mut features = IndexesBuilder::new(vec!["k"]);
-        features.add(&[v(2)]);
-        features.add(&[v(1)]);
-        features.add(&[v(5)]);
-        let features = features.finish();
+        let mut properties = LabelsBuilder::new(vec!["k"]);
+        properties.add(&[2]);
+        properties.add(&[1]);
+        properties.add(&[5]);
+        let properties = properties.finish();
 
-        // this function will check that selecting samples/features or both will
+        // this function will check that selecting samples/properties or both will
         // not change the result of the calculation
         crate::calculators::tests_utils::compute_partial(
-            calculator, &mut systems, samples, features
+            calculator, &mut systems, &samples, &properties
         );
     }
     // [partial-test]
@@ -317,7 +389,14 @@ mod more_tests {
         }) as Box<dyn CalculatorBase>);
 
         let system = test_system("water");
-        crate::calculators::tests_utils::finite_difference(calculator, system);
+
+        let options = crate::calculators::tests_utils::FinalDifferenceOptions {
+            displacement: 1e-6,
+            max_relative: 1e-6,
+            epsilon: 1e-20,
+        };
+
+        crate::calculators::tests_utils::finite_difference(calculator, system, options);
     }
     // [finite-differences-test]
 }

@@ -14,12 +14,12 @@ fn benchmark_radial_integral(
     benchmark_gradients: bool,
     create_radial_integral: impl Fn(usize, usize) -> Box<dyn RadialIntegral>,
 ) {
-    for &max_radial in black_box(&[2, 8, 14]) {
-        for &max_angular in black_box(&[1, 7, 15]) {
-            let ri = create_radial_integral(max_radial, max_angular);
+    for &max_angular in black_box(&[1, 7, 15]) {
+        for &max_radial in black_box(&[2, 8, 14]) {
+            let ri = create_radial_integral(max_angular, max_radial);
 
-            let mut values = Array2::from_elem((max_radial, max_angular + 1), 0.0);
-            let mut gradients = Array2::from_elem((max_radial, max_angular + 1), 0.0);
+            let mut values = Array2::from_elem((max_angular + 1, max_radial), 0.0);
+            let mut gradients = Array2::from_elem((max_angular + 1, max_radial), 0.0);
 
             // multiple random values spanning the whole range [0, cutoff)
             let distances = [
@@ -45,7 +45,7 @@ fn benchmark_radial_integral(
 }
 
 fn gto_radial_integral(c: &mut Criterion) {
-    let create_radial_integral = |max_radial, max_angular| {
+    let create_radial_integral = |max_angular, max_radial| {
         let parameters = GtoParameters {
             max_radial,
             max_angular,
@@ -65,7 +65,7 @@ fn gto_radial_integral(c: &mut Criterion) {
 }
 
 fn splined_gto_radial_integral(c: &mut Criterion) {
-    let create_radial_integral = |max_radial, max_angular| {
+    let create_radial_integral = |max_angular, max_radial| {
         let cutoff = 4.5;
         let parameters = GtoParameters {
             max_radial,

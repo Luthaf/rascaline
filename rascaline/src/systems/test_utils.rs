@@ -29,7 +29,7 @@ fn get_methane() -> SimpleSystem {
 fn get_water() -> SimpleSystem {
     let mut system = SimpleSystem::new(UnitCell::cubic(10.0));
     // species do not have to be atomic number
-    system.add_atom(123456, Vector3D::new(0.0, 0.0, 0.0));
+    system.add_atom(-42, Vector3D::new(0.0, 0.0, 0.0));
     system.add_atom(1, Vector3D::new(0.0, 0.75545, -0.58895));
     system.add_atom(1, Vector3D::new(0.0, -0.75545, -0.58895));
     return system;
@@ -37,7 +37,7 @@ fn get_water() -> SimpleSystem {
 
 fn get_ch() -> SimpleSystem {
     let mut system = SimpleSystem::new(UnitCell::cubic(10.0));
-    system.add_atom(1, Vector3D::new(0.0, 0.0, 0.0));
-    system.add_atom(6, Vector3D::new(0.0, 1.2, 0.0));
+    system.add_atom(6, Vector3D::new(0.0, 0.0, 0.0));
+    system.add_atom(1, Vector3D::new(0.0, 1.2, 0.0));
     return system;
 }

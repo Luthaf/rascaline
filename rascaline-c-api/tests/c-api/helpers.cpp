@@ -8,8 +8,7 @@
 #define SQRT_3 1.73205080756887729352
 
 rascal_system_t simple_system() {
-    rascal_system_t system;
-    std::memset(&system, 0, sizeof(system));
+    rascal_system_t system = {0};
 
     system.size = [](const void* _, uintptr_t* size) {
         *size = 4;
@@ -102,4 +101,26 @@ rascal_system_t simple_system() {
     };
 
     return system;
+}
+
+eqs_array_t empty_array(std::vector<size_t> array_shape) {
+    eqs_array_t array = {0};
+
+    array.ptr = new std::vector<size_t>(array_shape);
+    array.origin = [](const void *array, eqs_data_origin_t *origin){
+        eqs_register_data_origin("c-tests-empty-array", origin);
+        return EQS_SUCCESS;
+    };
+    array.shape = [](const void *array, const uintptr_t** shape, uintptr_t* shape_count){
+        auto array_shape = static_cast<const std::vector<size_t>*>(array);
+        *shape = array_shape->data();
+        *shape_count = array_shape->size();
+        return EQS_SUCCESS;
+    };
+    array.destroy = [](void *array){
+        auto array_shape = static_cast<std::vector<size_t>*>(array);
+        delete array_shape;
+    };
+
+    return array;
 }

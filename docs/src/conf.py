@@ -29,7 +29,17 @@ release = load_version_from_cargo_toml()
 
 
 def build_cargo_docs():
-    subprocess.run(["cargo", "doc", "--package", "rascaline", "--no-deps"])
+    subprocess.run(
+        [
+            "cargo",
+            "doc",
+            "--package",
+            "rascaline",
+            "--package",
+            "equistore",
+            "--no-deps",
+        ]
+    )
     output_dir = os.path.join(ROOT, "docs", "build", "html", "reference", "rust")
     if os.path.exists(output_dir):
         shutil.rmtree(output_dir)
@@ -67,6 +77,7 @@ needs_sphinx = "4.4.0"
 # ones.
 extensions = [
     "sphinx.ext.autodoc",
+    "sphinx.ext.intersphinx",
     "breathe",
     "sphinx_tabs.tabs",
     "rascaline_json_schema",
@@ -83,6 +94,8 @@ exclude_patterns = ["Thumbs.db", ".DS_Store"]
 
 
 autoclass_content = "both"
+autodoc_member_order = "bysource"
+autodoc_typehints_format = "short"
 
 breathe_projects = {
     "rascaline": os.path.join(ROOT, "docs", "build", "doxygen", "xml"),
@@ -90,6 +103,11 @@ breathe_projects = {
 breathe_default_project = "rascaline"
 breathe_domain_by_extension = {
     "h": "c",
+}
+
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", None),
+    "equistore": ("https://lab-cosmo.github.io/equistore/latest/", None),
 }
 
 # -- Options for HTML output -------------------------------------------------

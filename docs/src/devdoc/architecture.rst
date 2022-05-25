@@ -29,5 +29,3 @@ Inside the main rascaline crate, the following code organization is used:
   ``CalculatorBase`` that setup everything before a calculation;
 - ``rascaline/src/calculators/``: definition of the ``CalculatorBase`` trait and
   various implementations of this trait;
-- ``rascaline/src/descriptor/``: definition of the ``Descriptor`` and ``Indexes``
-  types, and multiple implementation of standard samples indexes.
