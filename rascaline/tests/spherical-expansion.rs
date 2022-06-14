@@ -1,112 +1,94 @@
-// use approx::assert_relative_eq;
-// use ndarray::{ArrayD, s};
-// use rascaline::{Calculator, Descriptor};
+use approx::assert_relative_eq;
+use ndarray::{ArrayD, Axis, s};
 
-// mod data;
+use equistore::{LabelsBuilder, BasicBlock};
 
-// #[test]
-// fn values_no_pbc() {
-//     let (mut systems, parameters) = data::load_calculator_input("spherical-expansion-values-input.json");
+use rascaline::Calculator;
 
-//     let mut descriptor = Descriptor::new();
-//     let mut calculator = Calculator::new("spherical_expansion", parameters).unwrap();
-//     calculator.compute(&mut systems, &mut descriptor, Default::default())
-//         .expect("failed to run calculation");
+mod data;
 
-//    let expected = data::load_expected_values("spherical-expansion-values.npy.gz");
-//    assert_eq!(descriptor.values.shape(), expected.shape());
+#[test]
+fn values_no_pbc() {
+    let (mut systems, parameters) = data::load_calculator_input("spherical-expansion-values-input.json");
 
-//     // reshape the array features from `lmn` (produced by the current version of
-//     // the code) to `nlm` (used by the code at the time when the array was
-//     // saved). This reshaping code should be removed next time we have to update
-//     // the saved data.
-//     let n_samples = descriptor.values.shape()[0];
-//     let n_features = descriptor.values.shape()[1];
+    let mut calculator = Calculator::new("spherical_expansion", parameters).unwrap();
+    let mut descriptor = calculator.compute(&mut systems, Default::default()).expect("failed to run calculation");
 
-//     let n_radial = 8;
-//     let n_angular = n_features / n_radial;
+    let keys_to_move = LabelsBuilder::new(vec!["species_center"]).finish();
+    descriptor.keys_to_samples(&keys_to_move, true).unwrap();
+    let keys_to_move = LabelsBuilder::new(vec!["species_neighbor"]).finish();
+    descriptor.keys_to_properties(&keys_to_move, true).unwrap();
+    descriptor.components_to_properties(&["spherical_harmonics_m"]).unwrap();
+    let keys_to_move = LabelsBuilder::new(vec!["spherical_harmonics_l"]).finish();
+    descriptor.keys_to_properties(&keys_to_move, true).unwrap();
 
-//    let mut values = descriptor.values.to_shape((n_samples, n_angular, n_radial)).unwrap();
-//    values.swap_axes(1, 2);
-//    let values = values.to_shape(vec![n_samples, n_features]).unwrap();
-//    // end of reshaping code
+    assert_eq!(descriptor.blocks().len(), 1);
+    let block = &descriptor.blocks()[0];
+    let values = block.values();
+    let array = values.data.as_array();
 
-//    assert_relative_eq!(values, expected, max_relative=1e-8);
-// }
+   let expected = &data::load_expected_values("spherical-expansion-values.npy.gz");
+   assert_relative_eq!(array, expected, max_relative=1e-9);
+}
 
-// #[test]
-// fn values_pbc() {
-//     let (mut systems, parameters) = data::load_calculator_input("spherical-expansion-pbc-values-input.json");
+#[test]
+fn values_pbc() {
+    let (mut systems, parameters) = data::load_calculator_input("spherical-expansion-pbc-values-input.json");
 
-//     let mut descriptor = Descriptor::new();
-//     let mut calculator = Calculator::new("spherical_expansion", parameters).unwrap();
-//     calculator.compute(&mut systems, &mut descriptor, Default::default())
-//         .expect("failed to run calculation");
+    let mut calculator = Calculator::new("spherical_expansion", parameters).unwrap();
+    let mut descriptor = calculator.compute(&mut systems, Default::default()).expect("failed to run calculation");
 
-//    let expected = data::load_expected_values("spherical-expansion-pbc-values.npy.gz");
-//    assert_eq!(descriptor.values.shape(), expected.shape());
+    let keys_to_move = LabelsBuilder::new(vec!["species_center"]).finish();
+    descriptor.keys_to_samples(&keys_to_move, true).unwrap();
+    let keys_to_move = LabelsBuilder::new(vec!["species_neighbor"]).finish();
+    descriptor.keys_to_properties(&keys_to_move, true).unwrap();
+    descriptor.components_to_properties(&["spherical_harmonics_m"]).unwrap();
+    let keys_to_move = LabelsBuilder::new(vec!["spherical_harmonics_l"]).finish();
+    descriptor.keys_to_properties(&keys_to_move, true).unwrap();
 
-//     // reshape the array features from `lmn` (produced by the current version of
-//     // the code) to `nlm` (used by the code at the time when the array was
-//     // saved). This reshaping code should be removed next time we have to update
-//     // the saved data.
-//     let n_samples = descriptor.values.shape()[0];
-//     let n_features = descriptor.values.shape()[1];
+    assert_eq!(descriptor.blocks().len(), 1);
+    let block = &descriptor.blocks()[0];
+    let values = block.values();
+    let array = values.data.as_array();
 
-//     let n_radial = 6;
-//     let n_angular = n_features / n_radial;
+   let expected = &data::load_expected_values("spherical-expansion-pbc-values.npy.gz");
+   assert_relative_eq!(array, expected, max_relative=1e-9);
+}
 
-//     let mut values = descriptor.values.to_shape((n_samples, n_angular, n_radial)).unwrap();
-//     values.swap_axes(1, 2);
-//     let values = values.to_shape((n_samples, n_features)).unwrap();
-//     // end of reshaping code
+#[test]
+fn gradients_no_pbc() {
+    let (mut systems, parameters) = data::load_calculator_input("spherical-expansion-gradients-input.json");
+    let n_atoms = systems.iter().map(|s| s.size().unwrap()).sum();
 
-//     assert_relative_eq!(values.into_dyn(), expected, max_relative=1e-8);
-// }
+    let mut calculator = Calculator::new("spherical_expansion", parameters).unwrap();
+    let mut descriptor = calculator.compute(&mut systems, Default::default()).expect("failed to run calculation");
 
-// #[test]
-// fn gradients_no_pbc() {
-//     let (mut systems, parameters) = data::load_calculator_input("spherical-expansion-gradients-input.json");
-//     let n_atoms = systems.iter().map(|s| s.size().unwrap()).sum();
+    let keys_to_move = LabelsBuilder::new(vec!["species_center"]).finish();
+    descriptor.keys_to_samples(&keys_to_move, true).unwrap();
+    let keys_to_move = LabelsBuilder::new(vec!["species_neighbor"]).finish();
+    descriptor.keys_to_properties(&keys_to_move, true).unwrap();
+    descriptor.components_to_properties(&["spherical_harmonics_m"]).unwrap();
+    let keys_to_move = LabelsBuilder::new(vec!["spherical_harmonics_l"]).finish();
+    descriptor.keys_to_properties(&keys_to_move, true).unwrap();
 
-//     let mut descriptor = Descriptor::new();
-//     let mut calculator = Calculator::new("spherical_expansion", parameters).unwrap();
-//     calculator.compute(&mut systems, &mut descriptor, Default::default())
-//         .expect("failed to run calculation");
+    assert_eq!(descriptor.blocks().len(), 1);
+    let block = &descriptor.blocks()[0];
+    let gradient = block.gradient("positions").unwrap();
+    let array = sum_gradients(n_atoms, gradient);
 
-//    let expected = data::load_expected_values("spherical-expansion-gradients.npy.gz");
-//    let gradients = sum_gradients(n_atoms, &descriptor);
-//    assert_eq!(gradients.shape(), expected.shape());
+    let expected = &data::load_expected_values("spherical-expansion-gradients.npy.gz");
+    assert_relative_eq!(array, expected, max_relative=1e-8);
+}
 
-//     // reshape the array features from `lmn` (produced by the current version of
-//     // the code) to `nlm` (used by the code at the time when the array was
-//     // saved). This reshaping code should be removed next time we have to update
-//     // the saved data.
-//     let n_features = gradients.shape()[2];
+fn sum_gradients(n_atoms: usize, gradients: &BasicBlock) -> ArrayD<f64> {
+    assert_eq!(gradients.samples.names(), &["sample", "structure", "atom"]);
+    let array = gradients.data.as_array();
 
-//     let n_radial = 4;
-//     let n_angular = n_features / n_radial;
+    let mut sum = ArrayD::from_elem(vec![n_atoms, 3, gradients.properties.count()], 0.0);
+    for ([_, _, atom], row) in gradients.samples.iter_fixed_size().zip(array.axis_iter(Axis(0))) {
+        let mut slice = sum.slice_mut(s![atom.usize(), .., ..]);
+        slice += &row;
+    }
 
-//     let mut gradients = gradients.to_shape((n_atoms, 3, n_angular, n_radial)).unwrap();
-//     gradients.swap_axes(2, 3);
-//     let gradients = gradients.to_shape(vec![n_atoms, 3, n_features]).unwrap();
-//     // end of reshaping code
-
-//     assert_relative_eq!(gradients, expected, max_relative=1e-8);
-// }
-
-// fn sum_gradients(n_atoms: usize, descriptor: &Descriptor) -> ArrayD<f64> {
-//     let gradients = descriptor.gradients.as_ref().unwrap();
-//     let gradients_samples = descriptor.gradients_samples.as_ref().unwrap();
-//     assert_eq!(gradients_samples.names(), &["sample", "atom", "spatial"]);
-
-//     let mut sum = ArrayD::from_elem(vec![n_atoms, 3, gradients.shape()[1]], 0.0);
-//     for (sample, gradient) in gradients_samples.iter().zip(gradients.rows()) {
-//         let neighbor = sample[1].usize();
-//         let spatial = sample[2].usize();
-//         let mut slice = sum.slice_mut(s![neighbor, spatial, ..]);
-//         slice += &gradient;
-//     }
-
-//     sum
-// }
+    sum
+}

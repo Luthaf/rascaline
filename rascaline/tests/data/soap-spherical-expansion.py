@@ -45,12 +45,16 @@ hyperparameters = {
 
 calculator = SphericalExpansion(**hyperparameters)
 descriptor = calculator.compute(frame, use_native_system=True)
-descriptor.densify("species_neighbor")
+
+descriptor.keys_to_samples("species_center")
+descriptor.keys_to_properties("species_neighbor")
+descriptor.components_to_properties("spherical_harmonics_m")
+descriptor.keys_to_properties("spherical_harmonics_l")
 
 save_calculator_input("spherical-expansion-values", frame, hyperparameters)
-save_numpy_array("spherical-expansion-values", descriptor.values)
+save_numpy_array("spherical-expansion-values", descriptor.block().values)
 
-# Use less values for gradients to keep the file size low
+# Use smaller hypers for gradients to keep the file size low
 hyperparameters["max_radial"] = 4
 hyperparameters["max_angular"] = 4
 hyperparameters["gradients"] = True
@@ -58,16 +62,22 @@ hyperparameters["gradients"] = True
 
 def sum_gradient(descriptor):
     """compute the gradient w.r.t. each atom of the sum of all rows"""
-    result = np.zeros((len(frame), 3, descriptor.gradients.shape[1]))
-    for sample, gradient in zip(descriptor.gradients_samples, descriptor.gradients):
-        result[sample["atom"], sample["spatial"], :] += gradient[:]
+    gradient = descriptor.block().gradient("positions")
+
+    result = np.zeros((len(frame), 3, len(gradient.properties)))
+    for sample, row in zip(gradient.samples, gradient.data):
+        result[sample["atom"], :, :] += row[:, :]
 
     return result
 
 
 calculator = SphericalExpansion(**hyperparameters)
 descriptor = calculator.compute(frame, use_native_system=True)
-descriptor.densify("species_neighbor")
+
+descriptor.keys_to_samples("species_center")
+descriptor.keys_to_properties("species_neighbor")
+descriptor.components_to_properties("spherical_harmonics_m")
+descriptor.keys_to_properties("spherical_harmonics_l")
 
 save_calculator_input("spherical-expansion-gradients", frame, hyperparameters)
 save_numpy_array("spherical-expansion-gradients", sum_gradient(descriptor))
@@ -105,7 +115,11 @@ hyperparameters = {
 
 calculator = SphericalExpansion(**hyperparameters)
 descriptor = calculator.compute(frame, use_native_system=True)
-descriptor.densify("species_neighbor")
+
+descriptor.keys_to_samples("species_center")
+descriptor.keys_to_properties("species_neighbor")
+descriptor.components_to_properties("spherical_harmonics_m")
+descriptor.keys_to_properties("spherical_harmonics_l")
 
 save_calculator_input("spherical-expansion-pbc-values", frame, hyperparameters)
-save_numpy_array("spherical-expansion-pbc-values", descriptor.values)
+save_numpy_array("spherical-expansion-pbc-values", descriptor.block().values)
