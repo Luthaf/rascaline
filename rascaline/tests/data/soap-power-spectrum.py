@@ -41,12 +41,11 @@ hyperparameters = {
 
 calculator = SoapPowerSpectrum(**hyperparameters)
 descriptor = calculator.compute(frame, use_native_system=True)
+descriptor.keys_to_samples("species_center")
+descriptor.keys_to_properties(["species_neighbor_1", "species_neighbor_2"])
 
 save_calculator_input("soap-power-spectrum-values", frame, hyperparameters)
-save_numpy_array("soap-power-spectrum-values", descriptor.values)
-
-descriptor.densify(["species_neighbor_1", "species_neighbor_2"])
-save_numpy_array("soap-power-spectrum-dense-values", descriptor.values)
+save_numpy_array("soap-power-spectrum-values", descriptor.block().values)
 
 # Use less values for gradients to keep the file size low
 hyperparameters["max_radial"] = 4
@@ -55,19 +54,20 @@ hyperparameters["gradients"] = True
 
 calculator = SoapPowerSpectrum(**hyperparameters)
 descriptor = calculator.compute(frame, use_native_system=True)
+descriptor.keys_to_samples("species_center")
+descriptor.keys_to_properties(["species_neighbor_1", "species_neighbor_2"])
 
 
 def sum_gradient(descriptor):
     """compute the gradient w.r.t. each atom of the sum of all rows"""
-    result = np.zeros((len(frame), 3, descriptor.gradients.shape[1]))
-    for sample, gradient in zip(descriptor.gradients_samples, descriptor.gradients):
-        result[sample["atom"], sample["spatial"], :] += gradient[:]
+    gradient = descriptor.block().gradient("positions")
+
+    result = np.zeros((len(frame), 3, len(gradient.properties)))
+    for sample, gradient in zip(gradient.samples, gradient.data):
+        result[sample["atom"]] += gradient
 
     return result
 
 
 save_calculator_input("soap-power-spectrum-gradients", frame, hyperparameters)
 save_numpy_array("soap-power-spectrum-gradients", sum_gradient(descriptor))
-
-descriptor.densify(["species_neighbor_1", "species_neighbor_2"])
-save_numpy_array("soap-power-spectrum-dense-gradients", sum_gradient(descriptor))

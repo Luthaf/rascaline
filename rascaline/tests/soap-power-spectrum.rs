@@ -1,65 +1,64 @@
-// use approx::assert_relative_eq;
-// use ndarray::{ArrayD, s};
-// use rascaline::{Calculator, Descriptor};
+use approx::assert_relative_eq;
+use ndarray::{ArrayD, Axis, s};
 
-// mod data;
+use equistore::{LabelsBuilder, BasicBlock};
 
-// #[test]
-// fn values() {
-//     let (mut systems, parameters) = data::load_calculator_input("soap-power-spectrum-values-input.json");
+use rascaline::Calculator;
 
-//     let mut descriptor = Descriptor::new();
-//     let mut calculator = Calculator::new("soap_power_spectrum", parameters).unwrap();
-//     calculator.compute(&mut systems, &mut descriptor, Default::default())
-//         .expect("failed to run calculation");
+mod data;
 
-//     let expected = data::load_expected_values("soap-power-spectrum-values.npy.gz");
-//     assert_eq!(descriptor.values.shape(), expected.shape());
-//     assert_relative_eq!(descriptor.values.clone().into_dyn(), expected, max_relative=1e-9);
+#[test]
+fn values() {
+    let (mut systems, parameters) = data::load_calculator_input("soap-power-spectrum-values-input.json");
 
-//     descriptor.densify(&["species_neighbor_1", "species_neighbor_2"], None).unwrap();
-//     let expected = data::load_expected_values("soap-power-spectrum-dense-values.npy.gz");
-//     assert_eq!(descriptor.values.shape(), expected.shape());
-//     assert_relative_eq!(descriptor.values.into_dyn(), expected, max_relative=1e-9);
-// }
+    let mut calculator = Calculator::new("soap_power_spectrum", parameters).unwrap();
+    let mut descriptor = calculator.compute(&mut systems, Default::default()).expect("failed to run calculation");
 
-// #[test]
-// fn gradients() {
-//     let (mut systems, parameters) = data::load_calculator_input("soap-power-spectrum-gradients-input.json");
+    let keys_to_move = LabelsBuilder::new(vec!["species_center"]).finish();
+    descriptor.keys_to_samples(&keys_to_move, true).unwrap();
+    let keys_to_move = LabelsBuilder::new(vec!["species_neighbor_1", "species_neighbor_2"]).finish();
+    descriptor.keys_to_properties(&keys_to_move, true).unwrap();
 
-//     let n_atoms = systems.iter().map(|s| s.size().unwrap()).sum();
+    assert_eq!(descriptor.blocks().len(), 1);
+    let block = &descriptor.blocks()[0];
+    let values = block.values();
+    let array = values.data.as_array();
 
-//     let mut descriptor = Descriptor::new();
-//     let mut calculator = Calculator::new("soap_power_spectrum", parameters).unwrap();
-//     calculator.compute(&mut systems, &mut descriptor, Default::default())
-//         .expect("failed to run calculation");
+   let expected = &data::load_expected_values("soap-power-spectrum-values.npy.gz");
+   assert_relative_eq!(array, expected, max_relative=1e-9);
+}
 
-//    let expected = data::load_expected_values("soap-power-spectrum-gradients.npy.gz");
+#[test]
+fn gradients() {
+    let (mut systems, parameters) = data::load_calculator_input("soap-power-spectrum-gradients-input.json");
+    let n_atoms = systems.iter().map(|s| s.size().unwrap()).sum();
 
-//     let gradients = sum_gradients(n_atoms, &descriptor);
-//     assert_eq!(gradients.shape(), expected.shape());
-//     assert_relative_eq!(gradients, expected, max_relative=1e-9);
+    let mut calculator = Calculator::new("soap_power_spectrum", parameters).unwrap();
+    let mut descriptor = calculator.compute(&mut systems, Default::default()).expect("failed to run calculation");
 
-//    descriptor.densify(&["species_neighbor_1", "species_neighbor_2"], None).unwrap();
-//    let expected = data::load_expected_values("soap-power-spectrum-dense-gradients.npy.gz");
+    let keys_to_move = LabelsBuilder::new(vec!["species_center"]).finish();
+    descriptor.keys_to_samples(&keys_to_move, true).unwrap();
+    let keys_to_move = LabelsBuilder::new(vec!["species_neighbor_1", "species_neighbor_2"]).finish();
+    descriptor.keys_to_properties(&keys_to_move, true).unwrap();
 
-//     let gradients = sum_gradients(n_atoms, &descriptor);
-//     assert_eq!(gradients.shape(), expected.shape());
-//     assert_relative_eq!(gradients, expected, max_relative=1e-9);
-// }
+    assert_eq!(descriptor.blocks().len(), 1);
+    let block = &descriptor.blocks()[0];
+    let gradients = block.gradient("positions").unwrap();
+    let array = sum_gradients(n_atoms, gradients);
 
-// fn sum_gradients(n_atoms: usize, descriptor: &Descriptor) -> ArrayD<f64> {
-//     let gradients = descriptor.gradients.as_ref().unwrap();
-//     let gradients_samples = descriptor.gradients_samples.as_ref().unwrap();
-//     assert_eq!(gradients_samples.names(), &["sample", "atom", "spatial"]);
+   let expected = &data::load_expected_values("soap-power-spectrum-gradients.npy.gz");
+   assert_relative_eq!(array, expected, max_relative=1e-9);
+}
 
-//     let mut sum = ArrayD::from_elem(vec![n_atoms, 3, gradients.shape()[1]], 0.0);
-//     for (sample, gradient) in gradients_samples.iter().zip(gradients.rows()) {
-//         let neighbor = sample[1].usize();
-//         let spatial = sample[2].usize();
-//         let mut slice = sum.slice_mut(s![neighbor, spatial, ..]);
-//         slice += &gradient;
-//     }
+fn sum_gradients(n_atoms: usize, gradients: &BasicBlock) -> ArrayD<f64> {
+    assert_eq!(gradients.samples.names(), &["sample", "structure", "atom"]);
+    let array = gradients.data.as_array();
 
-//     sum
-// }
+    let mut sum = ArrayD::from_elem(vec![n_atoms, 3, gradients.properties.count()], 0.0);
+    for ([_, _, atom], row) in gradients.samples.iter_fixed_size().zip(array.axis_iter(Axis(0))) {
+        let mut slice = sum.slice_mut(s![atom.usize(), .., ..]);
+        slice += &row;
+    }
+
+    sum
+}
