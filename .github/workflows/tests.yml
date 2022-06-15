@@ -56,7 +56,7 @@ jobs:
           apt-get install -y software-properties-common
           add-apt-repository -y ppa:git-core/ppa
           apt-get update
-          apt-get install -y cmake make gcc g++ git curl rustc
+          apt-get install -y cmake make gcc g++ git curl rustc cargo
 
       - uses: actions/checkout@v3
         with:
