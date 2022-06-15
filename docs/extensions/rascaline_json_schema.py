@@ -3,9 +3,19 @@ import os
 
 from docutils import nodes
 from docutils.parsers.rst import Directive
+from markdown_it import MarkdownIt
 
-import myst_parser.main
 from html_hidden import html_hidden
+from myst_parser.config.main import MdParserConfig
+from myst_parser.mdit_to_docutils.base import DocutilsRenderer
+
+
+def markdow_to_docutils(text):
+    parser = MarkdownIt()
+    tokens = parser.parse(text)
+
+    renderer = DocutilsRenderer(parser)
+    return renderer.render(tokens, {"myst_config": MdParserConfig()}, {})
 
 
 def _target_id(text):
@@ -47,7 +57,7 @@ class JsonSchemaDirective(Directive):
         section += nodes.title(text=name)
 
         description = schema.get("description", "")
-        section.extend(myst_parser.main.to_docutils(description))
+        section.extend(markdow_to_docutils(description))
 
         section += self._json_schema_to_nodes(schema)
 
@@ -86,7 +96,7 @@ class JsonSchemaDirective(Directive):
                         body = nodes.field_body()
 
                         description = content.get("description", "")
-                        body.extend(myst_parser.main.to_docutils(description))
+                        body.extend(markdow_to_docutils(description))
 
                         field_list += body
 
@@ -163,7 +173,7 @@ class JsonSchemaDirective(Directive):
                 item += self._json_schema_to_nodes(possibility, inline=True)
 
                 description = possibility.get("description", "")
-                item.extend(myst_parser.main.to_docutils(description))
+                item.extend(markdow_to_docutils(description))
 
                 bullet_list += item
 
