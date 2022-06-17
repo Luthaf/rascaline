@@ -59,8 +59,6 @@ jobs:
           apt-get install -y cmake make gcc g++ git curl rustc cargo
 
       - uses: actions/checkout@v3
-        with:
-          submodules: true
 
       - name: setup Python
         uses: actions/setup-python@v2
