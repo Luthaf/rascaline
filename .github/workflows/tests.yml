@@ -111,3 +111,6 @@ jobs:
       - name: check that benchmarks compile and run once
         if: matrix.build-type == 'release'
         run: cargo bench -- --test
+
+      - name: python build tests
+        run: tox -e build-python
