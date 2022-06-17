@@ -116,6 +116,7 @@ pub unsafe extern fn rascal_last_error() -> *const c_char {
     let mut result = std::ptr::null();
     let wrapper = std::panic::AssertUnwindSafe(&mut result);
     let status = catch_unwind(move || {
+        let wrapper = wrapper;
         LAST_ERROR_MESSAGE.with(|message| {
             *wrapper.0 = message.borrow().as_ptr();
         });
