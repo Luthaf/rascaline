@@ -28,3 +28,6 @@ libc = "0.2"
 cbindgen = { version = "0.24", default-features = false }
 glob = "0.3"
 equistore = {git = "https://github.com/lab-cosmo/equistore", rev = "513889"}
+
+[dev-dependencies]
+which = "4"

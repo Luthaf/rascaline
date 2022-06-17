@@ -102,7 +102,21 @@ file(GLOB_RECURSE ALL_RUST_SOURCES
     ${PROJECT_SOURCE_DIR}/src/**.rs
 )
 
-set(RASCALINE_LIBDIR "${PROJECT_SOURCE_DIR}/../target/${CARGO_BUILD_TYPE}")
+# get the target directory from cargo. This relies on the JSON fields order not
+# to change, which migth break. If this happen, we can build a small rust JSON
+# parser to extract this info and give it back to cmake
+execute_process(
+    COMMAND ${CARGO_EXE} "metadata" "--no-deps" "--format-version" "1"
+    RESULT_VARIABLE CARGO_METADATA_STATUS
+    OUTPUT_VARIABLE CARGO_METADATA
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+)
+if(CARGO_METADATA_STATUS AND NOT CARGO_METADATA_STATUS EQUAL 0)
+    message(FATAL_ERROR "could not run cargo metadata")
+endif()
+string(REGEX REPLACE ".*\"target_directory\":\"(.*)\",\"version.*" "\\1/${CARGO_BUILD_TYPE}" RASCALINE_LIBDIR "${CARGO_METADATA}")
+
+
 if(${BUILD_SHARED_LIBS})
     add_library(rascaline SHARED IMPORTED GLOBAL)
     set(RASCALINE_LOCATION "${RASCALINE_LIBDIR}/${CMAKE_SHARED_LIBRARY_PREFIX}rascaline${CMAKE_SHARED_LIBRARY_SUFFIX}")
@@ -132,6 +146,7 @@ endif()
 add_dependencies(rascaline cargo-build-rascaline)
 set(RASCALINE_HEADERS
     "${PROJECT_SOURCE_DIR}/include/rascaline.h"
+    "${PROJECT_SOURCE_DIR}/include/equistore.h"
     "${PROJECT_SOURCE_DIR}/include/rascaline.hpp"
 )
 set(RASCALINE_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/)
