@@ -301,3 +301,39 @@ class SoapPowerSpectrum(CalculatorBase):
             parameters["radial_scaling"] = radial_scaling
 
         super().__init__("soap_power_spectrum", parameters)
+
+
+class SoapRadialSpectrum(CalculatorBase):
+    """Radial spectrum of Smooth Overlap of Atomic Positions (SOAP).
+    equal to the spherical expansion with l=0.
+    This calculator return the same result (a :py:class:`TensorMap`)
+    that you would get using the spherical expansion with l=0,
+    but it has no key ``spherical_harmonics_l``,
+    nor the blocks have the component ``spherical_harmonics_m``
+    """
+
+    def __init__(
+        self,
+        cutoff,
+        max_radial,
+        atomic_gaussian_width,
+        center_atom_weight,
+        radial_basis,
+        gradients,
+        cutoff_function,
+        radial_scaling=None,
+    ):
+        parameters = {
+            "cutoff": cutoff,
+            "max_radial": max_radial,
+            "atomic_gaussian_width": atomic_gaussian_width,
+            "center_atom_weight": center_atom_weight,
+            "radial_basis": radial_basis,
+            "gradients": gradients,
+            "cutoff_function": cutoff_function,
+        }
+
+        if radial_scaling is not None:
+            parameters["radial_scaling"] = radial_scaling
+
+        super().__init__("soap_radial_spectrum", parameters)
