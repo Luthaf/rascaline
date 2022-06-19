@@ -17,3 +17,6 @@ pub use self::spherical_expansion::RadialBasis;
 
 mod power_spectrum;
 pub use self::power_spectrum::{SoapPowerSpectrum, PowerSpectrumParameters};
+
+mod radial_spectrum; 
+pub use self::radial_spectrum::{SoapRadialSpectrum, RadialSpectrumParameters};
