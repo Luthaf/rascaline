@@ -71,6 +71,7 @@ class rascal_labels_selection_t(ctypes.Structure):
 
 class rascal_calculation_options_t(ctypes.Structure):
     _fields_ = [
+        ("positions_gradient", ctypes.c_bool),
         ("use_native_system", ctypes.c_bool),
         ("selected_samples", rascal_labels_selection_t),
         ("selected_properties", rascal_labels_selection_t),

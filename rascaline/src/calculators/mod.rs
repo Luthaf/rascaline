@@ -29,12 +29,14 @@ pub trait CalculatorBase: std::panic::RefUnwindSafe {
     /// systems. This function should return one set of samples for each key.
     fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error>;
 
-    /// Get the gradient samples corresponding the given samples. The samples
-    /// slice contains one set of samples for each key.
+    /// Get the samples for gradients with respect to positions, corresponding
+    /// the given values samples.
     ///
-    /// This function should return `None` if no gradients are to be computed,
-    /// or `Some(Vec<>)`, with one set of gradient samples for each key.
-    fn gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Option<Vec<Arc<Labels>>>, Error>;
+    /// The `samples` slice contains one set of samples for each key.
+    ///
+    /// If the gradients with respect to positions are not available, this
+    /// function should return an error.
+    fn gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error>;
 
     /// Get the components this calculator computes for each key.
     fn components(&self, keys: &Labels) -> Vec<Vec<Arc<Labels>>>;

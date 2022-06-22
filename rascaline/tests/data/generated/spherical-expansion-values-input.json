@@ -8,7 +8,6 @@
         "width": 0.5
       }
     },
-    "gradients": false,
     "max_angular": 8,
     "max_radial": 8,
     "radial_basis": {

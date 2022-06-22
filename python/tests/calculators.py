@@ -38,29 +38,27 @@ def _tensor_map_selection(label_type, keys, labels):
 
 class TestDummyCalculator(unittest.TestCase):
     def test_name(self):
-        calculator = DummyCalculator(cutoff=3.2, delta=12, name="foo", gradients=True)
+        calculator = DummyCalculator(cutoff=3.2, delta=12, name="foo")
         self.assertEqual(
             calculator.name,
-            "dummy test calculator with cutoff: 3.2 - delta: 12"
-            " - name: foo - gradients: true",
+            "dummy test calculator with cutoff: 3.2 - delta: 12 - name: foo",
         )
 
         self.assertEqual(calculator.c_name, "dummy_calculator")
 
         # very long name, checking that we can pass large string back and forth
         name = "abc" * 2048
-        calculator = DummyCalculator(cutoff=3.2, delta=12, name=name, gradients=True)
+        calculator = DummyCalculator(cutoff=3.2, delta=12, name=name)
         self.assertEqual(
             calculator.name,
-            "dummy test calculator with cutoff: 3.2 - delta: 12"
-            f" - name: {name} - gradients: true",
+            f"dummy test calculator with cutoff: 3.2 - delta: 12 - name: {name}",
         )
 
     def test_parameters(self):
-        calculator = DummyCalculator(cutoff=3.2, delta=12, name="foo", gradients=True)
+        calculator = DummyCalculator(cutoff=3.2, delta=12, name="foo")
         self.assertEqual(
             calculator.parameters,
-            """{"cutoff": 3.2, "delta": 12, "name": "foo", "gradients": true}""",
+            """{"cutoff": 3.2, "delta": 12, "name": "foo"}""",
         )
 
     def test_bad_parameters(self):
@@ -69,12 +67,14 @@ class TestDummyCalculator(unittest.TestCase):
         )
 
         with self.assertRaisesRegex(Exception, message):
-            _ = DummyCalculator(cutoff=3.2, delta="12", name="foo", gradients=True)
+            _ = DummyCalculator(cutoff=3.2, delta="12", name="foo")
 
     def test_compute(self):
         system = TestSystem()
-        calculator = DummyCalculator(cutoff=3.2, delta=2, name="", gradients=True)
-        descriptor = calculator.compute(system, use_native_system=False)
+        calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
+        descriptor = calculator.compute(
+            system, use_native_system=False, positions_gradient=True
+        )
 
         self.assertEqual(len(descriptor.keys), 2)
         self.assertEqual(descriptor.keys.names, ("species_center",))
@@ -133,7 +133,7 @@ class TestDummyCalculator(unittest.TestCase):
 
     def test_compute_multiple_systems(self):
         systems = [TestSystem(), TestSystem(), TestSystem()]
-        calculator = DummyCalculator(cutoff=3.2, delta=2, name="", gradients=True)
+        calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
         descriptor = calculator.compute(systems, use_native_system=False)
 
         H_block = descriptor.block(species_center=1)
@@ -150,7 +150,7 @@ class TestDummyCalculator(unittest.TestCase):
 class TestComputePartialSamples(unittest.TestCase):
     def test_selection(self):
         system = TestSystem()
-        calculator = DummyCalculator(cutoff=3.2, delta=2, name="", gradients=True)
+        calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
 
         # Manually constructing the selected samples
         selected_samples = Labels(
@@ -172,7 +172,7 @@ class TestComputePartialSamples(unittest.TestCase):
 
     def test_subset_variables(self):
         system = TestSystem()
-        calculator = DummyCalculator(cutoff=3.2, delta=2, name="", gradients=True)
+        calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
 
         # Only a subset of the variables defined
         selected_samples = Labels(
@@ -194,7 +194,7 @@ class TestComputePartialSamples(unittest.TestCase):
 
     def test_empty_selection(self):
         system = TestSystem()
-        calculator = DummyCalculator(cutoff=3.2, delta=2, name="", gradients=True)
+        calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
 
         # empty selected samples
         selected_samples = Labels(
@@ -213,7 +213,7 @@ class TestComputePartialSamples(unittest.TestCase):
 
     def test_predefined_selection(self):
         system = TestSystem()
-        calculator = DummyCalculator(cutoff=3.2, delta=2, name="", gradients=True)
+        calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
 
         keys = Labels(
             names=["species_center"],
@@ -247,7 +247,7 @@ class TestComputePartialSamples(unittest.TestCase):
 
     def test_errors(self):
         system = TestSystem()
-        calculator = DummyCalculator(cutoff=3.2, delta=2, name="", gradients=True)
+        calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
 
         samples = Labels(
             names=["bad name"],
@@ -285,7 +285,7 @@ class TestComputePartialSamples(unittest.TestCase):
 class TestComputePartialProperties(unittest.TestCase):
     def test_selection(self):
         system = TestSystem()
-        calculator = DummyCalculator(cutoff=3.2, delta=2, name="", gradients=True)
+        calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
 
         # Manually constructing the selected properties
         selected_properties = Labels(
@@ -308,7 +308,7 @@ class TestComputePartialProperties(unittest.TestCase):
 
     def test_subset_variables(self):
         system = TestSystem()
-        calculator = DummyCalculator(cutoff=3.2, delta=2, name="", gradients=True)
+        calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
 
         # Only a subset of the variables defined
         selected_properties = Labels(
@@ -331,7 +331,7 @@ class TestComputePartialProperties(unittest.TestCase):
 
     def test_empty_selection(self):
         system = TestSystem()
-        calculator = DummyCalculator(cutoff=3.2, delta=2, name="", gradients=True)
+        calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
 
         # empty selected features
         selected_properties = Labels(
@@ -350,7 +350,7 @@ class TestComputePartialProperties(unittest.TestCase):
 
     def test_predefined_selection(self):
         system = TestSystem()
-        calculator = DummyCalculator(cutoff=3.2, delta=2, name="", gradients=True)
+        calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
 
         keys = Labels(
             names=["species_center"],
@@ -386,7 +386,7 @@ class TestComputePartialProperties(unittest.TestCase):
 
     def test_errors(self):
         system = TestSystem()
-        calculator = DummyCalculator(cutoff=3.2, delta=2, name="", gradients=True)
+        calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
 
         selected_properties = Labels(
             names=["bad name"],

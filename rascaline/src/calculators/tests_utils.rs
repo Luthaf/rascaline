@@ -206,7 +206,11 @@ pub struct FinalDifferenceOptions {
 /// Check that analytical gradients agree with a finite difference calculation
 /// of the gradients.
 pub fn finite_difference(mut calculator: Calculator, mut system: SimpleSystem, options: FinalDifferenceOptions) {
-    let reference = calculator.compute(&mut [Box::new(system.clone())], Default::default()).unwrap();
+    let calculation_options = CalculationOptions {
+        positions_gradient: true,
+        ..Default::default()
+    };
+    let reference = calculator.compute(&mut [Box::new(system.clone())], calculation_options).unwrap();
 
     for atom_i in 0..system.size().unwrap() {
         for spatial in 0..3 {

@@ -31,7 +31,6 @@ hyperparameters = {
     "radial_basis": {
         "Gto": {},
     },
-    "gradients": False,
     "cutoff_function": {
         "ShiftedCosine": {
             "width": 0.5,
@@ -50,10 +49,9 @@ save_numpy_array("soap-power-spectrum-values", descriptor.block().values)
 # Use less values for gradients to keep the file size low
 hyperparameters["max_radial"] = 4
 hyperparameters["max_angular"] = 4
-hyperparameters["gradients"] = True
 
 calculator = SoapPowerSpectrum(**hyperparameters)
-descriptor = calculator.compute(frame, use_native_system=True)
+descriptor = calculator.compute(frame, use_native_system=True, positions_gradient=True)
 descriptor.keys_to_samples("species_center")
 descriptor.keys_to_properties(["species_neighbor_1", "species_neighbor_2"])
 

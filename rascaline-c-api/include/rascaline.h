@@ -263,6 +263,11 @@ typedef struct rascal_labels_selection_t {
  */
 typedef struct rascal_calculation_options_t {
   /**
+   * Compute the gradients of the representation with respect to the atomic
+   * positions, if they are implemented for this calculator
+   */
+  bool positions_gradient;
+  /**
    * Copy the data from systems into native `SimpleSystem`. This can be
    * faster than having to cross the FFI boundary too often.
    */

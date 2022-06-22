@@ -59,7 +59,7 @@ class TestChemfilesSystem(unittest.TestCase):
         frame.add_atom(chemfiles.Atom("C"), (0, 2, 0))
         frame.add_atom(chemfiles.Atom("C"), (0, 3, 0))
 
-        calculator = DummyCalculator(cutoff=3.4, delta=1, name="", gradients=False)
+        calculator = DummyCalculator(cutoff=3.4, delta=1, name="")
 
         with self.assertRaises(RascalError) as cm:
             calculator.compute(frame, use_native_system=False)

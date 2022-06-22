@@ -29,7 +29,6 @@ class TestLogging(unittest.TestCase):
             cutoff=3.2,
             delta=0,
             name="log-test-info: test info message",
-            gradients=False,
         )
         _ = calculator.compute(TestSystem())
 
@@ -44,7 +43,6 @@ class TestLogging(unittest.TestCase):
             cutoff=3.2,
             delta=0,
             name="log-test-warn: this is a test warning message",
-            gradients=False,
         )
         _ = calculator.compute(TestSystem())
 
@@ -65,7 +63,6 @@ class TestLogging(unittest.TestCase):
             cutoff=3.2,
             delta=0,
             name="log-test-warn: testing errors",
-            gradients=False,
         )
 
         with self.assertWarns(Warning) as cm:

@@ -3,7 +3,7 @@ use ndarray::{ArrayD, Axis, s};
 
 use equistore::{LabelsBuilder, BasicBlock};
 
-use rascaline::Calculator;
+use rascaline::{Calculator, CalculationOptions};
 
 mod data;
 
@@ -34,7 +34,11 @@ fn gradients() {
     let n_atoms = systems.iter().map(|s| s.size().unwrap()).sum();
 
     let mut calculator = Calculator::new("soap_power_spectrum", parameters).unwrap();
-    let mut descriptor = calculator.compute(&mut systems, Default::default()).expect("failed to run calculation");
+    let options = CalculationOptions {
+        positions_gradient: true,
+        ..Default::default()
+    };
+    let mut descriptor = calculator.compute(&mut systems, options).expect("failed to run calculation");
 
     let keys_to_move = LabelsBuilder::new(vec!["species_center"]).finish();
     descriptor.keys_to_samples(&keys_to_move, true).unwrap();

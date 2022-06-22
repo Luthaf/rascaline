@@ -35,7 +35,6 @@ hyperparameters = {
     "radial_basis": {
         "Gto": {},
     },
-    "gradients": False,
     "cutoff_function": {
         "ShiftedCosine": {
             "width": 0.5,
@@ -54,11 +53,6 @@ descriptor.keys_to_properties("spherical_harmonics_l")
 save_calculator_input("spherical-expansion-values", frame, hyperparameters)
 save_numpy_array("spherical-expansion-values", descriptor.block().values)
 
-# Use smaller hypers for gradients to keep the file size low
-hyperparameters["max_radial"] = 4
-hyperparameters["max_angular"] = 4
-hyperparameters["gradients"] = True
-
 
 def sum_gradient(descriptor):
     """compute the gradient w.r.t. each atom of the sum of all rows"""
@@ -71,8 +65,11 @@ def sum_gradient(descriptor):
     return result
 
 
+# Use smaller hypers for gradients to keep the file size low
+hyperparameters["max_radial"] = 4
+hyperparameters["max_angular"] = 4
 calculator = SphericalExpansion(**hyperparameters)
-descriptor = calculator.compute(frame, use_native_system=True)
+descriptor = calculator.compute(frame, use_native_system=True, positions_gradient=True)
 
 descriptor.keys_to_samples("species_center")
 descriptor.keys_to_properties("species_neighbor")
@@ -105,7 +102,6 @@ hyperparameters = {
     "radial_basis": {
         "Gto": {},
     },
-    "gradients": False,
     "cutoff_function": {
         "ShiftedCosine": {
             "width": 0.2,

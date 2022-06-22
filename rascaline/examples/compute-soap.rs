@@ -17,7 +17,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "max_angular": 4,
         "atomic_gaussian_width": 0.3,
         "center_atom_weight": 1.0,
-        "gradients": true,
         "radial_basis": {
             "Gto": {}
         },

@@ -36,8 +36,6 @@ pub struct RadialSpectrumParameters {
     /// If `1` the center atom contribution is weighted the same as any other
     /// contribution.
     pub center_atom_weight: f64,
-    /// Should we also compute gradients of the feature?
-    pub gradients: bool,
     /// radial basis to use for the radial integral
     pub radial_basis: RadialBasis,
     /// cutoff function used to smooth the behavior around the cutoff radius
@@ -70,7 +68,6 @@ impl SoapRadialSpectrum {
             max_angular: 0,
             atomic_gaussian_width: parameters.atomic_gaussian_width,
             center_atom_weight: parameters.center_atom_weight,
-            gradients: parameters.gradients,
             radial_basis: parameters.radial_basis,
             cutoff_function: parameters.cutoff_function,
             radial_scaling: parameters.radial_scaling,
@@ -163,18 +160,9 @@ impl CalculatorBase for SoapRadialSpectrum {
         return Ok(result);
     }
 
-    fn gradient_samples(
-        &self,
-        keys: &Labels,
-        samples: &[Arc<Labels>],
-        systems: &mut [Box<dyn System>],
-    ) -> Result<Option<Vec<Arc<Labels>>>, Error> {
+    fn gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
         assert_eq!(keys.names(), ["species_center", "species_neighbor"]);
         assert_eq!(keys.count(), samples.len());
-
-        if !self.parameters.gradients {
-            return Ok(None);
-        }
 
         let mut gradient_samples = Vec::new();
         for ([species_center, species_neighbor], samples) in keys.iter_fixed_size().zip(samples) {
@@ -188,7 +176,7 @@ impl CalculatorBase for SoapRadialSpectrum {
             gradient_samples.push(builder.gradients_for(systems, samples)?);
         }
 
-        return Ok(Some(gradient_samples));
+        return Ok(gradient_samples);
     }
 
     fn components(&self, keys: &equistore::Labels) -> Vec<Vec<Arc<Labels>>> {
@@ -213,9 +201,11 @@ impl CalculatorBase for SoapRadialSpectrum {
     #[time_graph::instrument(name = "SoapRadialSpectrum::compute")]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
         assert_eq!(descriptor.keys().names(), ["species_center", "species_neighbor"]);
+        let do_positions_gradient = descriptor.blocks()[0].gradient("positions").is_some();
 
         let selected = SoapRadialSpectrum::selected_spx_labels(descriptor);
         let options = CalculationOptions {
+            positions_gradient: do_positions_gradient,
             selected_samples: LabelsSelection::Predefined(&selected),
             selected_properties: LabelsSelection::Predefined(&selected),
             ..Default::default()
@@ -239,7 +229,7 @@ impl CalculatorBase for SoapRadialSpectrum {
             ).expect("wrong shape");
             array.assign(&array_spx_reshaped);
 
-            if self.parameters.gradients {
+            if do_positions_gradient {
                 let gradient = block.gradient_mut("positions").expect("missing radial spectrum gradients");
                 let gradient_spx = block_spx.gradient("positions").expect("missing spherical expansion gradients");
                 debug_assert_eq!(gradient.samples, gradient_spx.samples);
@@ -271,13 +261,12 @@ mod tests {
     use super::*;
     use crate::calculators::CalculatorBase;
 
-    fn parameters(gradients: bool) -> RadialSpectrumParameters {
+    fn parameters() -> RadialSpectrumParameters {
         RadialSpectrumParameters {
             cutoff: 3.5,
             max_radial: 6,
             atomic_gaussian_width: 0.3,
             center_atom_weight: 1.0,
-            gradients: gradients,
             radial_basis: RadialBasis::Gto {},
             radial_scaling: RadialScaling::None {},
             cutoff_function: CutoffFunction::ShiftedCosine { width: 0.5 },
@@ -287,7 +276,7 @@ mod tests {
     #[test]
     fn values() {
         let mut calculator = Calculator::from(Box::new(
-            SoapRadialSpectrum::new(parameters(false)).unwrap()
+            SoapRadialSpectrum::new(parameters()).unwrap()
         ) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
@@ -303,7 +292,7 @@ mod tests {
     #[test]
     fn finite_differences() {
         let calculator = Calculator::from(Box::new(
-            SoapRadialSpectrum::new(parameters(true)).unwrap()
+            SoapRadialSpectrum::new(parameters()).unwrap()
         ) as Box<dyn CalculatorBase>);
 
         let system = test_system("water");
@@ -318,7 +307,7 @@ mod tests {
     #[test]
     fn compute_partial() {
         let calculator = Calculator::from(Box::new(
-            SoapRadialSpectrum::new(parameters(false)).unwrap()
+            SoapRadialSpectrum::new(parameters()).unwrap()
         ) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water", "methane"]);

@@ -21,15 +21,14 @@ TEST_CASE("calculator name") {
         const char* HYPERS_JSON = R"({
             "cutoff": 3.5,
             "delta": 25,
-            "name": "bar",
-            "gradients": false
+            "name": "bar"
         })";
         auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);
         REQUIRE(calculator != nullptr);
 
         char buffer[256] = {0};
         CHECK_SUCCESS(rascal_calculator_name(calculator, buffer, sizeof(buffer)));
-        CHECK(buffer == std::string("dummy test calculator with cutoff: 3.5 - delta: 25 - name: bar - gradients: false"));
+        CHECK(buffer == std::string("dummy test calculator with cutoff: 3.5 - delta: 25 - name: bar"));
 
         rascal_calculator_free(calculator);
     }
@@ -39,7 +38,6 @@ TEST_CASE("calculator name") {
         auto HYPERS_JSON = R"({
             "cutoff": 3.5,
             "delta": 25,
-            "gradients": false,
             "name": ")" + name + "\"}";
 
         auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON.c_str());
@@ -51,7 +49,7 @@ TEST_CASE("calculator name") {
 
         CHECK_SUCCESS(rascal_calculator_name(calculator, buffer, 4096));
         std::string expected = "dummy test calculator with cutoff: 3.5 - delta: 25 - ";
-        expected += "name: " + name + " - gradients: false";
+        expected += "name: " + name;
         CHECK(buffer == expected);
 
         delete[] buffer;
@@ -65,8 +63,7 @@ TEST_CASE("calculator parameters") {
         std::string HYPERS_JSON = R"({
             "cutoff": 3.5,
             "delta": 25,
-            "name": "bar",
-            "gradients": false
+            "name": "bar"
         })";
         auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON.c_str());
         REQUIRE(calculator != nullptr);
@@ -83,7 +80,6 @@ TEST_CASE("calculator parameters") {
         auto HYPERS_JSON = R"({
             "cutoff": 3.5,
             "delta": 25,
-            "gradients": false,
             "name": ")" + name + "\"}";
 
         auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON.c_str());
@@ -106,8 +102,7 @@ TEST_CASE("calculator creation errors") {
     const char* HYPERS_JSON = R"({
         "cutoff": "532",
         "delta": 25,
-        "name": "bar",
-        "gradients": false
+        "name": "bar"
     })";
     auto *calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);
     CHECK(calculator == nullptr);
@@ -119,14 +114,14 @@ TEST_CASE("Compute descriptor") {
     const char* HYPERS_JSON = R"({
         "cutoff": 3.0,
         "delta": 4,
-        "name": "",
-        "gradients": true
+        "name": ""
     })";
 
     SECTION("Full compute") {
         auto system = simple_system();
 
         rascal_calculation_options_t options = {0};
+        options.positions_gradient = true;
         auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);
         REQUIRE(calculator != nullptr);
 
@@ -212,6 +207,7 @@ TEST_CASE("Compute descriptor") {
         auto system = simple_system();
 
         rascal_calculation_options_t options = {0};
+        options.positions_gradient = true;
         options.selected_samples.subset = &selected_samples;
         auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);
         REQUIRE(calculator != nullptr);
@@ -285,6 +281,7 @@ TEST_CASE("Compute descriptor") {
         auto system = simple_system();
 
         rascal_calculation_options_t options = {0};
+        options.positions_gradient = true;
         options.selected_properties.subset = &selected_properties;
         auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);
         REQUIRE(calculator != nullptr);
@@ -421,6 +418,7 @@ TEST_CASE("Compute descriptor") {
 
         auto system = simple_system();
         rascal_calculation_options_t options = {0};
+        options.positions_gradient = true;
         options.selected_samples.predefined = predefined;
         options.selected_properties.predefined = predefined;
         auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);

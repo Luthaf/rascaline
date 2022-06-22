@@ -13,7 +13,7 @@ class UnimplementedSystem(SystemBase):
 class TestSystemExceptions(unittest.TestCase):
     def test_unimplemented(self):
         system = UnimplementedSystem()
-        calculator = DummyCalculator(cutoff=3.2, delta=2, name="", gradients=True)
+        calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
 
         with self.assertRaises(RascalError) as cm:
             _ = calculator.compute(system, use_native_system=False)
