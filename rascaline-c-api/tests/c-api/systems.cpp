@@ -51,8 +51,7 @@ TEST_CASE("systems errors") {
     const char* HYPERS_JSON = R"({
         "cutoff": 3.0,
         "delta": 4,
-        "name": "",
-        "gradients": true
+        "name": ""
     })";
 
     auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);

@@ -104,8 +104,6 @@ pub struct SphericalExpansionParameters {
     /// If `1.0` the center atom contribution is weighted the same as any other
     /// contribution.
     pub center_atom_weight: f64,
-    /// Should we also compute gradients with respect to positions?
-    pub gradients: bool,
     /// Radial basis to use for the radial integral
     pub radial_basis: RadialBasis,
     /// Cutoff function used to smooth the behavior around the cutoff radius
@@ -123,7 +121,7 @@ struct RadialIntegralImpl {
     /// Cache for the radial integral values
     values: Array2<f64>,
     /// Cache for the radial integral gradient
-    gradients: Option<Array2<f64>>,
+    gradients: Array2<f64>,
 }
 
 impl RadialIntegralImpl {
@@ -131,25 +129,25 @@ impl RadialIntegralImpl {
         let code = parameters.radial_basis.construct(parameters)?;
         let shape = (parameters.max_angular + 1, parameters.max_radial);
         let values = Array2::from_elem(shape, 0.0);
-        let gradients = if parameters.gradients {
-            Some(Array2::from_elem(shape, 0.0))
-        } else {
-            None
-        };
+        let gradients = Array2::from_elem(shape, 0.0);
 
         return Ok(RadialIntegralImpl { code, values, gradients });
     }
 
-    fn compute(&mut self, distance: f64) {
-        self.code.compute(
-            distance,
-            self.values.view_mut(),
-            self.gradients.as_mut().map(|o| o.view_mut()),
-        );
-    }
-
-    fn compute_no_gradients(&mut self, distance: f64) {
-        self.code.compute(distance, self.values.view_mut(), None);
+    fn compute(&mut self, distance: f64, gradients: bool) {
+        if gradients {
+            self.code.compute(
+                distance,
+                self.values.view_mut(),
+                Some(self.gradients.view_mut()),
+            );
+        } else {
+            self.code.compute(
+                distance,
+                self.values.view_mut(),
+                None,
+            );
+        }
     }
 }
 
@@ -159,36 +157,37 @@ struct SphericalHarmonicsImpl {
     /// Cache for the spherical harmonics values
     values: SphericalHarmonicsArray,
     /// Cache for the spherical harmonics gradients (one value each for x/y/z)
-    gradients: Option<[SphericalHarmonicsArray; 3]>,
+    gradients: [SphericalHarmonicsArray; 3],
 }
 
 impl SphericalHarmonicsImpl {
     fn new(parameters: &SphericalExpansionParameters) -> SphericalHarmonicsImpl {
         let code = SphericalHarmonics::new(parameters.max_angular);
         let values = SphericalHarmonicsArray::new(parameters.max_angular);
-        let gradients = if parameters.gradients {
-            Some([
-                SphericalHarmonicsArray::new(parameters.max_angular),
-                SphericalHarmonicsArray::new(parameters.max_angular),
-                SphericalHarmonicsArray::new(parameters.max_angular)
-            ])
-        } else {
-            None
-        };
+        let gradients = [
+            SphericalHarmonicsArray::new(parameters.max_angular),
+            SphericalHarmonicsArray::new(parameters.max_angular),
+            SphericalHarmonicsArray::new(parameters.max_angular)
+        ];
 
         return SphericalHarmonicsImpl { code, values, gradients };
     }
 
-    fn compute(&mut self, direction: Vector3D) {
-        self.code.compute(
-            direction,
-            &mut self.values,
-            self.gradients.as_mut(),
-        );
-    }
+    fn compute(&mut self, direction: Vector3D, gradient: bool) {
+        if gradient {
+            self.code.compute(
+                direction,
+                &mut self.values,
+                Some(&mut self.gradients),
+            );
+        } else {
+            self.code.compute(
+                direction,
+                &mut self.values,
+                None,
+            );
+        }
 
-    fn compute_no_gradients(&mut self, direction: Vector3D) {
-        self.code.compute(direction, &mut self.values, self.gradients.as_mut());
     }
 }
 
@@ -298,8 +297,8 @@ impl SphericalExpansion {
             let values = block.values_mut();
             let array = values.data.as_array_mut();
 
-            radial_integral.compute_no_gradients(0.0);
-            spherical_harmonics.compute_no_gradients(Vector3D::new(0.0, 0.0, 1.0));
+            radial_integral.compute(0.0, false);
+            spherical_harmonics.compute(Vector3D::new(0.0, 0.0, 1.0), false);
             let f_scaling = self.scaling_functions(0.0);
 
             for (property_i, &[n]) in values.properties.iter_fixed_size().enumerate() {
@@ -315,7 +314,7 @@ impl SphericalExpansion {
     /// Compute the contribution of a single pair and store the corresponding
     /// data inside the given descriptor
     #[allow(clippy::too_many_lines)]
-    fn compute_for_pair(&self, pair: &Pair, descriptor: &mut TensorMapView) {
+    fn compute_for_pair(&self, pair: &Pair, descriptor: &mut TensorMapView, do_gradients: bool) {
         let mut radial_integral = self.radial_integral.get_or(|| {
             let ri = RadialIntegralImpl::new(&self.parameters).expect("invalid parameters");
             RefCell::new(ri)
@@ -325,8 +324,8 @@ impl SphericalExpansion {
             RefCell::new(SphericalHarmonicsImpl::new(&self.parameters))
         }).borrow_mut();
 
-        radial_integral.compute(pair.distance);
-        spherical_harmonics.compute(pair.direction);
+        radial_integral.compute(pair.distance, do_gradients);
+        spherical_harmonics.compute(pair.direction, do_gradients);
 
         let f_scaling = self.scaling_functions(pair.distance);
         let f_scaling_grad = self.scaling_functions_gradient(pair.distance);
@@ -334,7 +333,7 @@ impl SphericalExpansion {
         // Cache allocation for coefficients & gradients
         let shape = (2 * self.parameters.max_angular + 1, self.parameters.max_radial);
         let mut coefficients = Array2::from_elem(shape, 0.0);
-        let mut coefficients_grad = if self.parameters.gradients {
+        let mut coefficients_grad = if do_gradients {
             let shape = (3, 2 * self.parameters.max_angular + 1, self.parameters.max_radial);
             Some(Array3::from_elem(shape, 0.0))
         } else {
@@ -364,16 +363,14 @@ impl SphericalExpansion {
                 continue;
             }
 
-            let spherical_harmonics_grad = spherical_harmonics.gradients.as_ref().map(|a| {
-                [
-                    a[0].slice(spherical_harmonics_l as isize),
-                    a[1].slice(spherical_harmonics_l as isize),
-                    a[2].slice(spherical_harmonics_l as isize),
-                ]
-            });
+            let spherical_harmonics_grad = [
+                spherical_harmonics.gradients[0].slice(spherical_harmonics_l as isize),
+                spherical_harmonics.gradients[1].slice(spherical_harmonics_l as isize),
+                spherical_harmonics.gradients[2].slice(spherical_harmonics_l as isize),
+            ];
             let spherical_harmonics = spherical_harmonics.values.slice(spherical_harmonics_l as isize);
 
-            let radial_integral_grad = radial_integral.gradients.as_ref().map(|a| a.slice(s![spherical_harmonics_l, ..]));
+            let radial_integral_grad = radial_integral.gradients.slice(s![spherical_harmonics_l, ..]);
             let radial_integral = radial_integral.values.slice(s![spherical_harmonics_l, ..]);
 
             // compute the full spherical expansion coefficients & gradients
@@ -389,8 +386,6 @@ impl SphericalExpansion {
             }
 
             if let Some(ref mut coefficients_grad) = coefficients_grad {
-                let spherical_harmonics_grad = spherical_harmonics_grad.expect("missing spherical harmonics gradients");
-                let radial_integral_grad = radial_integral_grad.expect("missing radial integral gradients");
                 let dr_d_spatial = pair.direction;
 
                 for m in 0..(2 * spherical_harmonics_l + 1) {
@@ -592,13 +587,9 @@ impl CalculatorBase for SphericalExpansion {
         return Ok(result);
     }
 
-    fn gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Option<Vec<Arc<Labels>>>, Error> {
+    fn gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
         assert_eq!(keys.names(), ["spherical_harmonics_l", "species_center", "species_neighbor"]);
         assert_eq!(keys.count(), samples.len());
-
-        if !self.parameters.gradients {
-            return Ok(None);
-        }
 
         let mut gradient_samples = Vec::new();
         for ([_, species_center, species_neighbor], samples) in keys.iter_fixed_size().zip(samples) {
@@ -612,7 +603,7 @@ impl CalculatorBase for SphericalExpansion {
             gradient_samples.push(builder.gradients_for(systems, samples)?);
         }
 
-        return Ok(Some(gradient_samples));
+        return Ok(gradient_samples);
     }
 
     fn components(&self, keys: &Labels) -> Vec<Vec<Arc<Labels>>> {
@@ -661,6 +652,7 @@ impl CalculatorBase for SphericalExpansion {
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
         assert_eq!(descriptor.keys().names(), ["spherical_harmonics_l", "species_center", "species_neighbor"]);
 
+        let do_positions_gradient = descriptor.blocks()[0].gradient("positions").is_some();
         self.do_self_contributions(descriptor);
         let mut descriptors_by_system = split_by_system(descriptor, systems.len());
 
@@ -700,7 +692,7 @@ impl CalculatorBase for SphericalExpansion {
                         direction: direction,
                     };
 
-                    self.compute_for_pair(&pair, descriptor);
+                    self.compute_for_pair(&pair, descriptor, do_positions_gradient);
                 }
 
                 Ok::<_, Error>(())
@@ -967,14 +959,13 @@ mod tests {
     use super::{CutoffFunction, RadialBasis, RadialScaling};
 
 
-    fn parameters(gradients: bool) -> SphericalExpansionParameters {
+    fn parameters() -> SphericalExpansionParameters {
         SphericalExpansionParameters {
             cutoff: 3.5,
             max_radial: 6,
             max_angular: 6,
             atomic_gaussian_width: 0.3,
             center_atom_weight: 1.,
-            gradients: gradients,
             radial_basis: RadialBasis::Gto {},
             radial_scaling: RadialScaling::Willatt2018 { scale: 1.5, rate: 0.8, exponent: 2},
             cutoff_function: CutoffFunction::ShiftedCosine { width: 0.5 },
@@ -984,7 +975,7 @@ mod tests {
     #[test]
     fn values() {
         let mut calculator = Calculator::from(Box::new(SphericalExpansion::new(
-            parameters(false)
+            parameters()
         ).unwrap()) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
@@ -1012,7 +1003,7 @@ mod tests {
     #[test]
     fn finite_differences() {
         let calculator = Calculator::from(Box::new(SphericalExpansion::new(
-            parameters(true)
+            parameters()
         ).unwrap()) as Box<dyn CalculatorBase>);
 
         let system = test_system("water");
@@ -1027,7 +1018,7 @@ mod tests {
     #[test]
     fn compute_partial() {
         let calculator = Calculator::from(Box::new(SphericalExpansion::new(
-            parameters(true)
+            parameters()
         ).unwrap()) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water", "methane"]);

@@ -24,11 +24,13 @@ def _convert_systems(systems):
 
 
 def _options_to_c(
+    positions_gradient,
     use_native_system,
     selected_samples,
     selected_properties,
 ):
     c_options = rascal_calculation_options_t()
+    c_options.positions_gradient = bool(positions_gradient)
     c_options.use_native_system = bool(use_native_system)
 
     # store data to keep alive here
@@ -115,6 +117,8 @@ class CalculatorBase:
     def compute(
         self,
         systems: Union[IntoSystem, List[IntoSystem]],
+        *,
+        positions_gradient: bool = False,
         use_native_system: bool = True,
         selected_samples: Optional[Union[Labels, TensorMap]] = None,
         selected_properties: Optional[Union[Labels, TensorMap]] = None,
@@ -132,36 +136,55 @@ class CalculatorBase:
             faster than having to cross the FFI boundary often when accessing
             the neighbor list. Otherwise the Python neighbor list is used.
 
+        :param positions_gradient: Compute the gradients of the representation
+            with respect to the atomic positions, if they are implemented for
+            this calculator. The gradients are stored inside the different
+            blocks, and can be accessed with
+            ``descriptor.block(...).gradient("position)``
+
         :param selected_samples: Set of samples on which to run the calculation.
             Use ``None`` to run the calculation on all samples in the
             ``systems`` (this is the default).
 
-            If the :py:class:`equistore.Labels` contains the same variables as
-            the default set of samples for this calculator, then only entries
-            from the full set that also appear in this selection will be used.
+            If ``selected_samples`` is an :py:class:`equistore.TensorMap`, then
+            the samples for each key will be used as-is when computing the
+            representation.
 
-            If the labels contains a subset of the variables of the full set of
-            samples, then only entries from the full set which match one of the
-            entry in this selection for all of the selection variable will be
-            used. TODO
+            If ``selected_samples`` is a set of :py:class:`equistore.Labels`
+            containing the same variables as the default set of samples for this
+            calculator, then only entries from the full set that also appear in
+            ``selected_samples`` will be used.
+
+            If ``selected_samples`` is a set of :py:class:`equistore.Labels`
+            containing a subset of the variables of the default set of samples,
+            then only samples from the default set with the same values for
+            these variables as one of the entries in ``selected_samples`` will
+            be used.
 
         :param selected_properties: Set of properties to compute. Use ``None``
             to run the calculation on all properties (this is the default).
 
-            If the :py:class:`equistore.Labels` contains the same variables as
-            the default set of properties for this calculator, then only entries
-            from the full set that also appear in this selection will be used.
+            If ``selected_properties`` is an :py:class:`equistore.TensorMap`,
+            then the properties for each key will be used as-is when computing
+            the representation.
 
-            If the labels contains a subset of the variables of the full set of
-            properties, then only entries from the full set which match one of
-            the entry in this selection for all of the selection variable will
-            be used. TODO
+            If ``selected_properties`` is a set of :py:class:`equistore.Labels`
+            containing the same variables as the default set of properties for
+            this calculator, then only entries from the full set that also
+            appear in ``selected_properties`` will be used.
+
+            If ``selected_properties`` is a set of :py:class:`equistore.Labels`
+            containing a subset of the variables of the default set of
+            properties, then only properties from the default set with the same
+            values for these variables as one of the entries in
+            ``selected_properties`` will be used.
         """
 
         c_systems = _convert_systems(systems)
         tensor_map_ptr = ctypes.POINTER(eqs_tensormap_t)()
 
         c_options = _options_to_c(
+            positions_gradient=positions_gradient,
             use_native_system=use_native_system,
             selected_samples=selected_samples,
             selected_properties=selected_properties,
@@ -174,12 +197,11 @@ class CalculatorBase:
 
 
 class DummyCalculator(CalculatorBase):
-    def __init__(self, cutoff, delta, name, gradients):
+    def __init__(self, cutoff, delta, name):
         parameters = {
             "cutoff": cutoff,
             "delta": delta,
             "name": name,
-            "gradients": gradients,
         }
         super().__init__("dummy_calculator", parameters)
 
@@ -236,7 +258,6 @@ class SphericalExpansion(CalculatorBase):
         atomic_gaussian_width,
         radial_basis,
         center_atom_weight,
-        gradients,
         cutoff_function,
         radial_scaling=None,
     ):
@@ -247,7 +268,6 @@ class SphericalExpansion(CalculatorBase):
             "atomic_gaussian_width": atomic_gaussian_width,
             "center_atom_weight": center_atom_weight,
             "radial_basis": radial_basis,
-            "gradients": gradients,
             "cutoff_function": cutoff_function,
         }
 
@@ -282,7 +302,6 @@ class SoapPowerSpectrum(CalculatorBase):
         atomic_gaussian_width,
         center_atom_weight,
         radial_basis,
-        gradients,
         cutoff_function,
         radial_scaling=None,
     ):
@@ -293,7 +312,6 @@ class SoapPowerSpectrum(CalculatorBase):
             "atomic_gaussian_width": atomic_gaussian_width,
             "center_atom_weight": center_atom_weight,
             "radial_basis": radial_basis,
-            "gradients": gradients,
             "cutoff_function": cutoff_function,
         }
 
@@ -327,7 +345,6 @@ class SoapRadialSpectrum(CalculatorBase):
         atomic_gaussian_width,
         center_atom_weight,
         radial_basis,
-        gradients,
         cutoff_function,
         radial_scaling=None,
     ):
@@ -337,7 +354,6 @@ class SoapRadialSpectrum(CalculatorBase):
             "atomic_gaussian_width": atomic_gaussian_width,
             "center_atom_weight": center_atom_weight,
             "radial_basis": radial_basis,
-            "gradients": gradients,
             "cutoff_function": cutoff_function,
         }
 

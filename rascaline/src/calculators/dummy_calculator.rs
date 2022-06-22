@@ -27,15 +27,13 @@ pub struct DummyCalculator {
     pub delta: isize,
     /// Unused name parameter, to test passing string values
     pub name: String,
-    /// Should we also compute gradients of the feature?
-    pub gradients: bool,
 }
 
 impl CalculatorBase for DummyCalculator {
     fn name(&self) -> String {
         // abusing the name as description
-        format!("dummy test calculator with cutoff: {} - delta: {} - name: {} - gradients: {}",
-            self.cutoff, self.delta, self.name, self.gradients
+        format!("dummy test calculator with cutoff: {} - delta: {} - name: {}",
+            self.cutoff, self.delta, self.name
         )
     }
 
@@ -68,12 +66,8 @@ impl CalculatorBase for DummyCalculator {
         return Ok(samples);
     }
 
-    fn gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Option<Vec<Arc<Labels>>>, Error> {
+    fn gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
         debug_assert_eq!(keys.count(), samples.len());
-        if !self.gradients {
-            return Ok(None);
-        }
-
         let mut gradient_samples = Vec::new();
         for ([species_center], samples) in keys.iter_fixed_size().zip(samples) {
             let builder = AtomCenteredSamples{
@@ -86,7 +80,7 @@ impl CalculatorBase for DummyCalculator {
             gradient_samples.push(builder.gradients_for(systems, samples)?);
         }
 
-        return Ok(Some(gradient_samples));
+        return Ok(gradient_samples);
     }
 
     fn components(&self, keys: &Labels) -> Vec<Vec<Arc<Labels>>> {
@@ -150,8 +144,7 @@ impl CalculatorBase for DummyCalculator {
                 }
             }
 
-            if self.gradients {
-                let gradient = block.gradient_mut("positions").expect("missing gradient values");
+            if let Some(gradient) = block.gradient_mut("positions") {
                 let array = gradient.data.as_array_mut();
 
                 for gradient_sample_i in 0..array.shape()[0] {
@@ -192,17 +185,16 @@ mod tests {
             cutoff: 1.4,
             delta: 9,
             name: "a long name".into(),
-            gradients: false,
         }) as Box<dyn CalculatorBase>);
 
         assert_eq!(
             calculator.name(),
-            "dummy test calculator with cutoff: 1.4 - delta: 9 - name: a long name - gradients: false"
+            "dummy test calculator with cutoff: 1.4 - delta: 9 - name: a long name"
         );
 
         assert_eq!(
             calculator.parameters(),
-            "{\"cutoff\":1.4,\"delta\":9,\"name\":\"a long name\",\"gradients\":false}"
+            "{\"cutoff\":1.4,\"delta\":9,\"name\":\"a long name\"}"
         );
     }
 
@@ -212,7 +204,6 @@ mod tests {
             cutoff: 1.0,
             delta: 9,
             name: "".into(),
-            gradients: false,
         }) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
@@ -242,7 +233,6 @@ mod tests {
             cutoff: 1.0,
             delta: 9,
             name: "".into(),
-            gradients: true,
         }) as Box<dyn CalculatorBase>);
         let mut systems = test_systems(&["water"]);
 

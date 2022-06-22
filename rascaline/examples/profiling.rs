@@ -1,5 +1,5 @@
 use equistore::{TensorMap, LabelsBuilder};
-use rascaline::{Calculator, System};
+use rascaline::{Calculator, System, CalculationOptions};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let path = std::env::args().nth(1).expect("expected a command line argument");
@@ -39,7 +39,6 @@ fn compute_soap(path: &str) -> Result<TensorMap, Box<dyn std::error::Error>> {
         "max_angular": 4,
         "atomic_gaussian_width": 0.3,
         "center_atom_weight": 1.0,
-        "gradients": true,
         "radial_basis": {
             "Gto": {}
         },
@@ -50,7 +49,12 @@ fn compute_soap(path: &str) -> Result<TensorMap, Box<dyn std::error::Error>> {
 
     let mut descriptor = time_graph::spanned!("Full calculation", {
         let mut calculator = Calculator::new("soap_power_spectrum", parameters.to_owned())?;
-        calculator.compute(&mut systems, Default::default())?
+
+        let options = CalculationOptions {
+            positions_gradient: true,
+            ..Default::default()
+        };
+        calculator.compute(&mut systems, options)?
     });
 
     let keys_to_move = LabelsBuilder::new(vec!["species_center"]).finish();

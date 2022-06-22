@@ -47,8 +47,6 @@ pub struct PowerSpectrumParameters {
     /// If `1` the center atom contribution is weighted the same as any other
     /// contribution.
     pub center_atom_weight: f64,
-    /// Should we also compute gradients of the feature?
-    pub gradients: bool,
     /// radial basis to use for the radial integral
     pub radial_basis: RadialBasis,
     /// cutoff function used to smooth the behavior around the cutoff radius
@@ -81,7 +79,6 @@ impl SoapPowerSpectrum {
             max_angular: parameters.max_angular,
             atomic_gaussian_width: parameters.atomic_gaussian_width,
             center_atom_weight: parameters.center_atom_weight,
-            gradients: parameters.gradients,
             radial_basis: parameters.radial_basis,
             cutoff_function: parameters.cutoff_function,
             radial_scaling: parameters.radial_scaling,
@@ -207,7 +204,6 @@ impl SoapPowerSpectrum {
     /// This function returns the list of spherical expansion sample indexes
     /// corresponding to the requested samples in `descriptor` for each block.
     fn samples_mapping(
-        &self,
         descriptor: &TensorMap,
         spherical_expansion: &TensorMap
     ) -> HashMap<Vec<LabelValue>, SamplesMapping> {
@@ -246,9 +242,7 @@ impl SoapPowerSpectrum {
             }
 
             let mut gradient_mapping = Vec::new();
-            if self.parameters.gradients {
-                let gradient = block.gradient("positions").expect("missing gradient");
-
+            if let Some(gradient) = block.gradient("positions") {
                 let spx_gradient_1 = spx_block_1.gradient("positions").expect("missing spherical expansion gradients");
                 let spx_gradient_2 = spx_block_2.gradient("positions").expect("missing spherical expansion gradients");
 
@@ -274,10 +268,10 @@ impl SoapPowerSpectrum {
     /// Get the list of spherical expansion to combine when computing a single
     /// block (associated with the given key) of the power spectrum.
     fn spx_properties_to_combine<'a>(
-        &self,
         key: &[LabelValue],
         properties: &Labels,
         spherical_expansion: &'a TensorMap,
+        positions_gradient: bool,
     ) -> Vec<SpxPropertiesToCombine<'a>> {
         let species_center = key[0];
         let species_neighbor_1 = key[1];
@@ -304,7 +298,7 @@ impl SoapPowerSpectrum {
             let property_1 = block_1.values().properties.position(&[n1]).expect("missing n1");
             let property_2 = block_2.values().properties.position(&[n2]).expect("missing n2");
 
-            let (gradient_1, gradient_2) = if self.parameters.gradients {
+            let (gradient_1, gradient_2) = if positions_gradient {
                 let spx_gradient_1 = block_1.gradient("positions").expect("missing spherical expansion gradients");
                 let spx_gradient_2 = block_2.gradient("positions").expect("missing spherical expansion gradients");
 
@@ -408,13 +402,9 @@ impl CalculatorBase for SoapPowerSpectrum {
         return Ok(result);
     }
 
-    fn gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Option<Vec<Arc<Labels>>>, Error> {
+    fn gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
         assert_eq!(keys.names(), ["species_center", "species_neighbor_1", "species_neighbor_2"]);
         assert_eq!(keys.count(), samples.len());
-
-        if !self.parameters.gradients {
-            return Ok(None);
-        }
 
         let mut gradient_samples = Vec::new();
         for ([species_center, species_neighbor_1, species_neighbor_2], samples) in keys.iter_fixed_size().zip(samples) {
@@ -432,7 +422,7 @@ impl CalculatorBase for SoapPowerSpectrum {
             gradient_samples.push(builder.gradients_for(systems, samples)?);
         }
 
-        return Ok(Some(gradient_samples));
+        return Ok(gradient_samples);
     }
 
     fn components(&self, keys: &equistore::Labels) -> Vec<Vec<Arc<Labels>>> {
@@ -461,8 +451,11 @@ impl CalculatorBase for SoapPowerSpectrum {
     #[time_graph::instrument(name = "SoapPowerSpectrum::compute")]
     #[allow(clippy::too_many_lines)]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
+        let do_positions_gradient = descriptor.blocks()[0].gradient("positions").is_some();
+
         let selected = self.selected_spx_labels(descriptor);
         let options = CalculationOptions {
+            positions_gradient: do_positions_gradient,
             selected_samples: LabelsSelection::Predefined(&selected),
             selected_properties: LabelsSelection::Predefined(&selected),
             ..Default::default()
@@ -473,17 +466,18 @@ impl CalculatorBase for SoapPowerSpectrum {
             options,
         ).expect("failed to compute spherical expansion");
 
-        let samples_mapping = self.samples_mapping(descriptor, &spherical_expansion);
+        let samples_mapping = SoapPowerSpectrum::samples_mapping(descriptor, &spherical_expansion);
 
         for (key, mut block) in descriptor.iter_mut() {
             let species_neighbor_1 = key[1];
             let species_neighbor_2 = key[2];
 
             let values = block.values();
-            let properties_to_combine = self.spx_properties_to_combine(
+            let properties_to_combine = SoapPowerSpectrum::spx_properties_to_combine(
                 key,
                 &values.properties,
                 &spherical_expansion,
+                do_positions_gradient,
             );
 
             let mapping = samples_mapping.get(key).expect("missing sample mapping");
@@ -523,9 +517,7 @@ impl CalculatorBase for SoapPowerSpectrum {
                     }
                 });
 
-            if self.parameters.gradients {
-                let gradients = block.gradient_mut("positions").expect("missing power spectrum gradients");
-
+            if let Some(gradients) = block.gradient_mut("positions") {
                 gradients.data.as_array_mut()
                     .axis_iter_mut(ndarray::Axis(0))
                     .into_par_iter()
@@ -600,14 +592,13 @@ mod tests {
     use super::*;
     use crate::calculators::CalculatorBase;
 
-    fn parameters(gradients: bool) -> PowerSpectrumParameters {
+    fn parameters() -> PowerSpectrumParameters {
         PowerSpectrumParameters {
             cutoff: 3.5,
             max_radial: 6,
             max_angular: 6,
             atomic_gaussian_width: 0.3,
             center_atom_weight: 1.0,
-            gradients: gradients,
             radial_basis: RadialBasis::Gto {},
             radial_scaling: RadialScaling::None {},
             cutoff_function: CutoffFunction::ShiftedCosine { width: 0.5 },
@@ -617,7 +608,7 @@ mod tests {
     #[test]
     fn values() {
         let mut calculator = Calculator::from(Box::new(SoapPowerSpectrum::new(
-            parameters(false)
+            parameters()
         ).unwrap()) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
@@ -651,7 +642,7 @@ mod tests {
     #[test]
     fn finite_differences() {
         let calculator = Calculator::from(Box::new(SoapPowerSpectrum::new(
-            parameters(true)
+            parameters()
         ).unwrap()) as Box<dyn CalculatorBase>);
 
         let system = test_system("water");
@@ -666,7 +657,7 @@ mod tests {
     #[test]
     fn compute_partial() {
         let calculator = Calculator::from(Box::new(SoapPowerSpectrum::new(
-            parameters(false)
+            parameters()
         ).unwrap()) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water", "methane"]);
@@ -694,7 +685,7 @@ mod tests {
     fn center_atom_weight() {
         let system = &mut test_systems(&["CH"]);
 
-        let mut parameters = parameters(false);
+        let mut parameters = parameters();
         parameters.cutoff = 0.5;
         parameters.center_atom_weight = 1.0;
 

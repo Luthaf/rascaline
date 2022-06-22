@@ -154,6 +154,9 @@ impl<'a> LabelsSelection<'a> {
 /// Parameters specific to a single call to `compute`
 #[derive(Debug, Clone, Copy)]
 pub struct CalculationOptions<'a> {
+    /// Compute the gradients of the representation with respect to the atomic
+    /// positions, if they are implemented for this calculator
+    pub positions_gradient: bool,
     /// Copy the data from systems into native `SimpleSystem`. This can be
     /// faster than having to cross the FFI boundary too often.
     pub use_native_system: bool,
@@ -166,6 +169,7 @@ pub struct CalculationOptions<'a> {
 impl<'a> Default for CalculationOptions<'a> {
     fn default() -> CalculationOptions<'a> {
         CalculationOptions {
+            positions_gradient: false,
             use_native_system: false,
             selected_samples: LabelsSelection::All,
             selected_properties: LabelsSelection::All,
@@ -258,7 +262,11 @@ impl Calculator {
                 |block| Arc::clone(&block.values().samples)
             )?;
 
-            let gradient_samples = self.implementation.gradient_samples(&keys, &samples, systems)?;
+            let gradient_samples = if options.positions_gradient {
+                Some(self.implementation.gradient_samples(&keys, &samples, systems)?)
+            } else {
+                None
+            };
 
             // no selection on the components
             let components = self.implementation.components(&keys);
