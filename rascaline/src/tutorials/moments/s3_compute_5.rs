@@ -20,7 +20,6 @@ const n_neighbors_second: f64 = 0.0;
 struct GeometricMoments {
     cutoff: f64,
     max_moment: usize,
-    gradients: bool,
 }
 
 impl CalculatorBase for GeometricMoments {
@@ -44,7 +43,11 @@ impl CalculatorBase for GeometricMoments {
         todo!()
     }
 
-    fn gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Option<Vec<Arc<Labels>>>, Error> {
+    fn supports_gradient(&self, parameter: &str) -> bool {
+        todo!()
+    }
+
+    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
         todo!()
     }
 
@@ -63,12 +66,16 @@ impl CalculatorBase for GeometricMoments {
     // [compute]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
         // ...
+
+        // add this line
+        let do_positions_gradients = descriptor.blocks()[0].gradient("positions").is_some();
+
         for (system_i, system) in systems.iter_mut().enumerate() {
             // ...
             for pair in system.pairs()? {
                 // ...
 
-                if self.gradients {
+                if do_positions_gradients {
                     let mut moment_gradients = Vec::new();
                     for k in 0..=self.max_moment {
                         moment_gradients.push([

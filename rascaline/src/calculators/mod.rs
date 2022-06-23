@@ -29,6 +29,10 @@ pub trait CalculatorBase: std::panic::RefUnwindSafe {
     /// systems. This function should return one set of samples for each key.
     fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error>;
 
+    /// Can this calculator compute gradients with respect to the `parameter`?
+    /// Right now, `parameter` can be either `"positions"` or `"cell"`.
+    fn supports_gradient(&self, parameter: &str) -> bool;
+
     /// Get the samples for gradients with respect to positions, corresponding
     /// the given values samples.
     ///
@@ -36,7 +40,7 @@ pub trait CalculatorBase: std::panic::RefUnwindSafe {
     ///
     /// If the gradients with respect to positions are not available, this
     /// function should return an error.
-    fn gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error>;
+    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error>;
 
     /// Get the components this calculator computes for each key.
     fn components(&self, keys: &Labels) -> Vec<Vec<Arc<Labels>>>;
@@ -55,8 +59,10 @@ pub trait CalculatorBase: std::panic::RefUnwindSafe {
     /// [`CalculatorBase::properties`]: instead they will only contain the
     /// values that where requested by the end user.
     ///
-    /// Gradients are allocated if [`CalculatorBase::gradient_samples`] returned
-    /// `Some`.
+    /// Gradients (with respect to positions or cell) are allocated in each
+    /// block if they are supported according to
+    /// [`CalculatorBase::supports_gradient`], and the users requested them as
+    /// part of the calculation options.
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error>;
 }
 

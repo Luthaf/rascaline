@@ -212,6 +212,9 @@ pub struct rascal_calculation_options_t {
     /// Compute the gradients of the representation with respect to the atomic
     /// positions, if they are implemented for this calculator
     positions_gradient: bool,
+    /// Compute the gradients of the representation with respect to the cell
+    /// vectors, if they are implemented for this calculator
+    cell_gradient: bool,
     /// Copy the data from systems into native `SimpleSystem`. This can be
     /// faster than having to cross the FFI boundary too often.
     use_native_system: bool,
@@ -265,6 +268,7 @@ pub unsafe extern fn rascal_calculator_compute(
 
         let rust_options = CalculationOptions {
             positions_gradient: options.positions_gradient,
+            cell_gradient: options.cell_gradient,
             use_native_system: options.use_native_system,
             selected_samples: convert_labels_selection(&options.selected_samples, &mut selected_samples)?,
             selected_properties: convert_labels_selection(&options.selected_properties, &mut selected_properties)?,

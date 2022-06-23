@@ -157,6 +157,9 @@ pub struct CalculationOptions<'a> {
     /// Compute the gradients of the representation with respect to the atomic
     /// positions, if they are implemented for this calculator
     pub positions_gradient: bool,
+    /// Compute the gradients of the representation with respect to the cell
+    /// vectors, if they are implemented for this calculator
+    pub cell_gradient: bool,
     /// Copy the data from systems into native `SimpleSystem`. This can be
     /// faster than having to cross the FFI boundary too often.
     pub use_native_system: bool,
@@ -170,6 +173,7 @@ impl<'a> Default for CalculationOptions<'a> {
     fn default() -> CalculationOptions<'a> {
         CalculationOptions {
             positions_gradient: false,
+            cell_gradient: false,
             use_native_system: false,
             selected_samples: LabelsSelection::All,
             selected_properties: LabelsSelection::All,
@@ -229,6 +233,129 @@ impl Calculator {
         self.implementation.keys(systems)
     }
 
+    #[time_graph::instrument(name="Calculator::prepare")]
+    fn prepare(&mut self, systems: &mut [Box<dyn System>], options: CalculationOptions,) -> Result<TensorMap, Error> {
+        // TODO: allow selecting a subset of keys?
+        let keys = self.implementation.keys(systems)?;
+
+        let samples = options.selected_samples.select(
+            "samples",
+            &keys,
+            || self.implementation.samples_names(),
+            |keys| self.implementation.samples(keys, systems),
+            |block| Arc::clone(&block.values().samples)
+        )?;
+
+        let positions_gradient_samples = if options.positions_gradient {
+            if !self.implementation.supports_gradient("positions") {
+                return Err(Error::InvalidParameter(format!(
+                    "the {} calculator does not support gradients with respect to positions",
+                    self.name()
+                )));
+            }
+
+            Some(self.implementation.positions_gradient_samples(&keys, &samples, systems)?)
+        } else {
+            None
+        };
+
+        let cell_gradient_samples = if options.cell_gradient {
+            if !self.implementation.supports_gradient("cell") {
+                return Err(Error::InvalidParameter(format!(
+                    "the {} calculator does not support gradients with respect to the cell",
+                    self.name()
+                )));
+            }
+
+            let mut cell_gradient_samples = Vec::new();
+            for samples in &samples {
+                let mut builder = LabelsBuilder::new(vec!["sample"]);
+                for sample_i in 0..samples.count() {
+                    builder.add(&[sample_i]);
+                }
+                cell_gradient_samples.push(Arc::new(builder.finish()));
+            }
+            Some(cell_gradient_samples)
+        } else {
+            None
+        };
+
+        // no selection on the components
+        let components = self.implementation.components(&keys);
+
+        let properties = options.selected_properties.select(
+            "properties",
+            &keys,
+            || self.implementation.properties_names(),
+            |keys| Ok(self.implementation.properties(keys)),
+            |block| Arc::clone(&block.values().properties),
+        )?;
+
+        assert_eq!(keys.count(), samples.len());
+        assert_eq!(keys.count(), components.len());
+        assert_eq!(keys.count(), properties.len());
+
+        let direction = direction_component("direction");
+        let direction_1 = direction_component("direction_1");
+        let direction_2 = direction_component("direction_2");
+
+
+        let mut blocks = Vec::new();
+        for (block_i, ((samples, components), properties)) in samples.into_iter().zip(components).zip(properties).enumerate() {
+            let shape = shape_from_labels(
+                &samples, &components, &properties
+            );
+            let mut new_block = TensorBlock::new(
+                ArrayD::from_elem(shape, 0.0),
+                samples,
+                components.clone(),
+                Arc::clone(&properties),
+            )?;
+
+            if let Some(ref gradient_samples) = positions_gradient_samples {
+                let gradient_samples = &gradient_samples[block_i];
+                assert_eq!(gradient_samples.names(), ["sample", "structure", "atom"]);
+
+                // add the x/y/z component for gradients
+                let mut components = components.clone();
+                components.insert(0, Arc::clone(&direction));
+                let shape = shape_from_labels(
+                    gradient_samples, &components, &properties
+                );
+
+                new_block.add_gradient(
+                    "positions",
+                    ArrayD::from_elem(shape, 0.0),
+                    Arc::clone(gradient_samples),
+                    components,
+                )?;
+            }
+
+            if let Some(ref gradient_samples) = cell_gradient_samples {
+                let gradient_samples = &gradient_samples[block_i];
+
+                // add the components for cell gradients
+                let mut components = components;
+                components.insert(0, Arc::clone(&direction_2));
+                components.insert(0, Arc::clone(&direction_1));
+                let shape = shape_from_labels(
+                    gradient_samples, &components, &properties
+                );
+
+                new_block.add_gradient(
+                    "cell",
+                    ArrayD::from_elem(shape, 0.0),
+                    Arc::clone(gradient_samples),
+                    components,
+                )?;
+            }
+
+            blocks.push(new_block);
+        }
+
+        return Ok(TensorMap::new(keys, blocks)?);
+    }
+
     /// Compute the descriptor for all the given `systems` and store it in
     /// `descriptor`
     ///
@@ -250,80 +377,7 @@ impl Calculator {
             systems
         };
 
-        let mut tensor = time_graph::spanned!("Calculator::prepare", {
-            // TODO: allow selecting a subset of keys?
-            let keys = self.implementation.keys(systems)?;
-
-            let samples = options.selected_samples.select(
-                "samples",
-                &keys,
-                || self.implementation.samples_names(),
-                |keys| self.implementation.samples(keys, systems),
-                |block| Arc::clone(&block.values().samples)
-            )?;
-
-            let gradient_samples = if options.positions_gradient {
-                Some(self.implementation.gradient_samples(&keys, &samples, systems)?)
-            } else {
-                None
-            };
-
-            // no selection on the components
-            let components = self.implementation.components(&keys);
-
-            let properties = options.selected_properties.select(
-                "properties",
-                &keys,
-                || self.implementation.properties_names(),
-                |keys| Ok(self.implementation.properties(keys)),
-                |block| Arc::clone(&block.values().properties),
-            )?;
-
-            assert_eq!(keys.count(), samples.len());
-            assert_eq!(keys.count(), components.len());
-            assert_eq!(keys.count(), properties.len());
-
-            let mut spatial_component = LabelsBuilder::new(vec!["gradient_direction"]);
-            spatial_component.add(&[LabelValue::new(0)]);
-            spatial_component.add(&[LabelValue::new(1)]);
-            spatial_component.add(&[LabelValue::new(2)]);
-            let spatial_component = Arc::new(spatial_component.finish());
-
-            let mut blocks = Vec::new();
-            for (block_i, ((samples, mut components), properties)) in samples.into_iter().zip(components).zip(properties).enumerate() {
-                let shape = shape_from_labels(
-                    &samples, &components, &properties
-                );
-                let mut new_block = TensorBlock::new(
-                    ArrayD::from_elem(shape, 0.0),
-                    samples,
-                    components.clone(),
-                    Arc::clone(&properties),
-                )?;
-
-                if let Some(ref gradient_samples) = gradient_samples {
-                    let gradient_samples = &gradient_samples[block_i];
-                    assert_eq!(gradient_samples.names(), ["sample", "structure", "atom"]);
-
-                    // add the x/y/z component for gradients
-                    components.insert(0, Arc::clone(&spatial_component));
-                    let shape = shape_from_labels(
-                        gradient_samples, &components, &properties
-                    );
-
-                    new_block.add_gradient(
-                        "positions",
-                        ArrayD::from_elem(shape, 0.0),
-                        Arc::clone(gradient_samples),
-                        components,
-                    )?;
-                }
-
-                blocks.push(new_block);
-            }
-
-            TensorMap::new(keys, blocks)?
-        });
+        let mut tensor = self.prepare(systems, options)?;
 
         self.implementation.compute(systems, &mut tensor)?;
 
@@ -344,6 +398,13 @@ fn shape_from_labels(samples: &Labels, components: &[Arc<Labels>], properties: &
     return shape;
 }
 
+fn direction_component(name: &str) -> Arc<Labels> {
+    let mut builder = LabelsBuilder::new(vec![name]);
+    builder.add(&[LabelValue::new(0)]);
+    builder.add(&[LabelValue::new(1)]);
+    builder.add(&[LabelValue::new(2)]);
+    return Arc::new(builder.finish());
+}
 
 // Registration of calculator implementations
 use crate::calculators::DummyCalculator;

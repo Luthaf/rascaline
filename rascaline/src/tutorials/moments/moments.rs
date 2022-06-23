@@ -12,7 +12,6 @@ use crate::calculators::CalculatorBase;
 struct GeometricMoments {
     cutoff: f64,
     max_moment: usize,
-    gradients: bool,
 }
 
 impl CalculatorBase for GeometricMoments {
@@ -54,13 +53,16 @@ impl CalculatorBase for GeometricMoments {
         return Ok(samples);
     }
 
-    fn gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Option<Vec<Arc<Labels>>>, Error> {
+    fn supports_gradient(&self, parameter: &str) -> bool {
+        match parameter {
+            "positions" => true,
+            _ => false,
+        }
+    }
+
+    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
         assert_eq!(keys.names(), ["species_center", "species_neighbor"]);
         debug_assert_eq!(keys.count(), samples.len());
-
-        if !self.gradients {
-            return Ok(None);
-        }
 
         let mut gradient_samples = Vec::new();
         for ([center_species, species_neighbor], samples_for_key) in keys.iter_fixed_size().zip(samples) {
@@ -74,7 +76,7 @@ impl CalculatorBase for GeometricMoments {
             gradient_samples.push(builder.gradients_for(systems, samples_for_key)?);
         }
 
-        return Ok(Some(gradient_samples));
+        return Ok(gradient_samples);
     }
 
     fn components(&self, keys: &Labels) -> Vec<Vec<Arc<Labels>>> {
@@ -98,6 +100,8 @@ impl CalculatorBase for GeometricMoments {
     // [compute]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
         assert_eq!(descriptor.keys().names(), ["species_center", "species_neighbor"]);
+
+        let do_positions_gradients = descriptor.blocks()[0].gradient("positions").is_some();
 
         for (system_i, system) in systems.iter_mut().enumerate() {
             system.compute_neighbors(self.cutoff)?;
@@ -151,7 +155,7 @@ impl CalculatorBase for GeometricMoments {
                     }
                 }
 
-                if self.gradients {
+                if do_positions_gradients {
                     let mut moment_gradients = Vec::new();
                     for k in 0..=self.max_moment {
                         moment_gradients.push([
@@ -243,7 +247,6 @@ mod tests {
         let mut calculator = Calculator::from(Box::new(GeometricMoments{
             cutoff: 3.4,
             max_moment: 0,
-            gradients: false,
         }) as Box<dyn CalculatorBase>);
 
         // create a bunch of systems in a format compatible with `calculator.compute`.
@@ -348,7 +351,6 @@ mod more_tests {
         let mut calculator = Calculator::from(Box::new(GeometricMoments{
             cutoff: 3.4,
             max_moment: 6,
-            gradients: true,
         }) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water", "methane"]);
@@ -385,7 +387,6 @@ mod more_tests {
         let mut calculator = Calculator::from(Box::new(GeometricMoments{
             cutoff: 3.4,
             max_moment: 7,
-            gradients: true,
         }) as Box<dyn CalculatorBase>);
 
         let system = test_system("water");
@@ -396,7 +397,7 @@ mod more_tests {
             epsilon: 1e-20,
         };
 
-        crate::calculators::tests_utils::finite_difference(calculator, system, options);
+        crate::calculators::tests_utils::finite_differences_positions(calculator, &system, options);
     }
     // [finite-differences-test]
 }

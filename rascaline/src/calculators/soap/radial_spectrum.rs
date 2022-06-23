@@ -160,7 +160,14 @@ impl CalculatorBase for SoapRadialSpectrum {
         return Ok(result);
     }
 
-    fn gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn supports_gradient(&self, parameter: &str) -> bool {
+        match parameter {
+            "positions" | "cell" => true,
+            _ => false,
+        }
+    }
+
+    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
         assert_eq!(keys.names(), ["species_center", "species_neighbor"]);
         assert_eq!(keys.count(), samples.len());
 
@@ -202,10 +209,12 @@ impl CalculatorBase for SoapRadialSpectrum {
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
         assert_eq!(descriptor.keys().names(), ["species_center", "species_neighbor"]);
         let do_positions_gradient = descriptor.blocks()[0].gradient("positions").is_some();
+        let do_cell_gradient = descriptor.blocks()[0].gradient("cell").is_some();
 
         let selected = SoapRadialSpectrum::selected_spx_labels(descriptor);
         let options = CalculationOptions {
             positions_gradient: do_positions_gradient,
+            cell_gradient: do_cell_gradient,
             selected_samples: LabelsSelection::Predefined(&selected),
             selected_properties: LabelsSelection::Predefined(&selected),
             ..Default::default()
@@ -290,7 +299,7 @@ mod tests {
     }
 
     #[test]
-    fn finite_differences() {
+    fn finite_differences_positions() {
         let calculator = Calculator::from(Box::new(
             SoapRadialSpectrum::new(parameters()).unwrap()
         ) as Box<dyn CalculatorBase>);
@@ -301,7 +310,7 @@ mod tests {
             max_relative: 5e-5,
             epsilon: 1e-16,
         };
-        crate::calculators::tests_utils::finite_difference(calculator, system, options);
+        crate::calculators::tests_utils::finite_differences_positions(calculator, &system, options);
     }
 
     #[test]

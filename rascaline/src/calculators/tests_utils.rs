@@ -4,7 +4,7 @@ use approx::{assert_relative_eq, assert_ulps_eq};
 use equistore::{Labels, TensorMap};
 
 use crate::calculator::LabelsSelection;
-use crate::{CalculationOptions, Calculator};
+use crate::{CalculationOptions, Calculator, Matrix3};
 use crate::systems::{System, SimpleSystem};
 
 /// Check that computing a partial subset of features/samples works as intended
@@ -203,9 +203,9 @@ pub struct FinalDifferenceOptions {
     pub epsilon: f64,
 }
 
-/// Check that analytical gradients agree with a finite difference calculation
-/// of the gradients.
-pub fn finite_difference(mut calculator: Calculator, mut system: SimpleSystem, options: FinalDifferenceOptions) {
+/// Check that analytical gradients with respect to positions agree with a
+/// finite difference calculation of the gradients.
+pub fn finite_differences_positions(mut calculator: Calculator, system: &SimpleSystem, options: FinalDifferenceOptions) {
     let calculation_options = CalculationOptions {
         positions_gradient: true,
         ..Default::default()
@@ -214,19 +214,19 @@ pub fn finite_difference(mut calculator: Calculator, mut system: SimpleSystem, o
 
     for atom_i in 0..system.size().unwrap() {
         for spatial in 0..3 {
-            system.positions_mut()[atom_i][spatial] += options.displacement / 2.0;
-            let updated_pos = calculator.compute(&mut [Box::new(system.clone())], Default::default()).unwrap();
+            let mut system_pos = system.clone();
+            system_pos.positions_mut()[atom_i][spatial] += options.displacement / 2.0;
+            let updated_pos = calculator.compute(&mut [Box::new(system_pos)], Default::default()).unwrap();
 
-            system.positions_mut()[atom_i][spatial] -= options.displacement;
-            let updated_neg = calculator.compute(&mut [Box::new(system.clone())], Default::default()).unwrap();
-
-            system.positions_mut()[atom_i][spatial] += options.displacement / 2.0;
+            let mut system_neg = system.clone();
+            system_neg.positions_mut()[atom_i][spatial] -= options.displacement / 2.0;
+            let updated_neg = calculator.compute(&mut [Box::new(system_neg)], Default::default()).unwrap();
 
             assert_eq!(updated_pos.keys(), reference.keys());
             assert_eq!(updated_neg.keys(), reference.keys());
 
             for (block_i, (_, block)) in reference.iter().enumerate() {
-                let gradients = &block.gradients()["positions"];
+                let gradients = &block.gradient("positions").unwrap();
                 let block_pos = &updated_pos.blocks()[block_i];
                 let block_neg = &updated_neg.blocks()[block_i];
 
@@ -244,6 +244,72 @@ pub fn finite_difference(mut calculator: Calculator, mut system: SimpleSystem, o
                     let value_neg = block_neg.values().data.as_array().index_axis(Axis(0), sample_i);
                     let gradient = gradients.data.as_array().index_axis(Axis(0), gradient_i);
                     let gradient = gradient.index_axis(Axis(0), spatial);
+
+                    assert_eq!(value_pos.shape(), gradient.shape());
+                    assert_eq!(value_neg.shape(), gradient.shape());
+
+                    let mut finite_difference = value_pos.to_owned().clone();
+                    finite_difference -= &value_neg;
+                    finite_difference /= options.displacement;
+
+                    assert_relative_eq!(
+                        finite_difference, gradient,
+                        epsilon=options.epsilon,
+                        max_relative=options.max_relative,
+                    );
+                }
+            }
+        }
+    }
+}
+
+
+/// Check that analytical gradients with respect to cell agree with a
+/// finite difference calculation of the gradients.
+pub fn finite_differences_cell(mut calculator: Calculator, system: &SimpleSystem, options: FinalDifferenceOptions) {
+    let calculation_options = CalculationOptions {
+        cell_gradient: true,
+        ..Default::default()
+    };
+    let reference = calculator.compute(&mut [Box::new(system.clone())], calculation_options).unwrap();
+
+    for spatial_1 in 0..3 {
+        for spatial_2 in 0..3 {
+            let mut transform = Matrix3::zero();
+            transform[spatial_1][spatial_2] = options.displacement / 2.0;
+
+            let mut system_neg = system.clone();
+            for positions in system_neg.positions_mut() {
+                *positions += transform * *positions;
+            }
+            let updated_pos = calculator.compute(&mut [Box::new(system_neg)], Default::default()).unwrap();
+
+
+            transform[spatial_1][spatial_2] = -options.displacement / 2.0;
+            let mut system_pos = system.clone();
+            for positions in system_pos.positions_mut() {
+                *positions += transform * *positions;
+            }
+            let updated_neg = calculator.compute(&mut [Box::new(system_pos)], Default::default()).unwrap();
+
+
+            for (block_i, (_, block)) in reference.iter().enumerate() {
+                let gradients = &block.gradient("cell").unwrap();
+                let block_pos = &updated_pos.blocks()[block_i];
+                let block_neg = &updated_neg.blocks()[block_i];
+
+                for (gradient_i, [sample_i]) in gradients.samples.iter_fixed_size().enumerate() {
+                    let sample_i = sample_i.usize();
+
+                    // check that the same sample is here in both descriptors
+                    assert_eq!(block_pos.values().samples[sample_i], block.values().samples[sample_i]);
+                    assert_eq!(block_neg.values().samples[sample_i], block.values().samples[sample_i]);
+
+                    let value_pos = block_pos.values().data.as_array().index_axis(Axis(0), sample_i);
+                    let value_neg = block_neg.values().data.as_array().index_axis(Axis(0), sample_i);
+                    let gradient = gradients.data.as_array().index_axis(Axis(0), gradient_i);
+                    let gradient = gradient.index_axis(Axis(0), spatial_1);
+                    let gradient = gradient.index_axis(Axis(0), spatial_2);
 
                     assert_eq!(value_pos.shape(), gradient.shape());
                     assert_eq!(value_neg.shape(), gradient.shape());

@@ -13,7 +13,6 @@ use crate::calculators::CalculatorBase;
 struct GeometricMoments {
     cutoff: f64,
     max_moment: usize,
-    gradients: bool,
 }
 // [struct]
 
@@ -69,14 +68,19 @@ impl CalculatorBase for GeometricMoments {
     }
     // [CalculatorBase::samples]
 
-    // [CalculatorBase::gradient_samples]
-    fn gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Option<Vec<Arc<Labels>>>, Error> {
+    // [CalculatorBase::supports_gradient]
+    fn supports_gradient(&self, parameter: &str) -> bool {
+        match parameter {
+            "positions" => true,
+            _ => false,
+        }
+    }
+    // [CalculatorBase::supports_gradient]
+
+    // [CalculatorBase::positions_gradient_samples]
+    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
         assert_eq!(keys.names(), ["species_center", "species_neighbor"]);
         debug_assert_eq!(keys.count(), samples.len());
-
-        if !self.gradients {
-            return Ok(None);
-        }
 
         let mut gradient_samples = Vec::new();
         for ([center_species, species_neighbor], samples_for_key) in keys.iter_fixed_size().zip(samples) {
@@ -93,9 +97,9 @@ impl CalculatorBase for GeometricMoments {
             gradient_samples.push(builder.gradients_for(systems, samples_for_key)?);
         }
 
-        return Ok(Some(gradient_samples));
+        return Ok(gradient_samples);
     }
-    // [CalculatorBase::gradient_samples]
+    // [CalculatorBase::positions_gradient_samples]
 
     // [CalculatorBase::components]
     fn components(&self, keys: &Labels) -> Vec<Vec<Arc<Labels>>> {

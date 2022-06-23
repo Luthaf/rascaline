@@ -14,7 +14,6 @@ use crate::calculators::CalculatorBase;
 struct GeometricMoments {
     cutoff: f64,
     max_moment: usize,
-    gradients: bool,
 }
 // [struct]
 
@@ -40,7 +39,11 @@ impl CalculatorBase for GeometricMoments {
         todo!()
     }
 
-    fn gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Option<Vec<Arc<Labels>>>, Error> {
+    fn supports_gradient(&self, parameter: &str) -> bool {
+        todo!()
+    }
+
+    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
         todo!()
     }
 

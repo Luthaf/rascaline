@@ -74,9 +74,8 @@ we get to using it.
    :end-before: [imports]
 
 Then, we can define a struct for our new calculator ``GeometricMoments``. It
-will contain three fields: ``cutoff`` to store the cutoff radius, ``max_moment``
-to store the maximal moment to compute, and ``gradients`` to indicate wether we
-want to compute gradients of the descriptor or not.
+will contain two fields: ``cutoff`` to store the cutoff radius, and
+``max_moment`` to store the maximal moment to compute.
 
 .. literalinclude:: ../../../rascaline/src/tutorials/moments/s1_scaffold.rs
    :language: rust
@@ -205,37 +204,12 @@ right set of samples for each key. But since a lot of representation are built
 on atom-centered neighborhoods, there is already a tool to create the right set
 of samples in the form of ``AtomCenteredSamples``.
 
-Gradients samples
-+++++++++++++++++
-
-Continuing with the samples, the ``gradient_samples`` function is here to
-determine the samples associated with the gradients of the values with respect
-to the positions of the atoms. This function get as input the set of keys, the
-list of samples associated with each key, and the list of systems on which we
-want to run the calculation. Compared to the ``CalculatorBase::samples``
-function, there is an extra ``Option`` in the return type. If the calculator
-does not implement samples, or the user did not request gradients with respect
-to positions, this function should return ``None``. Otherwise, it should return
-``Some(vec_of_gradient_samples_per_key)``.
-
-We are again using the ``AtomCenteredSamples`` here to share code between
-multiple calculators all using atom-centered samples.
-
-.. literalinclude:: ../../../rascaline/src/tutorials/moments/s2_metadata.rs
-   :language: rust
-   :start-after: [CalculatorBase::gradient_samples]
-   :end-before: [CalculatorBase::gradient_samples]
-   :dedent: 4
-
 Components
 ++++++++++
 
 The next set of metadata associated with a block are the components. Each block
 can have 0 or more components, that should be used to store metadata and
-information about symmetry operations or any kind of tensorial components. For
-examples, all gradients with respect to positions have a set of
-``gradient_direction`` Labels, running from 0 to 2 and indicating the Cartesian
-direction of the gradient.
+information about symmetry operations or any kind of tensorial components.
 
 Here, we dont' have any components (the ``GeometricMoments`` representation is
 invariant), so we just return a list (one for each key) of empty vectors.
@@ -250,11 +224,10 @@ invariant), so we just return a list (one for each key) of empty vectors.
 Properties
 ++++++++++
 
-The only remaining piece of metadata required to create a `TensorMap`_ is the
-definition of properties, i.e. the metadata associated with the columns of the
-data arrays. Like for the samples, we have one function to define the set of
-names associated with each variable in the properties `Labels`_, and one
-function to compute the set of properties defined for each key.
+The *properties* define metadata associated with the columns of the data arrays.
+Like for the samples, we have one function to define the set of names associated
+with each variable in the properties `Labels`_, and one function to compute the
+set of properties defined for each key.
 
 In our case, there is only one variable in the properties labels, the power
 :math:`k` used to compute the moment. When building the full list of Labels for
@@ -267,6 +240,54 @@ are the same for each key/block; and return multiple references to the same
    :start-after: [CalculatorBase::properties]
    :end-before: [CalculatorBase::properties]
    :dedent: 4
+
+
+Gradients
++++++++++
+
+Finally, we have metadata related to the gradients. First, the
+``supports_gradient`` function should return which if any of the gradients can
+be computed by the current calculator. Typically ``parameter`` is either
+``"positions"`` or ``"cell"``. Here we only support computing the gradients with
+respect to positions.
+
+.. literalinclude:: ../../../rascaline/src/tutorials/moments/s2_metadata.rs
+   :language: rust
+   :start-after: [CalculatorBase::supports_gradient]
+   :end-before: [CalculatorBase::supports_gradient]
+   :dedent: 4
+
+If the user request the calculation of some gradients, and the calculator
+supports it, the next step is to define the same set of metadata as for the
+values above: samples, components and properties. Properties are easy, because
+they are the same between the values and the gradients. The components are also
+similar, with some additional components added at the beginning depending on the
+kind of gradient. For example, if a calculator uses ``[first, second]`` as it's
+set of components, the ``"positions"`` gradient would use ``[direction, first,
+second]``, where ``direction`` contains 3 entries (x/y/z). The ``"cell"``
+gradients would use ``[direction_1, direction_2, first, second]``, with
+``direction_1`` and ``direction_2`` containing 3 entries (x/y/z) each.
+
+Finally, the samples needs to be defined. For the ``"cell"`` gradients, there is
+always exactly one gradient sample per value sample. For the ``"positions"``
+gradient samples, we could have one gradient sample for each atom in the same
+structure for each value sample. However, this would create a very large number
+of gradient samples (number of atoms squared), and a lot of entries would be
+filled with zeros. Instead, each calculator which supports positions gradients
+must implement the ``positions_gradient_samples`` function, and use it to return
+only the sample associated with non-zero gradients. This function get as input
+the set of keys, the list of samples associated with each key, and the list of
+systems on which we want to run the calculation.
+
+We are again using the ``AtomCenteredSamples`` here to share code between
+multiple calculators all using atom-centered samples.
+
+.. literalinclude:: ../../../rascaline/src/tutorials/moments/s2_metadata.rs
+   :language: rust
+   :start-after: [CalculatorBase::positions_gradient_samples]
+   :end-before: [CalculatorBase::positions_gradient_samples]
+   :dedent: 4
+
 
 We are now done defining the metadata associated with our ``GeometricMoments``
 calculator! In the next section, we'll go over the actual calculation of the
@@ -360,19 +381,25 @@ accumulate it in the descriptor values array:
    :dedent: 4
 
 
-The gradient with respect to positions of our representation are computed with:
+Finally, we can deal with the gradients. We first check if gradient data is
+defined in the descriptor we need to fill, by checking if it is defined on the
+first block (we know it is either defined on all blocks or none).
+
+If we need to compute the gradients with respect to atomic positions, we will us
+the following expression:
 
 .. math::
 
     \frac{\partial}{\partial \vec{r_{j}}} \braket{\alpha k | \chi_i} = \frac{\vec{r_{ij}}}{r_{ij}} \cdot \frac{k \ r_{ij}^{k - 1} \ \delta_{\alpha, \alpha_j}}{N_\text{neighbors}} = \vec{r_{ij}} \frac{k \ r_{ij}^{k - 2} \ \delta_{\alpha, \alpha_j}}{N_\text{neighbors}}
 
-The code to compute gradients is very similar, checking the existence of a given
-gradient sample before writing to it. There are now four possible contributions
-for a given pair: :math:`\partial \ket{\chi_i} / \partial r_j`, :math:`\partial
-\ket{\chi_j} / \partial r_i`, :math:`\partial \ket{\chi_i} / \partial r_i` and
-:math:`\partial \ket{\chi_j} / \partial r_j`, where :math:`\ket{\chi_i}` is the
-representation around atom :math:`i`. Another way to say it is that in addition
-to the gradients of the descriptor centered on :math:`i` with respect to atom
+The code to compute gradients is very similar to the code computing the
+representation, checking the existence of a given gradient sample before writing
+to it. There are now four possible contributions for a given pair:
+:math:`\partial \ket{\chi_i} / \partial r_j`, :math:`\partial \ket{\chi_j} /
+\partial r_i`, :math:`\partial \ket{\chi_i} / \partial r_i` and :math:`\partial
+\ket{\chi_j} / \partial r_j`, where :math:`\ket{\chi_i}` is the representation
+around atom :math:`i`. Another way to say it is that in addition to the
+gradients of the descriptor centered on :math:`i` with respect to atom
 :math:`j`, we also need to account for the gradient of the descriptor centered
 on atom :math:`i` with respect to its own position.
 
@@ -418,6 +445,7 @@ registry itself (a ``BTreeMap``), the calculator name, the struct implementing
 `CalculatorBase`_ and optionally a struct to use as parameters to create the
 previous one. In our case, we want to use the three arguments version in
 something like ``add_calculator!(map, "geometric_moments", GeometricMoments);``.
+You'll need to make sure to bring your new calculator in scope with a `use` item.
 
 Additionally, you may want to add a convenience class in Python for our new
 calculator. For this, you can add a class like this to

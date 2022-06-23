@@ -86,10 +86,12 @@ impl CalculatorBase for SortedDistances {
         return Ok(samples);
     }
 
-    fn gradient_samples(&self, _: &Labels, _: &[Arc<Labels>], _: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
-        return Err(Error::InvalidParameter(
-            "gradient with respect to positions are not implemented".into()
-        ));
+    fn supports_gradient(&self, _parameter: &str) -> bool {
+        return false;
+    }
+
+    fn positions_gradient_samples(&self, _: &Labels, _: &[Arc<Labels>], _: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+        unimplemented!()
     }
 
     fn components(&self, keys: &Labels) -> Vec<Vec<Arc<Labels>>> {

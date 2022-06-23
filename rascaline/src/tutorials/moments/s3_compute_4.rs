@@ -19,7 +19,6 @@ const second_block_id: usize = 0;
 struct GeometricMoments {
     cutoff: f64,
     max_moment: usize,
-    gradients: bool,
 }
 
 impl CalculatorBase for GeometricMoments {
@@ -43,7 +42,11 @@ impl CalculatorBase for GeometricMoments {
         todo!()
     }
 
-    fn gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Option<Vec<Arc<Labels>>>, Error> {
+    fn supports_gradient(&self, parameter: &str) -> bool {
+        todo!()
+    }
+
+    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
         todo!()
     }
 
@@ -92,9 +95,7 @@ impl CalculatorBase for GeometricMoments {
                     }
                 }
 
-                if self.gradients {
-                    // more code coming up
-                }
+                // more code coming up
             }
         }
         return Ok(());
