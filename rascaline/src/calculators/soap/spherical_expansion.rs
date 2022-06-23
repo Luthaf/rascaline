@@ -205,6 +205,8 @@ struct Pair {
     distance: f64,
     /// normalized direction vector from the first to the second atom
     direction: Vector3D,
+    /// full vector from the first to the second atom
+    vector: Vector3D,
 }
 
 /// The actual calculator used to compute SOAP spherical expansion coefficients
@@ -314,7 +316,7 @@ impl SphericalExpansion {
     /// Compute the contribution of a single pair and store the corresponding
     /// data inside the given descriptor
     #[allow(clippy::too_many_lines)]
-    fn compute_for_pair(&self, pair: &Pair, descriptor: &mut TensorMapView, do_gradients: bool) {
+    fn compute_for_pair(&self, pair: &Pair, descriptor: &mut TensorMapView, do_gradients: GradientsOptions) {
         let mut radial_integral = self.radial_integral.get_or(|| {
             let ri = RadialIntegralImpl::new(&self.parameters).expect("invalid parameters");
             RefCell::new(ri)
@@ -324,8 +326,8 @@ impl SphericalExpansion {
             RefCell::new(SphericalHarmonicsImpl::new(&self.parameters))
         }).borrow_mut();
 
-        radial_integral.compute(pair.distance, do_gradients);
-        spherical_harmonics.compute(pair.direction, do_gradients);
+        radial_integral.compute(pair.distance, do_gradients.either());
+        spherical_harmonics.compute(pair.direction, do_gradients.either());
 
         let f_scaling = self.scaling_functions(pair.distance);
         let f_scaling_grad = self.scaling_functions_gradient(pair.distance);
@@ -333,7 +335,7 @@ impl SphericalExpansion {
         // Cache allocation for coefficients & gradients
         let shape = (2 * self.parameters.max_angular + 1, self.parameters.max_radial);
         let mut coefficients = Array2::from_elem(shape, 0.0);
-        let mut coefficients_grad = if do_gradients {
+        let mut coefficients_grad = if do_gradients.either() {
             let shape = (3, 2 * self.parameters.max_angular + 1, self.parameters.max_radial);
             Some(Array3::from_elem(shape, 0.0))
         } else {
@@ -424,8 +426,10 @@ impl SphericalExpansion {
                     descriptor.block_mut(block_id),
                     spherical_harmonics_l,
                     (pair.first_sample, pair.second_sample),
+                    pair.vector,
                     &coefficients,
                     &coefficients_grad,
+                    do_gradients,
                 );
             }
 
@@ -441,8 +445,10 @@ impl SphericalExpansion {
                     descriptor.block_mut(block_id),
                     spherical_harmonics_l,
                     (pair.second_sample, pair.first_sample),
+                    -pair.vector,
                     &coefficients,
                     &coefficients_grad,
+                    do_gradients,
                 );
             }
         }
@@ -454,66 +460,103 @@ impl SphericalExpansion {
         mut block: TensorBlockRefMut,
         spherical_harmonics_l: usize,
         (first_sample, second_sample): ([LabelValue; 2], [LabelValue; 2]),
+        pair_vector: Vector3D,
         pair_contribution: &Array2<f64>,
         pair_contribution_grad: &Option<Array3<f64>>,
+        do_gradient: GradientsOptions,
     ) {
 
         let values = block.values_mut();
         let mut array = extract_unsafe_array(&mut values.data);
 
-        if let Some(sample_i) = values.samples.position(&first_sample) {
-            for m in 0..(2 * spherical_harmonics_l + 1) {
-                for (property_i, &[n]) in values.properties.iter_fixed_size().enumerate() {
-                    // SAFETY: we are doing in-bounds access, and removing
-                    // the bounds checks is a significant speed-up for this code
-                    unsafe {
-                        let out = array.uget_mut([sample_i, m, property_i]);
-                        *out += *pair_contribution.uget([m, n.usize()]);
-                    }
+        let first_sample_position = values.samples.position(&first_sample);
+        if first_sample_position.is_none() {
+            // nothing to do
+            return;
+        }
+        let sample_i = first_sample_position.expect("we just checked");
+
+        for m in 0..(2 * spherical_harmonics_l + 1) {
+            for (property_i, &[n]) in values.properties.iter_fixed_size().enumerate() {
+                // SAFETY: we are doing in-bounds access, and removing
+                // the bounds checks is a significant speed-up for this code
+                unsafe {
+                    let out = array.uget_mut([sample_i, m, property_i]);
+                    *out += *pair_contribution.uget([m, n.usize()]);
                 }
             }
+        }
 
-            if let Some(ref pair_contribution_grad) = pair_contribution_grad {
-                let gradient = block.gradient_mut("positions").expect("missing gradient storage");
-                let mut array = extract_unsafe_array(&mut gradient.data);
+        // accumulate gradients w.r.t. positions
+        if do_gradient.positions {
+            let pair_contribution_grad = pair_contribution_grad.as_ref().expect("missing pair contribution to gradients");
+            let gradient = block.gradient_mut("positions").expect("missing gradient storage");
+            let mut array = extract_unsafe_array(&mut gradient.data);
 
-                // gradient of the first sample with respect to the first atom
-                let self_grad_sample_i = gradient.samples.position(&[
-                    // first_sample contains [system_i, first_atom]
-                    sample_i.into(), first_sample[0], first_sample[1]
-                ]);
+            // gradient of the first sample with respect to the first atom
+            let self_grad_sample_i = gradient.samples.position(&[
+                // first_sample contains [system_i, first_atom]
+                sample_i.into(), first_sample[0], first_sample[1]
+            ]);
 
-                // gradient of the first sample with respect to the second atom
-                let other_grad_sample_i = gradient.samples.position(&[
-                    sample_i.into(), second_sample[0], second_sample[1]
-                ]);
+            // gradient of the first sample with respect to the second atom
+            let other_grad_sample_i = gradient.samples.position(&[
+                sample_i.into(), second_sample[0], second_sample[1]
+            ]);
 
-                if let Some(gradient_sample_i) = self_grad_sample_i {
-                    for spatial in 0..3 {
-                        for m in 0..(2 * spherical_harmonics_l + 1) {
-                            for (property_i, &[n]) in gradient.properties.iter_fixed_size().enumerate() {
-                                // SAFETY: we are doing in-bounds access, and
-                                // removing the bounds checks is a significant
-                                // speed-up for this code
-                                unsafe {
-                                    let out = array.uget_mut([gradient_sample_i, spatial, m, property_i]);
-                                    *out -= *pair_contribution_grad.uget([spatial, m, n.usize()]);
-                                }
+            if let Some(gradient_sample_i) = self_grad_sample_i {
+                for spatial in 0..3 {
+                    for m in 0..(2 * spherical_harmonics_l + 1) {
+                        for (property_i, &[n]) in gradient.properties.iter_fixed_size().enumerate() {
+                            // SAFETY: we are doing in-bounds access, and
+                            // removing the bounds checks is a significant
+                            // speed-up for this code
+                            unsafe {
+                                let out = array.uget_mut([gradient_sample_i, spatial, m, property_i]);
+                                *out -= *pair_contribution_grad.uget([spatial, m, n.usize()]);
                             }
                         }
                     }
                 }
+            }
 
-                if let Some(gradient_sample_i) = other_grad_sample_i {
-                    for spatial in 0..3 {
+            if let Some(gradient_sample_i) = other_grad_sample_i {
+                for spatial in 0..3 {
+                    for m in 0..(2 * spherical_harmonics_l + 1) {
+                        for (property_i, &[n]) in gradient.properties.iter_fixed_size().enumerate() {
+                            // SAFETY: we are doing in-bounds access, and
+                            // removing the bounds checks is a significant
+                            // speed-up for this code
+                            unsafe {
+                                let out = array.uget_mut([gradient_sample_i, spatial, m, property_i]);
+                                *out += *pair_contribution_grad.uget([spatial, m, n.usize()]);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // accumulate gradients w.r.t. cell vector
+        if do_gradient.cell {
+            let pair_contribution_grad = pair_contribution_grad.as_ref().expect("missing pair contribution to gradients");
+            let gradient = block.gradient_mut("cell").expect("missing gradient storage");
+            let mut array = extract_unsafe_array(&mut gradient.data);
+
+            // gradient of the first sample with respect to the first atom
+            let gradient_sample_i = gradient.samples.position(&[sample_i.into()]);
+
+            if let Some(gradient_sample_i) = gradient_sample_i {
+                for spatial_1 in 0..3 {
+                    for spatial_2 in 0..3 {
                         for m in 0..(2 * spherical_harmonics_l + 1) {
                             for (property_i, &[n]) in gradient.properties.iter_fixed_size().enumerate() {
                                 // SAFETY: we are doing in-bounds access, and
                                 // removing the bounds checks is a significant
                                 // speed-up for this code
                                 unsafe {
-                                    let out = array.uget_mut([gradient_sample_i, spatial, m, property_i]);
-                                    *out += *pair_contribution_grad.uget([spatial, m, n.usize()]);
+                                    let out = array.uget_mut([gradient_sample_i, spatial_1, spatial_2, m, property_i]);
+                                    *out += *pair_contribution_grad.uget([spatial_1, m, n.usize()]) * pair_vector[spatial_2];
                                 }
                             }
                         }
@@ -523,6 +566,20 @@ impl SphericalExpansion {
         }
     }
 }
+
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct GradientsOptions {
+    pub positions: bool,
+    pub cell: bool,
+}
+
+impl GradientsOptions {
+    pub fn either(self) -> bool {
+        return self.positions || self.cell;
+    }
+}
+
 
 impl CalculatorBase for SphericalExpansion {
     fn name(&self) -> String {
@@ -587,7 +644,15 @@ impl CalculatorBase for SphericalExpansion {
         return Ok(result);
     }
 
-    fn gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn supports_gradient(&self, parameter: &str) -> bool {
+        match parameter {
+            "positions" => true,
+            "cell" => true,
+            _ => false,
+        }
+    }
+
+    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
         assert_eq!(keys.names(), ["spherical_harmonics_l", "species_center", "species_neighbor"]);
         assert_eq!(keys.count(), samples.len());
 
@@ -652,7 +717,10 @@ impl CalculatorBase for SphericalExpansion {
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
         assert_eq!(descriptor.keys().names(), ["spherical_harmonics_l", "species_center", "species_neighbor"]);
 
-        let do_positions_gradient = descriptor.blocks()[0].gradient("positions").is_some();
+        let do_gradients = GradientsOptions {
+            positions: descriptor.blocks()[0].gradient("positions").is_some(),
+            cell: descriptor.blocks()[0].gradient("cell").is_some(),
+        };
         self.do_self_contributions(descriptor);
         let mut descriptors_by_system = split_by_system(descriptor, systems.len());
 
@@ -690,9 +758,10 @@ impl CalculatorBase for SphericalExpansion {
                         second_species: species[pair.second],
                         distance: pair.distance,
                         direction: direction,
+                        vector: pair.vector,
                     };
 
-                    self.compute_for_pair(&pair, descriptor, do_positions_gradient);
+                    self.compute_for_pair(&pair, descriptor, do_gradients);
                 }
 
                 Ok::<_, Error>(())
@@ -818,11 +887,18 @@ impl<'a> std::ops::DerefMut for TensorMapView<'a> {
 
 /// Split a descriptor into multiple descriptors, one by system. The resulting
 /// descriptors contain views inside the descriptor
+#[allow(clippy::too_many_lines)]
 fn split_by_system(descriptor: &mut TensorMap, n_systems: usize) -> Vec<TensorMapView<'_>> {
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    struct GradientPosition {
+        positions: usize,
+        cell: usize,
+    }
+
     let mut descriptor_by_system = Vec::new();
 
     let mut values_end = vec![0; descriptor.keys().count()];
-    let mut gradients_end = vec![0; descriptor.keys().count()];
+    let mut gradients_end = vec![GradientPosition { positions: 0, cell: 0 }; descriptor.keys().count()];
     for system_i in 0..n_systems {
         let blocks = descriptor.par_iter_mut()
             .zip_eq(&mut values_end)
@@ -831,9 +907,12 @@ fn split_by_system(descriptor: &mut TensorMap, n_systems: usize) -> Vec<TensorMa
                 let values_samples = &block.values().samples;
                 let mut samples = LabelsBuilder::new(values_samples.names());
                 let mut samples_mapping = BTreeMap::new();
+                let mut structure_per_sample = vec![LabelValue::new(-1); values_samples.count()];
 
                 let system_start = *system_end;
                 for (sample_i, &[structure, center]) in values_samples.iter_fixed_size().enumerate().skip(system_start) {
+                    structure_per_sample[sample_i] = structure;
+
                     if structure.usize() == system_i {
                         // this sample is part of to the current system
                         samples.add(&[structure, center]);
@@ -884,17 +963,22 @@ fn split_by_system(descriptor: &mut TensorMap, n_systems: usize) -> Vec<TensorMa
                 ).expect("invalid TensorBlock");
 
                 for (parameter, gradient) in block.gradients_mut() {
-                    // if we have more parameters we need to handle system_start_grad /
-                    // system_end_grad separately for each of them
-                    assert_eq!(parameter, "positions");
-
+                    let system_end_grad = match &**parameter {
+                        "positions" => &mut system_end_grad.positions,
+                        "cell" => &mut system_end_grad.cell,
+                        other => panic!("unsupported gradient parameter {}", other)
+                    };
                     let system_start_grad = *system_end_grad;
+
                     let mut samples = LabelsBuilder::new(gradient.samples.names());
-                    for &[sample, structure, atom] in gradient.samples.iter_fixed_size().skip(system_start_grad) {
+                    for gradient_sample in gradient.samples.iter().skip(system_start_grad) {
+                        let sample_i = gradient_sample[0].usize();
+                        let structure = structure_per_sample[sample_i];
                         if structure.usize() == system_i {
                             // this sample is part of to the current system
-                            let sample = *samples_mapping.get(&sample.usize()).expect("missing sample in mapping");
-                            samples.add(&[sample.into(), structure, atom]);
+                            let mut new_gradient_sample = gradient_sample.to_vec();
+                            new_gradient_sample[0] = samples_mapping[&sample_i].into();
+                            samples.add(&new_gradient_sample);
 
                             *system_end_grad += 1;
                         } else if structure.usize() > system_i {
@@ -1001,7 +1085,7 @@ mod tests {
     }
 
     #[test]
-    fn finite_differences() {
+    fn finite_differences_positions() {
         let calculator = Calculator::from(Box::new(SphericalExpansion::new(
             parameters()
         ).unwrap()) as Box<dyn CalculatorBase>);
@@ -1012,7 +1096,22 @@ mod tests {
             max_relative: 1e-5,
             epsilon: 1e-16,
         };
-        crate::calculators::tests_utils::finite_difference(calculator, system, options);
+        crate::calculators::tests_utils::finite_differences_positions(calculator, &system, options);
+    }
+
+    #[test]
+    fn finite_differences_cell() {
+        let calculator = Calculator::from(Box::new(SphericalExpansion::new(
+            parameters()
+        ).unwrap()) as Box<dyn CalculatorBase>);
+
+        let system = test_system("water");
+        let options = crate::calculators::tests_utils::FinalDifferenceOptions {
+            displacement: 1e-6,
+            max_relative: 1e-5,
+            epsilon: 1e-16,
+        };
+        crate::calculators::tests_utils::finite_differences_cell(calculator, &system, options);
     }
 
     #[test]

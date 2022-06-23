@@ -268,6 +268,11 @@ typedef struct rascal_calculation_options_t {
    */
   bool positions_gradient;
   /**
+   * Compute the gradients of the representation with respect to the cell
+   * vectors, if they are implemented for this calculator
+   */
+  bool cell_gradient;
+  /**
    * Copy the data from systems into native `SimpleSystem`. This can be
    * faster than having to cross the FFI boundary too often.
    */

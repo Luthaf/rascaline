@@ -25,12 +25,14 @@ def _convert_systems(systems):
 
 def _options_to_c(
     positions_gradient,
+    cell_gradient,
     use_native_system,
     selected_samples,
     selected_properties,
 ):
     c_options = rascal_calculation_options_t()
     c_options.positions_gradient = bool(positions_gradient)
+    c_options.cell_gradient = bool(cell_gradient)
     c_options.use_native_system = bool(use_native_system)
 
     # store data to keep alive here
@@ -119,6 +121,7 @@ class CalculatorBase:
         systems: Union[IntoSystem, List[IntoSystem]],
         *,
         positions_gradient: bool = False,
+        cell_gradient: bool = False,
         use_native_system: bool = True,
         selected_samples: Optional[Union[Labels, TensorMap]] = None,
         selected_properties: Optional[Union[Labels, TensorMap]] = None,
@@ -140,7 +143,13 @@ class CalculatorBase:
             with respect to the atomic positions, if they are implemented for
             this calculator. The gradients are stored inside the different
             blocks, and can be accessed with
-            ``descriptor.block(...).gradient("position)``
+            ``descriptor.block(...).gradient("positions")``
+
+        :param cell_gradient: Compute the gradients of the representation
+            with respect to the cell vectors, if they are implemented for
+            this calculator. The gradients are stored inside the different
+            blocks, and can be accessed with
+            ``descriptor.block(...).gradient("cell")``
 
         :param selected_samples: Set of samples on which to run the calculation.
             Use ``None`` to run the calculation on all samples in the
@@ -185,6 +194,7 @@ class CalculatorBase:
 
         c_options = _options_to_c(
             positions_gradient=positions_gradient,
+            cell_gradient=cell_gradient,
             use_native_system=use_native_system,
             selected_samples=selected_samples,
             selected_properties=selected_properties,

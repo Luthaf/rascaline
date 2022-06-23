@@ -1,7 +1,6 @@
 use std::collections::{BTreeSet, HashMap};
 use std::sync::Arc;
 
-use ndarray::ArrayD;
 use ndarray::parallel::prelude::*;
 
 use equistore::{TensorMap, TensorBlock, EmptyArray};
@@ -12,6 +11,7 @@ use crate::{CalculationOptions, Calculator, LabelsSelection};
 use crate::{Error, System};
 
 use super::SphericalExpansionParameters;
+use super::spherical_expansion::GradientsOptions;
 use super::{SphericalExpansion, RadialBasis, CutoffFunction, RadialScaling};
 
 use crate::labels::{SpeciesFilter, SamplesBuilder};
@@ -271,7 +271,6 @@ impl SoapPowerSpectrum {
         key: &[LabelValue],
         properties: &Labels,
         spherical_expansion: &'a TensorMap,
-        positions_gradient: bool,
     ) -> Vec<SpxPropertiesToCombine<'a>> {
         let species_center = key[0];
         let species_neighbor_1 = key[1];
@@ -298,23 +297,12 @@ impl SoapPowerSpectrum {
             let property_1 = block_1.values().properties.position(&[n1]).expect("missing n1");
             let property_2 = block_2.values().properties.position(&[n2]).expect("missing n2");
 
-            let (gradient_1, gradient_2) = if positions_gradient {
-                let spx_gradient_1 = block_1.gradient("positions").expect("missing spherical expansion gradients");
-                let spx_gradient_2 = block_2.gradient("positions").expect("missing spherical expansion gradients");
-
-                (Some(spx_gradient_1.data.as_array()), Some(spx_gradient_2.data.as_array()))
-            } else {
-                (None, None)
-            };
-
             spx_to_combine.push(SpxPropertiesToCombine {
                 spherical_harmonics_l: l.usize(),
                 property_1,
                 property_2,
-                values_1,
-                values_2,
-                gradient_1,
-                gradient_2,
+                block_1,
+                block_2,
             });
         }
 
@@ -332,14 +320,10 @@ struct SpxPropertiesToCombine<'a> {
     property_1: usize,
     /// position of n2 in the second spherical expansion properties
     property_2: usize,
-    /// array of values for the first spherical expansion
-    values_1: &'a ArrayD<f64>,
-    /// array of values for the second spherical expansion
-    values_2: &'a ArrayD<f64>,
-    /// array of gradients for the first spherical expansion
-    gradient_1: Option<&'a ArrayD<f64>>,
-    /// array of gradients for second first spherical expansion
-    gradient_2: Option<&'a ArrayD<f64>>,
+    /// TODO
+    block_1: &'a TensorBlock,
+    /// TODO
+    block_2: &'a TensorBlock,
 }
 
 /// Indexes of the spherical expansion samples/rows corresponding to each power
@@ -402,7 +386,7 @@ impl CalculatorBase for SoapPowerSpectrum {
         return Ok(result);
     }
 
-    fn gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
         assert_eq!(keys.names(), ["species_center", "species_neighbor_1", "species_neighbor_2"]);
         assert_eq!(keys.count(), samples.len());
 
@@ -423,6 +407,14 @@ impl CalculatorBase for SoapPowerSpectrum {
         }
 
         return Ok(gradient_samples);
+    }
+
+    fn supports_gradient(&self, parameter: &str) -> bool {
+        match parameter {
+            "positions" => true,
+            "cell" => true,
+            _ => false,
+        }
     }
 
     fn components(&self, keys: &equistore::Labels) -> Vec<Vec<Arc<Labels>>> {
@@ -451,11 +443,15 @@ impl CalculatorBase for SoapPowerSpectrum {
     #[time_graph::instrument(name = "SoapPowerSpectrum::compute")]
     #[allow(clippy::too_many_lines)]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
-        let do_positions_gradient = descriptor.blocks()[0].gradient("positions").is_some();
+        let do_gradients = GradientsOptions {
+            positions: descriptor.blocks()[0].gradient("positions").is_some(),
+            cell: descriptor.blocks()[0].gradient("cell").is_some(),
+        };
 
         let selected = self.selected_spx_labels(descriptor);
         let options = CalculationOptions {
-            positions_gradient: do_positions_gradient,
+            positions_gradient: do_gradients.positions,
+            cell_gradient: do_gradients.cell,
             selected_samples: LabelsSelection::Predefined(&selected),
             selected_properties: LabelsSelection::Predefined(&selected),
             ..Default::default()
@@ -477,7 +473,6 @@ impl CalculatorBase for SoapPowerSpectrum {
                 key,
                 &values.properties,
                 &spherical_expansion,
-                do_positions_gradient,
             );
 
             let mapping = samples_mapping.get(key).expect("missing sample mapping");
@@ -488,6 +483,9 @@ impl CalculatorBase for SoapPowerSpectrum {
                 .zip_eq(&mapping.values)
                 .for_each(|(mut values, &(spx_sample_1, spx_sample_2))| {
                     for (property_i, spx) in properties_to_combine.iter().enumerate() {
+                        let values_1 = spx.block_1.values().data.as_array();
+                        let values_2 = spx.block_2.values().data.as_array();
+
                         let mut sum = 0.0;
 
                         for m in 0..(2 * spx.spherical_harmonics_l + 1) {
@@ -495,8 +493,8 @@ impl CalculatorBase for SoapPowerSpectrum {
                             // in release mode (`uget` still checks bounds in
                             // debug mode)
                             unsafe {
-                                sum += spx.values_1.uget([spx_sample_1, m, spx.property_1])
-                                     * spx.values_2.uget([spx_sample_2, m, spx.property_2]);
+                                sum += values_1.uget([spx_sample_1, m, spx.property_1])
+                                     * values_2.uget([spx_sample_2, m, spx.property_2]);
                             }
                         }
 
@@ -517,6 +515,8 @@ impl CalculatorBase for SoapPowerSpectrum {
                     }
                 });
 
+
+            // gradients with respect to the atomic positions
             if let Some(gradients) = block.gradient_mut("positions") {
                 gradients.data.as_array_mut()
                     .axis_iter_mut(ndarray::Axis(0))
@@ -525,23 +525,26 @@ impl CalculatorBase for SoapPowerSpectrum {
                     .zip_eq(&mapping.gradients)
                     .for_each(|((mut values, gradient_sample), &(spx_grad_sample_1, spx_grad_sample_2))| {
                         for (property_i, spx) in properties_to_combine.iter().enumerate() {
-                            let spx_gradient_1 = spx.gradient_1.as_ref().expect("missing spherical expansion gradients");
-                            let spx_gradient_2 = spx.gradient_2.as_ref().expect("missing spherical expansion gradients");
+                            let spx_values_1 = spx.block_1.values().data.as_array();
+                            let spx_values_2 = spx.block_2.values().data.as_array();
+
+                            let spx_gradient_1 = spx.block_1.gradient("positions").expect("missing spherical expansion gradients");
+                            let spx_gradient_1 = spx_gradient_1.data.as_array();
+                            let spx_gradient_2 = spx.block_2.gradient("positions").expect("missing spherical expansion gradients");
+                            let spx_gradient_2 = spx_gradient_2.data.as_array();
 
                             let sample_i = gradient_sample[0].usize();
                             let (spx_sample_1, spx_sample_2) = mapping.values[sample_i];
 
-                            let mut sum_x = 0.0;
-                            let mut sum_y = 0.0;
-                            let mut sum_z = 0.0;
+                            let mut sum = [0.0, 0.0, 0.0];
                             if let Some(grad_sample_1) = spx_grad_sample_1 {
                                 for m in 0..(2 * spx.spherical_harmonics_l + 1) {
                                     // SAFETY: see same loop for values
                                     unsafe {
-                                        let value_2 = spx.values_2.uget([spx_sample_2, m, spx.property_2]);
-                                        sum_x += value_2 * spx_gradient_1.uget([grad_sample_1, 0, m, spx.property_1]);
-                                        sum_y += value_2 * spx_gradient_1.uget([grad_sample_1, 1, m, spx.property_1]);
-                                        sum_z += value_2 * spx_gradient_1.uget([grad_sample_1, 2, m, spx.property_1]);
+                                        let value_2 = spx_values_2.uget([spx_sample_2, m, spx.property_2]);
+                                        for d in 0..3 {
+                                            sum[d] += value_2 * spx_gradient_1.uget([grad_sample_1, d, m, spx.property_1]);
+                                        }
                                     }
                                 }
                             }
@@ -550,27 +553,99 @@ impl CalculatorBase for SoapPowerSpectrum {
                                 for m in 0..(2 * spx.spherical_harmonics_l + 1) {
                                     // SAFETY: see same loop for values
                                     unsafe {
-                                        let value_1 = spx.values_1.uget([spx_sample_1, m, spx.property_1]);
-                                        sum_x += value_1 * spx_gradient_2.uget([grad_sample_2, 0, m, spx.property_2]);
-                                        sum_y += value_1 * spx_gradient_2.uget([grad_sample_2, 1, m, spx.property_2]);
-                                        sum_z += value_1 * spx_gradient_2.uget([grad_sample_2, 2, m, spx.property_2]);
+                                        let value_1 = spx_values_1.uget([spx_sample_1, m, spx.property_1]);
+                                        for d in 0..3 {
+                                            sum[d] += value_1 * spx_gradient_2.uget([grad_sample_2, d, m, spx.property_2]);
+                                        }
                                     }
                                 }
                             }
 
                             if species_neighbor_1 != species_neighbor_2 {
                                 // see above
-                                sum_x *= std::f64::consts::SQRT_2;
-                                sum_y *= std::f64::consts::SQRT_2;
-                                sum_z *= std::f64::consts::SQRT_2;
+                                for d in 0..3 {
+                                    sum[d] *= std::f64::consts::SQRT_2;
+                                }
+                            }
+
+                            let normalization = f64::sqrt((2 * spx.spherical_harmonics_l + 1) as f64);
+                            for d in 0..3 {
+                                unsafe {
+                                    *values.uget_mut([d, property_i]) = sum[d] / normalization;
+                                }
+                            }
+                        }
+                    });
+            }
+
+
+            // gradients with respect to the cell parameters
+            if let Some(gradients) = block.gradient_mut("cell") {
+                gradients.data.as_array_mut()
+                    .axis_iter_mut(ndarray::Axis(0))
+                    .into_par_iter()
+                    .zip_eq(gradients.samples.par_iter())
+                    .for_each(|(mut values, gradient_sample)| {
+                        for (property_i, spx) in properties_to_combine.iter().enumerate() {
+                            let spx_values_1 = spx.block_1.values().data.as_array();
+                            let spx_values_2 = spx.block_2.values().data.as_array();
+
+                            let spx_gradient_1 = spx.block_1.gradient("cell").expect("missing spherical expansion gradients");
+                            let spx_gradient_1 = spx_gradient_1.data.as_array();
+                            let spx_gradient_2 = spx.block_2.gradient("cell").expect("missing spherical expansion gradients");
+                            let spx_gradient_2 = spx_gradient_2.data.as_array();
+
+                            let sample_i = gradient_sample[0].usize();
+                            let (spx_sample_1, spx_sample_2) = mapping.values[sample_i];
+
+                            let mut sum = [
+                                [0.0, 0.0, 0.0],
+                                [0.0, 0.0, 0.0],
+                                [0.0, 0.0, 0.0],
+                            ];
+                            for m in 0..(2 * spx.spherical_harmonics_l + 1) {
+                                // SAFETY: see same loop for values
+                                unsafe {
+                                    let value_2 = spx_values_2.uget([spx_sample_2, m, spx.property_2]);
+                                    for d1 in 0..3 {
+                                        for d2 in 0..3 {
+                                            // TODO: ensure that gradient samples are 0..nsamples
+                                            sum[d1][d2] += value_2 * spx_gradient_1.uget([spx_sample_1, d1, d2, m, spx.property_1]);
+                                        }
+                                    }
+                                }
+                            }
+
+                            for m in 0..(2 * spx.spherical_harmonics_l + 1) {
+                                // SAFETY: see same loop for values
+                                unsafe {
+                                    let value_1 = spx_values_1.uget([spx_sample_1, m, spx.property_1]);
+                                    for d1 in 0..3 {
+                                        for d2 in 0..3 {
+                                            // TODO: ensure that gradient samples are 0..nsamples
+                                            sum[d1][d2] += value_1 * spx_gradient_2.uget([spx_sample_2, d1, d2, m, spx.property_2]);
+                                        }
+                                    }
+                                }
+                            }
+
+                            if species_neighbor_1 != species_neighbor_2 {
+                                // see above
+                                for d1 in 0..3 {
+                                    for d2 in 0..3 {
+                                        sum[d1][d2] *= std::f64::consts::SQRT_2;
+                                    }
+                                }
                             }
 
                             let normalization = f64::sqrt((2 * spx.spherical_harmonics_l + 1) as f64);
 
-                            unsafe {
-                                *values.uget_mut([0, property_i]) = sum_x / normalization;
-                                *values.uget_mut([1, property_i]) = sum_y / normalization;
-                                *values.uget_mut([2, property_i]) = sum_z / normalization;
+                            for d1 in 0..3 {
+                                for d2 in 0..3 {
+                                    unsafe {
+                                        *values.uget_mut([d1, d2, property_i]) = sum[d1][d2] / normalization;
+                                    }
+                                }
                             }
                         }
                     });
@@ -640,7 +715,7 @@ mod tests {
     }
 
     #[test]
-    fn finite_differences() {
+    fn finite_differences_positions() {
         let calculator = Calculator::from(Box::new(SoapPowerSpectrum::new(
             parameters()
         ).unwrap()) as Box<dyn CalculatorBase>);
@@ -651,7 +726,22 @@ mod tests {
             max_relative: 5e-5,
             epsilon: 1e-16,
         };
-        crate::calculators::tests_utils::finite_difference(calculator, system, options);
+        crate::calculators::tests_utils::finite_differences_positions(calculator, &system, options);
+    }
+
+    #[test]
+    fn finite_differences_cell() {
+        let calculator = Calculator::from(Box::new(SoapPowerSpectrum::new(
+            parameters()
+        ).unwrap()) as Box<dyn CalculatorBase>);
+
+        let system = test_system("water");
+        let options = crate::calculators::tests_utils::FinalDifferenceOptions {
+            displacement: 1e-6,
+            max_relative: 5e-5,
+            epsilon: 1e-16,
+        };
+        crate::calculators::tests_utils::finite_differences_cell(calculator, &system, options);
     }
 
     #[test]

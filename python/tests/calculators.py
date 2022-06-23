@@ -116,7 +116,7 @@ class TestDummyCalculator(unittest.TestCase):
         self.assertEqual(len(gradient.components), 1)
         component = gradient.components[0]
         self.assertEqual(len(component), 3)
-        self.assertEqual(component.names, ("gradient_direction",))
+        self.assertEqual(component.names, ("direction",))
         self.assertEqual(tuple(component[0]), (0,))
         self.assertEqual(tuple(component[1]), (1,))
         self.assertEqual(tuple(component[2]), (2,))

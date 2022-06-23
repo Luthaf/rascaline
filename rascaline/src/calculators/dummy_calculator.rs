@@ -66,7 +66,14 @@ impl CalculatorBase for DummyCalculator {
         return Ok(samples);
     }
 
-    fn gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn supports_gradient(&self, parameter: &str) -> bool {
+        match parameter {
+            "positions" => true,
+            _ => false,
+        }
+    }
+
+    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
         debug_assert_eq!(keys.count(), samples.len());
         let mut gradient_samples = Vec::new();
         for ([species_center], samples) in keys.iter_fixed_size().zip(samples) {
