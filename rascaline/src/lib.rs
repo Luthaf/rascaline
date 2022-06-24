@@ -18,7 +18,7 @@
 pub mod types;
 pub use types::*;
 
-pub(crate) mod math;
+pub mod math;
 
 mod errors;
 pub use self::errors::Error;

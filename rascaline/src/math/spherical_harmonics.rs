@@ -90,7 +90,7 @@ impl std::fmt::Debug for LegendreArray {
 /// code like
 ///
 /// ```
-/// # use rascaline::calculators::soap::SphericalHarmonicsArray;
+/// # use rascaline::math::SphericalHarmonicsArray;
 /// let mut array = SphericalHarmonicsArray::new(8);
 /// array[[6, 3]] = 3.0;
 /// array[[6, -3]] = -3.0;
@@ -420,6 +420,53 @@ impl SphericalHarmonics {
                 }
             }
         }
+    }
+}
+
+/// Spherical harmonics implementation with cached allocation for the
+/// values/gradients
+pub struct CachedAllocationsSphericalHarmonics {
+    /// Implementation of the spherical harmonics
+    code: SphericalHarmonics,
+    /// Cache for the spherical harmonics values
+    pub values: SphericalHarmonicsArray,
+    /// Cache for the spherical harmonics gradients (one value each for x/y/z)
+    pub gradients: [SphericalHarmonicsArray; 3],
+}
+
+impl CachedAllocationsSphericalHarmonics {
+    /// Create a new cache for spherical harmonics with `l` going up to
+    /// `max_angular`.
+    pub fn new(max_angular: usize) -> CachedAllocationsSphericalHarmonics {
+        let code = SphericalHarmonics::new(max_angular);
+        let values = SphericalHarmonicsArray::new(max_angular);
+        let gradients = [
+            SphericalHarmonicsArray::new(max_angular),
+            SphericalHarmonicsArray::new(max_angular),
+            SphericalHarmonicsArray::new(max_angular)
+        ];
+
+        return CachedAllocationsSphericalHarmonics { code, values, gradients };
+    }
+
+    /// Compute the spherical harmonics for a given `direction`. `gradient`
+    /// controls whether gradients of the spherical harmonics should also be
+    /// computed.
+    pub fn compute(&mut self, direction: Vector3D, gradient: bool) {
+        if gradient {
+            self.code.compute(
+                direction,
+                &mut self.values,
+                Some(&mut self.gradients),
+            );
+        } else {
+            self.code.compute(
+                direction,
+                &mut self.values,
+                None,
+            );
+        }
+
     }
 }
 

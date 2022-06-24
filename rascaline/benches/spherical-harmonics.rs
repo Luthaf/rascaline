@@ -1,5 +1,5 @@
 use rascaline::Vector3D;
-use rascaline::calculators::soap::{SphericalHarmonics, SphericalHarmonicsArray};
+use rascaline::math::{SphericalHarmonics, SphericalHarmonicsArray};
 
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 
