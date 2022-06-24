@@ -7,6 +7,8 @@ from .calculators import CalculatorBase  # noqa
 from .calculators import SoapPowerSpectrum  # noqa
 from .calculators import SortedDistances  # noqa
 from .calculators import SphericalExpansion  # noqa
+from .calculators import LodeSphericalExpansion  # noqa
+
 from .log import set_logging_callback  # noqa
 from .profiling import Profiler  # noqa
 from .status import RascalError  # noqa

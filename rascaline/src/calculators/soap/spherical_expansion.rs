@@ -50,8 +50,17 @@ pub enum RadialBasis {
     },
 }
 
+/// TODO
+#[derive(Debug, Clone, Copy)]
+pub struct RadialIntegralParameters {
+    pub cutoff: f64,
+    pub max_radial: usize,
+    pub max_angular: usize,
+    pub atomic_gaussian_width: f64
+}
+
 impl RadialBasis {
-    fn construct(&self, parameters: &SphericalExpansionParameters) -> Result<Box<dyn RadialIntegral>, Error> {
+    fn construct(&self, parameters: &RadialIntegralParameters) -> Result<Box<dyn RadialIntegral>, Error> {
         match self {
             RadialBasis::Gto {} => {
                 let parameters = GtoParameters {
@@ -117,7 +126,7 @@ pub struct SphericalExpansionParameters {
     pub radial_scaling: RadialScaling,
 }
 
-struct RadialIntegralImpl {
+pub struct RadialIntegralImpl {
     /// Implementation of the radial integral
     code: Box<dyn RadialIntegral>,
     /// Cache for the radial integral values
@@ -127,11 +136,11 @@ struct RadialIntegralImpl {
 }
 
 impl RadialIntegralImpl {
-    fn new(parameters: &SphericalExpansionParameters) -> Result<Self, Error> {
-        let code = parameters.radial_basis.construct(parameters)?;
-        let shape = (parameters.max_angular + 1, parameters.max_radial);
+    pub fn new(radial_basis: RadialBasis, radial_basis_parameters: RadialIntegralParameters, gradients: bool) -> Result<Self, Error> {
+        let code = radial_basis.construct(&radial_basis_parameters)?;
+        let shape = (radial_basis_parameters.max_angular + 1, radial_basis_parameters.max_radial);
         let values = Array2::from_elem(shape, 0.0);
-        let gradients = if parameters.gradients {
+        let gradients = if gradients {
             Some(Array2::from_elem(shape, 0.0))
         } else {
             None
@@ -153,7 +162,7 @@ impl RadialIntegralImpl {
     }
 }
 
-struct SphericalHarmonicsImpl {
+pub struct SphericalHarmonicsImpl {
     /// Implementation of the spherical harmonics
     code: SphericalHarmonics,
     /// Cache for the spherical harmonics values
@@ -163,14 +172,14 @@ struct SphericalHarmonicsImpl {
 }
 
 impl SphericalHarmonicsImpl {
-    fn new(parameters: &SphericalExpansionParameters) -> SphericalHarmonicsImpl {
-        let code = SphericalHarmonics::new(parameters.max_angular);
-        let values = SphericalHarmonicsArray::new(parameters.max_angular);
-        let gradients = if parameters.gradients {
+    pub fn new(max_angular: usize, gradients: bool) -> SphericalHarmonicsImpl {
+        let code = SphericalHarmonics::new(max_angular);
+        let values = SphericalHarmonicsArray::new(max_angular);
+        let gradients = if gradients {
             Some([
-                SphericalHarmonicsArray::new(parameters.max_angular),
-                SphericalHarmonicsArray::new(parameters.max_angular),
-                SphericalHarmonicsArray::new(parameters.max_angular)
+                SphericalHarmonicsArray::new(max_angular),
+                SphericalHarmonicsArray::new(max_angular),
+                SphericalHarmonicsArray::new(max_angular)
             ])
         } else {
             None
@@ -234,7 +243,18 @@ impl SphericalExpansion {
         // validate parameters once in the constructor
         parameters.cutoff_function.validate()?;
         parameters.radial_scaling.validate()?;
-        RadialIntegralImpl::new(&parameters)?;
+
+        let radial_basis_parameters = RadialIntegralParameters {
+            cutoff: parameters.cutoff,
+            max_radial: parameters.max_radial,
+            max_angular: parameters.max_angular,
+            atomic_gaussian_width: parameters.atomic_gaussian_width,
+        };
+        RadialIntegralImpl::new(
+            parameters.radial_basis,
+            radial_basis_parameters,
+            parameters.gradients
+        )?;
 
         let m_1_pow_l = (0..=parameters.max_angular).into_iter()
             .map(|l| f64::powi(-1.0, l as i32))
@@ -277,12 +297,26 @@ impl SphericalExpansion {
         // gaussian atomic width. For now, we recompute them all the time
 
         let mut radial_integral = self.radial_integral.get_or(|| {
-            let ri = RadialIntegralImpl::new(&self.parameters).expect("invalid parameters");
-            RefCell::new(ri)
+            let radial_basis_parameters = RadialIntegralParameters {
+                cutoff: self.parameters.cutoff,
+                max_radial: self.parameters.max_radial,
+                max_angular: self.parameters.max_angular,
+                atomic_gaussian_width: self.parameters.atomic_gaussian_width,
+            };
+            let ri = RadialIntegralImpl::new(
+                self.parameters.radial_basis,
+                radial_basis_parameters,
+                self.parameters.gradients
+            ).expect("invalid radial integral parameter");
+
+            return RefCell::new(ri);
         }).borrow_mut();
 
         let mut spherical_harmonics = self.spherical_harmonics.get_or(|| {
-            RefCell::new(SphericalHarmonicsImpl::new(&self.parameters))
+            RefCell::new(SphericalHarmonicsImpl::new(
+                self.parameters.max_angular,
+                self.parameters.gradients,
+            ))
         }).borrow_mut();
 
         for (key, mut block) in descriptor.iter_mut() {
@@ -317,12 +351,26 @@ impl SphericalExpansion {
     #[allow(clippy::too_many_lines)]
     fn compute_for_pair(&self, pair: &Pair, descriptor: &mut TensorMapView) {
         let mut radial_integral = self.radial_integral.get_or(|| {
-            let ri = RadialIntegralImpl::new(&self.parameters).expect("invalid parameters");
-            RefCell::new(ri)
+            let radial_basis_parameters = RadialIntegralParameters {
+                cutoff: self.parameters.cutoff,
+                max_radial: self.parameters.max_radial,
+                max_angular: self.parameters.max_angular,
+                atomic_gaussian_width: self.parameters.atomic_gaussian_width,
+            };
+            let ri = RadialIntegralImpl::new(
+                self.parameters.radial_basis,
+                radial_basis_parameters,
+                self.parameters.gradients
+            ).expect("invalid radial integral parameter");
+
+            return RefCell::new(ri);
         }).borrow_mut();
 
         let mut spherical_harmonics = self.spherical_harmonics.get_or(|| {
-            RefCell::new(SphericalHarmonicsImpl::new(&self.parameters))
+            RefCell::new(SphericalHarmonicsImpl::new(
+                self.parameters.max_angular,
+                self.parameters.gradients,
+            ))
         }).borrow_mut();
 
         radial_integral.compute(pair.distance);

@@ -71,3 +71,6 @@ pub use self::sorted_distances::SortedDistances;
 pub mod soap;
 pub use self::soap::{SphericalExpansion, SphericalExpansionParameters};
 pub use self::soap::{SoapPowerSpectrum, PowerSpectrumParameters};
+
+pub mod lode;
+pub use self::lode::{LodeSphericalExpansion, LodeSphericalExpansionParameters};

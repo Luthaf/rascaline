@@ -11,7 +11,7 @@ mod cutoff;
 pub use self::cutoff::CutoffFunction;
 pub use self::cutoff::RadialScaling;
 
-mod spherical_expansion;
+pub(crate) mod spherical_expansion;
 pub use self::spherical_expansion::{SphericalExpansion, SphericalExpansionParameters};
 pub use self::spherical_expansion::RadialBasis;
 
