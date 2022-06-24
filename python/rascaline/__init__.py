@@ -4,6 +4,7 @@ import os
 from pkg_resources import DistributionNotFound, get_distribution
 
 from .calculators import CalculatorBase  # noqa
+from .calculators import LodeSphericalExpansion  # noqa
 from .calculators import SoapPowerSpectrum  # noqa
 from .calculators import SoapRadialSpectrum  # noqa
 from .calculators import SortedDistances  # noqa
