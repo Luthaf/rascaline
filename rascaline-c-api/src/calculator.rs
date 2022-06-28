@@ -209,12 +209,16 @@ fn convert_labels_selection<'a>(
 /// Options that can be set to change how a calculator operates.
 #[repr(C)]
 pub struct rascal_calculation_options_t {
-    /// Compute the gradients of the representation with respect to the atomic
-    /// positions, if they are implemented for this calculator
-    positions_gradient: bool,
-    /// Compute the gradients of the representation with respect to the cell
-    /// vectors, if they are implemented for this calculator
-    cell_gradient: bool,
+    /// Array of NULL-terminated strings containing the gradients to compute.
+    ///
+    /// Add ``"positions"`` to the list to compute gradients of the
+    /// representation with respect to the atomic positions, and ``"cell"`` to
+    /// compute the gradient of the representation with respect to the cell
+    /// vectors. If this field is `NULL` and `gradients_count` is 0, no
+    /// gradients are computed.
+    gradients: *const *const c_char,
+    /// Size of the `gradients` array
+    gradients_count: usize,
     /// Copy the data from systems into native `SimpleSystem`. This can be
     /// faster than having to cross the FFI boundary too often.
     use_native_system: bool,
@@ -263,12 +267,17 @@ pub unsafe extern fn rascal_calculator_compute(
             systems.push(Box::new(system) as Box<dyn System>);
         }
 
+        let c_gradients = std::slice::from_raw_parts(options.gradients, options.gradients_count);
+        let mut gradients = Vec::new();
+        for &parameter in c_gradients {
+            gradients.push(CStr::from_ptr(parameter).to_str()?);
+        }
+
         let mut selected_samples = None;
         let mut selected_properties = None;
 
         let rust_options = CalculationOptions {
-            positions_gradient: options.positions_gradient,
-            cell_gradient: options.cell_gradient,
+            gradients: &gradients,
             use_native_system: options.use_native_system,
             selected_samples: convert_labels_selection(&options.selected_samples, &mut selected_samples)?,
             selected_properties: convert_labels_selection(&options.selected_properties, &mut selected_properties)?,

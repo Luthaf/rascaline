@@ -121,7 +121,9 @@ TEST_CASE("Compute descriptor") {
         auto system = simple_system();
 
         rascal_calculation_options_t options = {0};
-        options.positions_gradient = true;
+        const char* gradients_list[] = {"positions"};
+        options.gradients = gradients_list;
+        options.gradients_count = 1;
         auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);
         REQUIRE(calculator != nullptr);
 
@@ -207,7 +209,9 @@ TEST_CASE("Compute descriptor") {
         auto system = simple_system();
 
         rascal_calculation_options_t options = {0};
-        options.positions_gradient = true;
+        const char* gradients_list[] = {"positions"};
+        options.gradients = gradients_list;
+        options.gradients_count = 1;
         options.selected_samples.subset = &selected_samples;
         auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);
         REQUIRE(calculator != nullptr);
@@ -281,7 +285,9 @@ TEST_CASE("Compute descriptor") {
         auto system = simple_system();
 
         rascal_calculation_options_t options = {0};
-        options.positions_gradient = true;
+        const char* gradients_list[] = {"positions"};
+        options.gradients = gradients_list;
+        options.gradients_count = 1;
         options.selected_properties.subset = &selected_properties;
         auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);
         REQUIRE(calculator != nullptr);
@@ -418,7 +424,9 @@ TEST_CASE("Compute descriptor") {
 
         auto system = simple_system();
         rascal_calculation_options_t options = {0};
-        options.positions_gradient = true;
+        const char* gradients_list[] = {"positions"};
+        options.gradients = gradients_list;
+        options.gradients_count = 1;
         options.selected_samples.predefined = predefined;
         options.selected_properties.predefined = predefined;
         auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);

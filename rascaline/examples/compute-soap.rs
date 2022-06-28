@@ -1,5 +1,5 @@
 use equistore::LabelsBuilder;
-use rascaline::{Calculator, System};
+use rascaline::{Calculator, System, CalculationOptions};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // load the systems from command line argument
@@ -27,8 +27,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // create the calculator with its name and parameters
     let mut calculator = Calculator::new("soap_power_spectrum", parameters.to_owned())?;
 
-    // run the calculation using default options
-    let mut descriptor = calculator.compute(&mut systems, Default::default())?;
+    // create the options for a single calculation, here we request the
+    // calculation of gradients with respect to positions
+    let options = CalculationOptions {
+        gradients: &["positions"],
+        ..Default::default()
+    };
+
+    // run the calculation
+    let mut descriptor = calculator.compute(&mut systems, options)?;
 
     // Transform the descriptor to dense representation, with one sample for
     // each atom-centered environment, and all neighbor species part of the

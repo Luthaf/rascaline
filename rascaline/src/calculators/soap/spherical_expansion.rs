@@ -569,9 +569,9 @@ impl SphericalExpansion {
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct GradientsOptions {
-    pub positions: bool,
-    pub cell: bool,
+struct GradientsOptions {
+    positions: bool,
+    cell: bool,
 }
 
 impl GradientsOptions {

@@ -16,8 +16,12 @@ int main(int argc, char* argv[]) {
     bool got_error = true;
     const char* keys_to_samples[] = {"species_center"};
     const char* keys_to_properties[] = {"species_neighbor_1", "species_neighbor_2"};
-    // use the default set of options, computing all samples and all features
+    // use the default set of options, computing all samples and all features,
+    // and including gradients with respect to positions
     rascal_calculation_options_t options = {0};
+    const char* gradients_list[] = {"positions"};
+    options.gradients = gradients_list;
+    options.gradients_count = 1;
 
     eqs_tensormap_t* descriptor = NULL;
     const eqs_block_t* block = NULL;

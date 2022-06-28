@@ -207,7 +207,7 @@ pub struct FinalDifferenceOptions {
 /// finite difference calculation of the gradients.
 pub fn finite_differences_positions(mut calculator: Calculator, system: &SimpleSystem, options: FinalDifferenceOptions) {
     let calculation_options = CalculationOptions {
-        positions_gradient: true,
+        gradients: &["positions"],
         ..Default::default()
     };
     let reference = calculator.compute(&mut [Box::new(system.clone())], calculation_options).unwrap();
@@ -268,7 +268,7 @@ pub fn finite_differences_positions(mut calculator: Calculator, system: &SimpleS
 /// finite difference calculation of the gradients.
 pub fn finite_differences_cell(mut calculator: Calculator, system: &SimpleSystem, options: FinalDifferenceOptions) {
     let calculation_options = CalculationOptions {
-        cell_gradient: true,
+        gradients: &["cell"],
         ..Default::default()
     };
     let reference = calculator.compute(&mut [Box::new(system.clone())], calculation_options).unwrap();

@@ -24,15 +24,32 @@ def _convert_systems(systems):
 
 
 def _options_to_c(
-    positions_gradient,
-    cell_gradient,
+    gradients,
     use_native_system,
     selected_samples,
     selected_properties,
 ):
+    if gradients is None:
+        gradients = []
+
+    if not isinstance(gradients, list):
+        raise ValueError(
+            f"`gradients` parameter must be a list of str, got a {type(gradients)}"
+        )
+    for parameter in gradients:
+        if not isinstance(parameter, str):
+            raise ValueError(
+                "`gradients` parameter must be a list of str, got a "
+                f"{type(parameter)} in the list"
+            )
+
+    c_gradients = ctypes.ARRAY(ctypes.c_char_p, len(gradients))()
+    for i, parameter in enumerate(gradients):
+        c_gradients[i] = parameter.encode("utf8")
+
     c_options = rascal_calculation_options_t()
-    c_options.positions_gradient = bool(positions_gradient)
-    c_options.cell_gradient = bool(cell_gradient)
+    c_options.gradients = c_gradients
+    c_options.gradients_count = c_gradients._length_
     c_options.use_native_system = bool(use_native_system)
 
     # store data to keep alive here
@@ -120,8 +137,7 @@ class CalculatorBase:
         self,
         systems: Union[IntoSystem, List[IntoSystem]],
         *,
-        positions_gradient: bool = False,
-        cell_gradient: bool = False,
+        gradients: Optional[List[str]] = None,
         use_native_system: bool = True,
         selected_samples: Optional[Union[Labels, TensorMap]] = None,
         selected_properties: Optional[Union[Labels, TensorMap]] = None,
@@ -139,17 +155,17 @@ class CalculatorBase:
             faster than having to cross the FFI boundary often when accessing
             the neighbor list. Otherwise the Python neighbor list is used.
 
-        :param positions_gradient: Compute the gradients of the representation
-            with respect to the atomic positions, if they are implemented for
-            this calculator. The gradients are stored inside the different
-            blocks, and can be accessed with
-            ``descriptor.block(...).gradient("positions")``
+        :param gradients: List of gradients to compute. If this is ``None`` or
+            an empty list ``[]``, no gradients are computed.
 
-        :param cell_gradient: Compute the gradients of the representation
-            with respect to the cell vectors, if they are implemented for
-            this calculator. The gradients are stored inside the different
-            blocks, and can be accessed with
-            ``descriptor.block(...).gradient("cell")``
+            Add ``"positions"`` to the list to compute gradients of the
+            representation with respect to the atomic positions, and ``"cell"``
+            to compute the gradient of the representation with respect to the
+            cell vectors.
+
+            The gradients are stored inside the different blocks, and can be
+            accessed with ``descriptor.block(...).gradient(<parameter>)``, where
+            ``<parameter>`` is ``"positions"`` or ``"cell"``.
 
         :param selected_samples: Set of samples on which to run the calculation.
             Use ``None`` to run the calculation on all samples in the
@@ -193,8 +209,7 @@ class CalculatorBase:
         tensor_map_ptr = ctypes.POINTER(eqs_tensormap_t)()
 
         c_options = _options_to_c(
-            positions_gradient=positions_gradient,
-            cell_gradient=cell_gradient,
+            gradients=gradients,
             use_native_system=use_native_system,
             selected_samples=selected_samples,
             selected_properties=selected_properties,

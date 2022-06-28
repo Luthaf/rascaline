@@ -11,7 +11,6 @@ use crate::{CalculationOptions, Calculator, LabelsSelection};
 use crate::{Error, System};
 
 use super::SphericalExpansionParameters;
-use super::spherical_expansion::GradientsOptions;
 use super::{SphericalExpansion, RadialBasis, CutoffFunction, RadialScaling};
 
 use crate::labels::{SpeciesFilter, SamplesBuilder};
@@ -443,15 +442,17 @@ impl CalculatorBase for SoapPowerSpectrum {
     #[time_graph::instrument(name = "SoapPowerSpectrum::compute")]
     #[allow(clippy::too_many_lines)]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
-        let do_gradients = GradientsOptions {
-            positions: descriptor.blocks()[0].gradient("positions").is_some(),
-            cell: descriptor.blocks()[0].gradient("cell").is_some(),
-        };
+        let mut gradients = Vec::new();
+        if descriptor.blocks()[0].gradient("positions").is_some() {
+            gradients.push("positions");
+        }
+        if descriptor.blocks()[0].gradient("cell").is_some() {
+            gradients.push("cell");
+        }
 
         let selected = self.selected_spx_labels(descriptor);
         let options = CalculationOptions {
-            positions_gradient: do_gradients.positions,
-            cell_gradient: do_gradients.cell,
+            gradients: &gradients,
             selected_samples: LabelsSelection::Predefined(&selected),
             selected_properties: LabelsSelection::Predefined(&selected),
             ..Default::default()
