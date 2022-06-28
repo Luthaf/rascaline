@@ -8,3 +8,4 @@ toml
 
 # required for autodoc
 numpy
+equistore @ https://github.com/lab-cosmo/equistore/archive/513889.zip
