@@ -57,13 +57,13 @@ fn values_pbc() {
 
 #[test]
 fn gradients_no_pbc() {
-    let (mut systems, parameters) = data::load_calculator_input("spherical-expansion-gradients-input.json");
+    let (mut systems, parameters) = data::load_calculator_input("spherical-expansion-positions-gradient-input.json");
     let n_atoms = systems.iter().map(|s| s.size().unwrap()).sum();
 
     let mut calculator = Calculator::new("spherical_expansion", parameters).unwrap();
 
     let options = CalculationOptions {
-        positions_gradient: true,
+        gradients: &["positions", "cell"],
         ..Default::default()
     };
     let mut descriptor = calculator.compute(&mut systems, options).expect("failed to run calculation");
@@ -81,7 +81,7 @@ fn gradients_no_pbc() {
     let gradient = block.gradient("positions").unwrap();
     let array = sum_gradients(n_atoms, gradient);
 
-    let expected = &data::load_expected_values("spherical-expansion-gradients.npy.gz");
+    let expected = &data::load_expected_values("spherical-expansion-positions-gradient.npy.gz");
     assert_relative_eq!(array, expected, max_relative=1e-8);
 }
 

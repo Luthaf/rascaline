@@ -28,8 +28,8 @@ HYPER_PARAMETERS = {
 
 calculator = SoapPowerSpectrum(**HYPER_PARAMETERS)
 
-# run the actual calculation
-descriptor = calculator.compute(frames)
+# run the actual calculation, including gradients with respect to positions
+descriptor = calculator.compute(frames, gradients=["positions"])
 
 # The descriptor is an equistore `TensorMap`, containing multiple blocks.
 # We can transform it to a single block containing a dense representation, with

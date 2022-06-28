@@ -263,15 +263,19 @@ typedef struct rascal_labels_selection_t {
  */
 typedef struct rascal_calculation_options_t {
   /**
-   * Compute the gradients of the representation with respect to the atomic
-   * positions, if they are implemented for this calculator
+   * Array of NULL-terminated strings containing the gradients to compute.
+   *
+   * Add ``"positions"`` to the list to compute gradients of the
+   * representation with respect to the atomic positions, and ``"cell"`` to
+   * compute the gradient of the representation with respect to the cell
+   * vectors. If this field is `NULL` and `gradients_count` is 0, no
+   * gradients are computed.
    */
-  bool positions_gradient;
+  const char *const *gradients;
   /**
-   * Compute the gradients of the representation with respect to the cell
-   * vectors, if they are implemented for this calculator
+   * Size of the `gradients` array
    */
-  bool cell_gradient;
+  uintptr_t gradients_count;
   /**
    * Copy the data from systems into native `SimpleSystem`. This can be
    * faster than having to cross the FFI boundary too often.

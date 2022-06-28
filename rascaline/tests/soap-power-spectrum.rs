@@ -30,12 +30,12 @@ fn values() {
 
 #[test]
 fn gradients() {
-    let (mut systems, parameters) = data::load_calculator_input("soap-power-spectrum-gradients-input.json");
+    let (mut systems, parameters) = data::load_calculator_input("soap-power-spectrum-positions-gradient-input.json");
     let n_atoms = systems.iter().map(|s| s.size().unwrap()).sum();
 
     let mut calculator = Calculator::new("soap_power_spectrum", parameters).unwrap();
     let options = CalculationOptions {
-        positions_gradient: true,
+        gradients: &["positions"],
         ..Default::default()
     };
     let mut descriptor = calculator.compute(&mut systems, options).expect("failed to run calculation");
@@ -50,7 +50,7 @@ fn gradients() {
     let gradients = block.gradient("positions").unwrap();
     let array = sum_gradients(n_atoms, gradients);
 
-   let expected = &data::load_expected_values("soap-power-spectrum-gradients.npy.gz");
+   let expected = &data::load_expected_values("soap-power-spectrum-positions-gradient.npy.gz");
    assert_relative_eq!(array, expected, max_relative=1e-9);
 }
 

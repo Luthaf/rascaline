@@ -208,13 +208,17 @@ impl CalculatorBase for SoapRadialSpectrum {
     #[time_graph::instrument(name = "SoapRadialSpectrum::compute")]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
         assert_eq!(descriptor.keys().names(), ["species_center", "species_neighbor"]);
-        let do_positions_gradient = descriptor.blocks()[0].gradient("positions").is_some();
-        let do_cell_gradient = descriptor.blocks()[0].gradient("cell").is_some();
+        let mut gradients = Vec::new();
+        if descriptor.blocks()[0].gradient("positions").is_some() {
+            gradients.push("positions");
+        }
+        if descriptor.blocks()[0].gradient("cell").is_some() {
+            gradients.push("cell");
+        }
 
         let selected = SoapRadialSpectrum::selected_spx_labels(descriptor);
         let options = CalculationOptions {
-            positions_gradient: do_positions_gradient,
-            cell_gradient: do_cell_gradient,
+            gradients: &gradients,
             selected_samples: LabelsSelection::Predefined(&selected),
             selected_properties: LabelsSelection::Predefined(&selected),
             ..Default::default()
@@ -238,8 +242,7 @@ impl CalculatorBase for SoapRadialSpectrum {
             ).expect("wrong shape");
             array.assign(&array_spx_reshaped);
 
-            if do_positions_gradient {
-                let gradient = block.gradient_mut("positions").expect("missing radial spectrum gradients");
+            if let Some(gradient) = block.gradient_mut("positions") {
                 let gradient_spx = block_spx.gradient("positions").expect("missing spherical expansion gradients");
                 debug_assert_eq!(gradient.samples, gradient_spx.samples);
 
@@ -251,6 +254,22 @@ impl CalculatorBase for SoapRadialSpectrum {
 
                 let array_spx_reshaped = array_spx.view().into_shape(
                     (shape[0], shape[1], shape[3])
+                ).expect("wrong shape");
+                array.assign(&array_spx_reshaped);
+            }
+
+            if let Some(gradient) = block.gradient_mut("cell") {
+                let gradient_spx = block_spx.gradient("cell").expect("missing spherical expansion gradients");
+                debug_assert_eq!(gradient.samples, gradient_spx.samples);
+
+                let array = gradient.data.as_array_mut();
+                let array_spx = gradient_spx.data.as_array();
+                let shape = array_spx.shape();
+                // shape[2] is the m component
+                debug_assert_eq!(shape[3], 1);
+
+                let array_spx_reshaped = array_spx.view().into_shape(
+                    (shape[0], shape[1], shape[2], shape[4])
                 ).expect("wrong shape");
                 array.assign(&array_spx_reshaped);
             }
@@ -311,6 +330,21 @@ mod tests {
             epsilon: 1e-16,
         };
         crate::calculators::tests_utils::finite_differences_positions(calculator, &system, options);
+    }
+
+    #[test]
+    fn finite_differences_cell() {
+        let calculator = Calculator::from(Box::new(
+            SoapRadialSpectrum::new(parameters()).unwrap()
+        ) as Box<dyn CalculatorBase>);
+
+        let system = test_system("water");
+        let options = crate::calculators::tests_utils::FinalDifferenceOptions {
+            displacement: 1e-6,
+            max_relative: 5e-5,
+            epsilon: 1e-16,
+        };
+        crate::calculators::tests_utils::finite_differences_cell(calculator, &system, options);
     }
 
     #[test]

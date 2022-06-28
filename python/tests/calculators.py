@@ -73,7 +73,7 @@ class TestDummyCalculator(unittest.TestCase):
         system = TestSystem()
         calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
         descriptor = calculator.compute(
-            system, use_native_system=False, positions_gradient=True
+            system, use_native_system=False, gradients=["positions"]
         )
 
         self.assertEqual(len(descriptor.keys), 2)

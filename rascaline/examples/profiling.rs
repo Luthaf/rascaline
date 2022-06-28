@@ -51,7 +51,7 @@ fn compute_soap(path: &str) -> Result<TensorMap, Box<dyn std::error::Error>> {
         let mut calculator = Calculator::new("soap_power_spectrum", parameters.to_owned())?;
 
         let options = CalculationOptions {
-            positions_gradient: true,
+            gradients: &["positions"],
             ..Default::default()
         };
         calculator.compute(&mut systems, options)?

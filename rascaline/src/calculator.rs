@@ -154,12 +154,13 @@ impl<'a> LabelsSelection<'a> {
 /// Parameters specific to a single call to `compute`
 #[derive(Debug, Clone, Copy)]
 pub struct CalculationOptions<'a> {
-    /// Compute the gradients of the representation with respect to the atomic
-    /// positions, if they are implemented for this calculator
-    pub positions_gradient: bool,
-    /// Compute the gradients of the representation with respect to the cell
-    /// vectors, if they are implemented for this calculator
-    pub cell_gradient: bool,
+    /// List of strings defining the gradients to compute.
+    ///
+    /// Add ``"positions"`` to the list to compute gradients of the
+    /// representation with respect to the atomic positions, and ``"cell"`` to
+    /// compute the gradient of the representation with respect to the cell
+    /// vectors.
+    pub gradients: &'a[&'a str],
     /// Copy the data from systems into native `SimpleSystem`. This can be
     /// faster than having to cross the FFI boundary too often.
     pub use_native_system: bool,
@@ -172,8 +173,7 @@ pub struct CalculationOptions<'a> {
 impl<'a> Default for CalculationOptions<'a> {
     fn default() -> CalculationOptions<'a> {
         CalculationOptions {
-            positions_gradient: false,
-            cell_gradient: false,
+            gradients: &[],
             use_native_system: false,
             selected_samples: LabelsSelection::All,
             selected_properties: LabelsSelection::All,
@@ -246,7 +246,18 @@ impl Calculator {
             |block| Arc::clone(&block.values().samples)
         )?;
 
-        let positions_gradient_samples = if options.positions_gradient {
+        for &parameter in options.gradients {
+            if parameter == "positions" || parameter == "cell" {
+                continue;
+            }
+
+            return Err(Error::InvalidParameter(format!(
+                "unexpected gradient \"{}\", should be one of \"positions\" or \"cell\"",
+                parameter
+            )));
+        }
+
+        let positions_gradient_samples = if options.gradients.contains(&"positions") {
             if !self.implementation.supports_gradient("positions") {
                 return Err(Error::InvalidParameter(format!(
                     "the {} calculator does not support gradients with respect to positions",
@@ -259,7 +270,7 @@ impl Calculator {
             None
         };
 
-        let cell_gradient_samples = if options.cell_gradient {
+        let cell_gradient_samples = if options.gradients.contains(&"cell") {
             if !self.implementation.supports_gradient("cell") {
                 return Err(Error::InvalidParameter(format!(
                     "the {} calculator does not support gradients with respect to the cell",
