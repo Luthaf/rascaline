@@ -6,8 +6,7 @@ C API reference
 Rascaline offers a C API that can be called from any language able to call C
 functions (in particular, this includes Python, Fortran with ``iso_c_env``, C++,
 and most languages used nowadays). Convenient wrappers of the C API are also
-provided for :ref:`Python <python-api-reference>` and :ref:`C++
-<cxx-api-reference>` users.
+provided for :ref:`Python <python-api-reference>` users.
 
 The C API is implemented in Rust, in the ``rascaline-c-api`` crate. You can use
 these functions in your own code by :ref:`installing the corresponding shared
