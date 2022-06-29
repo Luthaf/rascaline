@@ -258,7 +258,7 @@ class SphericalExpansion(CalculatorBase):
 
 
 class SoapPowerSpectrum(CalculatorBase):
-    """Power spectrumm of Smooth Overlap of Atomic Positions (SOAP).
+    """Power spectrum of Smooth Overlap of Atomic Positions (SOAP).
 
     The SOAP power spectrum is the main member of the SOAP
     family of descriptors. The power spectrum is based on the
@@ -305,11 +305,19 @@ class SoapPowerSpectrum(CalculatorBase):
 
 class SoapRadialSpectrum(CalculatorBase):
     """Radial spectrum of Smooth Overlap of Atomic Positions (SOAP).
-    equal to the spherical expansion with l=0.
-    This calculator return the same result (a :py:class:`TensorMap`)
-    that you would get using the spherical expansion with l=0,
-    but it has no key ``spherical_harmonics_l``,
-    nor the blocks have the component ``spherical_harmonics_m``
+
+    The SOAP radial spectrum represent each atom by the radial average of the
+    density of its neighbors. It is very similar to a radial distribution
+    function `g(r)`. It is a 2-body representation, only containing information
+    about the distances between atoms.
+
+    See `this review article <https://doi.org/10.1063/1.5090481>`_ for more
+    information on the SOAP representations, and `this paper
+    <https://doi.org/10.1063/5.0044689>`_ for information on how it is
+    implemented in rascaline.
+
+    For a full description of the hyper-parameters, see the corresponding
+    :ref:`documentation <soap-radial-spectrum>`.
     """
 
     def __init__(
