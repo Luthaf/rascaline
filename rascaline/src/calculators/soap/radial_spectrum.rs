@@ -14,12 +14,12 @@ use crate::labels::AtomCenteredSamples;
 use crate::labels::{CenterSingleNeighborsSpeciesKeys, KeysBuilder};
 use crate::labels::{SamplesBuilder, SpeciesFilter};
 
-
-/// Parameters for Radial spectrum calculator.
+/// Parameters for the SOAP radial spectrum calculator.
 ///
-/// In the Radial spectrum, represents the spherical expansion with l=0.
-/// This calculator return the same result (``TensorMap``) that you would get using the spherical expansion with l=0,
-/// but it has no key ``spherical_harmonics_l`` nor the blocks have the component ``spherical_harmonics_m``.
+/// The SOAP radial spectrum represent each atom by the radial average of the density
+/// of its neighbors. It is very similar to a radial distribution function
+/// `g(r)`. It is a 2-body representation, only containing information about the
+/// distances between atoms.
 ///
 /// See [this review article](https://doi.org/10.1063/1.5090481) for more
 /// information on the SOAP representations.
