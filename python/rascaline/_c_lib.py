@@ -39,7 +39,7 @@ def _lib_path():
         name = "librascaline.so"
     elif sys.platform.startswith("win"):
         windows = True
-        name = "librascaline.dll"
+        name = "rascaline.dll"
     else:
         raise ImportError("Unknown platform. Please edit this file")
 

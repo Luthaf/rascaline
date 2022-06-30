@@ -21,6 +21,8 @@ if RASCALINE_BUILD_TYPE not in ["debug", "release"]:
         "expected 'debug' or 'release'"
     )
 
+RUST_BUILD_TARGET = os.environ.get("RUST_BUILD_TARGET", None)
+
 
 class universal_wheel(bdist_wheel):
     """Helper class for override wheel tag.
@@ -66,6 +68,9 @@ class cmake_ext(build_ext):
 
         if "CARGO" in os.environ:
             cmake_options.append(f"-DCARGO_EXE={os.environ['CARGO']}")
+
+        if RUST_BUILD_TARGET is not None:
+            cmake_options.append(f"-DRUST_BUILD_TARGET={RUST_BUILD_TARGET}")
 
         subprocess.run(
             ["cmake", source_dir, *cmake_options],
