@@ -22,6 +22,7 @@ project(rascaline
 
 option(RASCAL_DISABLE_CHEMFILES "Disable the usage of chemfiles for reading structures from files" OFF)
 option(BUILD_SHARED_LIBS "Build a shared library instead of a static one" ON)
+set(RUST_BUILD_TARGET "" CACHE STRING "Cross-compilation target for rust code. Leave empty to build for the host")
 
 set(LIB_INSTALL_DIR "lib" CACHE PATH "Path relative to CMAKE_INSTALL_PREFIX where to install libraries")
 set(INCLUDE_INSTALL_DIR "include" CACHE PATH "Path relative to CMAKE_INSTALL_PREFIX where to install headers")
@@ -58,6 +59,11 @@ endif()
 
 if (${RASCAL_DISABLE_CHEMFILES})
     set(CARGO_BUILD_ARG "${CARGO_BUILD_ARG};--no-default-features")
+endif()
+
+# Handle cross compilation with RUST_BUILD_TARGET
+if (NOT "${RUST_BUILD_TARGET}" STREQUAL "")
+    set(CARGO_BUILD_ARG "${CARGO_BUILD_ARG};--target=${RUST_BUILD_TARGET}")
 endif()
 
 find_program(CARGO_EXE "cargo" DOC "path to cargo (Rust build system)")
@@ -114,15 +120,23 @@ execute_process(
 if(CARGO_METADATA_STATUS AND NOT CARGO_METADATA_STATUS EQUAL 0)
     message(FATAL_ERROR "could not run cargo metadata")
 endif()
-string(REGEX REPLACE ".*\"target_directory\":\"(.*)\",\"version.*" "\\1/${CARGO_BUILD_TYPE}" RASCALINE_LIBDIR "${CARGO_METADATA}")
+string(REGEX REPLACE ".*\"target_directory\":\"(.*)\",\"version.*" "\\1/${CARGO_BUILD_TYPE}" CARGO_TARGET_DIR "${CARGO_METADATA}")
 
+# get the parent directory to remove debug/release from the path. We add it back
+# just below, but cargo metadata does not account for a different build target.
+get_filename_component(CARGO_TARGET_DIR ${CARGO_TARGET_DIR} DIRECTORY)
+if ("${RUST_BUILD_TARGET}" STREQUAL "")
+    set(CARGO_TARGET_DIR "${CARGO_TARGET_DIR}/${CARGO_BUILD_TYPE}")
+else()
+    set(CARGO_TARGET_DIR "${CARGO_TARGET_DIR}/${RUST_BUILD_TARGET}/${CARGO_BUILD_TYPE}")
+endif()
 
 if(${BUILD_SHARED_LIBS})
     add_library(rascaline SHARED IMPORTED GLOBAL)
-    set(RASCALINE_LOCATION "${RASCALINE_LIBDIR}/${CMAKE_SHARED_LIBRARY_PREFIX}rascaline${CMAKE_SHARED_LIBRARY_SUFFIX}")
+    set(RASCALINE_LOCATION "${CARGO_TARGET_DIR}/${CMAKE_SHARED_LIBRARY_PREFIX}rascaline${CMAKE_SHARED_LIBRARY_SUFFIX}")
 else()
     add_library(rascaline STATIC IMPORTED GLOBAL)
-    set(RASCALINE_LOCATION "${RASCALINE_LIBDIR}/${CMAKE_STATIC_LIBRARY_PREFIX}rascaline${CMAKE_STATIC_LIBRARY_SUFFIX}")
+    set(RASCALINE_LOCATION "${CARGO_TARGET_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}rascaline${CMAKE_STATIC_LIBRARY_SUFFIX}")
 endif()
 
 get_filename_component(RASCALINE_LIB_NAME ${RASCALINE_LOCATION} NAME)
@@ -139,6 +153,15 @@ if (RASCAL_BUILD_FOR_PYTHON)
         # instead of the full build path (${RASCALINE_LOCATION})
         add_custom_command(TARGET cargo-build-rascaline POST_BUILD
             COMMAND install_name_tool -id "@rpath/${RASCALINE_LIB_NAME}" ${RASCALINE_LOCATION}
+        )
+    endif()
+
+    # strip dynamic library for smaller wheels to download/install
+    if (UNIX)
+        add_custom_command(TARGET cargo-build-rascaline POST_BUILD
+            COMMAND $<$<CONFIG:release>:${CMAKE_STRIP}>
+            # remove debug & non-global symbols
+            ARGS "-S" "-x" "${RASCALINE_LOCATION}"
         )
     endif()
 endif()
