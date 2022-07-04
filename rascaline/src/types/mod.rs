@@ -72,6 +72,7 @@ macro_rules! impl_arithmetic {
 /// side.
 macro_rules! impl_inplace_arithmetic {
     ($Lhs:ty, $Rhs:ty, $Op:ident, $op:ident, $sel:ident, $other:ident, $res:expr) => (
+        #[allow(clippy::extra_unused_lifetimes)]
         impl<'a> $Op<$Rhs> for $Lhs {
             #[inline] fn $op(&mut $sel, $other: $Rhs) {
                 $res
