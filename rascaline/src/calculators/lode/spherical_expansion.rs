@@ -222,3 +222,4 @@ impl CalculatorBase for LodeSphericalExpansion {
         Ok(())
     }
 }
+
