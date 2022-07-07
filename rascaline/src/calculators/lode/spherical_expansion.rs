@@ -10,6 +10,7 @@ use equistore::{TensorMap, TensorBlock, eqs_array_t, TensorBlockRefMut};
 use crate::{Error, System, Vector3D};
 use crate::labels::{SamplesBuilder, SpeciesFilter, LongRangePerAtom};
 use crate::labels::{KeysBuilder, CenterSingleNeighborsSpeciesKeys};
+use crate::math::compute_kvectors;
 
 use super::super::CalculatorBase;
 use crate::calculators::soap::RadialBasis;
@@ -215,8 +216,9 @@ impl CalculatorBase for LodeSphericalExpansion {
     #[time_graph::instrument(name = "LodeSphericalExpansion::compute")]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
 
-
-        warn!("not implemented yet");
-        return Ok(());
+        for (system_i, system) in systems.iter_mut().enumerate() {
+            let kvecs = compute_kvectors(&system.cell()?.matrix(), 1.0);
+        }
+        Ok(())
     }
 }
