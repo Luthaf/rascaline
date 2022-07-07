@@ -217,7 +217,11 @@ impl CalculatorBase for LodeSphericalExpansion {
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
 
         for (system_i, system) in systems.iter_mut().enumerate() {
-            let kvecs = compute_kvectors(&system.cell()?.matrix(), 1.0);
+            let cell = system.cell()?;
+            if cell.shape() == UnitCell::Infinite {
+                return Err(Error::InvalidParameter("LODE can only be used with periodic systems");
+            }
+            let kvecs = compute_kvectors(&cell.matrix(), 1.0);
         }
         Ok(())
     }
