@@ -14,7 +14,8 @@ pub struct KVector {
 }
 
 pub fn compute_kvectors(cell: &Matrix3, kcutoff: f64) -> Vec<KVector> {
-    // Generate k-vectors up to a certain cutoff for a given cell
+    // Generate k-vectors up to a certain cutoff (in reciprocal space units) 
+    // for a given cell.
     let reciprocal_cell = 2.0 * std::f64::consts::PI * cell.transposed().inverse();
 
     let cutoff_squared = kcutoff * kcutoff;
