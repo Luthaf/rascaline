@@ -11,6 +11,7 @@ use crate::{Error, System, Vector3D};
 use crate::labels::{SamplesBuilder, SpeciesFilter, LongRangePerAtom};
 use crate::labels::{KeysBuilder, CenterSingleNeighborsSpeciesKeys};
 use crate::math::compute_kvectors;
+use crate::systems::UnitCell;
 
 use super::super::CalculatorBase;
 use crate::calculators::soap::RadialBasis;
@@ -218,8 +219,8 @@ impl CalculatorBase for LodeSphericalExpansion {
 
         for (system_i, system) in systems.iter_mut().enumerate() {
             let cell = system.cell()?;
-            if cell.shape() == UnitCell::Infinite {
-                return Err(Error::InvalidParameter("LODE can only be used with periodic systems");
+            if cell.shape() == UnitCell::infinite().shape() {
+                return Err(Error::InvalidParameter("LODE can only be used with periodic systems!".to_string()));
             }
             let kvecs = compute_kvectors(&cell.matrix(), 1.0);
         }

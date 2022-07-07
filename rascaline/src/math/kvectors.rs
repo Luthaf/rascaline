@@ -16,7 +16,7 @@ pub struct KVector {
 /// Generate k-vectors up to a certain cutoff (in reciprocal space units) 
 /// for a given cell.
 pub fn compute_kvectors(cell: &Matrix3, kcutoff: f64) -> Vec<KVector> {
-    debug_assert_ne!(cell, Matrix3::zero(), "invalid cell matrix");
+    debug_assert_ne!(cell, &Matrix3::zero(), "Invalid cell matrix!");
 
     let reciprocal_cell = 2.0 * std::f64::consts::PI * cell.transposed().inverse();
 
