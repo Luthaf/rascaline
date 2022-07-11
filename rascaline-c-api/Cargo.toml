@@ -12,7 +12,9 @@ crate-type = ["cdylib", "staticlib"]
 bench = false
 
 [features]
-default = ["rascaline/chemfiles"]
+default = ["chemfiles"]
+chemfiles = ["rascaline/chemfiles"]
+serialization = ["equistore/serialization"]
 
 [dependencies]
 rascaline = {path = "../rascaline", version = "0.1.0", default-features = false}
