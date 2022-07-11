@@ -61,6 +61,10 @@ if (${RASCAL_DISABLE_CHEMFILES})
     set(CARGO_BUILD_ARG "${CARGO_BUILD_ARG};--no-default-features")
 endif()
 
+if (${RASCAL_BUILD_FOR_PYTHON})
+    set(CARGO_BUILD_ARG "${CARGO_BUILD_ARG};--features=serialization")
+endif()
+
 # Handle cross compilation with RUST_BUILD_TARGET
 if (NOT "${RUST_BUILD_TARGET}" STREQUAL "")
     set(CARGO_BUILD_ARG "${CARGO_BUILD_ARG};--target=${RUST_BUILD_TARGET}")
