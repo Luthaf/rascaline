@@ -1,8 +1,6 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use log::warn;
-
 
 use equistore::{LabelsBuilder, Labels, LabelValue};
 use equistore::TensorMap;
@@ -10,6 +8,9 @@ use equistore::TensorMap;
 use crate::{Error, System};
 use crate::labels::{SamplesBuilder, SpeciesFilter, LongRangePerAtom};
 use crate::labels::{KeysBuilder, CenterSingleNeighborsSpeciesKeys};
+
+use crate::math::compute_k_vectors;
+use crate::systems::UnitCell;
 
 use super::super::CalculatorBase;
 use crate::calculators::soap::RadialBasis;
@@ -196,8 +197,13 @@ impl CalculatorBase for LodeSphericalExpansion {
     #[time_graph::instrument(name = "LodeSphericalExpansion::compute")]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
 
-
-        warn!("not implemented yet");
-        return Ok(());
+        for (system_i, system) in systems.iter_mut().enumerate() {
+            let cell = system.cell()?;
+            if cell.shape() == UnitCell::infinite().shape() {
+                return Err(Error::InvalidParameter("LODE can only be used with periodic systems".into()));
+            }
+            let k_vectors = compute_k_vectors(&cell, 1.0);
+        }
+        Ok(())
     }
 }

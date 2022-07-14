@@ -1,7 +1,7 @@
 use crate::{Error, Vector3D};
 
 mod cell;
-pub use self::cell::UnitCell;
+pub use self::cell::{UnitCell, CellShape};
 
 mod neighbors;
 pub use self::neighbors::NeighborsList;
