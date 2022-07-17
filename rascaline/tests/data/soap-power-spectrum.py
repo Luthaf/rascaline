@@ -51,7 +51,11 @@ hyperparameters["max_radial"] = 4
 hyperparameters["max_angular"] = 4
 
 calculator = SoapPowerSpectrum(**hyperparameters)
-descriptor = calculator.compute(frame, use_native_system=True, gradients=["positions"])
+descriptor = calculator.compute(
+    frame,
+    use_native_system=True,
+    gradients=["positions", "cell"],
+)
 descriptor.keys_to_samples("species_center")
 descriptor.keys_to_properties(["species_neighbor_1", "species_neighbor_2"])
 
@@ -69,3 +73,6 @@ def sum_gradient(descriptor):
 
 save_calculator_input("soap-power-spectrum-positions-gradient", frame, hyperparameters)
 save_numpy_array("soap-power-spectrum-positions-gradient", sum_gradient(descriptor))
+save_numpy_array(
+    "soap-power-spectrum-cell-gradient", descriptor.block().gradient("cell").data
+)

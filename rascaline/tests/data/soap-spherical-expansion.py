@@ -69,7 +69,11 @@ def sum_gradient(descriptor):
 hyperparameters["max_radial"] = 4
 hyperparameters["max_angular"] = 4
 calculator = SphericalExpansion(**hyperparameters)
-descriptor = calculator.compute(frame, use_native_system=True, gradients=["positions"])
+descriptor = calculator.compute(
+    frame,
+    use_native_system=True,
+    gradients=["positions", "cell"],
+)
 
 descriptor.keys_to_samples("species_center")
 descriptor.keys_to_properties("species_neighbor")
@@ -78,6 +82,9 @@ descriptor.keys_to_properties("spherical_harmonics_l")
 
 save_calculator_input("spherical-expansion-gradients", frame, hyperparameters)
 save_numpy_array("spherical-expansion-positions-gradient", sum_gradient(descriptor))
+save_numpy_array(
+    "spherical-expansion-cell-gradient", descriptor.block().gradient("cell").data
+)
 
 # structure with periodic boundary condition. Some atoms in this structure are
 # neighbors twice with a cutoff of 4.5 (pairs 0-19, 1-18, 9-16, 12-13 after the
