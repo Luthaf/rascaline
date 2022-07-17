@@ -35,7 +35,7 @@ fn gradients() {
 
     let mut calculator = Calculator::new("soap_power_spectrum", parameters).unwrap();
     let options = CalculationOptions {
-        gradients: &["positions"],
+        gradients: &["positions", "cell"],
         ..Default::default()
     };
     let mut descriptor = calculator.compute(&mut systems, options).expect("failed to run calculation");
@@ -50,8 +50,13 @@ fn gradients() {
     let gradients = block.gradient("positions").unwrap();
     let array = sum_gradients(n_atoms, gradients);
 
-   let expected = &data::load_expected_values("soap-power-spectrum-positions-gradient.npy.gz");
-   assert_relative_eq!(array, expected, max_relative=1e-9);
+    let expected = &data::load_expected_values("soap-power-spectrum-positions-gradient.npy.gz");
+    assert_relative_eq!(array, expected, max_relative=1e-9);
+
+    let gradient = block.gradient("cell").unwrap();
+    let array = gradient.data.as_array();
+    let expected = &data::load_expected_values("soap-power-spectrum-cell-gradient.npy.gz");
+    assert_relative_eq!(array, expected, max_relative=1e-8);
 }
 
 fn sum_gradients(n_atoms: usize, gradients: &BasicBlock) -> ArrayD<f64> {

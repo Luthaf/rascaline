@@ -83,6 +83,11 @@ fn gradients_no_pbc() {
 
     let expected = &data::load_expected_values("spherical-expansion-positions-gradient.npy.gz");
     assert_relative_eq!(array, expected, max_relative=1e-8);
+
+    let gradient = block.gradient("cell").unwrap();
+    let array = gradient.data.as_array();
+    let expected = &data::load_expected_values("spherical-expansion-cell-gradient.npy.gz");
+    assert_relative_eq!(array, expected, max_relative=1e-8);
 }
 
 fn sum_gradients(n_atoms: usize, gradients: &BasicBlock) -> ArrayD<f64> {
