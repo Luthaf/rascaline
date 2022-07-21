@@ -72,6 +72,10 @@ impl SamplesBuilder for AtomCenteredSamples {
                     let mut matching_centers = BTreeSet::new();
                     for (center_i, &species_center) in species.iter().enumerate() {
                         if self.species_center.matches(species_center) {
+                            if self.self_pairs && selection.matches(species_center) {
+                                matching_centers.insert(center_i);
+                            }
+
                             for pair in system.pairs_containing(center_i)? {
                                 let neighbor = if pair.first == center_i {
                                     pair.second
@@ -79,9 +83,7 @@ impl SamplesBuilder for AtomCenteredSamples {
                                     pair.first
                                 };
 
-                                if selection.matches(species[neighbor]) || (
-                                   self.self_pairs && selection.matches(species_center))
-                                {
+                                if selection.matches(species[neighbor]) {
                                     matching_centers.insert(center_i);
                                 }
                             }
