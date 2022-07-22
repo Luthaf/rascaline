@@ -267,11 +267,12 @@ impl SphericalExpansion {
         return cutoff_grad * scaling + cutoff * scaling_grad;
     }
 
-    /// Compute the self contribution to spherical expansion, i.e. the
-    /// contribution of the central atom own density to the expansion around
-    /// itself.
+    /// Compute and add the self contribution to the spherical expansion
+    /// coefficients, i.e. the contribution arising from the density of the
+    /// center atom around itself.
     ///
-    /// The self contribution does not have contributions to the gradients
+    /// By symmetry, the center atom only contributes to the l=0 coefficients.
+    /// It also does not have contributions to the gradients
     fn do_self_contributions(&mut self, descriptor: &mut TensorMap) {
         debug_assert_eq!(descriptor.keys().names(), ["spherical_harmonics_l", "species_center", "species_neighbor"]);
         // we could cache the self contribution since they only depend on the
@@ -292,20 +293,27 @@ impl SphericalExpansion {
             let species_neighbor = key[2];
 
             if spherical_harmonics_l != 0 || species_center != species_neighbor {
-                // self contribution is non-zero only for l=0
+                // center contribution is non-zero only for l=0
                 continue;
             }
 
             let values = block.values_mut();
             let array = values.data.as_array_mut();
 
+            // Compute the three factors that appear in the center contribution.
+            // Note that this is simply the pair contribution for the special
+            // case where the pair distance is zero.
             radial_integral.compute(0.0, false);
             spherical_harmonics.compute(Vector3D::new(0.0, 0.0, 1.0), false);
             let f_scaling = self.scaling_functions(0.0);
 
+            // Add the center contribution to relevant elements of array. The
+            // global factor of 4PI is used for the pair contributions as well.
+            // See the relevant comments there for more details.
             for (property_i, &[n]) in values.properties.iter_fixed_size().enumerate() {
                 let mut column = array.slice_mut(s![.., 0, property_i]);
                 column += self.parameters.center_atom_weight
+                    * FOUR_PI
                     * f_scaling
                     * radial_integral.values[[0, n.usize()]]
                     * spherical_harmonics.values[[0, 0]];
@@ -314,7 +322,12 @@ impl SphericalExpansion {
     }
 
     /// Compute the contribution of a single pair and store the corresponding
-    /// data inside the given descriptor
+    /// data inside the given descriptor.
+    ///
+    /// This will store data both for the spherical expansion with `pair.first`
+    /// as the center and `pair.second` as the neighbor, and for the spherical
+    /// expansion with `pair.second` as the center and `pair.first` as the
+    /// neighbor.
     #[allow(clippy::too_many_lines)]
     fn compute_for_pair(&self, pair: &Pair, descriptor: &mut TensorMapView, do_gradients: GradientsOptions) {
         let mut radial_integral = self.radial_integral.get_or(|| {
