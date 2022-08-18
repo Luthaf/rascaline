@@ -231,7 +231,9 @@ class SystemBase:
         raise NotImplementedError("System.pairs method is not implemented")
 
     def pairs_containing(self, center):
-        """Get all neighbor pairs in this system containing the atom with index ``center``.
+        """
+        Get all neighbor pairs in this system containing the atom with index
+        ``center``.
 
         The same restrictions on the list of pairs as
         :py:func:`rascaline.SystemBase.pairs` applies, with the additional
