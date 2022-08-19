@@ -154,7 +154,7 @@ impl<'a> LabelsSelection<'a> {
 /// Parameters specific to a single call to `compute`
 #[derive(Debug, Clone, Copy)]
 pub struct CalculationOptions<'a> {
-    /// List of strings defining the gradients to compute.
+    /// List of gradients that should be computed.
     ///
     /// Add ``"positions"`` to the list to compute gradients of the
     /// representation with respect to the atomic positions, and ``"cell"`` to

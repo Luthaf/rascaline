@@ -44,31 +44,31 @@ TEST_CASE("basic systems") {
 class BadSystem: public rascaline::System {
 public:
     uintptr_t size() const override {
-        throw std::runtime_error("this is a test error");
+        throw std::runtime_error("unimplemented function 'size'");
     }
 
     const int32_t* species() const override {
-        throw std::runtime_error("unimplemented");
+        throw std::runtime_error("unimplemented function 'species'");
     }
 
     const double* positions() const override {
-        throw std::runtime_error("unimplemented");
+        throw std::runtime_error("unimplemented function 'positions'");
     }
 
     CellMatrix cell() const override {
-        throw std::runtime_error("unimplemented");
+        throw std::runtime_error("unimplemented function 'cell'");
     }
 
     void compute_neighbors(double cutoff) override {
-        throw std::runtime_error("unimplemented");
+        throw std::runtime_error("unimplemented function 'compute_neighbors'");
     }
 
     const std::vector<rascal_pair_t>& pairs() const override {
-        throw std::runtime_error("unimplemented");
+        throw std::runtime_error("unimplemented function 'pairs'");
     }
 
     const std::vector<rascal_pair_t>& pairs_containing(uintptr_t center) const override {
-        throw std::runtime_error("unimplemented");
+        throw std::runtime_error("unimplemented function 'pairs_containing'");
     }
 };
 
@@ -85,5 +85,5 @@ TEST_CASE("systems errors") {
     systems.push_back(&system);
     auto calculator = rascaline::Calculator("dummy_calculator", HYPERS_JSON);
 
-    CHECK_THROWS_WITH(calculator.compute(systems), "this is a test error");
+    CHECK_THROWS_WITH(calculator.compute(systems), "unimplemented function 'species'");
 }

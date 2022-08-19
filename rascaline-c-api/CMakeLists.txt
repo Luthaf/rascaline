@@ -17,7 +17,7 @@ endforeach()
 
 project(rascaline
     VERSION ${RASCALINE_VERSION}
-    LANGUAGES C # we need to declare a language to access CMAKE_SIZEOF_VOID_P later
+    LANGUAGES C CXX
 )
 
 option(RASCAL_DISABLE_CHEMFILES "Disable the usage of chemfiles for reading structures from files" OFF)

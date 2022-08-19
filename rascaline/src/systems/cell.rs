@@ -5,7 +5,7 @@ use crate::{Matrix3, Vector3D};
 
 /// The shape of a cell determine how we will be able to compute the periodic
 /// boundaries condition.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CellShape {
     /// Infinite unit cell, with no boundaries
     Infinite,
