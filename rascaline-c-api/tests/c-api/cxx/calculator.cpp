@@ -6,24 +6,16 @@
 
 #include "test_system.hpp"
 
-static void check_indexes(
-    const rascaline::Indexes& indexes,
-    std::vector<std::string> names,
-    std::array<size_t, 2> shape,
-    std::vector<int32_t> values
-);
-
 TEST_CASE("Calculator name") {
     SECTION("dummy_calculator") {
         const char* HYPERS_JSON = R"({
             "cutoff": 3.5,
             "delta": 25,
-            "name": "bar",
-            "gradients": false
+            "name": "bar"
         })";
         auto calculator = rascaline::Calculator("dummy_calculator", HYPERS_JSON);
 
-        CHECK(calculator.name() == "dummy test calculator with cutoff: 3.5 - delta: 25 - name: bar - gradients: false");
+        CHECK(calculator.name() == "dummy test calculator with cutoff: 3.5 - delta: 25 - name: bar");
     }
 
     SECTION("long strings") {
@@ -31,13 +23,12 @@ TEST_CASE("Calculator name") {
         auto HYPERS_JSON = R"({
             "cutoff": 3.5,
             "delta": 25,
-            "gradients": false,
             "name": ")" + name + "\"}";
 
         auto calculator = rascaline::Calculator("dummy_calculator", HYPERS_JSON);
 
         std::string expected = "dummy test calculator with cutoff: 3.5 - delta: 25 - ";
-        expected += "name: " + name + " - gradients: false";
+        expected += "name: " + name;
         CHECK(calculator.name() == expected);
     }
 }
@@ -67,28 +58,6 @@ TEST_CASE("Calculator parameters") {
     }
 }
 
-TEST_CASE("calculator features count") {
-    SECTION("dummy_calculator") {
-        std::string HYPERS_JSON = R"({
-            "cutoff": 3.5,
-            "delta": 25,
-            "name": "bar",
-            "gradients": false
-        })";
-        auto calculator = rascaline::Calculator("dummy_calculator", HYPERS_JSON);
-        CHECK(calculator.features_count() == 2);
-    }
-
-    SECTION("sorted distances vector") {
-        std::string HYPERS_JSON = R"({
-            "cutoff": 3.5,
-            "max_neighbors": 25
-        })";
-        auto calculator = rascaline::Calculator("sorted_distances", HYPERS_JSON);
-        CHECK(calculator.features_count() == 25);
-    }
-}
-
 TEST_CASE("calculator creation errors") {
     const char* HYPERS_JSON = R"({
         "cutoff": "532",
@@ -105,10 +74,7 @@ TEST_CASE("calculator creation errors") {
 
 TEST_CASE("Compute descriptor") {
     const char* HYPERS_JSON = R"({
-        "cutoff": 3.0,
-        "delta": 4,
-        "name": "",
-        "gradients": true
+        "cutoff": 3.0, "delta": 4, "name": ""
     })";
 
     auto system = TestSystem();
@@ -117,197 +83,326 @@ TEST_CASE("Compute descriptor") {
     auto calculator = rascaline::Calculator("dummy_calculator", HYPERS_JSON);
 
     SECTION("Full compute") {
-        auto descriptor = calculator.compute(systems);
+        auto options = rascaline::CalculationOptions();
+        options.gradients.push_back("positions");
+        auto descriptor = calculator.compute(systems, options);
 
-        check_indexes(
-            descriptor.samples(),
+        CHECK(descriptor.keys() == equistore::Labels(
+            {"species_center"},
+            {{1}, {6}}
+        ));
+
+        // H block
+        auto block = descriptor.block_by_id(0);
+        CHECK(block.samples() == equistore::Labels(
             {"structure", "center"},
-            {4, 2},
-            {0, 0, /**/ 0, 1, /**/ 0, 2, /**/ 0, 3}
-        );
-
-        check_indexes(
-            descriptor.features(),
+            {{0, 1}, {0, 2}, {0, 3}}
+        ));
+        CHECK(block.properties() == equistore::Labels(
             {"index_delta", "x_y_z"},
-            {2, 2},
-            {1, 0, /**/ 0, 1}
-        );
+            {{1, 0}, {0, 1}}
+        ));
+        CHECK(block.values() == equistore::NDArray<double>(
+            {5.0, 9.0, 6.0, 18.0, 7.0, 15.0},
+            {3, 2}
+        ));
 
-        auto values = descriptor.values();
-        CHECK(values.shape() == std::array<size_t, 2>{4, 2});
-        auto expected_data = std::vector<double>{
-            4, 3, /**/ 5, 9, /**/ 6, 18, /**/ 7, 15,
-        };
-        for (size_t i=0; i<values.shape()[0]; i++) {
-            for (size_t j=0; j<values.shape()[1]; j++) {
-                CHECK(values(i, j) == expected_data[i * values.shape()[1] + j]);
+        auto gradient = block.gradient("positions");
+        CHECK(gradient.samples() == equistore::Labels(
+            {"sample", "structure", "atom"},
+            {
+                {0, 0, 0}, {0, 0, 1}, {0, 0, 2},
+                {1, 0, 1}, {1, 0, 2}, {1, 0, 3},
+                {2, 0, 2}, {2, 0, 3},
             }
-        }
+        ));
+        CHECK(gradient.data() == equistore::NDArray<double>(
+            {
+                0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
+                0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
+                0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
+                0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
+                0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
+                0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
+                0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
+                0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
+            },
+            {8, 3, 2}
+        ));
 
-        auto gradients = descriptor.gradients();
-        CHECK(gradients.shape() == std::array<size_t, 2>{18, 2});
-        expected_data = std::vector<double>{
-            0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1,
-            0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1,
-            0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1, /**/ 0, 1,
-        };
-        for (size_t i=0; i<gradients.shape()[0]; i++) {
-            for (size_t j=0; j<gradients.shape()[1]; j++) {
-                CHECK(gradients(i, j) == expected_data[i * gradients.shape()[1] + j]);
-            }
-        }
+        // C block
+        block = descriptor.block_by_id(1);
+        CHECK(block.samples() == equistore::Labels(
+            {"structure", "center"},
+            {{0, 0}}
+        ));
+        CHECK(block.properties() == equistore::Labels(
+            {"index_delta", "x_y_z"},
+            {{1, 0}, {0, 1}}
+        ));
+        CHECK(block.values() == equistore::NDArray<double>(
+            {4.0, 3.0},
+            {1, 2}
+        ));
+
+        gradient = block.gradient("positions");
+        CHECK(gradient.samples() == equistore::Labels(
+            {"sample", "structure", "atom"},
+            {{0, 0, 0}, {0, 0, 1}}
+        ));
+        CHECK(gradient.data() == equistore::NDArray<double>(
+            {
+                0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
+                0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
+            },
+            {2, 3, 2}
+        ));
     }
 
     SECTION("Partial compute -- samples") {
         auto options = rascaline::CalculationOptions();
-        options.selected_samples = rascaline::SelectedIndexes({"structure", "center"});
-        options.selected_samples.add({0, 1});
-        options.selected_samples.add({0, 3});
-
-        auto descriptor = calculator.compute(systems, std::move(options));
-
-        check_indexes(
-            descriptor.samples(),
+        options.gradients.push_back("positions");
+        options.selected_samples = rascaline::LabelsSelection::subset(equistore::Labels(
             {"structure", "center"},
-            {2, 2},
-            {0, 1, /**/ 0, 3}
-        );
+            {{0, 1}, {0, 3}}
+        ));
+        auto descriptor = calculator.compute(systems, options);
 
-        check_indexes(
-            descriptor.features(),
+        CHECK(descriptor.keys() == equistore::Labels(
+            {"species_center"},
+            {{1}, {6}}
+        ));
+
+        // H block
+        auto block = descriptor.block_by_id(0);
+        CHECK(block.samples() == equistore::Labels(
+            {"structure", "center"},
+            {{0, 1}, {0, 3}}
+        ));
+        CHECK(block.properties() == equistore::Labels(
             {"index_delta", "x_y_z"},
-            {2, 2},
-            {1, 0, /**/ 0, 1}
-        );
+            {{1, 0}, {0, 1}}
+        ));
+        CHECK(block.values() == equistore::NDArray<double>(
+            {5.0, 9.0, 7.0, 15.0},
+            {2, 2}
+        ));
 
-        auto values = descriptor.values();
-        CHECK(values.shape() == std::array<size_t, 2>{2, 2});
-        auto expected_data = std::vector<double>{
-            5, 9, /**/ 7, 15,
-        };
-        for (size_t i=0; i<values.shape()[0]; i++) {
-            for (size_t j=0; j<values.shape()[1]; j++) {
-                CHECK(values(i, j) == expected_data[i * values.shape()[1] + j]);
+        auto gradient = block.gradient("positions");
+        CHECK(gradient.samples() == equistore::Labels(
+            {"sample", "structure", "atom"},
+            {
+                {0, 0, 0}, {0, 0, 1}, {0, 0, 2},
+                {1, 0, 2}, {1, 0, 3},
             }
-        }
+        ));
+        CHECK(gradient.data() == equistore::NDArray<double>(
+            {
+                0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
+                0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
+                0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
+                0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
+                0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
+            },
+            {5, 3, 2}
+        ));
 
-        auto gradients = descriptor.gradients();
-        CHECK(gradients.shape() == std::array<size_t, 2>{9, 2});
-        expected_data = std::vector<double>{
-            0, 1, /**/ 0, 1, /**/ 0, 1,
-            0, 1, /**/ 0, 1, /**/ 0, 1,
-            0, 1, /**/ 0, 1, /**/ 0, 1,
-        };
-        for (size_t i=0; i<gradients.shape()[0]; i++) {
-            for (size_t j=0; j<gradients.shape()[1]; j++) {
-                CHECK(gradients(i, j) == expected_data[i * gradients.shape()[1] + j]);
-            }
-        }
+        // C block
+        block = descriptor.block_by_id(1);
+        CHECK(block.samples() == equistore::Labels(
+            {"structure", "center"},
+            {}
+        ));
+        CHECK(block.properties() == equistore::Labels(
+            {"index_delta", "x_y_z"},
+            {{1, 0}, {0, 1}}
+        ));
+        CHECK(block.values() == equistore::NDArray<double>(
+            std::vector<double>{},
+            {0, 2}
+        ));
+
+        gradient = block.gradient("positions");
+        CHECK(gradient.samples() == equistore::Labels(
+            {"sample", "structure", "atom"},
+            {}
+        ));
+        CHECK(gradient.data() == equistore::NDArray<double>(
+            std::vector<double>{},
+            {0, 3, 2}
+        ));
     }
 
     SECTION("Partial compute -- features") {
         auto options = rascaline::CalculationOptions();
-        options.selected_features = rascaline::SelectedIndexes({"index_delta", "x_y_z"});
-        options.selected_features.add({0, 1});
-
-        auto descriptor = calculator.compute(systems, std::move(options));
-
-        check_indexes(
-            descriptor.samples(),
-            {"structure", "center"},
-            {4, 2},
-            {0, 0, /**/ 0, 1, /**/ 0, 2, /**/ 0, 3}
-        );
-
-        check_indexes(
-            descriptor.features(),
+        options.gradients.push_back("positions");
+        options.selected_properties = rascaline::LabelsSelection::subset(equistore::Labels(
             {"index_delta", "x_y_z"},
-            {1, 2},
-            {0, 1}
-        );
+            {{0, 1}}
+        ));
+        auto descriptor = calculator.compute(systems, options);
 
-        auto values = descriptor.values();
-        CHECK(values.shape() == std::array<size_t, 2>{4, 1});
-        auto expected_data = std::vector<double>{
-            3, /**/ 9, /**/ 18, /**/ 15,
-        };
-        for (size_t i=0; i<values.shape()[0]; i++) {
-            for (size_t j=0; j<values.shape()[1]; j++) {
-                CHECK(values(i, j) == expected_data[i * values.shape()[1] + j]);
+        CHECK(descriptor.keys() == equistore::Labels(
+            {"species_center"},
+            {{1}, {6}}
+        ));
+
+        // H block
+        auto block = descriptor.block_by_id(0);
+        CHECK(block.samples() == equistore::Labels(
+            {"structure", "center"},
+            {{0, 1}, {0, 2}, {0, 3}}
+        ));
+        CHECK(block.properties() == equistore::Labels(
+            {"index_delta", "x_y_z"},
+            {{0, 1}}
+        ));
+        CHECK(block.values() == equistore::NDArray<double>(
+            {9.0, 18.0, 15.0},
+            {3, 1}
+        ));
+
+        auto gradient = block.gradient("positions");
+        CHECK(gradient.samples() == equistore::Labels(
+            {"sample", "structure", "atom"},
+            {
+                {0, 0, 0}, {0, 0, 1}, {0, 0, 2},
+                {1, 0, 1}, {1, 0, 2}, {1, 0, 3},
+                {2, 0, 2}, {2, 0, 3},
             }
-        }
+        ));
+        CHECK(gradient.data() == equistore::NDArray<double>(
+            {
+                1.0, /**/ 1.0, /**/ 1.0,
+                1.0, /**/ 1.0, /**/ 1.0,
+                1.0, /**/ 1.0, /**/ 1.0,
+                1.0, /**/ 1.0, /**/ 1.0,
+                1.0, /**/ 1.0, /**/ 1.0,
+                1.0, /**/ 1.0, /**/ 1.0,
+                1.0, /**/ 1.0, /**/ 1.0,
+                1.0, /**/ 1.0, /**/ 1.0,
+            },
+            {8, 3, 1}
+        ));
 
-        auto gradients = descriptor.gradients();
-        CHECK(gradients.shape() == std::array<size_t, 2>{18, 1});
-        expected_data = std::vector<double>{
-            1, /**/ 1, /**/ 1, /**/ 1, /**/ 1, /**/ 1,
-            1, /**/ 1, /**/ 1, /**/ 1, /**/ 1, /**/ 1,
-            1, /**/ 1, /**/ 1, /**/ 1, /**/ 1, /**/ 1,
+        // C block
+        block = descriptor.block_by_id(1);
+        CHECK(block.samples() == equistore::Labels(
+            {"structure", "center"},
+            {{0, 0}}
+        ));
+        CHECK(block.properties() == equistore::Labels(
+            {"index_delta", "x_y_z"},
+            {{0, 1}}
+        ));
+        CHECK(block.values() == equistore::NDArray<double>(
+            {3.0},
+            {1, 1}
+        ));
+
+        gradient = block.gradient("positions");
+        CHECK(gradient.samples() == equistore::Labels(
+            {"sample", "structure", "atom"},
+            {{0, 0, 0}, {0, 0, 1}}
+        ));
+        CHECK(gradient.data() == equistore::NDArray<double>(
+            {
+                1.0, /**/ 1.0, /**/ 1.0,
+                1.0, /**/ 1.0, /**/ 1.0,
+            },
+            {2, 3, 1}
+        ));
+    }
+
+    SECTION("Partial compute -- preselected") {
+        auto options = rascaline::CalculationOptions();
+        options.gradients.push_back("positions");
+        auto blocks = std::vector<equistore::TensorBlock>{
+            equistore::TensorBlock(
+                std::unique_ptr<equistore::SimpleDataArray>(new equistore::SimpleDataArray({1, 1})),
+                equistore::Labels({"structure", "center"}, {{0, 3}}),
+                {},
+                equistore::Labels({"index_delta", "x_y_z"}, {{0, 1}})
+            ),
+            equistore::TensorBlock(
+                std::unique_ptr<equistore::SimpleDataArray>(new equistore::SimpleDataArray({1, 1})),
+                equistore::Labels({"structure", "center"}, {{0, 0}}),
+                {},
+                equistore::Labels({"index_delta", "x_y_z"}, {{1, 0}})
+            ),
         };
-        for (size_t i=0; i<gradients.shape()[0]; i++) {
-            for (size_t j=0; j<gradients.shape()[1]; j++) {
-                CHECK(gradients(i, j) == expected_data[i * gradients.shape()[1] + j]);
+
+        options.selected_samples = rascaline::LabelsSelection::predefined(equistore::TensorMap(
+            equistore::Labels({"species_center"}, {{1}, {6}}),
+            blocks
+        ));
+        options.selected_properties = rascaline::LabelsSelection::predefined(equistore::TensorMap(
+            equistore::Labels({"species_center"}, {{1}, {6}}),
+            blocks
+        ));
+        auto descriptor = calculator.compute(systems, options);
+
+        CHECK(descriptor.keys() == equistore::Labels(
+            {"species_center"},
+            {{1}, {6}}
+        ));
+
+        // H block
+        auto block = descriptor.block_by_id(0);
+        CHECK(block.samples() == equistore::Labels(
+            {"structure", "center"},
+            {{0, 3}}
+        ));
+        CHECK(block.properties() == equistore::Labels(
+            {"index_delta", "x_y_z"},
+            {{0, 1}}
+        ));
+        CHECK(block.values() == equistore::NDArray<double>(
+            {15.0},
+            {1, 1}
+        ));
+
+        auto gradient = block.gradient("positions");
+        CHECK(gradient.samples() == equistore::Labels(
+            {"sample", "structure", "atom"},
+            {
+                {0, 0, 2}, {0, 0, 3},
             }
-        }
-    }
+        ));
+        CHECK(gradient.data() == equistore::NDArray<double>(
+            {
+                1.0, /**/ 1.0, /**/ 1.0,
+                1.0, /**/ 1.0, /**/ 1.0,
+            },
+            {2, 3, 1}
+        ));
 
-    SECTION("Partial compute -- empty") {
-        auto options = rascaline::CalculationOptions();
-        options.selected_samples = rascaline::SelectedIndexes({"structure", "center"});
-        auto descriptor = calculator.compute(systems, std::move(options));
+        // C block
+        block = descriptor.block_by_id(1);
+        CHECK(block.samples() == equistore::Labels(
+            {"structure", "center"},
+            {{0, 0}}
+        ));
+        CHECK(block.properties() == equistore::Labels(
+            {"index_delta", "x_y_z"},
+            {{1, 0}}
+        ));
+        CHECK(block.values() == equistore::NDArray<double>(
+            {4.0},
+            {1, 1}
+        ));
 
-        CHECK(descriptor.values().shape()[0] == 0);
-        CHECK(descriptor.values().shape()[1] == 2);
-
-        auto samples = descriptor.samples();
-        CHECK(samples.shape()[0] == 0);
-        CHECK(samples.shape()[1] == 2);
-
-        options = rascaline::CalculationOptions();
-        options.selected_features = rascaline::SelectedIndexes({"index_delta", "x_y_z"});
-        descriptor = calculator.compute(systems, std::move(options));
-
-        CHECK(descriptor.values().shape()[0] == 4);
-        CHECK(descriptor.values().shape()[1] == 0);
-
-        auto features = descriptor.features();
-        CHECK(features.shape()[0] == 0);
-        CHECK(features.shape()[1] == 2);
-    }
-
-    SECTION("Partial compute -- errors") {
-        auto options = rascaline::CalculationOptions();
-        options.selected_samples = rascaline::SelectedIndexes({"structure", "center", "species"});
-        options.selected_samples.add({0, 1, 3});
-
-        CHECK_THROWS_WITH(
-            calculator.compute(systems, std::move(options)),
-            "invalid parameter: 'species' in requested samples is not part of the samples of this calculator"
-        );
-
-        options = rascaline::CalculationOptions();
-        options.selected_features = rascaline::SelectedIndexes({"index_delta", "x_y_z", "foo"});
-        options.selected_features.add({0, 1, 3});
-
-        CHECK_THROWS_WITH(
-            calculator.compute(systems, std::move(options)),
-            "invalid parameter: 'foo' in requested features is not part of the features of this calculator"
-        );
-    }
-}
-
-static void check_indexes(
-    const rascaline::Indexes& indexes,
-    std::vector<std::string> names,
-    std::array<size_t, 2> shape,
-    std::vector<int32_t> values
-) {
-    CHECK(indexes.names() == names);
-    CHECK(indexes.shape() == shape);
-
-    for (size_t i=0; i<indexes.shape()[0]; i++) {
-        for (size_t j=0; j<indexes.shape()[1]; j++) {
-            CHECK(indexes(i, j) == values[i * indexes.shape()[1] + j]);
-        }
+        gradient = block.gradient("positions");
+        CHECK(gradient.samples() == equistore::Labels(
+            {"sample", "structure", "atom"},
+            {{0, 0, 0}, {0, 0, 1}}
+        ));
+        CHECK(gradient.data() == equistore::NDArray<double>(
+            {
+                0.0, /**/ 0.0, /**/ 0.0,
+                0.0, /**/ 0.0, /**/ 0.0,
+            },
+            {2, 3, 1}
+        ));
     }
 }
