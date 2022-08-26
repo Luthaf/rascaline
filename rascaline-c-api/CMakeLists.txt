@@ -172,8 +172,9 @@ endif()
 
 add_dependencies(rascaline cargo-build-rascaline)
 set(RASCALINE_HEADERS
-    "${PROJECT_SOURCE_DIR}/include/rascaline.h"
     "${PROJECT_SOURCE_DIR}/include/equistore.h"
+    "${PROJECT_SOURCE_DIR}/include/rascaline.h"
+    "${PROJECT_SOURCE_DIR}/include/equistore.hpp"
     "${PROJECT_SOURCE_DIR}/include/rascaline.hpp"
 )
 set(RASCALINE_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/)
