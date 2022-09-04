@@ -2,11 +2,10 @@ use std::f64;
 
 use ndarray::{Array2, ArrayViewMut2, Array1};
 
-use crate::math::gamma;
+use crate::math::{gamma, hyp1f1, hyp1f1_derivative};
 use crate::Error;
 
 use super::RadialIntegral;
-use super::{HyperGeometricSphericalExpansion, HyperGeometricParameters};
 
 const SQRT_PI_OVER_4: f64 = 0.44311346272637897;
 
@@ -47,16 +46,81 @@ impl GtoParameters {
     }
 }
 
+/// Compute the G function from the [2021 paper], appendix C:
+///
+/// `G(rij) = Γ(a) / Γ(b) exp(-c rij^2) 1F1(a, b, c^2 rij^2 / (c + d))`
+///
+/// [2021 paper]: https://doi.org/10.1063/5.0044689
+#[derive(Debug, Clone)]
+struct SphericalExpansionHyperGeometric {
+    /// Γ(a) / Γ(b)
+    gamma_ratio: f64,
+    /// c in the expression above
+    atomic_gaussian_constant: f64,
+    /// d in the expression above
+    gto_gaussian_constant: f64,
+    /// `a` parameter of the function
+    a: f64,
+    /// `b` parameter of the function
+    b: f64,
+}
+
+impl SphericalExpansionHyperGeometric {
+    fn new(
+        a: f64,
+        b: f64,
+        atomic_gaussian_constant: f64,
+        gto_gaussian_constant: f64,
+    ) -> SphericalExpansionHyperGeometric {
+        SphericalExpansionHyperGeometric {
+            gamma_ratio: gamma(a) / gamma(b),
+            atomic_gaussian_constant,
+            gto_gaussian_constant,
+            a,
+            b,
+        }
+    }
+
+    fn compute(&self, rij: f64, gradients: bool) -> (f64, f64) {
+        let alpha_rij = self.atomic_gaussian_constant * rij;
+
+        let z = alpha_rij * alpha_rij / (self.atomic_gaussian_constant + self.gto_gaussian_constant);
+
+        let exp_z = f64::exp(-rij * alpha_rij);
+        let hyp1f1_z = hyp1f1(self.a, self.b, z);
+        let value = self.gamma_ratio * exp_z * hyp1f1_z;
+
+        let mut gradient = 0.0;
+        if gradients {
+            gradient = z / rij * hyp1f1_derivative(self.a, self.b, z) - alpha_rij * hyp1f1_z;
+            gradient *= 2.0 * self.gamma_ratio * exp_z;
+        }
+
+        return (value, gradient);
+    }
+}
+
+/// Implementation of the radial integral for GTO radial basis and gaussian
+/// atomic density.
 #[derive(Debug, Clone)]
 pub struct GtoRadialIntegral {
     parameters: GtoParameters,
-    hypergeometric: HyperGeometricSphericalExpansion,
+
     /// 1/2σ^2, with σ the atomic density gaussian width
     atomic_gaussian_constant: f64,
     /// 1/2σ_n^2, with σ_n the GTO gaussian width, i.e. `cutoff * max(√n, 1) / n_max`
     gto_gaussian_constants: Vec<f64>,
     /// `n_max * n_max` matrix to orthonormalize the GTO
     gto_orthonormalization: Array2<f64>,
+    /// (l_max + 1) x (n_max) array of functions computing
+    ///
+    /// `G(rij) = Γ(a) / Γ(b) exp(-c rij^2) 1F1(a, b, c^2 rij^2 / (c + d))`
+    ///
+    /// where `a = (n + l + 3) / 2`, `b = l + 3 / 2`, `c = 1 / 2σ^2`, `d = 1 / 2
+    /// (r_cut \sqrt(n) / (n_max + 1))^2`; σ is the atomic density gaussian
+    /// width, `r_cut` the cutoff radius, `n_max` the number of radial basis, n
+    /// the current radial basis index and l the current angular index.
+    g_functions: Array2<SphericalExpansionHyperGeometric>,
 }
 
 fn gto_overlap_matrix(max_radial: usize, gto_gaussian_widths: &[f64]) -> Array2<f64> {
@@ -116,14 +180,30 @@ impl GtoRadialIntegral {
         }
         let gto_orthonormalization = eigen.recompose().dot(&Array2::from_diag(&gto_normalization));
 
-        let hypergeometric = HyperGeometricSphericalExpansion::new(parameters.max_radial, parameters.max_angular);
-
         let sigma2 = parameters.atomic_gaussian_width * parameters.atomic_gaussian_width;
+        let atomic_gaussian_constant = 1.0 / (2.0 * sigma2);
+
+        let mut g_functions = Vec::new();
+        g_functions.reserve(parameters.max_angular * (parameters.max_radial + 1));
+
+        for l in 0..(parameters.max_angular + 1) {
+            for n in 0..parameters.max_radial {
+                let a = 0.5 * (n + l + 3) as f64;
+                let b = l as f64 + 1.5;
+                g_functions.push(SphericalExpansionHyperGeometric::new(
+                    a, b, atomic_gaussian_constant, gto_gaussian_constants[n]
+                ));
+            }
+        }
+
+        let g_functions = Array2::from_shape_vec(
+            (parameters.max_angular + 1, parameters.max_radial), g_functions
+        ).expect("wrong shape in Array2::from_shape_vec");
 
         return Ok(GtoRadialIntegral {
             parameters: parameters,
-            hypergeometric: hypergeometric,
-            atomic_gaussian_constant: 1.0 / (2.0 * sigma2),
+            g_functions: g_functions,
+            atomic_gaussian_constant: atomic_gaussian_constant,
             gto_gaussian_constants: gto_gaussian_constants,
             gto_orthonormalization: gto_orthonormalization.t().to_owned(),
         })
@@ -153,11 +233,16 @@ impl RadialIntegral for GtoRadialIntegral {
             );
         }
 
-        let hyperg_parameters = HyperGeometricParameters {
-            atomic_gaussian_constant: self.atomic_gaussian_constant,
-            gto_gaussian_constants: &self.gto_gaussian_constants,
-        };
-        self.hypergeometric.compute(distance, hyperg_parameters, values.view_mut(), gradients.as_mut().map(|g| g.view_mut()));
+        let do_gradients = gradients.is_some();
+        for l in 0..=self.parameters.max_angular {
+            for n in 0..self.parameters.max_radial {
+                let (g, g_grad) = self.g_functions[[l, n]].compute(distance, do_gradients);
+                values[[l, n]] = g;
+                if let Some(ref mut gradients) = gradients {
+                    gradients[[l, n]] = g_grad;
+                }
+            }
+        }
 
         // Define global factor of radial integral arising from two parts:
         // - a global factor of sqrt(pi)/4 from the integral itself
@@ -343,8 +428,7 @@ mod tests {
         gto.compute(1e-12, values.view_mut(), Some(gradients_plus.view_mut()));
 
         assert_relative_eq!(
-            gradients, gradients_plus,
-            epsilon=1e-8, max_relative=1e-6,
+            gradients, gradients_plus, epsilon=1e-12, max_relative=1e-6,
         );
     }
 
@@ -371,14 +455,9 @@ mod tests {
 
         let finite_differences = (&values_delta - &values) / delta;
 
-        for n in 0..max_radial {
-            for l in 0..(max_angular + 1) {
-                assert_relative_eq!(
-                    finite_differences[[l, n]], gradients[[l, n]],
-                    epsilon=1e-5, max_relative=5e-5
-                );
-            }
-        }
+        assert_relative_eq!(
+            finite_differences, gradients, max_relative=1e-4
+        );
     }
 
     #[test]

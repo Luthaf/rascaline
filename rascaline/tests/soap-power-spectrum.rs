@@ -25,7 +25,7 @@ fn values() {
     let array = values.data.as_array();
 
    let expected = &data::load_expected_values("soap-power-spectrum-values.npy.gz");
-   assert_relative_eq!(array, expected, max_relative=1e-9);
+   assert_relative_eq!(array, expected, max_relative=1e-5);
 }
 
 #[test]
@@ -51,12 +51,12 @@ fn gradients() {
     let array = sum_gradients(n_atoms, gradients);
 
     let expected = &data::load_expected_values("soap-power-spectrum-positions-gradient.npy.gz");
-    assert_relative_eq!(array, expected, max_relative=1e-9);
+    assert_relative_eq!(array, expected, max_relative=1e-6);
 
     let gradient = block.gradient("cell").unwrap();
     let array = gradient.data.as_array();
     let expected = &data::load_expected_values("soap-power-spectrum-cell-gradient.npy.gz");
-    assert_relative_eq!(array, expected, max_relative=1e-8);
+    assert_relative_eq!(array, expected, max_relative=1e-6);
 }
 
 fn sum_gradients(n_atoms: usize, gradients: &BasicBlock) -> ArrayD<f64> {
