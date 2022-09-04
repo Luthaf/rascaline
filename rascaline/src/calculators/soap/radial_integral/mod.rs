@@ -16,9 +16,6 @@ pub trait RadialIntegral: std::panic::RefUnwindSafe + Send {
     fn compute(&self, rij: f64, values: ArrayViewMut2<f64>, gradients: Option<ArrayViewMut2<f64>>);
 }
 
-mod hypergeometric;
-pub use self::hypergeometric::{HyperGeometricSphericalExpansion, HyperGeometricParameters};
-
 mod gto;
 pub use self::gto::{GtoRadialIntegral, GtoParameters};
 
