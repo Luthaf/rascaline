@@ -29,7 +29,9 @@ hyperparameters = {
     "atomic_gaussian_width": 0.3,
     "center_atom_weight": 1.0,
     "radial_basis": {
-        "Gto": {},
+        "Gto": {
+            "splined_radial_integral": False,
+        },
     },
     "cutoff_function": {
         "ShiftedCosine": {
