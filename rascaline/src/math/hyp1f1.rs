@@ -6,13 +6,6 @@ use crate::math::ln_gamma;
 const ACCEPTABLE_RTOL: f64 = 1e-9;
 
 
-/// Compute the gradient of the 1F1 confluent hypergeometric function, i.e.
-/// `\partial 1F1(a, b, z) / \partial z`.
-pub fn hyp1f1_derivative(a: f64, b: f64, x: f64) -> f64 {
-    a / b * hyp1f1(a + 1.0, b + 1.0, x)
-}
-
-
 /// Compute the 1F1 confluent hypergeometric function.
 ///
 /// The implementation is translated from scipy, and distributed under the
@@ -283,7 +276,7 @@ mod tests {
 
                 for &z in &[-200.0, -10.0, -1.1, -1e-2, 0.2, 1.5, 10.0, 40.0, 523.0] {
                     let value = hyp1f1(a, b, z);
-                    let gradient = hyp1f1_derivative(a, b, z);
+                    let gradient = a / b * hyp1f1(a + 1.0, b + 1.0, z);
                     let value_delta = hyp1f1(a, b, z + delta);
 
                     let finite_difference = (value_delta - value) / delta;

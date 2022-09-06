@@ -2,7 +2,7 @@ use std::f64;
 
 use ndarray::{Array2, ArrayViewMut2, Array1};
 
-use crate::math::{gamma, hyp1f1, hyp1f1_derivative};
+use crate::math::{gamma, DoubleRegularized1F1};
 use crate::Error;
 
 use super::RadialIntegral;
@@ -46,81 +46,21 @@ impl GtoParameters {
     }
 }
 
-/// Compute the G function from the [2021 paper], appendix C:
-///
-/// `G(rij) = Γ(a) / Γ(b) exp(-c rij^2) 1F1(a, b, c^2 rij^2 / (c + d))`
-///
-/// [2021 paper]: https://doi.org/10.1063/5.0044689
-#[derive(Debug, Clone)]
-struct SphericalExpansionHyperGeometric {
-    /// Γ(a) / Γ(b)
-    gamma_ratio: f64,
-    /// c in the expression above
-    atomic_gaussian_constant: f64,
-    /// d in the expression above
-    gto_gaussian_constant: f64,
-    /// `a` parameter of the function
-    a: f64,
-    /// `b` parameter of the function
-    b: f64,
-}
-
-impl SphericalExpansionHyperGeometric {
-    fn new(
-        a: f64,
-        b: f64,
-        atomic_gaussian_constant: f64,
-        gto_gaussian_constant: f64,
-    ) -> SphericalExpansionHyperGeometric {
-        SphericalExpansionHyperGeometric {
-            gamma_ratio: gamma(a) / gamma(b),
-            atomic_gaussian_constant,
-            gto_gaussian_constant,
-            a,
-            b,
-        }
-    }
-
-    fn compute(&self, rij: f64, gradients: bool) -> (f64, f64) {
-        let alpha_rij = self.atomic_gaussian_constant * rij;
-
-        let z = alpha_rij * alpha_rij / (self.atomic_gaussian_constant + self.gto_gaussian_constant);
-
-        let exp_z = f64::exp(-rij * alpha_rij);
-        let hyp1f1_z = hyp1f1(self.a, self.b, z);
-        let value = self.gamma_ratio * exp_z * hyp1f1_z;
-
-        let mut gradient = 0.0;
-        if gradients {
-            gradient = z / rij * hyp1f1_derivative(self.a, self.b, z) - alpha_rij * hyp1f1_z;
-            gradient *= 2.0 * self.gamma_ratio * exp_z;
-        }
-
-        return (value, gradient);
-    }
-}
-
 /// Implementation of the radial integral for GTO radial basis and gaussian
 /// atomic density.
 #[derive(Debug, Clone)]
 pub struct GtoRadialIntegral {
     parameters: GtoParameters,
-
+    /// σ^2, with σ the atomic density gaussian width
+    atomic_gaussian_width_2: f64,
     /// 1/2σ^2, with σ the atomic density gaussian width
     atomic_gaussian_constant: f64,
     /// 1/2σ_n^2, with σ_n the GTO gaussian width, i.e. `cutoff * max(√n, 1) / n_max`
     gto_gaussian_constants: Vec<f64>,
     /// `n_max * n_max` matrix to orthonormalize the GTO
     gto_orthonormalization: Array2<f64>,
-    /// (l_max + 1) x (n_max) array of functions computing
-    ///
-    /// `G(rij) = Γ(a) / Γ(b) exp(-c rij^2) 1F1(a, b, c^2 rij^2 / (c + d))`
-    ///
-    /// where `a = (n + l + 3) / 2`, `b = l + 3 / 2`, `c = 1 / 2σ^2`, `d = 1 / 2
-    /// (r_cut \sqrt(n) / (n_max + 1))^2`; σ is the atomic density gaussian
-    /// width, `r_cut` the cutoff radius, `n_max` the number of radial basis, n
-    /// the current radial basis index and l the current angular index.
-    g_functions: Array2<SphericalExpansionHyperGeometric>,
+    /// Implementation of `Gamma(a) / Gamma(b) 1F1(a, b, z)`
+    double_regularized_1f1: DoubleRegularized1F1,
 }
 
 fn gto_overlap_matrix(max_radial: usize, gto_gaussian_widths: &[f64]) -> Array2<f64> {
@@ -180,29 +120,15 @@ impl GtoRadialIntegral {
         }
         let gto_orthonormalization = eigen.recompose().dot(&Array2::from_diag(&gto_normalization));
 
-        let sigma2 = parameters.atomic_gaussian_width * parameters.atomic_gaussian_width;
-        let atomic_gaussian_constant = 1.0 / (2.0 * sigma2);
-
-        let mut g_functions = Vec::new();
-        g_functions.reserve(parameters.max_angular * (parameters.max_radial + 1));
-
-        for l in 0..(parameters.max_angular + 1) {
-            for n in 0..parameters.max_radial {
-                let a = 0.5 * (n + l + 3) as f64;
-                let b = l as f64 + 1.5;
-                g_functions.push(SphericalExpansionHyperGeometric::new(
-                    a, b, atomic_gaussian_constant, gto_gaussian_constants[n]
-                ));
-            }
-        }
-
-        let g_functions = Array2::from_shape_vec(
-            (parameters.max_angular + 1, parameters.max_radial), g_functions
-        ).expect("wrong shape in Array2::from_shape_vec");
+        let atomic_gaussian_width_2 = parameters.atomic_gaussian_width * parameters.atomic_gaussian_width;
+        let atomic_gaussian_constant = 1.0 / (2.0 * atomic_gaussian_width_2);
 
         return Ok(GtoRadialIntegral {
             parameters: parameters,
-            g_functions: g_functions,
+            double_regularized_1f1: DoubleRegularized1F1 {
+                max_angular: parameters.max_angular,
+            },
+            atomic_gaussian_width_2: atomic_gaussian_width_2,
             atomic_gaussian_constant: atomic_gaussian_constant,
             gto_gaussian_constants: gto_gaussian_constants,
             gto_orthonormalization: gto_orthonormalization.t().to_owned(),
@@ -233,46 +159,42 @@ impl RadialIntegral for GtoRadialIntegral {
             );
         }
 
-        let do_gradients = gradients.is_some();
-        for l in 0..=self.parameters.max_angular {
-            for n in 0..self.parameters.max_radial {
-                let (g, g_grad) = self.g_functions[[l, n]].compute(distance, do_gradients);
-                values[[l, n]] = g;
-                if let Some(ref mut gradients) = gradients {
-                    gradients[[l, n]] = g_grad;
-                }
-            }
-        }
-
         // Define global factor of radial integral arising from two parts:
         // - a global factor of sqrt(pi)/4 from the integral itself
         // - the normalization constant of the atomic Gaussian density.
         //   We use a factor of 1/(pi*sigma^2)^0.75 which leads to
         //   Gaussian densities that are normalized in the L2-sense, i.e.
         //   integral_{R^3} |g(r)|^2 d^3r = 1.
-        let atomic_sigma_sq = 0.5 / self.atomic_gaussian_constant;
-        let atomic_gaussian_normalization = (std::f64::consts::PI * atomic_sigma_sq).powf(-0.75);
+        let atomic_gaussian_normalization = (std::f64::consts::PI * self.atomic_gaussian_width_2).powf(-0.75);
         let global_factor = SQRT_PI_OVER_4 * atomic_gaussian_normalization;
 
         let c = self.atomic_gaussian_constant;
         let c_rij = c * distance;
+        let exp_c_rij = f64::exp(-distance * c_rij);
 
         for n in 0..self.parameters.max_radial {
             let gto_constant = self.gto_gaussian_constants[n];
-            // `(c * rij)^l`
-            let mut c_rij_l = 1.0;
+            // `global_factor * exp(-c rij^2) * (c * rij)^l`
+            let mut factor = global_factor * exp_c_rij;
+
+            let z = c_rij * c_rij / (self.atomic_gaussian_constant + gto_constant);
+            self.double_regularized_1f1.compute(
+                z, n,
+                values.index_axis_mut(ndarray::Axis(1), n),
+                gradients.as_mut().map(|g| g.index_axis_mut(ndarray::Axis(1), n))
+            );
 
             for l in 0..(self.parameters.max_angular + 1) {
                 let n_l_3_over_2 = 0.5 * (n + l) as f64 + 1.5;
                 let c_dn = (c + gto_constant).powf(-n_l_3_over_2);
-                let factor = global_factor * c_rij_l * c_dn;
-                c_rij_l *= c_rij;
 
-                values[[l, n]] *= factor;
+                values[[l, n]] *= c_dn * factor;
                 if let Some(ref mut gradients) = gradients {
-                    gradients[[l, n]] *= factor;
-                    gradients[[l, n]] += values[[l, n]] * l as f64 / distance;
+                    gradients[[l, n]] *= c_dn * factor * 2.0 * z / distance;
+                    gradients[[l, n]] += values[[l, n]] * (l as f64 / distance - 2.0 * c_rij);
                 }
+
+                factor *= c_rij;
             }
         }
 

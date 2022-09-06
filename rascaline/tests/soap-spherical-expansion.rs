@@ -28,7 +28,7 @@ fn values_no_pbc() {
     let array = values.data.as_array();
 
     let expected = &data::load_expected_values("spherical-expansion-values.npy.gz");
-    assert_relative_eq!(array, expected, max_relative=1e-6);
+    assert_relative_eq!(array, expected, max_relative=5e-5);
 }
 
 #[test]
