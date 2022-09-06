@@ -35,34 +35,26 @@ pub enum RadialBasis {
     ///
     /// The basis is defined as `R_n(r) ∝ r^n e^{- r^2 / (2 σ_n^2)}`, where `σ_n
     /// = cutoff * \sqrt{n} / n_max`
-    Gto {},
-    /// Splined version of the `Gto` radial basis.
-    ///
-    /// This computes the same integral as the GTO radial basis but using Cubic
-    /// Hermit splines with control points sampled from the GTO implementation.
-    /// Using splines is usually much faster (up to 30% of the runtime in the
-    /// spherical expansion) than using the base GTO implementation.
-    ///
-    /// The number of control points in the spline is automatically determined
-    /// to ensure the maximal absolute error is close to the requested accuracy.
-    SplinedGto {
-        accuracy: f64,
+    Gto {
+        /// compute the radial integral using splines. This is much faster than
+        /// the base GTO implementation.
+        #[serde(default = "serde_default_splined_radial_integral")]
+        splined_radial_integral: bool,
+        /// Accuracy for the spline. The number of control points in the spline
+        /// is automatically determined to ensure the average absolute error is
+        /// close to the requested accuracy.
+        #[serde(default = "serde_default_spline_accuracy")]
+        spline_accuracy: f64,
     },
 }
+
+fn serde_default_splined_radial_integral() -> bool { true }
+fn serde_default_spline_accuracy() -> f64 { 1e-8 }
 
 impl RadialBasis {
     fn construct(&self, parameters: &SphericalExpansionParameters) -> Result<Box<dyn RadialIntegral>, Error> {
         match self {
-            RadialBasis::Gto {} => {
-                let parameters = GtoParameters {
-                    max_radial: parameters.max_radial,
-                    max_angular: parameters.max_angular,
-                    atomic_gaussian_width: parameters.atomic_gaussian_width,
-                    cutoff: parameters.cutoff,
-                };
-                return Ok(Box::new(GtoRadialIntegral::new(parameters)?));
-            }
-            RadialBasis::SplinedGto { accuracy } => {
+            RadialBasis::Gto {splined_radial_integral, spline_accuracy} => {
                 let parameters = GtoParameters {
                     max_radial: parameters.max_radial,
                     max_angular: parameters.max_angular,
@@ -71,12 +63,19 @@ impl RadialBasis {
                 };
                 let gto = GtoRadialIntegral::new(parameters)?;
 
+                if !splined_radial_integral {
+                    return Ok(Box::new(gto));
+                }
+
                 let parameters = SplinedRIParameters {
                     max_radial: parameters.max_radial,
                     max_angular: parameters.max_angular,
                     cutoff: parameters.cutoff,
                 };
-                return Ok(Box::new(SplinedRadialIntegral::with_accuracy(parameters, *accuracy, gto)?));
+
+                return Ok(Box::new(SplinedRadialIntegral::with_accuracy(
+                    parameters, *spline_accuracy, gto
+                )?));
             }
         };
     }
@@ -1063,7 +1062,7 @@ mod tests {
             max_angular: 6,
             atomic_gaussian_width: 0.3,
             center_atom_weight: 1.,
-            radial_basis: RadialBasis::Gto {},
+            radial_basis: RadialBasis::Gto { splined_radial_integral: true, spline_accuracy: 1e-8 },
             radial_scaling: RadialScaling::Willatt2018 { scale: 1.5, rate: 0.8, exponent: 2},
             cutoff_function: CutoffFunction::ShiftedCosine { width: 0.5 },
         }

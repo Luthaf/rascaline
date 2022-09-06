@@ -11,7 +11,9 @@
     "max_angular": 8,
     "max_radial": 8,
     "radial_basis": {
-      "Gto": {}
+      "Gto": {
+        "splined_radial_integral": false
+      }
     }
   },
   "systems": [
