@@ -13,7 +13,6 @@ use crate::math::compute_k_vectors;
 use crate::systems::UnitCell;
 
 use super::super::CalculatorBase;
-use crate::calculators::soap::RadialBasis;
 
 use crate::math::CachedAllocationsSphericalHarmonics;
 
@@ -31,7 +30,7 @@ pub struct LodeSphericalExpansionParameters {
     /// Width of the atom-centered gaussian used to create the atomic density
     pub atomic_gaussian_width: f64,
     /// Radial basis to use for the radial integral
-    pub radial_basis: RadialBasis,
+    // pub radial_basis: RadialBasis,
     /// TODO
     pub potential_exponent: usize,
 }
@@ -41,8 +40,7 @@ pub struct LodeSphericalExpansionParameters {
 pub struct LodeSphericalExpansion {
     /// Parameters governing the spherical expansion
     parameters: LodeSphericalExpansionParameters,
-    /// implementation + cached allocation to compute the spherical harmonics
-    /// for a single k-vector
+    /// implementation + cached allocation to compute spherical harmonics
     spherical_harmonics: CachedAllocationsSphericalHarmonics,
 }
 

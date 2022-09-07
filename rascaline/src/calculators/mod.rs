@@ -70,6 +70,9 @@ pub trait CalculatorBase: std::panic::RefUnwindSafe {
 #[cfg(test)]
 pub(crate) mod tests_utils;
 
+// shared module between LODE and SOAP
+pub mod radial_integral;
+
 mod dummy_calculator;
 pub use self::dummy_calculator::DummyCalculator;
 
