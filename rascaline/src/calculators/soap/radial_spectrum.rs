@@ -8,7 +8,8 @@ use crate::{CalculationOptions, Calculator, LabelsSelection};
 use crate::{Error, System};
 
 use super::SphericalExpansionParameters;
-use super::{CutoffFunction, RadialBasis, RadialScaling, SphericalExpansion};
+use super::{CutoffFunction, RadialScaling, SphericalExpansion};
+use crate::calculators::radial_basis::RadialBasis;
 
 use crate::labels::AtomCenteredSamples;
 use crate::labels::{CenterSingleNeighborsSpeciesKeys, KeysBuilder};
@@ -295,7 +296,7 @@ mod tests {
             max_radial: 6,
             atomic_gaussian_width: 0.3,
             center_atom_weight: 1.0,
-            radial_basis: RadialBasis::Gto { splined_radial_integral: true, spline_accuracy: 1e-8 },
+            radial_basis: RadialBasis::splined_gto(1e-8),
             radial_scaling: RadialScaling::None {},
             cutoff_function: CutoffFunction::ShiftedCosine { width: 0.5 },
         }

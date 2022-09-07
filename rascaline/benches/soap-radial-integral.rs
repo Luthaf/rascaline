@@ -1,8 +1,8 @@
 #![allow(clippy::needless_return)]
 
-use rascaline::calculators::soap::RadialIntegral;
-use rascaline::calculators::soap::{GtoParameters, GtoRadialIntegral};
-use rascaline::calculators::soap::{SplinedRadialIntegral, SplinedRIParameters};
+use rascaline::calculators::soap::SoapRadialIntegral;
+use rascaline::calculators::soap::{SoapRadialIntegralGtoParameters, SoapRadialIntegralGto};
+use rascaline::calculators::soap::{SoapRadialIntegralSpline, SoapRadialIntegralSplineParameters};
 
 use ndarray::Array2;
 
@@ -12,7 +12,7 @@ use criterion::{BenchmarkGroup, measurement::WallTime};
 fn benchmark_radial_integral(
     mut group: BenchmarkGroup<'_, WallTime>,
     benchmark_gradients: bool,
-    create_radial_integral: impl Fn(usize, usize) -> Box<dyn RadialIntegral>,
+    create_radial_integral: impl Fn(usize, usize) -> Box<dyn SoapRadialIntegral>,
 ) {
     for &max_angular in black_box(&[1, 7, 15]) {
         for &max_radial in black_box(&[2, 8, 14]) {
@@ -46,13 +46,13 @@ fn benchmark_radial_integral(
 
 fn gto_radial_integral(c: &mut Criterion) {
     let create_radial_integral = |max_angular, max_radial| {
-        let parameters = GtoParameters {
+        let parameters = SoapRadialIntegralGtoParameters {
             max_radial,
             max_angular,
             cutoff: 4.5,
             atomic_gaussian_width: 0.5,
         };
-        return Box::new(GtoRadialIntegral::new(parameters).unwrap()) as Box<dyn RadialIntegral>;
+        return Box::new(SoapRadialIntegralGto::new(parameters).unwrap()) as Box<dyn SoapRadialIntegral>;
     };
 
     let mut group = c.benchmark_group("GTO (per neighbor)");
@@ -67,21 +67,21 @@ fn gto_radial_integral(c: &mut Criterion) {
 fn splined_gto_radial_integral(c: &mut Criterion) {
     let create_radial_integral = |max_angular, max_radial| {
         let cutoff = 4.5;
-        let parameters = GtoParameters {
+        let parameters = SoapRadialIntegralGtoParameters {
             max_radial,
             max_angular,
             cutoff,
             atomic_gaussian_width: 0.5,
         };
-        let gto = GtoRadialIntegral::new(parameters).unwrap();
+        let gto = SoapRadialIntegralGto::new(parameters).unwrap();
 
-        let parameters = SplinedRIParameters {
+        let parameters = SoapRadialIntegralSplineParameters {
             max_radial,
             max_angular,
             cutoff,
         };
         let accuracy = 1e-8;
-        return Box::new(SplinedRadialIntegral::with_accuracy(parameters, accuracy, gto).unwrap()) as Box<dyn RadialIntegral>;
+        return Box::new(SoapRadialIntegralSpline::with_accuracy(parameters, accuracy, gto).unwrap()) as Box<dyn SoapRadialIntegral>;
     };
 
     let mut group = c.benchmark_group("Splined GTO (per neighbor)");
