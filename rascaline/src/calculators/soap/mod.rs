@@ -1,10 +1,9 @@
 mod radial_integral;
-pub use self::radial_integral::RadialIntegral;
-pub use self::radial_integral::{GtoRadialIntegral, GtoParameters};
-pub use self::radial_integral::{SplinedRadialIntegral, SplinedRIParameters};
+pub use self::radial_integral::SoapRadialIntegral;
+pub use self::radial_integral::{SoapRadialIntegralGto, SoapRadialIntegralGtoParameters};
+pub use self::radial_integral::{SoapRadialIntegralSpline, SoapRadialIntegralSplineParameters};
 
-pub use self::radial_integral::RadialIntegralCache;
-pub use self::radial_integral::{RadialBasis, RadialBasisParameters};
+pub use self::radial_integral::SoapRadialIntegralCache;
 
 mod cutoff;
 pub use self::cutoff::CutoffFunction;

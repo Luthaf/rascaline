@@ -1,24 +1,24 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use ndarray::{Array2, Array3};
-use crate::Vector3D;
+use ndarray::{Array2, Array3, s};
 
 use equistore::{LabelsBuilder, Labels, LabelValue};
 use equistore::TensorMap;
 
-use crate::{Error, System};
+use crate::{Error, System, Vector3D};
 use crate::labels::{SamplesBuilder, SpeciesFilter, LongRangePerAtom};
 use crate::labels::{KeysBuilder, CenterSingleNeighborsSpeciesKeys};
 
-use crate::math::{KVector, compute_k_vectors};
 use crate::systems::UnitCell;
 
 use super::super::CalculatorBase;
-use crate::calculators::soap::RadialBasis;
 
 use crate::math::SphericalHarmonicsCache;
+use crate::math::{KVector, compute_k_vectors};
 
+use crate::calculators::radial_basis::RadialBasis;
+use super::radial_integral::{LodeRadialIntegralCache, LodeRadialIntegralParameters};
 
 /// TODO
 #[derive(Debug, Clone)]
@@ -43,9 +43,14 @@ pub struct LodeSphericalExpansionParameters {
 pub struct LodeSphericalExpansion {
     /// Parameters governing the spherical expansion
     parameters: LodeSphericalExpansionParameters,
-    /// implementation + cached allocation to compute the spherical harmonics
-    /// for a single k-vector
+    /// implementation + cached allocation to compute spherical harmonics
     spherical_harmonics: SphericalHarmonicsCache,
+    /// implementation + cached allocation to compute the radial integral
+    radial_integral: LodeRadialIntegralCache,
+    /// Cached allocations for the k_vector => nlm projection coefficients.
+    /// The vector contains different l values, and the Array is indexed by
+    /// `m, n, k`.
+    k_vector_to_m_n: Vec<Array3<f64>>,
 }
 
 /// Compute the trigonometric functions for LODE coefficients
@@ -57,7 +62,6 @@ struct StructureFactors {
 }
 
 fn compute_structure_factors(positions: &[Vector3D], k_vectors: &[KVector]) -> StructureFactors {
-
     let num_atoms: usize = positions.len();
     let num_kvecs: usize = k_vectors.len();
 
@@ -65,36 +69,34 @@ fn compute_structure_factors(positions: &[Vector3D], k_vectors: &[KVector]) -> S
     let mut sines = Array2::from_elem((num_kvecs, num_atoms), 0.0);
 
     // cosines[i, j] = cos(k_i * r_j), same for sines
-    for i_k in 0..num_kvecs {
-        for i_p in 0..num_atoms {
+    for (ik, k_vector) in k_vectors.iter().enumerate() {
+        for (atom_i, position) in positions.iter().enumerate() {
             // dot product between kvectors and positions
-            let s = k_vectors[i_k].vector[0] * positions[i_p][0] +
-                            k_vectors[i_k].vector[1] * positions[i_p][1] +
-                            k_vectors[i_k].vector[2] * positions[i_p][2];
+            let s = k_vector.norm * k_vector.direction * position;
 
-            cosines[[i_k, i_p]] = f64::cos(s);
-            sines[[i_k, i_p]] = f64::sin(s);
+            cosines[[ik, atom_i]] = f64::cos(s);
+            sines[[ik, atom_i]] = f64::sin(s);
         }
     }
 
-    let mut strucfac = StructureFactors {
+    let mut structure_factors = StructureFactors {
         real: Array3::from_elem((num_atoms, num_atoms, num_kvecs), 0.0),
         imag: Array3::from_elem((num_atoms, num_atoms, num_kvecs), 0.0),
     };
-    
+
     for i in 0..num_atoms {
         for j in 0..num_atoms {
             for k in 0..num_kvecs {
-                strucfac.real[[i, j, k]] = cosines[[k, i]] * cosines[[k, j]] + sines[[k, i]] * sines[[k, j]];
-                strucfac.imag[[i, j, k]] = sines[[k, i]] * cosines[[k, j]] - cosines[[k, i]] * sines[[k, j]];
+                structure_factors.real[[i, j, k]] = cosines[[k, i]] * cosines[[k, j]] + sines[[k, i]] * sines[[k, j]];
+                structure_factors.imag[[i, j, k]] = sines[[k, i]] * cosines[[k, j]] - cosines[[k, i]] * sines[[k, j]];
             }
         }
     }
 
-    strucfac.real *= 2.0;
-    strucfac.imag *= 2.0;
+    structure_factors.real *= 2.0;
+    structure_factors.imag *= 2.0;
 
-    return strucfac
+    return structure_factors
 }
 
 impl std::fmt::Debug for LodeSphericalExpansion {
@@ -109,10 +111,59 @@ impl LodeSphericalExpansion {
             parameters.max_angular,
         );
 
+        let radial_integral = LodeRadialIntegralCache::new(
+            parameters.radial_basis,
+            LodeRadialIntegralParameters {
+                max_radial: parameters.max_radial,
+                max_angular: parameters.max_angular,
+                atomic_gaussian_width: parameters.atomic_gaussian_width,
+                cutoff: parameters.cutoff,
+                k_cutoff: 1.2 * std::f64::consts::PI / parameters.atomic_gaussian_width,
+            })?;
+
+        let mut k_vector_to_m_n = Vec::new();
+        for _ in 0..=parameters.max_angular {
+            k_vector_to_m_n.push(Array3::from_elem((0, 0, 0), 0.0));
+        }
+
         return Ok(LodeSphericalExpansion {
             parameters,
             spherical_harmonics,
+            radial_integral,
+            k_vector_to_m_n,
         });
+    }
+
+    fn project_k_to_nlm(&mut self, k_vectors: &[KVector], do_gradients: bool) {
+        for spherical_harmonics_l in 0..=self.parameters.max_angular {
+            let shape = (2 * spherical_harmonics_l + 1, self.parameters.max_radial, k_vectors.len());
+
+            // resize the arrays while keeping existing allocations
+            let array = std::mem::take(&mut self.k_vector_to_m_n[spherical_harmonics_l]);
+
+            let mut data = array.into_raw_vec();
+            data.resize(shape.0 * shape.1 * shape.2, 0.0);
+            let array = Array3::from_shape_vec(shape, data).expect("wrong shape");
+
+            self.k_vector_to_m_n[spherical_harmonics_l] = array;
+        }
+
+
+        for (ik, k_vector) in k_vectors.iter().enumerate() {
+            self.radial_integral.compute(k_vector.norm, do_gradients);
+            self.spherical_harmonics.compute(k_vector.direction, do_gradients);
+
+            for l in 0..=self.parameters.max_angular {
+                let spherical_harmonics = self.spherical_harmonics.values.slice(l as isize);
+                let radial_integral = self.radial_integral.values.slice(s![l, ..]);
+
+                for (m, sph_value) in spherical_harmonics.iter().enumerate() {
+                    for (n, ri_value) in radial_integral.iter().enumerate() {
+                        self.k_vector_to_m_n[l][[m, n, ik]] = ri_value * sph_value;
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -247,15 +298,24 @@ impl CalculatorBase for LodeSphericalExpansion {
 
     #[time_graph::instrument(name = "LodeSphericalExpansion::compute")]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
+        let do_gradients = false;
+
+        // TODO: let the user provide the cutoff?
+        // TODO: check atomic_gaussian_width so that we have a non-zero number of k-vectors
+        let k_cutoff = 1.2 * std::f64::consts::PI / self.parameters.atomic_gaussian_width;
 
         for (system_i, system) in systems.iter_mut().enumerate() {
             let cell = system.cell()?;
             if cell.shape() == UnitCell::infinite().shape() {
                 return Err(Error::InvalidParameter("LODE can only be used with periodic systems".into()));
             }
-            let k_vectors = compute_k_vectors(&cell, 1.0);
 
-            let strucfac = compute_structure_factors(system.positions()?, &k_vectors);
+            let k_vectors = compute_k_vectors(&cell, k_cutoff);
+            assert!(!k_vectors.is_empty());
+
+            self.project_k_to_nlm(&k_vectors, do_gradients);
+
+            let structure_factors = compute_structure_factors(system.positions()?, &k_vectors);
         }
         Ok(())
     }
@@ -269,24 +329,25 @@ mod tests {
 
     #[test]
     fn test_compute_structure_factors() {
-        let mut k_vectors = Vec::new();
+        let k_vectors = [
+            KVector{direction: Vector3D::new(1.0, 0.0, 0.0), norm: 1.0},
+            KVector{direction: Vector3D::new(0.0, 1.0, 0.0), norm: 1.0},
+        ];
 
-        k_vectors.push(KVector{vector: Vector3D::new(1.0, 0.0,0.0), norm: 1.0});
-        k_vectors.push(KVector{vector: Vector3D::new(0.0, 1.0, 0.0), norm: 1.0});
-        
-        let positions = [Vector3D::new(1.0, 1.0, 1.0),
-                                        Vector3D::new(2.0, 2.0, 2.0)];
+        let positions = [Vector3D::new(1.0, 1.0, 1.0), Vector3D::new(2.0, 2.0, 2.0)];
 
-        let strucfac = compute_structure_factors(&positions, &k_vectors);
+        let structure_factors = compute_structure_factors(&positions, &k_vectors);
 
-        let ref_real= arr3(
-            &[[[2., 2.], [1.0806046117362793, 1.0806046117362793]],
-                  [[1.0806046117362793, 1.0806046117362793],[2. , 2. ]]]);
-        let ref_imag = arr3(
-            &[[[ 0. ,  0. ], [-1.682941969615793, -1.682941969615793]],
-                  [[1.682941969615793, 1.682941969615793],[ 0. ,  0. ]]]);
+        let expected_real= arr3(&[
+            [[2.0, 2.0], [1.0806046117362793, 1.0806046117362793]],
+            [[1.0806046117362793, 1.0806046117362793], [2.0, 2.0]]
+        ]);
+        let expected_imag = arr3(&[
+            [[0.0, 0.0], [-1.682941969615793, -1.682941969615793]],
+            [[1.682941969615793, 1.682941969615793], [0.0, 0.0]]
+        ]);
 
-        assert_eq!(strucfac.imag, ref_imag);
-        assert_eq!(strucfac.real, ref_real);
+        assert_eq!(structure_factors.real, expected_real);
+        assert_eq!(structure_factors.imag, expected_imag);
     }
 }

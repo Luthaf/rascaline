@@ -1,23 +1,23 @@
 use ndarray::{Array2, ArrayViewMut2};
 
-use super::SoapRadialIntegral;
+use super::LodeRadialIntegral;
 use crate::math::{HermitCubicSpline, SplineParameters};
 use crate::Error;
 
-/// `SoapRadialIntegralSpline` allows to evaluate another radial integral
+/// `LodeRadialIntegralSpline` allows to evaluate another radial integral
 /// implementation using [cubic Hermit spline][splines-wiki].
 ///
 /// This can be much faster than using the actual radial integral
 /// implementation.
 ///
 /// [splines-wiki]: https://en.wikipedia.org/wiki/Cubic_Hermite_spline
-pub struct SoapRadialIntegralSpline {
+pub struct LodeRadialIntegralSpline {
     spline: HermitCubicSpline<ndarray::Ix2>,
 }
 
 /// Parameters for computing the radial integral using Hermit cubic splines
 #[derive(Debug, Clone, Copy)]
-pub struct SoapRadialIntegralSplineParameters {
+pub struct LodeRadialIntegralSplineParameters {
     /// Number of radial components
     pub max_radial: usize,
     /// Number of angular components
@@ -26,18 +26,18 @@ pub struct SoapRadialIntegralSplineParameters {
     pub cutoff: f64,
 }
 
-impl SoapRadialIntegralSpline {
-    /// Create a new `SoapRadialIntegralSpline` taking values from the given
+impl LodeRadialIntegralSpline {
+    /// Create a new `LodeRadialIntegralSpline` taking values from the given
     /// `radial_integral`. Points are added to the spline until the requested
     /// accuracy is reached. We consider that the accuracy is reached when
     /// either the mean absolute error or the mean relative error gets below the
     /// `accuracy` threshold.
-    #[time_graph::instrument(name = "SoapRadialIntegralSpline::with_accuracy")]
+    #[time_graph::instrument(name = "LodeRadialIntegralSpline::with_accuracy")]
     pub fn with_accuracy(
-        parameters: SoapRadialIntegralSplineParameters,
+        parameters: LodeRadialIntegralSplineParameters,
         accuracy: f64,
-        radial_integral: impl SoapRadialIntegral
-    ) -> Result<SoapRadialIntegralSpline, Error> {
+        radial_integral: impl LodeRadialIntegral
+    ) -> Result<LodeRadialIntegralSpline, Error> {
         let shape_tuple = (parameters.max_angular + 1, parameters.max_radial);
 
         let parameters = SplineParameters {
@@ -57,11 +57,11 @@ impl SoapRadialIntegralSpline {
             },
         )?;
 
-        return Ok(SoapRadialIntegralSpline { spline });
+        return Ok(LodeRadialIntegralSpline { spline });
     }
 }
 
-impl SoapRadialIntegral for SoapRadialIntegralSpline {
+impl LodeRadialIntegral for LodeRadialIntegralSpline {
     #[time_graph::instrument(name = "SplinedRadialIntegral::compute")]
     fn compute(&self, x: f64, values: ArrayViewMut2<f64>, gradients: Option<ArrayViewMut2<f64>>) {
         self.spline.compute(x, values, gradients);
@@ -73,19 +73,19 @@ mod tests {
     use approx::assert_relative_eq;
 
     use super::*;
-    use super::super::{SoapRadialIntegralGto, SoapRadialIntegralGtoParameters};
+    use super::super::{LodeRadialIntegralGto, LodeRadialIntegralGtoParameters};
 
     #[test]
     fn high_accuracy() {
         // Check that even with high accuracy and large domain MAX_SPLINE_SIZE
         // is enough
-        let parameters = SoapRadialIntegralSplineParameters {
+        let parameters = LodeRadialIntegralSplineParameters {
             max_radial: 15,
             max_angular: 10,
             cutoff: 12.0,
         };
 
-        let gto = SoapRadialIntegralGto::new(SoapRadialIntegralGtoParameters {
+        let gto = LodeRadialIntegralGto::new(LodeRadialIntegralGtoParameters {
             max_radial: parameters.max_radial,
             max_angular: parameters.max_angular,
             cutoff: parameters.cutoff,
@@ -93,20 +93,20 @@ mod tests {
         }).unwrap();
 
         // this test only check that this code runs without crashing
-        SoapRadialIntegralSpline::with_accuracy(parameters, 1e-10, gto).unwrap();
+        LodeRadialIntegralSpline::with_accuracy(parameters, 5e-10, gto).unwrap();
     }
 
     #[test]
     fn finite_difference() {
         let max_radial = 8;
         let max_angular = 8;
-        let parameters = SoapRadialIntegralSplineParameters {
+        let parameters = LodeRadialIntegralSplineParameters {
             max_radial: max_radial,
             max_angular: max_angular,
             cutoff: 5.0,
         };
 
-        let gto = SoapRadialIntegralGto::new(SoapRadialIntegralGtoParameters {
+        let gto = LodeRadialIntegralGto::new(LodeRadialIntegralGtoParameters {
             max_radial: parameters.max_radial,
             max_angular: parameters.max_angular,
             cutoff: parameters.cutoff,
@@ -116,7 +116,7 @@ mod tests {
         // even with very bad accuracy, we want the gradients of the spline to
         // match the values produces by the spline, and not necessarily the
         // actual GTO gradients.
-        let spline = SoapRadialIntegralSpline::with_accuracy(parameters, 1e-2, gto).unwrap();
+        let spline = LodeRadialIntegralSpline::with_accuracy(parameters, 1e-2, gto).unwrap();
 
         let rij = 3.4;
         let delta = 1e-9;
@@ -131,7 +131,7 @@ mod tests {
         let finite_differences = (&values_delta - &values) / delta;
         assert_relative_eq!(
             finite_differences, gradients,
-            epsilon=delta, max_relative=1e-6
+            epsilon=delta, max_relative=5e-6
         );
     }
 }

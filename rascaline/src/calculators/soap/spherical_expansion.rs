@@ -20,9 +20,11 @@ use crate::labels::{KeysBuilder, CenterSingleNeighborsSpeciesKeys};
 use crate::math::SphericalHarmonicsCache;
 
 use super::super::CalculatorBase;
-use super::{RadialBasis, RadialBasisParameters, RadialIntegralCache};
+use super::SoapRadialIntegralCache;
 
+use super::radial_integral::SoapRadialIntegralParameters;
 use super::{CutoffFunction, RadialScaling};
+use crate::calculators::radial_basis::RadialBasis;
 
 const FOUR_PI: f64 = 4.0 * std::f64::consts::PI;
 
@@ -83,7 +85,7 @@ pub struct SphericalExpansion {
     parameters: SphericalExpansionParameters,
     /// implementation + cached allocation to compute the radial integral for a
     /// single pair
-    radial_integral: ThreadLocal<RefCell<RadialIntegralCache>>,
+    radial_integral: ThreadLocal<RefCell<SoapRadialIntegralCache>>,
     /// implementation + cached allocation to compute the spherical harmonics
     /// for a single pair
     spherical_harmonics: ThreadLocal<RefCell<SphericalHarmonicsCache>>,
@@ -103,7 +105,7 @@ impl SphericalExpansion {
         // validate parameters once in the constructor
         parameters.cutoff_function.validate()?;
         parameters.radial_scaling.validate()?;
-        RadialIntegralCache::new(&parameters.radial_basis, RadialBasisParameters {
+        SoapRadialIntegralCache::new(parameters.radial_basis, SoapRadialIntegralParameters {
             max_radial: parameters.max_radial,
             max_angular: parameters.max_angular,
             atomic_gaussian_width: parameters.atomic_gaussian_width,
@@ -152,9 +154,9 @@ impl SphericalExpansion {
         // gaussian atomic width. For now, we recompute them all the time
 
         let mut radial_integral = self.radial_integral.get_or(|| {
-            let radial_integral = RadialIntegralCache::new(
-                &self.parameters.radial_basis,
-                RadialBasisParameters {
+            let radial_integral = SoapRadialIntegralCache::new(
+                self.parameters.radial_basis,
+                SoapRadialIntegralParameters {
                     max_radial: self.parameters.max_radial,
                     max_angular: self.parameters.max_angular,
                     atomic_gaussian_width: self.parameters.atomic_gaussian_width,
@@ -239,9 +241,9 @@ impl SphericalExpansion {
         inverse_cell: &Matrix3,
     ) {
         let mut radial_integral = self.radial_integral.get_or(|| {
-            let radial_integral = RadialIntegralCache::new(
-                &self.parameters.radial_basis,
-                RadialBasisParameters {
+            let radial_integral = SoapRadialIntegralCache::new(
+                self.parameters.radial_basis,
+                SoapRadialIntegralParameters {
                     max_radial: self.parameters.max_radial,
                     max_angular: self.parameters.max_angular,
                     atomic_gaussian_width: self.parameters.atomic_gaussian_width,
@@ -991,7 +993,8 @@ mod tests {
     use crate::calculators::CalculatorBase;
 
     use super::{SphericalExpansion, SphericalExpansionParameters};
-    use super::{CutoffFunction, RadialBasis, RadialScaling};
+    use super::{CutoffFunction, RadialScaling};
+    use crate::calculators::radial_basis::RadialBasis;
 
 
     fn parameters() -> SphericalExpansionParameters {
@@ -1001,7 +1004,7 @@ mod tests {
             max_angular: 6,
             atomic_gaussian_width: 0.3,
             center_atom_weight: 1.0,
-            radial_basis: RadialBasis::Gto { splined_radial_integral: true, spline_accuracy: 1e-8 },
+            radial_basis: RadialBasis::splined_gto(1e-8),
             radial_scaling: RadialScaling::Willatt2018 { scale: 1.5, rate: 0.8, exponent: 2},
             cutoff_function: CutoffFunction::ShiftedCosine { width: 0.5 },
         }

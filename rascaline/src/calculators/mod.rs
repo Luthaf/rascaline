@@ -79,6 +79,9 @@ pub use self::sorted_distances::SortedDistances;
 mod neighbor_list;
 pub use self::neighbor_list::NeighborList;
 
+mod radial_basis;
+pub use self::radial_basis::{RadialBasis, GtoRadialBasis};
+
 pub mod soap;
 pub use self::soap::{SphericalExpansion, SphericalExpansionParameters};
 pub use self::soap::{SoapPowerSpectrum, PowerSpectrumParameters};

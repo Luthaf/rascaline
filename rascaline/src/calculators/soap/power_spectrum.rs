@@ -11,7 +11,8 @@ use crate::{CalculationOptions, Calculator, LabelsSelection};
 use crate::{Error, System};
 
 use super::SphericalExpansionParameters;
-use super::{SphericalExpansion, RadialBasis, CutoffFunction, RadialScaling};
+use super::{SphericalExpansion, CutoffFunction, RadialScaling};
+use crate::calculators::radial_basis::RadialBasis;
 
 use crate::labels::{SpeciesFilter, SamplesBuilder};
 use crate::labels::AtomCenteredSamples;
@@ -714,7 +715,7 @@ mod tests {
             max_angular: 6,
             atomic_gaussian_width: 0.3,
             center_atom_weight: 1.0,
-            radial_basis: RadialBasis::Gto { splined_radial_integral: true, spline_accuracy: 1e-8 },
+            radial_basis: RadialBasis::splined_gto(1e-8),
             radial_scaling: RadialScaling::None {},
             cutoff_function: CutoffFunction::ShiftedCosine { width: 0.5 },
         }
