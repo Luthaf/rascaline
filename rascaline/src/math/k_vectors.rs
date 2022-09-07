@@ -9,8 +9,8 @@ use crate::systems::{UnitCell, CellShape};
 /// A single k-vector and its norm stored together
 #[derive(Debug, Clone)]
 pub struct KVector {
-    /// 3 component k-vector
-    pub vector: Vector3D,
+    /// direction of the k-vector (i.e. normalized vector)
+    pub direction: Vector3D,
     /// length of the k-vector
     pub norm: f64,
 }
@@ -41,9 +41,10 @@ pub fn compute_k_vectors(cell: &UnitCell, k_cutoff: f64) -> Vec<KVector> {
         let k = n3 as f64 * b3;
         let norm_squared = k.norm2();
         if norm_squared < cutoff_squared {
+            let norm = norm_squared.sqrt();
             results.push(KVector {
-                vector: k,
-                norm: norm_squared.sqrt(),
+                direction: k / norm,
+                norm: norm,
             });
         }
     }
@@ -53,9 +54,10 @@ pub fn compute_k_vectors(cell: &UnitCell, k_cutoff: f64) -> Vec<KVector> {
             let k = n2 as f64 * b2 + n3 as f64 * b3;
             let norm_squared = k.norm2();
             if norm_squared < cutoff_squared {
+                let norm = norm_squared.sqrt();
                 results.push(KVector {
-                    vector: k,
-                    norm: norm_squared.sqrt(),
+                    direction: k / norm,
+                    norm: norm,
                 });
             }
         }
@@ -67,9 +69,10 @@ pub fn compute_k_vectors(cell: &UnitCell, k_cutoff: f64) -> Vec<KVector> {
                 let k = n1 as f64 * b1 + n2 as f64 * b2 + n3 as f64 * b3;
                 let norm_squared = k.norm2();
                 if norm_squared < cutoff_squared {
+                    let norm = norm_squared.sqrt();
                     results.push(KVector {
-                        vector: k,
-                        norm: norm_squared.sqrt(),
+                        direction: k / norm,
+                        norm: norm,
                     });
                 }
             }
@@ -83,7 +86,6 @@ pub fn compute_k_vectors(cell: &UnitCell, k_cutoff: f64) -> Vec<KVector> {
 mod tests {
     use super::*;
     use crate::Matrix3;
-    use approx::assert_relative_eq;
 
     const SQRT_3: f64 = 1.7320508075688772;
     const SQRT_5: f64 = 2.23606797749979;
@@ -128,10 +130,8 @@ mod tests {
                 // Check whether number of obtained vectors agrees with exact result
                 assert_eq!(k_vectors.len(), num_vectors_correct[ik]);
 
-                // Check that the obtained normes are indeed the norms of the
-                // corresponding k-vectors and that they lie in the cutoff ball
+                // Check that the norms lie inside the cutoff ball
                 for k_vector in k_vectors {
-                    assert_relative_eq!(k_vector.norm, k_vector.vector.norm(), max_relative = 1e-16);
                     assert!(k_vector.norm < k_cutoff);
                 }
             }
