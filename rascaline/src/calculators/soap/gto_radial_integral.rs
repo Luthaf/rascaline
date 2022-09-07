@@ -24,7 +24,7 @@ pub struct GtoParameters {
 }
 
 impl GtoParameters {
-    fn validate(&self) -> Result<(), Error> {
+    pub(crate) fn validate(&self) -> Result<(), Error> {
         if self.max_radial == 0 {
             return Err(Error::InvalidParameter(
                 "max_radial must be at least 1 for GTO radial integral".into()
@@ -312,7 +312,7 @@ mod tests {
     }
 
     #[test]
-    fn gto_finite_differences() {
+    fn finite_differences() {
         let max_radial = 8;
         let max_angular = 8;
         let gto = SoapGtoRadialIntegral::new(GtoParameters {
