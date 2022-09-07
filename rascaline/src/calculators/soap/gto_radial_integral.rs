@@ -1,15 +1,16 @@
 use std::f64;
 
-use ndarray::{Array2, ArrayViewMut2, Array1};
+use ndarray::{Array2, ArrayViewMut2};
 
 use crate::math::{gamma, DoubleRegularized1F1};
 use crate::Error;
 
-use super::RadialIntegral;
+use crate::calculators::radial_integral::RadialIntegral;
+use crate::calculators::radial_integral::GtoRadialBasis;
 
 const SQRT_PI_OVER_4: f64 = 0.44311346272637897;
 
-/// Parameters controlling GTO radial basis
+/// Parameters controlling the radial integral with GTO radial basis
 #[derive(Debug, Clone, Copy)]
 pub struct GtoParameters {
     /// Number of radial components
@@ -46,10 +47,10 @@ impl GtoParameters {
     }
 }
 
-/// Implementation of the radial integral for GTO radial basis and gaussian
+/// Implementation of the SOAP radial integral for GTO radial basis and gaussian
 /// atomic density.
 #[derive(Debug, Clone)]
-pub struct GtoRadialIntegral {
+pub struct SoapGtoRadialIntegral {
     parameters: GtoParameters,
     /// σ^2, with σ the atomic density gaussian width
     atomic_gaussian_width_2: f64,
@@ -63,67 +64,23 @@ pub struct GtoRadialIntegral {
     double_regularized_1f1: DoubleRegularized1F1,
 }
 
-fn gto_overlap_matrix(max_radial: usize, gto_gaussian_widths: &[f64]) -> Array2<f64> {
-    let mut overlap = Array2::from_elem((max_radial, max_radial), 0.0);
-    for n1 in 0..max_radial {
-        let sigma1 = gto_gaussian_widths[n1];
-        let sigma1_sq = sigma1 * sigma1;
-        for n2 in n1..max_radial {
-            let sigma2 = gto_gaussian_widths[n2];
-            let sigma2_sq = sigma2 * sigma2;
-
-            let n1_n2_3_over_2 = 0.5 * (3.0 + n1 as f64 + n2 as f64);
-            let value =
-                (0.5 / sigma1_sq + 0.5 / sigma2_sq).powf(-n1_n2_3_over_2)
-                / (sigma1.powi(n1 as i32) * sigma2.powi(n2 as i32))
-                * gamma(n1_n2_3_over_2)
-                / ((sigma1 * sigma2).powf(1.5) * f64::sqrt(gamma(n1 as f64 + 1.5) * gamma(n2 as f64 + 1.5)));
-
-
-            overlap[(n2, n1)] = value;
-            overlap[(n1, n2)] = value;
-        }
-    }
-    return overlap;
-}
-
-impl GtoRadialIntegral {
-    pub fn new(parameters: GtoParameters) -> Result<GtoRadialIntegral, Error> {
+impl SoapGtoRadialIntegral {
+    pub fn new(parameters: GtoParameters) -> Result<SoapGtoRadialIntegral, Error> {
         parameters.validate()?;
-
-        let gto_gaussian_widths = (0..parameters.max_radial).into_iter().map(|n| {
-            let n = n as f64;
-            let n_max = parameters.max_radial as f64;
-            parameters.cutoff * f64::max(f64::sqrt(n), 1.0) / n_max
-        }).collect::<Vec<_>>();
-
-        let gto_gaussian_constants = gto_gaussian_widths.iter()
-            .map(|&sigma| 1.0 / (2.0 * sigma * sigma))
-            .collect::<Vec<_>>();
-
-        let gto_normalization = gto_gaussian_widths.iter()
-            .zip(0..parameters.max_radial)
-            .map(|(sigma, n)| f64::sqrt(2.0 / (sigma.powi(2 * n as i32 + 3) * gamma(n as f64 + 1.5))))
-            .collect::<Array1<_>>();
-
-        let overlap = gto_overlap_matrix(parameters.max_radial, &gto_gaussian_widths);
-        // compute overlap^-1/2 through its eigendecomposition
-        let mut eigen = crate::math::SymmetricEigen::new(overlap);
-        for n in 0..parameters.max_radial {
-            if eigen.eigenvalues[n] <= f64::EPSILON {
-                panic!(
-                    "radial overlap matrix is singular, try with a lower \
-                    max_radial (current value is {})", parameters.max_radial
-                );
-            }
-            eigen.eigenvalues[n] = 1.0 / f64::sqrt(eigen.eigenvalues[n]);
-        }
-        let gto_orthonormalization = eigen.recompose().dot(&Array2::from_diag(&gto_normalization));
 
         let atomic_gaussian_width_2 = parameters.atomic_gaussian_width * parameters.atomic_gaussian_width;
         let atomic_gaussian_constant = 1.0 / (2.0 * atomic_gaussian_width_2);
 
-        return Ok(GtoRadialIntegral {
+        let gto_gaussian_width = GtoRadialBasis::gaussian_widths(parameters.max_radial, parameters.cutoff);
+        let gto_gaussian_constants = gto_gaussian_width.into_iter()
+            .map(|sigma| 1.0 / (2.0 * sigma * sigma))
+            .collect::<Vec<_>>();
+
+        let gto_orthonormalization = GtoRadialBasis::orthonormalization_matrix(
+            parameters.max_radial, parameters.cutoff
+        );
+
+        return Ok(SoapGtoRadialIntegral {
             parameters: parameters,
             double_regularized_1f1: DoubleRegularized1F1 {
                 max_angular: parameters.max_angular,
@@ -131,13 +88,13 @@ impl GtoRadialIntegral {
             atomic_gaussian_width_2: atomic_gaussian_width_2,
             atomic_gaussian_constant: atomic_gaussian_constant,
             gto_gaussian_constants: gto_gaussian_constants,
-            gto_orthonormalization: gto_orthonormalization.t().to_owned(),
+            gto_orthonormalization: gto_orthonormalization,
         })
     }
 }
 
-impl RadialIntegral for GtoRadialIntegral {
-    #[time_graph::instrument(name = "GtoRadialIntegral::compute")]
+impl RadialIntegral for SoapGtoRadialIntegral {
+    #[time_graph::instrument(name = "SoapGtoRadialIntegral::compute")]
     fn compute(
         &self,
         distance: f64,
@@ -230,17 +187,16 @@ impl RadialIntegral for GtoRadialIntegral {
 
 #[cfg(test)]
 mod tests {
-    use approx::{assert_relative_eq, assert_ulps_eq};
-
     use super::*;
+    use crate::calculators::radial_integral::RadialIntegral;
 
-    use super::super::{GtoRadialIntegral, GtoParameters, RadialIntegral};
     use ndarray::Array2;
+    use approx::assert_relative_eq;
 
     #[test]
     #[should_panic = "max_radial must be at least 1"]
     fn invalid_max_radial() {
-        GtoRadialIntegral::new(GtoParameters {
+        SoapGtoRadialIntegral::new(GtoParameters {
             max_radial: 0,
             max_angular: 4,
             cutoff: 3.0,
@@ -251,7 +207,7 @@ mod tests {
     #[test]
     #[should_panic = "cutoff must be a positive number"]
     fn negative_cutoff() {
-        GtoRadialIntegral::new(GtoParameters {
+        SoapGtoRadialIntegral::new(GtoParameters {
             max_radial: 10,
             max_angular: 4,
             cutoff: -3.0,
@@ -262,7 +218,7 @@ mod tests {
     #[test]
     #[should_panic = "cutoff must be a positive number"]
     fn infinite_cutoff() {
-        GtoRadialIntegral::new(GtoParameters {
+        SoapGtoRadialIntegral::new(GtoParameters {
             max_radial: 10,
             max_angular: 4,
             cutoff: std::f64::INFINITY,
@@ -273,7 +229,7 @@ mod tests {
     #[test]
     #[should_panic = "atomic_gaussian_width must be a positive number"]
     fn negative_atomic_gaussian_width() {
-        GtoRadialIntegral::new(GtoParameters {
+        SoapGtoRadialIntegral::new(GtoParameters {
             max_radial: 10,
             max_angular: 4,
             cutoff: 3.0,
@@ -284,7 +240,7 @@ mod tests {
     #[test]
     #[should_panic = "atomic_gaussian_width must be a positive number"]
     fn infinite_atomic_gaussian_width() {
-        GtoRadialIntegral::new(GtoParameters {
+        SoapGtoRadialIntegral::new(GtoParameters {
             max_radial: 10,
             max_angular: 4,
             cutoff: 3.0,
@@ -295,7 +251,7 @@ mod tests {
     #[test]
     #[should_panic = "radial overlap matrix is singular, try with a lower max_radial (current value is 30)"]
     fn ill_conditioned_orthonormalization() {
-        GtoRadialIntegral::new(GtoParameters {
+        SoapGtoRadialIntegral::new(GtoParameters {
             max_radial: 30,
             max_angular: 3,
             cutoff: 5.0,
@@ -306,7 +262,7 @@ mod tests {
     #[test]
     #[should_panic = "wrong size for values array, expected [4, 2] but got [3, 2]"]
     fn values_array_size() {
-        let gto = GtoRadialIntegral::new(GtoParameters {
+        let gto = SoapGtoRadialIntegral::new(GtoParameters {
             max_radial: 2,
             max_angular: 3,
             cutoff: 5.0,
@@ -320,7 +276,7 @@ mod tests {
     #[test]
     #[should_panic = "wrong size for gradients array, expected [4, 2] but got [3, 2]"]
     fn gradient_array_size() {
-        let gto = GtoRadialIntegral::new(GtoParameters {
+        let gto = SoapGtoRadialIntegral::new(GtoParameters {
             max_radial: 2,
             max_angular: 3,
             cutoff: 5.0,
@@ -336,7 +292,7 @@ mod tests {
     fn gradients_near_zero() {
         let max_radial = 8;
         let max_angular = 8;
-        let gto = GtoRadialIntegral::new(GtoParameters {
+        let gto = SoapGtoRadialIntegral::new(GtoParameters {
             max_radial: max_radial,
             max_angular: max_angular,
             cutoff: 5.0,
@@ -359,7 +315,7 @@ mod tests {
     fn gto_finite_differences() {
         let max_radial = 8;
         let max_angular = 8;
-        let gto = GtoRadialIntegral::new(GtoParameters {
+        let gto = SoapGtoRadialIntegral::new(GtoParameters {
             max_radial: max_radial,
             max_angular: max_angular,
             cutoff: 5.0,
@@ -381,33 +337,5 @@ mod tests {
         assert_relative_eq!(
             finite_differences, gradients, max_relative=1e-4
         );
-    }
-
-    #[test]
-    fn overlap() {
-        // some basic sanity checks on the overlap matrix
-        let max_radial = 8;
-        let cutoff = 6.3;
-
-        let gto_gaussian_widths = (0..max_radial).into_iter().map(|n| {
-            let n = n as f64;
-            let n_max = max_radial as f64;
-            cutoff * f64::max(f64::sqrt(n), 1.0) / n_max
-        }).collect::<Vec<_>>();
-
-        let overlap = gto_overlap_matrix(
-            max_radial,
-            &gto_gaussian_widths,
-        );
-
-        for i in 0..max_radial {
-            assert_ulps_eq!(overlap[(i, i)], 1.0);
-        }
-
-        for i in 0..max_radial {
-            for j in i..max_radial {
-                assert!(overlap[(j, i)] > 0.0);
-            }
-        }
     }
 }

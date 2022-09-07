@@ -17,70 +17,15 @@ use crate::systems::CellShape;
 use crate::labels::{SamplesBuilder, SpeciesFilter, AtomCenteredSamples};
 use crate::labels::{KeysBuilder, CenterSingleNeighborsSpeciesKeys};
 
-use super::super::CalculatorBase;
-use super::RadialIntegral;
-use super::{GtoRadialIntegral, GtoParameters};
-use super::{SplinedRadialIntegral, SplinedRIParameters};
+use crate::calculators::CalculatorBase;
+use crate::calculators::radial_integral::RadialIntegral;
 
 use crate::math::CachedAllocationsSphericalHarmonics;
+use crate::math::{CutoffFunction, RadialScaling};
 
-use super::{CutoffFunction, RadialScaling};
+use super::SoapRadialBasis;
 
 const FOUR_PI: f64 = 4.0 * std::f64::consts::PI;
-
-#[derive(Debug, Clone, Copy)]
-#[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
-/// Radial basis that can be used in the spherical expansion
-pub enum RadialBasis {
-    /// Use a radial basis similar to Gaussian-Type Orbitals.
-    ///
-    /// The basis is defined as `R_n(r) ∝ r^n e^{- r^2 / (2 σ_n^2)}`, where `σ_n
-    /// = cutoff * \sqrt{n} / n_max`
-    Gto {
-        /// compute the radial integral using splines. This is much faster than
-        /// the base GTO implementation.
-        #[serde(default = "serde_default_splined_radial_integral")]
-        splined_radial_integral: bool,
-        /// Accuracy for the spline. The number of control points in the spline
-        /// is automatically determined to ensure the average absolute error is
-        /// close to the requested accuracy.
-        #[serde(default = "serde_default_spline_accuracy")]
-        spline_accuracy: f64,
-    },
-}
-
-fn serde_default_splined_radial_integral() -> bool { true }
-fn serde_default_spline_accuracy() -> f64 { 1e-8 }
-
-impl RadialBasis {
-    fn construct(&self, parameters: &SphericalExpansionParameters) -> Result<Box<dyn RadialIntegral>, Error> {
-        match self {
-            RadialBasis::Gto {splined_radial_integral, spline_accuracy} => {
-                let parameters = GtoParameters {
-                    max_radial: parameters.max_radial,
-                    max_angular: parameters.max_angular,
-                    atomic_gaussian_width: parameters.atomic_gaussian_width,
-                    cutoff: parameters.cutoff,
-                };
-                let gto = GtoRadialIntegral::new(parameters)?;
-
-                if !splined_radial_integral {
-                    return Ok(Box::new(gto));
-                }
-
-                let parameters = SplinedRIParameters {
-                    max_radial: parameters.max_radial,
-                    max_angular: parameters.max_angular,
-                    cutoff: parameters.cutoff,
-                };
-
-                return Ok(Box::new(SplinedRadialIntegral::with_accuracy(
-                    parameters, *spline_accuracy, gto
-                )?));
-            }
-        };
-    }
-}
 
 /// Parameters for spherical expansion calculator.
 ///
@@ -105,7 +50,7 @@ pub struct SphericalExpansionParameters {
     /// contribution.
     pub center_atom_weight: f64,
     /// Radial basis to use for the radial integral
-    pub radial_basis: RadialBasis,
+    pub radial_basis: SoapRadialBasis,
     /// Cutoff function used to smooth the behavior around the cutoff radius
     pub cutoff_function: CutoffFunction,
     /// radial scaling can be used to reduce the importance of neighbor atoms
@@ -115,7 +60,7 @@ pub struct SphericalExpansionParameters {
     pub radial_scaling: RadialScaling,
 }
 
-struct RadialIntegralImpl {
+struct CachedAllocationsRadialIntegral {
     /// Implementation of the radial integral
     code: Box<dyn RadialIntegral>,
     /// Cache for the radial integral values
@@ -124,14 +69,14 @@ struct RadialIntegralImpl {
     gradients: Array2<f64>,
 }
 
-impl RadialIntegralImpl {
+impl CachedAllocationsRadialIntegral {
     fn new(parameters: &SphericalExpansionParameters) -> Result<Self, Error> {
-        let code = parameters.radial_basis.construct(parameters)?;
+        let code = parameters.radial_basis.get_radial_integral(parameters)?;
         let shape = (parameters.max_angular + 1, parameters.max_radial);
         let values = Array2::from_elem(shape, 0.0);
         let gradients = Array2::from_elem(shape, 0.0);
 
-        return Ok(RadialIntegralImpl { code, values, gradients });
+        return Ok(CachedAllocationsRadialIntegral { code, values, gradients });
     }
 
     fn compute(&mut self, distance: f64, gradients: bool) {
@@ -175,7 +120,7 @@ pub struct SphericalExpansion {
     parameters: SphericalExpansionParameters,
     /// implementation + cached allocation to compute the radial integral for a
     /// single pair
-    radial_integral: ThreadLocal<RefCell<RadialIntegralImpl>>,
+    radial_integral: ThreadLocal<RefCell<CachedAllocationsRadialIntegral>>,
     /// implementation + cached allocation to compute the spherical harmonics
     /// for a single pair
     spherical_harmonics: ThreadLocal<RefCell<CachedAllocationsSphericalHarmonics>>,
@@ -195,7 +140,7 @@ impl SphericalExpansion {
         // validate parameters once in the constructor
         parameters.cutoff_function.validate()?;
         parameters.radial_scaling.validate()?;
-        RadialIntegralImpl::new(&parameters)?;
+        CachedAllocationsRadialIntegral::new(&parameters)?;
 
         let m_1_pow_l = (0..=parameters.max_angular).into_iter()
             .map(|l| f64::powi(-1.0, l as i32))
@@ -239,7 +184,7 @@ impl SphericalExpansion {
         // gaussian atomic width. For now, we recompute them all the time
 
         let mut radial_integral = self.radial_integral.get_or(|| {
-            let ri = RadialIntegralImpl::new(&self.parameters).expect("invalid parameters");
+            let ri = CachedAllocationsRadialIntegral::new(&self.parameters).expect("invalid parameters");
             RefCell::new(ri)
         }).borrow_mut();
 
@@ -297,7 +242,7 @@ impl SphericalExpansion {
         inverse_cell: &Matrix3,
     ) {
         let mut radial_integral = self.radial_integral.get_or(|| {
-            let ri = RadialIntegralImpl::new(&self.parameters).expect("invalid parameters");
+            let ri = CachedAllocationsRadialIntegral::new(&self.parameters).expect("invalid parameters");
             RefCell::new(ri)
         }).borrow_mut();
 
@@ -1039,7 +984,7 @@ mod tests {
     use crate::calculators::CalculatorBase;
 
     use super::{SphericalExpansion, SphericalExpansionParameters};
-    use super::{CutoffFunction, RadialBasis, RadialScaling};
+    use super::{CutoffFunction, SoapRadialBasis, RadialScaling};
 
 
     fn parameters() -> SphericalExpansionParameters {
@@ -1049,7 +994,7 @@ mod tests {
             max_angular: 6,
             atomic_gaussian_width: 0.3,
             center_atom_weight: 1.,
-            radial_basis: RadialBasis::Gto { splined_radial_integral: true, spline_accuracy: 1e-8 },
+            radial_basis: SoapRadialBasis::splined_gto(1e-8),
             radial_scaling: RadialScaling::Willatt2018 { scale: 1.5, rate: 0.8, exponent: 2},
             cutoff_function: CutoffFunction::ShiftedCosine { width: 0.5 },
         }

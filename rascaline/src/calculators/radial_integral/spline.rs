@@ -73,7 +73,7 @@ mod tests {
     use approx::assert_relative_eq;
 
     use super::*;
-    use super::super::{GtoRadialIntegral, GtoParameters};
+    use super::super::super::soap::{SoapGtoRadialIntegral, GtoParameters};
 
     #[test]
     fn high_accuracy() {
@@ -85,7 +85,7 @@ mod tests {
             cutoff: 12.0,
         };
 
-        let gto = GtoRadialIntegral::new(GtoParameters {
+        let gto = SoapGtoRadialIntegral::new(GtoParameters {
             max_radial: parameters.max_radial,
             max_angular: parameters.max_angular,
             cutoff: parameters.cutoff,
@@ -106,7 +106,7 @@ mod tests {
             cutoff: 5.0,
         };
 
-        let gto = GtoRadialIntegral::new(GtoParameters {
+        let gto = SoapGtoRadialIntegral::new(GtoParameters {
             max_radial: parameters.max_radial,
             max_angular: parameters.max_angular,
             cutoff: parameters.cutoff,

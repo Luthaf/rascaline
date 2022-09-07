@@ -11,7 +11,9 @@ use crate::{CalculationOptions, Calculator, LabelsSelection};
 use crate::{Error, System};
 
 use super::SphericalExpansionParameters;
-use super::{SphericalExpansion, RadialBasis, CutoffFunction, RadialScaling};
+use super::{SphericalExpansion, SoapRadialBasis};
+
+use crate::math::{CutoffFunction, RadialScaling};
 
 use crate::labels::{SpeciesFilter, SamplesBuilder};
 use crate::labels::AtomCenteredSamples;
@@ -47,7 +49,7 @@ pub struct PowerSpectrumParameters {
     /// contribution.
     pub center_atom_weight: f64,
     /// radial basis to use for the radial integral
-    pub radial_basis: RadialBasis,
+    pub radial_basis: SoapRadialBasis,
     /// cutoff function used to smooth the behavior around the cutoff radius
     pub cutoff_function: CutoffFunction,
     /// radial scaling can be used to reduce the importance of neighbor atoms
@@ -714,7 +716,7 @@ mod tests {
             max_angular: 6,
             atomic_gaussian_width: 0.3,
             center_atom_weight: 1.0,
-            radial_basis: RadialBasis::Gto { splined_radial_integral: true, spline_accuracy: 1e-8 },
+            radial_basis: SoapRadialBasis::splined_gto(1e-8),
             radial_scaling: RadialScaling::None {},
             cutoff_function: CutoffFunction::ShiftedCosine { width: 0.5 },
         }
