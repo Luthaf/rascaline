@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
+use ndarray::{Array2, Array3};
+use crate::Vector3D;
 
 use equistore::{LabelsBuilder, Labels, LabelValue};
 use equistore::TensorMap;
@@ -9,7 +11,7 @@ use crate::{Error, System};
 use crate::labels::{SamplesBuilder, SpeciesFilter, LongRangePerAtom};
 use crate::labels::{KeysBuilder, CenterSingleNeighborsSpeciesKeys};
 
-use crate::math::compute_k_vectors;
+use crate::math::{KVector, compute_k_vectors};
 use crate::systems::UnitCell;
 
 use super::super::CalculatorBase;
@@ -61,6 +63,48 @@ impl LodeSphericalExpansion {
             spherical_harmonics,
         });
     }
+
+    /// Compute the trigonometric functions for LODE coefficients
+    fn compute_structure_factors(&mut self, positions: &[Vector3D], k_vectors: &[KVector]) -> (Array3::<f64>, Array3::<f64>) {
+
+        let num_atoms: usize = positions.len();
+        let num_kvecs: usize = k_vectors.len();
+
+        let mut cosines= Array2::from_elem((num_kvecs, num_atoms), 0.0);
+        let mut sines= Array2::from_elem((num_kvecs, num_atoms), 0.0);
+    
+        // cosines[i, j] = cos(k_i * r_j), same for sines
+        for i_k in 0..num_kvecs {
+            for i_p in 0..num_atoms {
+                // dot product between kvectors and positions
+                let s = k_vectors[i_k].vector[0] * positions[i_p][0] +
+                             k_vectors[i_k].vector[1] * positions[i_p][1] +
+                             k_vectors[i_k].vector[2] * positions[i_p][2];
+
+                cosines[[i_k, i_p]] = f64::cos(s);
+                sines[[i_k, i_p]] = f64::sin(s);
+            }
+        }
+
+        let mut strucfac_real = Array3::from_elem((num_atoms, num_atoms, num_kvecs), 0.0);
+        let mut strucfac_imag = Array3::from_elem((num_atoms, num_atoms, num_kvecs), 0.0);
+
+        
+        for i in 0..num_atoms {
+            for j in 0..num_atoms {
+                for k in 0..num_kvecs {
+                    strucfac_real[[i, j, k]] = cosines[[k, i]] * cosines[[k, j]] + sines[[k, i]] * sines[[k, j]];
+                    strucfac_imag[[i, j, k]] = sines[[k, i]] * cosines[[k, j]] - cosines[[k, i]] * sines[[k, j]];
+                }
+            }
+        }
+
+        strucfac_real *= 2.0;
+        strucfac_imag *= 2.0;
+
+        return (strucfac_real, strucfac_imag)
+    }
+
 }
 
 impl CalculatorBase for LodeSphericalExpansion {
@@ -201,6 +245,10 @@ impl CalculatorBase for LodeSphericalExpansion {
                 return Err(Error::InvalidParameter("LODE can only be used with periodic systems".into()));
             }
             let k_vectors = compute_k_vectors(&cell, 1.0);
+
+            let ret = self.compute_structure_factors(system.positions()?, &k_vectors);
+            let strucfac_real = ret.0;
+            let strucfac_imag = ret.1;
         }
         Ok(())
     }
