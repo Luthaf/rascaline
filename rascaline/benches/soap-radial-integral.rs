@@ -1,8 +1,9 @@
 #![allow(clippy::needless_return)]
 
-use rascaline::calculators::soap::RadialIntegral;
-use rascaline::calculators::soap::{GtoParameters, GtoRadialIntegral};
-use rascaline::calculators::soap::{SplinedRadialIntegral, SplinedRIParameters};
+use rascaline::calculators::radial_integral::RadialIntegral;
+use rascaline::calculators::radial_integral::{SplinedRadialIntegral, SplinedRIParameters};
+
+use rascaline::calculators::soap::{GtoParameters, SoapGtoRadialIntegral};
 
 use ndarray::Array2;
 
@@ -52,7 +53,7 @@ fn gto_radial_integral(c: &mut Criterion) {
             cutoff: 4.5,
             atomic_gaussian_width: 0.5,
         };
-        return Box::new(GtoRadialIntegral::new(parameters).unwrap()) as Box<dyn RadialIntegral>;
+        return Box::new(SoapGtoRadialIntegral::new(parameters).unwrap()) as Box<dyn RadialIntegral>;
     };
 
     let mut group = c.benchmark_group("GTO (per neighbor)");
@@ -73,7 +74,7 @@ fn splined_gto_radial_integral(c: &mut Criterion) {
             cutoff,
             atomic_gaussian_width: 0.5,
         };
-        let gto = GtoRadialIntegral::new(parameters).unwrap();
+        let gto = SoapGtoRadialIntegral::new(parameters).unwrap();
 
         let parameters = SplinedRIParameters {
             max_radial,
