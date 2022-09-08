@@ -65,13 +65,18 @@ impl LodeSphericalExpansion {
     }
 
     /// Compute the trigonometric functions for LODE coefficients
-    fn compute_structure_factors(&mut self, positions: &[Vector3D], k_vectors: &[KVector]) -> (Array3::<f64>, Array3::<f64>) {
+struct StructureFactors {
+    real: Array3<f64>,
+    imag: Array3<f64>,
+}
+
+    fn compute_structure_factors(&mut self, positions: &[Vector3D], k_vectors: &[KVector]) -> StructureFactors {
 
         let num_atoms: usize = positions.len();
         let num_kvecs: usize = k_vectors.len();
 
-        let mut cosines= Array2::from_elem((num_kvecs, num_atoms), 0.0);
-        let mut sines= Array2::from_elem((num_kvecs, num_atoms), 0.0);
+        let mut cosines = Array2::from_elem((num_kvecs, num_atoms), 0.0);
+        let mut sines = Array2::from_elem((num_kvecs, num_atoms), 0.0);
     
         // cosines[i, j] = cos(k_i * r_j), same for sines
         for i_k in 0..num_kvecs {
