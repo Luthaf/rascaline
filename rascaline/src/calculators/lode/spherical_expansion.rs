@@ -253,8 +253,38 @@ impl CalculatorBase for LodeSphericalExpansion {
             }
             let k_vectors = compute_k_vectors(&cell, 1.0);
 
-            let struc_fac = compute_structure_factors(system.positions()?, &k_vectors);
+            let strucfac = compute_structure_factors(system.positions()?, &k_vectors);
         }
         Ok(())
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ndarray::arr3;
+
+    #[test]
+    fn test_compute_structure_factors() {
+        let mut k_vectors = Vec::new();
+
+        k_vectors.push(KVector{vector: Vector3D::new(1.0, 0.0,0.0), norm: 1.0});
+        k_vectors.push(KVector{vector: Vector3D::new(0.0, 1.0, 0.0), norm: 1.0});
+        
+        let positions = [Vector3D::new(1.0, 1.0, 1.0),
+                                        Vector3D::new(2.0, 2.0, 2.0)];
+
+        let strucfac = compute_structure_factors(&positions, &k_vectors);
+
+        let ref_real= arr3(
+            &[[[2., 2.], [1.0806046117362793, 1.0806046117362793]],
+                  [[1.0806046117362793, 1.0806046117362793],[2. , 2. ]]]);
+        let ref_imag = arr3(
+            &[[[ 0. ,  0. ], [-1.682941969615793, -1.682941969615793]],
+                  [[1.682941969615793, 1.682941969615793],[ 0. ,  0. ]]]);
+
+        assert_eq!(strucfac.imag, ref_imag);
+        assert_eq!(strucfac.real, ref_real);
     }
 }
