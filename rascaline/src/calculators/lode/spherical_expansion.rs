@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
+use ndarray::{Array2, Array3};
+use crate::Vector3D;
 
 use equistore::{LabelsBuilder, Labels, LabelValue};
 use equistore::TensorMap;
@@ -9,7 +11,7 @@ use crate::{Error, System};
 use crate::labels::{SamplesBuilder, SpeciesFilter, LongRangePerAtom};
 use crate::labels::{KeysBuilder, CenterSingleNeighborsSpeciesKeys};
 
-use crate::math::compute_k_vectors;
+use crate::math::{KVector, compute_k_vectors};
 use crate::systems::UnitCell;
 
 use super::super::CalculatorBase;
@@ -44,6 +46,55 @@ pub struct LodeSphericalExpansion {
     /// implementation + cached allocation to compute the spherical harmonics
     /// for a single k-vector
     spherical_harmonics: SphericalHarmonicsCache,
+}
+
+/// Compute the trigonometric functions for LODE coefficients
+struct StructureFactors {
+    /// real part of structure factor
+    real: Array3<f64>,
+    /// imaginary part of structure factor
+    imag: Array3<f64>,
+}
+
+fn compute_structure_factors(positions: &[Vector3D], k_vectors: &[KVector]) -> StructureFactors {
+
+    let num_atoms: usize = positions.len();
+    let num_kvecs: usize = k_vectors.len();
+
+    let mut cosines = Array2::from_elem((num_kvecs, num_atoms), 0.0);
+    let mut sines = Array2::from_elem((num_kvecs, num_atoms), 0.0);
+
+    // cosines[i, j] = cos(k_i * r_j), same for sines
+    for i_k in 0..num_kvecs {
+        for i_p in 0..num_atoms {
+            // dot product between kvectors and positions
+            let s = k_vectors[i_k].vector[0] * positions[i_p][0] +
+                            k_vectors[i_k].vector[1] * positions[i_p][1] +
+                            k_vectors[i_k].vector[2] * positions[i_p][2];
+
+            cosines[[i_k, i_p]] = f64::cos(s);
+            sines[[i_k, i_p]] = f64::sin(s);
+        }
+    }
+
+    let mut strucfac = StructureFactors {
+        real: Array3::from_elem((num_atoms, num_atoms, num_kvecs), 0.0),
+        imag: Array3::from_elem((num_atoms, num_atoms, num_kvecs), 0.0),
+    };
+    
+    for i in 0..num_atoms {
+        for j in 0..num_atoms {
+            for k in 0..num_kvecs {
+                strucfac.real[[i, j, k]] = cosines[[k, i]] * cosines[[k, j]] + sines[[k, i]] * sines[[k, j]];
+                strucfac.imag[[i, j, k]] = sines[[k, i]] * cosines[[k, j]] - cosines[[k, i]] * sines[[k, j]];
+            }
+        }
+    }
+
+    strucfac.real *= 2.0;
+    strucfac.imag *= 2.0;
+
+    return strucfac
 }
 
 impl std::fmt::Debug for LodeSphericalExpansion {
@@ -203,7 +254,39 @@ impl CalculatorBase for LodeSphericalExpansion {
                 return Err(Error::InvalidParameter("LODE can only be used with periodic systems".into()));
             }
             let k_vectors = compute_k_vectors(&cell, 1.0);
+
+            let strucfac = compute_structure_factors(system.positions()?, &k_vectors);
         }
         Ok(())
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ndarray::arr3;
+
+    #[test]
+    fn test_compute_structure_factors() {
+        let mut k_vectors = Vec::new();
+
+        k_vectors.push(KVector{vector: Vector3D::new(1.0, 0.0,0.0), norm: 1.0});
+        k_vectors.push(KVector{vector: Vector3D::new(0.0, 1.0, 0.0), norm: 1.0});
+        
+        let positions = [Vector3D::new(1.0, 1.0, 1.0),
+                                        Vector3D::new(2.0, 2.0, 2.0)];
+
+        let strucfac = compute_structure_factors(&positions, &k_vectors);
+
+        let ref_real= arr3(
+            &[[[2., 2.], [1.0806046117362793, 1.0806046117362793]],
+                  [[1.0806046117362793, 1.0806046117362793],[2. , 2. ]]]);
+        let ref_imag = arr3(
+            &[[[ 0. ,  0. ], [-1.682941969615793, -1.682941969615793]],
+                  [[1.682941969615793, 1.682941969615793],[ 0. ,  0. ]]]);
+
+        assert_eq!(strucfac.imag, ref_imag);
+        assert_eq!(strucfac.real, ref_real);
     }
 }
