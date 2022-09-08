@@ -1,5 +1,6 @@
 mod gamma;
 pub(crate) use self::gamma::{gamma, ln_gamma};
+pub(crate) use self::gamma::gamma_ui;
 
 mod hyp1f1;
 pub(crate) use self::hyp1f1::hyp1f1;
