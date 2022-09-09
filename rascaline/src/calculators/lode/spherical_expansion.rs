@@ -1,21 +1,22 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use ndarray::{Array2, Array3, s};
+use ndarray::{Array1, Array2, Array3, s};
 
-use equistore::{LabelsBuilder, Labels, LabelValue};
 use equistore::TensorMap;
+use equistore::{LabelsBuilder, Labels, LabelValue};
 
 use crate::{Error, System, Vector3D};
+use crate::systems::UnitCell;
+
 use crate::labels::{SamplesBuilder, SpeciesFilter, LongRangePerAtom};
 use crate::labels::{KeysBuilder, CenterSingleNeighborsSpeciesKeys};
-
-use crate::systems::UnitCell;
 
 use super::super::CalculatorBase;
 
 use crate::math::SphericalHarmonicsCache;
 use crate::math::{KVector, compute_k_vectors};
+use crate::math::{gamma_ui, gamma};
 
 use crate::calculators::radial_basis::RadialBasis;
 use super::radial_integral::{LodeRadialIntegralCache, LodeRadialIntegralParameters};
@@ -107,6 +108,12 @@ impl std::fmt::Debug for LodeSphericalExpansion {
 
 impl LodeSphericalExpansion {
     pub fn new(parameters: LodeSphericalExpansionParameters) -> Result<LodeSphericalExpansion, Error> {
+        if parameters.potential_exponent > 6 {
+            return Err(Error::InvalidParameter(
+                "LODE is only implemented for potential_exponent <= 6".into()
+            ));
+        }
+
         let spherical_harmonics = SphericalHarmonicsCache::new(
             parameters.max_angular,
         );
@@ -164,6 +171,47 @@ impl LodeSphericalExpansion {
                 }
             }
         }
+    }
+
+    fn compute_density_fourrier(&self, k_vectors: &[KVector]) -> Array1<f64> {
+        let mut fourrier = Vec::new();
+        fourrier.reserve(k_vectors.len());
+
+        let potential_exponent = self.parameters.potential_exponent;
+        let smearing_squared = self.parameters.atomic_gaussian_width * self.parameters.atomic_gaussian_width;
+
+        if potential_exponent == 0 {
+            let factor = (4.0 * std::f64::consts::PI * smearing_squared).powf(0.75);
+
+            for k_vector in k_vectors {
+                let value = f64::exp(-0.5 * k_vector.norm * k_vector.norm * smearing_squared);
+                fourrier.push(factor * value);
+            }
+        } else if potential_exponent == 1 {
+            let factor = 4.0 * std::f64::consts::PI;
+
+            for k_vector in k_vectors {
+                let k_norm_squared = k_vector.norm * k_vector.norm;
+                let value = f64::exp(-0.5 * k_norm_squared * smearing_squared) / k_norm_squared;
+                fourrier.push(factor * value);
+            }
+        } else {
+            let p_eff = 3 - potential_exponent;
+            let factor = std::f64::consts::PI.powf(1.5) * 2.0_f64.powi(p_eff as i32) / gamma(0.5 * potential_exponent as f64);
+
+            for k_vector in k_vectors {
+                let k_norm_squared = k_vector.norm * k_vector.norm;
+                let value = gamma_ui(0.5 * p_eff as f64, 0.5 * k_norm_squared * smearing_squared);
+                fourrier.push(factor * value / k_vector.norm.powi(p_eff as i32));
+            }
+        }
+
+        if potential_exponent == 0 || potential_exponent == 4 || potential_exponent == 5 || potential_exponent == 6 {
+            // needs special treatment for k=0
+            todo!("not fully implemented yet");
+        }
+
+        return fourrier.into();
     }
 }
 
@@ -296,7 +344,7 @@ impl CalculatorBase for LodeSphericalExpansion {
         return vec![properties; keys.count()];
     }
 
-    #[time_graph::instrument(name = "LodeSphericalExpansion::compute")]
+    // #[time_graph::instrument(name = "LodeSphericalExpansion::compute")]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
         let do_gradients = false;
 
@@ -305,6 +353,7 @@ impl CalculatorBase for LodeSphericalExpansion {
         let k_cutoff = 1.2 * std::f64::consts::PI / self.parameters.atomic_gaussian_width;
 
         for (system_i, system) in systems.iter_mut().enumerate() {
+            let species = system.species()?;
             let cell = system.cell()?;
             if cell.shape() == UnitCell::infinite().shape() {
                 return Err(Error::InvalidParameter("LODE can only be used with periodic systems".into()));
@@ -316,6 +365,55 @@ impl CalculatorBase for LodeSphericalExpansion {
             self.project_k_to_nlm(&k_vectors, do_gradients);
 
             let structure_factors = compute_structure_factors(system.positions()?, &k_vectors);
+
+            let density_fourrier = self.compute_density_fourrier(&k_vectors);
+
+            // TODO: global factor
+            let global_factor = 4.0 * std::f64::consts::PI / cell.volume();
+
+            for spherical_harmonics_l in 0..=self.parameters.max_angular {
+                let (phase, structure_factor) = if spherical_harmonics_l % 2 == 0 {
+                    ((-1.0_f64).powi(spherical_harmonics_l as i32 / 2), &structure_factors.real)
+                } else {
+                    ((-1.0_f64).powi((spherical_harmonics_l as i32 + 1) / 2), &structure_factors.imag)
+                };
+                let k_vector_to_m_n = &self.k_vector_to_m_n[spherical_harmonics_l];
+
+                'center_loop: for center_i in 0..system.size()? {
+                    for neighbor_i in 0..system.size()? {
+                        let block_i = descriptor.keys().position(&[
+                            spherical_harmonics_l.into(),
+                            species[center_i].into(),
+                            species[neighbor_i].into(),
+                        ]).expect("missing block");
+                        let mut block = descriptor.block_mut_by_id(block_i);
+                        let values = block.values_mut();
+                        let array = values.data.as_array_mut();
+
+                        let sample_i = values.samples.position(&[
+                            system_i.into(), center_i.into(),
+                        ]);
+
+                        if sample_i.is_none() {
+                            continue 'center_loop;
+                        }
+                        let sample_i = sample_i.expect("just checked for None");
+
+                        for m in 0..(2 * spherical_harmonics_l + 1) {
+                            for (property_i, [n]) in values.properties.iter_fixed_size().enumerate() {
+                                let n = n.usize();
+
+                                for ik in 0..k_vectors.len() {
+                                    array[[sample_i, m, property_i]] += global_factor * phase
+                                        * density_fourrier[ik]
+                                        * structure_factor[[center_i, neighbor_i, ik]]
+                                        * k_vector_to_m_n[[m, n, ik]];
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
         Ok(())
     }
