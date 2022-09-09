@@ -7,7 +7,7 @@ use super::neighbors::NeighborsList;
 /// A simple implementation of `System` to use when no other is available
 #[derive(Clone, Debug)]
 pub struct SimpleSystem {
-    cell: UnitCell,
+    pub(crate) cell: UnitCell,
     species: Vec<i32>,
     positions: Vec<Vector3D>,
     neighbors: Option<NeighborsList>,

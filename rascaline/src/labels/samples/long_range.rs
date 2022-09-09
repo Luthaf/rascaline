@@ -67,12 +67,12 @@ impl SamplesBuilder for LongRangePerAtom {
         assert_eq!(samples.names(), ["structure", "center"]);
         let mut builder = LabelsBuilder::new(vec!["sample", "structure", "atom"]);
 
-        for (sample_i, [structure_i, _]) in samples.iter_fixed_size().enumerate() {
+        for (sample_i, [structure_i, center_i]) in samples.iter_fixed_size().enumerate() {
             let structure_i = structure_i.usize();
 
             let system = &mut systems[structure_i];
             for (neighbor_i, &species_neighbor) in system.species()?.iter().enumerate() {
-                if self.species_neighbor.matches(species_neighbor) {
+                if self.species_neighbor.matches(species_neighbor) || neighbor_i == center_i.usize() {
                     builder.add(&[sample_i, structure_i, neighbor_i]);
                 }
             }
