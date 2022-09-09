@@ -156,7 +156,7 @@ impl LodeSphericalExpansion {
         });
     }
 
-    fn project_k_to_nlm(&mut self, k_vectors: &[KVector], do_gradients: bool) {
+    fn project_k_to_nlm(&mut self, k_vectors: &[KVector]) {
         for spherical_harmonics_l in 0..=self.parameters.max_angular {
             let shape = (2 * spherical_harmonics_l + 1, self.parameters.max_radial, k_vectors.len());
 
@@ -172,8 +172,9 @@ impl LodeSphericalExpansion {
 
 
         for (ik, k_vector) in k_vectors.iter().enumerate() {
-            self.radial_integral.compute(k_vector.norm, do_gradients);
-            self.spherical_harmonics.compute(k_vector.direction, do_gradients);
+            self.radial_integral.compute(k_vector.norm, false);
+            // we don't need the gradients of spherical harmonics w.r.t. k-vectors
+            self.spherical_harmonics.compute(k_vector.direction, false);
 
             for l in 0..=self.parameters.max_angular {
                 let spherical_harmonics = self.spherical_harmonics.values.slice(l as isize);
@@ -361,8 +362,6 @@ impl CalculatorBase for LodeSphericalExpansion {
 
     #[time_graph::instrument(name = "LodeSphericalExpansion::compute")]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
-        let do_gradients = false;
-
         // TODO: let the user provide the cutoff?
         // TODO: check atomic_gaussian_width so that we have a non-zero number of k-vectors
         let k_cutoff = 1.2 * std::f64::consts::PI / self.parameters.atomic_gaussian_width;
@@ -377,7 +376,7 @@ impl CalculatorBase for LodeSphericalExpansion {
             let k_vectors = compute_k_vectors(&cell, k_cutoff);
             assert!(!k_vectors.is_empty());
 
-            self.project_k_to_nlm(&k_vectors, do_gradients);
+            self.project_k_to_nlm(&k_vectors);
 
             let structure_factors = compute_structure_factors(
                 system.positions()?,
@@ -390,14 +389,21 @@ impl CalculatorBase for LodeSphericalExpansion {
             let global_factor = 4.0 * std::f64::consts::PI / cell.volume();
 
             for spherical_harmonics_l in 0..=self.parameters.max_angular {
-                let (phase, structure_factor) = if spherical_harmonics_l % 2 == 0 {
-                    ((-1.0_f64).powi(spherical_harmonics_l as i32 / 2), &structure_factors.real_per_center)
+                let phase = if spherical_harmonics_l % 2 == 0 {
+                    (-1.0_f64).powi(spherical_harmonics_l as i32 / 2)
                 } else {
-                    ((-1.0_f64).powi((spherical_harmonics_l as i32 + 1) / 2), &structure_factors.imag_per_center)
+                    (-1.0_f64).powi((spherical_harmonics_l as i32 + 1) / 2)
                 };
+
+                let sf_per_center = if spherical_harmonics_l % 2 == 0 {
+                    &structure_factors.real_per_center
+                } else {
+                    &structure_factors.imag_per_center
+                };
+
                 let k_vector_to_m_n = &self.k_vector_to_m_n[spherical_harmonics_l];
 
-                for (&species_neighbor, structure_factor) in structure_factor.iter() {
+                for (&species_neighbor, sf_per_center) in sf_per_center.iter() {
                     for center_i in 0..system.size()? {
                         let block_i = descriptor.keys().position(&[
                             spherical_harmonics_l.into(),
@@ -421,8 +427,79 @@ impl CalculatorBase for LodeSphericalExpansion {
                                 for ik in 0..k_vectors.len() {
                                     array[[sample_i, m, property_i]] += global_factor * phase
                                         * density_fourrier[ik]
-                                        * structure_factor[[center_i, ik]]
+                                        * sf_per_center[[center_i, ik]]
                                         * k_vector_to_m_n[[m, n, ik]];
+                                }
+                            }
+                        }
+
+                        if let Some(ref mut gradients) = block.gradient_mut("positions") {
+                            for (neighbor_i, &current_neighbor_species) in species.iter().enumerate() {
+                                if neighbor_i == center_i {
+                                    continue;
+                                }
+
+                                if current_neighbor_species != species_neighbor {
+                                    continue;
+                                }
+
+                                let array = gradients.data.as_array_mut();
+
+
+                                let grad_sample_self_i = gradients.samples.position(&[
+                                    sample_i.into(), system_i.into(), center_i.into()
+                                ]).expect("missing self gradient sample");
+
+                                let grad_sample_other_i = gradients.samples.position(&[
+                                    sample_i.into(), system_i.into(), neighbor_i.into()
+                                ]).expect("missing gradient sample");
+
+                                let mut sf_grad = Vec::with_capacity(k_vectors.len());
+                                let cosines = &structure_factors.real;
+                                let sines = &structure_factors.imag;
+                                if spherical_harmonics_l % 2 == 0 {
+                                    let i = center_i;
+                                    let j = neighbor_i;
+                                    // real part of i*e^{i k (rj - ri)}
+                                    for ik in 0..k_vectors.len() {
+                                        let factor = sines[[i, ik]] * cosines[[j, ik]]
+                                            - cosines[[i, ik]] * sines[[j, ik]];
+                                        sf_grad.push(2.0 * factor);
+                                    }
+                                } else {
+                                    let i = center_i;
+                                    let j = neighbor_i;
+                                    // imaginary part of i*e^{i k (rj - ri)}
+                                    for ik in 0..k_vectors.len() {
+                                        let factor = cosines[[i, ik]] * cosines[[j, ik]]
+                                            + sines[[i, ik]] * sines[[j, ik]];
+                                        sf_grad.push(-2.0 * factor);
+                                    }
+                                }
+
+                                for m in 0..(2 * spherical_harmonics_l + 1) {
+                                    for (property_i, [n]) in gradients.properties.iter_fixed_size().enumerate() {
+                                        let n = n.usize();
+
+                                        for (ik, k_vector) in k_vectors.iter().enumerate() {
+                                            let grad = global_factor * phase
+                                                * density_fourrier[ik]
+                                                * sf_grad[ik]
+                                                * k_vector_to_m_n[[m, n, ik]];
+
+                                            let kx = k_vector.norm * k_vector.direction[0];
+                                            let ky = k_vector.norm * k_vector.direction[1];
+                                            let kz = k_vector.norm * k_vector.direction[2];
+
+                                            array[[grad_sample_other_i, 0, m, property_i]] += grad * kx;
+                                            array[[grad_sample_other_i, 1, m, property_i]] += grad * ky;
+                                            array[[grad_sample_other_i, 2, m, property_i]] += grad * kz;
+
+                                            array[[grad_sample_self_i, 0, m, property_i]] -= grad * kx;
+                                            array[[grad_sample_self_i, 1, m, property_i]] -= grad * ky;
+                                            array[[grad_sample_self_i, 2, m, property_i]] -= grad * kz;
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -437,31 +514,40 @@ impl CalculatorBase for LodeSphericalExpansion {
 
 #[cfg(test)]
 mod tests {
+    use crate::systems::test_utils::test_system;
+    use crate::Calculator;
+    use crate::calculators::CalculatorBase;
+
     use super::*;
-    use ndarray::arr3;
+
+    fn parameters() -> LodeSphericalExpansionParameters {
+        LodeSphericalExpansionParameters {
+            cutoff: 3.5,
+            max_radial: 6,
+            max_angular: 6,
+            atomic_gaussian_width: 0.8,
+            potential_exponent: 1,
+            radial_basis: LodeRadialBasis::Gto { splined_radial_integral: true, spline_accuracy: 1e-8 },
+        }
+    }
 
     #[test]
-    fn test_compute_structure_factors() {
-        todo!()
-        // let k_vectors = [
-        //     KVector{direction: Vector3D::new(1.0, 0.0, 0.0), norm: 1.0},
-        //     KVector{direction: Vector3D::new(0.0, 1.0, 0.0), norm: 1.0},
-        // ];
+    fn finite_differences_positions() {
+        let calculator = Calculator::from(Box::new(LodeSphericalExpansion::new(
+            parameters()
+        ).unwrap()) as Box<dyn CalculatorBase>);
 
-        // let positions = [Vector3D::new(1.0, 1.0, 1.0), Vector3D::new(2.0, 2.0, 2.0)];
+        let mut system = test_system("water");
+        // FIXME: doing this in the "water" system definition breaks all tests,
+        // it should not.
+        system.cell = UnitCell::cubic(3.0);
 
-        // let structure_factors = compute_structure_factors(&positions, &[1, 1], &k_vectors);
 
-        // let expected_real= arr3(&[
-        //     [[2.0, 2.0], [1.0806046117362793, 1.0806046117362793]],
-        //     [[1.0806046117362793, 1.0806046117362793], [2.0, 2.0]]
-        // ]);
-        // let expected_imag = arr3(&[
-        //     [[0.0, 0.0], [-1.682941969615793, -1.682941969615793]],
-        //     [[1.682941969615793, 1.682941969615793], [0.0, 0.0]]
-        // ]);
-
-        // assert_eq!(structure_factors.real, expected_real);
-        // assert_eq!(structure_factors.imag, expected_imag);
+        let options = crate::calculators::tests_utils::FinalDifferenceOptions {
+            displacement: 1e-5,
+            max_relative: 1e-4,
+            epsilon: 1e-10,
+        };
+        crate::calculators::tests_utils::finite_differences_positions(calculator, &system, options);
     }
 }
