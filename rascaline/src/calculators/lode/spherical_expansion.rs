@@ -424,12 +424,22 @@ impl CalculatorBase for LodeSphericalExpansion {
                             for (property_i, [n]) in values.properties.iter_fixed_size().enumerate() {
                                 let n = n.usize();
 
+                                let mut value = 0.0;
                                 for ik in 0..k_vectors.len() {
-                                    array[[sample_i, m, property_i]] += global_factor * phase
-                                        * density_fourrier[ik]
-                                        * sf_per_center[[center_i, ik]]
-                                        * k_vector_to_m_n[[m, n, ik]];
+                                    // Use unsafe to remove bound checking in
+                                    // release mode with `uget` (everything is
+                                    // still bound checked in debug mode).
+                                    //
+                                    // This divides the calculation time by two
+                                    // for values.
+                                    unsafe {
+                                        value += global_factor * phase
+                                            * density_fourrier.uget(ik)
+                                            * sf_per_center.uget([center_i, ik])
+                                            * k_vector_to_m_n.uget([m, n, ik]);
+                                    }
                                 }
+                                array[[sample_i, m, property_i]] = value;
                             }
                         }
 
@@ -444,7 +454,6 @@ impl CalculatorBase for LodeSphericalExpansion {
                                 }
 
                                 let array = gradients.data.as_array_mut();
-
 
                                 let grad_sample_self_i = gradients.samples.position(&[
                                     sample_i.into(), system_i.into(), center_i.into()
@@ -476,29 +485,38 @@ impl CalculatorBase for LodeSphericalExpansion {
                                         sf_grad.push(-2.0 * factor);
                                     }
                                 }
+                                let sf_grad = Array1::from(sf_grad);
 
                                 for m in 0..(2 * spherical_harmonics_l + 1) {
                                     for (property_i, [n]) in gradients.properties.iter_fixed_size().enumerate() {
                                         let n = n.usize();
 
+                                        let mut grad = Vector3D::zero();
                                         for (ik, k_vector) in k_vectors.iter().enumerate() {
-                                            let grad = global_factor * phase
-                                                * density_fourrier[ik]
-                                                * sf_grad[ik]
-                                                * k_vector_to_m_n[[m, n, ik]];
-
-                                            let kx = k_vector.norm * k_vector.direction[0];
-                                            let ky = k_vector.norm * k_vector.direction[1];
-                                            let kz = k_vector.norm * k_vector.direction[2];
-
-                                            array[[grad_sample_other_i, 0, m, property_i]] += grad * kx;
-                                            array[[grad_sample_other_i, 1, m, property_i]] += grad * ky;
-                                            array[[grad_sample_other_i, 2, m, property_i]] += grad * kz;
-
-                                            array[[grad_sample_self_i, 0, m, property_i]] -= grad * kx;
-                                            array[[grad_sample_self_i, 1, m, property_i]] -= grad * ky;
-                                            array[[grad_sample_self_i, 2, m, property_i]] -= grad * kz;
+                                            // Use unsafe to remove bound
+                                            // checking in release mode with
+                                            // `uget` (everything is still bound
+                                            // checked in debug mode).
+                                            //
+                                            // This divides the calculation time
+                                            // by ten for gradients.
+                                            unsafe {
+                                                grad += global_factor * phase
+                                                    * density_fourrier.uget(ik)
+                                                    * sf_grad.uget(ik)
+                                                    * k_vector_to_m_n.uget([m, n, ik])
+                                                    * k_vector.norm
+                                                    * k_vector.direction;
+                                            }
                                         }
+
+                                        array[[grad_sample_other_i, 0, m, property_i]] += grad[0];
+                                        array[[grad_sample_other_i, 1, m, property_i]] += grad[1];
+                                        array[[grad_sample_other_i, 2, m, property_i]] += grad[2];
+
+                                        array[[grad_sample_self_i, 0, m, property_i]] -= grad[0];
+                                        array[[grad_sample_self_i, 1, m, property_i]] -= grad[1];
+                                        array[[grad_sample_self_i, 2, m, property_i]] -= grad[2];
                                     }
                                 }
                             }
