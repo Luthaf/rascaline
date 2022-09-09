@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 use ndarray::{Array1, Array2, Array3, s};
@@ -93,48 +93,63 @@ pub struct LodeSphericalExpansion {
 
 /// Compute the trigonometric functions for LODE coefficients
 struct StructureFactors {
-    /// real part of structure factor
-    real: Array3<f64>,
-    /// imaginary part of structure factor
-    imag: Array3<f64>,
+    /// Real part of `e^{i k r}`, the array shape is `(n_atoms, k_vector)`
+    real: Array2<f64>,
+    /// Imaginary part of `e^{i k r}`, the array shape is `(n_atoms, k_vector)`
+    imag: Array2<f64>,
+    /// Real part of `\sum_j e^{i k r_i} e^{-i k r_j}`, with one map entry for
+    /// each species of the atom j. The arrays shape are `(n_atoms, k_vector)`
+    real_per_center: BTreeMap<i32, Array2<f64>>,
+    /// Imaginary part of `\sum_j e^{i k r_i} e^{-i k r_j}`, with one map entry
+    /// for each species of the atom j. The arrays shape are `(n_atoms,
+    /// k_vector)`
+    imag_per_center: BTreeMap<i32, Array2<f64>>,
 }
 
-fn compute_structure_factors(positions: &[Vector3D], k_vectors: &[KVector]) -> StructureFactors {
-    let num_atoms: usize = positions.len();
-    let num_kvecs: usize = k_vectors.len();
+fn compute_structure_factors(positions: &[Vector3D], species: &[i32], k_vectors: &[KVector]) -> StructureFactors {
+    let n_atoms = positions.len();
+    let n_k_vectors = k_vectors.len();
 
-    let mut cosines = Array2::from_elem((num_kvecs, num_atoms), 0.0);
-    let mut sines = Array2::from_elem((num_kvecs, num_atoms), 0.0);
-
-    // cosines[i, j] = cos(k_i * r_j), same for sines
-    for (ik, k_vector) in k_vectors.iter().enumerate() {
-        for (atom_i, position) in positions.iter().enumerate() {
-            // dot product between kvectors and positions
+    let mut cosines = Array2::from_elem((n_atoms, n_k_vectors), 0.0);
+    let mut sines = Array2::from_elem((n_atoms, n_k_vectors), 0.0);
+    for (atom_i, position) in positions.iter().enumerate() {
+        for (ik, k_vector) in k_vectors.iter().enumerate() {
+            // dot product between k-vector and positions
             let s = k_vector.norm * k_vector.direction * position;
 
-            cosines[[ik, atom_i]] = f64::cos(s);
-            sines[[ik, atom_i]] = f64::sin(s);
+            cosines[[atom_i, ik]] = f64::cos(s);
+            sines[[atom_i, ik]] = f64::sin(s);
         }
     }
 
-    let mut structure_factors = StructureFactors {
-        real: Array3::from_elem((num_atoms, num_atoms, num_kvecs), 0.0),
-        imag: Array3::from_elem((num_atoms, num_atoms, num_kvecs), 0.0),
-    };
+    let all_species = species.iter().copied().collect::<BTreeSet<_>>();
+    let mut real_per_center = all_species.iter().copied()
+        .map(|s| (s, Array2::from_elem((n_atoms, n_k_vectors), 0.0)))
+        .collect::<BTreeMap<_, _>>();
+    let mut imag_per_center = all_species.iter().copied()
+        .map(|s| (s, Array2::from_elem((n_atoms, n_k_vectors), 0.0)))
+        .collect::<BTreeMap<_, _>>();
 
-    for i in 0..num_atoms {
-        for j in 0..num_atoms {
-            for k in 0..num_kvecs {
-                structure_factors.real[[i, j, k]] = cosines[[k, i]] * cosines[[k, j]] + sines[[k, i]] * sines[[k, j]];
-                structure_factors.imag[[i, j, k]] = sines[[k, i]] * cosines[[k, j]] - cosines[[k, i]] * sines[[k, j]];
+    for i in 0..n_atoms {
+        for j in 0..n_atoms {
+            for k in 0..n_k_vectors {
+                let real = cosines[[i, k]] * cosines[[j, k]] + sines[[i, k]] * sines[[j, k]];
+                let imag = sines[[i, k]] * cosines[[j, k]] - cosines[[i, k]] * sines[[j, k]];
+
+                let real_per_center = real_per_center.get_mut(&species[j]).unwrap();
+                let imag_per_center = imag_per_center.get_mut(&species[j]).unwrap();
+                real_per_center[[i, k]] += 2.0 * real;
+                imag_per_center[[i, k]] += 2.0 * imag;
             }
         }
     }
 
-    structure_factors.real *= 2.0;
-    structure_factors.imag *= 2.0;
-
-    return structure_factors
+    return StructureFactors {
+        real: cosines,
+        imag: sines,
+        real_per_center: real_per_center,
+        imag_per_center: imag_per_center,
+    }
 }
 
 impl std::fmt::Debug for LodeSphericalExpansion {
@@ -373,7 +388,7 @@ impl CalculatorBase for LodeSphericalExpansion {
         return vec![properties; keys.count()];
     }
 
-    // #[time_graph::instrument(name = "LodeSphericalExpansion::compute")]
+    #[time_graph::instrument(name = "LodeSphericalExpansion::compute")]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
         let do_gradients = false;
 
@@ -393,40 +408,41 @@ impl CalculatorBase for LodeSphericalExpansion {
 
             self.project_k_to_nlm(&k_vectors, do_gradients);
 
-            let structure_factors = compute_structure_factors(system.positions()?, &k_vectors);
+            let structure_factors = compute_structure_factors(
+                system.positions()?,
+                system.species()?,
+                &k_vectors
+            );
 
             let density_fourrier = self.compute_density_fourrier(&k_vectors);
 
-            // TODO: global factor
             let global_factor = 4.0 * std::f64::consts::PI / cell.volume();
 
             for spherical_harmonics_l in 0..=self.parameters.max_angular {
                 let (phase, structure_factor) = if spherical_harmonics_l % 2 == 0 {
-                    ((-1.0_f64).powi(spherical_harmonics_l as i32 / 2), &structure_factors.real)
+                    ((-1.0_f64).powi(spherical_harmonics_l as i32 / 2), &structure_factors.real_per_center)
                 } else {
-                    ((-1.0_f64).powi((spherical_harmonics_l as i32 + 1) / 2), &structure_factors.imag)
+                    ((-1.0_f64).powi((spherical_harmonics_l as i32 + 1) / 2), &structure_factors.imag_per_center)
                 };
                 let k_vector_to_m_n = &self.k_vector_to_m_n[spherical_harmonics_l];
 
-                'center_loop: for center_i in 0..system.size()? {
-                    for neighbor_i in 0..system.size()? {
+                for (&species_neighbor, structure_factor) in structure_factor.iter() {
+                    for center_i in 0..system.size()? {
                         let block_i = descriptor.keys().position(&[
                             spherical_harmonics_l.into(),
                             species[center_i].into(),
-                            species[neighbor_i].into(),
+                            species_neighbor.into(),
                         ]).expect("missing block");
+
                         let mut block = descriptor.block_mut(block_i);
                         let values = block.values_mut();
                         let array = values.data.as_array_mut();
 
-                        let sample_i = values.samples.position(&[
-                            system_i.into(), center_i.into(),
-                        ]);
-
-                        if sample_i.is_none() {
-                            continue 'center_loop;
-                        }
-                        let sample_i = sample_i.expect("just checked for None");
+                        let sample = [system_i.into(), center_i.into()];
+                        let sample_i = match values.samples.position(&sample) {
+                            Some(s) => s,
+                            None => continue
+                        };
 
                         for m in 0..(2 * spherical_harmonics_l + 1) {
                             for (property_i, [n]) in values.properties.iter_fixed_size().enumerate() {
@@ -435,7 +451,7 @@ impl CalculatorBase for LodeSphericalExpansion {
                                 for ik in 0..k_vectors.len() {
                                     array[[sample_i, m, property_i]] += global_factor * phase
                                         * density_fourrier[ik]
-                                        * structure_factor[[center_i, neighbor_i, ik]]
+                                        * structure_factor[[center_i, ik]]
                                         * k_vector_to_m_n[[m, n, ik]];
                                 }
                             }
@@ -456,25 +472,26 @@ mod tests {
 
     #[test]
     fn test_compute_structure_factors() {
-        let k_vectors = [
-            KVector{direction: Vector3D::new(1.0, 0.0, 0.0), norm: 1.0},
-            KVector{direction: Vector3D::new(0.0, 1.0, 0.0), norm: 1.0},
-        ];
+        todo!()
+        // let k_vectors = [
+        //     KVector{direction: Vector3D::new(1.0, 0.0, 0.0), norm: 1.0},
+        //     KVector{direction: Vector3D::new(0.0, 1.0, 0.0), norm: 1.0},
+        // ];
 
-        let positions = [Vector3D::new(1.0, 1.0, 1.0), Vector3D::new(2.0, 2.0, 2.0)];
+        // let positions = [Vector3D::new(1.0, 1.0, 1.0), Vector3D::new(2.0, 2.0, 2.0)];
 
-        let structure_factors = compute_structure_factors(&positions, &k_vectors);
+        // let structure_factors = compute_structure_factors(&positions, &[1, 1], &k_vectors);
 
-        let expected_real= arr3(&[
-            [[2.0, 2.0], [1.0806046117362793, 1.0806046117362793]],
-            [[1.0806046117362793, 1.0806046117362793], [2.0, 2.0]]
-        ]);
-        let expected_imag = arr3(&[
-            [[0.0, 0.0], [-1.682941969615793, -1.682941969615793]],
-            [[1.682941969615793, 1.682941969615793], [0.0, 0.0]]
-        ]);
+        // let expected_real= arr3(&[
+        //     [[2.0, 2.0], [1.0806046117362793, 1.0806046117362793]],
+        //     [[1.0806046117362793, 1.0806046117362793], [2.0, 2.0]]
+        // ]);
+        // let expected_imag = arr3(&[
+        //     [[0.0, 0.0], [-1.682941969615793, -1.682941969615793]],
+        //     [[1.682941969615793, 1.682941969615793], [0.0, 0.0]]
+        // ]);
 
-        assert_eq!(structure_factors.real, expected_real);
-        assert_eq!(structure_factors.imag, expected_imag);
+        // assert_eq!(structure_factors.real, expected_real);
+        // assert_eq!(structure_factors.imag, expected_imag);
     }
 }
