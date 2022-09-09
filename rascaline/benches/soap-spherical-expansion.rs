@@ -1,5 +1,5 @@
 #![allow(clippy::needless_return)]
-use rascaline::{Calculator, System};
+use rascaline::{Calculator, System, CalculationOptions};
 
 use criterion::{BenchmarkGroup, Criterion, measurement::WallTime, SamplingMode};
 use criterion::{criterion_group, criterion_main};
@@ -43,12 +43,10 @@ fn run_spherical_expansion(mut group: BenchmarkGroup<WallTime>,
             }
         }
 
-
         let parameters = format!(r#"{{
             "max_radial": {max_radial},
             "max_angular": {max_angular},
             "cutoff": {cutoff},
-            "gradients": {gradients},
             "atomic_gaussian_width": 0.3,
             "center_atom_weight": 1.0,
             "radial_basis": {{ "Gto": {{}} }},
@@ -58,8 +56,14 @@ fn run_spherical_expansion(mut group: BenchmarkGroup<WallTime>,
 
         group.bench_function(&format!("n_max = {}, l_max = {}", max_radial, max_angular), |b| b.iter_custom(|repeat| {
             let start = std::time::Instant::now();
+
+            let options = CalculationOptions {
+                gradients: if gradients { &["positions"] } else { &[] },
+                ..Default::default()
+            };
+
             for _ in 0..repeat {
-                calculator.compute(&mut systems, Default::default()).unwrap();
+                calculator.compute(&mut systems, options).unwrap();
             }
             start.elapsed() / n_centers as u32
         }));
@@ -69,28 +73,28 @@ fn run_spherical_expansion(mut group: BenchmarkGroup<WallTime>,
 fn spherical_expansion(c: &mut Criterion) {
     let test_mode = std::env::args().any(|arg| arg == "--test");
 
-    let mut group = c.benchmark_group("Spherical expansion (per atom)/Bulk Silicon");
+    let mut group = c.benchmark_group("SOAP spherical expansion (per atom)/Bulk Silicon");
     group.noise_threshold(0.05);
     group.sampling_mode(SamplingMode::Flat);
     group.sample_size(10);
 
     run_spherical_expansion(group, "silicon_bulk.xyz", false, test_mode);
 
-    let mut group = c.benchmark_group("Spherical expansion (per atom) with gradients/Bulk Silicon");
+    let mut group = c.benchmark_group("SOAP spherical expansion (per atom) with gradients/Bulk Silicon");
     group.noise_threshold(0.05);
     group.sampling_mode(SamplingMode::Flat);
     group.sample_size(10);
 
     run_spherical_expansion(group, "silicon_bulk.xyz", true, test_mode);
 
-    let mut group = c.benchmark_group("Spherical expansion (per atom)/Molecular crystals");
+    let mut group = c.benchmark_group("SOAP spherical expansion (per atom)/Molecular crystals");
     group.noise_threshold(0.05);
     group.sampling_mode(SamplingMode::Flat);
     group.sample_size(10);
 
     run_spherical_expansion(group, "molecular_crystals.xyz", false, test_mode);
 
-    let mut group = c.benchmark_group("Spherical expansion (per atom) with gradients/Molecular crystals");
+    let mut group = c.benchmark_group("SOAP spherical expansion (per atom) with gradients/Molecular crystals");
     group.noise_threshold(0.05);
     group.sampling_mode(SamplingMode::Flat);
     group.sample_size(10);
