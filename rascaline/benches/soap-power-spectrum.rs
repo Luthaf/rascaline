@@ -1,6 +1,6 @@
 #![allow(clippy::needless_return)]
 
-use rascaline::{Calculator, System};
+use rascaline::{Calculator, System, CalculationOptions};
 
 use criterion::{BenchmarkGroup, Criterion, measurement::WallTime, SamplingMode};
 use criterion::{criterion_group, criterion_main};
@@ -50,7 +50,6 @@ fn run_soap_power_spectrum(
             "max_radial": {max_radial},
             "max_angular": {max_angular},
             "cutoff": {cutoff},
-            "gradients": {gradients},
             "atomic_gaussian_width": 0.3,
             "center_atom_weight": 1.0,
             "radial_basis": {{ "Gto": {{}} }},
@@ -60,8 +59,14 @@ fn run_soap_power_spectrum(
 
         group.bench_function(&format!("n_max = {}, l_max = {}", max_radial, max_angular), |b| b.iter_custom(|repeat| {
             let start = std::time::Instant::now();
+
+            let options = CalculationOptions {
+                gradients: if gradients { &["positions"] } else { &[] },
+                ..Default::default()
+            };
+
             for _ in 0..repeat {
-                calculator.compute(&mut systems, Default::default()).unwrap();
+                calculator.compute(&mut systems, options).unwrap();
             }
             start.elapsed() / n_centers as u32
         }));
