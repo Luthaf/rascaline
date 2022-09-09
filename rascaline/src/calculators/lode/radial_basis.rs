@@ -63,10 +63,14 @@ impl LodeRadialBasis {
                     return Ok(Box::new(gto));
                 }
 
+                // TODO: share the definition with spherical expansion
+                let k_cutoff = 1.2 * std::f64::consts::PI / parameters.atomic_gaussian_width;
+
                 let parameters = SplinedRIParameters {
                     max_radial: parameters.max_radial,
                     max_angular: parameters.max_angular,
-                    cutoff: parameters.cutoff,
+                    // The spline cutoff needs to be the cutoff in k-space
+                    cutoff: k_cutoff,
                 };
 
                 return Ok(Box::new(SplinedRadialIntegral::with_accuracy(
