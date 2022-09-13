@@ -447,6 +447,7 @@ class LodeSphericalExpansion(CalculatorBase):
     def __init__(
         self,
         cutoff,
+        k_cutoff,
         max_radial,
         max_angular,
         atomic_gaussian_width,
@@ -455,6 +456,7 @@ class LodeSphericalExpansion(CalculatorBase):
     ):
         parameters = {
             "cutoff": cutoff,
+            "k_cutoff": k_cutoff,
             "max_radial": max_radial,
             "max_angular": max_angular,
             "atomic_gaussian_width": atomic_gaussian_width,
