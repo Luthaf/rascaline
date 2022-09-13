@@ -51,6 +51,7 @@ impl LodeRadialBasis {
     pub fn get_radial_integral(&self, parameters: &LodeSphericalExpansionParameters) -> Result<Box<dyn RadialIntegral>, Error> {
         match self {
             LodeRadialBasis::Gto { splined_radial_integral, spline_accuracy } => {
+                let k_cutoff = parameters.get_k_cutoff();
                 let parameters = GtoParameters {
                     max_radial: parameters.max_radial,
                     max_angular: parameters.max_angular,
@@ -62,9 +63,6 @@ impl LodeRadialBasis {
                 if !splined_radial_integral {
                     return Ok(Box::new(gto));
                 }
-
-                // TODO: share the definition with spherical expansion
-                let k_cutoff = 1.2 * std::f64::consts::PI / parameters.atomic_gaussian_width;
 
                 let parameters = SplinedRIParameters {
                     max_radial: parameters.max_radial,
