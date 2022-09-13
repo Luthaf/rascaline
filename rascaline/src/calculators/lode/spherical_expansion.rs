@@ -259,13 +259,43 @@ impl LodeSphericalExpansion {
                 fourrier.push(factor * value / k_vector.norm.powi(p_eff as i32));
             }
         }
+        return fourrier.into();
+    }
 
-        if potential_exponent == 0 || potential_exponent == 4 || potential_exponent == 5 || potential_exponent == 6 {
-            // needs special treatment for k=0
-            todo!("not fully implemented yet");
+    /// Compute k = 0 contributions.
+    ///
+    /// Values are only non zero for `potential_exponent` = 0 and >= 4.
+    fn compute_k0_contributions(&mut self) -> Array1<f64> {
+        let atomic_gaussian_width = self.parameters.atomic_gaussian_width;
+
+        let mut k0_contrib = Vec::new();
+        k0_contrib.reserve(self.parameters.max_radial);
+        let factor = if self.parameters.potential_exponent == 0 {
+            let smearing_squared = atomic_gaussian_width * atomic_gaussian_width;
+
+            (2.0 * std::f64::consts::PI * smearing_squared).powf(1.5)
+                / (std::f64::consts::PI * smearing_squared).powf(0.75)
+                / f64::sqrt(4.0 * std::f64::consts::PI)
+
+        } else if self.parameters.potential_exponent >= 4 {
+            let potential_exponent = self.parameters.potential_exponent;
+            let p_eff = 3. - potential_exponent as f64;
+
+            0.5 * std::f64::consts::PI * 2.0_f64.powf(p_eff)
+                / gamma(0.5 * potential_exponent as f64)
+                * 2.0_f64.powf((potential_exponent as f64 - 1.0) / 2.0) / -p_eff
+                * atomic_gaussian_width.powf(-p_eff)
+                / atomic_gaussian_width.powf(2.0 * potential_exponent as f64 - 6.0)
+        } else {
+            0.0
+        };
+
+        self.radial_integral.compute(0.0);
+        for n in 0..self.parameters.max_radial {
+            k0_contrib.push(factor * self.radial_integral.values[[0, n]]);
         }
 
-        return fourrier.into();
+        return k0_contrib.into();
     }
 }
 
@@ -429,6 +459,35 @@ impl CalculatorBase for LodeSphericalExpansion {
 
             let global_factor = 4.0 * std::f64::consts::PI / cell.volume();
 
+            // Add k = 0 contributions for (m, l) = (0, 0)
+            if self.parameters.potential_exponent == 0 || self.parameters.potential_exponent >= 4 {
+                let k0_contrib = &self.compute_k0_contributions();
+                for &species_neighbor in species {
+                    for center_i in 0..system.size()? {
+                        let block_i = descriptor.keys().position(&[
+                            0.into(),
+                            species[center_i].into(),
+                            species_neighbor.into(),
+                        ]).expect("missing block");
+
+                        let mut block = descriptor.block_mut(block_i);
+                        let values = block.values_mut();
+                        let array = values.data.as_array_mut();
+
+                        let sample = [system_i.into(), center_i.into()];
+                        let sample_i = match values.samples.position(&sample) {
+                            Some(s) => s,
+                            None => continue
+                        };
+
+                        for (_property_i, [n]) in values.properties.iter_fixed_size().enumerate() {
+                            let n = n.usize();
+                            array[[sample_i, 0, _property_i]] += global_factor * k0_contrib[[n]];
+                        }
+                    }
+                }
+            }
+
             for spherical_harmonics_l in 0..=self.parameters.max_angular {
                 let phase = if spherical_harmonics_l % 2 == 0 {
                     (-1.0_f64).powi(spherical_harmonics_l as i32 / 2)
@@ -481,7 +540,7 @@ impl CalculatorBase for LodeSphericalExpansion {
                                             * k_vector_to_m_n.uget([m, n, ik]);
                                     }
                                 }
-                                array[[sample_i, m, property_i]] = value;
+                                array[[sample_i, m, property_i]] += value;
                             }
                         }
 
@@ -574,28 +633,29 @@ impl CalculatorBase for LodeSphericalExpansion {
 
 #[cfg(test)]
 mod tests {
-    use crate::systems::test_utils::test_system;
-    use crate::Calculator;
-    use crate::calculators::CalculatorBase;
+    use crate::{Calculator, CalculationOptions};
+    use crate::calculators::{CalculatorBase, SphericalExpansion, SphericalExpansionParameters};
+    use crate::calculators::soap::SoapRadialBasis;
+    use crate::math::{CutoffFunction, RadialScaling};
+    use crate::systems::test_utils::{test_system, test_systems};
+
+    use approx::assert_relative_eq;
+    use ndarray::arr1;
 
     use super::*;
-
-    fn parameters() -> LodeSphericalExpansionParameters {
-        LodeSphericalExpansionParameters {
-            cutoff: 3.5,
-            k_cutoff: None,
-            max_radial: 6,
-            max_angular: 6,
-            atomic_gaussian_width: 0.8,
-            potential_exponent: 1,
-            radial_basis: LodeRadialBasis::splined_gto(1e-8),
-        }
-    }
 
     #[test]
     fn finite_differences_positions() {
         let calculator = Calculator::from(Box::new(LodeSphericalExpansion::new(
-            parameters()
+            LodeSphericalExpansionParameters {
+                cutoff: 3.5,
+                k_cutoff: None,
+                max_radial: 6,
+                max_angular: 6,
+                atomic_gaussian_width: 0.8,
+                potential_exponent: 1,
+                radial_basis: LodeRadialBasis::splined_gto(1e-8),
+            }
         ).unwrap()) as Box<dyn CalculatorBase>);
 
         let mut system = test_system("water");
@@ -614,10 +674,118 @@ mod tests {
 
     #[test]
     fn default_k_cutoff() {
-        let w = parameters().atomic_gaussian_width;
+        let atomic_gaussian_width = 0.4;
+        let parameters = LodeSphericalExpansionParameters {
+            cutoff: 3.5,
+            k_cutoff: None,
+            max_radial: 6,
+            max_angular: 6,
+            atomic_gaussian_width: atomic_gaussian_width,
+            potential_exponent: 1,
+            radial_basis: LodeRadialBasis::splined_gto(1e-8),
+        };
+
         assert_eq!(
-            parameters().get_k_cutoff(),
-            1.2 * std::f64::consts::PI / w
+            parameters.get_k_cutoff(),
+            1.2 * std::f64::consts::PI / atomic_gaussian_width
+        );
+    }
+
+    #[test]
+    fn compute_k0_contributions_p0() {
+        let mut spherical_expansion = LodeSphericalExpansion::new(
+            LodeSphericalExpansionParameters {
+                cutoff: 3.5,
+                k_cutoff: None,
+                max_radial: 6,
+                max_angular: 6,
+                atomic_gaussian_width: 0.8,
+                potential_exponent: 0,
+                radial_basis: LodeRadialBasis::splined_gto(1e-8),
+            }
+        ).unwrap();
+
+        assert_relative_eq!(
+            spherical_expansion.compute_k0_contributions(),
+            arr1(&[0.49695, 0.78753, 1.07009, 3.13526, -0.18495, 8.9746]),
+            max_relative=1e-4
+        );
+    }
+
+    #[test]
+    fn compute_k0_contributions_p6() {
+        let mut spherical_expansion = LodeSphericalExpansion::new(LodeSphericalExpansionParameters {
+            cutoff: 3.5,
+            k_cutoff: None,
+            max_radial: 6,
+            max_angular: 6,
+            atomic_gaussian_width: 0.8,
+            potential_exponent: 6,
+            radial_basis: LodeRadialBasis::splined_gto(1e-8),
+        }).unwrap();
+
+        assert_relative_eq!(
+            spherical_expansion.compute_k0_contributions(),
+            arr1(&[0.13337, 0.21136, 0.28719, 0.84143, -0.04964, 2.40858]),
+            max_relative=1e-4
+        );
+    }
+
+    #[test]
+    fn soap_lode() {
+        // TODO: this test is a bit slow (more than 10s) in debug mode, should
+        // we move it to regression tests so that it runs in release mode?
+        let mut systems = test_systems(&["tetramer"]);
+
+        let lode_parameters = LodeSphericalExpansionParameters {
+            cutoff: 6.0,
+            k_cutoff: Some(12.0),
+            max_radial: 6,
+            max_angular: 6,
+            atomic_gaussian_width: 0.3,
+            potential_exponent: 0,
+            radial_basis: LodeRadialBasis::splined_gto(1e-8),
+        };
+
+        let soap_parameters = SphericalExpansionParameters {
+            cutoff: lode_parameters.cutoff,
+            max_radial: lode_parameters.max_radial,
+            max_angular: lode_parameters.max_angular,
+            atomic_gaussian_width: lode_parameters.atomic_gaussian_width,
+            center_atom_weight: 1.0,
+            radial_basis: SoapRadialBasis::splined_gto(1e-8),
+            cutoff_function: CutoffFunction::Step {},
+            radial_scaling: RadialScaling::None {},
+        };
+
+        let mut lode_calculator = Calculator::from(Box::new(LodeSphericalExpansion::new(
+            lode_parameters
+        ).unwrap()) as Box<dyn CalculatorBase>);
+
+        let mut soap_calculator = Calculator::from(Box::new(SphericalExpansion::new(
+            soap_parameters
+        ).unwrap()) as Box<dyn CalculatorBase>);
+
+        let options = CalculationOptions {..Default::default()};
+
+        let mut lode_descriptor = lode_calculator.compute(&mut systems, options).unwrap();
+        let mut soap_descriptor = soap_calculator.compute(&mut systems, options).unwrap();
+
+        let keys_to_move = LabelsBuilder::new(vec!["species_center"]).finish();
+        lode_descriptor.keys_to_samples(&keys_to_move, true).unwrap();
+        soap_descriptor.keys_to_samples(&keys_to_move, true).unwrap();
+
+        let keys_to_move = LabelsBuilder::new(vec!["species_neighbor"]).finish();
+        lode_descriptor.keys_to_properties(&keys_to_move, true).unwrap();
+        soap_descriptor.keys_to_properties(&keys_to_move, true).unwrap();
+
+        // TODO: check all blocks
+        assert_relative_eq!(
+            lode_descriptor.blocks()[0].values().data.as_array(),
+            soap_descriptor.blocks()[0].values().data.as_array(),
+            // TODO: we can decrease this by using more k-vectors, but this
+            // makes the test run even slower
+            max_relative=1e-2
         );
     }
 }
