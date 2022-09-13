@@ -21,26 +21,50 @@ use crate::math::{gamma_ui, gamma};
 use crate::calculators::radial_basis::RadialBasis;
 use super::radial_integral::{LodeRadialIntegralCache, LodeRadialIntegralParameters};
 
-/// TODO
+/// Parameters for LODE spherical expansion calculator.
+///
+/// The spherical expansion is at the core of representations in the LODE
+/// (long-distance equivariant) family. See [this
+/// article](https://aip.scitation.org/doi/10.1063/1.5128375) for more
+/// information on the LODE representation.
 #[derive(Debug, Clone)]
 #[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 pub struct LodeSphericalExpansionParameters {
-    /// Spherical cutoff to use for atomic environments
+    /// Spherical real space cutoff to use for atomic environments.
+    /// Note that this cutoff is only used for the projection of the density.
+    /// In contrast to SOAP, LODE also takes atoms outside of this cutoff into
+    /// account for the density.
     pub cutoff: f64,
+    /// Spherical reciprocal cutoff. If `k_cutoff` is `None` a cutoff of `1.2 π
+    /// / atomic_gaussian_width`, which is a reasonable value for most systems,
+    /// is used.
+    pub k_cutoff: Option<f64>,
     /// Number of radial basis function to use in the expansion
     pub max_radial: usize,
     /// Number of spherical harmonics to use in the expansion
     pub max_angular: usize,
-    /// Width of the atom-centered gaussian used to create the atomic density
+    /// Width of the atom-centered gaussian used to create the atomic density.
     pub atomic_gaussian_width: f64,
     /// Radial basis to use for the radial integral
     pub radial_basis: RadialBasis,
-    /// TODO
+    /// Potential exponent of the decorated atom density. Currently only
+    /// implemented for potential_exponent <= 6. Some exponents can be connected
+    /// to SOAP or physics-based quantities: p=0 uses Gaussian densities as in
+    /// SOAP, p=1 uses 1/r Coulomb like densities, p=6 uses 1/r^6 dispersion
+    /// like densities."
     pub potential_exponent: usize,
 }
 
+impl LodeSphericalExpansionParameters {
+    /// Get the value of the k-space cutoff (either provided by the user or a
+    /// default).
+    pub fn get_k_cutoff(&self) -> f64 {
+        return self.k_cutoff.unwrap_or(1.2 * std::f64::consts::PI / self.atomic_gaussian_width);
+    }
+}
 
-/// TODO
+
+/// The actual calculator used to compute LODE spherical expansion coefficients
 pub struct LodeSphericalExpansion {
     /// Parameters governing the spherical expansion
     parameters: LodeSphericalExpansionParameters,
@@ -140,7 +164,7 @@ impl LodeSphericalExpansion {
                 max_angular: parameters.max_angular,
                 atomic_gaussian_width: parameters.atomic_gaussian_width,
                 cutoff: parameters.cutoff,
-                k_cutoff: 1.2 * std::f64::consts::PI / parameters.atomic_gaussian_width,
+                k_cutoff: parameters.get_k_cutoff(),
             })?;
 
         let mut k_vector_to_m_n = Vec::new();
@@ -362,9 +386,8 @@ impl CalculatorBase for LodeSphericalExpansion {
 
     #[time_graph::instrument(name = "LodeSphericalExpansion::compute")]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
-        // TODO: let the user provide the cutoff?
-        // TODO: check atomic_gaussian_width so that we have a non-zero number of k-vectors
-        let k_cutoff = 1.2 * std::f64::consts::PI / self.parameters.atomic_gaussian_width;
+
+        let k_cutoff = self.parameters.get_k_cutoff();
 
         for (system_i, system) in systems.iter_mut().enumerate() {
             let species = system.species()?;
@@ -374,6 +397,10 @@ impl CalculatorBase for LodeSphericalExpansion {
             }
 
             let k_vectors = compute_k_vectors(&cell, k_cutoff);
+            if k_vectors.is_empty() {
+                return Err(Error::InvalidParameter("No k-vectors for current combination of hyper parameters.".into()));
+            }
+
             assert!(!k_vectors.is_empty());
 
             self.project_k_to_nlm(&k_vectors);
@@ -541,11 +568,12 @@ mod tests {
     fn parameters() -> LodeSphericalExpansionParameters {
         LodeSphericalExpansionParameters {
             cutoff: 3.5,
+            k_cutoff: None,
             max_radial: 6,
             max_angular: 6,
             atomic_gaussian_width: 0.8,
             potential_exponent: 1,
-            radial_basis: LodeRadialBasis::Gto { splined_radial_integral: true, spline_accuracy: 1e-8 },
+            radial_basis: RadialBasis::splined_gto(1e-8),
         }
     }
 
@@ -567,5 +595,14 @@ mod tests {
             epsilon: 1e-10,
         };
         crate::calculators::tests_utils::finite_differences_positions(calculator, &system, options);
+    }
+
+    #[test]
+    fn default_k_cutoff() {
+        let w = parameters().atomic_gaussian_width;
+        assert_eq!(
+            parameters().get_k_cutoff(),
+            1.2 * std::f64::consts::PI / w
+        );
     }
 }
