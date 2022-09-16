@@ -91,6 +91,9 @@ class JsonSchemaDirective(Directive):
                     for name, content in schema.get("properties", {}).items():
                         name = nodes.field_name(text=name)
                         name += nodes.Text(": ")
+                        if "default" in content:
+                            name += nodes.Text("optional, ")
+
                         name += self._json_schema_to_nodes(content, inline=True)
 
                         field_list += name
@@ -151,6 +154,14 @@ class JsonSchemaDirective(Directive):
 
             elif schema["type"] == "boolean":
                 return nodes.literal(text="boolean")
+
+            elif isinstance(schema["type"], list):
+                # we only support list for Option<T>
+                assert len(schema["type"]) == 2
+                assert schema["type"][1] == "null"
+
+                schema["type"] = schema["type"][0]
+                return self._json_schema_to_nodes(schema, inline=True)
 
             else:
                 raise Exception(f"unsupported JSON type ({schema['type']}) in schema")
