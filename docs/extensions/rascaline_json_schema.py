@@ -28,6 +28,7 @@ class JsonSchemaDirective(Directive):
     def __init__(self, *args, **kwargs):
         super(JsonSchemaDirective, self).__init__(*args, **kwargs)
         self._inline_call_count = 0
+        self.docs_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
     def run(self, *args, **kwargs):
         schema, content = self._load_schema()
@@ -64,11 +65,11 @@ class JsonSchemaDirective(Directive):
         return (target, section)
 
     def _load_schema(self):
-        path = self.arguments[0]
+        path = os.path.join(self.docs_root, self.arguments[0])
         if not os.path.exists(path):
-            raise Exception(f"unable to find JSON schema at '{path}'")
+            raise Exception(f"Unable to find JSON schema at '{path}'.")
 
-        self.state.document.settings.env.note_dependency(os.path.abspath(path))
+        self.state.document.settings.env.note_dependency(path)
 
         with open(path) as fd:
             content = fd.read()
