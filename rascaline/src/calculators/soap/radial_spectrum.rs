@@ -68,7 +68,7 @@ impl SoapRadialSpectrum {
             max_angular: 0,
             atomic_gaussian_width: parameters.atomic_gaussian_width,
             center_atom_weight: parameters.center_atom_weight,
-            radial_basis: parameters.radial_basis,
+            radial_basis: parameters.radial_basis.clone(),
             cutoff_function: parameters.cutoff_function,
             radial_scaling: parameters.radial_scaling,
         };

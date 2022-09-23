@@ -2,6 +2,7 @@ mod radial_integral;
 pub use self::radial_integral::RadialIntegral;
 pub use self::radial_integral::{GtoRadialIntegral, GtoParameters};
 pub use self::radial_integral::{SplinedRadialIntegral, SplinedRIParameters};
+pub use self::radial_integral::TabulatedRadialIntegrals;
 
 mod spherical_harmonics;
 pub use self::spherical_harmonics::{SphericalHarmonics, SphericalHarmonicsArray};

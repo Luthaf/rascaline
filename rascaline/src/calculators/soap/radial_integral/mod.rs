@@ -21,3 +21,5 @@ pub use self::gto::{GtoRadialIntegral, GtoParameters};
 
 mod spline;
 pub use self::spline::{SplinedRadialIntegral, SplinedRIParameters};
+pub use self::spline::TabulatedRadialIntegrals;
+pub use self::spline::HermitSplinePoint;

@@ -1,11 +1,88 @@
-use ndarray::{Array2, ArrayViewMut2, azip};
+use ndarray::{Array, Array2, ArrayViewMut2, azip};
 use log::info;
+
+// use std::env;
+use std::fs::File;
+use std::io::Read;
 
 use super::RadialIntegral;
 use crate::Error;
 
 /// Maximal number of points in the splines
 const MAX_SPLINE_SIZE: usize = 10_000;
+
+pub struct TabulatedRadialIntegrals {
+    spline_points: Vec<HermitSplinePoint>,
+}
+
+impl TabulatedRadialIntegrals {
+
+    pub fn get_spline_points(self) -> Vec<HermitSplinePoint> {
+        return self.spline_points;
+    }
+
+    pub fn new(max_radial: usize, max_angular: usize, file: &str) -> Result<TabulatedRadialIntegrals, Error> {
+
+        // Read tabulated points from file.
+        /* 
+        let pwd = env::current_dir()?;
+        let pwd = pwd.into_os_string().into_string()?;
+        */
+
+        let mut file = File::open(file).expect("failed to read file");
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).unwrap();
+
+        let mut split_contents = contents.split("\n");
+        let spline_positions_as_string = split_contents.nth(0).expect("parsing error");
+        let spline_positions_as_substrings = spline_positions_as_string.split(" ");
+        let mut spline_positions = Vec::new();
+        for spline_position_as_string in spline_positions_as_substrings {
+            spline_positions.push(spline_position_as_string.trim().parse::<f64>().expect("parsing error"));
+        }
+
+        let n_spline_points = spline_positions.len();
+
+        let values_as_substrings = split_contents.nth(1).unwrap().split(" ");
+        let mut values_as_vector = Vec::new();
+        for value_as_substring in values_as_substrings {
+            values_as_vector.push(value_as_substring.trim().parse::<f64>().unwrap());
+        }
+        let values = Array::from_vec(values_as_vector);  
+        let values = values.into_shape((n_spline_points, max_radial, max_angular)).unwrap();
+
+        let derivatives_as_substrings = split_contents.nth(2).unwrap().split(" ");
+        let mut derivatives_as_vector = Vec::new();
+        for derivative_as_substring in derivatives_as_substrings {
+            derivatives_as_vector.push(derivative_as_substring.trim().parse::<f64>().unwrap());
+        }
+        let derivatives = Array::from_vec(derivatives_as_vector);  
+        let derivatives = derivatives.into_shape((n_spline_points, max_radial, max_angular)).unwrap();
+
+        let mut spline_points = Vec::new();
+        for (i, position) in spline_positions.iter().enumerate() {
+            let mut value = Array2::zeros((max_radial, max_angular));
+            let mut derivative = Array2::zeros((max_radial, max_angular));
+            for n in 0..max_radial {
+                for l in 0..max_angular {
+                    value[[n, l]] = values[[i, n, l]];
+                    derivative[[n, l]] = derivatives[[i, n, l]];
+                }
+            }
+            spline_points.push(
+                HermitSplinePoint {
+                    position: *position,
+                    value: value,
+                    derivative: derivative,
+                }
+            )
+        }
+
+        return Ok(TabulatedRadialIntegrals {
+            spline_points: spline_points,
+        })
+    }
+}
 
 /// `SplinedRadialIntegral` allows to evaluate another radial integral
 /// implementation using [cubic Hermit spline][splines-wiki].
@@ -21,7 +98,7 @@ pub struct SplinedRadialIntegral {
 
 /// A single control point/knot in the Hermit cubic spline
 #[derive(Debug, Clone)]
-struct HermitSplinePoint {
+pub struct HermitSplinePoint {
     /// Position of the point
     position: f64,
     /// Value of the function to interpolate at the position
@@ -43,7 +120,7 @@ pub struct SplinedRIParameters {
 
 impl SplinedRadialIntegral {
     #[allow(clippy::float_cmp)]
-    fn new(
+    pub fn new(
         parameters: SplinedRIParameters,
         mut points: Vec<HermitSplinePoint>,
     ) -> SplinedRadialIntegral  {

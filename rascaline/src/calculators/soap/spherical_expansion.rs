@@ -19,6 +19,7 @@ use crate::labels::{KeysBuilder, CenterSingleNeighborsSpeciesKeys};
 use super::super::CalculatorBase;
 use super::RadialIntegral;
 use super::{GtoRadialIntegral, GtoParameters};
+use super::TabulatedRadialIntegrals;
 use super::{SplinedRadialIntegral, SplinedRIParameters};
 
 use super::{SphericalHarmonics, SphericalHarmonicsArray};
@@ -27,7 +28,7 @@ use super::{CutoffFunction, RadialScaling};
 
 const FOUR_PI: f64 = 4.0 * std::f64::consts::PI;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 /// Radial basis that can be used in the spherical expansion
 pub enum RadialBasis {
@@ -45,6 +46,10 @@ pub enum RadialBasis {
         /// close to the requested accuracy.
         #[serde(default = "serde_default_spline_accuracy")]
         spline_accuracy: f64,
+    },
+    /// Provide a tabulated radial basis by meanse of a json file.
+    Tabulated {
+        file: String,
     },
 }
 
@@ -76,6 +81,16 @@ impl RadialBasis {
                 return Ok(Box::new(SplinedRadialIntegral::with_accuracy(
                     parameters, *spline_accuracy, gto
                 )?));
+            }
+            RadialBasis::Tabulated {file} => {
+                let spline_parameters = SplinedRIParameters {
+                    max_radial: parameters.max_radial,
+                    max_angular: parameters.max_angular,
+                    cutoff: parameters.cutoff,
+                };
+                let tabulated_integrals: TabulatedRadialIntegrals = TabulatedRadialIntegrals::new(parameters.max_radial, parameters.max_angular, file)?;
+                let spline_points = tabulated_integrals.get_spline_points();
+                return Ok(Box::new(SplinedRadialIntegral::new(spline_parameters, spline_points)));
             }
         };
     }
