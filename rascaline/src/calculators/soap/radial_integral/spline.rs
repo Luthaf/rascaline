@@ -33,40 +33,49 @@ impl TabulatedRadialIntegrals {
         let mut contents = String::new();
         file.read_to_string(&mut contents).unwrap();
 
-        let mut split_contents = contents.split("\n");
-        let spline_positions_as_string = split_contents.nth(0).expect("parsing error");
+        let split_contents: Vec<&str> = contents.split("\n").collect();
+        let spline_positions_as_string = split_contents[0];
         let spline_positions_as_substrings = spline_positions_as_string.split(" ");
         let mut spline_positions = Vec::new();
         for spline_position_as_string in spline_positions_as_substrings {
+            if spline_position_as_string == "" {
+                continue;
+            }
             spline_positions.push(spline_position_as_string.trim().parse::<f64>().expect("parsing error"));
         }
 
         let n_spline_points = spline_positions.len();
 
-        let values_as_substrings = split_contents.nth(1).unwrap().split(" ");
+        let values_as_substrings = split_contents[1].split(" ");
         let mut values_as_vector = Vec::new();
         for value_as_substring in values_as_substrings {
+            if value_as_substring == "" {
+                continue;
+            }
             values_as_vector.push(value_as_substring.trim().parse::<f64>().unwrap());
         }
         let values = Array::from_vec(values_as_vector);  
-        let values = values.into_shape((n_spline_points, max_radial, max_angular)).unwrap();
+        let values = values.into_shape((n_spline_points, max_angular+1, max_radial)).unwrap();
 
-        let derivatives_as_substrings = split_contents.nth(2).unwrap().split(" ");
+        let derivatives_as_substrings = split_contents[2].split(" ");
         let mut derivatives_as_vector = Vec::new();
         for derivative_as_substring in derivatives_as_substrings {
+            if derivative_as_substring == "" {
+                continue;
+            }
             derivatives_as_vector.push(derivative_as_substring.trim().parse::<f64>().unwrap());
         }
         let derivatives = Array::from_vec(derivatives_as_vector);  
-        let derivatives = derivatives.into_shape((n_spline_points, max_radial, max_angular)).unwrap();
+        let derivatives = derivatives.into_shape((n_spline_points, max_angular+1, max_radial)).unwrap();
 
         let mut spline_points = Vec::new();
         for (i, position) in spline_positions.iter().enumerate() {
-            let mut value = Array2::zeros((max_radial, max_angular));
-            let mut derivative = Array2::zeros((max_radial, max_angular));
+            let mut value = Array2::zeros((max_angular+1, max_radial));
+            let mut derivative = Array2::zeros((max_angular+1, max_radial));
             for n in 0..max_radial {
-                for l in 0..max_angular {
-                    value[[n, l]] = values[[i, n, l]];
-                    derivative[[n, l]] = derivatives[[i, n, l]];
+                for l in 0..max_angular+1 {
+                    value[[l, n]] = values[[i, l, n]];
+                    derivative[[l, n]] = derivatives[[i, l, n]];
                 }
             }
             spline_points.push(
