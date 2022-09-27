@@ -162,10 +162,12 @@ TEST_CASE("Compute descriptor") {
     SECTION("Partial compute -- samples") {
         auto options = rascaline::CalculationOptions();
         options.gradients.push_back("positions");
-        options.selected_samples = rascaline::LabelsSelection::subset(equistore::Labels(
-            {"structure", "center"},
-            {{0, 1}, {0, 3}}
-        ));
+        options.selected_samples = rascaline::LabelsSelection::subset(
+            std::make_shared<equistore::Labels>(equistore::Labels(
+                {"structure", "center"},
+                {{0, 1}, {0, 3}}
+            ))
+        );
         auto descriptor = calculator.compute(systems, options);
 
         CHECK(descriptor.keys() == equistore::Labels(
@@ -236,10 +238,12 @@ TEST_CASE("Compute descriptor") {
     SECTION("Partial compute -- features") {
         auto options = rascaline::CalculationOptions();
         options.gradients.push_back("positions");
-        options.selected_properties = rascaline::LabelsSelection::subset(equistore::Labels(
-            {"index_delta", "x_y_z"},
-            {{0, 1}}
-        ));
+        options.selected_properties = rascaline::LabelsSelection::subset(
+            std::make_shared<equistore::Labels>(equistore::Labels(
+                {"index_delta", "x_y_z"},
+                {{0, 1}}
+            ))
+        );
         auto descriptor = calculator.compute(systems, options);
 
         CHECK(descriptor.keys() == equistore::Labels(
@@ -317,29 +321,33 @@ TEST_CASE("Compute descriptor") {
     SECTION("Partial compute -- preselected") {
         auto options = rascaline::CalculationOptions();
         options.gradients.push_back("positions");
-        auto blocks = std::vector<equistore::TensorBlock>{
+        auto blocks = std::vector<equistore::TensorBlock>();
+
+        blocks.emplace_back(
             equistore::TensorBlock(
                 std::unique_ptr<equistore::SimpleDataArray>(new equistore::SimpleDataArray({1, 1})),
                 equistore::Labels({"structure", "center"}, {{0, 3}}),
                 {},
                 equistore::Labels({"index_delta", "x_y_z"}, {{0, 1}})
-            ),
+            )
+        );
+
+        blocks.emplace_back(
             equistore::TensorBlock(
                 std::unique_ptr<equistore::SimpleDataArray>(new equistore::SimpleDataArray({1, 1})),
                 equistore::Labels({"structure", "center"}, {{0, 0}}),
                 {},
                 equistore::Labels({"index_delta", "x_y_z"}, {{1, 0}})
-            ),
-        };
+            )
+        );
 
-        options.selected_samples = rascaline::LabelsSelection::predefined(equistore::TensorMap(
+        auto predefined = std::make_shared<equistore::TensorMap>(
             equistore::Labels({"species_center"}, {{1}, {6}}),
-            blocks
-        ));
-        options.selected_properties = rascaline::LabelsSelection::predefined(equistore::TensorMap(
-            equistore::Labels({"species_center"}, {{1}, {6}}),
-            blocks
-        ));
+            std::move(blocks)
+        );
+        options.selected_samples = rascaline::LabelsSelection::predefined(predefined);
+        options.selected_properties = rascaline::LabelsSelection::predefined(predefined);
+
         auto descriptor = calculator.compute(systems, options);
 
         CHECK(descriptor.keys() == equistore::Labels(
