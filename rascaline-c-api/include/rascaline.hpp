@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 #include <mutex>
+#include <memory>
 #include <utility>
 #include <stdexcept>
 #include <exception>
@@ -357,8 +358,8 @@ public:
     /// If the `selection` contains a subset of the variables of the full set of
     /// labels, then only entries from the full set which match one of the entry
     /// in this selection for all of the selection variable will be used.
-    static LabelsSelection subset(equistore::Labels selection) {
-        return LabelsSelection(new equistore::Labels(std::move(selection)), nullptr);
+    static LabelsSelection subset(std::shared_ptr<equistore::Labels> selection) {
+        return LabelsSelection(std::move(selection), nullptr);
     }
 
     /// Use a predefined subset of labels, with different entries for different
@@ -367,24 +368,27 @@ public:
     /// For each key, the corresponding labels are fetched out of the
     /// `selection`, which must have the same set of keys as the full
     /// calculation.
-    static LabelsSelection predefined(equistore::TensorMap selection) {
-        return LabelsSelection(nullptr, new equistore::TensorMap(std::move(selection)));
+    static LabelsSelection predefined(std::shared_ptr<equistore::TensorMap> selection) {
+        return LabelsSelection(nullptr, std::move(selection));
     }
 
-    ~LabelsSelection() {
+    ~LabelsSelection() = default;
+
+    /// LabelsSelection can be copy-constructed
+    LabelsSelection(const LabelsSelection& other): LabelsSelection(nullptr, nullptr) {
+        *this = other;
+    }
+
+    /// LabelsSelection can be copy-assigned
+    LabelsSelection& operator=(const LabelsSelection& other) {
+        this->subset_ = other.subset_;
+        this->predefined_ = other.predefined_;
         if (this->subset_ != nullptr) {
-            delete this->subset_;
+            this->c_subset_ = subset_->as_eqs_labels_t();
         }
 
-        if (this->predefined_ != nullptr) {
-            delete this->predefined_;
-        }
+        return *this;
     }
-
-    /// LabelsSelection can not be copy-constructed
-    LabelsSelection(const LabelsSelection&) = delete;
-    /// LabelsSelection can not be copy-assigned
-    LabelsSelection& operator=(const LabelsSelection&) = delete;
 
     /// LabelsSelection can be move-constructed
     LabelsSelection(LabelsSelection&& other): LabelsSelection(nullptr, nullptr) {
@@ -393,16 +397,8 @@ public:
 
     /// LabelsSelection can be move-assigned
     LabelsSelection& operator=(LabelsSelection&& other) {
-        if (this->subset_ != nullptr) {
-            delete this->subset_;
-        }
-
-        if (this->predefined_ != nullptr) {
-            delete this->predefined_;
-        }
-
-        this->subset_ = other.subset_;
-        this->predefined_ = other.predefined_;
+        this->subset_ = std::move(other.subset_);
+        this->predefined_ = std::move(other.predefined_);
         if (this->subset_ != nullptr) {
             this->c_subset_ = subset_->as_eqs_labels_t();
         }
@@ -431,8 +427,8 @@ public:
     }
 
 private:
-    LabelsSelection(equistore::Labels* subset, equistore::TensorMap* predefined):
-        subset_(subset), c_subset_(), predefined_(predefined)
+    LabelsSelection(std::shared_ptr<equistore::Labels> subset, std::shared_ptr<equistore::TensorMap> predefined):
+        subset_(std::move(subset)), c_subset_(), predefined_(std::move(predefined))
     {
         std::memset(&c_subset_, 0, sizeof(eqs_labels_t));
         if (subset_ != nullptr) {
@@ -440,9 +436,9 @@ private:
         }
     }
 
-    equistore::Labels* subset_;
+    std::shared_ptr<equistore::Labels> subset_;
     eqs_labels_t c_subset_;
-    equistore::TensorMap* predefined_;
+    std::shared_ptr<equistore::TensorMap> predefined_;
 };
 
 
