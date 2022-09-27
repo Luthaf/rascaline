@@ -636,7 +636,7 @@ impl CalculatorBase for LodeSphericalExpansion {
 mod tests {
     use crate::Calculator;
     use crate::calculators::CalculatorBase;
-    use crate::systems::test_utils::test_system;
+    use crate::systems::test_utils::{test_system,test_systems};
 
     use approx::assert_relative_eq;
     use ndarray::arr1;
@@ -728,5 +728,55 @@ mod tests {
             arr1(&[0.13337, 0.21136, 0.28719, 0.84143, -0.04964, 2.40858]),
             max_relative=1e-4
         );
+    }
+    struct CrystalParameters {
+        name: &'static str,
+        charges: Vec<f64>,
+        madelung: f64,
+    }
+
+    #[test]
+    fn madelung() {
+        let crystals = [
+                         CrystalParameters{name: "NaCl", charges: vec![1.0, -1.0], madelung: 1.7476},
+                         CrystalParameters{name: "CsCl", charges: vec![1.0, -1.0], madelung: 2.0 * 1.7626 / f64::sqrt(3.0)},
+                         CrystalParameters{name: "ZnS", charges: vec![1.0, -1.0], madelung: 2.0 * 1.6381 / f64::sqrt(3.0)},
+                         CrystalParameters{name: "ZnSO4", charges: vec![1.0, -1.0, 1.0, -1.0], madelung: 1.6413 / f64::sqrt(3. / 8.)}];
+
+        for smearing in [0.2, 0.1] {
+            for rcut in [0.01, 0.027, 0.074, 0.2] {
+                for crystal in crystals.iter() {
+
+                    let lode_parameters = LodeSphericalExpansionParameters {
+                        cutoff: 0.96,
+                        k_cutoff: None,
+                        max_radial: 1,
+                        max_angular: 0,
+                        atomic_gaussian_width: 0.5,
+                        potential_exponent: 1,
+                        radial_basis: LodeRadialBasis::splined_gto(1e-8),
+                    };
+
+                    let mut calculator = Calculator::from(Box::new(LodeSphericalExpansion::new(
+                        lode_parameters
+                    ).unwrap()) as Box<dyn CalculatorBase>);
+
+                    let options = CalculationOptions{..Default::default()};
+
+                    let mut descriptor = calculator.compute(&mut test_systems(&["NaCl"]), options).unwrap();
+                    let keys_to_move = LabelsBuilder::new(vec!["species_center", "species_neighbor"]).finish();
+                    descriptor.keys_to_samples(&keys_to_move, true);
+
+                    print!("{}",descriptor.blocks()[0].values().data.as_array());
+
+                    let mut madelung = crystal.charges[0] * descriptor.blocks()[0].values().data.as_array()[0];
+                    madelung += crystal.charges[1] * descriptor.blocks()[0].values().data.as_array()[1];
+                    //madelung /= -(4.0 * std::f64::consts::PI * rcut.powf(2.0)).powf(0.75);
+
+                    assert_relative_eq!(madelung, crystal.madelung, max_relative=6e-1);
+                }
+            }
+        }
+
     }
 }
