@@ -56,8 +56,8 @@ fn values_pbc() {
 }
 
 #[test]
-fn gradients_no_pbc() {
-    let (mut systems, parameters) = data::load_calculator_input("spherical-expansion-positions-gradient-input.json");
+fn gradients() {
+    let (mut systems, parameters) = data::load_calculator_input("spherical-expansion-gradients-input.json");
     let n_atoms = systems.iter().map(|s| s.size().unwrap()).sum();
 
     let mut calculator = Calculator::new("spherical_expansion", parameters).unwrap();

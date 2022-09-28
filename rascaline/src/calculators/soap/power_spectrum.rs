@@ -738,8 +738,8 @@ mod tests {
 
         let system = test_system("water");
         let options = crate::calculators::tests_utils::FinalDifferenceOptions {
-            displacement: 1e-6,
-            max_relative: 5e-5,
+            displacement: 1e-5,
+            max_relative: 1e-5,
             epsilon: 1e-16,
         };
         crate::calculators::tests_utils::finite_differences_cell(calculator, &system, options);

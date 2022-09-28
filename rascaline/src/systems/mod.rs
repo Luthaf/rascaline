@@ -2,6 +2,7 @@ use crate::{Error, Vector3D};
 
 mod cell;
 pub use self::cell::UnitCell;
+pub use self::cell::CellShape;
 
 mod neighbors;
 pub use self::neighbors::NeighborsList;
