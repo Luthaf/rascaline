@@ -4,8 +4,8 @@ use approx::{assert_relative_eq, assert_ulps_eq};
 use equistore::{Labels, TensorMap};
 
 use crate::calculator::LabelsSelection;
-use crate::{CalculationOptions, Calculator, Matrix3};
-use crate::systems::{System, SimpleSystem};
+use crate::{CalculationOptions, Calculator};
+use crate::systems::{System, SimpleSystem, UnitCell};
 
 /// Check that computing a partial subset of features/samples works as intended
 /// for the given `calculator` and `systems`.
@@ -272,26 +272,29 @@ pub fn finite_differences_cell(mut calculator: Calculator, system: &SimpleSystem
         ..Default::default()
     };
     let reference = calculator.compute(&mut [Box::new(system.clone())], calculation_options).unwrap();
+    let original_cell = system.cell().unwrap().matrix();
+    let original_cell_inverse = original_cell.inverse();
 
     for spatial_1 in 0..3 {
         for spatial_2 in 0..3 {
-            let mut transform = Matrix3::zero();
-            transform[spatial_1][spatial_2] = options.displacement / 2.0;
+            let mut deformed_cell = original_cell;
+            deformed_cell[spatial_1][spatial_2] += options.displacement / 2.0;
+
+            let mut system_pos = system.clone();
+            system_pos.set_cell(UnitCell::from(deformed_cell));
+            for position in system_pos.positions_mut() {
+                *position = deformed_cell * (original_cell_inverse * *position);
+            }
+            let updated_pos = calculator.compute(&mut [Box::new(system_pos)], Default::default()).unwrap();
+
+            deformed_cell[spatial_1][spatial_2] -= options.displacement;
 
             let mut system_neg = system.clone();
-            for positions in system_neg.positions_mut() {
-                *positions += transform * *positions;
+            system_neg.set_cell(UnitCell::from(deformed_cell));
+            for position in system_neg.positions_mut() {
+                *position = deformed_cell * (original_cell_inverse * *position);
             }
-            let updated_pos = calculator.compute(&mut [Box::new(system_neg)], Default::default()).unwrap();
-
-
-            transform[spatial_1][spatial_2] = -options.displacement / 2.0;
-            let mut system_pos = system.clone();
-            for positions in system_pos.positions_mut() {
-                *positions += transform * *positions;
-            }
-            let updated_neg = calculator.compute(&mut [Box::new(system_pos)], Default::default()).unwrap();
-
+            let updated_neg = calculator.compute(&mut [Box::new(system_neg)], Default::default()).unwrap();
 
             for (block_i, (_, block)) in reference.iter().enumerate() {
                 let gradients = &block.gradient("cell").unwrap();

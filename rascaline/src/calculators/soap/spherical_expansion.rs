@@ -11,7 +11,8 @@ use rayon::prelude::*;
 use equistore::{LabelsBuilder, Labels, LabelValue};
 use equistore::{TensorMap, TensorBlock, eqs_array_t, TensorBlockRefMut};
 
-use crate::{Error, System, Vector3D};
+use crate::{Error, System, Vector3D, Matrix3};
+use crate::systems::CellShape;
 
 use crate::labels::{SamplesBuilder, SpeciesFilter, AtomCenteredSamples};
 use crate::labels::{KeysBuilder, CenterSingleNeighborsSpeciesKeys};
@@ -329,7 +330,13 @@ impl SphericalExpansion {
     /// expansion with `pair.second` as the center and `pair.first` as the
     /// neighbor.
     #[allow(clippy::too_many_lines)]
-    fn compute_for_pair(&self, pair: &Pair, descriptor: &mut TensorMapView, do_gradients: GradientsOptions) {
+    fn compute_for_pair(
+        &self,
+        pair: &Pair,
+        descriptor: &mut TensorMapView,
+        do_gradients: GradientsOptions,
+        inverse_cell: &Matrix3,
+    ) {
         let mut radial_integral = self.radial_integral.get_or(|| {
             let ri = RadialIntegralImpl::new(&self.parameters).expect("invalid parameters");
             RefCell::new(ri)
@@ -354,6 +361,12 @@ impl SphericalExpansion {
         } else {
             None
         };
+
+        let inverse_cell_pair_vector = Vector3D::new(
+            pair.vector[0] * inverse_cell[0][0] + pair.vector[1] * inverse_cell[1][0] + pair.vector[2] * inverse_cell[2][0],
+            pair.vector[0] * inverse_cell[0][1] + pair.vector[1] * inverse_cell[1][1] + pair.vector[2] * inverse_cell[2][1],
+            pair.vector[0] * inverse_cell[0][2] + pair.vector[1] * inverse_cell[1][2] + pair.vector[2] * inverse_cell[2][2],
+        );
 
         for spherical_harmonics_l in 0..=self.parameters.max_angular {
             let first_block_id = descriptor.keys().position(&[
@@ -439,7 +452,7 @@ impl SphericalExpansion {
                     descriptor.block_mut(block_id),
                     spherical_harmonics_l,
                     (pair.first_sample, pair.second_sample),
-                    pair.vector,
+                    inverse_cell_pair_vector,
                     &coefficients,
                     &coefficients_grad,
                     do_gradients,
@@ -458,7 +471,7 @@ impl SphericalExpansion {
                     descriptor.block_mut(block_id),
                     spherical_harmonics_l,
                     (pair.second_sample, pair.first_sample),
-                    -pair.vector,
+                    -inverse_cell_pair_vector,
                     &coefficients,
                     &coefficients_grad,
                     do_gradients,
@@ -473,7 +486,7 @@ impl SphericalExpansion {
         mut block: TensorBlockRefMut,
         spherical_harmonics_l: usize,
         (first_sample, second_sample): ([LabelValue; 2], [LabelValue; 2]),
-        pair_vector: Vector3D,
+        inverse_cell_pair_vector: Vector3D,
         pair_contribution: &Array2<f64>,
         pair_contribution_grad: &Option<Array3<f64>>,
         do_gradient: GradientsOptions,
@@ -562,6 +575,7 @@ impl SphericalExpansion {
             if let Some(gradient_sample_i) = gradient_sample_i {
                 for spatial_1 in 0..3 {
                     for spatial_2 in 0..3 {
+                        let inverse_cell_pair_vector_2 = inverse_cell_pair_vector[spatial_2];
                         for m in 0..(2 * spherical_harmonics_l + 1) {
                             for (property_i, &[n]) in gradient.properties.iter_fixed_size().enumerate() {
                                 // SAFETY: we are doing in-bounds access, and
@@ -569,7 +583,8 @@ impl SphericalExpansion {
                                 // speed-up for this code
                                 unsafe {
                                     let out = array.uget_mut([gradient_sample_i, spatial_1, spatial_2, m, property_i]);
-                                    *out += *pair_contribution_grad.uget([spatial_1, m, n.usize()]) * pair_vector[spatial_2];
+                                    *out += *pair_contribution_grad.uget([spatial_1, m, n.usize()])
+                                            * inverse_cell_pair_vector_2;
                                 }
                             }
                         }
@@ -745,6 +760,18 @@ impl CalculatorBase for SphericalExpansion {
                 let species = system.species()?;
                 let pairs = system.pairs()?;
 
+                let inverse_cell = if do_gradients.cell {
+                    let cell = system.cell()?;
+                    if cell.shape() == CellShape::Infinite {
+                        return Err(Error::InvalidParameter(
+                            "can not compute cell gradients for non periodic systems".into()
+                        ));
+                    }
+                    cell.matrix().inverse()
+                } else {
+                    Matrix3::zero()
+                };
+
                 let requested_centers = descriptor.iter().flat_map(|(_, block)| {
                     block.values().samples.iter().map(|sample| sample[1].usize())
                 }).collect::<BTreeSet<_>>();
@@ -774,7 +801,7 @@ impl CalculatorBase for SphericalExpansion {
                         vector: pair.vector,
                     };
 
-                    self.compute_for_pair(&pair, descriptor, do_gradients);
+                    self.compute_for_pair(&pair, descriptor, do_gradients, &inverse_cell);
                 }
 
                 Ok::<_, Error>(())
