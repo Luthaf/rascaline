@@ -12,7 +12,6 @@ pub fn test_system(name: &str) -> SimpleSystem {
         "methane" => get_methane(),
         "water" => get_water(),
         "CH" => get_ch(),
-        "tetramer" => get_tetramer(),
         _ => panic!("unknown test system {}", name)
     }
 }
@@ -40,14 +39,5 @@ fn get_ch() -> SimpleSystem {
     let mut system = SimpleSystem::new(UnitCell::cubic(10.0));
     system.add_atom(6, Vector3D::new(0.0, 0.0, 0.0));
     system.add_atom(1, Vector3D::new(0.0, 1.2, 0.0));
-    return system;
-}
-
-fn get_tetramer() -> SimpleSystem {
-    let mut system = SimpleSystem::new(UnitCell::cubic(16.0));
-    system.add_atom(8, Vector3D::new(1.0, 1.0, 1.0));
-    system.add_atom(8, Vector3D::new(2.0, 1.0, 1.0));
-    system.add_atom(8, Vector3D::new(2.0, 2.2, 1.0));
-    system.add_atom(8, Vector3D::new(2.3, 2.0, 1.5));
     return system;
 }

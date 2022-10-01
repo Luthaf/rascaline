@@ -164,15 +164,15 @@ mod tests {
             atomic_gaussian_width: 0.5,
         }).unwrap();
 
-        let rij = 3.4;
+        let k = 3.4;
         let delta = 1e-6;
 
         let shape = (max_angular + 1, max_radial);
         let mut values = Array2::from_elem(shape, 0.0);
         let mut values_delta = Array2::from_elem(shape, 0.0);
         let mut gradients = Array2::from_elem(shape, 0.0);
-        gto.compute(rij, values.view_mut(), Some(gradients.view_mut()));
-        gto.compute(rij + delta, values_delta.view_mut(), None);
+        gto.compute(k, values.view_mut(), Some(gradients.view_mut()));
+        gto.compute(k + delta, values_delta.view_mut(), None);
 
         let finite_differences = (&values_delta - &values) / delta;
 
