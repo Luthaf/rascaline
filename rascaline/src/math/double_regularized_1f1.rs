@@ -171,7 +171,6 @@ mod tests {
         }
     }
 
-
     #[test]
     fn finite_differences() {
         let delta = 1e-6;
