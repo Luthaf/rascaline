@@ -618,10 +618,16 @@ impl CalculatorBase for LodeSphericalExpansion {
 
 #[cfg(test)]
 mod tests {
+<<<<<<< HEAD
     use crate::{Calculator, CalculationOptions};
     use crate::calculators::{CalculatorBase, SphericalExpansion, SphericalExpansionParameters};
     use crate::calculators::soap::{CutoffFunction, RadialScaling};
     use crate::systems::test_utils::{test_system, test_systems};
+=======
+    use crate::Calculator;
+    use crate::calculators::CalculatorBase;
+    use crate::systems::test_utils::test_system;
+>>>>>>> 8479138 (Improve the accuracy in soap-vs-lode test)
 
     use approx::assert_relative_eq;
     use ndarray::arr1;
@@ -712,64 +718,6 @@ mod tests {
             spherical_expansion.compute_k0_contributions(),
             arr1(&[0.13337, 0.21136, 0.28719, 0.84143, -0.04964, 2.40858]),
             max_relative=1e-4
-        );
-    }
-
-    #[test]
-    fn soap_lode() {
-        // TODO: this test is a bit slow (more than 10s) in debug mode, should
-        // we move it to regression tests so that it runs in release mode?
-        let mut systems = test_systems(&["tetramer"]);
-
-        let lode_parameters = LodeSphericalExpansionParameters {
-            cutoff: 6.0,
-            k_cutoff: Some(12.0),
-            max_radial: 6,
-            max_angular: 6,
-            atomic_gaussian_width: 0.3,
-            potential_exponent: 0,
-            radial_basis: RadialBasis::splined_gto(1e-8),
-        };
-
-        let soap_parameters = SphericalExpansionParameters {
-            cutoff: lode_parameters.cutoff,
-            max_radial: lode_parameters.max_radial,
-            max_angular: lode_parameters.max_angular,
-            atomic_gaussian_width: lode_parameters.atomic_gaussian_width,
-            center_atom_weight: 1.0,
-            radial_basis: RadialBasis::splined_gto(1e-8),
-            cutoff_function: CutoffFunction::Step {},
-            radial_scaling: RadialScaling::None {},
-        };
-
-        let mut lode_calculator = Calculator::from(Box::new(LodeSphericalExpansion::new(
-            lode_parameters
-        ).unwrap()) as Box<dyn CalculatorBase>);
-
-        let mut soap_calculator = Calculator::from(Box::new(SphericalExpansion::new(
-            soap_parameters
-        ).unwrap()) as Box<dyn CalculatorBase>);
-
-        let options = CalculationOptions {..Default::default()};
-
-        let mut lode_descriptor = lode_calculator.compute(&mut systems, options).unwrap();
-        let mut soap_descriptor = soap_calculator.compute(&mut systems, options).unwrap();
-
-        let keys_to_move = LabelsBuilder::new(vec!["species_center"]).finish();
-        lode_descriptor.keys_to_samples(&keys_to_move, true).unwrap();
-        soap_descriptor.keys_to_samples(&keys_to_move, true).unwrap();
-
-        let keys_to_move = LabelsBuilder::new(vec!["species_neighbor"]).finish();
-        lode_descriptor.keys_to_properties(&keys_to_move, true).unwrap();
-        soap_descriptor.keys_to_properties(&keys_to_move, true).unwrap();
-
-        // TODO: check all blocks
-        assert_relative_eq!(
-            lode_descriptor.blocks()[0].values().data.as_array(),
-            soap_descriptor.blocks()[0].values().data.as_array(),
-            // TODO: we can decrease this by using more k-vectors, but this
-            // makes the test run even slower
-            max_relative=1e-2
         );
     }
 }
