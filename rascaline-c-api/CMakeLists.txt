@@ -144,22 +144,30 @@ else()
 endif()
 
 get_filename_component(RASCALINE_LIB_NAME ${RASCALINE_LOCATION} NAME)
+
+# We need to add some metadata to the shared library to enable linking to it
+# without using an absolute path. This is used for rascaline_torch python's
+# package amongst other.
+if (UNIX)
+    if (APPLE)
+        # set the install name to `@rpath/librascaline.dylib`
+        set(CARGO_RUSTC_ARGS "-Clink-arg=-Wl,-install_name,@rpath/${RASCALINE_LIB_NAME}")
+    else() # LINUX
+        # set the SONAME to librascaline.so
+        set(CARGO_RUSTC_ARGS "-Clink-arg=-Wl,-soname,${RASCALINE_LIB_NAME}")
+    endif()
+else()
+    set(CARGO_RUSTC_ARGS "")
+endif()
+
 add_custom_target(cargo-build-rascaline ALL
-    COMMAND cargo build ${CARGO_BUILD_ARG}
+    COMMAND cargo rustc ${CARGO_BUILD_ARG} -- "${CARGO_RUSTC_ARGS}"
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     DEPENDS ${ALL_RUST_SOURCES}
     COMMENT "Building ${RASCALINE_LIB_NAME} with cargo"
 )
 
 if (RASCAL_BUILD_FOR_PYTHON)
-    if (APPLE)
-        # set the build id of librascaline.dylib to `@rpath/librascaline.dylib`
-        # instead of the full build path (${RASCALINE_LOCATION})
-        add_custom_command(TARGET cargo-build-rascaline POST_BUILD
-            COMMAND install_name_tool -id "@rpath/${RASCALINE_LIB_NAME}" ${RASCALINE_LOCATION}
-        )
-    endif()
-
     # strip dynamic library for smaller wheels to download/install
     if (UNIX)
         add_custom_command(TARGET cargo-build-rascaline POST_BUILD
