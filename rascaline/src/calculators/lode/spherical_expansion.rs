@@ -227,21 +227,22 @@ impl LodeSphericalExpansion {
         }
     }
 
+    #[allow(clippy::float_cmp)]
     fn compute_density_fourrier(&self, k_vectors: &[KVector]) -> Array1<f64> {
         let mut fourrier = Vec::new();
         fourrier.reserve(k_vectors.len());
 
-        let potential_exponent = self.parameters.potential_exponent;
+        let potential_exponent = self.parameters.potential_exponent as f64;
         let smearing_squared = self.parameters.atomic_gaussian_width * self.parameters.atomic_gaussian_width;
 
-        if potential_exponent == 0 {
+        if potential_exponent == 0.0 {
             let factor = (4.0 * std::f64::consts::PI * smearing_squared).powf(0.75);
 
             for k_vector in k_vectors {
                 let value = f64::exp(-0.5 * k_vector.norm * k_vector.norm * smearing_squared);
                 fourrier.push(factor * value);
             }
-        } else if potential_exponent == 1 {
+        } else if potential_exponent == 1.0 {
             let factor = 4.0 * std::f64::consts::PI;
 
             for k_vector in k_vectors {
@@ -250,12 +251,12 @@ impl LodeSphericalExpansion {
                 fourrier.push(factor * value);
             }
         } else {
-            let p_eff = 3 - potential_exponent;
-            let factor = std::f64::consts::PI.powf(1.5) * 2.0_f64.powi(p_eff as i32) / gamma(0.5 * potential_exponent as f64);
+            let p_eff = 3.0 - potential_exponent;
+            let factor = std::f64::consts::PI.powf(1.5) * 2.0_f64.powi(p_eff as i32) / gamma(0.5 * potential_exponent);
 
             for k_vector in k_vectors {
                 let k_norm_squared = k_vector.norm * k_vector.norm;
-                let value = gamma_ui(0.5 * p_eff as f64, 0.5 * k_norm_squared * smearing_squared);
+                let value = gamma_ui(0.5 * p_eff, 0.5 * k_norm_squared * smearing_squared);
                 fourrier.push(factor * value / k_vector.norm.powi(p_eff as i32));
             }
         }
