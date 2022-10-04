@@ -178,6 +178,7 @@ impl RadialIntegral for GtoRadialIntegral {
             let mut factor = global_factor * exp_c_rij;
 
             let z = c_rij * c_rij / (self.atomic_gaussian_constant + gto_constant);
+            // Calculate Gamma(a) / Gamma(b) 1F1(a, b, z)
             self.double_regularized_1f1.compute(
                 z, n,
                 values.index_axis_mut(ndarray::Axis(1), n),
