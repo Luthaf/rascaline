@@ -13,7 +13,7 @@ method in details, delegating instead to many other good resources on the
 subject. This section in particular explains the three core objects rascaline is
 built upon: systems, calculators and descriptors.
 
-.. figure:: ../static/images/core-concepts.*
+.. figure:: ../../static/images/core-concepts.*
 
     Schematic representations of the three core concepts in rascaline: systems,
     calculators and descriptors. The core operation provided by this library to

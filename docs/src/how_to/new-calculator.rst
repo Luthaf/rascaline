@@ -1,7 +1,5 @@
-.. _dev-adding-new-calculator:
-
-Tutorial: Adding a new calculator
-=================================
+Adding a new calculator
+=======================
 
 Introduction
 ------------
@@ -37,7 +35,7 @@ rascaline itself.
 
 We will also assume that you have a local copy of the rascaline git repository,
 and can build the code and run the tests. If not, please look at the
-:ref:`dev-contributing` page.
+:ref:`get_started` sections.
 
 .. _API documentation: ../reference/rust/rascaline/index.html
 
