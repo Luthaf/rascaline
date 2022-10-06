@@ -454,12 +454,37 @@ public:
     /// Selection of properties to compute for the samples
     LabelsSelection selected_properties = LabelsSelection::all();
 
-    /// List of gradients that should be computed.
+    /// List of gradients that should be computed. If this list is empty no
+    /// gradients are computed.
     ///
-    /// Add ``"positions"`` to the list to compute gradients of the
-    /// representation with respect to the atomic positions, and ``"cell"`` to
-    /// compute the gradient of the representation with respect to the cell
-    /// vectors.
+    /// The following gradients are available:
+    ///
+    /// - ``"positions"``, for gradients of the representation with respect to
+    ///   the atomic positions;
+    /// - ``"cell"``, for gradients of the representation with respect to
+    ///   the cell vectors. Cell gradients are computed as
+    ///
+    /// @verbatim embed:rst:leading-slashes
+    ///   .. math::
+    ///       \frac{\partial \langle q \vert A \rangle}
+    ///             {\partial \mathbf{h}}
+    ///
+    ///   where :math:`\mathbf{h}` is the cell matrix and
+    ///   :math:`\langle q \vert A \rangle` indicates each of the
+    ///   components of the representation.
+    ///
+    ///   **Note**: When computing the virial, one often needs to evaluate
+    ///   the gradient of the representation with respect to the strain
+    ///   :math:`\epsilon`. To recover the typical expression from the cell
+    ///   gradient one has to multiply the cell gradients with the
+    ///   cell matrix :math:`\mathbf{h}`
+    ///
+    ///   .. math::
+    ///       -\frac{\partial \langle q \vert A \rangle}
+    ///             {\partial\epsilon}
+    ///         = -\frac{\partial \langle q \vert A \rangle}
+    ///                 {\partial \mathbf{h}} \cdot \mathbf{h}
+    /// @endverbatim
     std::vector<const char*> gradients;
 
     /// Convert this instance of `CalculationOptions` to a

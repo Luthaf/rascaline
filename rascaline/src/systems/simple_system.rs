@@ -36,6 +36,13 @@ impl SimpleSystem {
         self.neighbors = None;
         return &mut self.positions;
     }
+
+    #[cfg(test)]
+    pub(crate) fn set_cell(&mut self, cell: UnitCell) {
+        // cell change invalidate the neighbor list
+        self.neighbors = None;
+        self.cell = cell;
+    }
 }
 
 impl System for SimpleSystem {
