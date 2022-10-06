@@ -29,6 +29,12 @@ release = load_version_from_cargo_toml()
 
 
 def build_cargo_docs():
+    environment = {name: value for name, value in os.environ.items()}
+
+    # include KaTeX in the page to render math in the docs
+    katex_html = os.path.join(ROOT, "docs", "inject-katex.html")
+    environment["RUSTDOCFLAGS"] = f"--html-in-header={katex_html}"
+
     subprocess.run(
         [
             "cargo",
@@ -38,7 +44,8 @@ def build_cargo_docs():
             "--package",
             "equistore",
             "--no-deps",
-        ]
+        ],
+        env=environment,
     )
     output_dir = os.path.join(ROOT, "docs", "build", "html", "reference", "rust")
     if os.path.exists(output_dir):

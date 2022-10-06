@@ -30,7 +30,7 @@ fn values() {
 
 #[test]
 fn gradients() {
-    let (mut systems, parameters) = data::load_calculator_input("soap-power-spectrum-positions-gradient-input.json");
+    let (mut systems, parameters) = data::load_calculator_input("soap-power-spectrum-gradients-input.json");
     let n_atoms = systems.iter().map(|s| s.size().unwrap()).sum();
 
     let mut calculator = Calculator::new("soap_power_spectrum", parameters).unwrap();

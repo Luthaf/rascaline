@@ -142,7 +142,7 @@ class CalculatorBase:
         selected_samples: Optional[Union[Labels, TensorMap]] = None,
         selected_properties: Optional[Union[Labels, TensorMap]] = None,
     ) -> TensorMap:
-        """Runs a calculation with this calculator on the given ``systems``.
+        r"""Runs a calculation with this calculator on the given ``systems``.
 
         :param systems: single system or list of systems on which to run the
             calculation. The systems will automatically be wrapped into
@@ -155,17 +155,37 @@ class CalculatorBase:
             faster than having to cross the FFI boundary often when accessing
             the neighbor list. Otherwise the Python neighbor list is used.
 
-        :param gradients: List of gradients to compute. If this is ``None`` or
-            an empty list ``[]``, no gradients are computed.
-
-            Add ``"positions"`` to the list to compute gradients of the
-            representation with respect to the atomic positions, and ``"cell"``
-            to compute the gradient of the representation with respect to the
-            cell vectors.
-
-            The gradients are stored inside the different blocks, and can be
+        :param gradients: List of gradients to compute. If this is ``None``
+            or an empty list ``[]``, no gradients are computed.
+            Gradients are stored inside the different blocks, and can be
             accessed with ``descriptor.block(...).gradient(<parameter>)``, where
-            ``<parameter>`` is ``"positions"`` or ``"cell"``.
+            ``<parameter>`` is ``"positions"`` or ``"cell"``. The following
+            gradients are available:
+
+            - ``"positions"``, for gradients of the representation with respect
+              to the atomic positions;
+            - ``"cell"``, for gradients of the representation with respect to
+              the cell vectors. Cell gradients are computed as
+
+              .. math::
+                  \frac{\partial \langle q \vert A \rangle}
+                       {\partial \mathbf{h}}
+
+              where :math:`\mathbf{h}` is the cell matrix and
+              :math:`\langle q \vert A \rangle` indicates each of the
+              components of the representation.
+
+              **Note**: When computing the virial, one often needs to evaluate
+              the gradient of the representation with respect to the strain
+              :math:`\epsilon`. To recover the typical expression from the cell
+              gradient one has to multiply the cell gradients with the
+              cell matrix :math:`\mathbf{h}`
+
+              .. math::
+                  -\frac{\partial \langle q \vert A \rangle}
+                        {\partial\epsilon}
+                   = -\frac{\partial \langle q \vert A \rangle}
+                           {\partial \mathbf{h}} \cdot \mathbf{h}
 
         :param selected_samples: Set of samples on which to run the calculation.
             Use ``None`` to run the calculation on all samples in the
