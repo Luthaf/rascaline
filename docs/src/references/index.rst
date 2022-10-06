@@ -1,21 +1,15 @@
+.. _userdoc-references:
+
 Reference guides
-================
+----------------
 
-The reference guide contains the technical description of the machinery.
-They are code determined and information oriented. The references guides
-contain clear descriptions of Classes, API, Functions, Methods, Attributes, 
-and many more technical aspects of rascaline. The rascaline references aim
-to guide the end-users completely about rascaline.
-
-We first section describes all implemented calculators with their general 
-hyper parameters. The other sections deal with the language specific API 
-documention.
+The reference guides contains describe's all implemented calculators in
+detail. The calculator description is inspecific for a programming language.
+Addtionally the API documentation describes details on how the calculators 
+and additional functions are implemented in each language.
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
 
-    calculators/index
-    python/index
-    cxx/index
-    c/index
-    rust
+    Calculators hyper-parameters reference <calculators/index>
+    api/index

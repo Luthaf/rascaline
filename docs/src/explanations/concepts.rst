@@ -1,7 +1,7 @@
 .. _core-concepts:
 
-Core concepts
-=============
+Core concepts of rascaline
+==========================
 
 Rascaline is a library computing representations of atomic systems for machine
 learning applications. These representations encode fundamental symmetries of
@@ -52,7 +52,7 @@ representation, another one for the :ref:`spherical expansion
 All calculators are registered globally in rascaline, and can be constructed
 with a name and a set of parameters (often called hyper-parameters). These
 parameters control the features of the final representation: how many are they,
-and what do they represent. All :ref:`available calculators <calculators-list>`
+and what do they represent. All :ref:`available calculators <userdoc-references>`
 and the corresponding parameters are documented.
 
 From a user perspective, calculators are black boxes that take systems as input

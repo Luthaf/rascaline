@@ -4,7 +4,8 @@ Adding a new calculator
 Introduction
 ------------
 
-So you would like to add a new :ref:`calculator <calculators-list>` to rascaline?
+Before adding a new calculator it might worth taking a look if your desired already 
+exists in our :ref:`list <userdoc-calculators>` supported ones.
 
 In this tutorial, we will go over all the steps required to create a new
 calculator. For simplicity sake, the calculator we will implement will be very
@@ -22,7 +23,7 @@ atom-centered environment :math:`\ket{\mathcal{A}_i}` on a basis of species
 
     \braket{\alpha k | \mathcal{A}_i} = \frac{1}{N_\text{neighbors}} \sum_{j \in \mathcal{A}_i} r_{ij}^k \ \delta_{\alpha, \alpha_j}
 
-.. figure:: ../../static/images/moments-descriptor.*
+.. figure:: ../../../static/images/moments-descriptor.*
     :width: 40%
     :align: center
 
@@ -35,7 +36,7 @@ rascaline itself.
 
 We will also assume that you have a local copy of the rascaline git repository,
 and can build the code and run the tests. If not, please look at the
-:ref:`get_started` sections.
+:ref:`devdoc-get_started` sections.
 
 .. _API documentation: ../reference/rust/rascaline/index.html
 
@@ -68,7 +69,7 @@ Let's start by creating a new file in ``rascaline/src/calculators/moments.rs``,
 and importing everything we'll need. Everything in here will be explained when
 we get to using it.
 
-.. literalinclude:: ../../../rascaline/src/tutorials/moments/s1_scaffold.rs
+.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s1_scaffold.rs
    :language: rust
    :start-after: [imports]
    :end-before: [imports]
@@ -77,7 +78,7 @@ Then, we can define a struct for our new calculator ``GeometricMoments``. It
 will contain two fields: ``cutoff`` to store the cutoff radius, and
 ``max_moment`` to store the maximal moment to compute.
 
-.. literalinclude:: ../../../rascaline/src/tutorials/moments/s1_scaffold.rs
+.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s1_scaffold.rs
    :language: rust
    :start-after: [struct]
    :end-before: [struct]
@@ -89,7 +90,7 @@ calculator. Users might be more familiar with the concrete struct `Calculator`_,
 which uses a ``Box<dyn CalculatorBase>`` (i.e. a pointer to a
 ``CalculatorBase``) to provide its functionalities.
 
-.. literalinclude:: ../../../rascaline/src/tutorials/moments/s1_scaffold.rs
+.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s1_scaffold.rs
    :language: rust
    :start-after: [impl]
    :end-before: [impl]
@@ -110,7 +111,7 @@ trait.
 
 .. _Into: https://doc.rust-lang.org/std/convert/trait.Into.html
 
-.. literalinclude:: ../../../rascaline/src/tutorials/moments/s2_metadata.rs
+.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s2_metadata.rs
    :language: rust
    :start-after: [CalculatorBase::name]
    :end-before: [CalculatorBase::name]
@@ -124,12 +125,12 @@ definition of ``GeometricMoments``, and use it to implement the function.
 
 .. _serde: https://serde.rs/
 
-.. literalinclude:: ../../../rascaline/src/tutorials/moments/s2_metadata.rs
+.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s2_metadata.rs
    :language: rust
    :start-after: [struct]
    :end-before: [struct]
 
-.. literalinclude:: ../../../rascaline/src/tutorials/moments/s2_metadata.rs
+.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s2_metadata.rs
    :language: rust
    :start-after: [CalculatorBase::parameters]
    :end-before: [CalculatorBase::parameters]
@@ -172,7 +173,7 @@ whether atoms should be considered to be their own neighbor or not.
 .. _Labels: ../reference/rust/equistore/labels/struct.Labels.html
 .. _LabelsBuilder: ../reference/rust/equistore/labels/struct.LabelsBuilder.html
 
-.. literalinclude:: ../../../rascaline/src/tutorials/moments/s2_metadata.rs
+.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s2_metadata.rs
    :language: rust
    :start-after: [CalculatorBase::keys]
    :end-before: [CalculatorBase::keys]
@@ -193,7 +194,7 @@ one set of `Labels`_ for each key/block. Finally, the labels can be the same
 between different keys, and ``Arc`` allow using the same set of labels for
 different keys without duplicating memory.
 
-.. literalinclude:: ../../../rascaline/src/tutorials/moments/s2_metadata.rs
+.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s2_metadata.rs
    :language: rust
    :start-after: [CalculatorBase::samples]
    :end-before: [CalculatorBase::samples]
@@ -214,7 +215,7 @@ information about symmetry operations or any kind of tensorial components.
 Here, we dont' have any components (the ``GeometricMoments`` representation is
 invariant), so we just return a list (one for each key) of empty vectors.
 
-.. literalinclude:: ../../../rascaline/src/tutorials/moments/s2_metadata.rs
+.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s2_metadata.rs
    :language: rust
    :start-after: [CalculatorBase::components]
    :end-before: [CalculatorBase::components]
@@ -235,7 +236,7 @@ each key in ``CalculatorBase::properties``, we use the fact that the properties
 are the same for each key/block; and return multiple references to the same
 ``Arc<Labels>``.
 
-.. literalinclude:: ../../../rascaline/src/tutorials/moments/s2_metadata.rs
+.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s2_metadata.rs
    :language: rust
    :start-after: [CalculatorBase::properties]
    :end-before: [CalculatorBase::properties]
@@ -251,7 +252,7 @@ be computed by the current calculator. Typically ``parameter`` is either
 ``"positions"`` or ``"cell"``. Here we only support computing the gradients with
 respect to positions.
 
-.. literalinclude:: ../../../rascaline/src/tutorials/moments/s2_metadata.rs
+.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s2_metadata.rs
    :language: rust
    :start-after: [CalculatorBase::supports_gradient]
    :end-before: [CalculatorBase::supports_gradient]
@@ -282,7 +283,7 @@ systems on which we want to run the calculation.
 We are again using the ``AtomCenteredSamples`` here to share code between
 multiple calculators all using atom-centered samples.
 
-.. literalinclude:: ../../../rascaline/src/tutorials/moments/s2_metadata.rs
+.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s2_metadata.rs
    :language: rust
    :start-after: [CalculatorBase::positions_gradient_samples]
    :end-before: [CalculatorBase::positions_gradient_samples]
@@ -313,7 +314,7 @@ This being said, let's start writing our ``compute`` function. We'll defensively
 check that the tensor map keys match what we expect from them, and return a unit
 value ``()`` wrapped in ``Ok`` at the end of the function.
 
-.. literalinclude:: ../../../rascaline/src/tutorials/moments/s3_compute_1.rs
+.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s3_compute_1.rs
    :language: rust
    :start-after: [compute]
    :end-before: [compute]
@@ -333,7 +334,7 @@ question mark ``?`` operator does exactly that: if the value returned by the
 called function is ``Err(e)``, ``?`` immediately returns ``Err(e)``; and if the
 result is ``Ok(v)``, ``?`` extract the ``v`` and the execution continues.
 
-.. literalinclude:: ../../../rascaline/src/tutorials/moments/s3_compute_2.rs
+.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s3_compute_2.rs
    :language: rust
    :start-after: [compute]
    :end-before: [compute]
@@ -361,7 +362,7 @@ candidate samples and check for their presence. If neither of the samples was
 requested, then we can skip the calculation for this pair. We also use
 ``system.pairs_containing()`` to get the number of neighbors a given center has.
 
-.. literalinclude:: ../../../rascaline/src/tutorials/moments/s3_compute_3.rs
+.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s3_compute_3.rs
    :language: rust
    :start-after: [compute]
    :end-before: [compute]
@@ -374,7 +375,7 @@ Now, we can check if the samples are present, and if they are, iterate over the
 requested features, compute the moments for the current pair distance, and
 accumulate it in the descriptor values array:
 
-.. literalinclude:: ../../../rascaline/src/tutorials/moments/s3_compute_4.rs
+.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s3_compute_4.rs
    :language: rust
    :start-after: [compute]
    :end-before: [compute]
@@ -390,7 +391,9 @@ the following expression:
 
 .. math::
 
-    \frac{\partial}{\partial \vec{r_{j}}} \braket{\alpha k | \chi_i} = \frac{\vec{r_{ij}}}{r_{ij}} \cdot \frac{k \ r_{ij}^{k - 1} \ \delta_{\alpha, \alpha_j}}{N_\text{neighbors}} = \vec{r_{ij}} \frac{k \ r_{ij}^{k - 2} \ \delta_{\alpha, \alpha_j}}{N_\text{neighbors}}
+    \frac{\partial}{\partial \vec{r_{j}}} \braket{\alpha k | \chi_i} 
+    = \frac{\vec{r_{ij}}}{r_{ij}} \cdot \frac{k \ r_{ij}^{k - 1} \ \delta_{\alpha, \alpha_j}}{N_\text{neighbors}} 
+    = \vec{r_{ij}} \frac{k \ r_{ij}^{k - 2} \ \delta_{\alpha, \alpha_j}}{N_\text{neighbors}}
 
 The code to compute gradients is very similar to the code computing the
 representation, checking the existence of a given gradient sample before writing
@@ -403,7 +406,7 @@ gradients of the descriptor centered on :math:`i` with respect to atom
 :math:`j`, we also need to account for the gradient of the descriptor centered
 on atom :math:`i` with respect to its own position.
 
-.. literalinclude:: ../../../rascaline/src/tutorials/moments/s3_compute_5.rs
+.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s3_compute_5.rs
    :language: rust
    :start-after: [compute]
    :end-before: [compute]
@@ -415,7 +418,7 @@ on atom :math:`i` with respect to its own position.
     :toggle: Here is the final implementation for the compute function
     :before-not-html: Here is the final implementation for the compute function
 
-    .. literalinclude:: ../../../rascaline/src/tutorials/moments/moments.rs
+    .. literalinclude:: ../../../../rascaline/src/tutorials/moments/moments.rs
         :language: rust
         :start-after: [compute]
         :end-before: [compute]
@@ -435,7 +438,7 @@ registry, and tries to create an instance using the hyper-parameters. In order
 to make our calculator available to all users, we need to add it to this
 registry, in ``rascaline/src/calculator.rs``. The registry looks like this:
 
-.. literalinclude:: ../../../rascaline/src/calculator.rs
+.. literalinclude:: ../../../../rascaline/src/calculator.rs
    :language: rust
    :start-after: [calculator-registration]
    :end-before: [calculator-registration]
@@ -519,7 +522,7 @@ our geometric moments representation, the first moment (with order 0) should
 always be the number of neighbor of the current species over the total number of
 neighbors. A test checking this property would look like this:
 
-.. literalinclude:: ../../../rascaline/src/tutorials/moments/moments.rs
+.. literalinclude:: ../../../../rascaline/src/tutorials/moments/moments.rs
    :language: rust
    :start-after: [property-test]
    :end-before: [property-test]
@@ -536,7 +539,7 @@ Rascaline provides a function (``calculators::tests_utils::compute_partial``) to
 check this for you, simplifying the tests a bit. Here is how one can use it with
 the ``GeometricMoments`` calculator:
 
-.. literalinclude:: ../../../rascaline/src/tutorials/moments/moments.rs
+.. literalinclude:: ../../../../rascaline/src/tutorials/moments/moments.rs
    :language: rust
    :start-after: [partial-test]
    :end-before: [partial-test]
@@ -549,7 +552,7 @@ If a calculator can compute gradients, it is a good idea to check if the
 gradient does match the finite differences definition of derivatives. Rascaline
 provides ``calculators::tests_utils::finite_difference`` to help check this.
 
-.. literalinclude:: ../../../rascaline/src/tutorials/moments/moments.rs
+.. literalinclude:: ../../../../rascaline/src/tutorials/moments/moments.rs
    :language: rust
    :start-after: [finite-differences-test]
    :end-before: [finite-differences-test]

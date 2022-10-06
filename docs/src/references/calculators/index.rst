@@ -1,7 +1,7 @@
-.. _calculators-list:
+.. _userdoc-calculators:
 
-Implemented calculators
-=======================
+Implemented Calculators
+-----------------------
 
 Below is a list of all calculators available in rascaline. Each calculators is
 registered globally with a name (specified in the corresponding documentation
@@ -14,6 +14,7 @@ documented as a `JSON schema`_, and rendered in the pages below.
 
 .. toctree::
     :maxdepth: 1
+    :numbered:
 
     spherical-expansion
     soap-radial-spectrum

@@ -1,8 +1,3 @@
-.. _dev-contributing:
-
-Contributing
-============
-
 By contributing to rascaline, you accept and agree to the following terms and
 conditions for your present and future contributions submitted to rascaline.
 Except for the license granted herein to rascaline and recipients of software
@@ -168,7 +163,7 @@ Writing your own calculator
 For adding a new calculator take a look at the Tutorial for 
 `Adding a new calculator`_.
 
-.. _Adding a new calculator: https://luthaf.fr/rascaline/latest/devdoc/new-calculator
+.. _Adding a new calculator: https://luthaf.fr/rascaline/latest/devdoc/how_to/new-calculator.html
 
 Contributing to the documentation
 ---------------------------------

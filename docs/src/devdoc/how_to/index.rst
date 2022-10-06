@@ -1,4 +1,4 @@
-.. _userdoc-how_to:
+.. _devdoc-how_to:
 
 How-to guides
 =============
@@ -8,8 +8,7 @@ knowledge about rascaline, you can find key problems and use-cases here.
 If you are a total beginner, you can go to :ref:`userdoc-get_started` section.
 
 .. toctree::
-    :maxdepth: 1
+    :maxdepth: 2
 
-    computing_soap
-    sample_selection
-    feature_selection
+    new-calculator
+    profiling

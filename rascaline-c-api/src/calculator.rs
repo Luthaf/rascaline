@@ -34,7 +34,7 @@ impl DerefMut for rascal_calculator_t {
 /// @verbatim embed:rst:leading-asterisk
 ///
 /// The list of available calculators and the corresponding parameters are in
-/// the :ref:`main documentation <calculators-list>`. The ``parameters`` should
+/// the :ref:`main documentation <userdoc-references>`. The ``parameters`` should
 /// be formatted as JSON, according to the requested calculator schema.
 ///
 /// @endverbatim

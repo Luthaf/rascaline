@@ -1,13 +1,14 @@
+.. _userdoc-explanations:
+
 Explanations
 ============
 
-The explanation section discusses topics that broaden your knowledge of 
-rascaline. Technical facts and some tidbits of useful information are found
+The explanation section discusses topics that broaden your knowledge of
+rascaline. The theory behind the calculators and addtional useful information are found
 here to give you more clarity and understanding of what rascaline is all about.
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
 
     concepts
-    architecture
-    interfaces
+    soap

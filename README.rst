@@ -3,38 +3,53 @@ Rascaline
 
 |test| |docs|
 
-.. inclusion-readme-intro-start
+Rascaline is a library for the efficient computing of representations for atomistic
+machine learning also called "descriptors" or "fingerprints". These representation
+can be used for atomistic machine learning (ml) models including ml potentials,
+visualization or similarity analysis.
 
-Rascaline is work in progress. Please don't use for anything important.
-
-Rascaline is a library for computing representations for atomistic
-machine learning. The core of the library is written in Rust and we provide 
+The core of the library is written in Rust and we provide
 APIs for C/C++ and Python as well.
 
-List of representations
-########################
+.. warning::
 
-.. inclusion-marker-modules-start
+    **Rascaline is still as the proof of concept stage. You should not use it for
+    anything important.**
+
+List of implemented representations
+###################################
+
+.. inclusion-marker-representations-start
 
 .. list-table::
-   :widths: 25 50
+   :widths: 25 50 10 10
    :header-rows: 1
 
    * - Representations Name
      - Description
+     - Features
+     - Gradients
 
    * - Spherical Expansion
-     - Core of representations in the SOAP (Smooth Overlap of Atomic Positions)
+     - Core of representations in SOAP (Smooth Overlap of Atomic Positions)
+     - ✓
+     - ✓
    * - Soap radial spectrum
      - Each atom is represenetd by the radial average of the density of its neighbors
+     - ✓
+     - ✓
    * - Soap power spectrum
      - Each sample represents rotationally-averaged atomic density correlations,
        built on top of the spherical expansion
+     - ✓
+     - ✓
    * - Sorted distances
      - Each atomic center is represented by a vector of distance to its
        neighbors within the spherical cutoff
+     - ✓
+     - 
 
-.. inclusion-readme-intro-end
+.. inclusion-marker-representations-end
 
 For details, tutorials, and examples, please have a look at our `documentation`_.
 

@@ -522,7 +522,7 @@ public:
     ///
     /// @verbatim embed:rst:leading-slashes
     /// The list of available calculators and the corresponding parameters are
-    /// in the :ref:`main documentation <calculators-list>`. The ``parameters``
+    /// in the :ref:`main documentation <userdoc-references>`. The ``parameters``
     /// should be formatted as JSON, according to the requested calculator
     /// schema.
     /// @endverbatim
