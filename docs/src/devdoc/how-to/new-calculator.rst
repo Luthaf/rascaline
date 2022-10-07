@@ -4,7 +4,7 @@ Adding a new calculator
 Introduction
 ------------
 
-Before adding a new calculator it might worth taking a look if your desired already 
+Before adding a new calculator it might worth taking a look if your desired already
 exists in our :ref:`list <userdoc-calculators>` supported ones.
 
 In this tutorial, we will go over all the steps required to create a new
@@ -36,7 +36,7 @@ rascaline itself.
 
 We will also assume that you have a local copy of the rascaline git repository,
 and can build the code and run the tests. If not, please look at the
-:ref:`devdoc-get_started` sections.
+:ref:`devdoc-get-started` sections.
 
 .. _API documentation: ../reference/rust/rascaline/index.html
 
@@ -391,8 +391,8 @@ the following expression:
 
 .. math::
 
-    \frac{\partial}{\partial \vec{r_{j}}} \braket{\alpha k | \chi_i} 
-    = \frac{\vec{r_{ij}}}{r_{ij}} \cdot \frac{k \ r_{ij}^{k - 1} \ \delta_{\alpha, \alpha_j}}{N_\text{neighbors}} 
+    \frac{\partial}{\partial \vec{r_{j}}} \braket{\alpha k | \chi_i}
+    = \frac{\vec{r_{ij}}}{r_{ij}} \cdot \frac{k \ r_{ij}^{k - 1} \ \delta_{\alpha, \alpha_j}}{N_\text{neighbors}}
     = \vec{r_{ij}} \frac{k \ r_{ij}^{k - 2} \ \delta_{\alpha, \alpha_j}}{N_\text{neighbors}}
 
 The code to compute gradients is very similar to the code computing the

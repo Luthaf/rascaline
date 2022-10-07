@@ -1,7 +1,7 @@
-.. _userdoc-get_started:
+.. _userdoc-get-started:
 
-Get started
-===========
+Getting started
+===============
 
 The following sections describes how to install and start with using rascaline.
 

@@ -1,7 +1,7 @@
 .. _userdoc-calculators:
 
-Implemented Calculators
------------------------
+Calculators parameters reference
+--------------------------------
 
 Below is a list of all calculators available in rascaline. Each calculators is
 registered globally with a name (specified in the corresponding documentation
