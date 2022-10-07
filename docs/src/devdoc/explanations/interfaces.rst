@@ -52,7 +52,7 @@ in `rascaline-c-api`.
 The schematic below describes all the relationships between the components
 involved in creating the Python interface.
 
-.. figure:: ../../static/images/rascaline-python.*
+.. figure:: ../../../static/images/rascaline-python.*
     :width: 400px
     :align: center
 

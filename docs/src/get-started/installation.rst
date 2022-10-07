@@ -5,11 +5,6 @@ You can install rascaline in different ways depending on which language you plan
 to use it from. In all cases you will need a Rust compiler, which you can
 install using `rustup <https://rustup.rs/>`_ or your OS package manager.
 
-.. warning::
-
-    Rascaline is still as the proof of concept stage. You should not use it for
-    anything important.
-
 .. _install-python-lib:
 
 Installing the Python module

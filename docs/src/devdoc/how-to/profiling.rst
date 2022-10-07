@@ -46,20 +46,20 @@ Some of the most important sections are:
 
     .. group-tab:: Python
 
-        .. literalinclude:: ../../../python/examples/profiling.py
+        .. literalinclude:: ../../../../python/examples/profiling.py
             :language: python
 
     .. group-tab:: Rust
 
-        .. literalinclude:: ../../../rascaline/examples/profiling.rs
+        .. literalinclude:: ../../../../rascaline/examples/profiling.rs
             :language: rust
 
     .. group-tab:: C++
 
-        .. literalinclude:: ../../../rascaline-c-api/examples/profiling.cpp
+        .. literalinclude:: ../../../../rascaline-c-api/examples/profiling.cpp
             :language: c++
 
     .. group-tab:: C
 
-        .. literalinclude:: ../../../rascaline-c-api/examples/profiling.c
+        .. literalinclude:: ../../../../rascaline-c-api/examples/profiling.c
             :language: c

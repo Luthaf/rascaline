@@ -1,6 +1,3 @@
-Architecture
-============
-
 Code organization
 -----------------
 
