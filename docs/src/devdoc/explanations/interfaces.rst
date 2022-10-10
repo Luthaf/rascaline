@@ -25,9 +25,9 @@ re-organizing them.
 ``rascaline-c-api`` is then compiled to a shared library (``librascaline.so`` /
 ``librascaline.dylib`` / ``librascaline.dll``), which can be used by any
 language able to call C code to call the exported functions without ever
-realising it is speaking with Rust code.
+realizing it is speaking with Rust code.
 
-The list of exported functions, together with the types of the functions
+The list of exported functions, together with the types of the function's 
 parameters, and struct definitions are extracted from the rust source code using
 `cbindgen`_, which creates the ``rascaline-c-api/rascaline.h`` header file
 containing all of this information in a C compatible syntax. All of the

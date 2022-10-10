@@ -4,7 +4,7 @@ Adding a new calculator
 Introduction
 ------------
 
-Before adding a new calculator it might worth taking a look if your desired already
+Before adding a new calculator it be might worth taking a look if your desired already
 exists in our :ref:`list <userdoc-calculators>` supported ones.
 
 In this tutorial, we will go over all the steps required to create a new
