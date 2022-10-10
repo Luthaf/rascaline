@@ -4,7 +4,7 @@ Rascaline
 |test| |docs|
 
 Rascaline is a library for the efficient computing of representations for atomistic
-machine learning also called "descriptors" or "fingerprints". These representation
+machine learning also called "descriptors" or "fingerprints". These representations
 can be used for atomistic machine learning (ml) models including ml potentials,
 visualization or similarity analysis.
 
@@ -35,7 +35,7 @@ List of implemented representations
      - ✓
      - ✓
    * - Soap radial spectrum
-     - Each atom is represenetd by the radial average of the density of its neighbors
+     - Each atom is represented by the radial average of the density of its neighbors
      - ✓
      - ✓
    * - Soap power spectrum
