@@ -21,7 +21,8 @@ if __name__ == "__main__":
     sys.stdout = devnull
 
     for script, args in EXAMPLES_ARGS.items():
-        with open(os.path.join(EXAMPLES_SCRIPTS_PATH, script)) as fd:
+        print(f"running {script} {' '.join(args)}", file=sys.stderr)
+        with open(os.path.join(EXAMPLES_SCRIPTS_PATH, script), encoding="utf8") as fd:
             sys.argv = [script] + args
             exec(fd.read())
 
