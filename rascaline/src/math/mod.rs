@@ -9,3 +9,6 @@ pub use self::double_regularized_1f1::DoubleRegularized1F1;
 
 mod eigen;
 pub use self::eigen::SymmetricEigen;
+
+mod splines;
+pub use self::splines::{HermitCubicSpline, SplineParameters};
