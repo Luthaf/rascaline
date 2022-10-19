@@ -171,24 +171,17 @@ Contributing to the documentation
 The documentation of rascaline is written in reStructuredText (rst)
 and uses `sphinx`_ documentation generator. In order to modify the
 documentation, first create a local version on your machine as described above.
-Then, build the documentation from the ``rascaline/docs`` folder:
+Then, build the documentation:
 
 .. code-block:: bash
 
-    cd docs
-    pip3 install -r requirements.txt
-    make html
+    tox -e docs
 
-Then, visualise the local documentation
+You can then visualise the local documentation
 with your favourite browser (here Mozilla Firefox is used)
 
 .. code-block:: bash
 
-    firefox build/html/index.html
-
-**Note**: If you write python documentation make sure that `rascaline` is not installed
-in your current environment. Otherwise changes to Python docstrings might 
-not be reflected in the build documentation because sphinx 
-prefers the installed version compared to the one from the repo.
+    firefox docs/build/html/index.html
 
 .. _`sphinx` : https://www.sphinx-doc.org/en/master/
