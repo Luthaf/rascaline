@@ -25,10 +25,10 @@ jobs:
           python-version: 3.8
       - name: install dependencies
         run: |
-          pip install -r docs/requirements.txt
+          pip install tox
           sudo apt install doxygen
       - name: build documentation
-        run: cd docs && make html
+        run: tox -e docs
       - name: put documentation in the website
         run: |
           git clone https://github.com/$GITHUB_REPOSITORY --branch gh-pages gh-pages

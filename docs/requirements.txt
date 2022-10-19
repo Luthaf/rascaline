@@ -5,7 +5,3 @@ myst-parser
 sphinx-tabs
 furo
 toml
-
-# required for autodoc
-numpy
-equistore @ https://github.com/lab-cosmo/equistore/archive/88830de5.zip
