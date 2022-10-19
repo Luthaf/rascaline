@@ -1,6 +1,7 @@
 #![allow(clippy::excessive_precision)]
 use std::f64;
 
+use approx::ulps_eq;
 
 /// Constant value for `ln(pi)`
 pub const LN_PI: f64 = 1.14472988584940017414;
@@ -94,10 +95,61 @@ pub fn ln_gamma(x: f64) -> f64 {
     }
 }
 
+/// Computes the Digamma function which is defined as the derivative of
+/// the log of the gamma function. The implementation is based on
+/// "Algorithm AS 103", Jose Bernardo, Applied Statistics, Volume 25, Number 3
+/// 1976, pages 315 - 317
+///
+///
+/// This code was extracted from statrs, which is © 2016 Michael Ma, distributed
+/// under MIT license. Cf <https://github.com/statrs-dev/statrs/blob/5411ba74b427b992dd1410d699052a0b41dc2b5c/src/function/gamma.rs>
+/// for the original code
+pub fn digamma(x: f64) -> f64 {
+    let c = 12.0;
+    let d1 = -0.57721566490153286;
+    let d2 = 1.6449340668482264365;
+    let s = 1e-6;
+    let s3 = 1.0 / 12.0;
+    let s4 = 1.0 / 120.0;
+    let s5 = 1.0 / 252.0;
+    let s6 = 1.0 / 240.0;
+    let s7 = 1.0 / 132.0;
+
+    if x == f64::NEG_INFINITY || x.is_nan() {
+        return f64::NAN;
+    }
+    if x <= 0.0 && ulps_eq!(x.floor(), x) {
+        return f64::NEG_INFINITY;
+    }
+    if x < 0.0 {
+        return digamma(1.0 - x) + f64::consts::PI / (-f64::consts::PI * x).tan();
+    }
+    if x <= s {
+        return d1 - 1.0 / x + d2 * x;
+    }
+
+    let mut result = 0.0;
+    let mut z = x;
+    while z < c {
+        result -= 1.0 / z;
+        z += 1.0;
+    }
+
+    if z >= c {
+        let mut r = 1.0 / z;
+        result += z.ln() - 0.5 * r;
+        r *= r;
+
+        result -= r * (s3 - r * (s4 - r * (s5 - r * (s6 - r * s7))));
+    }
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use approx::assert_relative_eq;
+    use crate::math::EULER;
 
     #[test]
     fn test_gamma() {
@@ -158,5 +210,29 @@ mod tests {
         assert_relative_eq!(ln_gamma(10.1), 13.02752673863323795851370097886835481188051062306253294740504, max_relative=1e-13);
         assert_relative_eq!(ln_gamma(150.0 + 1.0e-12), 600.0094705553324354062157737572509902987070089159051628001813, max_relative=1e-12);
         assert_relative_eq!(ln_gamma(1.001e+7), 1.51342135323817913130119829455205139905331697084416059779e+8, max_relative=1e-13);
+    }
+
+    #[test]
+    fn test_digamma() {
+        use std::f64::consts::{FRAC_PI_2, LN_2};
+
+        assert!(digamma(f64::NAN).is_nan());
+        assert_relative_eq!(digamma(-1.5), 0.70315664064524318722569033366791109947350706200623256, max_relative=1e-13);
+        assert_relative_eq!(digamma(-0.5), 0.036489973978576520559023667001244432806840395339565891, max_relative=1e-13);
+        assert_relative_eq!(digamma(0.1), -10.423754940411076232100295314502760886768558023951363, max_relative=1e-13);
+        assert_relative_eq!(digamma(0.25), -FRAC_PI_2 - 3.0 * LN_2 - EULER, max_relative=1e-13);
+        assert_relative_eq!(digamma(1.0), -EULER, max_relative=1e-13);
+        assert_relative_eq!(digamma(1.5), 0.036489973978576520559023667001244432806840395339565888, max_relative=1e-13);
+        assert_relative_eq!(digamma(f64::consts::PI / 2.0), 0.10067337642740238636795561404029690452798358068944001, max_relative=1e-13);
+        assert_relative_eq!(digamma(2.0), 0.42278433509846713939348790991759756895784066406007641, max_relative=1e-13);
+        assert_relative_eq!(digamma(2.5), 0.70315664064524318722569033366791109947350706200623255, max_relative=1e-13);
+        assert_relative_eq!(digamma(3.0), 0.92278433509846713939348790991759756895784066406007641, max_relative=1e-13);
+        assert_relative_eq!(digamma(f64::consts::PI), 0.97721330794200673329206948640618234364083460999432603, max_relative=1e-13);
+        assert_relative_eq!(digamma(3.5), 1.1031566406452431872256903336679110994735070620062326, max_relative=1e-13);
+        assert_relative_eq!(digamma(4.0), 1.2561176684318004727268212432509309022911739973934097, max_relative=1e-13);
+        assert_relative_eq!(digamma(4.5), 1.3888709263595289015114046193821968137592213477205183, max_relative=1e-13);
+        assert_relative_eq!(digamma(5.0), 1.5061176684318004727268212432509309022911739973934097, max_relative=1e-13);
+        assert_relative_eq!(digamma(5.5), 1.6110931485817511237336268416044190359814435699427405, max_relative=1e-13);
+        assert_relative_eq!(digamma(10.1), 2.2622143570941481235561593642219403924532310597356171, max_relative=1e-13);
     }
 }
