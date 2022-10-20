@@ -22,3 +22,7 @@ pub(crate) use self::splines::{HermitCubicSpline, SplineParameters};
 mod spherical_harmonics;
 pub use self::spherical_harmonics::{SphericalHarmonics, SphericalHarmonicsArray};
 pub(crate) use self::spherical_harmonics::SphericalHarmonicsCache;
+
+mod k_vectors;
+pub use self::k_vectors::KVector;
+pub use self::k_vectors::compute_k_vectors;
