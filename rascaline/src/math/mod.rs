@@ -2,7 +2,7 @@
 pub const EULER: f64 = 0.5772156649015329;
 
 mod gamma;
-pub(crate) use self::gamma::{gamma, ln_gamma, digamma};
+pub(crate) use self::gamma::{gamma, ln_gamma, gamma_ui, gamma_ur, gamma_lr, digamma};
 
 mod hyp1f1;
 pub(crate) use self::hyp1f1::hyp1f1;
