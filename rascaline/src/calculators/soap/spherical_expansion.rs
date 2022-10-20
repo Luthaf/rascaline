@@ -22,7 +22,7 @@ use super::RadialIntegral;
 use super::{GtoRadialIntegral, GtoParameters};
 use super::{SplinedRadialIntegral, SplinedRIParameters};
 
-use super::{SphericalHarmonics, SphericalHarmonicsArray};
+use crate::math::CachedAllocationsSphericalHarmonics;
 
 use super::{CutoffFunction, RadialScaling};
 
@@ -151,46 +151,6 @@ impl RadialIntegralImpl {
     }
 }
 
-struct SphericalHarmonicsImpl {
-    /// Implementation of the spherical harmonics
-    code: SphericalHarmonics,
-    /// Cache for the spherical harmonics values
-    values: SphericalHarmonicsArray,
-    /// Cache for the spherical harmonics gradients (one value each for x/y/z)
-    gradients: [SphericalHarmonicsArray; 3],
-}
-
-impl SphericalHarmonicsImpl {
-    fn new(parameters: &SphericalExpansionParameters) -> SphericalHarmonicsImpl {
-        let code = SphericalHarmonics::new(parameters.max_angular);
-        let values = SphericalHarmonicsArray::new(parameters.max_angular);
-        let gradients = [
-            SphericalHarmonicsArray::new(parameters.max_angular),
-            SphericalHarmonicsArray::new(parameters.max_angular),
-            SphericalHarmonicsArray::new(parameters.max_angular)
-        ];
-
-        return SphericalHarmonicsImpl { code, values, gradients };
-    }
-
-    fn compute(&mut self, direction: Vector3D, gradient: bool) {
-        if gradient {
-            self.code.compute(
-                direction,
-                &mut self.values,
-                Some(&mut self.gradients),
-            );
-        } else {
-            self.code.compute(
-                direction,
-                &mut self.values,
-                None,
-            );
-        }
-
-    }
-}
-
 /// A single pair involved in the calculation of spherical expansion
 struct Pair {
     /// Sample associated with the first atom in the pair (`[system, first_atom]`)
@@ -218,7 +178,7 @@ pub struct SphericalExpansion {
     radial_integral: ThreadLocal<RefCell<RadialIntegralImpl>>,
     /// implementation + cached allocation to compute the spherical harmonics
     /// for a single pair
-    spherical_harmonics: ThreadLocal<RefCell<SphericalHarmonicsImpl>>,
+    spherical_harmonics: ThreadLocal<RefCell<CachedAllocationsSphericalHarmonics>>,
     /// Cache for (-1)^l values
     m_1_pow_l: Vec<f64>,
 }
@@ -284,7 +244,7 @@ impl SphericalExpansion {
         }).borrow_mut();
 
         let mut spherical_harmonics = self.spherical_harmonics.get_or(|| {
-            RefCell::new(SphericalHarmonicsImpl::new(&self.parameters))
+            RefCell::new(CachedAllocationsSphericalHarmonics::new(self.parameters.max_angular))
         }).borrow_mut();
 
         for (key, mut block) in descriptor.iter_mut() {
@@ -342,7 +302,7 @@ impl SphericalExpansion {
         }).borrow_mut();
 
         let mut spherical_harmonics = self.spherical_harmonics.get_or(|| {
-            RefCell::new(SphericalHarmonicsImpl::new(&self.parameters))
+            RefCell::new(CachedAllocationsSphericalHarmonics::new(self.parameters.max_angular))
         }).borrow_mut();
 
         radial_integral.compute(pair.distance, do_gradients.either());

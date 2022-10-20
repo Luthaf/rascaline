@@ -3,9 +3,6 @@ pub use self::radial_integral::RadialIntegral;
 pub use self::radial_integral::{GtoRadialIntegral, GtoParameters};
 pub use self::radial_integral::{SplinedRadialIntegral, SplinedRIParameters};
 
-mod spherical_harmonics;
-pub use self::spherical_harmonics::{SphericalHarmonics, SphericalHarmonicsArray};
-
 mod cutoff;
 pub use self::cutoff::CutoffFunction;
 pub use self::cutoff::RadialScaling;
