@@ -45,9 +45,11 @@ Calculators: computing representations
 --------------------------------------
 
 Calculators are provided by rascaline, and compute a single representations.
-There is a calculator for the :ref:`sorted distances vector <sorted-distances>`
-representation, another one for the :ref:`spherical expansion
-<spherical-expansion>` representation, and hopefully soon many others.
+There is a calculator
+for the :ref:`sorted distances vector <sorted-distances>` representation,
+one for the :ref:`spherical expansion <spherical-expansion>` representation,
+one for the :ref:`LODE spherical expansion <lode-spherical-expansion>` representation,
+and hopefully soon many others.
 
 All calculators are registered globally in rascaline, and can be constructed
 with a name and a set of parameters (often called hyper-parameters). These
