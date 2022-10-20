@@ -55,3 +55,6 @@ pub trait SamplesBuilder {
 
 mod atom_centered;
 pub use self::atom_centered::AtomCenteredSamples;
+
+mod long_range;
+pub use self::long_range::LongRangePerAtom;

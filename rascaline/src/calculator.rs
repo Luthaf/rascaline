@@ -432,6 +432,7 @@ use crate::calculators::NeighborList;
 use crate::calculators::{SphericalExpansion, SphericalExpansionParameters};
 use crate::calculators::{SoapPowerSpectrum, PowerSpectrumParameters};
 use crate::calculators::{SoapRadialSpectrum, RadialSpectrumParameters};
+use crate::calculators::{LodeSphericalExpansion, LodeSphericalExpansionParameters};
 type CalculatorCreator = fn(&str) -> Result<Box<dyn CalculatorBase>, Error>;
 
 macro_rules! add_calculator {
@@ -457,9 +458,12 @@ static REGISTERED_CALCULATORS: Lazy<BTreeMap<&'static str, CalculatorCreator>> =
     add_calculator!(map, "dummy_calculator", DummyCalculator);
     add_calculator!(map, "neighbor_list", NeighborList);
     add_calculator!(map, "sorted_distances", SortedDistances);
+
     add_calculator!(map, "spherical_expansion", SphericalExpansion, SphericalExpansionParameters);
-    add_calculator!(map, "soap_power_spectrum", SoapPowerSpectrum, PowerSpectrumParameters);
     add_calculator!(map, "soap_radial_spectrum", SoapRadialSpectrum, RadialSpectrumParameters);
+    add_calculator!(map, "soap_power_spectrum", SoapPowerSpectrum, PowerSpectrumParameters);
+
+    add_calculator!(map, "lode_spherical_expansion", LodeSphericalExpansion, LodeSphericalExpansionParameters);
     return map;
 });
 // [calculator-registration]

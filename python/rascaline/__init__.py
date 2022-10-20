@@ -12,6 +12,7 @@ from .systems import IntoSystem, SystemBase  # noqa
 from .calculators import CalculatorBase  # noqa  isort: skip
 from .calculators import SortedDistances  # noqa  isort: skip
 from .calculators import NeighborList  # noqa  isort: skip
+from .calculators import LodeSphericalExpansion  # noqa isort: skip
 from .calculators import SphericalExpansion  # noqa  isort: skip
 from .calculators import SoapRadialSpectrum  # noqa  isort: skip
 from .calculators import SoapPowerSpectrum  # noqa  isort: skip
