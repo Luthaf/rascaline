@@ -409,8 +409,20 @@ class SoapRadialSpectrum(CalculatorBase):
 
 
 class LodeSphericalExpansion(CalculatorBase):
-    """
-    TODO
+    """Long-Distance Equivariant (LODE).
+
+    The spherical expansion is at the core of representations in the LODE
+    family. The LODE spherical
+    expansion represent atomic density as a collection of 'decorated' gaussian
+    functions centered on each atom, and then represent the local density around
+    each atom on a basis of radial functions and spherical harmonics.
+    This representation is not rotationally invariant.
+
+    See [this article](https://aip.scitation.org/doi/10.1063/1.5128375)
+    for more information on the LODE representation.
+
+    For a full description of the hyper-parameters, see the corresponding
+    :ref:`documentation <lode-spherical-expansion>`.
     """
 
     def __init__(
