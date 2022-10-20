@@ -1,3 +1,10 @@
+//! This code was extracted from statrs, which is © 2016 Michael Ma, distributed
+//! under MIT license.
+//!
+//! See <https://github.com/boxtown/statrs/blob/c5536a8c/src/function/gamma.rs>
+//! for the original code.
+
+
 #![allow(clippy::excessive_precision)]
 use std::f64;
 
@@ -33,10 +40,6 @@ const GAMMA_R: f64 = 10.900511;
 /// Computes the gamma function with an accuracy of 16 floating point digits.
 /// The implementation is derived from "An Analysis of the Lanczos Gamma
 /// Approximation", Glendon Ralph Pugh, 2004 p. 116.
-///
-/// This code was extracted from statrs, which is © 2016 Michael Ma, distributed
-/// under MIT license. Cf <https://github.com/boxtown/statrs/blob/c5536a8c916852259832b2064a9b845b68751c8f/src/function/gamma.rs>
-/// for the original code
 pub fn gamma(x: f64) -> f64 {
     if x < 0.5 {
         let s = GAMMA_DK
@@ -64,11 +67,6 @@ pub fn gamma(x: f64) -> f64 {
 /// Computes the logarithm of the gamma function with an accuracy of 16 floating
 /// point digits. The implementation is derived from "An Analysis of the Lanczos
 /// Gamma Approximation", Glendon Ralph Pugh, 2004 p. 116
-///
-///
-/// This code was extracted from statrs, which is © 2016 Michael Ma, distributed
-/// under MIT license. Cf <https://github.com/boxtown/statrs/blob/c5536a8c916852259832b2064a9b845b68751c8f/src/function/gamma.rs>
-/// for the original code
 pub fn ln_gamma(x: f64) -> f64 {
     if x < 0.5 {
         let s = GAMMA_DK
@@ -93,6 +91,181 @@ pub fn ln_gamma(x: f64) -> f64 {
             + LN_2_SQRT_E_OVER_PI
             + (x - 0.5) * ((x - 0.5 + GAMMA_R) / f64::consts::E).ln()
     }
+}
+
+/// Computes the upper incomplete gamma function `Gamma(a,x) =
+/// int(exp(-t)t^(a-1), t=0..x) for a > 0, x > 0` where `a` is the argument for
+/// the gamma function and `x` is the lower integral limit.
+pub fn gamma_ui(a: f64, x: f64) -> f64 {
+    return gamma_ur(a, x) * gamma(a);
+}
+
+/// Computes the upper incomplete regularized gamma function `Q(a,x) = 1 /
+/// Gamma(a) * int(exp(-t)t^(a-1), t=0..x) for a > 0, x > 0` where `a` is the
+/// argument for the gamma function and `x` is the lower integral limit.
+#[allow(clippy::many_single_char_names, clippy::similar_names)]
+pub fn gamma_ur(a: f64, x: f64) -> f64 {
+    if a.is_nan() || x.is_nan() {
+        return f64::NAN;
+    }
+
+    if a <= 0.0 || a == f64::INFINITY {
+        panic!("invalid argument a to gamma_ur");
+    }
+
+    if x <= 0.0 || x == f64::INFINITY {
+        panic!("invalid argument x to gamma_ur");
+    }
+
+    let eps = 0.000000000000001;
+    let big = 4503599627370496.0;
+    let big_inv = 2.22044604925031308085e-16;
+
+    if x < 1.0 || x <= a {
+        return 1.0 - gamma_lr(a, x);
+    }
+
+    let mut ax = a * x.ln() - x - ln_gamma(a);
+    if ax < -709.78271289338399 {
+        return if a < x { 0.0 } else { 1.0 };
+    }
+
+    ax = ax.exp();
+    let mut y = 1.0 - a;
+    let mut z = x + y + 1.0;
+    let mut c = 0.0;
+    let mut pkm2 = 1.0;
+    let mut qkm2 = x;
+    let mut pkm1 = x + 1.0;
+    let mut qkm1 = z * x;
+    let mut ans = pkm1 / qkm1;
+    loop {
+        y += 1.0;
+        z += 2.0;
+        c += 1.0;
+        let yc = y * c;
+        let pk = pkm1 * z - pkm2 * yc;
+        let qk = qkm1 * z - qkm2 * yc;
+
+        pkm2 = pkm1;
+        pkm1 = pk;
+        qkm2 = qkm1;
+        qkm1 = qk;
+
+        if pk.abs() > big {
+            pkm2 *= big_inv;
+            pkm1 *= big_inv;
+            qkm2 *= big_inv;
+            qkm1 *= big_inv;
+        }
+
+        if qk != 0.0 {
+            let r = pk / qk;
+            let t = ((ans - r) / r).abs();
+            ans = r;
+
+            if t <= eps {
+                break;
+            }
+        }
+    }
+
+    return ans * ax;
+}
+
+/// Computes the lower incomplete regularized gamma function `P(a,x) = 1 /
+/// Gamma(a) * int(exp(-t)t^(a-1), t=0..x) for real a > 0, x > 0` where `a` is
+/// the argument for the gamma function and `x` is the upper integral limit.
+#[allow(clippy::many_single_char_names)]
+pub fn gamma_lr(a: f64, x: f64) -> f64 {
+    if a.is_nan() || x.is_nan() {
+        return f64::NAN;
+    }
+    if a <= 0.0 || a == f64::INFINITY {
+        panic!("invalid argument a to gamma_lr");
+    }
+    if x <= 0.0 || x == f64::INFINITY {
+        panic!("invalid argument x to gamma_lr");
+    }
+
+    let eps = 0.000000000000001;
+    let big = 4503599627370496.0;
+    let big_inv = 2.22044604925031308085e-16;
+
+    if a == 0.0 {
+        return 1.0;
+    }
+    if x == 0.0 {
+        return 0.0;
+    }
+
+    let ax = a * x.ln() - x - ln_gamma(a);
+    if ax < -709.78271289338399 {
+        if a < x {
+            return 1.0;
+        }
+        return 0.0;
+    }
+
+    if x <= 1.0 || x <= a {
+        let mut r2 = a;
+        let mut c2 = 1.0;
+        let mut ans2 = 1.0;
+        loop {
+            r2 += 1.0;
+            c2 *= x / r2;
+            ans2 += c2;
+
+            if c2 / ans2 <= eps {
+                break;
+            }
+        }
+        return ax.exp() * ans2 / a;
+    }
+
+    let mut y = 1.0 - a;
+    let mut z = x + y + 1.0;
+    let mut c = 0;
+
+    let mut p3 = 1.0;
+    let mut q3 = x;
+    let mut p2 = x + 1.0;
+    let mut q2 = z * x;
+    let mut ans = p2 / q2;
+
+    loop {
+        y += 1.0;
+        z += 2.0;
+        c += 1;
+        let yc = y * f64::from(c);
+
+        let p = p2 * z - p3 * yc;
+        let q = q2 * z - q3 * yc;
+
+        p3 = p2;
+        p2 = p;
+        q3 = q2;
+        q2 = q;
+
+        if p.abs() > big {
+            p3 *= big_inv;
+            p2 *= big_inv;
+            q3 *= big_inv;
+            q2 *= big_inv;
+        }
+
+        if q != 0.0 {
+            let nextans = p / q;
+            let error = ((ans - nextans) / nextans).abs();
+            ans = nextans;
+
+            if error <= eps {
+                break;
+            }
+        }
+    }
+
+    return 1.0 - ax.exp() * ans;
 }
 
 /// Computes the Digamma function which is defined as the derivative of
@@ -210,6 +383,89 @@ mod tests {
         assert_relative_eq!(ln_gamma(10.1), 13.02752673863323795851370097886835481188051062306253294740504, max_relative=1e-13);
         assert_relative_eq!(ln_gamma(150.0 + 1.0e-12), 600.0094705553324354062157737572509902987070089159051628001813, max_relative=1e-12);
         assert_relative_eq!(ln_gamma(1.001e+7), 1.51342135323817913130119829455205139905331697084416059779e+8, max_relative=1e-13);
+    }
+
+    #[test]
+    fn test_gamma_lr() {
+        assert!(gamma_lr(f64::NAN, f64::NAN).is_nan());
+        assert_relative_eq!(gamma_lr(0.1, 1.0), 0.97587265627367222115949155252812057714751052498477013, max_relative=1e-14);
+        assert_eq!(gamma_lr(0.1, 2.0), 0.99432617602018847196075251078067514034772764693462125);
+        assert_eq!(gamma_lr(0.1, 8.0), 0.99999507519205198048686442150578226823401842046310854);
+        assert_relative_eq!(gamma_lr(1.5, 1.0), 0.42759329552912016600095238564127189392715996802703368, max_relative=1e-13);
+        assert_relative_eq!(gamma_lr(1.5, 2.0), 0.73853587005088937779717792402407879809718939080920993, max_relative=1e-15);
+        assert_eq!(gamma_lr(1.5, 8.0), 0.99886601571021467734329986257903021041757398191304284);
+        assert_relative_eq!(gamma_lr(2.5, 1.0), 0.15085496391539036377410688601371365034788861473418704, max_relative=1e-13);
+        assert_relative_eq!(gamma_lr(2.5, 2.0), 0.45058404864721976739416885516693969548484517509263197, max_relative=1e-14);
+        assert_relative_eq!(gamma_lr(2.5, 8.0), 0.99315592607757956900093935107222761316136944145439676, max_relative=1e-15);
+        assert_relative_eq!(gamma_lr(5.5, 1.0), 0.0015041182825838038421585211353488839717739161316985392, max_relative=1e-15);
+        assert_relative_eq!(gamma_lr(5.5, 2.0), 0.030082976121226050615171484772387355162056796585883967, max_relative=1e-14);
+        assert_relative_eq!(gamma_lr(5.5, 8.0), 0.85886911973294184646060071855669224657735916933487681, max_relative=1e-14);
+        assert_relative_eq!(gamma_lr(100.0, 0.5), 0.0);
+        assert_relative_eq!(gamma_lr(100.0, 1.5), 0.0);
+        assert_relative_eq!(gamma_lr(100.0, 90.0), 0.1582209891864301681049696996709105316998233457433473, max_relative=1e-9);
+        assert_relative_eq!(gamma_lr(100.0, 100.0), 0.5132987982791486648573142565640291634709251499279450, max_relative=1e-13);
+        assert_relative_eq!(gamma_lr(100.0, 110.0), 0.8417213299399129061982996209829688531933500308658222, max_relative=1e-13);
+        assert_relative_eq!(gamma_lr(100.0, 200.0), 1.0, max_relative=1e-14);
+        assert_eq!(gamma_lr(500.0, 0.5), 0.0);
+        assert_eq!(gamma_lr(500.0, 1.5), 0.0);
+        assert_relative_eq!(gamma_lr(500.0, 200.0), 0.0, max_relative=1e-70);
+        assert_relative_eq!(gamma_lr(500.0, 450.0), 0.0107172380912897415573958770655204965434869949241480, max_relative=1e-9);
+        assert_relative_eq!(gamma_lr(500.0, 500.0), 0.5059471461707603580470479574412058032802735425634263, max_relative=1e-13);
+        assert_relative_eq!(gamma_lr(500.0, 550.0), 0.9853855918737048059548470006900844665580616318702748, max_relative=1e-14);
+        assert_relative_eq!(gamma_lr(500.0, 700.0), 1.0, max_relative=1e-15);
+        assert_eq!(gamma_lr(1000.0, 10000.0), 1.0);
+        assert_eq!(gamma_lr(1e+50, 1e+48), 0.0);
+        assert_eq!(gamma_lr(1e+50, 1e+52), 1.0);
+    }
+
+    #[test]
+    fn test_gamma_ur() {
+        assert!(gamma_ur(f64::NAN, f64::NAN).is_nan());
+        assert_relative_eq!(gamma_ur(0.1, 1.0), 0.0241273437263277773829694356333550393309597428392044, max_relative=1e-13);
+        assert_relative_eq!(gamma_ur(0.1, 2.0), 0.0056738239798115280392474892193248596522723530653781, max_relative=1e-13);
+        assert_relative_eq!(gamma_ur(0.1, 8.0), 0.0000049248079480195131355784942177317659815795368919702, max_relative=1e-13);
+        assert_relative_eq!(gamma_ur(1.5, 1.0), 0.57240670447087983399904761435872810607284003197297, max_relative=1e-13);
+        assert_relative_eq!(gamma_ur(1.5, 2.0), 0.26146412994911062220282207597592120190281060919079, max_relative=1e-13);
+        assert_relative_eq!(gamma_ur(1.5, 8.0), 0.0011339842897853226567001374209697895824260180869567, max_relative=1e-13);
+        assert_relative_eq!(gamma_ur(2.5, 1.0), 0.84914503608460963622589311398628634965211138526581, max_relative=1e-13);
+        assert_relative_eq!(gamma_ur(2.5, 2.0), 0.54941595135278023260583114483306030451515482490737, max_relative=1e-13);
+        assert_relative_eq!(gamma_ur(2.5, 8.0), 0.0068440739224204309990606489277723868386305585456026, max_relative=1e-13);
+        assert_relative_eq!(gamma_ur(5.5, 1.0), 0.9984958817174161961578414788646511160282260838683, max_relative=1e-13);
+        assert_relative_eq!(gamma_ur(5.5, 2.0), 0.96991702387877394938482851522761264483794320341412, max_relative=1e-13);
+        assert_relative_eq!(gamma_ur(5.5, 8.0), 0.14113088026705815353939928144330775342264083066512, max_relative=1e-13);
+        assert_relative_eq!(gamma_ur(100.0, 0.5), 1.0, max_relative=1e-14);
+        assert_relative_eq!(gamma_ur(100.0, 1.5), 1.0, max_relative=1e-14);
+        assert_relative_eq!(gamma_ur(100.0, 90.0), 0.8417790108135698318950303003290894683001766542566526, max_relative=1e-12);
+        assert_relative_eq!(gamma_ur(100.0, 100.0), 0.4867012017208513351426857434359708365290748500720549, max_relative=1e-12);
+        assert_relative_eq!(gamma_ur(100.0, 110.0), 0.1582786700600870938017003790170311468066499691341777, max_relative=1e-12);
+        assert_relative_eq!(gamma_ur(100.0, 200.0), 0.0, epsilon=1e-14);
+        assert_relative_eq!(gamma_ur(500.0, 0.5), 1.0, max_relative=1e-14);
+        assert_relative_eq!(gamma_ur(500.0, 1.5), 1.0, max_relative=1e-14);
+        assert_relative_eq!(gamma_ur(500.0, 200.0), 1.0, max_relative=1e-14);
+        assert_relative_eq!(gamma_ur(500.0, 450.0), 0.9892827619087102584426041229344795034565130050758519, max_relative=1e-12);
+        assert_relative_eq!(gamma_ur(500.0, 500.0), 0.4940528538292396419529520425587941967197264574365736, max_relative=1e-12);
+        assert_relative_eq!(gamma_ur(500.0, 550.0), 0.0146144081262951940451529993099155334419383681297251, max_relative=1e-12);
+        assert_relative_eq!(gamma_ur(500.0, 700.0), 0.0, epsilon=1e-14);
+        assert_relative_eq!(gamma_ur(1000.0, 10000.0), 0.0, epsilon=1e-14);
+        assert_relative_eq!(gamma_ur(1e+50, 1e+48), 1.0, max_relative=1e-14);
+        assert_relative_eq!(gamma_ur(1e+50, 1e+52), 0.0, epsilon=1e-14);
+    }
+
+    #[test]
+    fn test_gamma_ui() {
+        assert!(gamma_ui(f64::NAN, f64::NAN).is_nan());
+        assert_relative_eq!(gamma_ui(0.1, 1.0), 0.2295356702888460382790772147651768201739736396141314, max_relative=1e-14);
+        assert_relative_eq!(gamma_ui(0.1, 2.0), 0.053977968112828232195991347726857391060870217694027, max_relative=1e-15);
+        assert_relative_eq!(gamma_ui(0.1, 8.0), 0.000046852198327948595220974570460669512682180005810156, max_relative=1e-19);
+        assert_relative_eq!(gamma_ui(1.5, 1.0), 0.50728223381177330984514007570018045349008617228036, max_relative=1e-14);
+        assert_relative_eq!(gamma_ui(1.5, 2.0), 0.23171655200098069331588896692000996837607162348484, max_relative=1e-15);
+        assert_relative_eq!(gamma_ui(1.5, 8.0), 0.0010049674106481758827326630820844265957854973504417, max_relative=1e-17);
+        assert_relative_eq!(gamma_ui(2.5, 1.0), 1.1288027918891022863632338837117315476809403894523, max_relative=1e-14);
+        assert_relative_eq!(gamma_ui(2.5, 2.0), 0.73036081404311473581698531119872971361489139002877, max_relative=1e-14);
+        assert_relative_eq!(gamma_ui(2.5, 8.0), 0.0090981038847570846537821465810058289147856041616617, max_relative=1e-17);
+        assert_relative_eq!(gamma_ui(5.5, 1.0), 52.264048055526551859457214287080473123160514369109, max_relative=1e-12);
+        assert_relative_eq!(gamma_ui(5.5, 2.0), 50.768151250342155233775028625526081234006425883469, max_relative=1e-12);
+        assert_relative_eq!(gamma_ui(5.5, 8.0), 7.3871823043570542965292707346232335470650967978006, max_relative=1e-13);
     }
 
     #[test]
