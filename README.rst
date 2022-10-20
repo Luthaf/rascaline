@@ -34,6 +34,10 @@ List of implemented representations
      - Core of representations in SOAP (Smooth Overlap of Atomic Positions)
      - ✓
      - ✓
+   * - LODE Spherical Expansion
+     - Core of representations in LODE (Long distance equivariant)
+     - ✓
+     - ✓
    * - Soap radial spectrum
      - Each atom is represented by the radial average of the density of its neighbors
      - ✓
