@@ -40,6 +40,9 @@ List of implemented representations
    * - SOAP power spectrum
      - Atoms are represented by 3-body correlations of their neighbors' density
      - positions and cell
+   * - LODE Spherical Expansion
+     - Core of representations in LODE (Long distance equivariant)
+     - positions
    * - Sorted distances
      - Each atomic center is represented by a vector of distance to its
        neighbors within the spherical cutoff
