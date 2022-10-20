@@ -437,3 +437,29 @@ class SoapPowerSpectrum(CalculatorBase):
             parameters["radial_scaling"] = radial_scaling
 
         super().__init__("soap_power_spectrum", parameters)
+
+
+class LodeSphericalExpansion(CalculatorBase):
+    """
+    TODO
+    """
+
+    def __init__(
+        self,
+        cutoff,
+        max_radial,
+        max_angular,
+        atomic_gaussian_width,
+        potential_exponent,
+        radial_basis,
+    ):
+        parameters = {
+            "cutoff": cutoff,
+            "max_radial": max_radial,
+            "max_angular": max_angular,
+            "atomic_gaussian_width": atomic_gaussian_width,
+            "potential_exponent": potential_exponent,
+            "radial_basis": radial_basis,
+        }
+
+        super().__init__("lode_spherical_expansion", parameters)
