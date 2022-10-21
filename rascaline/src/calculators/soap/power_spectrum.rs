@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, BTreeMap};
 use std::sync::Arc;
 
 use ndarray::parallel::prelude::*;
@@ -93,56 +93,72 @@ impl SoapPowerSpectrum {
         });
     }
 
-    /// Construct a `TensorMap` containing the set of samples/properties we want the
-    /// spherical expansion to compute.
+    /// Construct a `TensorMap` containing the set of samples/properties we want
+    /// the spherical expansion calculator to compute.
     ///
-    /// For each block, samples will contain the same set of samples as the power
-    /// spectrum, even if a neighbor species might not be around, since that
-    /// simplifies the accumulation loops quite a lot.
+    /// For each block, samples will contain the same set of samples as the
+    /// power spectrum, even if a neighbor species might not be around, since
+    /// that simplifies the accumulation loops quite a lot.
     fn selected_spx_labels(&self, descriptor: &TensorMap) -> TensorMap {
         assert_eq!(descriptor.keys().names(), ["species_center", "species_neighbor_1", "species_neighbor_2"]);
 
-        let mut requested = HashMap::new();
+        // first, go over the requested power spectrum properties and group them
+        // depending on the species_neighbor
+        let mut requested_by_key = BTreeMap::new();
         let mut requested_spherical_harmonics_l = BTreeSet::new();
         for (&[center, neighbor_1, neighbor_2], block) in descriptor.keys().iter_fixed_size().zip(descriptor.blocks()) {
             let values = block.values();
             for &[l, n1, n2] in values.properties.iter_fixed_size() {
                 requested_spherical_harmonics_l.insert(l.usize());
 
-                let (_, properties) = requested.entry([l, center, neighbor_1]).or_insert_with(|| {
+                let (_, properties) = requested_by_key.entry([l, center, neighbor_1]).or_insert_with(|| {
                     (BTreeSet::new(), BTreeSet::new())
                 });
                 properties.insert([n1]);
 
-                let (_, properties) = requested.entry([l, center, neighbor_2]).or_insert_with(|| {
+                let (_, properties) = requested_by_key.entry([l, center, neighbor_2]).or_insert_with(|| {
                     (BTreeSet::new(), BTreeSet::new())
                 });
                 properties.insert([n2]);
             }
         }
 
-        for (&[center, neighbor_1, neighbor_2], block) in descriptor.keys().iter_fixed_size().zip(descriptor.blocks()) {
-            let values = block.values();
+        // make sure all the expected blocks are there, even if the power
+        // spectrum does not contain e.g. l=3 at all. The corresponding blocks
+        // will have an empty set of properties
+        for &[center, neighbor_1, neighbor_2] in descriptor.keys().iter_fixed_size() {
             for &l in &requested_spherical_harmonics_l {
-                let (samples_1, _) = requested.get_mut(&[l.into(), center, neighbor_1])
-                    .expect("missing entry while constructing spherical expansion selection");
+                requested_by_key.entry([l.into(), center, neighbor_1]).or_insert_with(|| {
+                    (BTreeSet::new(), BTreeSet::new())
+                });
 
-                for sample in &*values.samples {
-                    samples_1.insert(sample);
+                requested_by_key.entry([l.into(), center, neighbor_2]).or_insert_with(|| {
+                    (BTreeSet::new(), BTreeSet::new())
+                });
+            }
+        }
+
+        // Then, loop over the requested power spectrum, and accumulate the
+        // samples we want to compute.
+        for (&[_, requested_center, requested_neighbor], (samples, _)) in &mut requested_by_key {
+            for (&[center, neighbor_1, neighbor_2], block) in descriptor.keys().iter_fixed_size().zip(descriptor.blocks()) {
+                if center != requested_center {
+                    continue;
                 }
 
-                let (samples_2, _) = requested.get_mut(&[l.into(), center, neighbor_2])
-                    .expect("missing entry while constructing spherical expansion selection");
+                if !(requested_neighbor == neighbor_1 || requested_neighbor == neighbor_2) {
+                    continue;
+                }
 
-                for sample in &*values.samples {
-                    samples_2.insert(sample);
+                for sample in &*block.values().samples {
+                    samples.insert(sample);
                 }
             }
         }
 
         let mut keys_builder = LabelsBuilder::new(vec!["spherical_harmonics_l", "species_center", "species_neighbor"]);
         let mut blocks = Vec::new();
-        for (key, (samples, properties)) in requested {
+        for (key, (samples, properties)) in requested_by_key {
             keys_builder.add(&key);
 
             let mut samples_builder = LabelsBuilder::new(vec!["structure", "center"]);
@@ -212,9 +228,32 @@ impl SoapPowerSpectrum {
             let species_neighbor_1 = key[1];
             let species_neighbor_2 = key[2];
 
-            let mut values_mapping = Vec::new();
             let values = block.values();
-            assert!(values.properties.count() > 0);
+            if values.properties.count() == 0 {
+                // no properties to compute, we don't really care about sample
+                // mapping and we can not compute the real one (there is no l to
+                // find the corresponding spx block), so we'll create a dummy
+                // sample mapping / gradient sample mapping
+                let mut values_mapping = Vec::new();
+                for i in 0..values.samples.count() {
+                    values_mapping.push((i, i));
+                }
+
+                let mut gradient_mapping = Vec::new();
+                if let Some(gradient) = block.gradient("positions") {
+                    for i in 0..gradient.samples.count() {
+                        gradient_mapping.push((Some(i), Some(i)));
+                    }
+                }
+
+                mapping.insert(key.to_vec(), SamplesMapping {
+                    values: values_mapping,
+                    gradients: gradient_mapping,
+                });
+                continue;
+            }
+
+            let mut values_mapping = Vec::new();
 
             // the spherical expansion samples are the same for all
             // `spherical_harmonics_l` values, so we only need to compute it for
@@ -772,6 +811,73 @@ mod tests {
         crate::calculators::tests_utils::compute_partial(
             calculator, &mut systems, &samples, &properties
         );
+    }
+
+    #[test]
+    fn compute_partial_per_key() {
+        let keys = Labels::new(["species_center", "species_neighbor_1", "species_neighbor_2"], &[
+            [1, 1, 1],
+            [1, 1, 6],
+            [1, 6, 6],
+            [6, 1, 1],
+            [6, 1, 6],
+            [6, 6, 6],
+        ]);
+
+        let empty_block = equistore::TensorBlock::new(
+            EmptyArray::new(vec![1, 0]),
+            Arc::new(Labels::single()),
+            vec![],
+            Arc::new(Labels::new::<i32, 3>(["l", "n1", "n2"], &[])),
+        ).unwrap();
+
+        let blocks = vec![
+            // H, H-H
+            equistore::TensorBlock::new(
+                EmptyArray::new(vec![1, 1]),
+                Arc::new(Labels::single()),
+                vec![],
+                Arc::new(Labels::new(["l", "n1", "n2"], &[[2, 0, 0]])),
+            ).unwrap(),
+            // H, C-H
+            empty_block.clone(),
+            // H, C-C
+            empty_block.clone(),
+            // C, H-H
+            empty_block.clone(),
+            // C, C-H
+            equistore::TensorBlock::new(
+                EmptyArray::new(vec![1, 1]),
+                Arc::new(Labels::single()),
+                vec![],
+                Arc::new(Labels::new(["l", "n1", "n2"], &[[3, 0, 0]])),
+            ).unwrap(),
+            // C, C-C
+            empty_block,
+        ];
+        let selection = equistore::TensorMap::new(keys, blocks).unwrap();
+
+        let options = CalculationOptions {
+            selected_properties: LabelsSelection::Predefined(&selection),
+            ..Default::default()
+        };
+
+        let mut calculator = Calculator::from(Box::new(SoapPowerSpectrum::new(
+            parameters()
+        ).unwrap()) as Box<dyn CalculatorBase>);
+
+        let mut systems = test_systems(&["methane"]);
+        let descriptor = calculator.compute(&mut systems, options).unwrap();
+
+
+        assert_eq!(descriptor.keys(), selection.keys());
+
+        assert_eq!(descriptor.block_by_id(0).values().data.as_array().shape(), [4, 1]);
+        assert_eq!(descriptor.block_by_id(1).values().data.as_array().shape(), [4, 0]);
+        assert_eq!(descriptor.block_by_id(2).values().data.as_array().shape(), [4, 0]);
+        assert_eq!(descriptor.block_by_id(3).values().data.as_array().shape(), [1, 0]);
+        assert_eq!(descriptor.block_by_id(4).values().data.as_array().shape(), [1, 1]);
+        assert_eq!(descriptor.block_by_id(5).values().data.as_array().shape(), [1, 0]);
     }
 
     #[test]

@@ -137,7 +137,7 @@ impl<'a> LabelsSelection<'a> {
                         return Err(Error::InvalidParameter(format!(
                             "invalid predefined {} names: expected [{}], but got [{}]",
                             label_kind,
-                            default_names.join(","),
+                            default_names.join(", "),
                             labels.names().join(", ")
                         )));
                     }
