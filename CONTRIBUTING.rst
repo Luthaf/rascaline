@@ -41,7 +41,7 @@ Getting involved
 
 Contribution via merge requests are always welcome. Source code is
 available from `Github`_. Before submitting a merge request, please
-open an issue to discuss your changes. Use the only `master` branch 
+open an issue to discuss your changes. Use the only `master` branch
 for submitting your requests.
 
 .. _`Github` : https://github.com/Luthaf/rascaline
@@ -71,7 +71,7 @@ not have to interact with them directly:
   and MSVC >= 15 should all work, although MSVC has not been tested yet.
 
 .. _rustup: https://rustup.rs
-.. _Tox: https://tox.readthedocs.io/en/latest
+.. _tox: https://tox.readthedocs.io/en/latest
 
 Getting the code
 ----------------
@@ -140,7 +140,7 @@ should run:
 - ``--package rascaline-c-api`` to run tests defined in the rascaline-c-api
   crate (the C API implementation)
 
-Also, you can run individual python environment tets using `Tox`_ 
+Also, you can run individual python tests using `tox`_
 if you wish to test only specific functionalities, for example:
 
 .. code-block:: bash
@@ -152,7 +152,7 @@ if you wish to test only specific functionalities, for example:
     tox -e build  # python packaging
     tox -e format  # format all files
 
-The latter command `tox -e format` will use tox to do actual formatting instead
+The latter command ``tox -e format`` will use tox to do actual formatting instead
 of just testing it.
 
 .. _`cargo` : https://doc.rust-lang.org/cargo/
@@ -160,10 +160,10 @@ of just testing it.
 Writing your own calculator
 ---------------------------
 
-For adding a new calculator take a look at the Tutorial for 
-`Adding a new calculator`_.
+For adding a new calculator take a look at the tutorial for
+`adding a new calculator`_.
 
-.. _Adding a new calculator: https://luthaf.fr/rascaline/latest/devdoc/how_to/new-calculator.html
+.. _adding a new calculator: https://luthaf.fr/rascaline/latest/devdoc/how-to/new-calculator.html
 
 Contributing to the documentation
 ---------------------------------
