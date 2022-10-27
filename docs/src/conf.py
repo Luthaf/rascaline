@@ -48,7 +48,15 @@ def build_cargo_docs():
         ],
         env=environment,
     )
-    output_dir = os.path.join(ROOT, "docs", "build", "html", "reference", "rust")
+    output_dir = os.path.join(
+        ROOT,
+        "docs",
+        "build",
+        "html",
+        "references",
+        "api",
+        "rust",
+    )
     if os.path.exists(output_dir):
         shutil.rmtree(output_dir)
     shutil.copytree(
