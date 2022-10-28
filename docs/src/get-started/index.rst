@@ -10,4 +10,4 @@ The following sections describes how to install and start with using rascaline.
 
     rascaline
     installation
-    tutorial
+    tutorials

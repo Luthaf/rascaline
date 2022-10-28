@@ -1,3 +1,5 @@
+.. _userdoc-how-to-computing-soap:
+
 Computing SOAP features
 =======================
 

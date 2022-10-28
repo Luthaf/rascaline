@@ -1,4 +1,4 @@
-API Documentation
+API documentation
 -----------------
 
 The API documentation contains all the information about functions and classes
@@ -8,7 +8,7 @@ by programming languages.
 .. toctree::
     :maxdepth: 1
 
-    python/index
-    rust
-    cxx/index
-    c/index
+    Python <python/index>
+    Rust <rust>
+    C <c/index>
+    C++ <cxx/index>
