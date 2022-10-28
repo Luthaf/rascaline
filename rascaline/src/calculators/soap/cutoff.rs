@@ -71,8 +71,8 @@ impl CutoffFunction {
 pub enum RadialScaling {
     /// No radial scaling
     None {},
-    /// Use the radial scaling functional introduced in <https://doi.org/10.1039/C8CP05921G>:
-    ///
+    /// Use a long-range algebraic decay and smooth behavior at $r \rightarrow 0$
+    /// as introduced in <https://doi.org/10.1039/C8CP05921G>:
     /// `f(r) = rate / (rate + (r / scale) ^ exponent)`
     Willatt2018 {
         scale: f64,

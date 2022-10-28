@@ -1,7 +1,7 @@
 .. _userdoc-calculators:
 
-Calculators parameters reference
---------------------------------
+Calculator reference
+--------------------
 
 Below is a list of all calculators available. Calculators are the core of
 rascaline and are algorithms for transforming Cartesian coordinates into

@@ -9,7 +9,6 @@ import toml
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
-sys.path.append(os.path.join(ROOT, "python"))
 sys.path.append(os.path.join(ROOT, "docs", "extensions"))
 
 # -- Project information -----------------------------------------------------
@@ -95,6 +94,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.intersphinx",
     "breathe",
+    "sphinx_gallery.gen_gallery",
     "sphinx_tabs.tabs",
     "rascaline_json_schema",
     "html_hidden",
@@ -113,6 +113,16 @@ autoclass_content = "both"
 autodoc_member_order = "bysource"
 autodoc_typehints_format = "short"
 
+sphinx_gallery_conf = {
+    "filename_pattern": "/*",
+    "examples_dirs": ["get-started/tutorials-src/"],
+    "gallery_dirs": ["get-started/tutorials"],
+    "min_reported_time": 60,
+    # Make the code snippet for rascaline functions clickable
+    "reference_url": {"rascaline": None},
+    "prefer_full_module": ["rascaline"],
+}
+
 breathe_projects = {
     "rascaline": os.path.join(ROOT, "docs", "build", "doxygen", "xml"),
 }
@@ -122,8 +132,12 @@ breathe_domain_by_extension = {
 }
 
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3", None),
+    "ase": ("https://wiki.fysik.dtu.dk/ase/", None),
+    "chemfiles": ("https://chemfiles.org/chemfiles.py/latest/", None),
     "equistore": ("https://lab-cosmo.github.io/equistore/latest/", None),
+    "matplotlib": ("https://matplotlib.org/stable/", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
+    "python": ("https://docs.python.org/3", None),
 }
 
 # -- Options for HTML output -------------------------------------------------
@@ -137,3 +151,21 @@ html_theme = "furo"
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 # html_static_path = ["_static"]
+
+html_theme_options = {
+    "footer_icons": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/Luthaf/rascaline",
+            "html": "",
+            "class": "fa-brands fa-github fa-2x",
+        },
+    ],
+}
+
+# font-awesome logos (used in the footer)
+html_css_files = [
+    "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/fontawesome.min.css",
+    "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/solid.min.css",
+    "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/brands.min.css",
+]
