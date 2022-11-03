@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use once_cell::sync::Lazy;
 
-use equistore::{Labels, LabelsBuilder, LabelValue};
+use equistore::{Labels, LabelsBuilder};
 use equistore::{TensorBlock, TensorMap};
 use ndarray::ArrayD;
 
@@ -323,9 +323,9 @@ impl Calculator {
         assert_eq!(keys.count(), components.len());
         assert_eq!(keys.count(), properties.len());
 
-        let direction = direction_component("direction");
-        let direction_1 = direction_component("direction_1");
-        let direction_2 = direction_component("direction_2");
+        let direction = Arc::new(Labels::new(["direction"], &[[0], [1], [2]]));
+        let direction_1 = Arc::new(Labels::new(["direction_1"], &[[0], [1], [2]]));
+        let direction_2 = Arc::new(Labels::new(["direction_2"], &[[0], [1], [2]]));
 
 
         let mut blocks = Vec::new();
@@ -424,14 +424,6 @@ fn shape_from_labels(samples: &Labels, components: &[Arc<Labels>], properties: &
     shape[i] = properties.count();
 
     return shape;
-}
-
-fn direction_component(name: &str) -> Arc<Labels> {
-    let mut builder = LabelsBuilder::new(vec![name]);
-    builder.add(&[LabelValue::new(0)]);
-    builder.add(&[LabelValue::new(1)]);
-    builder.add(&[LabelValue::new(2)]);
-    return Arc::new(builder.finish());
 }
 
 // Registration of calculator implementations

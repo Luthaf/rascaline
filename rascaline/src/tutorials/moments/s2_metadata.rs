@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use equistore::{Labels, TensorMap, LabelsBuilder, LabelValue};
+use equistore::{Labels, TensorMap, LabelsBuilder};
 
 use crate::{System, Error};
 use crate::labels::{CenterSingleNeighborsSpeciesKeys, KeysBuilder};

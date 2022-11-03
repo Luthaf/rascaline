@@ -209,10 +209,10 @@ impl CalculatorBase for SoapRadialSpectrum {
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
         assert_eq!(descriptor.keys().names(), ["species_center", "species_neighbor"]);
         let mut gradients = Vec::new();
-        if descriptor.blocks()[0].gradient("positions").is_some() {
+        if descriptor.block_by_id(0).gradient("positions").is_some() {
             gradients.push("positions");
         }
-        if descriptor.blocks()[0].gradient("cell").is_some() {
+        if descriptor.block_by_id(0).gradient("cell").is_some() {
             gradients.push("cell");
         }
 
@@ -355,22 +355,21 @@ mod tests {
 
         let mut systems = test_systems(&["water", "methane"]);
 
-        let mut properties = LabelsBuilder::new(vec!["n"]);
-        properties.add(&[LabelValue::new(0)]);
-        properties.add(&[LabelValue::new(3)]);
-        properties.add(&[LabelValue::new(4)]);
-        properties.add(&[LabelValue::new(1)]);
+        let properties = Labels::new(["n"], &[
+            [0],
+            [3],
+            [4],
+            [1],
+        ]);
 
-        let mut samples = LabelsBuilder::new(vec!["structure", "center"]);
-        samples.add(&[LabelValue::new(0), LabelValue::new(1)]);
-        samples.add(&[LabelValue::new(0), LabelValue::new(0)]);
-        samples.add(&[LabelValue::new(1), LabelValue::new(0)]);
+        let samples = Labels::new(["structure", "center"], &[
+            [0, 1],
+            [0, 0],
+            [1, 0],
+        ]);
 
         crate::calculators::tests_utils::compute_partial(
-            calculator,
-            &mut systems,
-            &samples.finish(),
-            &properties.finish(),
+            calculator, &mut systems, &samples, &properties,
         );
     }
 }

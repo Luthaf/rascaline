@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use equistore::{Labels, LabelsBuilder, LabelValue, TensorMap};
+use equistore::{Labels, LabelsBuilder, TensorMap};
 
 use super::CalculatorBase;
 
@@ -105,7 +105,7 @@ impl CalculatorBase for SortedDistances {
     fn properties(&self, keys: &Labels) -> Vec<Arc<Labels>> {
         let mut properties = LabelsBuilder::new(self.properties_names());
         for i in 0..self.max_neighbors {
-            properties.add(&[LabelValue::from(i)]);
+            properties.add(&[i]);
         }
         let properties = Arc::new(properties.finish());
 
@@ -173,7 +173,7 @@ impl CalculatorBase for SortedDistances {
 #[cfg(test)]
 mod tests {
     use ndarray::{s, aview1};
-    use equistore::{LabelsBuilder, LabelValue};
+    use equistore::Labels;
 
     use crate::systems::test_utils::test_systems;
     use crate::Calculator;
@@ -203,11 +203,11 @@ mod tests {
 
         let mut systems = test_systems(&["water"]);
         let mut descriptor = calculator.compute(&mut systems, Default::default()).unwrap();
-        let keys_to_move = LabelsBuilder::new(vec!["species_center"]).finish();
+        let keys_to_move = Labels::empty(vec!["species_center"]);
         descriptor.keys_to_samples(&keys_to_move, true).unwrap();
 
         assert_eq!(descriptor.blocks().len(), 1);
-        let values = descriptor.blocks()[0].values().data.as_array();
+        let values = descriptor.block_by_id(0).values().data.as_array();
         assert_eq!(values.shape(), [3, 3]);
 
         assert_eq!(values.slice(s![0, ..]), aview1(&[0.957897074324794, 0.957897074324794, 1.5]));
@@ -225,15 +225,11 @@ mod tests {
 
         let mut systems = test_systems(&["water"]);
 
-        let mut samples = LabelsBuilder::new(vec!["structure", "center"]);
-        samples.add(&[LabelValue::new(0), LabelValue::new(1)]);
-
-        let mut properties = LabelsBuilder::new(vec!["neighbor"]);
-        properties.add(&[LabelValue::new(2)]);
-        properties.add(&[LabelValue::new(0)]);
+        let samples = Labels::new(["structure", "center"], &[[0, 1]]);
+        let properties = Labels::new(["neighbor"], &[[2], [0]]);
 
         crate::calculators::tests_utils::compute_partial(
-            calculator, &mut systems, &samples.finish(), &properties.finish()
+            calculator, &mut systems, &samples, &properties
         );
     }
 }

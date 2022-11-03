@@ -180,8 +180,8 @@ impl SoapPowerSpectrum {
         for key in missing_keys {
             keys_builder.add(&key);
 
-            let samples = Arc::new(LabelsBuilder::new(vec!["structure", "center"]).finish());
-            let properties = Arc::new(LabelsBuilder::new(vec!["n"]).finish());
+            let samples = Arc::new(Labels::empty(vec!["structure", "center"]));
+            let properties = Arc::new(Labels::empty(vec!["n"]));
             blocks.push(TensorBlock::new(
                 EmptyArray::new(vec![samples.count(), properties.count()]),
                 samples,
@@ -443,10 +443,10 @@ impl CalculatorBase for SoapPowerSpectrum {
     #[allow(clippy::too_many_lines)]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
         let mut gradients = Vec::new();
-        if descriptor.blocks()[0].gradient("positions").is_some() {
+        if descriptor.block_by_id(0).gradient("positions").is_some() {
             gradients.push("positions");
         }
-        if descriptor.blocks()[0].gradient("cell").is_some() {
+        if descriptor.block_by_id(0).gradient("cell").is_some() {
             gradients.push("cell");
         }
 
@@ -753,22 +753,24 @@ mod tests {
 
         let mut systems = test_systems(&["water", "methane"]);
 
-        let mut properties = LabelsBuilder::new(vec!["l", "n1", "n2"]);
-        properties.add(&[LabelValue::new(0), LabelValue::new(0), LabelValue::new(1)]);
-        properties.add(&[LabelValue::new(3), LabelValue::new(3), LabelValue::new(3)]);
-        properties.add(&[LabelValue::new(2), LabelValue::new(4), LabelValue::new(3)]);
-        properties.add(&[LabelValue::new(1), LabelValue::new(4), LabelValue::new(4)]);
-        properties.add(&[LabelValue::new(5), LabelValue::new(1), LabelValue::new(0)]);
-        properties.add(&[LabelValue::new(1), LabelValue::new(1), LabelValue::new(2)]);
+        let properties = Labels::new(["l", "n1", "n2"], &[
+            [0, 0, 1],
+            [3, 3, 3],
+            [2, 4, 3],
+            [1, 4, 4],
+            [5, 1, 0],
+            [1, 1, 2],
+        ]);
 
-        let mut samples = LabelsBuilder::new(vec!["structure", "center"]);
-        samples.add(&[LabelValue::new(0), LabelValue::new(1)]);
-        samples.add(&[LabelValue::new(0), LabelValue::new(2)]);
-        samples.add(&[LabelValue::new(1), LabelValue::new(0)]);
-        samples.add(&[LabelValue::new(1), LabelValue::new(2)]);
+        let samples = Labels::new(["structure", "center"], &[
+            [0, 1],
+            [0, 2],
+            [1, 0],
+            [1, 2],
+        ]);
 
         crate::calculators::tests_utils::compute_partial(
-            calculator, &mut systems, &samples.finish(), &properties.finish()
+            calculator, &mut systems, &samples, &properties
         );
     }
 

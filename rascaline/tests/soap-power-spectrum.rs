@@ -1,7 +1,7 @@
 use approx::assert_relative_eq;
 use ndarray::{ArrayD, Axis, s};
 
-use equistore::{LabelsBuilder, BasicBlock};
+use equistore::{Labels, BasicBlock};
 
 use rascaline::{Calculator, CalculationOptions};
 
@@ -14,13 +14,13 @@ fn values() {
     let mut calculator = Calculator::new("soap_power_spectrum", parameters).unwrap();
     let mut descriptor = calculator.compute(&mut systems, Default::default()).expect("failed to run calculation");
 
-    let keys_to_move = LabelsBuilder::new(vec!["species_center"]).finish();
+    let keys_to_move = Labels::empty(vec!["species_center"]);
     descriptor.keys_to_samples(&keys_to_move, true).unwrap();
-    let keys_to_move = LabelsBuilder::new(vec!["species_neighbor_1", "species_neighbor_2"]).finish();
+    let keys_to_move = Labels::empty(vec!["species_neighbor_1", "species_neighbor_2"]);
     descriptor.keys_to_properties(&keys_to_move, true).unwrap();
 
     assert_eq!(descriptor.blocks().len(), 1);
-    let block = &descriptor.blocks()[0];
+    let block = &descriptor.block_by_id(0);
     let values = block.values();
     let array = values.data.as_array();
 
@@ -40,13 +40,13 @@ fn gradients() {
     };
     let mut descriptor = calculator.compute(&mut systems, options).expect("failed to run calculation");
 
-    let keys_to_move = LabelsBuilder::new(vec!["species_center"]).finish();
+    let keys_to_move = Labels::empty(vec!["species_center"]);
     descriptor.keys_to_samples(&keys_to_move, true).unwrap();
-    let keys_to_move = LabelsBuilder::new(vec!["species_neighbor_1", "species_neighbor_2"]).finish();
+    let keys_to_move = Labels::empty(vec!["species_neighbor_1", "species_neighbor_2"]);
     descriptor.keys_to_properties(&keys_to_move, true).unwrap();
 
     assert_eq!(descriptor.blocks().len(), 1);
-    let block = &descriptor.blocks()[0];
+    let block = &descriptor.block_by_id(0);
     let gradients = block.gradient("positions").unwrap();
     let array = sum_gradients(n_atoms, gradients);
 

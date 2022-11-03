@@ -1,7 +1,7 @@
 
 use std::sync::Arc;
 
-use equistore::{Labels, TensorMap, LabelsBuilder, LabelValue};
+use equistore::{Labels, TensorMap, LabelsBuilder};
 
 use crate::{System, Error};
 use crate::labels::{CenterSingleNeighborsSpeciesKeys, KeysBuilder};
@@ -74,7 +74,7 @@ impl CalculatorBase for GeometricMoments {
                 let n_neighbors_second = system.pairs_containing(pair.second)?.len() as f64;
 
                 if let Some(sample_i) = first_sample_position {
-                    let mut block = descriptor.block_mut(first_block_id);
+                    let mut block = descriptor.block_mut_by_id(first_block_id);
                     let values = block.values_mut();
                     let array = values.data.as_array_mut();
 
@@ -85,7 +85,7 @@ impl CalculatorBase for GeometricMoments {
                 }
 
                 if let Some(sample_i) = second_sample_position {
-                    let mut block = descriptor.block_mut(second_block_id);
+                    let mut block = descriptor.block_mut_by_id(second_block_id);
                     let values = block.values_mut();
                     let array = values.data.as_array_mut();
 
