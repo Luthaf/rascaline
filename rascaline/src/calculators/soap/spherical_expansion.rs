@@ -273,7 +273,7 @@ impl SphericalExpansion {
     ///
     /// By symmetry, the center atom only contributes to the l=0 coefficients.
     /// It also does not have contributions to the gradients
-    fn do_self_contributions(&mut self, descriptor: &mut TensorMap) {
+    fn do_self_contributions(&mut self, systems: &[Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
         debug_assert_eq!(descriptor.keys().names(), ["spherical_harmonics_l", "species_center", "species_neighbor"]);
         // we could cache the self contribution since they only depend on the
         // gaussian atomic width. For now, we recompute them all the time
@@ -307,18 +307,39 @@ impl SphericalExpansion {
             spherical_harmonics.compute(Vector3D::new(0.0, 0.0, 1.0), false);
             let f_scaling = self.scaling_functions(0.0);
 
-            // Add the center contribution to relevant elements of array. The
-            // global factor of 4PI is used for the pair contributions as well.
-            // See the relevant comments there for more details.
-            for (property_i, &[n]) in values.properties.iter_fixed_size().enumerate() {
-                let mut column = array.slice_mut(s![.., 0, property_i]);
-                column += self.parameters.center_atom_weight
-                    * FOUR_PI
-                    * f_scaling
-                    * radial_integral.values[[0, n.usize()]]
-                    * spherical_harmonics.values[[0, 0]];
+            // The global factor of 4PI is used for the pair contributions as
+            // well. See the relevant comments there for more details.
+            let factor = self.parameters.center_atom_weight
+                * FOUR_PI
+                * f_scaling
+                * spherical_harmonics.values[[0, 0]];
+
+            // Add the center contribution to relevant elements of array.
+            for (sample_i, &[structure, center]) in values.samples.iter_fixed_size().enumerate() {
+                // it is possible that the samples from values.samples are not
+                // part of the systems (the user requested extra samples). In
+                // that case, we need to skip anything that does not exist, or
+                // with a different species center
+                if structure.usize() >= systems.len() {
+                    continue;
+                }
+
+                let system = &systems[structure.usize()];
+                if center.usize() > system.size()? {
+                    continue;
+                }
+
+                if system.species()?[center.usize()] != species_center {
+                    continue;
+                }
+
+                for (property_i, &[n]) in values.properties.iter_fixed_size().enumerate() {
+                    array[[sample_i, 0, property_i]] += factor * radial_integral.values[[0, n.usize()]];
+                }
             }
         }
+
+        return Ok(());
     }
 
     /// Compute the contribution of a single pair and store the corresponding
@@ -748,7 +769,7 @@ impl CalculatorBase for SphericalExpansion {
             positions: descriptor.block_by_id(0).gradient("positions").is_some(),
             cell: descriptor.block_by_id(0).gradient("cell").is_some(),
         };
-        self.do_self_contributions(descriptor);
+        self.do_self_contributions(systems, descriptor)?;
         let mut descriptors_by_system = split_by_system(descriptor, systems.len());
 
         systems.par_iter_mut()
@@ -1072,10 +1093,12 @@ fn split_by_system(descriptor: &mut TensorMap, n_systems: usize) -> Vec<TensorMa
 
 #[cfg(test)]
 mod tests {
-    use equistore::Labels;
+    use std::sync::Arc;
+    use ndarray::ArrayD;
+    use equistore::{Labels, TensorBlock, EmptyArray, LabelsBuilder, TensorMap};
 
     use crate::systems::test_utils::{test_systems, test_system};
-    use crate::Calculator;
+    use crate::{Calculator, CalculationOptions, LabelsSelection};
     use crate::calculators::CalculatorBase;
 
     use super::{SphericalExpansion, SphericalExpansionParameters};
@@ -1088,7 +1111,7 @@ mod tests {
             max_radial: 6,
             max_angular: 6,
             atomic_gaussian_width: 0.3,
-            center_atom_weight: 1.,
+            center_atom_weight: 1.0,
             radial_basis: RadialBasis::Gto { splined_radial_integral: true, spline_accuracy: 1e-8 },
             radial_scaling: RadialScaling::Willatt2018 { scale: 1.5, rate: 0.8, exponent: 2},
             cutoff_function: CutoffFunction::ShiftedCosine { width: 0.5 },
@@ -1177,5 +1200,66 @@ mod tests {
         crate::calculators::tests_utils::compute_partial(
             calculator, &mut systems, &samples, &properties
         );
+    }
+
+    #[test]
+    fn non_existing_samples() {
+        let mut calculator = Calculator::from(Box::new(SphericalExpansion::new(
+            parameters()
+        ).unwrap()) as Box<dyn CalculatorBase>);
+
+        let mut systems = test_systems(&["water"]);
+
+        // include the three atoms in all blocks, regardless of the
+        // species_center key.
+        let block = TensorBlock::new(
+            EmptyArray::new(vec![3, 1]),
+            Arc::new(Labels::new(["structure", "center"], &[[0, 0], [0, 1], [0, 2]])),
+            vec![],
+            Arc::new(Labels::single()),
+        ).unwrap();
+
+        let mut keys = LabelsBuilder::new(vec!["spherical_harmonics_l", "species_center", "species_neighbor"]);
+        let mut blocks = Vec::new();
+        for l in 0..(parameters().max_angular + 1) as isize {
+            for species_center in [1, -42] {
+                for species_neighbor in [1, -42] {
+                    keys.add(&[l, species_center, species_neighbor]);
+                    blocks.push(block.clone());
+                }
+            }
+        }
+        let select_all_samples = TensorMap::new(keys.finish(), blocks).unwrap();
+
+        let options = CalculationOptions {
+            selected_samples: LabelsSelection::Predefined(&select_all_samples),
+            ..Default::default()
+        };
+        let descriptor = calculator.compute(&mut systems, options).unwrap();
+
+        // get the block for oxygen
+        assert_eq!(descriptor.keys().names(), ["spherical_harmonics_l", "species_center", "species_neighbor"]);
+        assert_eq!(descriptor.keys()[0], [0, -42, -42]);
+
+        let block = descriptor.block_by_id(0);
+        let values = block.values();
+
+        // entries centered on H atoms should be zero
+        assert_eq!(*values.samples, Labels::new(["structure", "center"], &[[0, 0], [0, 1], [0, 2]]));
+        let array = values.data.as_array();
+        assert_eq!(array.index_axis(ndarray::Axis(0), 1), ArrayD::from_elem(vec![1, 6], 0.0));
+        assert_eq!(array.index_axis(ndarray::Axis(0), 2), ArrayD::from_elem(vec![1, 6], 0.0));
+
+        // get the block for hydrogen
+        assert_eq!(descriptor.keys().names(), ["spherical_harmonics_l", "species_center", "species_neighbor"]);
+        assert_eq!(descriptor.keys()[21], [0, 1, 1]);
+
+        let block = descriptor.block_by_id(21);
+        let values = block.values();
+
+        // entries centered on O atoms should be zero
+        assert_eq!(*values.samples, Labels::new(["structure", "center"], &[[0, 0], [0, 1], [0, 2]]));
+        let array = values.data.as_array();
+        assert_eq!(array.index_axis(ndarray::Axis(0), 0), ArrayD::from_elem(vec![1, 6], 0.0));
     }
 }
