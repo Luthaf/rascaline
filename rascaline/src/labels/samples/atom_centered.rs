@@ -151,8 +151,6 @@ impl SamplesBuilder for AtomCenteredSamples {
 
 #[cfg(test)]
 mod tests {
-    use equistore::LabelValue;
-
     use super::*;
     use crate::systems::test_utils::test_systems;
 
@@ -276,11 +274,11 @@ mod tests {
 
     #[test]
     fn partial_gradients() {
-        let mut samples = LabelsBuilder::new(vec!["structure", "center"]);
-        samples.add(&[LabelValue::new(1), LabelValue::new(0)]);
-        samples.add(&[LabelValue::new(0), LabelValue::new(0)]);
-        samples.add(&[LabelValue::new(1), LabelValue::new(1)]);
-        let samples = samples.finish();
+        let samples = Labels::new(["structure", "center"], &[
+            [1, 0],
+            [0, 0],
+            [1, 1],
+        ]);
 
         let mut systems = test_systems(&["CH", "water"]);
         let builder = AtomCenteredSamples {

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use equistore::{Labels, TensorMap, LabelsBuilder, LabelValue};
+use equistore::{Labels, TensorMap, LabelsBuilder};
 
 use crate::{System, Error};
 use crate::labels::{CenterSingleNeighborsSpeciesKeys, KeysBuilder};
@@ -68,7 +68,7 @@ impl CalculatorBase for GeometricMoments {
         // ...
 
         // add this line
-        let do_positions_gradients = descriptor.blocks()[0].gradient("positions").is_some();
+        let do_positions_gradients = descriptor.block_by_id(0).gradient("positions").is_some();
 
         for (system_i, system) in systems.iter_mut().enumerate() {
             // ...
@@ -86,7 +86,7 @@ impl CalculatorBase for GeometricMoments {
                     }
 
                     if let Some(sample_position) = first_sample_position {
-                        let mut block = descriptor.block_mut(first_block_id);
+                        let mut block = descriptor.block_mut_by_id(first_block_id);
                         let gradient = block.gradient_mut("positions").expect("missing gradient storage");
                         let array = gradient.data.as_array_mut();
 
@@ -118,7 +118,7 @@ impl CalculatorBase for GeometricMoments {
                     }
 
                     if let Some(sample_position) = second_sample_position {
-                        let mut block = descriptor.block_mut(second_block_id);
+                        let mut block = descriptor.block_mut_by_id(second_block_id);
                         let gradient = block.gradient_mut("positions").expect("missing gradient storage");
                         let array = gradient.data.as_array_mut();
 

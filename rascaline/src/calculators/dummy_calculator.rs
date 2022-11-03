@@ -3,7 +3,7 @@ use std::sync::Arc;
 use log::{info, warn};
 
 use equistore::TensorMap;
-use equistore::{Labels, LabelsBuilder, LabelValue};
+use equistore::{Labels, LabelsBuilder};
 
 use super::CalculatorBase;
 use crate::labels::{SpeciesFilter, SamplesBuilder};
@@ -100,8 +100,8 @@ impl CalculatorBase for DummyCalculator {
 
     fn properties(&self, keys: &Labels) -> Vec<Arc<Labels>> {
         let mut properties = LabelsBuilder::new(self.properties_names());
-        properties.add(&[LabelValue::new(1), LabelValue::new(0)]);
-        properties.add(&[LabelValue::new(0), LabelValue::new(1)]);
+        properties.add(&[1, 0]);
+        properties.add(&[0, 1]);
         let properties = Arc::new(properties.finish());
 
         return vec![properties; keys.count()];
@@ -178,7 +178,7 @@ impl CalculatorBase for DummyCalculator {
 #[cfg(test)]
 mod tests {
     use ndarray::{s, aview1};
-    use equistore::{LabelValue, LabelsBuilder};
+    use equistore::Labels;
 
     use crate::systems::test_utils::test_systems;
     use crate::Calculator;
@@ -222,12 +222,12 @@ mod tests {
         assert_eq!(keys[0], [-42]);
         assert_eq!(keys[1], [1]);
 
-        let o_block = &descriptor.blocks()[0];
+        let o_block = &descriptor.block_by_id(0);
         let values = o_block.values().data.as_array();
         assert_eq!(values.shape(), [1, 2]);
         assert_eq!(values.slice(s![0, ..]), aview1(&[9.0, -1.1778999999999997]));
 
-        let h_block = &descriptor.blocks()[1];
+        let h_block = &descriptor.block_by_id(1);
         let values = h_block.values().data.as_array();
         assert_eq!(values.shape(), [2, 2]);
         assert_eq!(values.slice(s![0, ..]), aview1(&[10.0, 0.16649999999999998]));
@@ -243,14 +243,11 @@ mod tests {
         }) as Box<dyn CalculatorBase>);
         let mut systems = test_systems(&["water"]);
 
-        let mut samples = LabelsBuilder::new(vec!["structure", "center"]);
-        samples.add(&[LabelValue::new(0), LabelValue::new(1)]);
-
-        let mut properties = LabelsBuilder::new(vec!["index_delta", "x_y_z"]);
-        properties.add(&[LabelValue::new(0), LabelValue::new(1)]);
+        let samples = Labels::new(["structure", "center"], &[[0, 1]]);
+        let properties = Labels::new(["index_delta", "x_y_z"], &[[0, 1]]);
 
         crate::calculators::tests_utils::compute_partial(
-            calculator, &mut systems, &samples.finish(), &properties.finish()
+            calculator, &mut systems, &samples, &properties
         );
     }
 }

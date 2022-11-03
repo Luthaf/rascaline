@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use equistore::{Labels, TensorMap, LabelsBuilder, LabelValue};
+use equistore::{Labels, TensorMap, LabelsBuilder};
 
 use crate::{System, Error};
 use crate::labels::{CenterSingleNeighborsSpeciesKeys, KeysBuilder};
@@ -101,7 +101,7 @@ impl CalculatorBase for GeometricMoments {
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
         assert_eq!(descriptor.keys().names(), ["species_center", "species_neighbor"]);
 
-        let do_positions_gradients = descriptor.blocks()[0].gradient("positions").is_some();
+        let do_positions_gradients = descriptor.block_by_id(0).gradient("positions").is_some();
 
         for (system_i, system) in systems.iter_mut().enumerate() {
             system.compute_neighbors(self.cutoff)?;
@@ -134,7 +134,7 @@ impl CalculatorBase for GeometricMoments {
                 let n_neighbors_second = system.pairs_containing(pair.second)?.len() as f64;
 
                 if let Some(sample_i) = first_sample_position {
-                    let mut block = descriptor.block_mut(first_block_id);
+                    let mut block = descriptor.block_mut_by_id(first_block_id);
                     let values = block.values_mut();
                     let array = values.data.as_array_mut();
 
@@ -145,7 +145,7 @@ impl CalculatorBase for GeometricMoments {
                 }
 
                 if let Some(sample_i) = second_sample_position {
-                    let mut block = descriptor.block_mut(second_block_id);
+                    let mut block = descriptor.block_mut_by_id(second_block_id);
                     let values = block.values_mut();
                     let array = values.data.as_array_mut();
 
@@ -166,7 +166,7 @@ impl CalculatorBase for GeometricMoments {
                     }
 
                     if let Some(sample_position) = first_sample_position {
-                        let mut block = descriptor.block_mut(first_block_id);
+                        let mut block = descriptor.block_mut_by_id(first_block_id);
                         let gradient = block.gradient_mut("positions").expect("missing gradient storage");
                         let array = gradient.data.as_array_mut();
 
@@ -195,7 +195,7 @@ impl CalculatorBase for GeometricMoments {
                     }
 
                     if let Some(sample_position) = second_sample_position {
-                        let mut block = descriptor.block_mut(second_block_id);
+                        let mut block = descriptor.block_mut_by_id(second_block_id);
                         let gradient = block.gradient_mut("positions").expect("missing gradient storage");
                         let array = gradient.data.as_array_mut();
 
@@ -273,7 +273,7 @@ mod tests {
 
         /**********************************************************************/
         // O center, H neighbor
-        let block = &descriptor.blocks()[0];
+        let block = &descriptor.block_by_id(0);
         let samples = &block.values().samples;
         assert_eq!(samples.names(), ["structure", "center"]);
         assert_eq!(samples.iter().collect::<Vec<_>>(), [
@@ -286,7 +286,7 @@ mod tests {
 
         /**********************************************************************/
         // H center, O neighbor
-        let block = &descriptor.blocks()[1];
+        let block = &descriptor.block_by_id(1);
         let samples = &block.values().samples;
         assert_eq!(samples.names(), ["structure", "center"]);
         assert_eq!(samples.iter().collect::<Vec<_>>(), [
@@ -299,7 +299,7 @@ mod tests {
 
         /**********************************************************************/
         // H center, H neighbor
-        let block = &descriptor.blocks()[2];
+        let block = &descriptor.block_by_id(2);
         let samples = &block.values().samples;
         assert_eq!(samples.names(), ["structure", "center"]);
         assert_eq!(samples.iter().collect::<Vec<_>>(), [
@@ -312,7 +312,7 @@ mod tests {
 
         /**********************************************************************/
         // H center, C neighbor
-        let block = &descriptor.blocks()[3];
+        let block = &descriptor.block_by_id(3);
         let samples = &block.values().samples;
         assert_eq!(samples.names(), ["structure", "center"]);
         assert_eq!(samples.iter().collect::<Vec<_>>(), [
@@ -325,7 +325,7 @@ mod tests {
 
         /**********************************************************************/
         // C center, H neighbor
-        let block = &descriptor.blocks()[4];
+        let block = &descriptor.block_by_id(4);
         let samples = &block.values().samples;
         assert_eq!(samples.names(), ["structure", "center"]);
         assert_eq!(samples.iter().collect::<Vec<_>>(), [

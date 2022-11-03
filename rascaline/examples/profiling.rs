@@ -1,4 +1,4 @@
-use equistore::{TensorMap, LabelsBuilder};
+use equistore::{TensorMap, Labels};
 use rascaline::{Calculator, System, CalculationOptions};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -57,10 +57,10 @@ fn compute_soap(path: &str) -> Result<TensorMap, Box<dyn std::error::Error>> {
         calculator.compute(&mut systems, options)?
     });
 
-    let keys_to_move = LabelsBuilder::new(vec!["species_center"]).finish();
+    let keys_to_move = Labels::empty(vec!["species_center"]);
     descriptor.keys_to_samples(&keys_to_move, /* sort_samples */ true)?;
 
-    let keys_to_move = LabelsBuilder::new(vec!["species_neighbor_1", "species_neighbor_2"]).finish();
+    let keys_to_move = Labels::empty(vec!["species_neighbor_1", "species_neighbor_2"]);
     descriptor.keys_to_properties(&keys_to_move, /* sort_samples */ true)?;
 
     Ok(descriptor)

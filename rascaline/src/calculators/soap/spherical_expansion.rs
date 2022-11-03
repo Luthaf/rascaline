@@ -448,7 +448,7 @@ impl SphericalExpansion {
 
             if let Some(block_id) = first_block_id {
                 SphericalExpansion::accumulate_in_block(
-                    descriptor.block_mut(block_id),
+                    descriptor.block_mut_by_id(block_id),
                     spherical_harmonics_l,
                     (pair.first_sample, pair.second_sample),
                     inverse_cell_pair_vector,
@@ -467,7 +467,7 @@ impl SphericalExpansion {
                 }
 
                 SphericalExpansion::accumulate_in_block(
-                    descriptor.block_mut(block_id),
+                    descriptor.block_mut_by_id(block_id),
                     spherical_harmonics_l,
                     (pair.second_sample, pair.first_sample),
                     -inverse_cell_pair_vector,
@@ -745,8 +745,8 @@ impl CalculatorBase for SphericalExpansion {
         assert_eq!(descriptor.keys().names(), ["spherical_harmonics_l", "species_center", "species_neighbor"]);
 
         let do_gradients = GradientsOptions {
-            positions: descriptor.blocks()[0].gradient("positions").is_some(),
-            cell: descriptor.blocks()[0].gradient("cell").is_some(),
+            positions: descriptor.block_by_id(0).gradient("positions").is_some(),
+            cell: descriptor.block_by_id(0).gradient("cell").is_some(),
         };
         self.do_self_contributions(descriptor);
         let mut descriptors_by_system = split_by_system(descriptor, systems.len());
@@ -1072,7 +1072,7 @@ fn split_by_system(descriptor: &mut TensorMap, n_systems: usize) -> Vec<TensorMa
 
 #[cfg(test)]
 mod tests {
-    use equistore::{LabelsBuilder, LabelValue};
+    use equistore::Labels;
 
     use crate::systems::test_utils::{test_systems, test_system};
     use crate::Calculator;
@@ -1161,19 +1161,21 @@ mod tests {
 
         let mut systems = test_systems(&["water", "methane"]);
 
-        let mut properties = LabelsBuilder::new(vec!["n"]);
-        properties.add(&[LabelValue::new(0)]);
-        properties.add(&[LabelValue::new(3)]);
-        properties.add(&[LabelValue::new(2)]);
+        let properties = Labels::new(["n"], &[
+            [0],
+            [3],
+            [2],
+        ]);
 
-        let mut samples = LabelsBuilder::new(vec!["structure", "center"]);
-        samples.add(&[LabelValue::new(0), LabelValue::new(1)]);
-        samples.add(&[LabelValue::new(0), LabelValue::new(2)]);
-        samples.add(&[LabelValue::new(1), LabelValue::new(0)]);
-        samples.add(&[LabelValue::new(1), LabelValue::new(2)]);
+        let samples = Labels::new(["structure", "center"], &[
+            [0, 1],
+            [0, 2],
+            [1, 0],
+            [1, 2],
+        ]);
 
         crate::calculators::tests_utils::compute_partial(
-            calculator, &mut systems, &samples.finish(), &properties.finish()
+            calculator, &mut systems, &samples, &properties
         );
     }
 }
