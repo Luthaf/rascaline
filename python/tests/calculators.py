@@ -261,8 +261,7 @@ class TestComputePartialSamples(unittest.TestCase):
 
         self.assertEqual(
             str(cm.exception),
-            "internal error: all labels names must be valid identifiers, "
-            "'bad name' is not",
+            "invalid parameter: 'bad name' is not a valid label name",
         )
 
         samples = Labels(
@@ -400,8 +399,7 @@ class TestComputePartialProperties(unittest.TestCase):
 
         self.assertEqual(
             str(cm.exception),
-            "internal error: all labels names must be valid identifiers, "
-            "'bad name' is not",
+            "invalid parameter: 'bad name' is not a valid label name",
         )
 
         selected_properties = Labels(
