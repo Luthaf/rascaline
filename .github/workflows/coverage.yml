@@ -1,0 +1,53 @@
+name: Coverage
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    # Check all PR
+
+jobs:
+  coverage:
+    runs-on: ubuntu-22.04
+    name: collect code coverage
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: setup rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          default: true
+
+      - name: install cargo tarpaulin
+        uses: taiki-e/install-action@v1
+        with:
+          tool: cargo-tarpaulin
+
+      - name: install python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install tox
+
+      - name: cache tox environments
+        uses: actions/cache@v3
+        with:
+          path: .tox
+          key: tox-${{ matrix.os }}-${{ hashFiles('pyproject.toml', 'setup.cfg', 'tox.ini') }}
+
+      - name: collect rust coverage
+        env:
+          RASCALINE_TEST_WITH_STATIC_LIB: "1"
+        run: cargo tarpaulin --all-features --workspace --engine=llvm --out=xml --output-dir=target/tarpaulin
+
+      - name: upload coverage to codecov.io
+        uses: codecov/codecov-action@v3
+        with:
+          fail_ci_if_error: true
+          files: target/tarpaulin/cobertura.xml

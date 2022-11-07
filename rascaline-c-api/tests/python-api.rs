@@ -5,6 +5,11 @@ mod utils;
 
 #[test]
 fn check_python() {
+    if cfg!(tarpaulin) {
+        // do not run this test when collecting Rust coverage
+        return;
+    }
+
     let tox = which::which("tox").expect("could not find tox");
 
     let mut root = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
