@@ -46,8 +46,11 @@ jobs:
           RASCALINE_TEST_WITH_STATIC_LIB: "1"
         run: cargo tarpaulin --all-features --workspace --engine=llvm --out=xml --output-dir=target/tarpaulin
 
-      - name: upload coverage to codecov.io
+      - name: collect Python coverage
+        run: tox
+
+      - name: upload to codecov.io
         uses: codecov/codecov-action@v3
         with:
           fail_ci_if_error: true
-          files: target/tarpaulin/cobertura.xml
+          files: target/tarpaulin/cobertura.xml,.tox/coverage.xml

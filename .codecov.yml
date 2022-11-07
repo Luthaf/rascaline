@@ -8,3 +8,8 @@ coverage:
     patch: off
 
 comment: off
+
+fixes:
+  # map coverage collected inside tox virtual environments
+  # to the source dir in git
+  - ".tox/all-deps/lib/*/site-packages/::python/"

@@ -3,6 +3,7 @@ target/
 Cargo.lock
 
 .tox/
+.coverage
 build/
 dist/
 *.egg-info
