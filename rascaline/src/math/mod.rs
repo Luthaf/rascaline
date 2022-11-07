@@ -24,8 +24,8 @@ pub use self::spherical_harmonics::{SphericalHarmonics, SphericalHarmonicsArray}
 pub use self::spherical_harmonics::CachedAllocationsSphericalHarmonics;
 
 mod k_vectors;
-pub(crate) use self::k_vectors::KVector;
 pub(crate) use self::k_vectors::compute_k_vectors;
+pub(crate) use self::k_vectors::KVector;
 
 mod cutoff;
 pub(crate) use self::cutoff::{CutoffFunction, RadialScaling};

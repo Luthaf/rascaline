@@ -538,7 +538,7 @@ impl CalculatorBase for LodeSphericalExpansion {
                     species[center_i].into(),
                 ]).expect("missing block");
 
-                let mut block = descriptor.block_mut(block_i);
+                let mut block = descriptor.block_mut_by_id(block_i);
                 let values = block.values_mut();
                 let array = values.data.as_array_mut();
 
