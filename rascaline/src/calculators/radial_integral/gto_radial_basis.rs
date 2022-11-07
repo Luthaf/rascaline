@@ -44,14 +44,20 @@ impl GtoRadialBasis {
         }).collect();
     }
 
-    /// Get the matrix to orthonormalize the GTO basis
-    pub fn orthonormalization_matrix(max_radial: usize, cutoff: f64) -> Array2<f64> {
-        let widths = GtoRadialBasis::gaussian_widths(max_radial, cutoff);
-
-        let normalization = widths.iter()
+    /// Get the normalization of the GTO basis
+    fn normalization(max_radial: usize, gto_gaussian_widths: &[f64]) -> Array1<f64> {
+        return gto_gaussian_widths.iter()
             .zip(0..max_radial)
             .map(|(sigma, n)| f64::sqrt(2.0 / (sigma.powi(2 * n as i32 + 3) * gamma(n as f64 + 1.5))))
-            .collect::<Array1<_>>();
+            .collect();
+    }
+
+    /// Get the matrix to orthonormalize the GTO basis
+    /// The returned orthornomalzation matrix is already multiplied by the 
+    /// normalization and transposed version due to performance reasons.
+    pub fn orthonormalization_matrix(max_radial: usize, cutoff: f64) -> Array2<f64> {
+        let widths = GtoRadialBasis::gaussian_widths(max_radial, cutoff);
+        let normalization = GtoRadialBasis::normalization(max_radial, &widths);
 
         let overlap = gto_overlap_matrix(max_radial, &widths);
         // compute overlap^-1/2 through its eigendecomposition

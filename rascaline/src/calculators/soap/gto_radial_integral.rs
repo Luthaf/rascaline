@@ -53,17 +53,15 @@ impl GtoParameters {
 pub struct SoapGtoRadialIntegral {
     parameters: GtoParameters,
     /// σ^2, with σ the atomic density gaussian width
-    pub atomic_gaussian_width_2: f64,
+    atomic_gaussian_width_2: f64,
     /// 1/2σ^2, with σ the atomic density gaussian width
-    pub atomic_gaussian_constant: f64,
-    /// σ_n GTO gaussian width, i.e. `cutoff * max(√n, 1) / n_max`
-    pub gto_gaussian_widths: Vec<f64>,
-    /// 1/2σ_n^2, with σ_n the GTO gaussian
-    pub gto_gaussian_constants: Vec<f64>,
+    atomic_gaussian_constant: f64,
+    /// 1/2σ_n^2, with σ_n the GTO gaussian width, i.e. `cutoff * max(√n, 1) / n_max`
+    gto_gaussian_constants: Vec<f64>,
     /// `n_max * n_max` matrix to orthonormalize the GTO
-    pub gto_orthonormalization: Array2<f64>,
+    gto_orthonormalization: Array2<f64>,
     /// Implementation of `Gamma(a) / Gamma(b) 1F1(a, b, z)`
-    pub double_regularized_1f1: DoubleRegularized1F1,
+    double_regularized_1f1: DoubleRegularized1F1,
 }
 
 impl SoapGtoRadialIntegral {
@@ -73,11 +71,10 @@ impl SoapGtoRadialIntegral {
         let atomic_gaussian_width_2 = parameters.atomic_gaussian_width * parameters.atomic_gaussian_width;
         let atomic_gaussian_constant = 1.0 / (2.0 * atomic_gaussian_width_2);
 
-        let gto_gaussian_widths = GtoRadialBasis::gaussian_widths(parameters.max_radial, parameters.cutoff);
-        let gto_gaussian_constants = gto_gaussian_widths.into_iter()
+        let gto_gaussian_width = GtoRadialBasis::gaussian_widths(parameters.max_radial, parameters.cutoff);
+        let gto_gaussian_constants = gto_gaussian_width.into_iter()
             .map(|sigma| 1.0 / (2.0 * sigma * sigma))
             .collect::<Vec<_>>();
-        let gto_gaussian_widths = GtoRadialBasis::gaussian_widths(parameters.max_radial, parameters.cutoff);
 
         let gto_orthonormalization = GtoRadialBasis::orthonormalization_matrix(
             parameters.max_radial, parameters.cutoff
@@ -90,7 +87,6 @@ impl SoapGtoRadialIntegral {
             },
             atomic_gaussian_width_2: atomic_gaussian_width_2,
             atomic_gaussian_constant: atomic_gaussian_constant,
-            gto_gaussian_widths: gto_gaussian_widths,
             gto_gaussian_constants: gto_gaussian_constants,
             gto_orthonormalization: gto_orthonormalization,
         })

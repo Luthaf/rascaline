@@ -13,8 +13,7 @@ use crate::labels::{SamplesBuilder, SpeciesFilter, LongRangePerAtom};
 use crate::labels::{KeysBuilder, CenterSingleNeighborsSpeciesKeysSystem};
 
 use crate::calculators::CalculatorBase;
-use crate::calculators::radial_integral::RadialIntegral;
-use crate::calculators::soap::{GtoParameters, SoapGtoRadialIntegral};
+use crate::calculators::radial_integral::{RadialIntegral, GtoRadialBasis};
 
 use super::LodeRadialBasis;
 
@@ -99,8 +98,6 @@ pub struct LodeSphericalExpansion {
     spherical_harmonics: CachedAllocationsSphericalHarmonics,
     /// implementation + cached allocation to compute the radial integral
     radial_integral: CachedAllocationsRadialIntegral,
-    /// implementation + cached allocation to compute the radial integral
-    rspace_radial_integral: SoapGtoRadialIntegral,
     /// Cached allocations for the k_vector => nlm projection coefficients.
     /// The vector contains different l values, and the Array is indexed by
     /// `m, n, k`.
@@ -184,13 +181,6 @@ impl LodeSphericalExpansion {
 
         let radial_integral = CachedAllocationsRadialIntegral::new(&parameters)?;
 
-        let rspace_gto_parameters = GtoParameters{
-            max_radial: parameters.max_radial,
-            max_angular: parameters.max_angular,
-            atomic_gaussian_width: parameters.atomic_gaussian_width,
-            cutoff: parameters.cutoff };
-        let rspace_radial_integral = SoapGtoRadialIntegral::new(rspace_gto_parameters)?;
-
         let spherical_harmonics = CachedAllocationsSphericalHarmonics::new(
             parameters.max_angular,
         );
@@ -204,7 +194,6 @@ impl LodeSphericalExpansion {
             parameters,
             spherical_harmonics,
             radial_integral,
-            rspace_radial_integral,
             k_vector_to_m_n,
         });
     }
@@ -318,22 +307,22 @@ impl LodeSphericalExpansion {
     /// Currently only works a hardcoded GTO basis!
     fn compute_central_atom_contribution(&self) -> Array1<f64> {
 
-        let mut central_atom_contrib = Vec::new();
-        central_atom_contrib.reserve(self.parameters.max_radial);
+        let mut contrib = Array1::from_elem(self.parameters.max_radial, 0.0);
 
         let atomic_gaussian_width = self.parameters.atomic_gaussian_width;
+        let gto_gaussian_widths = GtoRadialBasis::gaussian_widths(self.parameters.max_radial, self.parameters.cutoff);
 
         for n in 0..self.parameters.max_radial {
-            let gto_gaussian_widths = self.rspace_radial_integral.gto_gaussian_widths[n];
-
             let neff = 0.5 * (3. + n as f64);
-            let arg = -(gto_gaussian_widths / atomic_gaussian_width).powi(2);
-            let factor = 2.0_f64.powf(2. + n as f64 / 2.) * gto_gaussian_widths.powf(n as f64 + 3.) / atomic_gaussian_width;
+            let arg = -(gto_gaussian_widths[n] / atomic_gaussian_width).powi(2);
+            let factor = 2.0_f64.powf((2. + n as f64) / 2.) * gto_gaussian_widths[n].powf(n as f64 + 3.);
 
-            central_atom_contrib.push(factor * hyp2f1(0.5, neff, 1.5, arg) * gamma(neff));
+            contrib[n] = 2.0 * factor * hyp2f1(0.5, neff, 1.5, arg) * gamma(neff) / atomic_gaussian_width;
         }
 
-        return central_atom_contrib.into();
+        let gto_orthonormalization = GtoRadialBasis::orthonormalization_matrix(self.parameters.max_radial, self.parameters.cutoff);
+
+        return gto_orthonormalization.t().dot(&(contrib));
     }
 }
 
@@ -816,8 +805,8 @@ mod tests {
         // Reference values taken from pyLODE
         assert_relative_eq!(
             spherical_expansion.compute_central_atom_contribution(),
-            arr1(&[1.57596848e+00, 1.94215643e+00, 1.26107408e+01, 8.15562384e+01, 6.03896228e+02, 5.18974527e+03]),
-            max_relative=1e-8
+            arr1(&[1.69193719, 2.02389574, 2.85086136, 3.84013091, 1.62869125, 7.03338899]),
+            max_relative=1e-5
         );
     }
 }

@@ -4,8 +4,6 @@ use rascaline::calculators::{LodeSphericalExpansionParameters, CalculatorBase, L
 use rascaline::systems::{System, SimpleSystem, UnitCell};
 use rascaline::{Calculator, Matrix3, Vector3D, CalculationOptions};
 
-use equistore::LabelsBuilder;
-
 struct CrystalParameters {
     systems: Vec<Box<dyn System>>,
     charges: Vec<f64>,
@@ -80,7 +78,7 @@ fn madelung() {
                     max_radial: 1,
                     max_angular: 0,
                     atomic_gaussian_width: atomic_gaussian_width,
-                    center_atom_weight: 1.0,
+                    center_atom_weight: 0.0,
                     potential_exponent: 1,
                     radial_basis: LodeRadialBasis::splined_gto(1e-8),
                 };
@@ -91,16 +89,14 @@ fn madelung() {
 
                 let options = CalculationOptions {..Default::default()};
     
-                let mut descriptor = calculator.compute(&mut crystal.systems, options).unwrap();
-                let keys_to_move = LabelsBuilder::new(vec!["species_center", "species_neighbor"]).finish();
-                descriptor.keys_to_samples(&keys_to_move, true).unwrap();
+                let descriptor = calculator.compute(&mut crystal.systems, options).unwrap();
 
                 let madelung = (
-                        crystal.charges[0] * descriptor.blocks()[0].values().data.as_array()[[0, 0, 0]]
-                      + crystal.charges[1] * descriptor.blocks()[0].values().data.as_array()[[1, 0, 0]])
+                        crystal.charges[0] * descriptor.block_by_id(0).values().data.as_array()[[0, 0, 0]]
+                      + crystal.charges[1] * descriptor.block_by_id(1).values().data.as_array()[[0, 0, 0]])
                     / -(4.0 * std::f64::consts::PI * cutoff.powf(2.0)).powf(0.75);
 
-                assert_relative_eq!(madelung, crystal.madelung, max_relative=6e-1);
+                assert_relative_eq!(madelung, crystal.madelung, max_relative=8e-2);
             }
         }
     }
