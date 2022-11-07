@@ -1,7 +1,7 @@
 Rascaline
 =========
 
-|test| |docs|
+|test| |docs| |cov|
 
 Rascaline is a library for the efficient computing of representations for atomistic
 machine learning also called "descriptors" or "fingerprints". These representations
@@ -65,3 +65,7 @@ For details, tutorials, and examples, please have a look at our `documentation`_
 .. |docs| image:: https://img.shields.io/badge/documentation-latest-sucess
    :alt: Documentation
    :target: `documentation`_
+
+.. |cov| image:: https://codecov.io/gh/Luthaf/rascaline/branch/master/graph/badge.svg
+   :alt: Coverage Status
+   :target: https://codecov.io/gh/Luthaf/rascaline
