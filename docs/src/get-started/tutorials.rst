@@ -9,5 +9,5 @@ as well as understand the role of individual hyper parameters in calculations
 .. toctree::
     :maxdepth: 2
 
-    tutorials/first-calculation
-    tutorials/understanding-hypers
+    ../examples/first-calculation
+    ../examples/understanding-hypers

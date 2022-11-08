@@ -15,12 +15,25 @@ The workflow is the same for every provided descriptor. Take a look at the
 :ref:`userdoc-references` for a list with all descriptors and their
 specific parameters.
 
+You can obtain a testing dataset from our :download:`website <../../static/dataset.xyz>`.
+
 .. tabs::
 
     .. group-tab:: Python
 
-        .. literalinclude:: ../../../python/examples/compute-soap.py
-            :language: python
+        .. include:: ../examples/compute-soap.rst
+            :start-after: start-body
+            :end-before: end-body
+
+        .. container:: sphx-glr-footer sphx-glr-footer-example
+
+            .. container:: sphx-glr-download sphx-glr-download-python
+
+                :download:`Download Python source code: compute-soap.py <../examples/compute-soap.py>`
+
+            .. container:: sphx-glr-download sphx-glr-download-jupyter
+
+                :download:`Download Jupyter notebook: compute-soap.ipynb <../examples/compute-soap.ipynb>`
 
     .. group-tab:: Rust
 
