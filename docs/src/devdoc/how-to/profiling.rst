@@ -42,12 +42,25 @@ Some of the most important sections are:
 - ``XXX::compute``: building blocks for the overall calculation
 - ``NeighborsList``: construction of the list of neighbors
 
+You can obtain a dataset for profiling from our :download:`website <../../../static/dataset.xyz>`.
+
 .. tabs::
 
     .. group-tab:: Python
 
-        .. literalinclude:: ../../../../python/examples/profiling.py
-            :language: python
+        .. container:: sphx-glr-footer sphx-glr-footer-example
+
+            .. container:: sphx-glr-download sphx-glr-download-python
+
+                :download:`Download Python source code for this example: profiling.py <../../examples/profiling.py>`
+
+            .. container:: sphx-glr-download sphx-glr-download-jupyter
+
+                :download:`Download Jupyter notebook for this example: profiling.ipynb <../../examples/profiling.ipynb>`
+
+        .. include:: ../../examples/profiling.rst
+            :start-after: start-body
+            :end-before: end-body
 
     .. group-tab:: Rust
 

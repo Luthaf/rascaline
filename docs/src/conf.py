@@ -80,7 +80,7 @@ build_doxygen_docs()
 
 
 def setup(app):
-    app.add_css_file(os.path.join(ROOT, "docs", "static", "rascaline.css"))
+    app.add_css_file("rascaline.css")
 
 
 # -- General configuration ---------------------------------------------------
@@ -115,8 +115,8 @@ autodoc_typehints_format = "short"
 
 sphinx_gallery_conf = {
     "filename_pattern": "/*",
-    "examples_dirs": ["get-started/tutorials-src/"],
-    "gallery_dirs": ["get-started/tutorials"],
+    "examples_dirs": ["../../python/examples"],
+    "gallery_dirs": ["examples"],
     "min_reported_time": 60,
     # Make the code snippet for rascaline functions clickable
     "reference_url": {"rascaline": None},
@@ -132,7 +132,7 @@ breathe_domain_by_extension = {
 }
 
 intersphinx_mapping = {
-    "ase": ("https://wiki.fysik.dtu.dk/ase/", None),
+    # "ase": ("https://wiki.fysik.dtu.dk/ase/", None),
     "chemfiles": ("https://chemfiles.org/chemfiles.py/latest/", None),
     "equistore": ("https://lab-cosmo.github.io/equistore/latest/", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
@@ -150,7 +150,7 @@ html_theme = "furo"
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-# html_static_path = ["_static"]
+html_static_path = [os.path.join(ROOT, "docs", "static")]
 
 html_theme_options = {
     "footer_icons": [

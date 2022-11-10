@@ -20,7 +20,7 @@ carbon, nitrogen], or [hydrogen, carbon, oxygen]. Each crystal has 10 structures
 also denoted by frames, attributed to it. The first frame of each crystal structure
 is the geometry-optimized frame. The following 9 frames contain atoms that are
 slightly displaced from the geometry-optimized frame. You can obtain the dataset
-from our :download:`website <../../../static/datasets.xyz>`.
+from our :download:`website <../../static/dataset.xyz>`.
 """
 
 # %%
@@ -35,7 +35,7 @@ import numpy as np
 from rascaline import SphericalExpansion
 
 
-with chemfiles.Trajectory("datasets.xyz") as trajectory:
+with chemfiles.Trajectory("dataset.xyz") as trajectory:
     frames = [f for f in trajectory]
 
 print(f"The dataset contains {len(frames)} frames.")

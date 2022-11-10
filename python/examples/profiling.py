@@ -1,6 +1,11 @@
-import sys
+"""
+Profiling calculation
+=====================
 
-import ase.io
+.. start-body
+"""
+
+import chemfiles
 
 import rascaline
 from rascaline import SoapPowerSpectrum
@@ -11,7 +16,8 @@ def compute_soap(path):
 
     This is the same code as the 'compute-soap' example
     """
-    frames = ase.io.read(sys.argv[1], ":")
+    with chemfiles.Trajectory(path) as trajectory:
+        frames = [f for f in trajectory]
 
     HYPER_PARAMETERS = {
         "cutoff": 5.0,
@@ -35,13 +41,23 @@ def compute_soap(path):
     return descriptor
 
 
-if __name__ == "__main__":
-    # run the calculation with profiling enabled
-    with rascaline.Profiler() as profiler:
-        descriptor = compute_soap(sys.argv[1])
+# %%
+#
+# Run the calculation with profiling enabled.
 
-    # display the recorded profiling data
-    print(profiler.as_short_table())
+with rascaline.Profiler() as profiler:
+    descriptor = compute_soap("dataset.xyz")
+# %%
+#
+# Display the recorded profiling data as table.
 
-    # Or save this data as json for future usage
-    print(profiler.as_json())
+print(profiler.as_short_table())
+
+# %%
+#
+# You can also save this data as json for future usage
+print(profiler.as_json())
+
+# %%
+#
+# .. end-body

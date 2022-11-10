@@ -16,7 +16,7 @@ the :ref:`userdoc-explanations` section.
 #
 # We use the same molecular crystals dataset as in the first
 # :ref:`tutorial <userdoc-tutorials-get-started>` which can downloaded from our
-# :download:`website <../../../static/datasets.xyz>`.
+# :download:`website <../../static/dataset.xyz>`.
 
 # We first import the crucial packages, load the dataset using chemfiles and
 # save the first frame in a variable.
@@ -30,7 +30,7 @@ import numpy as np
 from rascaline import SphericalExpansion
 
 
-with chemfiles.Trajectory("datasets.xyz") as trajectory:
+with chemfiles.Trajectory("dataset.xyz") as trajectory:
     frames = [frame for frame in trajectory]
 
 frame0 = frames[0]

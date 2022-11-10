@@ -11,3 +11,4 @@ myst-parser     # markdown => rst translation, used in extensions/rascaline_json
 # dependencies for the tutorials
 chemfiles
 matplotlib
+skcosmo
