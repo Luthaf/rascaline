@@ -1,7 +1,7 @@
 Overview of Rascaline's Documentation
 =====================================
 
-The Rascaline Documentation covers everything you need to know about rascaline.
+This documentation covers everything you need to know about rascaline.
 It comprises of the following five broad sections:
 
 - :ref:`userdoc-get-started`
