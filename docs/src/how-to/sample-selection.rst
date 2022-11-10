@@ -19,16 +19,29 @@ You can obtain a testing dataset from our :download:`website <../../static/datas
 .. tabs::
 
     .. group-tab:: Python
-        .. include:: ../examples/sample-selection.rst
-            :start-after: start-body
-            :end-before: end-body
 
         .. container:: sphx-glr-footer sphx-glr-footer-example
 
             .. container:: sphx-glr-download sphx-glr-download-python
 
-                :download:`Download Python source code: sample-selection.py <../examples/sample-selection.py>`
+                :download:`Download Python source code for this example: sample-selection.py <../examples/sample-selection.py>`
 
             .. container:: sphx-glr-download sphx-glr-download-jupyter
 
-                :download:`Download Jupyter notebook: sample-selection.ipynb <../examples/sample-selection.ipynb>`
+                :download:`Download Jupyter notebook for this example: sample-selection.ipynb <../examples/sample-selection.ipynb>`
+
+        .. include:: ../examples/sample-selection.rst
+            :start-after: start-body
+            :end-before: end-body
+
+    .. group-tab:: Rust
+
+        To be done
+
+    .. group-tab:: C++
+
+        To be done
+
+    .. group-tab:: C
+
+        To be done

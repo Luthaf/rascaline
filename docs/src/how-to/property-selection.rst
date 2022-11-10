@@ -25,16 +25,28 @@ You can obtain a testing dataset from our :download:`website <../../static/datas
 
     .. group-tab:: Python
 
-        .. include:: ../examples/property-selection.rst
-            :start-after: start-body
-            :end-before: end-body
-
         .. container:: sphx-glr-footer sphx-glr-footer-example
 
             .. container:: sphx-glr-download sphx-glr-download-python
 
-                :download:`Download Python source code: property-selection.py <../examples/property-selection.py>`
+                :download:`Download Python source code for this example: property-selection.py <../examples/property-selection.py>`
 
             .. container:: sphx-glr-download sphx-glr-download-jupyter
 
-                :download:`Download Jupyter notebook: property-selection.ipynb <../examples/property-selection.ipynb>`
+                :download:`Download Jupyter notebook for this example: property-selection.ipynb <../examples/property-selection.ipynb>`
+
+        .. include:: ../examples/property-selection.rst
+            :start-after: start-body
+            :end-before: end-body
+
+    .. group-tab:: Rust
+
+        To be done
+
+    .. group-tab:: C++
+
+        To be done
+
+    .. group-tab:: C
+
+        To be done

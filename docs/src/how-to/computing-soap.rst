@@ -21,19 +21,19 @@ You can obtain a testing dataset from our :download:`website <../../static/datas
 
     .. group-tab:: Python
 
-        .. include:: ../examples/compute-soap.rst
-            :start-after: start-body
-            :end-before: end-body
-
         .. container:: sphx-glr-footer sphx-glr-footer-example
 
             .. container:: sphx-glr-download sphx-glr-download-python
 
-                :download:`Download Python source code: compute-soap.py <../examples/compute-soap.py>`
+                :download:`Download Python source code for this example: compute-soap.py <../examples/compute-soap.py>`
 
             .. container:: sphx-glr-download sphx-glr-download-jupyter
 
-                :download:`Download Jupyter notebook: compute-soap.ipynb <../examples/compute-soap.ipynb>`
+                :download:`Download Jupyter notebook for this example: compute-soap.ipynb <../examples/compute-soap.ipynb>`
+
+        .. include:: ../examples/compute-soap.rst
+            :start-after: start-body
+            :end-before: end-body
 
     .. group-tab:: Rust
 

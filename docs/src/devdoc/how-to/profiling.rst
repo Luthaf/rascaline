@@ -48,19 +48,19 @@ You can obtain a dataset for profiling from our :download:`website <../../../sta
 
     .. group-tab:: Python
 
-        .. include:: ../../examples/profiling.rst
-            :start-after: start-body
-            :end-before: end-body
-
         .. container:: sphx-glr-footer sphx-glr-footer-example
 
             .. container:: sphx-glr-download sphx-glr-download-python
 
-                :download:`Download Python source code: profiling.py <../../examples/profiling.py>`
+                :download:`Download Python source code for this example: profiling.py <../../examples/profiling.py>`
 
             .. container:: sphx-glr-download sphx-glr-download-jupyter
 
-                :download:`Download Jupyter notebook: profiling.ipynb <../../examples/profiling.ipynb>`
+                :download:`Download Jupyter notebook for this example: profiling.ipynb <../../examples/profiling.ipynb>`
+
+        .. include:: ../../examples/profiling.rst
+            :start-after: start-body
+            :end-before: end-body
 
     .. group-tab:: Rust
 
