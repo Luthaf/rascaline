@@ -53,7 +53,7 @@ impl GtoRadialBasis {
     }
 
     /// Get the matrix to orthonormalize the GTO basis
-    /// The returned orthornomalzation matrix is already multiplied by the 
+    /// The returned orthornomalzation matrix is already multiplied by the
     /// normalization and transposed version due to performance reasons.
     pub fn orthonormalization_matrix(max_radial: usize, cutoff: f64) -> Array2<f64> {
         let widths = GtoRadialBasis::gaussian_widths(max_radial, cutoff);

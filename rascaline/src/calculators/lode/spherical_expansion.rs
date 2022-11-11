@@ -303,24 +303,51 @@ impl LodeSphericalExpansion {
         return k0_contrib.into();
     }
 
-    /// Calculate central atom contribution.
-    /// Currently only works a hardcoded GTO basis!
-    fn compute_central_atom_contribution(&self) -> Array1<f64> {
+    /// Compute the central atom contribution for GTO radial basis
+    pub fn compute_gto_central_atom_contribution(&mut self) -> Array1<f64> {
 
-        let mut contrib = Array1::from_elem(self.parameters.max_radial, 0.0);
-
+        let max_radial = self.parameters.max_radial;
+        let cutoff = self.parameters.cutoff;
         let atomic_gaussian_width = self.parameters.atomic_gaussian_width;
-        let gto_gaussian_widths = GtoRadialBasis::gaussian_widths(self.parameters.max_radial, self.parameters.cutoff);
+        let potential_exponent = self.parameters.potential_exponent as f64;
 
-        for n in 0..self.parameters.max_radial {
-            let neff = 0.5 * (3. + n as f64);
-            let arg = -(gto_gaussian_widths[n] / atomic_gaussian_width).powi(2);
-            let factor = 2.0_f64.powf((2. + n as f64) / 2.) * gto_gaussian_widths[n].powf(n as f64 + 3.);
+        let mut contrib = Array1::from_elem(max_radial, 0.0);
 
-            contrib[n] = 2.0 * factor * hyp2f1(0.5, neff, 1.5, arg) * gamma(neff) / atomic_gaussian_width;
+        let gto_gaussian_widths = GtoRadialBasis::gaussian_widths(max_radial, cutoff);
+        let neff: Vec<f64> = (0..max_radial)
+            .into_iter()
+            .map(|n| 0.5 * (3. + n as f64))
+            .collect();
+
+        if potential_exponent == 0. {
+            let factor = std::f64::consts::PI.powf(-0.25)
+                / (atomic_gaussian_width * atomic_gaussian_width).powf(0.75);
+
+            for n in 0..max_radial {
+                let alpha = 0.5
+                    * (1. / (atomic_gaussian_width * atomic_gaussian_width)
+                        + 1. / (gto_gaussian_widths[n] * gto_gaussian_widths[n]));
+                contrib[n] = factor * gamma(neff[n]) / alpha.powf(neff[n]);
+            }
+        } else {
+            let factor = 2. * f64::sqrt(4. * std::f64::consts::PI)
+                / gamma(potential_exponent / 2.)
+                / potential_exponent;
+
+            for n in 0..max_radial {
+                let s = atomic_gaussian_width / gto_gaussian_widths[n];
+                let hyparg = 1. / (1. + s * s);
+
+                contrib[n] = factor
+                    * 2_f64.powf((1. + n as f64 - potential_exponent) / 2.)
+                    * atomic_gaussian_width.powi(3 + n as i32 - potential_exponent as i32)
+                    * gamma(neff[n])
+                    * hyp2f1(1., neff[n], (potential_exponent + 2.) / 2., hyparg)
+                    * hyparg.powf(neff[n]);
+            }
         }
 
-        let gto_orthonormalization = GtoRadialBasis::orthonormalization_matrix(self.parameters.max_radial, self.parameters.cutoff);
+        let gto_orthonormalization = GtoRadialBasis::orthonormalization_matrix(max_radial, cutoff);
 
         return gto_orthonormalization.t().dot(&(contrib));
     }
@@ -459,7 +486,7 @@ impl CalculatorBase for LodeSphericalExpansion {
 
         let k_cutoff = self.parameters.get_k_cutoff();
 
-        let central_atom_contrib = self.compute_central_atom_contribution();
+        let central_atom_contrib = self.compute_gto_central_atom_contribution();
 
         for (system_i, system) in systems.iter_mut().enumerate() {
             let species = system.species()?;
@@ -790,23 +817,31 @@ mod tests {
     }
 
     #[test]
-    fn compute_central_atom_contribution() {
-        let spherical_expansion = LodeSphericalExpansion::new(LodeSphericalExpansionParameters {
-            cutoff: 5.0,
-            k_cutoff: None,
-            max_radial: 6,
-            max_angular: 2,
-            atomic_gaussian_width: 1.0,
-            center_atom_weight: 1.0,
-            radial_basis: LodeRadialBasis::splined_gto(1e-8),
-            potential_exponent: 1,
-        }).unwrap();
+    fn central_atom_contribution() {
+        let potential_exponents = [0, 1, 2, 6];
 
         // Reference values taken from pyLODE
-        assert_relative_eq!(
-            spherical_expansion.compute_central_atom_contribution(),
-            arr1(&[1.69193719, 2.02389574, 2.85086136, 3.84013091, 1.62869125, 7.03338899]),
-            max_relative=1e-5
-        );
+        let reference_vals = [
+            [7.09990773e-01, 6.13767550e-01, 3.34161655e-01, 8.35301652e-02, 1.78439072e-02, -3.44944648e-05],
+            [1.69193719, 2.02389574, 2.85086136, 3.84013091, 1.62869125, 7.03338899],
+            [1.00532822, 1.10024472, 1.34843326, 1.19816598, 0.69150744, 1.2765415],
+            [0.03811939, 0.03741200, 0.03115835, 0.01364843, 0.00534184, 0.00205973]];
+
+        for (i, p) in potential_exponents.iter().enumerate(){
+
+            let mut spherical_expansion = LodeSphericalExpansion::new(LodeSphericalExpansionParameters {
+                cutoff: 5.0,
+                k_cutoff: None,
+                max_radial: 6,
+                max_angular: 2,
+                atomic_gaussian_width: 1.0,
+                center_atom_weight: 1.0,
+                radial_basis: LodeRadialBasis::splined_gto(1e-8),
+                potential_exponent: *p,
+            }).unwrap();
+
+            let center_contrib = spherical_expansion.compute_gto_central_atom_contribution();
+            assert_relative_eq!(center_contrib, arr1(&reference_vals[i]), max_relative=3e-6);
+        };
     }
 }
