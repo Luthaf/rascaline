@@ -32,7 +32,32 @@ impl KeysBuilder for CenterSpeciesKeys {
 }
 
 /// Compute a set of keys with two variables: the central atom species and a
-/// single neighbor atom species.
+/// all neighbor atom species within the whole system.
+pub struct AllSpeciesPairsKeys {}
+
+impl KeysBuilder for AllSpeciesPairsKeys {
+    fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
+
+        let mut all_species_pairs = BTreeSet::new();
+        for system in systems {
+            for &species_first in system.species()? {
+                for &species_second in system.species()? {
+                    all_species_pairs.insert((species_first, species_second));
+                }
+            }
+        }
+
+        let mut keys = LabelsBuilder::new(vec!["species_center", "species_neighbor"]);
+        for (center, neighbor) in all_species_pairs {
+            keys.add(&[center, neighbor]);
+        }
+
+        return Ok(keys.finish());
+    }
+}
+
+/// Compute a set of keys with two variables: the central atom species and a
+/// single neighbor atom species within a cutoff around the central atom.
 pub struct CenterSingleNeighborsSpeciesKeys {
     /// Spherical cutoff to use when searching for neighbors around an atom
     pub cutoff: f64,

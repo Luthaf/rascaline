@@ -22,6 +22,7 @@ fn lode_vs_soap() {
         "k_cutoff": 14.0,
         "max_radial": 6,
         "max_angular": 6,
+        "center_atom_weight": 1.0,
         "atomic_gaussian_width": 0.3,
         "potential_exponent": 0,
         "radial_basis": {"Gto": {"spline_accuracy": 1e-8}}
