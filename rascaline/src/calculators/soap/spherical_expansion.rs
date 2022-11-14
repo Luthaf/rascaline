@@ -46,9 +46,10 @@ pub struct SphericalExpansionParameters {
     pub max_angular: usize,
     /// Width of the atom-centered gaussian used to create the atomic density
     pub atomic_gaussian_width: f64,
-    /// Weight of the center atom contribution to the features.
-    /// If `1.0` the center atom contribution is weighted the same as any other
-    /// contribution.
+    /// Weight of the central atom contribution to the
+    /// features. If `1` the center atom contribution is weighted the same
+    /// as any other contribution. If `0` the central atom does not
+    /// contribute to the features at all.
     pub center_atom_weight: f64,
     /// Radial basis to use for the radial integral
     pub radial_basis: RadialBasis,

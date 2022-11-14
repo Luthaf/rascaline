@@ -463,6 +463,7 @@ class LodeSphericalExpansion(CalculatorBase):
         max_radial,
         max_angular,
         atomic_gaussian_width,
+        center_atom_weight,
         potential_exponent,
         radial_basis,
     ):
@@ -472,6 +473,7 @@ class LodeSphericalExpansion(CalculatorBase):
             "max_radial": max_radial,
             "max_angular": max_angular,
             "atomic_gaussian_width": atomic_gaussian_width,
+            "center_atom_weight": center_atom_weight,
             "potential_exponent": potential_exponent,
             "radial_basis": radial_basis,
         }
