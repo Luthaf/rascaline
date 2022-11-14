@@ -33,21 +33,15 @@ impl KeysBuilder for CenterSpeciesKeys {
 
 /// Compute a set of keys with two variables: the central atom species and a
 /// all neighbor atom species within the whole system.
-pub struct CenterSingleNeighborsSpeciesKeysSystem {
-    /// Should we consider an atom to be it's own neighbor or not?
-    pub self_pairs: bool,
-}
+pub struct AllSpeciesPairsKeys {}
 
-impl KeysBuilder for CenterSingleNeighborsSpeciesKeysSystem {
+impl KeysBuilder for AllSpeciesPairsKeys {
     fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
 
         let mut all_species_pairs = BTreeSet::new();
         for system in systems {
             for &species_first in system.species()? {
                 for &species_second in system.species()? {
-                    if species_first == species_second && !self.self_pairs {
-                        continue;
-                    }
                     all_species_pairs.insert((species_first, species_second));
                 }
             }

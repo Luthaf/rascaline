@@ -1,3 +1,11 @@
+//! Tests of the LODE Spherical Expansion coefficient against 
+//! the energies of periodic structures with known 1/r potential. For perfect 
+//! crystals these energies are tabulated and proportional to so called
+//! Madelung constants.
+//! 
+//! See for example N. W. Ashcroft and N. D. Mermin, Solid State Physics 
+//! for reference values and detailed explanations on these constants.
+
 use approx::assert_relative_eq;
 use rascaline::calculators::lode::LodeRadialBasis;
 use rascaline::calculators::{LodeSphericalExpansionParameters, CalculatorBase, LodeSphericalExpansion};

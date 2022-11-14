@@ -10,7 +10,7 @@ use crate::{Error, System, Vector3D};
 use crate::systems::UnitCell;
 
 use crate::labels::{SamplesBuilder, SpeciesFilter, LongRangePerAtom};
-use crate::labels::{KeysBuilder, CenterSingleNeighborsSpeciesKeysSystem};
+use crate::labels::{KeysBuilder, AllSpeciesPairsKeys};
 
 use crate::calculators::CalculatorBase;
 use crate::calculators::radial_integral::{RadialIntegral, GtoRadialBasis};
@@ -46,9 +46,10 @@ pub struct LodeSphericalExpansionParameters {
     pub max_angular: usize,
     /// Width of the atom-centered gaussian used to create the atomic density.
     pub atomic_gaussian_width: f64,
-    /// Weight of the center atom contribution to the features.
-    /// If `1.0` the center atom contribution is weighted the same as any other
-    /// contribution.
+    /// Weight of the central atom contribution in the central image to the
+    /// features. If `1` the center atom contribution is weighted the same
+    /// as any other contribution. If `0` the central atom does not
+    /// contribute to the features at all.
     pub center_atom_weight: f64,
     /// Radial basis to use for the radial integral
     pub radial_basis: LodeRadialBasis,
@@ -363,9 +364,7 @@ impl CalculatorBase for LodeSphericalExpansion {
     }
 
     fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
-        let builder = CenterSingleNeighborsSpeciesKeysSystem {
-            self_pairs: true,
-        };
+        let builder = AllSpeciesPairsKeys {};
         let keys = builder.keys(systems)?;
 
         let mut builder = LabelsBuilder::new(vec!["spherical_harmonics_l", "species_center", "species_neighbor"]);
@@ -566,7 +565,7 @@ impl CalculatorBase for LodeSphericalExpansion {
 
                 for (property_i, [n]) in values.properties.iter_fixed_size().enumerate() {
                     let n = n.usize();
-                    array[[sample_i, 0, _property_i]] -= (1.0 - self.parameters.center_atom_weight) * central_atom_contrib[n];
+                    array[[sample_i, 0, property_i]] -= (1.0 - self.parameters.center_atom_weight) * central_atom_contrib[n];
                 }
             }
 
