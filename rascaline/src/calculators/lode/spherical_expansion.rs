@@ -10,16 +10,16 @@ use crate::{Error, System, Vector3D};
 use crate::systems::UnitCell;
 
 use crate::labels::{SamplesBuilder, SpeciesFilter, LongRangePerAtom};
-use crate::labels::{KeysBuilder, CenterSingleNeighborsSpeciesKeys};
+use crate::labels::{KeysBuilder, AllSpeciesPairsKeys};
 
 use crate::calculators::CalculatorBase;
-use crate::calculators::radial_integral::RadialIntegral;
+use crate::calculators::radial_integral::{RadialIntegral, GtoRadialBasis};
 
 use super::LodeRadialBasis;
 
 use crate::math::CachedAllocationsSphericalHarmonics;
 use crate::math::{compute_k_vectors, KVector};
-use crate::math::{gamma_ui, gamma};
+use crate::math::{gamma_ui, gamma, hyp2f1};
 
 
 /// Parameters for LODE spherical expansion calculator.
@@ -46,6 +46,11 @@ pub struct LodeSphericalExpansionParameters {
     pub max_angular: usize,
     /// Width of the atom-centered gaussian used to create the atomic density.
     pub atomic_gaussian_width: f64,
+    /// Weight of the central atom contribution in the central image to the
+    /// features. If `1` the center atom contribution is weighted the same
+    /// as any other contribution. If `0` the central atom does not
+    /// contribute to the features at all.
+    pub center_atom_weight: f64,
     /// Radial basis to use for the radial integral
     pub radial_basis: LodeRadialBasis,
     /// Potential exponent of the decorated atom density. Currently only
@@ -298,6 +303,55 @@ impl LodeSphericalExpansion {
 
         return k0_contrib.into();
     }
+
+    /// Compute the central atom contribution for GTO radial basis
+    pub fn compute_gto_central_atom_contribution(&mut self) -> Array1<f64> {
+
+        let max_radial = self.parameters.max_radial;
+        let cutoff = self.parameters.cutoff;
+        let atomic_gaussian_width = self.parameters.atomic_gaussian_width;
+        let potential_exponent = self.parameters.potential_exponent as f64;
+
+        let mut contrib = Array1::from_elem(max_radial, 0.0);
+
+        let gto_gaussian_widths = GtoRadialBasis::gaussian_widths(max_radial, cutoff);
+        let neff: Vec<f64> = (0..max_radial)
+            .into_iter()
+            .map(|n| 0.5 * (3. + n as f64))
+            .collect();
+
+        if potential_exponent == 0. {
+            let factor = std::f64::consts::PI.powf(-0.25)
+                / (atomic_gaussian_width * atomic_gaussian_width).powf(0.75);
+
+            for n in 0..max_radial {
+                let alpha = 0.5
+                    * (1. / (atomic_gaussian_width * atomic_gaussian_width)
+                        + 1. / (gto_gaussian_widths[n] * gto_gaussian_widths[n]));
+                contrib[n] = factor * gamma(neff[n]) / alpha.powf(neff[n]);
+            }
+        } else {
+            let factor = 2. * f64::sqrt(4. * std::f64::consts::PI)
+                / gamma(potential_exponent / 2.)
+                / potential_exponent;
+
+            for n in 0..max_radial {
+                let s = atomic_gaussian_width / gto_gaussian_widths[n];
+                let hyparg = 1. / (1. + s * s);
+
+                contrib[n] = factor
+                    * 2_f64.powf((1. + n as f64 - potential_exponent) / 2.)
+                    * atomic_gaussian_width.powi(3 + n as i32 - potential_exponent as i32)
+                    * gamma(neff[n])
+                    * hyp2f1(1., neff[n], (potential_exponent + 2.) / 2., hyparg)
+                    * hyparg.powf(neff[n]);
+            }
+        }
+
+        let gto_orthonormalization = GtoRadialBasis::orthonormalization_matrix(max_radial, cutoff);
+
+        return gto_orthonormalization.t().dot(&(contrib));
+    }
 }
 
 impl CalculatorBase for LodeSphericalExpansion {
@@ -310,10 +364,7 @@ impl CalculatorBase for LodeSphericalExpansion {
     }
 
     fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
-        let builder = CenterSingleNeighborsSpeciesKeys {
-            cutoff: self.parameters.cutoff,
-            self_pairs: true,
-        };
+        let builder = AllSpeciesPairsKeys {};
         let keys = builder.keys(systems)?;
 
         let mut builder = LabelsBuilder::new(vec!["spherical_harmonics_l", "species_center", "species_neighbor"]);
@@ -434,6 +485,8 @@ impl CalculatorBase for LodeSphericalExpansion {
 
         let k_cutoff = self.parameters.get_k_cutoff();
 
+        let central_atom_contrib = self.compute_gto_central_atom_contribution();
+
         for (system_i, system) in systems.iter_mut().enumerate() {
             let species = system.species()?;
             let cell = system.cell()?;
@@ -489,6 +542,34 @@ impl CalculatorBase for LodeSphericalExpansion {
                 }
             }
 
+            // Add weight of the central atom to the density.
+            // By symmetry, this only affects the (l, m) = (0, 0) components
+            // of the projection coefficients and only the chemical
+            // species channel that agrees with the center atom.
+            for center_i in 0..system.size()? {
+                let block_i = descriptor.keys().position(&[
+                    0.into(),
+                    species[center_i].into(),
+                    species[center_i].into(),
+                ]).expect("missing block");
+
+                let mut block = descriptor.block_mut_by_id(block_i);
+                let values = block.values_mut();
+                let array = values.data.as_array_mut();
+
+                let sample = [system_i.into(), center_i.into()];
+                let sample_i = match values.samples.position(&sample) {
+                    Some(s) => s,
+                    None => continue
+                };
+
+                for (property_i, [n]) in values.properties.iter_fixed_size().enumerate() {
+                    let n = n.usize();
+                    array[[sample_i, 0, property_i]] -= (1.0 - self.parameters.center_atom_weight) * central_atom_contrib[n];
+                }
+            }
+
+            // Main loop: Iterate over all atoms to evaluate the projection coefficients
             for spherical_harmonics_l in 0..=self.parameters.max_angular {
                 let phase = if spherical_harmonics_l % 2 == 0 {
                     (-1.0_f64).powi(spherical_harmonics_l as i32 / 2)
@@ -652,8 +733,9 @@ mod tests {
                 max_radial: 6,
                 max_angular: 6,
                 atomic_gaussian_width: 0.8,
-                potential_exponent: 1,
+                center_atom_weight: 1.0,
                 radial_basis: LodeRadialBasis::splined_gto(1e-8),
+                potential_exponent: 1,
             }
         ).unwrap()) as Box<dyn CalculatorBase>);
 
@@ -680,8 +762,9 @@ mod tests {
             max_radial: 6,
             max_angular: 6,
             atomic_gaussian_width: atomic_gaussian_width,
-            potential_exponent: 1,
+            center_atom_weight: 1.0,
             radial_basis: LodeRadialBasis::splined_gto(1e-8),
+            potential_exponent: 1,
         };
 
         assert_eq!(
@@ -699,8 +782,9 @@ mod tests {
                 max_radial: 6,
                 max_angular: 6,
                 atomic_gaussian_width: 0.8,
-                potential_exponent: 0,
+                center_atom_weight: 1.0,
                 radial_basis: LodeRadialBasis::splined_gto(1e-8),
+                potential_exponent: 0,
             }
         ).unwrap();
 
@@ -719,8 +803,9 @@ mod tests {
             max_radial: 6,
             max_angular: 6,
             atomic_gaussian_width: 0.8,
-            potential_exponent: 6,
+            center_atom_weight: 1.0,
             radial_basis: LodeRadialBasis::splined_gto(1e-8),
+            potential_exponent: 6,
         }).unwrap();
 
         assert_relative_eq!(
@@ -728,5 +813,34 @@ mod tests {
             arr1(&[0.13337, 0.21136, 0.28719, 0.84143, -0.04964, 2.40858]),
             max_relative=1e-4
         );
+    }
+
+    #[test]
+    fn central_atom_contribution() {
+        let potential_exponents = [0, 1, 2, 6];
+
+        // Reference values taken from pyLODE
+        let reference_vals = [
+            [7.09990773e-01, 6.13767550e-01, 3.34161655e-01, 8.35301652e-02, 1.78439072e-02, -3.44944648e-05],
+            [1.69193719, 2.02389574, 2.85086136, 3.84013091, 1.62869125, 7.03338899],
+            [1.00532822, 1.10024472, 1.34843326, 1.19816598, 0.69150744, 1.2765415],
+            [0.03811939, 0.03741200, 0.03115835, 0.01364843, 0.00534184, 0.00205973]];
+
+        for (i, p) in potential_exponents.iter().enumerate(){
+
+            let mut spherical_expansion = LodeSphericalExpansion::new(LodeSphericalExpansionParameters {
+                cutoff: 5.0,
+                k_cutoff: None,
+                max_radial: 6,
+                max_angular: 2,
+                atomic_gaussian_width: 1.0,
+                center_atom_weight: 1.0,
+                radial_basis: LodeRadialBasis::splined_gto(1e-8),
+                potential_exponent: *p,
+            }).unwrap();
+
+            let center_contrib = spherical_expansion.compute_gto_central_atom_contribution();
+            assert_relative_eq!(center_contrib, arr1(&reference_vals[i]), max_relative=3e-6);
+        };
     }
 }
