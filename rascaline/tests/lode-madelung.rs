@@ -66,7 +66,8 @@ fn get_znso4() -> Vec<Box<dyn System>> {
     return vec![Box::new(system) as Box<dyn System>];
 }
 
-
+/// Test the agreement with Madelung constant for a variety of 
+/// atomic_gaussian_width`s and `cutoff`s.
 #[test]
 fn madelung() {
     let mut crystals = [
@@ -76,8 +77,10 @@ fn madelung() {
         CrystalParameters{systems: get_znso4(),  charges: vec![1.0, -1.0, 1.0, -1.0], madelung: 1.6413 / f64::sqrt(3. / 8.)}
     ];
 
-    for atomic_gaussian_width in [0.2, 0.1] {
-        for cutoff in [0.01, 0.027, 0.074, 0.2] {
+    for cutoff in [0.01, 0.027, 0.074, 0.2] {
+        let factor = -1.0 / (4.0 * std::f64::consts::PI * (cutoff as f64).powf(2.0)).powf(0.75);
+        for atomic_gaussian_width in [0.2, 0.1] {
+        
             for crystal in crystals.iter_mut() {
 
                 let lode_parameters = LodeSphericalExpansionParameters {
@@ -99,13 +102,54 @@ fn madelung() {
     
                 let descriptor = calculator.compute(&mut crystal.systems, options).unwrap();
 
-                let madelung = (
+                let madelung = factor * (
                         crystal.charges[0] * descriptor.block_by_id(0).values().data.as_array()[[0, 0, 0]]
-                      + crystal.charges[1] * descriptor.block_by_id(1).values().data.as_array()[[0, 0, 0]])
-                    / -(4.0 * std::f64::consts::PI * cutoff.powf(2.0)).powf(0.75);
+                      + crystal.charges[1] * descriptor.block_by_id(1).values().data.as_array()[[0, 0, 0]]);
 
                 assert_relative_eq!(madelung, crystal.madelung, max_relative=8e-2);
             }
         }
+    }
+}
+
+/// Test the agreement with Madelung constant using parameters for highest 
+/// accuracy.
+#[test]
+fn madelung_high_accuracy() {
+    let mut crystals = [
+        CrystalParameters{systems: get_nacl(), charges: vec![1.0, -1.0], madelung: 1.7476},
+        CrystalParameters{systems: get_cscl(),  charges: vec![1.0, -1.0], madelung: 2.0 * 1.7626 / f64::sqrt(3.0)},
+        CrystalParameters{systems: get_zns(),  charges: vec![1.0, -1.0], madelung: 2.0 * 1.6381 / f64::sqrt(3.0)},
+        CrystalParameters{systems: get_znso4(),  charges: vec![1.0, -1.0, 1.0, -1.0], madelung: 1.6413 / f64::sqrt(3. / 8.)}
+    ];
+
+    let cutoff = 0.01;
+    let factor = -1.0 / (4.0 * std::f64::consts::PI * (cutoff as f64).powf(2.0)).powf(0.75);
+
+    for crystal in crystals.iter_mut() {
+        let lode_parameters = LodeSphericalExpansionParameters {
+            cutoff: cutoff,
+            k_cutoff: Some(50.),
+            max_radial: 1,
+            max_angular: 0,
+            atomic_gaussian_width: 0.1,
+            center_atom_weight: 0.0,
+            potential_exponent: 1,
+            radial_basis: LodeRadialBasis::splined_gto(1e-8),
+        };
+
+        let mut calculator = Calculator::from(Box::new(LodeSphericalExpansion::new(
+            lode_parameters
+        ).unwrap()) as Box<dyn CalculatorBase>);
+
+        let options = CalculationOptions {..Default::default()};
+
+        let descriptor = calculator.compute(&mut crystal.systems, options).unwrap();
+
+        let madelung = factor * (
+                crystal.charges[0] * descriptor.block_by_id(0).values().data.as_array()[[0, 0, 0]]
+                + crystal.charges[1] * descriptor.block_by_id(1).values().data.as_array()[[0, 0, 0]]);
+
+        assert_relative_eq!(madelung, crystal.madelung, max_relative=5e-5);
     }
 }
