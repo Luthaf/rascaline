@@ -564,7 +564,7 @@ impl CalculatorBase for LodeSphericalExpansion {
                     None => continue
                 };
 
-                for (_property_i, [n]) in values.properties.iter_fixed_size().enumerate() {
+                for (property_i, [n]) in values.properties.iter_fixed_size().enumerate() {
                     let n = n.usize();
                     array[[sample_i, 0, _property_i]] -= (1.0 - self.parameters.center_atom_weight) * central_atom_contrib[n];
                 }
