@@ -327,7 +327,6 @@ impl Calculator {
         let direction_1 = Arc::new(Labels::new(["direction_1"], &[[0], [1], [2]]));
         let direction_2 = Arc::new(Labels::new(["direction_2"], &[[0], [1], [2]]));
 
-
         let mut blocks = Vec::new();
         for (block_i, ((samples, components), properties)) in samples.into_iter().zip(components).zip(properties).enumerate() {
             let shape = shape_from_labels(
@@ -429,6 +428,7 @@ fn shape_from_labels(samples: &Labels, components: &[Arc<Labels>], properties: &
 // Registration of calculator implementations
 use crate::calculators::DummyCalculator;
 use crate::calculators::SortedDistances;
+use crate::calculators::NeighborList;
 use crate::calculators::{SphericalExpansion, SphericalExpansionParameters};
 use crate::calculators::{SoapPowerSpectrum, PowerSpectrumParameters};
 use crate::calculators::{SoapRadialSpectrum, RadialSpectrumParameters};
@@ -455,6 +455,7 @@ macro_rules! add_calculator {
 static REGISTERED_CALCULATORS: Lazy<BTreeMap<&'static str, CalculatorCreator>> = Lazy::new(|| {
     let mut map = BTreeMap::new();
     add_calculator!(map, "dummy_calculator", DummyCalculator);
+    add_calculator!(map, "neighbor_list", NeighborList);
     add_calculator!(map, "sorted_distances", SortedDistances);
     add_calculator!(map, "spherical_expansion", SphericalExpansion, SphericalExpansionParameters);
     add_calculator!(map, "soap_power_spectrum", SoapPowerSpectrum, PowerSpectrumParameters);

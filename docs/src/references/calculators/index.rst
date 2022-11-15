@@ -25,4 +25,5 @@ as a `JSON schema`_, and rendered in the pages below.
     spherical-expansion
     soap-radial-spectrum
     soap-power-spectrum
+    neighbor-list
     sorted-distances

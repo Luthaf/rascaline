@@ -251,6 +251,38 @@ class DummyCalculator(CalculatorBase):
         super().__init__("dummy_calculator", parameters)
 
 
+class NeighborList(CalculatorBase):
+    """
+    This calculator computes the neighbor list for a given spherical cutoff, and
+    returns the list of distance vectors between all pairs of atoms strictly
+    inside the cutoff.
+
+    Users can request either a "full" neighbor list (including an entry for both
+    ``i - j`` pairs and ``j - i`` pairs) or save memory/computational by only
+    working with "half" neighbor list (only including one entry for each ``i/j``
+    pair)
+
+    Self pairs (pairs between an atom and periodic copy itself) can appear when
+    the cutoff is larger than the cell under periodic boundary conditions. Self
+    pairs with a distance of 0 are not included in this calculator, even though
+    they are required when computing SOAP.
+
+    This sample produces a single property (``"distance"``) with three
+    components (``"pair_direction"``) containing the x, y, and z component of
+    the vector from the first atom in the pair to the second. In addition to the
+    atom indexes, the samples also contain a pair index, to be able to
+    distinguish between multiple pairs between the same atom (if the cutoff is
+    larger than the cell).
+    """
+
+    def __init__(self, cutoff, full_neighbor_list):
+        parameters = {
+            "cutoff": cutoff,
+            "full_neighbor_list": full_neighbor_list,
+        }
+        super().__init__("neighbor_list", parameters)
+
+
 class SortedDistances(CalculatorBase):
     """Sorted distances vector representation of an atomic environment.
 
@@ -278,13 +310,12 @@ class SortedDistances(CalculatorBase):
 class SphericalExpansion(CalculatorBase):
     """Spherical expansion of Smooth Overlap of Atomic Positions (SOAP).
 
-    The spherical expansion is at the core of representations in the SOAP
-    family of descriptors. The spherical
-    expansion represent atomic density as a collection of gaussian functions
-    centered on each atom, and then represent the local density around each atom
-    (up to a cutoff) on a basis of radial functions and spherical harmonics.
-    This representation is not rotationally invariant, for that you should use
-    the :py:class:`SoapPowerSpectrum` class.
+    The spherical expansion is at the core of representations in the SOAP family
+    of descriptors. The spherical expansion represent atomic density as a
+    collection of Gaussian functions centered on each atom, and then represent
+    the local density around each atom (up to a cutoff) on a basis of radial
+    functions and spherical harmonics. This representation is not rotationally
+    invariant, for that you should use the :py:class:`SoapPowerSpectrum` class.
 
     See `this review article <https://doi.org/10.1063/1.5090481>`_ for more
     information on the SOAP representation, and `this paper
@@ -320,6 +351,48 @@ class SphericalExpansion(CalculatorBase):
             parameters["radial_scaling"] = radial_scaling
 
         super().__init__("spherical_expansion", parameters)
+
+
+class SoapRadialSpectrum(CalculatorBase):
+    """Radial spectrum of Smooth Overlap of Atomic Positions (SOAP).
+
+    The SOAP radial spectrum represent each atom by the radial average of the
+    density of its neighbors. It is very similar to a radial distribution
+    function `g(r)`. It is a 2-body representation, only containing information
+    about the distances between atoms.
+
+    See `this review article <https://doi.org/10.1063/1.5090481>`_ for more
+    information on the SOAP representation, and `this paper
+    <https://doi.org/10.1063/5.0044689>`_ for information on how it is
+    implemented in rascaline.
+
+    For a full description of the hyper-parameters, see the corresponding
+    :ref:`documentation <soap-radial-spectrum>`.
+    """
+
+    def __init__(
+        self,
+        cutoff,
+        max_radial,
+        atomic_gaussian_width,
+        center_atom_weight,
+        radial_basis,
+        cutoff_function,
+        radial_scaling=None,
+    ):
+        parameters = {
+            "cutoff": cutoff,
+            "max_radial": max_radial,
+            "atomic_gaussian_width": atomic_gaussian_width,
+            "center_atom_weight": center_atom_weight,
+            "radial_basis": radial_basis,
+            "cutoff_function": cutoff_function,
+        }
+
+        if radial_scaling is not None:
+            parameters["radial_scaling"] = radial_scaling
+
+        super().__init__("soap_radial_spectrum", parameters)
 
 
 class SoapPowerSpectrum(CalculatorBase):
@@ -364,45 +437,3 @@ class SoapPowerSpectrum(CalculatorBase):
             parameters["radial_scaling"] = radial_scaling
 
         super().__init__("soap_power_spectrum", parameters)
-
-
-class SoapRadialSpectrum(CalculatorBase):
-    """Radial spectrum of Smooth Overlap of Atomic Positions (SOAP).
-
-    The SOAP radial spectrum represent each atom by the radial average of the
-    density of its neighbors. It is very similar to a radial distribution
-    function `g(r)`. It is a 2-body representation, only containing information
-    about the distances between atoms.
-
-    See `this review article <https://doi.org/10.1063/1.5090481>`_ for more
-    information on the SOAP representations, and `this paper
-    <https://doi.org/10.1063/5.0044689>`_ for information on how it is
-    implemented in rascaline.
-
-    For a full description of the hyper-parameters, see the corresponding
-    :ref:`documentation <soap-radial-spectrum>`.
-    """
-
-    def __init__(
-        self,
-        cutoff,
-        max_radial,
-        atomic_gaussian_width,
-        center_atom_weight,
-        radial_basis,
-        cutoff_function,
-        radial_scaling=None,
-    ):
-        parameters = {
-            "cutoff": cutoff,
-            "max_radial": max_radial,
-            "atomic_gaussian_width": atomic_gaussian_width,
-            "center_atom_weight": center_atom_weight,
-            "radial_basis": radial_basis,
-            "cutoff_function": cutoff_function,
-        }
-
-        if radial_scaling is not None:
-            parameters["radial_scaling"] = radial_scaling
-
-        super().__init__("soap_radial_spectrum", parameters)

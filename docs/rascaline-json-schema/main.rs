@@ -6,6 +6,7 @@ use rascaline::calculators::SortedDistances;
 use rascaline::calculators::SphericalExpansionParameters;
 use rascaline::calculators::PowerSpectrumParameters;
 use rascaline::calculators::RadialSpectrumParameters;
+use rascaline::calculators::NeighborList;
 
 
 macro_rules! generate_schema {
@@ -31,6 +32,7 @@ fn save_schema(name: &str, schema: RootSchema) {
 }
 
 fn main() {
+    generate_schema!(NeighborList);
     generate_schema!(SortedDistances);
     generate_schema!("SphericalExpansion", SphericalExpansionParameters);
     generate_schema!("SoapPowerSpectrum", PowerSpectrumParameters);
