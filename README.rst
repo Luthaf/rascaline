@@ -61,4 +61,4 @@ For details, tutorials, and examples, please have a look at our `documentation`_
 
 .. |docs| image:: https://img.shields.io/badge/documentation-latest-sucess
    :alt: Documentation
-   :target: https://luthaf.fr/rascaline/index.html
+   :target: `documentation`_
