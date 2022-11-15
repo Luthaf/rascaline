@@ -76,6 +76,9 @@ pub use self::dummy_calculator::DummyCalculator;
 mod sorted_distances;
 pub use self::sorted_distances::SortedDistances;
 
+mod neighbor_list;
+pub use self::neighbor_list::NeighborList;
+
 pub mod soap;
 pub use self::soap::{SphericalExpansion, SphericalExpansionParameters};
 pub use self::soap::{SoapPowerSpectrum, PowerSpectrumParameters};

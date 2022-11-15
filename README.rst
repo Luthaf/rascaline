@@ -22,32 +22,32 @@ List of implemented representations
 .. inclusion-marker-representations-start
 
 .. list-table::
-   :widths: 25 50 10 10
+   :widths: 25 50 20
    :header-rows: 1
 
-   * - Representations Name
-     - Description
-     - Features
-     - Gradients
+   * - representation
+     - description
+     - gradients
 
-   * - Spherical Expansion
-     - Core of representations in SOAP (Smooth Overlap of Atomic Positions)
-     - ✓
-     - ✓
-   * - Soap radial spectrum
-     - Each atom is represented by the radial average of the density of its neighbors
-     - ✓
-     - ✓
-   * - Soap power spectrum
-     - Each sample represents rotationally-averaged atomic density correlations,
-       built on top of the spherical expansion
-     - ✓
-     - ✓
+   * - Spherical expansion
+     - Atoms are represented by the expansion of their neighbor's density on
+       radial basis and spherical harmonics. This is the core of representations
+       in SOAP (Smooth Overlap of Atomic Positions)
+     - positions and cell
+   * - SOAP radial spectrum
+     - Atoms are represented by 2-body correlations of their neighbors' density
+     - positions and cell
+   * - SOAP power spectrum
+     - Atoms are represented by 3-body correlations of their neighbors' density
+     - positions and cell
    * - Sorted distances
      - Each atomic center is represented by a vector of distance to its
        neighbors within the spherical cutoff
-     - ✓
-     - 
+     - no
+   * - Neighbor List
+     - Each pair is represented by the vector between the atoms. This is
+       intended to be used as a starting point for more complex representations
+     - positions
 
 .. inclusion-marker-representations-end
 

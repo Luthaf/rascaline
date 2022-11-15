@@ -3,15 +3,18 @@ import os
 
 from pkg_resources import DistributionNotFound, get_distribution
 
-from .calculators import CalculatorBase  # noqa
-from .calculators import SoapPowerSpectrum  # noqa
-from .calculators import SoapRadialSpectrum  # noqa
-from .calculators import SortedDistances  # noqa
-from .calculators import SphericalExpansion  # noqa
 from .log import set_logging_callback  # noqa
 from .profiling import Profiler  # noqa
 from .status import RascalError  # noqa
 from .systems import IntoSystem, SystemBase  # noqa
+
+
+from .calculators import CalculatorBase  # noqa  isort: skip
+from .calculators import SortedDistances  # noqa  isort: skip
+from .calculators import NeighborList  # noqa  isort: skip
+from .calculators import SphericalExpansion  # noqa  isort: skip
+from .calculators import SoapRadialSpectrum  # noqa  isort: skip
+from .calculators import SoapPowerSpectrum  # noqa  isort: skip
 
 
 # Get the __version__ attribute from setuptools metadata (which took it from
