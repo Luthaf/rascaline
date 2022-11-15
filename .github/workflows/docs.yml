@@ -12,8 +12,6 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
-        with:
-          submodules: true
       - name: setup rust
         uses: actions-rs/toolchain@v1
         with:
@@ -22,7 +20,7 @@ jobs:
       - name: setup Python
         uses: actions/setup-python@v2
         with:
-          python-version: 3.8
+          python-version: "3.10"
       - name: install dependencies
         run: |
           pip install tox
@@ -43,7 +41,6 @@ jobs:
               rm -rf latest
               mv ../docs/build/html latest
           fi
-
       - name: deploy to gh-pages
         if: github.event_name == 'push'
         uses: peaceiris/actions-gh-pages@v3
