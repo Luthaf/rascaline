@@ -1,6 +1,10 @@
 # Basic CMake integration for rascaline.
 cmake_minimum_required(VERSION 3.10)
 
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING "" FORCE)
+
 if (POLICY CMP0077)
     # use variables to set OPTIONS
     cmake_policy(SET CMP0077 NEW)
@@ -161,7 +165,9 @@ else()
 endif()
 
 add_custom_target(cargo-build-rascaline ALL
-    COMMAND cargo rustc ${CARGO_BUILD_ARG} -- "${CARGO_RUSTC_ARGS}"
+    COMMAND ${CMAKE_COMMAND} -E env
+        MACOSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}
+        cargo rustc ${CARGO_BUILD_ARG} -- "${CARGO_RUSTC_ARGS}"
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     DEPENDS ${ALL_RUST_SOURCES}
     COMMENT "Building ${RASCALINE_LIB_NAME} with cargo"
