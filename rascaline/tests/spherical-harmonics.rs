@@ -1,7 +1,7 @@
 use approx::assert_relative_eq;
 
 use rascaline::Vector3D;
-use rascaline::calculators::soap::{
+use rascaline::math::{
     SphericalHarmonics,
     SphericalHarmonicsArray
 };
