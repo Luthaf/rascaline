@@ -71,6 +71,7 @@ impl SoapRadialSpectrum {
             radial_basis: parameters.radial_basis,
             cutoff_function: parameters.cutoff_function,
             radial_scaling: parameters.radial_scaling,
+            single_l: false,
         };
 
         let spherical_expansion = SphericalExpansion::new(expansion_parameters)?;

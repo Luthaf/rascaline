@@ -114,6 +114,8 @@ pub struct SphericalExpansionParameters {
     /// model
     #[serde(default)]
     pub radial_scaling: RadialScaling,
+    /// whether to compute only lmax 
+    pub single_l: bool, 
 }
 
 struct RadialIntegralImpl {
@@ -232,11 +234,15 @@ impl std::fmt::Debug for SphericalExpansion {
 
 impl SphericalExpansion {
     /// Create a new `SphericalExpansion` calculator with the given parameters
-    pub fn new(parameters: SphericalExpansionParameters) -> Result<SphericalExpansion, Error> {
+    pub fn new(mut parameters: SphericalExpansionParameters) -> Result<SphericalExpansion, Error> {
         // validate parameters once in the constructor
         parameters.cutoff_function.validate()?;
         parameters.radial_scaling.validate()?;
-        RadialIntegralImpl::new(&parameters)?;
+        if parameters.atomic_gaussian_width < 0.0 {
+            parameters.atomic_gaussian_width *= -1.;
+            parameters.single_l = true;
+        }
+        RadialIntegralImpl::new(&parameters)?;        
 
         let m_1_pow_l = (0..=parameters.max_angular).into_iter()
             .map(|l| f64::powi(-1.0, l as i32))
@@ -369,6 +375,10 @@ impl SphericalExpansion {
         );
 
         for spherical_harmonics_l in 0..=self.parameters.max_angular {
+            if self.parameters.single_l && spherical_harmonics_l < self.parameters.max_angular {
+                continue;
+            }
+                
             let first_block_id = descriptor.keys().position(&[
                 spherical_harmonics_l.into(),
                 pair.first_species.into(),
@@ -628,6 +638,9 @@ impl CalculatorBase for SphericalExpansion {
         let mut builder = LabelsBuilder::new(vec!["spherical_harmonics_l", "species_center", "species_neighbor"]);
         for &[species_center, species_neighbor] in keys.iter_fixed_size() {
             for spherical_harmonics_l in 0..=self.parameters.max_angular {
+                if self.parameters.single_l && spherical_harmonics_l< self.parameters.max_angular {
+                    continue;
+                }
                 builder.add(&[spherical_harmonics_l.into(), species_center, species_neighbor]);
             }
         }
@@ -1093,6 +1106,7 @@ mod tests {
             radial_basis: RadialBasis::Gto {},
             radial_scaling: RadialScaling::Willatt2018 { scale: 1.5, rate: 0.8, exponent: 2},
             cutoff_function: CutoffFunction::ShiftedCosine { width: 0.5 },
+            single_l: false,
         }
     }
 

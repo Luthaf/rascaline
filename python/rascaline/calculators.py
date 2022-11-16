@@ -285,6 +285,7 @@ class SphericalExpansion(CalculatorBase):
         center_atom_weight,
         cutoff_function,
         radial_scaling=None,
+        single_l=False
     ):
         parameters = {
             "cutoff": cutoff,
@@ -294,6 +295,7 @@ class SphericalExpansion(CalculatorBase):
             "center_atom_weight": center_atom_weight,
             "radial_basis": radial_basis,
             "cutoff_function": cutoff_function,
+            "single_l": single_l
         }
 
         if radial_scaling is not None:
