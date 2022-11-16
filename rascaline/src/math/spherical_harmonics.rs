@@ -90,7 +90,7 @@ impl std::fmt::Debug for LegendreArray {
 /// code like
 ///
 /// ```
-/// # use rascaline::calculators::soap::SphericalHarmonicsArray;
+/// # use rascaline::math::SphericalHarmonicsArray;
 /// let mut array = SphericalHarmonicsArray::new(8);
 /// array[[6, 3]] = 3.0;
 /// array[[6, -3]] = -3.0;
@@ -420,6 +420,52 @@ impl SphericalHarmonics {
                 }
             }
         }
+    }
+}
+
+
+/// Store together the spherical harmonics implementation and cached allocation
+/// for values/gradients.
+pub(crate) struct SphericalHarmonicsCache {
+    /// Implementation of the spherical harmonics
+    code: SphericalHarmonics,
+    /// Cache for the spherical harmonics values
+    pub(crate) values: SphericalHarmonicsArray,
+    /// Cache for the spherical harmonics gradients (one value each for x/y/z)
+    pub(crate) gradients: [SphericalHarmonicsArray; 3],
+}
+
+impl SphericalHarmonicsCache {
+    /// Create a new `SphericalHarmonicsCache` for the given `max_angular` parameter
+    pub(crate) fn new(max_angular: usize) -> SphericalHarmonicsCache {
+        let code = SphericalHarmonics::new(max_angular);
+        let values = SphericalHarmonicsArray::new(max_angular);
+        let gradients = [
+            SphericalHarmonicsArray::new(max_angular),
+            SphericalHarmonicsArray::new(max_angular),
+            SphericalHarmonicsArray::new(max_angular)
+        ];
+
+        return SphericalHarmonicsCache { code, values, gradients };
+    }
+
+    /// Run the calculation, the results are stored inside `self.values` and
+    /// `self.gradients`
+    pub(crate) fn compute(&mut self, direction: Vector3D, gradient: bool) {
+        if gradient {
+            self.code.compute(
+                direction,
+                &mut self.values,
+                Some(&mut self.gradients),
+            );
+        } else {
+            self.code.compute(
+                direction,
+                &mut self.values,
+                None,
+            );
+        }
+
     }
 }
 

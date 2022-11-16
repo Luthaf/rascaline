@@ -104,6 +104,7 @@ pub fn ln_gamma(x: f64) -> f64 {
 /// This code was extracted from statrs, which is © 2016 Michael Ma, distributed
 /// under MIT license. Cf <https://github.com/statrs-dev/statrs/blob/5411ba74b427b992dd1410d699052a0b41dc2b5c/src/function/gamma.rs>
 /// for the original code
+#[allow(clippy::many_single_char_names)]
 pub fn digamma(x: f64) -> f64 {
     let c = 12.0;
     let d1 = -0.57721566490153286;
