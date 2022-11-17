@@ -1,5 +1,5 @@
 /// Euler's constant
-pub const EULER: f64 = 0.57721566490153286;
+pub const EULER: f64 = 0.5772156649015329;
 
 mod cutoff;
 pub(crate) use self::cutoff::{CutoffFunction, RadialScaling};
@@ -9,6 +9,9 @@ pub(crate) use self::double_regularized_1f1::DoubleRegularized1F1;
 
 mod eigen;
 pub(crate) use self::eigen::SymmetricEigen;
+
+mod exp;
+pub use self::exp::{exp1, expi};
 
 mod erf;
 pub use self::erf::{erf, erfc};
