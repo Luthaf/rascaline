@@ -17,7 +17,7 @@ use super::super::CalculatorBase;
 
 use crate::math::SphericalHarmonicsCache;
 use crate::math::{KVector, compute_k_vectors};
-use crate::math::{gamma_ui, gamma, hyp2f1};
+use crate::math::{expi, erfc, gamma, hyp2f1};
 
 use crate::calculators::radial_basis::RadialBasis;
 use super::radial_integral::{LodeRadialIntegralCache, LodeRadialIntegralParameters};
@@ -244,14 +244,33 @@ impl LodeSphericalExpansion {
             }
         } else {
             let p_eff = 3.0 - potential_exponent;
-            let factor = std::f64::consts::PI.powf(1.5) * 2.0_f64.powi(p_eff as i32) / gamma(0.5 * potential_exponent);
+            let factor = std::f64::consts::PI.powf(1.5) * (2.0 * smearing_squared).powf(0.5 * p_eff) / gamma(0.5 * potential_exponent);
 
             for k_vector in k_vectors {
                 let k_norm_squared = k_vector.norm * k_vector.norm;
-                let value = gamma_ui(0.5 * p_eff, 0.5 * k_norm_squared * smearing_squared);
-                fourrier.push(factor * value / k_vector.norm.powi(p_eff as i32));
+                let x = 0.5 * k_norm_squared * smearing_squared;
+
+                // Compute the gamma_ui over a power law using analytical
+                // expressions for a more stable Fourier transform of the
+                // density
+                let value = if potential_exponent == 2.0 {
+                    f64::sqrt(std::f64::consts::PI / x) * erfc(f64::sqrt(x))
+                } else if potential_exponent == 3.0 {
+                    -expi(-x)
+                } else if potential_exponent == 4.0 {
+                    2.0 * (f64::exp(-x) - f64::sqrt(std::f64::consts::PI*x) * erfc(f64::sqrt(x)))
+                } else if potential_exponent == 5.0 {
+                    f64::exp(-x) + x * expi(-x)
+                } else if potential_exponent == 6.0 {
+                    ((2.0 - 4.0 * x) * f64::exp(-x) + 4.0 * f64::sqrt(std::f64::consts::PI) * x.powf(1.5) * erfc(f64::sqrt(x))) / 3.0
+                } else {
+                    panic!("potential_exponent = {} is not implemented", potential_exponent);
+                };
+
+                fourrier.push(factor * value);
             }
         }
+
         return fourrier.into();
     }
 
@@ -703,17 +722,11 @@ impl CalculatorBase for LodeSphericalExpansion {
 
 #[cfg(test)]
 mod tests {
-<<<<<<< HEAD
-    use crate::{Calculator, CalculationOptions};
-    use crate::calculators::{CalculatorBase, SphericalExpansion, SphericalExpansionParameters};
-    use crate::calculators::soap::{CutoffFunction, RadialScaling};
-    use crate::systems::test_utils::{test_system, test_systems};
-=======
     use crate::Calculator;
     use crate::calculators::CalculatorBase;
     use crate::systems::test_utils::test_system;
->>>>>>> 8479138 (Improve the accuracy in soap-vs-lode test)
 
+    use Vector3D;
     use approx::assert_relative_eq;
     use ndarray::arr1;
 
@@ -721,31 +734,66 @@ mod tests {
 
     #[test]
     fn finite_differences_positions() {
-        let calculator = Calculator::from(Box::new(LodeSphericalExpansion::new(
-            LodeSphericalExpansionParameters {
-                cutoff: 3.5,
-                k_cutoff: None,
-                max_radial: 6,
-                max_angular: 6,
-                atomic_gaussian_width: 0.8,
-                center_atom_weight: 1.0,
-                potential_exponent: 1,
-                radial_basis: RadialBasis::splined_gto(1e-8),
-            }
-        ).unwrap()) as Box<dyn CalculatorBase>);
-
         let mut system = test_system("water");
         // FIXME: doing this in the "water" system definition breaks all tests,
         // it should not.
         system.cell = UnitCell::cubic(3.0);
 
+        for p in 0..=6 {
+            let calculator = Calculator::from(Box::new(LodeSphericalExpansion::new(
+                LodeSphericalExpansionParameters {
+                    cutoff: 1.0,
+                    k_cutoff: None,
+                    max_radial: 1,
+                    max_angular: 1,
+                    atomic_gaussian_width: 1.0,
+                    center_atom_weight: 1.0,
+                    radial_basis: RadialBasis::splined_gto(1e-8),
+                    potential_exponent: p,
+                }
+            ).unwrap()) as Box<dyn CalculatorBase>);
 
-        let options = crate::calculators::tests_utils::FinalDifferenceOptions {
-            displacement: 1e-5,
-            max_relative: 1e-4,
-            epsilon: 1e-10,
-        };
-        crate::calculators::tests_utils::finite_differences_positions(calculator, &system, options);
+            let options = crate::calculators::tests_utils::FinalDifferenceOptions {
+                displacement: 1e-5,
+                max_relative: 1e-4,
+                epsilon: 1e-10,
+            };
+            crate::calculators::tests_utils::finite_differences_positions(calculator, &system, options);
+        }
+    }
+
+    #[test]
+    fn compute_density_fourrier() {
+        let k_vectors = [KVector{direction: Vector3D::zero(), norm: 1e-12},
+                                       KVector{direction: Vector3D::zero(), norm: 1e-11}];
+
+        // Reference values taken from pyLODE
+        let reference_vals = [
+            [6.67432573, 6.67432573],  // potential_exponent = 0
+            [7.87480497, 7.87480497],  // potential_exponent = 4
+            [0.65623375, 0.65623375],  // potential_exponent = 6
+        ];
+
+        for (i, &p) in [0, 4, 6].iter().enumerate(){
+            let spherical_expansion = LodeSphericalExpansion::new(
+                LodeSphericalExpansionParameters {
+                    cutoff: 3.5,
+                    k_cutoff: None,
+                    max_radial: 6,
+                    max_angular: 6,
+                    atomic_gaussian_width: 1.0,
+                    center_atom_weight: 1.0,
+                    radial_basis: RadialBasis::splined_gto(1e-8),
+                    potential_exponent: p,
+                }
+            ).unwrap();
+
+            assert_relative_eq!(
+                spherical_expansion.compute_density_fourrier(&k_vectors),
+                arr1(&reference_vals[i]),
+                max_relative=1e-8
+            );
+        }
     }
 
     #[test]
@@ -821,7 +869,7 @@ mod tests {
             [1.00532822, 1.10024472, 1.34843326, 1.19816598, 0.69150744, 1.2765415],
             [0.03811939, 0.03741200, 0.03115835, 0.01364843, 0.00534184, 0.00205973]];
 
-        for (i, p) in potential_exponents.iter().enumerate(){
+        for (i, &p) in potential_exponents.iter().enumerate(){
 
             let mut spherical_expansion = LodeSphericalExpansion::new(LodeSphericalExpansionParameters {
                 cutoff: 5.0,
@@ -830,8 +878,8 @@ mod tests {
                 max_angular: 2,
                 atomic_gaussian_width: 1.0,
                 center_atom_weight: 1.0,
-                radial_basis: LodeRadialBasis::Gto { splined_radial_integral: true, spline_accuracy: 1e-8 },
-                potential_exponent: *p,
+                radial_basis: RadialBasis::splined_gto(1e-8),
+                potential_exponent: p,
             }).unwrap();
 
             let center_contrib = spherical_expansion.compute_gto_central_atom_contribution();

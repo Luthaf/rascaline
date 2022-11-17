@@ -94,6 +94,7 @@ pub fn ln_gamma(x: f64) -> f64 {
 /// Computes the upper incomplete gamma function `Gamma(a,x) =
 /// int(exp(-t)t^(a-1), t=0..x) for a > 0, x > 0` where `a` is the argument for
 /// the gamma function and `x` is the lower integral limit.
+#[allow(dead_code)]
 pub fn gamma_ui(a: f64, x: f64) -> f64 {
     return gamma_ur(a, x) * gamma(a);
 }
@@ -102,6 +103,7 @@ pub fn gamma_ui(a: f64, x: f64) -> f64 {
 /// Gamma(a) * int(exp(-t)t^(a-1), t=0..x) for a > 0, x > 0` where `a` is the
 /// argument for the gamma function and `x` is the lower integral limit.
 #[allow(clippy::many_single_char_names, clippy::similar_names)]
+#[allow(dead_code)]
 pub fn gamma_ur(a: f64, x: f64) -> f64 {
     if a.is_nan() || x.is_nan() {
         return f64::NAN;
@@ -175,6 +177,7 @@ pub fn gamma_ur(a: f64, x: f64) -> f64 {
 /// Gamma(a) * int(exp(-t)t^(a-1), t=0..x) for real a > 0, x > 0` where `a` is
 /// the argument for the gamma function and `x` is the upper integral limit.
 #[allow(clippy::many_single_char_names)]
+#[allow(dead_code)]
 pub fn gamma_lr(a: f64, x: f64) -> f64 {
     if a.is_nan() || x.is_nan() {
         return f64::NAN;
