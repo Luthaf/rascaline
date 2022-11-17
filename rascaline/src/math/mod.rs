@@ -14,7 +14,7 @@ mod erf;
 pub use self::erf::{erf, erfc};
 
 mod gamma;
-pub(crate) use self::gamma::{gamma, ln_gamma, gamma_ui, digamma};
+pub(crate) use self::gamma::{gamma, ln_gamma, digamma};
 
 mod hyp1f1;
 pub(crate) use self::hyp1f1::hyp1f1;

@@ -88,11 +88,11 @@ fn madelung() {
             for crystal in crystals.iter_mut() {
 
                 let lode_parameters = LodeSphericalExpansionParameters {
-                    cutoff: cutoff,
+                    cutoff,
                     k_cutoff: None,
                     max_radial: 1,
                     max_angular: 0,
-                    atomic_gaussian_width: atomic_gaussian_width,
+                    atomic_gaussian_width,
                     center_atom_weight: 0.0,
                     potential_exponent: 1,
                     radial_basis: RadialBasis::splined_gto(1e-8),
@@ -132,7 +132,7 @@ fn madelung_high_accuracy() {
 
     for crystal in crystals.iter_mut() {
         let lode_parameters = LodeSphericalExpansionParameters {
-            cutoff: cutoff,
+            cutoff,
             k_cutoff: Some(50.),
             max_radial: 1,
             max_angular: 0,
