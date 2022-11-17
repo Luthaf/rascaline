@@ -7,6 +7,9 @@ pub(crate) use self::double_regularized_1f1::DoubleRegularized1F1;
 mod eigen;
 pub(crate) use self::eigen::SymmetricEigen;
 
+mod exp;
+pub use self::exp::{exp1, expi};
+
 mod erf;
 pub use self::erf::{erf, erfc};
 
