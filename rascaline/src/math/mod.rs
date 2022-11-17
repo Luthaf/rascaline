@@ -1,6 +1,15 @@
 /// Euler's constant
 pub const EULER: f64 = 0.5772156649015329;
 
+mod double_regularized_1f1;
+pub(crate) use self::double_regularized_1f1::DoubleRegularized1F1;
+
+mod eigen;
+pub(crate) use self::eigen::SymmetricEigen;
+
+mod erf;
+pub use self::erf::{erf, erfc};
+
 mod gamma;
 pub(crate) use self::gamma::{gamma, ln_gamma, gamma_ui, digamma};
 
@@ -9,12 +18,6 @@ pub(crate) use self::hyp1f1::hyp1f1;
 
 mod hyp2f1;
 pub (crate) use self::hyp2f1::hyp2f1;
-
-mod double_regularized_1f1;
-pub(crate) use self::double_regularized_1f1::DoubleRegularized1F1;
-
-mod eigen;
-pub(crate) use self::eigen::SymmetricEigen;
 
 mod splines;
 pub(crate) use self::splines::{HermitCubicSpline, SplineParameters};
