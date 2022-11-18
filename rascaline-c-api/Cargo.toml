@@ -17,7 +17,7 @@ chemfiles = ["rascaline/chemfiles"]
 serialization = ["equistore/serialization"]
 
 [dependencies]
-equistore = {git = "https://github.com/lab-cosmo/equistore", branch = "feat/alchemy-optimize", features = ["ndarray", "rayon"]}
+equistore = {git = "https://github.com/lab-cosmo/equistore", branch = "alchemy-paper", features = ["ndarray", "rayon"]}
 rascaline = {path = "../rascaline", version = "0.1.0", default-features = false}
 ndarray = "0.15"
 log = { version = "0.4", features = ["std"] }
@@ -28,7 +28,7 @@ libc = "0.2"
 [build-dependencies]
 cbindgen = { version = "0.24", default-features = false }
 glob = "0.3"
-equistore = {git = "https://github.com/lab-cosmo/equistore", branch = "feat/alchemy-optimize", features = ["ndarray", "rayon"]}
+equistore = {git = "https://github.com/lab-cosmo/equistore", branch = "alchemy-paper", features = ["ndarray", "rayon"]}
 
 [dev-dependencies]
 which = "4"
