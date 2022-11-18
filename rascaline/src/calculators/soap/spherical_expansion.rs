@@ -234,14 +234,10 @@ impl std::fmt::Debug for SphericalExpansion {
 
 impl SphericalExpansion {
     /// Create a new `SphericalExpansion` calculator with the given parameters
-    pub fn new(mut parameters: SphericalExpansionParameters) -> Result<SphericalExpansion, Error> {
+    pub fn new(parameters: SphericalExpansionParameters) -> Result<SphericalExpansion, Error> {
         // validate parameters once in the constructor
         parameters.cutoff_function.validate()?;
         parameters.radial_scaling.validate()?;
-        if parameters.atomic_gaussian_width < 0.0 {
-            parameters.atomic_gaussian_width *= -1.;
-            parameters.single_l = true;
-        }
         RadialIntegralImpl::new(&parameters)?;        
 
         let m_1_pow_l = (0..=parameters.max_angular).into_iter()
