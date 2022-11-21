@@ -206,6 +206,18 @@ fn convert_labels_selection<'a>(
     }
 }
 
+fn key_selection(value: *const eqs_labels_t, labels: &'_ mut Option<Labels>) -> Result<Option<&'_ Labels>, rascaline::Error> {
+    if value.is_null() {
+        return Ok(None);
+    }
+
+    unsafe {
+        *labels = Some(Labels::try_from(&*value)?);
+    }
+
+    return Ok(labels.as_ref());
+}
+
 /// Options that can be set to change how a calculator operates.
 #[repr(C)]
 pub struct rascal_calculation_options_t {
@@ -251,6 +263,11 @@ pub struct rascal_calculation_options_t {
     selected_samples: rascal_labels_selection_t,
     /// Selection of properties to compute for the samples
     selected_properties: rascal_labels_selection_t,
+    /// Selection for the keys to include in the output. Set this parameter to
+    /// `NULL` to use the default set of keys, as determined by the calculator.
+    /// Note that this default set of keys can depend on which systems we are
+    /// running the calculation on.
+    selected_keys: *const eqs_labels_t,
 }
 
 #[allow(clippy::doc_markdown)]
@@ -300,12 +317,14 @@ pub unsafe extern fn rascal_calculator_compute(
 
         let mut selected_samples = None;
         let mut selected_properties = None;
+        let mut selected_keys = None;
 
         let rust_options = CalculationOptions {
             gradients: &gradients,
             use_native_system: options.use_native_system,
             selected_samples: convert_labels_selection(&options.selected_samples, &mut selected_samples)?,
             selected_properties: convert_labels_selection(&options.selected_properties, &mut selected_properties)?,
+            selected_keys: key_selection(options.selected_keys, &mut selected_keys)?,
         };
 
         let tensor = (*calculator).compute(&mut systems, rust_options)?;
