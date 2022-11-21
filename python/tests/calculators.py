@@ -419,6 +419,172 @@ class TestComputePartialProperties(unittest.TestCase):
         )
 
 
+class TestComputeSelectedKeys(unittest.TestCase):
+    def test_selection_existing(self):
+        system = TestSystem()
+        calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
+
+        # Manually select the keys
+        selected_keys = Labels(
+            names=["species_center"],
+            values=np.array([[1]], dtype=np.int32),
+        )
+        descriptor = calculator.compute(
+            system, use_native_system=False, selected_keys=selected_keys
+        )
+
+        self.assertEqual(len(descriptor.keys), 1)
+        self.assertEqual(tuple(descriptor.keys[0]), (1,))
+
+    def test_select_defunct(self):
+        system = TestSystem()
+        calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
+
+        # Manually select the keys
+        selected_keys = Labels(
+            names=["species_center"],
+            values=np.array([[4]], dtype=np.int32),
+        )
+        descriptor = calculator.compute(
+            system, use_native_system=False, selected_keys=selected_keys
+        )
+
+        C_block = descriptor.block(species_center=4)
+        self.assertEqual(C_block.values.shape, (0, 2))
+
+    def test_predefined_selection(self):
+        system = TestSystem()
+        calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
+
+        selected_keys = Labels(
+            names=["species_center"],
+            values=np.array([[1]], dtype=np.int32),
+        )
+
+        keys = Labels(
+            names=["species_center"],
+            values=np.array([[1], [8]], dtype=np.int32),
+        )
+
+        # selection from TensorMap
+        selected = [
+            Labels(
+                names=["index_delta", "x_y_z"],
+                values=np.array([[1, 0]], dtype=np.int32),
+            ),
+            Labels(
+                names=["index_delta", "x_y_z"],
+                values=np.array([[0, 1]], dtype=np.int32),
+            ),
+        ]
+        selected_properties = _tensor_map_selection("properties", keys, selected)
+
+        descriptor = calculator.compute(
+            system,
+            use_native_system=False,
+            selected_properties=selected_properties,
+            selected_keys=selected_keys,
+        )
+
+        self.assertEqual(len(descriptor.keys), 1)
+        H_block = descriptor.block(species_center=1)
+        self.assertEqual(H_block.values.shape, (2, 1))
+        self.assertTrue(np.all(H_block.values[0] == (2,)))
+        self.assertTrue(np.all(H_block.values[1] == (3,)))
+
+    def test_name_errors(self):
+        system = TestSystem()
+        calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
+
+        selected_keys = Labels(
+            names=["bad name"],
+            values=np.array([0, 3, 1], dtype=np.int32).reshape(3, 1),
+        )
+
+        with self.assertRaises(RascalError) as cm:
+            calculator.compute(
+                system, use_native_system=False, selected_keys=selected_keys
+            )
+
+        self.assertEqual(
+            str(cm.exception),
+            "invalid parameter: 'bad name' is not a valid label name",
+        )
+
+        selected_keys = Labels(
+            names=["bad_name"],
+            values=np.array([0, 3, 1], dtype=np.int32).reshape(3, 1),
+        )
+
+        with self.assertRaises(RascalError) as cm:
+            calculator.compute(
+                system, use_native_system=False, selected_keys=selected_keys
+            )
+
+        self.assertEqual(
+            str(cm.exception),
+            "invalid parameter: The key names of the calculator [species_center]"
+            " and the passed keys [bad_name] do not match:",
+        )
+
+    def test_key_errors(self):
+        system = TestSystem()
+        calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
+
+        selected_keys = Labels(
+            names=["species_center"],
+            values=np.empty((0, 1), dtype=np.int32),
+        )
+
+        with self.assertRaises(RascalError) as cm:
+            calculator.compute(
+                system, use_native_system=False, selected_keys=selected_keys
+            )
+
+        self.assertEqual(
+            str(cm.exception),
+            "invalid parameter: Empty selected keys",
+        )
+
+        # in the case of selected_properies/selected_samples and selected_keys
+        # the selected keys must be in the keys of the predefined tensor_map
+        selected_keys = Labels(
+            names=["species_center"],
+            values=np.array([[4]], dtype=np.int32),
+        )
+
+        keys = Labels(
+            names=["species_center"],
+            values=np.array([[1], [8]], dtype=np.int32),
+        )
+
+        # selection from TensorMap
+        selected = [
+            Labels(
+                names=["index_delta", "x_y_z"],
+                values=np.array([[1, 0]], dtype=np.int32),
+            ),
+            Labels(
+                names=["index_delta", "x_y_z"],
+                values=np.array([[0, 1]], dtype=np.int32),
+            ),
+        ]
+        selected_properties = _tensor_map_selection("properties", keys, selected)
+
+        with self.assertRaises(RascalError) as cm:
+            calculator.compute(
+                system,
+                use_native_system=False,
+                selected_properties=selected_properties,
+                selected_keys=selected_keys,
+            )
+
+        self.assertEqual(
+            str(cm.exception),
+            "invalid parameter: expected a key [4] in predefined properties selection",
+        )
+
+
 class TestSortedDistances(unittest.TestCase):
     def test_name(self):
         calculator = SortedDistances(

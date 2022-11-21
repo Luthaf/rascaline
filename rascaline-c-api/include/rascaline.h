@@ -314,6 +314,10 @@ typedef struct rascal_calculation_options_t {
    * Selection of properties to compute for the samples
    */
   struct rascal_labels_selection_t selected_properties;
+  /**
+   * Keys which will be in the resulting representation
+   */
+  const eqs_labels_t *selected_keys;
 } rascal_calculation_options_t;
 
 #ifdef __cplusplus

@@ -28,6 +28,7 @@ def _options_to_c(
     use_native_system,
     selected_samples,
     selected_properties,
+    selected_keys,
 ):
     if gradients is None:
         gradients = []
@@ -87,6 +88,13 @@ def _options_to_c(
             f"{type(selected_properties)} instead"
         )
 
+    if selected_keys is None:
+        # nothing to do, all pointers are already NULL
+        pass
+    elif isinstance(selected_keys, Labels):
+        selected_keys = selected_keys._as_eqs_labels_t()
+        c_options.selected_keys = ctypes.pointer(selected_keys)
+        c_options.__keepalive["selected_keys"] = selected_keys
     return c_options
 
 
@@ -141,6 +149,7 @@ class CalculatorBase:
         use_native_system: bool = True,
         selected_samples: Optional[Union[Labels, TensorMap]] = None,
         selected_properties: Optional[Union[Labels, TensorMap]] = None,
+        selected_keys: Optional[Labels] = None,
     ) -> TensorMap:
         r"""Runs a calculation with this calculator on the given ``systems``.
 
@@ -223,6 +232,14 @@ class CalculatorBase:
             properties, then only properties from the default set with the same
             values for these variables as one of the entries in
             ``selected_properties`` will be used.
+
+        :param selected_keys: Set of keys, which the
+            :py:class:`equistore.TensorMap` instance being created must have.
+            Use ``None`` to use default keys (derived from calculator).
+
+            If ``selected_keys`` is a set of :py:class:`equistore.Labels`
+            whose names match the key names from this calculator, then values
+            will be used as keys for the resulting representation.
         """
 
         c_systems = _convert_systems(systems)
@@ -233,6 +250,7 @@ class CalculatorBase:
             use_native_system=use_native_system,
             selected_samples=selected_samples,
             selected_properties=selected_properties,
+            selected_keys=selected_keys,
         )
         self._lib.rascal_calculator_compute(
             self, tensor_map_ptr, c_systems, c_systems._length_, c_options
