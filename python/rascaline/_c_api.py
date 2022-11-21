@@ -76,6 +76,7 @@ class rascal_calculation_options_t(ctypes.Structure):
         ("use_native_system", ctypes.c_bool),
         ("selected_samples", rascal_labels_selection_t),
         ("selected_properties", rascal_labels_selection_t),
+        ("selected_keys", POINTER(eqs_labels_t)),
     ]
 
 

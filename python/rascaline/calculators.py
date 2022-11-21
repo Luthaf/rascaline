@@ -28,6 +28,7 @@ def _options_to_c(
     use_native_system,
     selected_samples,
     selected_properties,
+    selected_keys,
 ):
     if gradients is None:
         gradients = []
@@ -87,6 +88,13 @@ def _options_to_c(
             f"{type(selected_properties)} instead"
         )
 
+    if selected_keys is None:
+        # nothing to do, all pointers are already NULL
+        pass
+    elif isinstance(selected_keys, Labels):
+        selected_keys = selected_keys._as_eqs_labels_t()
+        c_options.selected_keys = ctypes.pointer(selected_keys)
+        c_options.__keepalive["selected_keys"] = selected_keys
     return c_options
 
 
@@ -141,6 +149,7 @@ class CalculatorBase:
         use_native_system: bool = True,
         selected_samples: Optional[Union[Labels, TensorMap]] = None,
         selected_properties: Optional[Union[Labels, TensorMap]] = None,
+        selected_keys: Optional[Labels] = None,
     ) -> TensorMap:
         r"""Runs a calculation with this calculator on the given ``systems``.
 
@@ -155,10 +164,10 @@ class CalculatorBase:
             faster than having to cross the FFI boundary often when accessing
             the neighbor list. Otherwise the Python neighbor list is used.
 
-        :param gradients: List of gradients to compute. If this is ``None``
-            or an empty list ``[]``, no gradients are computed.
-            Gradients are stored inside the different blocks, and can be
-            accessed with ``descriptor.block(...).gradient(<parameter>)``, where
+        :param gradients: List of gradients to compute. If this is ``None`` or
+            an empty list ``[]``, no gradients are computed. Gradients are
+            stored inside the different blocks, and can be accessed with
+            ``descriptor.block(...).gradient(<parameter>)``, where
             ``<parameter>`` is ``"positions"`` or ``"cell"``. The following
             gradients are available:
 
@@ -171,15 +180,15 @@ class CalculatorBase:
                   \frac{\partial \langle q \vert A \rangle}
                        {\partial \mathbf{h}}
 
-              where :math:`\mathbf{h}` is the cell matrix and
-              :math:`\langle q \vert A \rangle` indicates each of the
-              components of the representation.
+              where :math:`\mathbf{h}` is the cell matrix and :math:`\langle q
+              \vert A \rangle` indicates each of the components of the
+              representation.
 
               **Note**: When computing the virial, one often needs to evaluate
               the gradient of the representation with respect to the strain
               :math:`\epsilon`. To recover the typical expression from the cell
-              gradient one has to multiply the cell gradients with the
-              cell matrix :math:`\mathbf{h}`
+              gradient one has to multiply the cell gradients with the cell
+              matrix :math:`\mathbf{h}`
 
               .. math::
                   -\frac{\partial \langle q \vert A \rangle}
@@ -223,6 +232,11 @@ class CalculatorBase:
             properties, then only properties from the default set with the same
             values for these variables as one of the entries in
             ``selected_properties`` will be used.
+
+        :param selected_keys: Selection for the keys to include in the output.
+            If this is ``None``, the default set of keys (as determined by the
+            calculator) will be used. Note that this default set of keys can
+            depend on which systems we are running the calculation on.
         """
 
         c_systems = _convert_systems(systems)
@@ -233,6 +247,7 @@ class CalculatorBase:
             use_native_system=use_native_system,
             selected_samples=selected_samples,
             selected_properties=selected_properties,
+            selected_keys=selected_keys,
         )
         self._lib.rascal_calculator_compute(
             self, tensor_map_ptr, c_systems, c_systems._length_, c_options

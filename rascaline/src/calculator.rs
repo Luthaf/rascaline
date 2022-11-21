@@ -125,6 +125,15 @@ impl<'a> LabelsSelection<'a> {
                         tensor.keys().names().join(", ")
                     )));
                 }
+                for key in keys.iter() {
+                    if !tensor.keys().contains(key){
+                        return Err(Error::InvalidParameter(format!(
+                            "expected a key [{}] in predefined {} selection",
+                            key.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(", "),
+                            label_kind,
+                        )));
+                    }
+                }
                 let default_names = get_default_names();
 
                 let mut results = Vec::new();
@@ -185,6 +194,11 @@ pub struct CalculationOptions<'a> {
     pub selected_samples: LabelsSelection<'a>,
     /// Selection of properties to compute for the samples
     pub selected_properties: LabelsSelection<'a>,
+    /// Selection for the keys to include in the output. If this is `None`, the
+    /// default set of keys (as determined by the calculator) will be used. Note
+    /// that this default set of keys can depend on which systems we are running
+    /// the calculation on.
+    pub selected_keys: Option<&'a Labels>,
 }
 
 impl<'a> Default for CalculationOptions<'a> {
@@ -194,6 +208,7 @@ impl<'a> Default for CalculationOptions<'a> {
             use_native_system: false,
             selected_samples: LabelsSelection::All,
             selected_properties: LabelsSelection::All,
+            selected_keys: None,
         }
     }
 }
@@ -245,15 +260,28 @@ impl Calculator {
         &self.parameters
     }
 
-    /// Get the set of keys this calculator would produce for the given systems
-    pub fn default_keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
-        self.implementation.keys(systems)
-    }
 
     #[time_graph::instrument(name="Calculator::prepare")]
     fn prepare(&mut self, systems: &mut [Box<dyn System>], options: CalculationOptions,) -> Result<TensorMap, Error> {
-        // TODO: allow selecting a subset of keys?
-        let keys = self.implementation.keys(systems)?;
+
+        let default_keys = self.implementation.keys(systems)?;
+        let keys = match options.selected_keys {
+            Some(keys) if keys.is_empty() => {
+                return Err(Error::InvalidParameter("selected keys can not be empty".into()));
+            }
+            Some(keys) => {
+                if default_keys.names() == keys.names() {
+                    keys.clone()
+                } else {
+                    return Err(Error::InvalidParameter(format!(
+                        "names for the keys of the calculator [{}] and selected keys [{}] do not match",
+                        default_keys.names().join(", "),
+                        keys.names().join(", "))
+                    ));
+                }
+            }
+            None => default_keys,
+        };
 
         let samples = options.selected_samples.select(
             "samples",
