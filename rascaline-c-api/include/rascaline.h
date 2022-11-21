@@ -315,7 +315,10 @@ typedef struct rascal_calculation_options_t {
    */
   struct rascal_labels_selection_t selected_properties;
   /**
-   * Keys which will be in the resulting representation
+   * Selection for the keys to include in the output. Set this parameter
+   * to `NULL` to use the default set of keys, as determined by the calculator.
+   * Note that this default set of keys can depend on which systems
+   * we are running the calculation
    */
   const eqs_labels_t *selected_keys;
 } rascal_calculation_options_t;

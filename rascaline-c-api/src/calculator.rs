@@ -265,7 +265,10 @@ pub struct rascal_calculation_options_t {
     selected_samples: rascal_labels_selection_t,
     /// Selection of properties to compute for the samples
     selected_properties: rascal_labels_selection_t,
-    /// Keys which will be in the resulting representation
+    /// Selection for the keys to include in the output. Set this parameter
+    /// to `NULL` to use the default set of keys, as determined by the calculator.
+    /// Note that this default set of keys can depend on which systems
+    /// we are running the calculation
     selected_keys: *const eqs_labels_t,
 }
 

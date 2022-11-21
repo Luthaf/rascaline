@@ -436,7 +436,7 @@ class TestComputeSelectedKeys(unittest.TestCase):
         self.assertEqual(len(descriptor.keys), 1)
         self.assertEqual(tuple(descriptor.keys[0]), (1,))
 
-    def test_select_defunct(self):
+    def test_select_key_not_in_systems(self):
         system = TestSystem()
         calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
 

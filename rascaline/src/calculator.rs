@@ -194,7 +194,10 @@ pub struct CalculationOptions<'a> {
     pub selected_samples: LabelsSelection<'a>,
     /// Selection of properties to compute for the samples
     pub selected_properties: LabelsSelection<'a>,
-    /// Keys which will be in the resulting representation
+    /// Selection for the keys to include in the output. If this is `None`, the
+    /// default set of keys (as determined by the calculator) will be used.
+    /// Note that this default set of keys can depend on which systems
+    /// we are running the calculation
     pub selected_keys: Option<&'a Labels>,
 }
 
@@ -260,25 +263,22 @@ impl Calculator {
 
     #[time_graph::instrument(name="Calculator::prepare")]
     fn prepare(&mut self, systems: &mut [Box<dyn System>], options: CalculationOptions,) -> Result<TensorMap, Error> {
-        // TODO: allow selecting a subset of keys?
         let default_keys=self.implementation.keys(systems)?;
         let keys = match options.selected_keys {
+            Some(keys) if keys.is_empty() => {
+                return Err(Error::InvalidParameter(format!("Empty selected keys")));
+            }
             Some(keys) => {
-                if default_keys.names() == keys.names() && !keys.is_empty() {
+                if default_keys.names() == keys.names() {
                     keys.clone()
                 } else {
-                    if default_keys.names() != keys.names() {
-                        return Err(Error::InvalidParameter(format!(
-                            "The key names of the calculator [{}] and the passed keys [{}] do not match:",
-                            default_keys.names().join(", "),
-                            keys.names().join(", "))
-                            ));
-                    }
-                    else {
-                        return Err(Error::InvalidParameter(format!("Empty selected keys")));
-                    }
+                    return Err(Error::InvalidParameter(format!(
+                        "The key names of the calculator [{}] and the passed keys [{}] do not match:",
+                        default_keys.names().join(", "),
+                        keys.names().join(", "))
+                    ));
                 }
-            },
+            }
             None => default_keys,
         };
 
