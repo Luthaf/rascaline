@@ -494,6 +494,7 @@ impl CalculatorBase for SoapPowerSpectrum {
             gradients: &gradients,
             selected_samples: LabelsSelection::Predefined(&selected),
             selected_properties: LabelsSelection::Predefined(&selected),
+            selected_keys: Some(selected.keys()),
             ..Default::default()
         };
 
