@@ -1,4 +1,4 @@
-use ndarray::{Array2, ArrayViewMut2};
+use ndarray::{Array1, Array2, ArrayViewMut2};
 
 use super::LodeRadialIntegral;
 use crate::math::{HermitCubicSpline, SplineParameters};
@@ -13,6 +13,7 @@ use crate::Error;
 /// [splines-wiki]: https://en.wikipedia.org/wiki/Cubic_Hermite_spline
 pub struct LodeRadialIntegralSpline {
     spline: HermitCubicSpline<ndarray::Ix2>,
+    center_contribution: ndarray::Array1<f64>,
 }
 
 /// Parameters for computing the radial integral using Hermit cubic splines
@@ -57,7 +58,10 @@ impl LodeRadialIntegralSpline {
             },
         )?;
 
-        return Ok(LodeRadialIntegralSpline { spline });
+        return Ok(LodeRadialIntegralSpline {
+            spline,
+            center_contribution: radial_integral.compute_center_contribution()
+        });
     }
 }
 
@@ -65,6 +69,10 @@ impl LodeRadialIntegral for LodeRadialIntegralSpline {
     #[time_graph::instrument(name = "SplinedRadialIntegral::compute")]
     fn compute(&self, x: f64, values: ArrayViewMut2<f64>, gradients: Option<ArrayViewMut2<f64>>) {
         self.spline.compute(x, values, gradients);
+    }
+
+    fn compute_center_contribution(&self) -> Array1<f64> {
+        return self.center_contribution.clone();
     }
 }
 
@@ -90,6 +98,7 @@ mod tests {
             max_angular: parameters.max_angular,
             cutoff: parameters.cutoff,
             atomic_gaussian_width: 0.5,
+            potential_exponent: 1,
         }).unwrap();
 
         // this test only check that this code runs without crashing
@@ -111,6 +120,7 @@ mod tests {
             max_angular: parameters.max_angular,
             cutoff: parameters.cutoff,
             atomic_gaussian_width: 0.5,
+            potential_exponent: 1,
         }).unwrap();
 
         // even with very bad accuracy, we want the gradients of the spline to

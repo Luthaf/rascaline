@@ -6,7 +6,6 @@ use ndarray::{Array1, Array2, Array3, s};
 use equistore::TensorMap;
 use equistore::{LabelsBuilder, Labels, LabelValue};
 
-use crate::calculators::radial_basis::GtoRadialBasis;
 use crate::{Error, System, Vector3D};
 use crate::systems::UnitCell;
 
@@ -17,7 +16,7 @@ use super::super::CalculatorBase;
 
 use crate::math::SphericalHarmonicsCache;
 use crate::math::{KVector, compute_k_vectors};
-use crate::math::{expi, erfc, gamma, hyp2f1};
+use crate::math::{expi, erfc, gamma};
 
 use crate::calculators::radial_basis::RadialBasis;
 use super::radial_integral::{LodeRadialIntegralCache, LodeRadialIntegralParameters};
@@ -171,6 +170,7 @@ impl LodeSphericalExpansion {
                 atomic_gaussian_width: parameters.atomic_gaussian_width,
                 cutoff: parameters.cutoff,
                 k_cutoff: parameters.get_k_cutoff(),
+                potential_exponent: parameters.potential_exponent,
             })?;
 
         let mut k_vector_to_m_n = Vec::new();
@@ -310,55 +310,44 @@ impl LodeSphericalExpansion {
         return k0_contrib.into();
     }
 
-    /// Compute the central atom contribution for GTO radial basis
-    pub fn compute_gto_central_atom_contribution(&mut self) -> Array1<f64> {
-        let max_radial = self.parameters.max_radial;
-        let atomic_gaussian_width = self.parameters.atomic_gaussian_width;
-        let potential_exponent = self.parameters.potential_exponent as f64;
+    /// Compute center atom contribution.
+    ///
+    /// By symmetry, this only affects the (l, m) = (0, 0) components of the
+    /// projection coefficients and only the chemical species channel that
+    /// agrees with the center atom.
+    fn do_center_contribution(&mut self, systems: &mut[Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
+        self.radial_integral.compute_center_contribution();
 
-        let mut contrib = Array1::from_elem(max_radial, 0.0);
+        let central_atom_contrib = &self.radial_integral.center_contribution;
 
-        let basis = GtoRadialBasis {
-            max_radial,
-            cutoff: self.parameters.cutoff,
-        };
-        let gto_gaussian_widths = basis.gaussian_widths();
-        let n_eff: Vec<f64> = (0..max_radial)
-            .into_iter()
-            .map(|n| 0.5 * (3. + n as f64))
-            .collect();
+        for (system_i, system) in systems.iter_mut().enumerate() {
+            let species = system.species()?;
 
-        if potential_exponent == 0. {
-            let factor = std::f64::consts::PI.powf(-0.25)
-                / (atomic_gaussian_width * atomic_gaussian_width).powf(0.75);
+            for center_i in 0..system.size()? {
+                let block_i = descriptor.keys().position(&[
+                    0.into(),
+                    species[center_i].into(),
+                    species[center_i].into(),
+                ]).expect("missing block");
 
-            for n in 0..max_radial {
-                let alpha = 0.5
-                    * (1. / (atomic_gaussian_width * atomic_gaussian_width)
-                        + 1. / (gto_gaussian_widths[n] * gto_gaussian_widths[n]));
-                contrib[n] = factor * gamma(n_eff[n]) / alpha.powf(n_eff[n]);
-            }
-        } else {
-            let factor = 2. * f64::sqrt(4. * std::f64::consts::PI)
-                / gamma(potential_exponent / 2.)
-                / potential_exponent;
+                let mut block = descriptor.block_mut_by_id(block_i);
+                let values = block.values_mut();
+                let array = values.data.as_array_mut();
 
-            for n in 0..max_radial {
-                let s = atomic_gaussian_width / gto_gaussian_widths[n];
-                let hyparg = 1. / (1. + s * s);
+                let sample = [system_i.into(), center_i.into()];
+                let sample_i = match values.samples.position(&sample) {
+                    Some(s) => s,
+                    None => continue
+                };
 
-                contrib[n] = factor
-                    * 2_f64.powf((1. + n as f64 - potential_exponent) / 2.)
-                    * atomic_gaussian_width.powi(3 + n as i32 - potential_exponent as i32)
-                    * gamma(n_eff[n])
-                    * hyp2f1(1., n_eff[n], (potential_exponent + 2.) / 2., hyparg)
-                    * hyparg.powf(n_eff[n]);
+                for (property_i, [n]) in values.properties.iter_fixed_size().enumerate() {
+                    let n = n.usize();
+                    array[[sample_i, 0, property_i]] -= (1.0 - self.parameters.center_atom_weight) * central_atom_contrib[n];
+                }
             }
         }
 
-        let gto_orthonormalization = basis.orthonormalization_matrix();
-
-        return gto_orthonormalization.dot(&(contrib));
+        return Ok(());
     }
 }
 
@@ -490,10 +479,11 @@ impl CalculatorBase for LodeSphericalExpansion {
 
     #[time_graph::instrument(name = "LodeSphericalExpansion::compute")]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
+        assert_eq!(descriptor.keys().names(), ["spherical_harmonics_l", "species_center", "species_neighbor"]);
+
+        self.do_center_contribution(systems, descriptor)?;
 
         let k_cutoff = self.parameters.get_k_cutoff();
-
-        let central_atom_contrib = self.compute_gto_central_atom_contribution();
 
         for (system_i, system) in systems.iter_mut().enumerate() {
             let species = system.species()?;
@@ -547,33 +537,6 @@ impl CalculatorBase for LodeSphericalExpansion {
                             array[[sample_i, 0, _property_i]] += global_factor * k0_contrib[[n]];
                         }
                     }
-                }
-            }
-
-            // Add weight of the central atom to the density.
-            // By symmetry, this only affects the (l, m) = (0, 0) components
-            // of the projection coefficients and only the chemical
-            // species channel that agrees with the center atom.
-            for center_i in 0..system.size()? {
-                let block_i = descriptor.keys().position(&[
-                    0.into(),
-                    species[center_i].into(),
-                    species[center_i].into(),
-                ]).expect("missing block");
-
-                let mut block = descriptor.block_mut_by_id(block_i);
-                let values = block.values_mut();
-                let array = values.data.as_array_mut();
-
-                let sample = [system_i.into(), center_i.into()];
-                let sample_i = match values.samples.position(&sample) {
-                    Some(s) => s,
-                    None => continue
-                };
-
-                for (property_i, [n]) in values.properties.iter_fixed_size().enumerate() {
-                    let n = n.usize();
-                    array[[sample_i, 0, property_i]] -= (1.0 - self.parameters.center_atom_weight) * central_atom_contrib[n];
                 }
             }
 
@@ -856,34 +819,5 @@ mod tests {
             arr1(&[0.13337, 0.21136, 0.28719, 0.84143, -0.04964, 2.40858]),
             max_relative=1e-4
         );
-    }
-
-    #[test]
-    fn central_atom_contribution() {
-        let potential_exponents = [0, 1, 2, 6];
-
-        // Reference values taken from pyLODE
-        let reference_vals = [
-            [7.09990773e-01, 6.13767550e-01, 3.34161655e-01, 8.35301652e-02, 1.78439072e-02, -3.44944648e-05],
-            [1.69193719, 2.02389574, 2.85086136, 3.84013091, 1.62869125, 7.03338899],
-            [1.00532822, 1.10024472, 1.34843326, 1.19816598, 0.69150744, 1.2765415],
-            [0.03811939, 0.03741200, 0.03115835, 0.01364843, 0.00534184, 0.00205973]];
-
-        for (i, &p) in potential_exponents.iter().enumerate(){
-
-            let mut spherical_expansion = LodeSphericalExpansion::new(LodeSphericalExpansionParameters {
-                cutoff: 5.0,
-                k_cutoff: None,
-                max_radial: 6,
-                max_angular: 2,
-                atomic_gaussian_width: 1.0,
-                center_atom_weight: 1.0,
-                radial_basis: RadialBasis::splined_gto(1e-8),
-                potential_exponent: p,
-            }).unwrap();
-
-            let center_contrib = spherical_expansion.compute_gto_central_atom_contribution();
-            assert_relative_eq!(center_contrib, arr1(&reference_vals[i]), max_relative=3e-6);
-        };
     }
 }

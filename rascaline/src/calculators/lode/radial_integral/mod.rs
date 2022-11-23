@@ -1,4 +1,4 @@
-use ndarray::{ArrayViewMut2, Array2};
+use ndarray::{ArrayViewMut2, Array1, Array2};
 
 use crate::Error;
 use crate::calculators::radial_basis::RadialBasis;
@@ -12,11 +12,20 @@ use crate::calculators::radial_basis::RadialBasis;
 /// radial integrals across the C API. `Send` is a required super-trait to
 /// enable passing radial integrals between threads.
 pub trait LodeRadialIntegral: std::panic::RefUnwindSafe + Send {
-    /// Compute the radial integral for a single `distance` between two atoms
-    /// and store the resulting data in the `(max_angular + 1) x max_radial`
-    /// array `values`. If `gradients` is `Some`, also compute and store
-    /// gradients there.
-    fn compute(&self, rij: f64, values: ArrayViewMut2<f64>, gradients: Option<ArrayViewMut2<f64>>);
+    /// Compute the LODE radial integral for a single k-vector `norm` and store
+    /// the resulting data in the `(max_angular + 1) x max_radial` array
+    /// `values`. If `gradients` is `Some`, also compute and store gradients
+    /// there.
+    fn compute(&self, k_norm: f64, values: ArrayViewMut2<f64>, gradients: Option<ArrayViewMut2<f64>>);
+
+    /// Compute the contribution of the central atom to the final <n l m>
+    /// coefficients. By symmetry, only l=0 is non-zero, so this function
+    /// returns a 1-D array containing the different <n 0 0> coefficients.
+    ///
+    /// This function differs from the rest of LODE calculation because it goes
+    /// straight from atom => n l m, without using k-space projection in the
+    /// middle.
+    fn compute_center_contribution(&self) -> Array1<f64>;
 }
 
 mod gto;
@@ -31,6 +40,7 @@ pub struct LodeRadialIntegralParameters {
     pub max_radial: usize,
     pub max_angular: usize,
     pub atomic_gaussian_width: f64,
+    pub potential_exponent: usize,
     pub cutoff: f64,
     pub k_cutoff: f64,
 }
@@ -44,6 +54,9 @@ pub struct LodeRadialIntegralCache {
     pub(crate) values: Array2<f64>,
     /// Cache for the radial integral gradient
     pub(crate) gradients: Array2<f64>,
+
+    /// Cache for the central atom contribution
+    pub(crate) center_contribution: Array1<f64>,
 }
 
 impl LodeRadialIntegralCache {
@@ -55,6 +68,7 @@ impl LodeRadialIntegralCache {
                     max_radial: parameters.max_radial,
                     max_angular: parameters.max_angular,
                     atomic_gaussian_width: parameters.atomic_gaussian_width,
+                    potential_exponent: parameters.potential_exponent,
                     cutoff: parameters.cutoff,
                 };
                 let gto = LodeRadialIntegralGto::new(gto_parameters)?;
@@ -80,25 +94,32 @@ impl LodeRadialIntegralCache {
         let shape = (parameters.max_angular + 1, parameters.max_radial);
         let values = Array2::from_elem(shape, 0.0);
         let gradients = Array2::from_elem(shape, 0.0);
+        let center_contribution = Array1::from_elem(parameters.max_radial, 0.0);
 
-        return Ok(LodeRadialIntegralCache { code, values, gradients });
+        return Ok(LodeRadialIntegralCache { code, values, gradients, center_contribution });
     }
 
     /// Run the calculation, the results are stored inside `self.values` and
     /// `self.gradients`
-    pub fn compute(&mut self, distance: f64, gradients: bool) {
+    pub fn compute(&mut self, k_norm: f64, gradients: bool) {
         if gradients {
             self.code.compute(
-                distance,
+                k_norm,
                 self.values.view_mut(),
                 Some(self.gradients.view_mut()),
             );
         } else {
             self.code.compute(
-                distance,
+                k_norm,
                 self.values.view_mut(),
                 None,
             );
         }
+    }
+
+    /// Run `compute_center_contribution`, and store the results in
+    /// `self.center_contributions`
+    pub fn compute_center_contribution(&mut self) {
+        self.center_contribution = self.code.compute_center_contribution();
     }
 }
