@@ -82,6 +82,10 @@ pub use self::neighbor_list::NeighborList;
 mod radial_basis;
 pub use self::radial_basis::{RadialBasis, GtoRadialBasis};
 
+mod descriptors_by_systems;
+pub(crate) use self::descriptors_by_systems::{array_mut_for_system, split_tensor_map_by_system};
+pub(crate) use self::descriptors_by_systems::TensorMapView;
+
 pub mod soap;
 pub use self::soap::{SphericalExpansion, SphericalExpansionParameters};
 pub use self::soap::{SoapPowerSpectrum, PowerSpectrumParameters};
