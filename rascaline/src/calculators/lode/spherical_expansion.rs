@@ -1,6 +1,9 @@
+use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
+use rayon::prelude::*;
+use thread_local::ThreadLocal;
 use ndarray::{Array1, Array2, Array3, s};
 
 use equistore::TensorMap;
@@ -20,6 +23,8 @@ use crate::math::{expi, erfc, gamma};
 
 use crate::calculators::radial_basis::RadialBasis;
 use super::radial_integral::{LodeRadialIntegralCache, LodeRadialIntegralParameters};
+
+use super::super::{split_tensor_map_by_system, array_mut_for_system};
 
 /// Parameters for LODE spherical expansion calculator.
 ///
@@ -74,13 +79,13 @@ pub struct LodeSphericalExpansion {
     /// Parameters governing the spherical expansion
     parameters: LodeSphericalExpansionParameters,
     /// implementation + cached allocation to compute spherical harmonics
-    spherical_harmonics: SphericalHarmonicsCache,
+    spherical_harmonics: ThreadLocal<RefCell<SphericalHarmonicsCache>>,
     /// implementation + cached allocation to compute the radial integral
-    radial_integral: LodeRadialIntegralCache,
+    radial_integral: ThreadLocal<RefCell<LodeRadialIntegralCache>>,
     /// Cached allocations for the k_vector => nlm projection coefficients.
     /// The vector contains different l values, and the Array is indexed by
     /// `m, n, k`.
-    k_vector_to_m_n: Vec<Array3<f64>>,
+    k_vector_to_m_n: ThreadLocal<RefCell<Vec<Array3<f64>>>>,
 }
 
 /// Compute the trigonometric functions for LODE coefficients
@@ -158,11 +163,9 @@ impl LodeSphericalExpansion {
             ));
         }
 
-        let spherical_harmonics = SphericalHarmonicsCache::new(
-            parameters.max_angular,
-        );
-
-        let radial_integral = LodeRadialIntegralCache::new(
+        // validate the parameters once here, so we are sure we can construct
+        // more radial integrals later
+        LodeRadialIntegralCache::new(
             parameters.radial_basis,
             LodeRadialIntegralParameters {
                 max_radial: parameters.max_radial,
@@ -171,48 +174,74 @@ impl LodeSphericalExpansion {
                 cutoff: parameters.cutoff,
                 k_cutoff: parameters.get_k_cutoff(),
                 potential_exponent: parameters.potential_exponent,
-            })?;
-
-        let mut k_vector_to_m_n = Vec::new();
-        for _ in 0..=parameters.max_angular {
-            k_vector_to_m_n.push(Array3::from_elem((0, 0, 0), 0.0));
-        }
+            }
+        )?;
 
         return Ok(LodeSphericalExpansion {
             parameters,
-            spherical_harmonics,
-            radial_integral,
-            k_vector_to_m_n,
+            spherical_harmonics: ThreadLocal::new(),
+            radial_integral: ThreadLocal::new(),
+            k_vector_to_m_n: ThreadLocal::new(),
         });
     }
 
-    fn project_k_to_nlm(&mut self, k_vectors: &[KVector]) {
+    fn project_k_to_nlm(&self, k_vectors: &[KVector]) {
+        let mut k_vector_to_m_n = self.k_vector_to_m_n.get_or(|| {
+            let mut k_vector_to_m_n = Vec::new();
+            for _ in 0..=self.parameters.max_angular {
+                k_vector_to_m_n.push(Array3::from_elem((0, 0, 0), 0.0));
+            }
+
+            return RefCell::new(k_vector_to_m_n);
+        }).borrow_mut();
+
         for spherical_harmonics_l in 0..=self.parameters.max_angular {
             let shape = (2 * spherical_harmonics_l + 1, self.parameters.max_radial, k_vectors.len());
 
             // resize the arrays while keeping existing allocations
-            let array = std::mem::take(&mut self.k_vector_to_m_n[spherical_harmonics_l]);
+            let array = std::mem::take(&mut k_vector_to_m_n[spherical_harmonics_l]);
 
             let mut data = array.into_raw_vec();
             data.resize(shape.0 * shape.1 * shape.2, 0.0);
             let array = Array3::from_shape_vec(shape, data).expect("wrong shape");
 
-            self.k_vector_to_m_n[spherical_harmonics_l] = array;
+            k_vector_to_m_n[spherical_harmonics_l] = array;
         }
 
+        let mut radial_integral = self.radial_integral.get_or(|| {
+            let radial_integral = LodeRadialIntegralCache::new(
+                self.parameters.radial_basis,
+                LodeRadialIntegralParameters {
+                    max_radial: self.parameters.max_radial,
+                    max_angular: self.parameters.max_angular,
+                    atomic_gaussian_width: self.parameters.atomic_gaussian_width,
+                    cutoff: self.parameters.cutoff,
+                    k_cutoff: self.parameters.get_k_cutoff(),
+                    potential_exponent: self.parameters.potential_exponent,
+                }
+            ).expect("could not create a radial integral");
+
+            return RefCell::new(radial_integral);
+        }).borrow_mut();
+
+        let mut spherical_harmonics = self.spherical_harmonics.get_or(|| {
+            let spherical_harmonics = SphericalHarmonicsCache::new(self.parameters.max_angular);
+            return RefCell::new(spherical_harmonics);
+        }).borrow_mut();
 
         for (ik, k_vector) in k_vectors.iter().enumerate() {
-            self.radial_integral.compute(k_vector.norm, false);
-            // we don't need the gradients of spherical harmonics w.r.t. k-vectors
-            self.spherical_harmonics.compute(k_vector.direction, false);
+            // we don't need the gradients of spherical harmonics/radial
+            // integral w.r.t. k-vectors until we implement gradients w.r.t cell
+            radial_integral.compute(k_vector.norm, false);
+            spherical_harmonics.compute(k_vector.direction, false);
 
             for l in 0..=self.parameters.max_angular {
-                let spherical_harmonics = self.spherical_harmonics.values.slice(l as isize);
-                let radial_integral = self.radial_integral.values.slice(s![l, ..]);
+                let spherical_harmonics = spherical_harmonics.values.slice(l as isize);
+                let radial_integral = radial_integral.values.slice(s![l, ..]);
 
                 for (m, sph_value) in spherical_harmonics.iter().enumerate() {
                     for (n, ri_value) in radial_integral.iter().enumerate() {
-                        self.k_vector_to_m_n[l][[m, n, ik]] = ri_value * sph_value;
+                        k_vector_to_m_n[l][[m, n, ik]] = ri_value * sph_value;
                     }
                 }
             }
@@ -277,7 +306,7 @@ impl LodeSphericalExpansion {
     /// Compute k = 0 contributions.
     ///
     /// Values are only non zero for `potential_exponent` = 0 and >= 4.
-    fn compute_k0_contributions(&mut self) -> Array1<f64> {
+    fn compute_k0_contributions(&self) -> Array1<f64> {
         let atomic_gaussian_width = self.parameters.atomic_gaussian_width;
 
         let mut k0_contrib = Vec::new();
@@ -302,9 +331,25 @@ impl LodeSphericalExpansion {
             0.0
         };
 
-        self.radial_integral.compute(0.0, false);
+        let mut radial_integral = self.radial_integral.get_or(|| {
+            let radial_integral = LodeRadialIntegralCache::new(
+                self.parameters.radial_basis,
+                LodeRadialIntegralParameters {
+                    max_radial: self.parameters.max_radial,
+                    max_angular: self.parameters.max_angular,
+                    atomic_gaussian_width: self.parameters.atomic_gaussian_width,
+                    cutoff: self.parameters.cutoff,
+                    k_cutoff: self.parameters.get_k_cutoff(),
+                    potential_exponent: self.parameters.potential_exponent,
+                }
+            ).expect("could not create a radial integral");
+
+            return RefCell::new(radial_integral);
+        }).borrow_mut();
+
+        radial_integral.compute(0.0, false);
         for n in 0..self.parameters.max_radial {
-            k0_contrib.push(factor * self.radial_integral.values[[0, n]]);
+            k0_contrib.push(factor * radial_integral.values[[0, n]]);
         }
 
         return k0_contrib.into();
@@ -316,9 +361,24 @@ impl LodeSphericalExpansion {
     /// projection coefficients and only the chemical species channel that
     /// agrees with the center atom.
     fn do_center_contribution(&mut self, systems: &mut[Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
-        self.radial_integral.compute_center_contribution();
+        let mut radial_integral = self.radial_integral.get_or(|| {
+            let radial_integral = LodeRadialIntegralCache::new(
+                self.parameters.radial_basis,
+                LodeRadialIntegralParameters {
+                    max_radial: self.parameters.max_radial,
+                    max_angular: self.parameters.max_angular,
+                    atomic_gaussian_width: self.parameters.atomic_gaussian_width,
+                    cutoff: self.parameters.cutoff,
+                    k_cutoff: self.parameters.get_k_cutoff(),
+                    potential_exponent: self.parameters.potential_exponent,
+                }
+            ).expect("could not create a radial integral");
 
-        let central_atom_contrib = &self.radial_integral.center_contribution;
+            return RefCell::new(radial_integral);
+        }).borrow_mut();
+        radial_integral.compute_center_contribution();
+
+        let central_atom_contrib = &radial_integral.center_contribution;
 
         for (system_i, system) in systems.iter_mut().enumerate() {
             let species = system.species()?;
@@ -483,201 +543,211 @@ impl CalculatorBase for LodeSphericalExpansion {
 
         self.do_center_contribution(systems, descriptor)?;
 
-        let k_cutoff = self.parameters.get_k_cutoff();
+        let mut descriptors_by_system = split_tensor_map_by_system(descriptor, systems.len());
 
-        for (system_i, system) in systems.iter_mut().enumerate() {
-            let species = system.species()?;
-            let cell = system.cell()?;
-            if cell.shape() == UnitCell::infinite().shape() {
-                return Err(Error::InvalidParameter("LODE can only be used with periodic systems".into()));
-            }
-
-            let k_vectors = compute_k_vectors(&cell, k_cutoff);
-            if k_vectors.is_empty() {
-                return Err(Error::InvalidParameter("No k-vectors for current combination of hyper parameters.".into()));
-            }
-
-            assert!(!k_vectors.is_empty());
-
-            self.project_k_to_nlm(&k_vectors);
-
-            let structure_factors = compute_structure_factors(
-                system.positions()?,
-                system.species()?,
-                &k_vectors
-            );
-
-            let density_fourrier = self.compute_density_fourrier(&k_vectors);
-
-            let global_factor = 4.0 * std::f64::consts::PI / cell.volume();
-
-            // Add k = 0 contributions for (m, l) = (0, 0)
-            if self.parameters.potential_exponent == 0 || self.parameters.potential_exponent >= 4 {
-                let k0_contrib = &self.compute_k0_contributions();
-                for &species_neighbor in species {
-                    for center_i in 0..system.size()? {
-                        let block_i = descriptor.keys().position(&[
-                            0.into(),
-                            species[center_i].into(),
-                            species_neighbor.into(),
-                        ]).expect("missing block");
-
-                        let mut block = descriptor.block_mut_by_id(block_i);
-                        let values = block.values_mut();
-                        let array = values.data.as_array_mut();
-
-                        let sample = [system_i.into(), center_i.into()];
-                        let sample_i = match values.samples.position(&sample) {
-                            Some(s) => s,
-                            None => continue
-                        };
-
-                        for (_property_i, [n]) in values.properties.iter_fixed_size().enumerate() {
-                            let n = n.usize();
-                            array[[sample_i, 0, _property_i]] += global_factor * k0_contrib[[n]];
-                        }
-                    }
+        systems.par_iter_mut()
+            .zip_eq(&mut descriptors_by_system)
+            .enumerate()
+            .try_for_each(|(system_i, (system, descriptor))| {
+                let species = system.species()?;
+                let cell = system.cell()?;
+                if cell.shape() == UnitCell::infinite().shape() {
+                    return Err(Error::InvalidParameter("LODE can only be used with periodic systems".into()));
                 }
-            }
 
-            // Main loop: Iterate over all atoms to evaluate the projection coefficients
-            for spherical_harmonics_l in 0..=self.parameters.max_angular {
-                let phase = if spherical_harmonics_l % 2 == 0 {
-                    (-1.0_f64).powi(spherical_harmonics_l as i32 / 2)
-                } else {
-                    (-1.0_f64).powi((spherical_harmonics_l as i32 + 1) / 2)
-                };
+                let k_vectors = compute_k_vectors(&cell, self.parameters.get_k_cutoff());
+                if k_vectors.is_empty() {
+                    return Err(Error::InvalidParameter("No k-vectors for current combination of hyper parameters.".into()));
+                }
 
-                let sf_per_center = if spherical_harmonics_l % 2 == 0 {
-                    &structure_factors.real_per_center
-                } else {
-                    &structure_factors.imag_per_center
-                };
+                self.project_k_to_nlm(&k_vectors);
 
-                let k_vector_to_m_n = &self.k_vector_to_m_n[spherical_harmonics_l];
+                let structure_factors = compute_structure_factors(
+                    system.positions()?,
+                    system.species()?,
+                    &k_vectors
+                );
 
-                for (&species_neighbor, sf_per_center) in sf_per_center.iter() {
-                    for center_i in 0..system.size()? {
-                        let block_i = descriptor.keys().position(&[
-                            spherical_harmonics_l.into(),
-                            species[center_i].into(),
-                            species_neighbor.into(),
-                        ]).expect("missing block");
-                        let mut block = descriptor.block_mut_by_id(block_i);
-                        let values = block.values_mut();
-                        let array = values.data.as_array_mut();
+                let density_fourrier = self.compute_density_fourrier(&k_vectors);
 
-                        let sample = [system_i.into(), center_i.into()];
-                        let sample_i = match values.samples.position(&sample) {
-                            Some(s) => s,
-                            None => continue
-                        };
+                let global_factor = 4.0 * std::f64::consts::PI / cell.volume();
 
-                        for m in 0..(2 * spherical_harmonics_l + 1) {
-                            for (property_i, [n]) in values.properties.iter_fixed_size().enumerate() {
+                // Add k = 0 contributions for (m, l) = (0, 0)
+                if self.parameters.potential_exponent == 0 || self.parameters.potential_exponent >= 4 {
+                    let k0_contrib = &self.compute_k0_contributions();
+                    for &species_neighbor in species {
+                        for center_i in 0..system.size()? {
+                            let block_i = descriptor.keys().position(&[
+                                0.into(),
+                                species[center_i].into(),
+                                species_neighbor.into(),
+                            ]).expect("missing block");
+
+                            let mut block = descriptor.block_mut_by_id(block_i);
+                            let values = block.values_mut();
+                            let mut array = array_mut_for_system(&mut values.data);
+
+                            let sample = [system_i.into(), center_i.into()];
+                            let sample_i = match values.samples.position(&sample) {
+                                Some(s) => s,
+                                None => continue
+                            };
+
+                            for (_property_i, [n]) in values.properties.iter_fixed_size().enumerate() {
                                 let n = n.usize();
-
-                                let mut value = 0.0;
-                                for ik in 0..k_vectors.len() {
-                                    // Use unsafe to remove bound checking in
-                                    // release mode with `uget` (everything is
-                                    // still bound checked in debug mode).
-                                    //
-                                    // This divides the calculation time by two
-                                    // for values.
-                                    unsafe {
-                                        value += global_factor * phase
-                                            * density_fourrier.uget(ik)
-                                            * sf_per_center.uget([center_i, ik])
-                                            * k_vector_to_m_n.uget([m, n, ik]);
-                                    }
-                                }
-                                array[[sample_i, m, property_i]] += value;
+                                array[[sample_i, 0, _property_i]] += global_factor * k0_contrib[[n]];
                             }
                         }
+                    }
+                }
 
-                        if let Some(ref mut gradients) = block.gradient_mut("positions") {
-                            for (neighbor_i, &current_neighbor_species) in species.iter().enumerate() {
-                                if neighbor_i == center_i {
-                                    continue;
-                                }
+                let k_vector_to_m_n = self.k_vector_to_m_n.get()
+                    .expect("k_vector_to_m_n should have been created")
+                    .borrow();
 
-                                if current_neighbor_species != species_neighbor {
-                                    continue;
-                                }
+                // Main loop: Iterate over all atoms to evaluate the projection coefficients
+                for spherical_harmonics_l in 0..=self.parameters.max_angular {
+                    let phase = if spherical_harmonics_l % 2 == 0 {
+                        (-1.0_f64).powi(spherical_harmonics_l as i32 / 2)
+                    } else {
+                        (-1.0_f64).powi((spherical_harmonics_l as i32 + 1) / 2)
+                    };
 
-                                let array = gradients.data.as_array_mut();
+                    let sf_per_center = if spherical_harmonics_l % 2 == 0 {
+                        &structure_factors.real_per_center
+                    } else {
+                        &structure_factors.imag_per_center
+                    };
 
-                                let grad_sample_self_i = gradients.samples.position(&[
-                                    sample_i.into(), system_i.into(), center_i.into()
-                                ]).expect("missing self gradient sample");
+                    let k_vector_to_m_n = &k_vector_to_m_n[spherical_harmonics_l];
 
-                                let grad_sample_other_i = gradients.samples.position(&[
-                                    sample_i.into(), system_i.into(), neighbor_i.into()
-                                ]).expect("missing gradient sample");
+                    for (&species_neighbor, sf_per_center) in sf_per_center.iter() {
+                        for center_i in 0..system.size()? {
+                            let block_i = descriptor.keys().position(&[
+                                spherical_harmonics_l.into(),
+                                species[center_i].into(),
+                                species_neighbor.into(),
+                            ]).expect("missing block");
+                            let mut block = descriptor.block_mut_by_id(block_i);
+                            let values = block.values_mut();
+                            let mut array = array_mut_for_system(&mut values.data);
 
-                                let mut sf_grad = Vec::with_capacity(k_vectors.len());
-                                let cosines = &structure_factors.real;
-                                let sines = &structure_factors.imag;
-                                if spherical_harmonics_l % 2 == 0 {
-                                    let i = center_i;
-                                    let j = neighbor_i;
-                                    // real part of i*e^{i k (rj - ri)}
+                            let sample = [system_i.into(), center_i.into()];
+                            let sample_i = match values.samples.position(&sample) {
+                                Some(s) => s,
+                                None => continue
+                            };
+
+                            for m in 0..(2 * spherical_harmonics_l + 1) {
+                                for (property_i, [n]) in values.properties.iter_fixed_size().enumerate() {
+                                    let n = n.usize();
+
+                                    let mut value = 0.0;
                                     for ik in 0..k_vectors.len() {
-                                        let factor = sines[[i, ik]] * cosines[[j, ik]]
-                                            - cosines[[i, ik]] * sines[[j, ik]];
-                                        sf_grad.push(2.0 * factor);
-                                    }
-                                } else {
-                                    let i = center_i;
-                                    let j = neighbor_i;
-                                    // imaginary part of i*e^{i k (rj - ri)}
-                                    for ik in 0..k_vectors.len() {
-                                        let factor = cosines[[i, ik]] * cosines[[j, ik]]
-                                            + sines[[i, ik]] * sines[[j, ik]];
-                                        sf_grad.push(-2.0 * factor);
-                                    }
-                                }
-                                let sf_grad = Array1::from(sf_grad);
-
-                                for m in 0..(2 * spherical_harmonics_l + 1) {
-                                    for (property_i, [n]) in gradients.properties.iter_fixed_size().enumerate() {
-                                        let n = n.usize();
-
-                                        let mut grad = Vector3D::zero();
-                                        for (ik, k_vector) in k_vectors.iter().enumerate() {
-                                            // Use unsafe to remove bound
-                                            // checking in release mode with
-                                            // `uget` (everything is still bound
-                                            // checked in debug mode).
-                                            //
-                                            // This divides the calculation time
-                                            // by ten for gradients.
-                                            unsafe {
-                                                grad += global_factor * phase
-                                                    * density_fourrier.uget(ik)
-                                                    * sf_grad.uget(ik)
-                                                    * k_vector_to_m_n.uget([m, n, ik])
-                                                    * k_vector.norm
-                                                    * k_vector.direction;
-                                            }
+                                        // Use unsafe to remove bound checking in
+                                        // release mode with `uget` (everything is
+                                        // still bound checked in debug mode).
+                                        //
+                                        // This divides the calculation time by two
+                                        // for values.
+                                        unsafe {
+                                            value += global_factor * phase
+                                                * density_fourrier.uget(ik)
+                                                * sf_per_center.uget([center_i, ik])
+                                                * k_vector_to_m_n.uget([m, n, ik]);
                                         }
+                                    }
+                                    array[[sample_i, m, property_i]] += value;
+                                }
+                            }
 
-                                        array[[grad_sample_other_i, 0, m, property_i]] += grad[0];
-                                        array[[grad_sample_other_i, 1, m, property_i]] += grad[1];
-                                        array[[grad_sample_other_i, 2, m, property_i]] += grad[2];
+                            if let Some(ref mut gradients) = block.gradient_mut("positions") {
+                                for (neighbor_i, &current_neighbor_species) in species.iter().enumerate() {
+                                    if neighbor_i == center_i {
+                                        continue;
+                                    }
 
-                                        array[[grad_sample_self_i, 0, m, property_i]] -= grad[0];
-                                        array[[grad_sample_self_i, 1, m, property_i]] -= grad[1];
-                                        array[[grad_sample_self_i, 2, m, property_i]] -= grad[2];
+                                    if current_neighbor_species != species_neighbor {
+                                        continue;
+                                    }
+
+                                    let mut array = array_mut_for_system(&mut gradients.data);
+
+                                    let grad_sample_self_i = gradients.samples.position(&[
+                                        sample_i.into(), system_i.into(), center_i.into()
+                                    ]).expect("missing self gradient sample");
+
+                                    let grad_sample_other_i = gradients.samples.position(&[
+                                        sample_i.into(), system_i.into(), neighbor_i.into()
+                                    ]).expect("missing gradient sample");
+
+                                    let mut sf_grad = Vec::with_capacity(k_vectors.len());
+                                    let cosines = &structure_factors.real;
+                                    let sines = &structure_factors.imag;
+                                    if spherical_harmonics_l % 2 == 0 {
+                                        let i = center_i;
+                                        let j = neighbor_i;
+                                        // real part of i*e^{i k (rj - ri)}
+                                        for ik in 0..k_vectors.len() {
+                                            let factor = sines[[i, ik]] * cosines[[j, ik]]
+                                                - cosines[[i, ik]] * sines[[j, ik]];
+                                            sf_grad.push(2.0 * factor);
+                                        }
+                                    } else {
+                                        let i = center_i;
+                                        let j = neighbor_i;
+                                        // imaginary part of i*e^{i k (rj - ri)}
+                                        for ik in 0..k_vectors.len() {
+                                            let factor = cosines[[i, ik]] * cosines[[j, ik]]
+                                                + sines[[i, ik]] * sines[[j, ik]];
+                                            sf_grad.push(-2.0 * factor);
+                                        }
+                                    }
+                                    let sf_grad = Array1::from(sf_grad);
+
+                                    for m in 0..(2 * spherical_harmonics_l + 1) {
+                                        for (property_i, [n]) in gradients.properties.iter_fixed_size().enumerate() {
+                                            let n = n.usize();
+
+                                            let mut grad = Vector3D::zero();
+                                            for (ik, k_vector) in k_vectors.iter().enumerate() {
+                                                // Use unsafe to remove bound
+                                                // checking in release mode with
+                                                // `uget` (everything is still bound
+                                                // checked in debug mode).
+                                                //
+                                                // This divides the calculation time
+                                                // by ten for gradients.
+                                                unsafe {
+                                                    grad += global_factor * phase
+                                                        * density_fourrier.uget(ik)
+                                                        * sf_grad.uget(ik)
+                                                        * k_vector_to_m_n.uget([m, n, ik])
+                                                        * k_vector.norm
+                                                        * k_vector.direction;
+                                                }
+                                            }
+
+                                            array[[grad_sample_other_i, 0, m, property_i]] += grad[0];
+                                            array[[grad_sample_other_i, 1, m, property_i]] += grad[1];
+                                            array[[grad_sample_other_i, 2, m, property_i]] += grad[2];
+
+                                            array[[grad_sample_self_i, 0, m, property_i]] -= grad[0];
+                                            array[[grad_sample_self_i, 1, m, property_i]] -= grad[1];
+                                            array[[grad_sample_self_i, 2, m, property_i]] -= grad[2];
+                                        }
                                     }
                                 }
                             }
                         }
                     }
                 }
+
+                return Ok(());
             }
-        }
+        )?;
+
+
         Ok(())
     }
 }
@@ -781,7 +851,7 @@ mod tests {
 
     #[test]
     fn compute_k0_contributions_p0() {
-        let mut spherical_expansion = LodeSphericalExpansion::new(
+        let spherical_expansion = LodeSphericalExpansion::new(
             LodeSphericalExpansionParameters {
                 cutoff: 3.5,
                 k_cutoff: None,
@@ -803,7 +873,7 @@ mod tests {
 
     #[test]
     fn compute_k0_contributions_p6() {
-        let mut spherical_expansion = LodeSphericalExpansion::new(LodeSphericalExpansionParameters {
+        let spherical_expansion = LodeSphericalExpansion::new(LodeSphericalExpansionParameters {
             cutoff: 3.5,
             k_cutoff: None,
             max_radial: 6,
