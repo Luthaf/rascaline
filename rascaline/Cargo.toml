@@ -19,6 +19,10 @@ name = "soap-radial-integral"
 harness = false
 
 [[bench]]
+name = "lode-spherical-expansion"
+harness = false
+
+[[bench]]
 name = "soap-spherical-expansion"
 harness = false
 
