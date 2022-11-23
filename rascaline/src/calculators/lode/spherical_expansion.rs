@@ -777,8 +777,8 @@ mod tests {
                 LodeSphericalExpansionParameters {
                     cutoff: 1.0,
                     k_cutoff: None,
-                    max_radial: 1,
-                    max_angular: 1,
+                    max_radial: 4,
+                    max_angular: 4,
                     atomic_gaussian_width: 1.0,
                     center_atom_weight: 1.0,
                     radial_basis: RadialBasis::splined_gto(1e-8),
@@ -793,6 +793,40 @@ mod tests {
             };
             crate::calculators::tests_utils::finite_differences_positions(calculator, &system, options);
         }
+    }
+
+    #[test]
+    fn compute_partial() {
+        let calculator = Calculator::from(Box::new(LodeSphericalExpansion::new(
+            LodeSphericalExpansionParameters {
+                cutoff: 1.0,
+                k_cutoff: None,
+                max_radial: 4,
+                max_angular: 4,
+                atomic_gaussian_width: 1.0,
+                center_atom_weight: 1.0,
+                radial_basis: RadialBasis::splined_gto(1e-8),
+                potential_exponent: 1,
+            }
+        ).unwrap()) as Box<dyn CalculatorBase>);
+
+        let mut system = test_system("water");
+        system.cell = UnitCell::cubic(3.0);
+
+        let properties = Labels::new(["n"], &[
+            [0],
+            [3],
+            [2],
+        ]);
+
+        let samples = Labels::new(["structure", "center"], &[
+            [0, 1],
+            [0, 2],
+        ]);
+
+        crate::calculators::tests_utils::compute_partial(
+            calculator, &mut [Box::new(system)], &samples, &properties
+        );
     }
 
     #[test]
