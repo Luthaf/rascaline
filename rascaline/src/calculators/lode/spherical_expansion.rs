@@ -12,7 +12,7 @@ use equistore::{LabelsBuilder, Labels, LabelValue};
 use crate::{Error, System, Vector3D};
 use crate::systems::UnitCell;
 
-use crate::labels::{SamplesBuilder, SpeciesFilter, LongRangePerAtom};
+use crate::labels::{SamplesBuilder, SpeciesFilter, LongRangeSamplesPerAtom};
 use crate::labels::{KeysBuilder, AllSpeciesPairsKeys};
 
 use super::super::CalculatorBase;
@@ -435,7 +435,7 @@ impl CalculatorBase for LodeSphericalExpansion {
     }
 
     fn samples_names(&self) -> Vec<&str> {
-        LongRangePerAtom::samples_names()
+        LongRangeSamplesPerAtom::samples_names()
     }
 
     fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
@@ -449,7 +449,7 @@ impl CalculatorBase for LodeSphericalExpansion {
                 continue;
             }
 
-            let builder = LongRangePerAtom {
+            let builder = LongRangeSamplesPerAtom {
                 species_center: SpeciesFilter::Single(species_center.i32()),
                 species_neighbor: SpeciesFilter::Single(species_neighbor.i32()),
                 self_pairs: true,
@@ -483,7 +483,7 @@ impl CalculatorBase for LodeSphericalExpansion {
 
         let mut gradient_samples = Vec::new();
         for ([_, species_center, species_neighbor], samples) in keys.iter_fixed_size().zip(samples) {
-            let builder = LongRangePerAtom {
+            let builder = LongRangeSamplesPerAtom {
                 species_center: SpeciesFilter::Single(species_center.i32()),
                 species_neighbor: SpeciesFilter::Single(species_neighbor.i32()),
                 self_pairs: true,
