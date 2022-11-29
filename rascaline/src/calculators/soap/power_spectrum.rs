@@ -337,12 +337,24 @@ impl SoapPowerSpectrum {
             let property_1 = block_1.values().properties.position(&[n1]).expect("missing n1");
             let property_2 = block_2.values().properties.position(&[n2]).expect("missing n2");
 
+            let spx_1 = SpxData {
+                values: values_1,
+                positions_gradients: block_1.gradient("positions").map(|g| g.data.as_array()),
+                cell_gradients: block_1.gradient("cell").map(|g| g.data.as_array()),
+            };
+
+            let spx_2 = SpxData {
+                values: values_2,
+                positions_gradients: block_2.gradient("positions").map(|g| g.data.as_array()),
+                cell_gradients: block_2.gradient("cell").map(|g| g.data.as_array()),
+            };
+
             spx_to_combine.push(SpxPropertiesToCombine {
                 spherical_harmonics_l: l.usize(),
                 property_1,
                 property_2,
-                block_1,
-                block_2,
+                spx_1,
+                spx_2,
             });
         }
 
@@ -360,10 +372,20 @@ struct SpxPropertiesToCombine<'a> {
     property_1: usize,
     /// position of n2 in the second spherical expansion properties
     property_2: usize,
-    /// TODO
-    block_1: &'a TensorBlock,
-    /// TODO
-    block_2: &'a TensorBlock,
+    /// first spherical expansion data
+    spx_1: SpxData<'a>,
+    /// second spherical expansion data
+    spx_2: SpxData<'a>,
+}
+
+/// Data from a single spherical expansion
+struct SpxData<'a> {
+    /// spherical expansion values
+    values: &'a ndarray::ArrayD<f64>,
+    /// spherical expansion position gradients
+    positions_gradients: Option<&'a ndarray::ArrayD<f64>>,
+    /// spherical expansion cell gradients
+    cell_gradients: Option<&'a ndarray::ArrayD<f64>>,
 }
 
 /// Indexes of the spherical expansion samples/rows corresponding to each power
@@ -525,8 +547,7 @@ impl CalculatorBase for SoapPowerSpectrum {
                 .zip_eq(&mapping.values)
                 .for_each(|(mut values, &(spx_sample_1, spx_sample_2))| {
                     for (property_i, spx) in properties_to_combine.iter().enumerate() {
-                        let values_1 = spx.block_1.values().data.as_array();
-                        let values_2 = spx.block_2.values().data.as_array();
+                        let SpxPropertiesToCombine { spx_1, spx_2, ..} = spx;
 
                         let mut sum = 0.0;
 
@@ -535,8 +556,8 @@ impl CalculatorBase for SoapPowerSpectrum {
                             // in release mode (`uget` still checks bounds in
                             // debug mode)
                             unsafe {
-                                sum += values_1.uget([spx_sample_1, m, spx.property_1])
-                                     * values_2.uget([spx_sample_2, m, spx.property_2]);
+                                sum += spx_1.values.uget([spx_sample_1, m, spx.property_1])
+                                     * spx_2.values.uget([spx_sample_2, m, spx.property_2]);
                             }
                         }
 
@@ -567,13 +588,10 @@ impl CalculatorBase for SoapPowerSpectrum {
                     .zip_eq(&mapping.gradients)
                     .for_each(|((mut values, gradient_sample), &(spx_grad_sample_1, spx_grad_sample_2))| {
                         for (property_i, spx) in properties_to_combine.iter().enumerate() {
-                            let spx_values_1 = spx.block_1.values().data.as_array();
-                            let spx_values_2 = spx.block_2.values().data.as_array();
+                            let SpxPropertiesToCombine { spx_1, spx_2, ..} = spx;
 
-                            let spx_gradient_1 = spx.block_1.gradient("positions").expect("missing spherical expansion gradients");
-                            let spx_gradient_1 = spx_gradient_1.data.as_array();
-                            let spx_gradient_2 = spx.block_2.gradient("positions").expect("missing spherical expansion gradients");
-                            let spx_gradient_2 = spx_gradient_2.data.as_array();
+                            let spx_1_gradient = spx_1.positions_gradients.expect("missing spherical expansion gradients");
+                            let spx_2_gradient = spx_2.positions_gradients.expect("missing spherical expansion gradients");
 
                             let sample_i = gradient_sample[0].usize();
                             let (spx_sample_1, spx_sample_2) = mapping.values[sample_i];
@@ -583,9 +601,9 @@ impl CalculatorBase for SoapPowerSpectrum {
                                 for m in 0..(2 * spx.spherical_harmonics_l + 1) {
                                     // SAFETY: see same loop for values
                                     unsafe {
-                                        let value_2 = spx_values_2.uget([spx_sample_2, m, spx.property_2]);
+                                        let value_2 = spx_2.values.uget([spx_sample_2, m, spx.property_2]);
                                         for d in 0..3 {
-                                            sum[d] += value_2 * spx_gradient_1.uget([grad_sample_1, d, m, spx.property_1]);
+                                            sum[d] += value_2 * spx_1_gradient.uget([grad_sample_1, d, m, spx.property_1]);
                                         }
                                     }
                                 }
@@ -595,9 +613,9 @@ impl CalculatorBase for SoapPowerSpectrum {
                                 for m in 0..(2 * spx.spherical_harmonics_l + 1) {
                                     // SAFETY: see same loop for values
                                     unsafe {
-                                        let value_1 = spx_values_1.uget([spx_sample_1, m, spx.property_1]);
+                                        let value_1 = spx_1.values.uget([spx_sample_1, m, spx.property_1]);
                                         for d in 0..3 {
-                                            sum[d] += value_1 * spx_gradient_2.uget([grad_sample_2, d, m, spx.property_2]);
+                                            sum[d] += value_1 * spx_2_gradient.uget([grad_sample_2, d, m, spx.property_2]);
                                         }
                                     }
                                 }
@@ -629,13 +647,10 @@ impl CalculatorBase for SoapPowerSpectrum {
                     .zip_eq(gradients.samples.par_iter())
                     .for_each(|(mut values, gradient_sample)| {
                         for (property_i, spx) in properties_to_combine.iter().enumerate() {
-                            let spx_values_1 = spx.block_1.values().data.as_array();
-                            let spx_values_2 = spx.block_2.values().data.as_array();
+                            let SpxPropertiesToCombine { spx_1, spx_2, ..} = spx;
 
-                            let spx_gradient_1 = spx.block_1.gradient("cell").expect("missing spherical expansion gradients");
-                            let spx_gradient_1 = spx_gradient_1.data.as_array();
-                            let spx_gradient_2 = spx.block_2.gradient("cell").expect("missing spherical expansion gradients");
-                            let spx_gradient_2 = spx_gradient_2.data.as_array();
+                            let spx_1_gradient = spx_1.cell_gradients.expect("missing spherical expansion gradients");
+                            let spx_2_gradient = spx_2.cell_gradients.expect("missing spherical expansion gradients");
 
                             let sample_i = gradient_sample[0].usize();
                             let (spx_sample_1, spx_sample_2) = mapping.values[sample_i];
@@ -648,11 +663,11 @@ impl CalculatorBase for SoapPowerSpectrum {
                             for m in 0..(2 * spx.spherical_harmonics_l + 1) {
                                 // SAFETY: see same loop for values
                                 unsafe {
-                                    let value_2 = spx_values_2.uget([spx_sample_2, m, spx.property_2]);
+                                    let value_2 = spx_2.values.uget([spx_sample_2, m, spx.property_2]);
                                     for d1 in 0..3 {
                                         for d2 in 0..3 {
                                             // TODO: ensure that gradient samples are 0..nsamples
-                                            sum[d1][d2] += value_2 * spx_gradient_1.uget([spx_sample_1, d1, d2, m, spx.property_1]);
+                                            sum[d1][d2] += value_2 * spx_1_gradient.uget([spx_sample_1, d1, d2, m, spx.property_1]);
                                         }
                                     }
                                 }
@@ -661,11 +676,11 @@ impl CalculatorBase for SoapPowerSpectrum {
                             for m in 0..(2 * spx.spherical_harmonics_l + 1) {
                                 // SAFETY: see same loop for values
                                 unsafe {
-                                    let value_1 = spx_values_1.uget([spx_sample_1, m, spx.property_1]);
+                                    let value_1 = spx_1.values.uget([spx_sample_1, m, spx.property_1]);
                                     for d1 in 0..3 {
                                         for d2 in 0..3 {
                                             // TODO: ensure that gradient samples are 0..nsamples
-                                            sum[d1][d2] += value_1 * spx_gradient_2.uget([spx_sample_2, d1, d2, m, spx.property_2]);
+                                            sum[d1][d2] += value_1 * spx_2_gradient.uget([spx_sample_2, d1, d2, m, spx.property_2]);
                                         }
                                     }
                                 }
