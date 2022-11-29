@@ -165,28 +165,24 @@ mod tests {
         };
 
         let samples = builder.samples(&mut systems).unwrap();
-        assert_eq!(samples.names(), ["structure", "center"]);
-        assert_eq!(samples.count(), 5);
-        assert_eq!(samples.iter().collect::<Vec<_>>(), vec![
-            &[0, 0],
-            &[0, 1],
-            &[1, 0],
-            &[1, 1],
-            &[1, 2],
-        ]);
+        assert_eq!(*samples, Labels::new(
+            ["structure", "center"],
+            &[[0, 0], [0, 1], [1, 0], [1, 1], [1, 2]],
+        ));
 
         let gradient_samples = builder.gradients_for(&mut systems, &samples).unwrap();
-        assert_eq!(gradient_samples.names(), &["sample", "structure", "atom"]);
-        assert_eq!(gradient_samples.count(), 13);
-        assert_eq!(gradient_samples.iter().collect::<Vec<_>>(), vec![
-            // gradients of atoms in CH
-            &[0, 0, 0], &[0, 0, 1],
-            &[1, 0, 0], &[1, 0, 1],
-            // gradients of atoms in water
-            &[2, 1, 0], &[2, 1, 1], &[2, 1, 2],
-            &[3, 1, 0], &[3, 1, 1], &[3, 1, 2],
-            &[4, 1, 0], &[4, 1, 1], &[4, 1, 2],
-        ]);
+        assert_eq!(*gradient_samples, Labels::new(
+            ["sample", "structure", "atom"],
+            &[
+                // gradients of atoms in CH
+                [0, 0, 0], [0, 0, 1],
+                [1, 0, 0], [1, 0, 1],
+                // gradients of atoms in water
+                [2, 1, 0], [2, 1, 1], [2, 1, 2],
+                [3, 1, 0], [3, 1, 1], [3, 1, 2],
+                [4, 1, 0], [4, 1, 1], [4, 1, 2],
+            ],
+        ));
     }
 
     #[test]
@@ -200,24 +196,22 @@ mod tests {
         };
 
         let samples = builder.samples(&mut systems).unwrap();
-        assert_eq!(samples.names(), ["structure", "center"]);
-        assert_eq!(samples.count(), 3);
-        assert_eq!(samples.iter().collect::<Vec<_>>(), vec![
-            &[0, 1],
-            &[1, 1],
-            &[1, 2],
-        ]);
+        assert_eq!(*samples, Labels::new(
+            ["structure", "center"],
+            &[[0, 1], [1, 1], [1, 2]],
+        ));
 
         let gradient_samples = builder.gradients_for(&mut systems, &samples).unwrap();
-        assert_eq!(gradient_samples.names(), &["sample", "structure", "atom"]);
-        assert_eq!(gradient_samples.count(), 8);
-        assert_eq!(gradient_samples.iter().collect::<Vec<_>>(), vec![
-            // gradients of atoms in CH
-            &[0, 0, 0], &[0, 0, 1],
-            // gradients of atoms in water
-            &[1, 1, 0], &[1, 1, 1], &[1, 1, 2],
-            &[2, 1, 0], &[2, 1, 1], &[2, 1, 2],
-        ]);
+        assert_eq!(*gradient_samples, Labels::new(
+            ["sample", "structure", "atom"],
+            &[
+                // gradients of atoms in CH
+                [0, 0, 0], [0, 0, 1],
+                // gradients of atoms in water
+                [1, 1, 0], [1, 1, 1], [1, 1, 2],
+                [2, 1, 0], [2, 1, 1], [2, 1, 2],
+            ]
+        ));
     }
 
     #[test]
@@ -231,26 +225,24 @@ mod tests {
         };
 
         let samples = builder.samples(&mut systems).unwrap();
-        assert_eq!(samples.names(), ["structure", "center"]);
-        assert_eq!(samples.iter().collect::<Vec<_>>(), vec![
-            &[0, 0],
-            &[0, 1],
-            &[1, 0],
-            &[1, 1],
-            &[1, 2],
-        ]);
+        assert_eq!(*samples, Labels::new(
+            ["structure", "center"],
+            &[[0, 0], [0, 1], [1, 0], [1, 1], [1, 2]],
+        ));
 
         let gradient_samples = builder.gradients_for(&mut systems, &samples).unwrap();
-        assert_eq!(gradient_samples.names(), &["sample", "structure", "atom"]);
-        assert_eq!(gradient_samples.iter().collect::<Vec<_>>(), vec![
-            // gradients of atoms in CH w.r.t H atom only
-            &[0, 0, 0], &[0, 0, 1],
-            &[1, 0, 1],
-            // gradients of atoms in water w.r.t H atoms only
-            &[2, 1, 0], &[2, 1, 1], &[2, 1, 2],
-            &[3, 1, 1], &[3, 1, 2],
-            &[4, 1, 1], &[4, 1, 2],
-        ]);
+        assert_eq!(*gradient_samples, Labels::new(
+            ["sample", "structure", "atom"],
+            &[
+                // gradients of atoms in CH w.r.t H atom only
+                [0, 0, 0], [0, 0, 1],
+                [1, 0, 1],
+                // gradients of atoms in water w.r.t H atoms only
+                [2, 1, 0], [2, 1, 1], [2, 1, 2],
+                [3, 1, 1], [3, 1, 2],
+                [4, 1, 1], [4, 1, 2],
+            ]
+        ));
 
         let builder = AtomCenteredSamples {
             cutoff: 2.0,
@@ -260,16 +252,18 @@ mod tests {
         };
 
         let gradient_samples = builder.gradients_for(&mut systems, &samples).unwrap();
-        assert_eq!(gradient_samples.names(), &["sample", "structure", "atom"]);
-        assert_eq!(gradient_samples.iter().collect::<Vec<_>>(), vec![
-            // gradients of atoms in CH w.r.t C and H atoms
-            &[0, 0, 0], &[0, 0, 1],
-            &[1, 0, 0], &[1, 0, 1],
-            // gradients of atoms in water w.r.t H atoms only
-            &[2, 1, 0], &[2, 1, 1], &[2, 1, 2],
-            &[3, 1, 1], &[3, 1, 2],
-            &[4, 1, 1], &[4, 1, 2],
-        ]);
+        assert_eq!(*gradient_samples, Labels::new(
+            ["sample", "structure", "atom"],
+            &[
+                // gradients of atoms in CH w.r.t C and H atoms
+                [0, 0, 0], [0, 0, 1],
+                [1, 0, 0], [1, 0, 1],
+                // gradients of atoms in water w.r.t H atoms only
+                [2, 1, 0], [2, 1, 1], [2, 1, 2],
+                [3, 1, 1], [3, 1, 2],
+                [4, 1, 1], [4, 1, 2],
+            ]
+        ));
     }
 
     #[test]
@@ -289,9 +283,10 @@ mod tests {
         };
 
         let gradients = builder.gradients_for(&mut systems, &samples).unwrap();
-        assert_eq!(gradients.iter().collect::<Vec<_>>(), vec![
-            &[0, 1, 0], &[2, 1, 0], &[2, 1, 1]
-        ]);
+        assert_eq!(*gradients, Labels::new(
+            ["sample", "structure", "atom"],
+            &[[0, 1, 0], [2, 1, 0], [2, 1, 1]]
+        ));
 
         let builder = AtomCenteredSamples {
             cutoff: 2.0,
@@ -300,13 +295,16 @@ mod tests {
             self_pairs: true,
         };
         let gradients = builder.gradients_for(&mut systems, &samples).unwrap();
-        assert_eq!(gradients.iter().collect::<Vec<_>>(), vec![
-            // gradients of first sample, O in water
-            &[0, 1, 0], &[0, 1, 1], &[0, 1, 2],
-            // gradients of second sample, C in CH
-            &[1, 0, 0], &[1, 0, 1],
-            // gradients of third sample, H1 in water
-            &[2, 1, 1], &[2, 1, 2]
-        ]);
+        assert_eq!(*gradients, Labels::new(
+            ["sample", "structure", "atom"],
+            &[
+                // gradients of first sample, O in water
+                [0, 1, 0], [0, 1, 1], [0, 1, 2],
+                // gradients of second sample, C in CH
+                [1, 0, 0], [1, 0, 1],
+                // gradients of third sample, H1 in water
+                [2, 1, 1], [2, 1, 2]
+            ]
+        ));
     }
 }
