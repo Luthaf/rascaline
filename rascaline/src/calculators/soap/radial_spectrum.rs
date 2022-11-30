@@ -223,6 +223,7 @@ impl CalculatorBase for SoapRadialSpectrum {
             gradients: &gradients,
             selected_samples: LabelsSelection::Predefined(&selected),
             selected_properties: LabelsSelection::Predefined(&selected),
+            selected_keys: Some(selected.keys()),
             ..Default::default()
         };
 
@@ -365,13 +366,24 @@ mod tests {
         ]);
 
         let samples = Labels::new(["structure", "center"], &[
+            [1, 0],
             [0, 1],
             [0, 0],
-            [1, 0],
+        ]);
+
+        let keys = Labels::new(["species_center", "species_neighbor"], &[
+            [1, 1],
+            [9, 1], // not part of the default keys
+            [-42, 1],
+            [1, -42],
+            [1, 6],
+            [-42, -42],
+            [6, 1],
+            [6, 6],
         ]);
 
         crate::calculators::tests_utils::compute_partial(
-            calculator, &mut systems, &samples, &properties,
+            calculator, &mut systems, &keys, &samples, &properties,
         );
     }
 }

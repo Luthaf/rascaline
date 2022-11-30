@@ -769,7 +769,7 @@ mod tests {
                         l.into(), species_center.into() , species_neighbor.into()
                     ]);
                     assert!(block_i.is_some());
-                    let block = &descriptor.blocks()[block_i.unwrap()];
+                    let block = &descriptor.block_by_id(block_i.unwrap());
                     let array = block.values().data.as_array();
                     assert_eq!(array.shape().len(), 3);
                     assert_eq!(array.shape()[1], 2 * l + 1);
@@ -814,10 +814,13 @@ mod tests {
     #[test]
     fn compute_partial() {
         let calculator = Calculator::from(Box::new(SphericalExpansion::new(
-            parameters()
+            SphericalExpansionParameters {
+                max_angular: 2,
+                ..parameters()
+            }
         ).unwrap()) as Box<dyn CalculatorBase>);
 
-        let mut systems = test_systems(&["water", "methane"]);
+        let mut systems = test_systems(&["water"]);
 
         let properties = Labels::new(["n"], &[
             [0],
@@ -826,14 +829,28 @@ mod tests {
         ]);
 
         let samples = Labels::new(["structure", "center"], &[
-            [0, 1],
             [0, 2],
-            [1, 0],
-            [1, 2],
+            [0, 1],
+        ]);
+
+        let keys = Labels::new(["spherical_harmonics_l", "species_center", "species_neighbor"], &[
+            [0, -42, -42],
+            [0, 6, 1], // not part of the default keys
+            [2, -42, -42],
+            [1, -42, -42],
+            [1, -42, 1],
+            [1, 1, -42],
+            [0, -42, 1],
+            [2, -42, 1],
+            [0, 1, 1],
+            [1, 1, 1],
+            [0, 1, -42],
+            [2, 1, -42],
+            [2, 1, 1],
         ]);
 
         crate::calculators::tests_utils::compute_partial(
-            calculator, &mut systems, &samples, &properties
+            calculator, &mut systems, &keys, &samples, &properties
         );
     }
 

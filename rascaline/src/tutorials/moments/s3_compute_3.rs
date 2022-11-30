@@ -69,24 +69,32 @@ impl CalculatorBase for GeometricMoments {
                 // get the block where the first atom is the center
                 let first_block_id = descriptor.keys().position(&[
                     species[pair.first].into(), species[pair.second].into(),
-                ]).expect("missing block for the first atom");
-                let first_block = &descriptor.blocks()[first_block_id];
+                ]);
+
+                // get the sample corresponding to the first atom as a center
+                //
+                // This will be `None` if the block or samples are not present
+                // in the descriptor, i.e. if the user did not request them.
+                let first_sample_position = if let Some(block_id) = first_block_id {
+                    descriptor.block_by_id(block_id).values().samples.position(&[
+                        system_i.into(), pair.first.into()
+                    ])
+                } else {
+                    None
+                };
 
                 // get the id of the block where the second atom is the center
                 let second_block_id = descriptor.keys().position(&[
                     species[pair.second].into(), species[pair.first].into(),
-                ]).expect("missing block for the second atom");
-                let second_block = &descriptor.blocks()[second_block_id];
-
-                // get the positions of the samples in their respective blocks.
-                // These variables will be `None` if the samples are not present
-                // in the blocks, i.e. if the user did not request them.
-                let first_sample_position = first_block.values().samples.position(&[
-                    system_i.into(), pair.first.into()
                 ]);
-                let second_sample_position = second_block.values().samples.position(&[
-                    system_i.into(), pair.second.into()
-                ]);
+                // get the sample corresponding to the first atom as a center
+                let second_sample_position = if let Some(block_id) = second_block_id {
+                    descriptor.block_by_id(block_id).values().samples.position(&[
+                        system_i.into(), pair.second.into()
+                    ])
+                } else {
+                    None
+                };
 
                 // skip calculation if neither of the samples is present
                 if first_sample_position.is_none() && second_sample_position.is_none() {

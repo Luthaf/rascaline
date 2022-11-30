@@ -1,7 +1,7 @@
 use ndarray::Axis;
 use approx::{assert_relative_eq, assert_ulps_eq};
 
-use equistore::{Labels, TensorMap};
+use equistore::{Labels, TensorMap, LabelsBuilder};
 
 use crate::calculator::LabelsSelection;
 use crate::{CalculationOptions, Calculator};
@@ -16,14 +16,59 @@ use crate::systems::{System, SimpleSystem, UnitCell};
 pub fn compute_partial(
     mut calculator: Calculator,
     systems: &mut [Box<dyn System>],
+    keys: &Labels,
     samples: &Labels,
     properties: &Labels,
 ) {
     let full = calculator.compute(systems, Default::default()).unwrap();
 
+    dbg!(full.keys());
+    assert!(full.keys().count() < keys.count(), "selected keys should be a superset of the keys");
+    check_compute_partial_keys(&mut calculator, &mut *systems, &full, keys);
+
+    assert!(keys.count() > 3, "selected keys should have more than 3 keys");
+    let mut subset_keys = LabelsBuilder::new(keys.names());
+    for key in keys.iter().take(3) {
+        subset_keys.add(key);
+    }
+    check_compute_partial_keys(&mut calculator, &mut *systems, &full, &subset_keys.finish());
+
     check_compute_partial_properties(&mut calculator, &mut *systems, &full, properties);
     check_compute_partial_samples(&mut calculator, &mut *systems, &full, samples);
     check_compute_partial_both(&mut calculator, &mut *systems, &full, samples, properties);
+}
+
+fn check_compute_partial_keys(
+    calculator: &mut Calculator,
+    systems: &mut [Box<dyn System>],
+    full: &TensorMap,
+    keys: &Labels,
+) {
+    // select keys manually
+    let options = CalculationOptions {
+        selected_keys: Some(keys),
+        ..Default::default()
+    };
+    let partial = calculator.compute(systems, options).unwrap();
+
+    assert_eq!(partial.keys(), keys);
+    for key in keys {
+        let mut selected_key = LabelsBuilder::new(keys.names());
+        selected_key.add(key);
+        let selected_key = selected_key.finish();
+
+        let partial = partial.block(&selected_key).expect("missing block in partial");
+        let full = full.block(&selected_key);
+        if let Ok(full) = full {
+            assert_eq!(full.values().samples, partial.values().samples);
+            assert_eq!(full.values().components, partial.values().components);
+            assert_eq!(full.values().properties, partial.values().properties);
+
+            let full_values = full.values().data.as_array();
+            let partial_values = partial.values().data.as_array();
+            assert_ulps_eq!(full_values, partial_values);
+        }
+    }
 }
 
 fn check_compute_partial_properties(
@@ -227,8 +272,8 @@ pub fn finite_differences_positions(mut calculator: Calculator, system: &SimpleS
 
             for (block_i, (_, block)) in reference.iter().enumerate() {
                 let gradients = &block.gradient("positions").unwrap();
-                let block_pos = &updated_pos.blocks()[block_i];
-                let block_neg = &updated_neg.blocks()[block_i];
+                let block_pos = &updated_pos.block_by_id(block_i);
+                let block_neg = &updated_neg.block_by_id(block_i);
 
                 for (gradient_i, [sample_i, _, atom]) in gradients.samples.iter_fixed_size().enumerate() {
                     if atom.usize() != atom_i {
@@ -298,8 +343,8 @@ pub fn finite_differences_cell(mut calculator: Calculator, system: &SimpleSystem
 
             for (block_i, (_, block)) in reference.iter().enumerate() {
                 let gradients = &block.gradient("cell").unwrap();
-                let block_pos = &updated_pos.blocks()[block_i];
-                let block_neg = &updated_neg.blocks()[block_i];
+                let block_pos = &updated_pos.block_by_id(block_i);
+                let block_neg = &updated_neg.block_by_id(block_i);
 
                 for (gradient_i, [sample_i]) in gradients.samples.iter_fixed_size().enumerate() {
                     let sample_i = sample_i.usize();

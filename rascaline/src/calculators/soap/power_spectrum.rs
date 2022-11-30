@@ -265,13 +265,13 @@ impl SoapPowerSpectrum {
             let block_id_1 = spherical_expansion.keys().position(&[
                 first_l, species_center, species_neighbor_1
             ]).expect("missing block in spherical expansion");
-            let spx_block_1 = &spherical_expansion.blocks()[block_id_1];
+            let spx_block_1 = &spherical_expansion.block_by_id(block_id_1);
             let spx_samples_1 = &spx_block_1.values().samples;
 
             let block_id_2 = spherical_expansion.keys().position(&[
                 first_l, species_center, species_neighbor_2
             ]).expect("missing block in spherical expansion");
-            let spx_block_2 = &spherical_expansion.blocks()[block_id_2];
+            let spx_block_2 = &spherical_expansion.block_by_id(block_id_2);
             let spx_samples_2 = &spx_block_2.values().samples;
 
             values_mapping.reserve(values.samples.count());
@@ -321,12 +321,12 @@ impl SoapPowerSpectrum {
             let block_1 = spherical_expansion.keys().position(
                 &[l, species_center, species_neighbor_1]
             ).expect("missing first neighbor species block in spherical expansion");
-            let block_1 = &spherical_expansion.blocks()[block_1];
+            let block_1 = &spherical_expansion.block_by_id(block_1);
 
             let block_2 = spherical_expansion.keys().position(
                 &[l, species_center, species_neighbor_2]
             ).expect("missing second neighbor species block in spherical expansion");
-            let block_2 = &spherical_expansion.blocks()[block_2];
+            let block_2 = &spherical_expansion.block_by_id(block_2);
 
             let values_1 = block_1.values().data.as_array();
             let values_2 = block_2.values().data.as_array();
@@ -518,6 +518,7 @@ impl CalculatorBase for SoapPowerSpectrum {
             gradients: &gradients,
             selected_samples: LabelsSelection::Predefined(&selected),
             selected_properties: LabelsSelection::Predefined(&selected),
+            selected_keys: Some(selected.keys()),
             ..Default::default()
         };
 
@@ -807,7 +808,7 @@ mod tests {
             parameters()
         ).unwrap()) as Box<dyn CalculatorBase>);
 
-        let mut systems = test_systems(&["water", "methane"]);
+        let mut systems = test_systems(&["methane"]);
 
         let properties = Labels::new(["l", "n1", "n2"], &[
             [0, 0, 1],
@@ -819,14 +820,22 @@ mod tests {
         ]);
 
         let samples = Labels::new(["structure", "center"], &[
-            [0, 1],
             [0, 2],
-            [1, 0],
-            [1, 2],
+            [0, 1],
+        ]);
+
+        let keys = Labels::new(["species_center", "species_neighbor_1", "species_neighbor_2"], &[
+            [1, 1, 1],
+            [6, 6, 6],
+            [1, 8, 6], // not part of the default keys
+            [1, 6, 6],
+            [1, 1, 6],
+            [6, 1, 1],
+            [6, 1, 6],
         ]);
 
         crate::calculators::tests_utils::compute_partial(
-            calculator, &mut systems, &samples, &properties
+            calculator, &mut systems, &keys, &samples, &properties
         );
     }
 

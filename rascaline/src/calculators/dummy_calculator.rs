@@ -245,9 +245,10 @@ mod tests {
 
         let samples = Labels::new(["structure", "center"], &[[0, 1]]);
         let properties = Labels::new(["index_delta", "x_y_z"], &[[0, 1]]);
+        let keys = Labels::new(["species_center"], &[[0], [1], [6], [-42]]);
 
         crate::calculators::tests_utils::compute_partial(
-            calculator, &mut systems, &samples, &properties
+            calculator, &mut systems, &keys, &samples, &properties
         );
     }
 }

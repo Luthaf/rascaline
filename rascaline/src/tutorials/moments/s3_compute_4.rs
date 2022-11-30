@@ -11,8 +11,8 @@ use crate::calculators::CalculatorBase;
 // these are here just to make the code below compile
 const first_sample_position: Option<usize> = None;
 const second_sample_position: Option<usize> = None;
-const first_block_id: usize = 0;
-const second_block_id: usize = 0;
+const first_block_id: Option<usize> = None;
+const second_block_id: Option<usize> = None;
 
 #[derive(Clone, Debug)]
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -74,7 +74,8 @@ impl CalculatorBase for GeometricMoments {
                 let n_neighbors_second = system.pairs_containing(pair.second)?.len() as f64;
 
                 if let Some(sample_i) = first_sample_position {
-                    let mut block = descriptor.block_mut_by_id(first_block_id);
+                    let block_id = first_block_id.expect("we have a sample in this block");
+                    let mut block = descriptor.block_mut_by_id(block_id);
                     let values = block.values_mut();
                     let array = values.data.as_array_mut();
 
@@ -85,7 +86,8 @@ impl CalculatorBase for GeometricMoments {
                 }
 
                 if let Some(sample_i) = second_sample_position {
-                    let mut block = descriptor.block_mut_by_id(second_block_id);
+                    let block_id = second_block_id.expect("we have a sample in this block");
+                    let mut block = descriptor.block_mut_by_id(block_id);
                     let values = block.values_mut();
                     let array = values.data.as_array_mut();
 
