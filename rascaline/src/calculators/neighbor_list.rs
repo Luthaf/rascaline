@@ -107,12 +107,10 @@ impl CalculatorBase for NeighborList {
     }
 
     fn components(&self, keys: &Labels) -> Vec<Vec<Arc<Labels>>> {
-        let mut component = LabelsBuilder::new(vec!["pair_direction"]);
-        component.add(&[0]);
-        component.add(&[1]);
-        component.add(&[2]);
-
-        return vec![vec![Arc::new(component.finish())]; keys.count()];
+        return vec![vec![Arc::new(Labels::new(
+            ["pair_direction"],
+            &[[0], [1], [2]]
+        ))]; keys.count()];
     }
 
     fn properties_names(&self) -> Vec<&str> {
@@ -439,7 +437,7 @@ impl FullNeighborList {
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
-    use equistore::{LabelValue, LabelsBuilder, Labels};
+    use equistore::Labels;
 
     use crate::systems::test_utils::{test_systems, test_system};
     use crate::Calculator;
@@ -464,7 +462,7 @@ mod tests {
         ));
 
         // O-H block
-        let block = descriptor.blocks()[0].values();
+        let block = descriptor.block_by_id(0).values();
         assert_eq!(*block.properties, Labels::new(["distance"], &[[0]]));
 
         assert_eq!(block.components.len(), 1);
@@ -484,7 +482,7 @@ mod tests {
         assert_relative_eq!(array, expected, max_relative=1e-6);
 
         // H-H block
-        let block = descriptor.blocks()[1].values();
+        let block = descriptor.block_by_id(1).values();
         assert_eq!(*block.samples, Labels::new(
             ["structure", "pair_id", "first_atom", "second_atom"],
             // we have one H-H pair
@@ -515,7 +513,7 @@ mod tests {
         ));
 
         // O-H block
-        let block = descriptor.blocks()[0].values();
+        let block = descriptor.block_by_id(0).values();
         assert_eq!(*block.properties, Labels::new(["distance"], &[[0]]));
 
         assert_eq!(block.components.len(), 1);
@@ -535,7 +533,7 @@ mod tests {
         assert_relative_eq!(array, expected, max_relative=1e-6);
 
         // H-O block
-        let block = descriptor.blocks()[1].values();
+        let block = descriptor.block_by_id(1).values();
         assert_eq!(*block.properties, Labels::new(["distance"], &[[0]]));
 
         assert_eq!(block.components.len(), 1);
@@ -555,7 +553,7 @@ mod tests {
         assert_relative_eq!(array, expected, max_relative=1e-6);
 
         // H-H block
-        let block = descriptor.blocks()[2].values();
+        let block = descriptor.block_by_id(2).values();
         assert_eq!(*block.samples, Labels::new(
             ["structure", "pair_id", "first_atom", "second_atom"],
             // we have one H-H pair, twice
@@ -601,18 +599,25 @@ mod tests {
             cutoff: 1.0,
             full_neighbor_list: false,
         }) as Box<dyn CalculatorBase>);
-        let mut systems = test_systems(&["water"]);
+        let mut systems = test_systems(&["water", "methane"]);
 
-        let mut samples = LabelsBuilder::new(vec!["structure", "first_atom"]);
-        samples.add(&[LabelValue::new(0), LabelValue::new(1)]);
-        let samples = samples.finish();
+        let samples = Labels::new(
+            ["structure", "first_atom"],
+            &[[0, 1]],
+        );
 
-        let mut properties = LabelsBuilder::new(vec!["distance"]);
-        properties.add(&[LabelValue::new(0)]);
-        let properties = properties.finish();
+        let properties = Labels::new(
+            ["distance"],
+            &[[0]],
+        );
+
+        let keys = Labels::new(
+            ["species_first_atom", "species_second_atom"],
+            &[[-42, 1], [1, -42], [1, 1], [6, 6]]
+        );
 
         crate::calculators::tests_utils::compute_partial(
-            calculator, &mut systems, &samples, &properties
+            calculator, &mut systems, &keys, &samples, &properties
         );
 
         // full neighbor list
@@ -621,7 +626,7 @@ mod tests {
             full_neighbor_list: true,
         }) as Box<dyn CalculatorBase>);
         crate::calculators::tests_utils::compute_partial(
-            calculator, &mut systems, &samples, &properties
+            calculator, &mut systems, &keys, &samples, &properties
         );
     }
 }

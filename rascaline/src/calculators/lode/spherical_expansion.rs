@@ -388,7 +388,12 @@ impl LodeSphericalExpansion {
                     0.into(),
                     species[center_i].into(),
                     species[center_i].into(),
-                ]).expect("missing block");
+                ]);
+
+                if block_i.is_none() {
+                    continue;
+                }
+                let block_i = block_i.expect("we just checked");
 
                 let mut block = descriptor.block_mut_by_id(block_i);
                 let values = block.values_mut();
@@ -627,7 +632,14 @@ impl CalculatorBase for LodeSphericalExpansion {
                                 spherical_harmonics_l.into(),
                                 species[center_i].into(),
                                 species_neighbor.into(),
-                            ]).expect("missing block");
+                            ]);
+
+                            if block_i.is_none() {
+                                continue;
+                            }
+                            let block_i = block_i.expect("we just checked");
+
+
                             let mut block = descriptor.block_mut_by_id(block_i);
                             let values = block.values_mut();
                             let mut array = array_mut_for_system(&mut values.data);
@@ -802,7 +814,7 @@ mod tests {
                 cutoff: 1.0,
                 k_cutoff: None,
                 max_radial: 4,
-                max_angular: 4,
+                max_angular: 2,
                 atomic_gaussian_width: 1.0,
                 center_atom_weight: 1.0,
                 radial_basis: RadialBasis::splined_gto(1e-8),
@@ -824,8 +836,24 @@ mod tests {
             [0, 2],
         ]);
 
+        let keys = Labels::new(["spherical_harmonics_l", "species_center", "species_neighbor"], &[
+            [0, -42, -42],
+            [0, 6, 1], // not part of the default keys
+            [2, -42, -42],
+            [1, -42, -42],
+            [1, -42, 1],
+            [1, 1, -42],
+            [0, -42, 1],
+            [2, -42, 1],
+            [0, 1, 1],
+            [1, 1, 1],
+            [0, 1, -42],
+            [2, 1, -42],
+            [2, 1, 1],
+        ]);
+
         crate::calculators::tests_utils::compute_partial(
-            calculator, &mut [Box::new(system)], &samples, &properties
+            calculator, &mut [Box::new(system)], &keys, &samples, &properties
         );
     }
 

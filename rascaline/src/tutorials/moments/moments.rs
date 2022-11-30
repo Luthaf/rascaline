@@ -110,21 +110,26 @@ impl CalculatorBase for GeometricMoments {
             for pair in system.pairs()? {
                 let first_block_id = descriptor.keys().position(&[
                     species[pair.first].into(), species[pair.second].into(),
-                ]).expect("missing block for the first atom");
-                let first_block = &descriptor.blocks()[first_block_id];
+                ]);
+
+                let first_sample_position = if let Some(block_id) = first_block_id {
+                    descriptor.block_by_id(block_id).values().samples.position(&[
+                        system_i.into(), pair.first.into()
+                    ])
+                } else {
+                    None
+                };
 
                 let second_block_id = descriptor.keys().position(&[
                     species[pair.second].into(), species[pair.first].into(),
-                ]).expect("missing block for the second atom");
-                let second_block = &descriptor.blocks()[second_block_id];
-
-
-                let first_sample_position = first_block.values().samples.position(&[
-                    system_i.into(), pair.first.into()
                 ]);
-                let second_sample_position = second_block.values().samples.position(&[
-                    system_i.into(), pair.second.into()
-                ]);
+                let second_sample_position = if let Some(block_id) = second_block_id {
+                    descriptor.block_by_id(block_id).values().samples.position(&[
+                        system_i.into(), pair.second.into()
+                    ])
+                } else {
+                    None
+                };
 
                 if first_sample_position.is_none() && second_sample_position.is_none() {
                     continue;
@@ -134,7 +139,8 @@ impl CalculatorBase for GeometricMoments {
                 let n_neighbors_second = system.pairs_containing(pair.second)?.len() as f64;
 
                 if let Some(sample_i) = first_sample_position {
-                    let mut block = descriptor.block_mut_by_id(first_block_id);
+                    let block_id = first_block_id.expect("we have a sample in this block");
+                    let mut block = descriptor.block_mut_by_id(block_id);
                     let values = block.values_mut();
                     let array = values.data.as_array_mut();
 
@@ -145,7 +151,8 @@ impl CalculatorBase for GeometricMoments {
                 }
 
                 if let Some(sample_i) = second_sample_position {
-                    let mut block = descriptor.block_mut_by_id(second_block_id);
+                    let block_id = second_block_id.expect("we have a sample in this block");
+                    let mut block = descriptor.block_mut_by_id(block_id);
                     let values = block.values_mut();
                     let array = values.data.as_array_mut();
 
@@ -166,7 +173,9 @@ impl CalculatorBase for GeometricMoments {
                     }
 
                     if let Some(sample_position) = first_sample_position {
-                        let mut block = descriptor.block_mut_by_id(first_block_id);
+                        let block_id = first_block_id.expect("we have a sample in this block");
+                        let mut block = descriptor.block_mut_by_id(block_id);
+
                         let gradient = block.gradient_mut("positions").expect("missing gradient storage");
                         let array = gradient.data.as_array_mut();
 
@@ -195,7 +204,9 @@ impl CalculatorBase for GeometricMoments {
                     }
 
                     if let Some(sample_position) = second_sample_position {
-                        let mut block = descriptor.block_mut_by_id(second_block_id);
+                        let block_id = second_block_id.expect("we have a sample in this block");
+                        let mut block = descriptor.block_mut_by_id(block_id);
+
                         let gradient = block.gradient_mut("positions").expect("missing gradient storage");
                         let array = gradient.data.as_array_mut();
 
@@ -258,27 +269,20 @@ mod tests {
         let descriptor = calculator.compute(&mut systems, Default::default()).unwrap();
 
         // check the results
-        assert_eq!(descriptor.keys().names(), &["species_center", "species_neighbor"]);
-        assert_eq!(descriptor.keys().iter().collect::<Vec<_>>(), [
-            &[-42, 1],
-            &[1, -42],
-            &[1, 1],
-            &[1, 6],
-            &[6, 1]
-        ]);
+        assert_eq!(*descriptor.keys(), Labels::new(
+            ["species_center", "species_neighbor"],
+            &[[-42, 1], [1, -42], [1, 1], [1, 6], [6, 1]]
+        ));
 
-        let mut expected_properties = LabelsBuilder::new(vec!["k"]);
-        expected_properties.add(&[0]);
-        let expected_properties = Arc::new(expected_properties.finish());
+        let expected_properties = Arc::new(Labels::new(["k"], &[[0]]));
 
         /**********************************************************************/
         // O center, H neighbor
         let block = &descriptor.block_by_id(0);
-        let samples = &block.values().samples;
-        assert_eq!(samples.names(), ["structure", "center"]);
-        assert_eq!(samples.iter().collect::<Vec<_>>(), [
-            &[0, 0],
-        ]);
+        assert_eq!(*block.values().samples, Labels::new(
+            ["structure", "center"],
+            &[[0, 0]]
+        ));
 
         assert_eq!(block.values().properties, expected_properties);
 
@@ -287,11 +291,10 @@ mod tests {
         /**********************************************************************/
         // H center, O neighbor
         let block = &descriptor.block_by_id(1);
-        let samples = &block.values().samples;
-        assert_eq!(samples.names(), ["structure", "center"]);
-        assert_eq!(samples.iter().collect::<Vec<_>>(), [
-            &[0, 1], &[0, 2],
-        ]);
+        assert_eq!(*block.values().samples, Labels::new(
+            ["structure", "center"],
+            &[[0, 1], [0, 2]]
+        ));
 
         assert_eq!(block.values().properties, expected_properties);
 
@@ -300,11 +303,10 @@ mod tests {
         /**********************************************************************/
         // H center, H neighbor
         let block = &descriptor.block_by_id(2);
-        let samples = &block.values().samples;
-        assert_eq!(samples.names(), ["structure", "center"]);
-        assert_eq!(samples.iter().collect::<Vec<_>>(), [
-            &[0, 1], &[0, 2],
-        ]);
+        assert_eq!(*block.values().samples, Labels::new(
+            ["structure", "center"],
+            &[[0, 1], [0, 2]]
+        ));
 
         assert_eq!(block.values().properties, expected_properties);
 
@@ -313,11 +315,10 @@ mod tests {
         /**********************************************************************/
         // H center, C neighbor
         let block = &descriptor.block_by_id(3);
-        let samples = &block.values().samples;
-        assert_eq!(samples.names(), ["structure", "center"]);
-        assert_eq!(samples.iter().collect::<Vec<_>>(), [
-            &[1, 1],
-        ]);
+        assert_eq!(*block.values().samples, Labels::new(
+            ["structure", "center"],
+            &[[1, 1]]
+        ));
 
         assert_eq!(block.values().properties, expected_properties);
 
@@ -326,11 +327,10 @@ mod tests {
         /**********************************************************************/
         // C center, H neighbor
         let block = &descriptor.block_by_id(4);
-        let samples = &block.values().samples;
-        assert_eq!(samples.names(), ["structure", "center"]);
-        assert_eq!(samples.iter().collect::<Vec<_>>(), [
-            &[1, 0],
-        ]);
+        assert_eq!(*block.values().samples, Labels::new(
+            ["structure", "center"],
+            &[[1, 0]]
+        ));
 
         assert_eq!(block.values().properties, expected_properties);
 
@@ -356,27 +356,25 @@ mod more_tests {
         let mut systems = test_systems(&["water", "methane"]);
 
         // build a list of samples to compute
-        let mut samples = LabelsBuilder::new(vec![
-            "structure", "center"
-        ]);
-        samples.add(&[0, 1]);
-        samples.add(&[0, 2]);
-        samples.add(&[1, 0]);
-        samples.add(&[1, 2]);
-        let samples = samples.finish();
+        let samples = Labels::new(
+            ["structure", "center"],
+            &[[0, 1], [0, 2], [1, 0], [1, 2]]
+        );
 
         // create some properties. There is no need to order them in the same way
         // as the default calculator
-        let mut properties = LabelsBuilder::new(vec!["k"]);
-        properties.add(&[2]);
-        properties.add(&[1]);
-        properties.add(&[5]);
-        let properties = properties.finish();
+        let properties = Labels::new(["k"], &[[2], [1], [5]]);
 
-        // this function will check that selecting samples/properties or both will
+        // Some keys (more than the calculator would produce by default)
+        let keys = Labels::new(
+            ["species_center", "species_neighbor"],
+            &[[-42, 1], [1, 8], [1, -42], [8, 8], [1, 1], [1, 6], [6, 1]]
+        );
+
+        // this function will check that selecting keys/samples/properties will
         // not change the result of the calculation
         crate::calculators::tests_utils::compute_partial(
-            calculator, &mut systems, &samples, &properties
+            calculator, &mut systems, &keys, &samples, &properties
         );
     }
     // [partial-test]

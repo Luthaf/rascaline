@@ -225,11 +225,12 @@ mod tests {
 
         let mut systems = test_systems(&["water"]);
 
+        let keys = Labels::new(["species_center"], &[[1], [6], [8], [-42]]);
         let samples = Labels::new(["structure", "center"], &[[0, 1]]);
         let properties = Labels::new(["neighbor"], &[[2], [0]]);
 
         crate::calculators::tests_utils::compute_partial(
-            calculator, &mut systems, &samples, &properties
+            calculator, &mut systems, &keys, &samples, &properties
         );
     }
 }
