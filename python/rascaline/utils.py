@@ -24,7 +24,7 @@ def _call_with_growing_buffer(callback, initial=1024):
     return buffer.value.decode("utf8")
 
 
-def convert_old_hyperparameter_names(hyperparameters, mode="librascal"):
+def convert_old_hyperparameter_names(hyperparameters, mode):
     """
     Function to convert old hyperparameter names to those
     used in rascaline. This function is meant to be dep-
