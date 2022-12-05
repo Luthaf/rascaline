@@ -14,3 +14,4 @@ are a total beginner, you can go to :ref:`userdoc-get-started` section.
     sample-selection
     property-selection
     keys-selection
+    splined-radial-integral

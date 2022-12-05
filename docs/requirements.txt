@@ -12,3 +12,4 @@ myst-parser     # markdown => rst translation, used in extensions/rascaline_json
 chemfiles
 matplotlib
 skcosmo
+ase

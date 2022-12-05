@@ -166,7 +166,7 @@ impl LodeSphericalExpansion {
         // validate the parameters once here, so we are sure we can construct
         // more radial integrals later
         LodeRadialIntegralCache::new(
-            parameters.radial_basis,
+            parameters.radial_basis.clone(),
             LodeRadialIntegralParameters {
                 max_radial: parameters.max_radial,
                 max_angular: parameters.max_angular,
@@ -210,7 +210,7 @@ impl LodeSphericalExpansion {
 
         let mut radial_integral = self.radial_integral.get_or(|| {
             let radial_integral = LodeRadialIntegralCache::new(
-                self.parameters.radial_basis,
+                self.parameters.radial_basis.clone(),
                 LodeRadialIntegralParameters {
                     max_radial: self.parameters.max_radial,
                     max_angular: self.parameters.max_angular,
@@ -341,7 +341,7 @@ impl LodeSphericalExpansion {
 
         let mut radial_integral = self.radial_integral.get_or(|| {
             let radial_integral = LodeRadialIntegralCache::new(
-                self.parameters.radial_basis,
+                self.parameters.radial_basis.clone(),
                 LodeRadialIntegralParameters {
                     max_radial: self.parameters.max_radial,
                     max_angular: self.parameters.max_angular,
@@ -371,7 +371,7 @@ impl LodeSphericalExpansion {
     fn do_center_contribution(&mut self, systems: &mut[Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
         let mut radial_integral = self.radial_integral.get_or(|| {
             let radial_integral = LodeRadialIntegralCache::new(
-                self.parameters.radial_basis,
+                self.parameters.radial_basis.clone(),
                 LodeRadialIntegralParameters {
                     max_radial: self.parameters.max_radial,
                     max_angular: self.parameters.max_angular,

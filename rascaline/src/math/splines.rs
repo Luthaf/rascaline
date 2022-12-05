@@ -35,18 +35,18 @@ pub struct SplineParameters {
 
 /// A single control point/knot in the Hermit cubic spline
 #[derive(Debug, Clone)]
-struct HermitSplinePoint<D: ndarray::Dimension> {
+pub struct HermitSplinePoint<D: ndarray::Dimension> {
     /// Position of the point
-    position: f64,
+    pub(crate) position: f64,
     /// Value of the function to interpolate at the position
-    value: Array<f64, D>,
+    pub(crate) value: Array<f64, D>,
     /// Derivative of the function to interpolate at the position
-    derivative: Array<f64, D>,
+    pub(crate) derivative: Array<f64, D>,
 }
 
 impl<D: ndarray::Dimension> HermitCubicSpline<D> {
     #[allow(clippy::float_cmp)]
-    fn new(
+    pub(crate) fn new(
         parameters: SplineParameters,
         mut points: Vec<HermitSplinePoint<D>>,
     ) -> HermitCubicSpline<D>  {

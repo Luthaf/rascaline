@@ -61,6 +61,7 @@ pub struct LodeRadialIntegralCache {
 
 impl LodeRadialIntegralCache {
     /// Create a new `RadialIntegralCache` for the given radial basis & parameters
+    #[allow(clippy::needless_pass_by_value)]
     pub fn new(radial_basis: RadialBasis, parameters: LodeRadialIntegralParameters) -> Result<Self, Error> {
         let code = match radial_basis {
             RadialBasis::Gto {splined_radial_integral, spline_accuracy} => {
@@ -89,6 +90,9 @@ impl LodeRadialIntegralCache {
                 } else {
                     Box::new(gto) as Box<dyn LodeRadialIntegral>
                 }
+            }
+            RadialBasis::TabulatedRadialIntegral {spline_points: _} => {
+                return Err(Error::InvalidParameter("LODE does not support a tabulated radial integral for the moment".into()));
             }
         };
         let shape = (parameters.max_angular + 1, parameters.max_radial);
