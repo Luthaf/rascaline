@@ -18,6 +18,8 @@ from .calculators import SphericalExpansionByPair  # noqa  isort: skip
 from .calculators import SoapRadialSpectrum  # noqa  isort: skip
 from .calculators import SoapPowerSpectrum  # noqa  isort: skip
 
+from .splines import generate_splines  # noqa  isort: skip
+
 
 # Get the __version__ attribute from setuptools metadata (which took it from
 # Cargo.toml) cf https://stackoverflow.com/a/17638236/4692076

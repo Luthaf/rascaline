@@ -67,7 +67,7 @@ impl SphericalExpansionParameters {
         self.radial_scaling.validate()?;
 
         // try constructing a radial integral
-        SoapRadialIntegralCache::new(self.radial_basis, SoapRadialIntegralParameters {
+        SoapRadialIntegralCache::new(self.radial_basis.clone(), SoapRadialIntegralParameters {
             max_radial: self.max_radial,
             max_angular: self.max_angular,
             atomic_gaussian_width: self.atomic_gaussian_width,
@@ -227,7 +227,7 @@ impl SphericalExpansionByPair {
     pub(super) fn self_contribution(&self) -> PairContribution {
         let mut radial_integral = self.radial_integral.get_or(|| {
             let radial_integral = SoapRadialIntegralCache::new(
-                self.parameters.radial_basis,
+                self.parameters.radial_basis.clone(),
                 SoapRadialIntegralParameters {
                     max_radial: self.parameters.max_radial,
                     max_angular: self.parameters.max_angular,
@@ -345,7 +345,7 @@ impl SphericalExpansionByPair {
 
         let mut radial_integral = self.radial_integral.get_or(|| {
             let radial_integral = SoapRadialIntegralCache::new(
-                self.parameters.radial_basis,
+                self.parameters.radial_basis.clone(),
                 SoapRadialIntegralParameters {
                     max_radial: self.parameters.max_radial,
                     max_angular: self.parameters.max_angular,

@@ -1,9 +1,9 @@
 mod gto;
 pub use self::gto::GtoRadialBasis;
+use ndarray::{Array2};
 
-
-#[derive(Debug, Clone, Copy)]
-#[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+#[derive(Debug, Clone)]
+#[derive(serde::Deserialize, serde::Serialize)]
 /// Radial basis that can be used in the SOAP or LODE spherical expansion
 pub enum RadialBasis {
     /// Use a radial basis similar to Gaussian-Type Orbitals.
@@ -21,7 +21,32 @@ pub enum RadialBasis {
         #[serde(default = "serde_default_spline_accuracy")]
         spline_accuracy: f64,
     },
+    TabulatedRadialIntegral {
+        /// Provide user-defined splines. These consist of the positions of the spline 
+        /// points, values of the radial integrals at the spline point for each l 
+        /// and each n, and derivatives of the radial integrals at the spline 
+        /// points for each l and each n.
+        spline_points: Vec<SplinePoint>,
+    }
 }
+
+#[derive(Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct SplinePoint {
+    pub(crate) position: f64,
+    pub(crate) values: Array2<f64>,
+    pub(crate) derivatives: Array2<f64>,
+}
+
+impl schemars::JsonSchema for RadialBasis {
+    fn schema_name() -> String {
+       todo!()
+    }
+ 
+    fn json_schema(_gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+       todo!()
+    }
+ }
 
 fn serde_default_splined_radial_integral() -> bool { true }
 fn serde_default_spline_accuracy() -> f64 { 1e-8 }

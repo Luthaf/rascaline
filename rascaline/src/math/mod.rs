@@ -23,7 +23,7 @@ mod hyp2f1;
 pub (crate) use self::hyp2f1::hyp2f1;
 
 mod splines;
-pub(crate) use self::splines::{HermitCubicSpline, SplineParameters};
+pub(crate) use self::splines::{HermitSplinePoint, HermitCubicSpline, SplineParameters};
 
 mod spherical_harmonics;
 pub use self::spherical_harmonics::{SphericalHarmonics, SphericalHarmonicsArray};

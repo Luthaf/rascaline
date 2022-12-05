@@ -1,7 +1,8 @@
 use ndarray::{Array2, ArrayViewMut2};
 
 use super::SoapRadialIntegral;
-use crate::math::{HermitCubicSpline, SplineParameters};
+use crate::math::{HermitCubicSpline, SplineParameters, HermitSplinePoint};
+use crate::calculators::radial_basis::SplinePoint;
 use crate::Error;
 
 /// `SoapRadialIntegralSpline` allows to evaluate another radial integral
@@ -58,6 +59,32 @@ impl SoapRadialIntegralSpline {
         )?;
 
         return Ok(SoapRadialIntegralSpline { spline });
+    }
+
+    pub fn from_tabulated(
+        parameters: SoapRadialIntegralSplineParameters,
+        spline_points: Vec<SplinePoint>
+    ) -> Result<SoapRadialIntegralSpline, Error> {
+
+        let spline_parameters = SplineParameters {
+            start: 0.0,
+            stop: parameters.cutoff,
+            shape: vec![parameters.max_angular + 1, parameters.max_radial],
+        };
+      
+        let mut new_spline_points = Vec::new();
+        for spline_point in spline_points {
+            new_spline_points.push(
+                HermitSplinePoint{
+                    position: spline_point.position,
+                    value: spline_point.values.clone(),
+                    derivative: spline_point.derivatives.clone(),
+                }
+            );
+        }
+
+        let spline = HermitCubicSpline::new(spline_parameters, new_spline_points);
+        return Ok(SoapRadialIntegralSpline{spline});
     }
 }
 
