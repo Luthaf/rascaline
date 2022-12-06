@@ -27,6 +27,10 @@ project(rascaline
 option(RASCAL_DISABLE_CHEMFILES "Disable the usage of chemfiles for reading structures from files" OFF)
 option(BUILD_SHARED_LIBS "Build a shared library instead of a static one" ON)
 set(RUST_BUILD_TARGET "" CACHE STRING "Cross-compilation target for rust code. Leave empty to build for the host")
+set(RUST_FLAGS "" CACHE STRING "additional rustc arguments used when compiling rascaline and dependencies")
+
+mark_as_advanced(RUST_BUILD_TARGET RUST_FLAGS)
+
 
 set(LIB_INSTALL_DIR "lib" CACHE PATH "Path relative to CMAKE_INSTALL_PREFIX where to install libraries")
 set(INCLUDE_INSTALL_DIR "include" CACHE PATH "Path relative to CMAKE_INSTALL_PREFIX where to install headers")
@@ -155,34 +159,31 @@ get_filename_component(RASCALINE_LIB_NAME ${RASCALINE_LOCATION} NAME)
 if (UNIX)
     if (APPLE)
         # set the install name to `@rpath/librascaline.dylib`
-        set(CARGO_RUSTC_ARGS "-Clink-arg=-Wl,-install_name,@rpath/${RASCALINE_LIB_NAME}")
+        set(SONAME_ARGS "-Clink-arg=-Wl,-install_name,@rpath/${RASCALINE_LIB_NAME}")
     else() # LINUX
         # set the SONAME to librascaline.so
-        set(CARGO_RUSTC_ARGS "-Clink-arg=-Wl,-soname,${RASCALINE_LIB_NAME}")
+        set(SONAME_ARGS "-Clink-arg=-Wl,-soname,${RASCALINE_LIB_NAME}")
     endif()
 else()
-    set(CARGO_RUSTC_ARGS "")
+    set(SONAME_ARGS "")
+endif()
+
+if (RASCAL_BUILD_FOR_PYTHON)
+    # strip dynamic library for smaller wheels to download/install
+    set(STRIP_ARGS "-Cstrip=symbols")
+else()
+    set(STRIP_ARGS "")
 endif()
 
 add_custom_target(cargo-build-rascaline ALL
     COMMAND ${CMAKE_COMMAND} -E env
         MACOSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}
-        cargo rustc ${CARGO_BUILD_ARG} -- "${CARGO_RUSTC_ARGS}"
+        RUSTFLAGS="${RUST_FLAGS}"
+        cargo rustc ${CARGO_BUILD_ARG} -- ${SONAME_ARGS} ${STRIP_ARGS}
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     DEPENDS ${ALL_RUST_SOURCES}
     COMMENT "Building ${RASCALINE_LIB_NAME} with cargo"
 )
-
-if (RASCAL_BUILD_FOR_PYTHON)
-    # strip dynamic library for smaller wheels to download/install
-    if (UNIX)
-        add_custom_command(TARGET cargo-build-rascaline POST_BUILD
-            COMMAND $<$<CONFIG:release>:${CMAKE_STRIP}>
-            # remove debug & non-global symbols
-            ARGS "-S" "-x" "${RASCALINE_LOCATION}"
-        )
-    endif()
-endif()
 
 add_dependencies(rascaline cargo-build-rascaline)
 set(RASCALINE_HEADERS

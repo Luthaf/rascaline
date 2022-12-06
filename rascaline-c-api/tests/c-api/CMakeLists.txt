@@ -8,6 +8,35 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_NO_SYSTEM_FROM_IMPORTED TRUE)
 
+option(RASCAL_ENABLE_COVERAGE "Collect code coverage for C and C++ API" OFF)
+
+if(RASCAL_ENABLE_COVERAGE)
+    message(STATUS "Collecting code coverage")
+
+    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+        if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" AND "${CMAKE_CXX_COMPILER_FRONTEND_VARIANT}" STREQUAL "MSVC")
+            message(FATAL_ERROR "clang-cl is not supported for code coverage collection")
+        endif()
+
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
+    else()
+        message(FATAL_ERROR "only GNU compilers and Clang are supported for code coverage collection")
+    endif()
+
+    if ("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_C_COMPILER_ID}" MATCHES "Clang")
+        if ("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang" AND "${CMAKE_C_COMPILER_FRONTEND_VARIANT}" STREQUAL "MSVC")
+            message(FATAL_ERROR "clang-cl is not supported for code coverage collection")
+        endif()
+
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage")
+    else()
+        message(FATAL_ERROR "only GNU compilers and Clang are supported for code coverage collection")
+    endif()
+
+    # This is taken from the output of `cargo tarpaulin --engine=llvm --print-rust-flags`
+    set(RUST_FLAGS "-Cdebuginfo=2;--cfg=tarpaulin;-Cinstrument-coverage;-Clink-dead-code" CACHE INTERNAL "" FORCE)
+endif()
+
 # make sure assert works in tests
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -UNDEBUG")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -UNDEBUG")
@@ -21,6 +50,14 @@ else()
 endif()
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../.. ${CMAKE_CURRENT_BINARY_DIR}/rascaline)
+
+
+# Add rascaline to the rpath of tests, so we can load the shared library
+# directly from `target/{debug,release}/`
+get_target_property(RASCALINE_LOCATION rascaline IMPORTED_LOCATION)
+get_filename_component(RASCALINE_DIRECTORY "${RASCALINE_LOCATION}" DIRECTORY)
+set(CMAKE_BUILD_RPATH "${RASCALINE_DIRECTORY}")
+
 
 add_library(catch STATIC catch/catch.cpp)
 target_include_directories(catch PUBLIC catch)

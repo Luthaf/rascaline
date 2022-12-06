@@ -36,6 +36,10 @@ fn check_c_api() {
     ctest.arg("--output-on-failure");
     ctest.arg("--C");
     ctest.arg(build_type);
+
+    // std::env::var("LLVM_PROFILE_FILE")
+
+
     let status = ctest.status().expect("failed to run tests");
     assert!(status.success());
 }
