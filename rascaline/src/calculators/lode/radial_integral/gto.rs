@@ -43,12 +43,6 @@ impl LodeRadialIntegralGtoParameters {
             ));
         }
 
-        if self.potential_exponent > 6 {
-            return Err(Error::InvalidParameter(
-                "potential_exponent larger than 6 is not implemented for GTO radial integral".into()
-            ));
-        }
-
         Ok(())
     }
 }

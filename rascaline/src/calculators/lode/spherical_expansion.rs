@@ -58,7 +58,7 @@ pub struct LodeSphericalExpansionParameters {
     /// Radial basis to use for the radial integral
     pub radial_basis: RadialBasis,
     /// Potential exponent of the decorated atom density. Currently only
-    /// implemented for potential_exponent <= 6. Some exponents can be connected
+    /// implemented for potential_exponent < 10. Some exponents can be connected
     /// to SOAP or physics-based quantities: p=0 uses Gaussian densities as in
     /// SOAP, p=1 uses 1/r Coulomb like densities, p=6 uses 1/r^6 dispersion
     /// like densities."
@@ -157,9 +157,9 @@ impl std::fmt::Debug for LodeSphericalExpansion {
 
 impl LodeSphericalExpansion {
     pub fn new(parameters: LodeSphericalExpansionParameters) -> Result<LodeSphericalExpansion, Error> {
-        if parameters.potential_exponent > 6 {
+        if parameters.potential_exponent >= 10 {
             return Err(Error::InvalidParameter(
-                "LODE is only implemented for potential_exponent <= 6".into()
+                "LODE is only implemented for potential_exponent < 10".into()
             ));
         }
 
@@ -291,7 +291,15 @@ impl LodeSphericalExpansion {
                 } else if potential_exponent == 5.0 {
                     f64::exp(-x) + x * expi(-x)
                 } else if potential_exponent == 6.0 {
-                    ((2.0 - 4.0 * x) * f64::exp(-x) + 4.0 * f64::sqrt(std::f64::consts::PI) * x.powf(1.5) * erfc(f64::sqrt(x))) / 3.0
+                    ((2.0 - 4.0 * x) * f64::exp(-x) 
+                        + 4.0 * f64::sqrt(std::f64::consts::PI) * x.powf(1.5) * erfc(f64::sqrt(x))) / 3.0
+                } else if potential_exponent == 7.0 {
+                    (1.0 - x) * f64::exp(-x) / 2.0 - x.powi(2)/2.0 * expi(-x)
+                } else if potential_exponent == 8.0 {
+                    - 2.0 / 15.0 * ((-3.0 + 2.0 * x - 4.0 * x.powi(2)) * f64::exp(-x)
+                        + 4.0 * f64::sqrt(std::f64::consts::PI) * x.powf(2.5) * erfc(f64::sqrt(x)))
+                } else if potential_exponent == 9.0 {
+                    (x.powi(2) - x + 2.0) * f64::exp(-x) / 6.0 + x.powi(3)/6.0 * expi(-x)
                 } else {
                     panic!("potential_exponent = {} is not implemented", potential_exponent);
                 };
@@ -305,7 +313,7 @@ impl LodeSphericalExpansion {
 
     /// Compute k = 0 contributions.
     ///
-    /// Values are only non zero for `potential_exponent` = 0 and >= 4.
+    /// Values are only non zero for `potential_exponent` = 0 and > 3.
     fn compute_k0_contributions(&self) -> Array1<f64> {
         let atomic_gaussian_width = self.parameters.atomic_gaussian_width;
 
@@ -318,7 +326,7 @@ impl LodeSphericalExpansion {
                 / (std::f64::consts::PI * smearing_squared).powf(0.75)
                 / f64::sqrt(4.0 * std::f64::consts::PI)
 
-        } else if self.parameters.potential_exponent >= 4 {
+        } else if self.parameters.potential_exponent > 3 {
             let potential_exponent = self.parameters.potential_exponent;
             let p_eff = 3. - potential_exponent as f64;
 
@@ -578,7 +586,7 @@ impl CalculatorBase for LodeSphericalExpansion {
                 let global_factor = 4.0 * std::f64::consts::PI / cell.volume();
 
                 // Add k = 0 contributions for (m, l) = (0, 0)
-                if self.parameters.potential_exponent == 0 || self.parameters.potential_exponent >= 4 {
+                if self.parameters.potential_exponent == 0 || self.parameters.potential_exponent > 3 {
                     let k0_contrib = &self.compute_k0_contributions();
                     for &species_neighbor in species {
                         for center_i in 0..system.size()? {
