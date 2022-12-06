@@ -14,8 +14,6 @@ pub fn cmake_config(source_dir: &Path, build_dir: &Path, build_type: &str) -> Co
     // the cargo executable currently running
     let cargo_exe = std::env::var("CARGO").expect("CARGO env var is not set");
     cmake_config.arg(format!("-DCARGO_EXE={}", cargo_exe));
-
-
     cmake_config.arg(format!("-DCMAKE_BUILD_TYPE={}", build_type));
 
     let mut shared_lib = "ON";
@@ -25,6 +23,12 @@ pub fn cmake_config(source_dir: &Path, build_dir: &Path, build_type: &str) -> Co
         }
     }
     cmake_config.arg(format!("-DBUILD_SHARED_LIBS={}", shared_lib));
+
+    // LLVM_PROFILE_FILE is set by cargo tarpaulin, so when it is set we also
+    // collect code coverage for the C and C++ API.
+    if std::env::var("LLVM_PROFILE_FILE").is_ok() {
+        cmake_config.arg("-DRASCAL_ENABLE_COVERAGE=ON");
+    }
 
     return cmake_config;
 }

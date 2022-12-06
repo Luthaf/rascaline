@@ -4,6 +4,11 @@ mod utils;
 
 #[test]
 fn check_c_api_build_install() {
+    if cfg!(tarpaulin) {
+        // do not run this test when collecting Rust coverage
+        return;
+    }
+
     const CARGO_TARGET_TMPDIR: &str = env!("CARGO_TARGET_TMPDIR");
     let mut build_dir = PathBuf::from(CARGO_TARGET_TMPDIR);
     build_dir.push("c-api-install");
