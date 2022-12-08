@@ -1,3 +1,5 @@
+.. _userdoc-how-to-property-selection:
+
 Property Selection
 ==================
 
