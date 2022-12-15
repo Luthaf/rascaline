@@ -32,3 +32,6 @@ pub(crate) use self::spherical_harmonics::SphericalHarmonicsCache;
 mod k_vectors;
 pub use self::k_vectors::KVector;
 pub use self::k_vectors::compute_k_vectors;
+
+mod spherical_bessel;
+pub use self::spherical_bessel::{spherical_bessel_first_kind, spherical_bessel_second_kind};
