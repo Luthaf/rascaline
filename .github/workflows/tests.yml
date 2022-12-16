@@ -82,6 +82,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install tox
+          echo "tox_version=$(tox --version | awk '{split($0, s," "); print s[1]}')" >> $GITHUB_ENV
 
       - name: install valgrind
         if: matrix.do-valgrind
@@ -93,7 +94,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: .tox
-          key: tox-${{ matrix.os }}-${{ hashFiles('pyproject.toml', 'setup.cfg', 'tox.ini') }}
+          key: tox-${{ env.tox_version }}-${{ matrix.os }}-${{ hashFiles('pyproject.toml', 'setup.cfg', 'tox.ini') }}
 
       - name: unit tests
         run: cargo test --lib --target ${{ matrix.rust-target }} ${{ matrix.cargo-build-flags }}
@@ -135,12 +136,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install tox
+          echo "tox_version=$(tox --version | awk '{split($0, s," "); print s[1]}')" >> $GITHUB_ENV
 
       - name: cache tox environments
         uses: actions/cache@v3
         with:
           path: .tox
-          key: tox-${{ matrix.os }}-${{ hashFiles('pyproject.toml', 'setup.cfg', 'tox.ini') }}
+          key: tox-${{ env.tox_version }}-${{ matrix.os }}-${{ hashFiles('pyproject.toml', 'setup.cfg', 'tox.ini') }}
 
       - name: check that examples compile & run
         run: cargo run --release --example compute-soap -- rascaline/examples/data/water.xyz
