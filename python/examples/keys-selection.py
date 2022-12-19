@@ -38,15 +38,14 @@ HYPER_PARAMETERS = {
 
 calculator = SoapPowerSpectrum(**HYPER_PARAMETERS)
 
-descriptor = calculator.compute(frames)
-
 # %%
 #
-# The selections for keys can be a set of ``Labels``, in which case the names
-# of the keys must be a set of the names of the keys produced by the
-# calculator. You can see the default set of names with:
+# The selections for keys can be a set of ``Labels``, with the names
+# of the keys being a subset of the names of the keys produced by the
+# calculator.
 
-print("properties names:", descriptor.keys.names)
+descriptor = calculator.compute(frames)
+print("keys names:", descriptor.keys.names)
 
 # %%
 #
