@@ -12,7 +12,7 @@ use rascaline::systems::UnitCell;
 type HyperParameters = String;
 
 pub fn load_calculator_input(path: impl AsRef<Path>) -> (Vec<Box<dyn System>>, HyperParameters) {
-    let json = std::fs::read_to_string(&format!("tests/data/generated/{}", path.as_ref().display()))
+    let json = std::fs::read_to_string(format!("tests/data/generated/{}", path.as_ref().display()))
         .expect("failed to read input file");
 
     let data: Value = serde_json::from_str(&json).expect("failed to parse JSON");
@@ -60,7 +60,7 @@ fn read_cell(cell: &Value) -> UnitCell {
 }
 
 pub fn load_expected_values(path: impl AsRef<Path>) -> ArrayD<f64> {
-    let file = std::fs::File::open(&format!("tests/data/generated/{}", path.as_ref().display()))
+    let file = std::fs::File::open(format!("tests/data/generated/{}", path.as_ref().display()))
         .expect("failed to open file");
 
     ArrayD::<f64>::read_npy(GzDecoder::new(file)).expect("failed to convert data to ndarray")

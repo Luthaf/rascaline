@@ -4,30 +4,6 @@ use ndarray::Array3;
 use crate::{Matrix3, Vector3D};
 use super::{UnitCell, Pair};
 
-/// `f64::clamp` backported to rust 1.45
-fn f64_clamp(mut x: f64, min: f64, max: f64) -> f64 {
-    debug_assert!(min <= max);
-    if x < min {
-        x = min;
-    }
-    if x > max {
-        x = max;
-    }
-    return x;
-}
-
-/// `usize::clamp` backported to rust 1.45
-fn usize_clamp(mut x: usize, min: usize, max: usize) -> usize {
-    debug_assert!(min <= max);
-    if x < min {
-        x = min;
-    }
-    if x > max {
-        x = max;
-    }
-    return x;
-}
-
 /// Maximal number of cells, we need to use this to prevent having too many
 /// cells with a small unit cell and a large cutoff
 const MAX_NUMBER_OF_CELLS: f64 = 1e5;
@@ -132,9 +108,9 @@ impl CellList {
         };
 
         let mut n_cells = [
-            f64_clamp(f64::trunc(distances_between_faces[0] / cutoff), 1.0, f64::INFINITY),
-            f64_clamp(f64::trunc(distances_between_faces[1] / cutoff), 1.0, f64::INFINITY),
-            f64_clamp(f64::trunc(distances_between_faces[2] / cutoff), 1.0, f64::INFINITY),
+            f64::clamp(f64::trunc(distances_between_faces[0] / cutoff), 1.0, f64::INFINITY),
+            f64::clamp(f64::trunc(distances_between_faces[1] / cutoff), 1.0, f64::INFINITY),
+            f64::clamp(f64::trunc(distances_between_faces[2] / cutoff), 1.0, f64::INFINITY),
         ];
 
         assert!(n_cells[0].is_finite() && n_cells[1].is_finite() && n_cells[2].is_finite());
@@ -209,9 +185,9 @@ impl CellList {
         // cell
         let (shift, cell_index) = if self.unit_cell.is_infinite() {
             let cell_index = [
-                usize_clamp(cell_index[0] as usize, 0, n_cells[0] - 1),
-                usize_clamp(cell_index[1] as usize, 0, n_cells[1] - 1),
-                usize_clamp(cell_index[2] as usize, 0, n_cells[2] - 1),
+                usize::clamp(cell_index[0] as usize, 0, n_cells[0] - 1),
+                usize::clamp(cell_index[1] as usize, 0, n_cells[1] - 1),
+                usize::clamp(cell_index[2] as usize, 0, n_cells[2] - 1),
             ];
             ([0, 0, 0], cell_index)
         } else {

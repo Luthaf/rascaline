@@ -81,8 +81,8 @@ fn madelung() {
         CrystalParameters{systems: get_znso4(), charges: vec![1.0, -1.0, 1.0, -1.0], madelung: 1.6413 / f64::sqrt(3. / 8.)}
     ];
 
-    for cutoff in [0.01, 0.027, 0.074, 0.2] {
-        let factor = -1.0 / (4.0 * std::f64::consts::PI * (cutoff as f64).powf(2.0)).powf(0.75);
+    for cutoff in [0.01_f64, 0.027, 0.074, 0.2] {
+        let factor = -1.0 / (4.0 * std::f64::consts::PI * cutoff.powf(2.0)).powf(0.75);
         for atomic_gaussian_width in [0.2, 0.1] {
 
             for crystal in crystals.iter_mut() {
@@ -127,8 +127,8 @@ fn madelung_high_accuracy() {
         CrystalParameters{systems: get_znso4(),  charges: vec![1.0, -1.0, 1.0, -1.0], madelung: 1.6413 / f64::sqrt(3. / 8.)}
     ];
 
-    let cutoff = 0.01;
-    let factor = -1.0 / (4.0 * std::f64::consts::PI * (cutoff as f64).powf(2.0)).powf(0.75);
+    let cutoff = 0.01_f64;
+    let factor = -1.0 / (4.0 * std::f64::consts::PI * cutoff.powf(2.0)).powf(0.75);
 
     for crystal in crystals.iter_mut() {
         let lode_parameters = LodeSphericalExpansionParameters {
