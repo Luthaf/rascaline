@@ -5,7 +5,7 @@ use criterion::{BenchmarkGroup, Criterion, measurement::WallTime, SamplingMode};
 use criterion::{criterion_group, criterion_main};
 
 fn load_systems(path: &str) -> Vec<Box<dyn System>> {
-    let systems = rascaline::systems::read_from_file(&format!("benches/data/{}", path))
+    let systems = rascaline::systems::read_from_file(format!("benches/data/{}", path))
         .expect("failed to read file");
 
     return systems.into_iter()

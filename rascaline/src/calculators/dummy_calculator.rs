@@ -210,7 +210,7 @@ mod tests {
         let mut calculator = Calculator::from(Box::new(DummyCalculator{
             cutoff: 1.0,
             delta: 9,
-            name: "".into(),
+            name: String::new(),
         }) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
@@ -239,7 +239,7 @@ mod tests {
         let calculator = Calculator::from(Box::new(DummyCalculator{
             cutoff: 1.0,
             delta: 9,
-            name: "".into(),
+            name: String::new(),
         }) as Box<dyn CalculatorBase>);
         let mut systems = test_systems(&["water"]);
 
