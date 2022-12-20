@@ -40,18 +40,17 @@ calculator = SoapPowerSpectrum(**HYPER_PARAMETERS)
 
 # %%
 #
-# The selections for keys can be a set of ``Labels``, with the names
-# of the keys being a subset of the names of the keys produced by the
-# calculator.
+# The selections for keys should be a set of ``Labels``, with the names of the
+# keys being a subset of the names of the keys produced by the calculator.
 
 descriptor = calculator.compute(frames)
 print("keys names:", descriptor.keys.names)
 
 # %%
 #
-# We can use a set of these names to define a selection. In this case, only
-# blocks matching the labels in this selection will be used by rascaline
-# (here, only blocks with keys ``[1,1,1]`` and ``[4,4,4]`` will be calculated)
+# We can use these names to define a selection, and only blocks matching the
+# labels in this selection will be used by rascaline. Here, only blocks with
+# keys ``[1,1,1]`` and ``[4,4,4]`` will be calculated.
 
 selection = Labels(
     names=["species_center", "species_neighbor_1", "species_neighbor_2"],
@@ -61,30 +60,29 @@ selected_descriptor = calculator.compute(frames, selected_keys=selection)
 
 # %%
 #
-# We get a TensorMap with 2 blocks:
+# We get a TensorMap with 2 blocks, corresponding to the requested keys
 
 print(selected_descriptor.keys)
 
 # %%
 #
-# In this case, the block ``[1,1,1]`` contained in the original ``TensorMap``
-# will be exactly the same:
+# The block for ``[1, 1, 1]`` will be exactly the same as the one in the full
+# ``TensorMap``
 answer = np.array_equal(descriptor.block(0).values, selected_descriptor.block(0).values)
 print(f"Are the blocks 0 in the descriptor and selected_descriptor equal? {answer}")
 
 # %%
 #
-# And the form of the block ``[4,4,4]``, which is not created by default,
-# will be 0,180, that is, an empty block with the required key and set of
-# properties was generated
+# Since there is no block for ``[4, 4, 4]`` in the full ``TensorMap``, an empty
+# block with no samples and the default set of properties is generated
 
 print(selected_descriptor.block(1).values.shape)
 
 # %%
 #
-# In addition, ``selected_keys`` can be used simultaneously with other
-# selectors. To do this, create ``TensorMap`` below, which we will pass
-# as ``selected_properties``:
+# ``selected_keys`` can be used simultaneously with samples and properties
+# selection. Here we define a selection for properties as a ``TensorMap`` to
+# select different properties for each block:
 
 selection = [
     Labels(names=["l", "n1", "n2"], values=np.array([[0, 0, 0]])),
@@ -110,8 +108,8 @@ selected_properties = TensorMap(keys, blocks)
 
 # %%
 #
-# As ``selected_keys`` we will take only 1 of the keys that were in
-# ``selected_properties``
+# Only one of the key from our ``selected_properties`` will be used in the
+# ``selected_keys``, meaning the output will only contain this one key/block.
 
 selected_keys = Labels(
     names=["species_center", "species_neighbor_1", "species_neighbor_2"],
@@ -126,8 +124,8 @@ descriptor = calculator.compute(
 
 # %%
 #
-# As a result, we get 1 block with values of the form (420, 1), that is, with
-# only 1 property
+# As expected, we get 1 block with values of the form (420, 1), i.e. with only 1
+# property.
 
 print(f"list of keys: {descriptor.keys}")
 print(descriptor.block(0).values.shape)

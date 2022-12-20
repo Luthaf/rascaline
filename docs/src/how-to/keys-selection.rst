@@ -1,19 +1,16 @@
-Keys Selection
+Keys selection
 ==============
 
-This examples shows how to compute a set of blocks which correspond to p
-redefined keys.
+This examples shows how to tell rascaline to compute a set of blocks which
+correspond to predefined keys. This can be used to either reduce the set of
+computed blocks if we are only interested in some of them (skipping the
+calculation of the other blocks); or when we need to explicitly add some blocks
+to the resulting descriptor (for example to match the block set of an already
+trained machine learning model).
 
-This is useful, for example, in 2 cases: when we are interested in analyzing
-only some of the blocks (so there is no need to generate the rest, wasting
-resources on this), and when we, on the contrary, need to explicitly add some
-blocks to the resulting descriptor (to match the machine learning model, for
-instance).
-
-This example uses the functions discussed in
-:ref:`userdoc-how-to-computing-soap` and
-:ref:`userdoc-how-to-property-selection`, so we suggest that you read it
-initially.
+This example uses functions discussed in :ref:`userdoc-how-to-computing-soap`
+and :ref:`userdoc-how-to-property-selection`, so we suggest that you read these
+first.
 
 You can obtain a testing dataset from our :download:`website <../../static/dataset.xyz>`.
 
