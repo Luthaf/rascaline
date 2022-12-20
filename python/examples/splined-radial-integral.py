@@ -19,7 +19,6 @@ import scipy as sp
 import scipy.optimize
 from scipy.special import jv
 from scipy.special import spherical_jn as j_l
-from scipy.integrate import quadrature
 
 from rascaline import SphericalExpansion, generate_splines
 
@@ -139,7 +138,7 @@ hypers_spherical_expansion = {
     "center_atom_weight": 0.0,
     "radial_basis": {
         "TabulatedRadialIntegral": {
-            "spline_points": spline_points,
+            "points": spline_points,
         }
     },
     "atomic_gaussian_width": 1.0,  # ignored

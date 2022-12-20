@@ -141,6 +141,9 @@ class JsonSchemaDirective(Directive):
                 return nodes.literal(text="number")
 
             elif schema["type"] == "integer":
+                if "format" not in schema:
+                    return nodes.literal(text="integer")
+
                 if schema["format"].startswith("int"):
                     return nodes.literal(text="integer")
                 elif schema["format"].startswith("uint"):
@@ -163,19 +166,28 @@ class JsonSchemaDirective(Directive):
                 schema["type"] = schema["type"][0]
                 return self._json_schema_to_nodes(schema, inline=True)
 
+            elif schema["type"] == "array":
+                array_node = nodes.inline()
+                array_node += self._json_schema_to_nodes(schema["items"], inline=True)
+                array_node += nodes.Text("[]")
+                return array_node
+
             else:
                 raise Exception(f"unsupported JSON type ({schema['type']}) in schema")
 
-        # enums values are represented as allOf
-        if "allOf" in schema:
-            assert len(schema["allOf"]) == 1
-            ref = schema["allOf"][0]["$ref"]
+        if "$ref" in schema:
+            ref = schema["$ref"]
             assert ref.startswith("#/definitions/")
             type_name = ref.split("/")[-1]
 
             refid = _target_id(type_name)
 
             return nodes.reference(internal=True, refid=refid, text=type_name)
+
+        # enums values are represented as allOf
+        if "allOf" in schema:
+            assert len(schema["allOf"]) == 1
+            return self._json_schema_to_nodes(schema["allOf"][0])
 
         # Enum variants uses "oneOf"
         if "oneOf" in schema:

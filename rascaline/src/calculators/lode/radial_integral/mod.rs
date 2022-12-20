@@ -91,7 +91,7 @@ impl LodeRadialIntegralCache {
                     Box::new(gto) as Box<dyn LodeRadialIntegral>
                 }
             }
-            RadialBasis::TabulatedRadialIntegral {spline_points: _} => {
+            RadialBasis::TabulatedRadialIntegral {points: _} => {
                 return Err(Error::InvalidParameter("LODE does not support a tabulated radial integral for the moment".into()));
             }
         };
