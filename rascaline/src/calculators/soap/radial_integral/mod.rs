@@ -74,14 +74,14 @@ impl SoapRadialIntegralCache {
                 }
             }
 
-            RadialBasis::TabulatedRadialIntegral {spline_points} => {
+            RadialBasis::TabulatedRadialIntegral {points} => {
                 let parameters = SoapRadialIntegralSplineParameters {
                     max_radial: parameters.max_radial,
                     max_angular: parameters.max_angular,
                     cutoff: parameters.cutoff,
                 };
                 Box::new(SoapRadialIntegralSpline::from_tabulated(
-                    parameters, spline_points
+                    parameters, points
                 )?)
             }
         };

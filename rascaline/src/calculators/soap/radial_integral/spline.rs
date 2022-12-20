@@ -71,14 +71,14 @@ impl SoapRadialIntegralSpline {
             stop: parameters.cutoff,
             shape: vec![parameters.max_angular + 1, parameters.max_radial],
         };
-      
+
         let mut new_spline_points = Vec::new();
         for spline_point in spline_points {
             new_spline_points.push(
                 HermitSplinePoint{
                     position: spline_point.position,
-                    value: spline_point.values.clone(),
-                    derivative: spline_point.derivatives.clone(),
+                    value: spline_point.values.0.clone(),
+                    derivative: spline_point.derivatives.0.clone(),
                 }
             );
         }
