@@ -3,7 +3,6 @@ import unittest
 
 import numpy as np
 from equistore import TensorBlock, TensorMap
-from skcosmo.feature_selection import FPS as FPS
 
 from rascaline.calculators import DummyCalculator
 from rascaline.properties_selector import PropertiesSelector
@@ -11,6 +10,14 @@ from rascaline.properties_selector import PropertiesSelector
 from test_systems import TestSystem
 
 
+HAVE_SKMAT = True
+try:
+    from skcosmo.feature_selection import FPS as FPS
+except ImportError:
+    HAVE_SKMAT = False
+
+
+@unittest.skipIf(not HAVE_SKMAT, "skmatter is not installed")
 class TestPropertiesSelector(unittest.TestCase):
     def test_keys_to_samples(self):
         system = TestSystem()
