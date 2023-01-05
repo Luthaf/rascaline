@@ -35,6 +35,7 @@ fn save_schema(name: &str, schema: RootSchema) {
 fn main() {
     generate_schema!(NeighborList);
     generate_schema!(SortedDistances);
+    generate_schema!("SphericalExpansionByPair", SphericalExpansionParameters);
     generate_schema!("SphericalExpansion", SphericalExpansionParameters);
     generate_schema!("LodeSphericalExpansion", LodeSphericalExpansionParameters);
     generate_schema!("SoapPowerSpectrum", PowerSpectrumParameters);

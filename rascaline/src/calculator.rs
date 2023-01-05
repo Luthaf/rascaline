@@ -457,7 +457,8 @@ fn shape_from_labels(samples: &Labels, components: &[Arc<Labels>], properties: &
 use crate::calculators::DummyCalculator;
 use crate::calculators::SortedDistances;
 use crate::calculators::NeighborList;
-use crate::calculators::{SphericalExpansion, SphericalExpansionParameters};
+use crate::calculators::{SphericalExpansionByPair, SphericalExpansionParameters};
+use crate::calculators::SphericalExpansion;
 use crate::calculators::{SoapPowerSpectrum, PowerSpectrumParameters};
 use crate::calculators::{SoapRadialSpectrum, RadialSpectrumParameters};
 use crate::calculators::{LodeSphericalExpansion, LodeSphericalExpansionParameters};
@@ -487,6 +488,7 @@ static REGISTERED_CALCULATORS: Lazy<BTreeMap<&'static str, CalculatorCreator>> =
     add_calculator!(map, "neighbor_list", NeighborList);
     add_calculator!(map, "sorted_distances", SortedDistances);
 
+    add_calculator!(map, "spherical_expansion_by_pair", SphericalExpansionByPair, SphericalExpansionParameters);
     add_calculator!(map, "spherical_expansion", SphericalExpansion, SphericalExpansionParameters);
     add_calculator!(map, "soap_radial_spectrum", SoapRadialSpectrum, RadialSpectrumParameters);
     add_calculator!(map, "soap_power_spectrum", SoapPowerSpectrum, PowerSpectrumParameters);

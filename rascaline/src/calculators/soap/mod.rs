@@ -3,14 +3,17 @@ pub use self::radial_integral::SoapRadialIntegral;
 pub use self::radial_integral::{SoapRadialIntegralGto, SoapRadialIntegralGtoParameters};
 pub use self::radial_integral::{SoapRadialIntegralSpline, SoapRadialIntegralSplineParameters};
 
-pub use self::radial_integral::SoapRadialIntegralCache;
+pub use self::radial_integral::{SoapRadialIntegralCache, SoapRadialIntegralParameters};
 
 mod cutoff;
 pub use self::cutoff::CutoffFunction;
 pub use self::cutoff::RadialScaling;
 
+mod spherical_expansion_pair;
+pub use self::spherical_expansion_pair::{SphericalExpansionByPair, SphericalExpansionParameters};
+
 mod spherical_expansion;
-pub use self::spherical_expansion::{SphericalExpansion, SphericalExpansionParameters};
+pub use self::spherical_expansion::SphericalExpansion;
 
 mod power_spectrum;
 pub use self::power_spectrum::{SoapPowerSpectrum, PowerSpectrumParameters};

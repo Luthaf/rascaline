@@ -23,6 +23,7 @@ as a `JSON schema`_, and rendered in the pages below.
     :maxdepth: 1
 
     spherical-expansion
+    spherical-expansion-by-pair
     lode-spherical-expansion
     soap-radial-spectrum
     soap-power-spectrum

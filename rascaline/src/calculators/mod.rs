@@ -86,7 +86,8 @@ mod descriptors_by_systems;
 pub(crate) use self::descriptors_by_systems::{array_mut_for_system, split_tensor_map_by_system};
 
 pub mod soap;
-pub use self::soap::{SphericalExpansion, SphericalExpansionParameters};
+pub use self::soap::{SphericalExpansionByPair, SphericalExpansionParameters};
+pub use self::soap::SphericalExpansion;
 pub use self::soap::{SoapPowerSpectrum, PowerSpectrumParameters};
 pub use self::soap::{SoapRadialSpectrum, RadialSpectrumParameters};
 
