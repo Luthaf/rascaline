@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use equistore::{EmptyArray, TensorBlock, TensorMap};
 use equistore::{LabelValue, Labels, LabelsBuilder};
 
@@ -109,9 +107,9 @@ impl SoapRadialSpectrum {
                         block.values().samples.count(),
                         block.values().properties.count(),
                     ]),
-                    Arc::clone(&block.values().samples),
-                    Vec::new(),
-                    Arc::clone(&block.values().properties),
+                    block.values().samples.clone(),
+                    &[],
+                    block.values().properties.clone(),
                 ).expect("invalid TensorBlock")
             );
         }
@@ -145,7 +143,7 @@ impl CalculatorBase for SoapRadialSpectrum {
         &self,
         keys: &equistore::Labels,
         systems: &mut [Box<dyn System>],
-    ) -> Result<Vec<Arc<Labels>>, Error> {
+    ) -> Result<Vec<Labels>, Error> {
         assert_eq!(keys.names(), ["species_center", "species_neighbor"]);
         let mut result = Vec::new();
         for [species_center, species_neighbor] in keys.iter_fixed_size() {
@@ -169,7 +167,7 @@ impl CalculatorBase for SoapRadialSpectrum {
         }
     }
 
-    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Labels], systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         assert_eq!(keys.names(), ["species_center", "species_neighbor"]);
         assert_eq!(keys.count(), samples.len());
 
@@ -188,7 +186,7 @@ impl CalculatorBase for SoapRadialSpectrum {
         return Ok(gradient_samples);
     }
 
-    fn components(&self, keys: &equistore::Labels) -> Vec<Vec<Arc<Labels>>> {
+    fn components(&self, keys: &equistore::Labels) -> Vec<Vec<Labels>> {
         return vec![vec![]; keys.count()];
     }
 
@@ -196,13 +194,12 @@ impl CalculatorBase for SoapRadialSpectrum {
         vec!["n"]
     }
 
-    fn properties(&self, keys: &equistore::Labels) -> Vec<Arc<Labels>> {
+    fn properties(&self, keys: &equistore::Labels) -> Vec<Labels> {
         let mut properties = LabelsBuilder::new(self.properties_names());
         for n in 0..self.parameters.max_radial {
             properties.add(&[n]);
         }
-
-        let properties = Arc::new(properties.finish());
+        let properties = properties.finish();
 
         return vec![properties; keys.count()];
     }
@@ -235,8 +232,8 @@ impl CalculatorBase for SoapRadialSpectrum {
         for ((_, mut block), (_, block_spx)) in
             descriptor.iter_mut().zip(spherical_expansion.iter())
         {
-            let array = block.values_mut().data.as_array_mut();
-            let array_spx = block_spx.values().data.as_array();
+            let array = block.values_mut().data.to_array_mut();
+            let array_spx = block_spx.values().data.to_array();
             let shape = array_spx.shape();
             // shape[1] is the m component
             debug_assert_eq!(shape[1], 1);
@@ -249,7 +246,7 @@ impl CalculatorBase for SoapRadialSpectrum {
                 let gradient_spx = block_spx.gradient("positions").expect("missing spherical expansion gradients");
                 debug_assert_eq!(gradient.samples, gradient_spx.samples);
 
-                let array = gradient.data.as_array_mut();
+                let array = gradient.data.to_array_mut();
                 let array_spx = gradient_spx.data.as_array();
                 let shape = array_spx.shape();
                 // shape[2] is the m component
@@ -265,7 +262,7 @@ impl CalculatorBase for SoapRadialSpectrum {
                 let gradient_spx = block_spx.gradient("cell").expect("missing spherical expansion gradients");
                 debug_assert_eq!(gradient.samples, gradient_spx.samples);
 
-                let array = gradient.data.as_array_mut();
+                let array = gradient.data.to_array_mut();
                 let array_spx = gradient_spx.data.as_array();
                 let shape = array_spx.shape();
                 // shape[2] is the m component

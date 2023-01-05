@@ -189,10 +189,8 @@ first, ``features_names`` defines the name associated with the different columns
 in the sample labels. Then, ``samples`` determines the set of samples associated
 with each key/block. The return type of the ``samples`` function takes some
 unpacking: we are returning a `Result`_ since any call to a `System`_ function
-can fail. The non-error case of the result is a ``Vec<Arc<Labels>>``: we need
-one set of `Labels`_ for each key/block. Finally, the labels can be the same
-between different keys, and ``Arc`` allow using the same set of labels for
-different keys without duplicating memory.
+can fail. The non-error case of the result is a ``Vec<Labels>``: we need
+one set of `Labels`_ for each key/block.
 
 .. literalinclude:: ../../../../rascaline/src/tutorials/moments/s2_metadata.rs
    :language: rust
@@ -208,8 +206,8 @@ of samples in the form of ``AtomCenteredSamples``.
 Components
 ++++++++++
 
-The next set of metadata associated with a block are the components. Each block
-can have 0 or more components, that should be used to store metadata and
+The next set of metadata associated with a block are the **components**. Each
+block can have 0 or more components, that should be used to store metadata and
 information about symmetry operations or any kind of tensorial components.
 
 Here, we dont' have any components (the ``GeometricMoments`` representation is
@@ -225,16 +223,16 @@ invariant), so we just return a list (one for each key) of empty vectors.
 Properties
 ++++++++++
 
-The *properties* define metadata associated with the columns of the data arrays.
-Like for the samples, we have one function to define the set of names associated
-with each variable in the properties `Labels`_, and one function to compute the
-set of properties defined for each key.
+The **properties** define metadata associated with the columns of the data
+arrays. Like for the samples, we have one function to define the set of names
+associated with each variable in the properties `Labels`_, and one function to
+compute the set of properties defined for each key.
 
 In our case, there is only one variable in the properties labels, the power
 :math:`k` used to compute the moment. When building the full list of Labels for
 each key in ``CalculatorBase::properties``, we use the fact that the properties
-are the same for each key/block; and return multiple references to the same
-``Arc<Labels>``.
+are the same for each key/block and make copies of the ``Labels`` (since
+``Labels`` are reference-counted, the copies are actually quite cheap).
 
 .. literalinclude:: ../../../../rascaline/src/tutorials/moments/s2_metadata.rs
    :language: rust
@@ -305,7 +303,7 @@ calculation.
 
 The `TensorMap`_ is initialized by the concrete `Calculator`_ struct, according
 to parameters provided by the user. In particular, the tensor map will only
-contain samples and properties requested by th user, meaning that the code in
+contain samples and properties requested by the user, meaning that the code in
 ``compute`` should check for each block whether a particular sample
 (respectively property) is present in ``block.samples`` (resp.
 ``block.property``) before computing it.

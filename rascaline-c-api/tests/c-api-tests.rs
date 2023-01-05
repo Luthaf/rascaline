@@ -23,6 +23,8 @@ fn check_c_api() {
 
     let mut cmake_config = utils::cmake_config(&source_dir, &build_dir, build_type);
     cmake_config.arg("-DCMAKE_EXPORT_COMPILE_COMMANDS=ON");
+    cmake_config.arg("-DRASCALINE_FETCH_EQUISTORE=ON");
+
     let status = cmake_config.status().expect("cmake configuration failed");
     assert!(status.success());
 

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use equistore::{Labels, TensorMap, LabelsBuilder};
 
 use crate::{System, Error};
@@ -31,7 +29,7 @@ impl CalculatorBase for GeometricMoments {
         todo!()
     }
 
-    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         todo!()
     }
 
@@ -39,11 +37,11 @@ impl CalculatorBase for GeometricMoments {
         todo!()
     }
 
-    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Labels], systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         todo!()
     }
 
-    fn components(&self, keys: &Labels) -> Vec<Vec<Arc<Labels>>> {
+    fn components(&self, keys: &Labels) -> Vec<Vec<Labels>> {
         todo!()
     }
 
@@ -51,7 +49,7 @@ impl CalculatorBase for GeometricMoments {
         todo!()
     }
 
-    fn properties(&self, keys: &Labels) -> Vec<Arc<Labels>> {
+    fn properties(&self, keys: &Labels) -> Vec<Labels> {
         todo!()
     }
 

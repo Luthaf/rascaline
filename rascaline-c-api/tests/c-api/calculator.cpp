@@ -142,6 +142,7 @@ TEST_CASE("Compute descriptor") {
         CHECK(keys.count == 2);
         CHECK(keys.values[0] == 1);
         CHECK(keys.values[1] == 6);
+        eqs_labels_free(&keys);
 
         auto samples = std::vector<int32_t>{
             0, 1, /**/ 0, 2, /**/ 0, 3,
@@ -220,6 +221,7 @@ TEST_CASE("Compute descriptor") {
         auto status = rascal_calculator_compute(
             calculator, &descriptor, &system, 1, options
         );
+
         CHECK_SUCCESS(status);
 
         eqs_labels_t keys = {0};
@@ -231,6 +233,7 @@ TEST_CASE("Compute descriptor") {
         CHECK(keys.count == 2);
         CHECK(keys.values[0] == 1);
         CHECK(keys.values[1] == 6);
+        eqs_labels_free(&keys);
 
         auto samples = std::vector<int32_t>{
             0, 1, /**/ 0, 3,
@@ -307,6 +310,7 @@ TEST_CASE("Compute descriptor") {
         CHECK(keys.count == 2);
         CHECK(keys.values[0] == 1);
         CHECK(keys.values[1] == 6);
+        eqs_labels_free(&keys);
 
         auto samples = std::vector<int32_t>{
             0, 1, /**/ 0, 2, /**/ 0, 3,
@@ -446,6 +450,7 @@ TEST_CASE("Compute descriptor") {
         CHECK(keys.count == 2);
         CHECK(keys.values[0] == 1);
         CHECK(keys.values[1] == 6);
+        eqs_labels_free(&keys);
 
         auto samples = std::vector<int32_t>{
             0, 3,
@@ -502,7 +507,7 @@ void check_block(
     std::vector<int32_t> gradient_samples,
     std::vector<double> gradients
 ) {
-    const eqs_block_t* block = nullptr;
+    eqs_block_t* block = nullptr;
 
     auto status = eqs_tensormap_block_by_id(descriptor, &block, block_id);
     CHECK_SUCCESS(status);
@@ -521,6 +526,7 @@ void check_block(
         labels.values, labels.values + labels.count * labels.size
     );
     CHECK(label_values == samples);
+    eqs_labels_free(&labels);
 
     /**************************************************************************/
     status = eqs_block_labels(block, "values", 1, &labels);
@@ -535,16 +541,21 @@ void check_block(
         labels.values, labels.values + labels.count * labels.size
     );
     CHECK(label_values == properties);
+    eqs_labels_free(&labels);
 
     /**************************************************************************/
-    eqs_array_t data = {0};
-    status = eqs_block_data(block, "values", &data);
+    eqs_array_t array = {0};
+    status = eqs_block_data(block, "values", &array);
     CHECK_SUCCESS(status);
 
-    const double* values_ptr = nullptr;
+
     const uintptr_t* shape = nullptr;
     uintptr_t shape_count = 0;
-    status = eqs_get_rust_array(&data, &values_ptr, &shape, &shape_count);
+    status = array.shape(array.ptr, &shape, &shape_count);
+    CHECK_SUCCESS(status);
+
+    double* values_ptr = nullptr;
+    status = array.data(array.ptr, &values_ptr);
     CHECK_SUCCESS(status);
 
     CHECK(shape_count == 2);
@@ -570,12 +581,15 @@ void check_block(
         labels.values, labels.values + labels.count * labels.size
     );
     CHECK(label_values == gradient_samples);
+    eqs_labels_free(&labels);
 
     /**************************************************************************/
-    status = eqs_block_data(block, "positions", &data);
+    status = eqs_block_data(block, "positions", &array);
     CHECK_SUCCESS(status);
 
-    status = eqs_get_rust_array(&data, &values_ptr, &shape, &shape_count);
+    status = array.shape(array.ptr, &shape, &shape_count);
+    CHECK_SUCCESS(status);
+    status = array.data(array.ptr, &values_ptr);
     CHECK_SUCCESS(status);
 
     CHECK(shape_count == 3);

@@ -1,4 +1,4 @@
-use std::{sync::Arc, collections::BTreeSet};
+use std::collections::BTreeSet;
 
 use equistore::{Labels, LabelsBuilder};
 
@@ -28,7 +28,7 @@ impl SamplesBuilder for AtomCenteredSamples {
         vec!["structure", "center"]
     }
 
-    fn samples(&self, systems: &mut [Box<dyn System>]) -> Result<Arc<Labels>, Error> {
+    fn samples(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
         assert!(self.cutoff > 0.0 && self.cutoff.is_finite(), "cutoff must be positive for AtomCenteredSamples");
         let mut builder = LabelsBuilder::new(Self::samples_names());
         for (system_i, system) in systems.iter_mut().enumerate() {
@@ -97,10 +97,10 @@ impl SamplesBuilder for AtomCenteredSamples {
             }
         }
 
-        return Ok(Arc::new(builder.finish()));
+        return Ok(builder.finish());
     }
 
-    fn gradients_for(&self, systems: &mut [Box<dyn System>], samples: &Labels) -> Result<Arc<Labels>, Error> {
+    fn gradients_for(&self, systems: &mut [Box<dyn System>], samples: &Labels) -> Result<Labels, Error> {
         assert!(self.cutoff > 0.0 && self.cutoff.is_finite(), "cutoff must be positive for AtomCenteredSamples");
         assert_eq!(samples.names(), ["structure", "center"]);
         let mut builder = LabelsBuilder::new(vec!["sample", "structure", "atom"]);
@@ -145,7 +145,7 @@ impl SamplesBuilder for AtomCenteredSamples {
             }
         }
 
-        return Ok(Arc::new(builder.finish()));
+        return Ok(builder.finish());
     }
 }
 
@@ -165,13 +165,13 @@ mod tests {
         };
 
         let samples = builder.samples(&mut systems).unwrap();
-        assert_eq!(*samples, Labels::new(
+        assert_eq!(samples, Labels::new(
             ["structure", "center"],
             &[[0, 0], [0, 1], [1, 0], [1, 1], [1, 2]],
         ));
 
         let gradient_samples = builder.gradients_for(&mut systems, &samples).unwrap();
-        assert_eq!(*gradient_samples, Labels::new(
+        assert_eq!(gradient_samples, Labels::new(
             ["sample", "structure", "atom"],
             &[
                 // gradients of atoms in CH
@@ -196,13 +196,13 @@ mod tests {
         };
 
         let samples = builder.samples(&mut systems).unwrap();
-        assert_eq!(*samples, Labels::new(
+        assert_eq!(samples, Labels::new(
             ["structure", "center"],
             &[[0, 1], [1, 1], [1, 2]],
         ));
 
         let gradient_samples = builder.gradients_for(&mut systems, &samples).unwrap();
-        assert_eq!(*gradient_samples, Labels::new(
+        assert_eq!(gradient_samples, Labels::new(
             ["sample", "structure", "atom"],
             &[
                 // gradients of atoms in CH
@@ -225,13 +225,13 @@ mod tests {
         };
 
         let samples = builder.samples(&mut systems).unwrap();
-        assert_eq!(*samples, Labels::new(
+        assert_eq!(samples, Labels::new(
             ["structure", "center"],
             &[[0, 0], [0, 1], [1, 0], [1, 1], [1, 2]],
         ));
 
         let gradient_samples = builder.gradients_for(&mut systems, &samples).unwrap();
-        assert_eq!(*gradient_samples, Labels::new(
+        assert_eq!(gradient_samples, Labels::new(
             ["sample", "structure", "atom"],
             &[
                 // gradients of atoms in CH w.r.t H atom only
@@ -252,7 +252,7 @@ mod tests {
         };
 
         let gradient_samples = builder.gradients_for(&mut systems, &samples).unwrap();
-        assert_eq!(*gradient_samples, Labels::new(
+        assert_eq!(gradient_samples, Labels::new(
             ["sample", "structure", "atom"],
             &[
                 // gradients of atoms in CH w.r.t C and H atoms
@@ -283,7 +283,7 @@ mod tests {
         };
 
         let gradients = builder.gradients_for(&mut systems, &samples).unwrap();
-        assert_eq!(*gradients, Labels::new(
+        assert_eq!(gradients, Labels::new(
             ["sample", "structure", "atom"],
             &[[0, 1, 0], [2, 1, 0], [2, 1, 1]]
         ));
@@ -295,7 +295,7 @@ mod tests {
             self_pairs: true,
         };
         let gradients = builder.gradients_for(&mut systems, &samples).unwrap();
-        assert_eq!(*gradients, Labels::new(
+        assert_eq!(gradients, Labels::new(
             ["sample", "structure", "atom"],
             &[
                 // gradients of first sample, O in water

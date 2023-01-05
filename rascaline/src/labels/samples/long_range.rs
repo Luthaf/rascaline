@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use equistore::{Labels, LabelsBuilder};
 
 use crate::{Error, System};
@@ -24,7 +22,7 @@ impl SamplesBuilder for LongRangeSamplesPerAtom {
         vec!["structure", "center"]
     }
 
-    fn samples(&self, systems: &mut [Box<dyn System>]) -> Result<Arc<Labels>, Error> {
+    fn samples(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
         assert!(self.self_pairs, "self.self_pairs = false is not implemented");
 
         let mut builder = LabelsBuilder::new(Self::samples_names());
@@ -51,10 +49,10 @@ impl SamplesBuilder for LongRangeSamplesPerAtom {
             }
         }
 
-        return Ok(Arc::new(builder.finish()));
+        return Ok(builder.finish());
     }
 
-    fn gradients_for(&self, systems: &mut [Box<dyn System>], samples: &Labels) -> Result<Arc<Labels>, Error> {
+    fn gradients_for(&self, systems: &mut [Box<dyn System>], samples: &Labels) -> Result<Labels, Error> {
         assert_eq!(samples.names(), ["structure", "center"]);
         let mut builder = LabelsBuilder::new(vec!["sample", "structure", "atom"]);
 
@@ -69,7 +67,7 @@ impl SamplesBuilder for LongRangeSamplesPerAtom {
             }
         }
 
-        return Ok(Arc::new(builder.finish()));
+        return Ok(builder.finish());
     }
 }
 
@@ -88,14 +86,14 @@ mod tests {
         };
 
         let samples = builder.samples(&mut systems).unwrap();
-        assert_eq!(*samples, Labels::new(
+        assert_eq!(samples, Labels::new(
             ["structure", "center"],
             &[[0, 1], [1, 1], [1, 2]],
         ));
 
 
         let gradient_samples = builder.gradients_for(&mut systems, &samples).unwrap();
-        assert_eq!(*gradient_samples, Labels::new(
+        assert_eq!(gradient_samples, Labels::new(
             ["sample", "structure", "atom"],
             &[
                 // gradients of atoms in CH

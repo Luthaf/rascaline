@@ -61,7 +61,7 @@ fn gradients() {
     assert_relative_eq!(array, expected, max_relative=1e-6);
 }
 
-fn sum_gradients(n_atoms: usize, gradients: &BasicBlock) -> ArrayD<f64> {
+fn sum_gradients(n_atoms: usize, gradients: BasicBlock<'_>) -> ArrayD<f64> {
     assert_eq!(gradients.samples.names(), &["sample", "structure", "atom"]);
     let array = gradients.data.as_array();
 

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use equistore::{TensorMap, Labels};
 
 use crate::{Error, System};
@@ -27,7 +25,7 @@ pub trait CalculatorBase: std::panic::RefUnwindSafe {
 
     /// Get the full list of samples this calculator would create for the given
     /// systems. This function should return one set of samples for each key.
-    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error>;
+    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error>;
 
     /// Can this calculator compute gradients with respect to the `parameter`?
     /// Right now, `parameter` can be either `"positions"` or `"cell"`.
@@ -40,16 +38,16 @@ pub trait CalculatorBase: std::panic::RefUnwindSafe {
     ///
     /// If the gradients with respect to positions are not available, this
     /// function should return an error.
-    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error>;
+    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Labels], systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error>;
 
     /// Get the components this calculator computes for each key.
-    fn components(&self, keys: &Labels) -> Vec<Vec<Arc<Labels>>>;
+    fn components(&self, keys: &Labels) -> Vec<Vec<Labels>>;
 
     /// Get the names used for property labels by this calculator
     fn properties_names(&self) -> Vec<&str>;
 
     /// Get the properties this calculator computes for each key.
-    fn properties(&self, keys: &Labels) -> Vec<Arc<Labels>>;
+    fn properties(&self, keys: &Labels) -> Vec<Labels>;
 
     /// Actually run the calculation.
     ///

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use equistore::{Labels, TensorMap, LabelsBuilder};
 
 use crate::{System, Error};
@@ -46,7 +44,7 @@ impl CalculatorBase for GeometricMoments {
         AtomCenteredSamples::samples_names()
     }
 
-    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         assert_eq!(keys.names(), ["species_center", "species_neighbor"]);
 
         let mut samples = Vec::new();
@@ -78,7 +76,7 @@ impl CalculatorBase for GeometricMoments {
     // [CalculatorBase::supports_gradient]
 
     // [CalculatorBase::positions_gradient_samples]
-    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Labels], systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         assert_eq!(keys.names(), ["species_center", "species_neighbor"]);
         debug_assert_eq!(keys.count(), samples.len());
 
@@ -102,7 +100,7 @@ impl CalculatorBase for GeometricMoments {
     // [CalculatorBase::positions_gradient_samples]
 
     // [CalculatorBase::components]
-    fn components(&self, keys: &Labels) -> Vec<Vec<Arc<Labels>>> {
+    fn components(&self, keys: &Labels) -> Vec<Vec<Labels>> {
         return vec![vec![]; keys.count()];
     }
     // [CalculatorBase::components]
@@ -112,12 +110,12 @@ impl CalculatorBase for GeometricMoments {
         vec!["k"]
     }
 
-    fn properties(&self, keys: &Labels) -> Vec<Arc<Labels>> {
+    fn properties(&self, keys: &Labels) -> Vec<Labels> {
         let mut builder = LabelsBuilder::new(self.properties_names());
         for k in 0..=self.max_moment {
             builder.add(&[k]);
         }
-        let properties = Arc::new(builder.finish());
+        let properties = builder.finish();
 
         return vec![properties; keys.count()];
     }

@@ -6,7 +6,6 @@ edition = "2021"
 rust-version = "1.61"
 
 [lib]
-name = "rascaline"
 # when https://github.com/rust-lang/cargo/pull/8789 lands, use it here!
 # until then, build all the crate-type we need
 crate-type = ["cdylib", "staticlib"]
@@ -15,11 +14,10 @@ bench = false
 [features]
 default = ["chemfiles"]
 chemfiles = ["rascaline/chemfiles"]
-serialization = ["equistore/serialization"]
 
 [dependencies]
 rascaline = {path = "../rascaline", version = "0.1.0", default-features = false}
-equistore = {git = "https://github.com/lab-cosmo/equistore", rev = "467baf0"}
+equistore = {git = "https://github.com/lab-cosmo/equistore", rev = "6c5a833"}
 
 ndarray = "0.15"
 log = { version = "0.4", features = ["std"] }
@@ -29,8 +27,8 @@ libc = "0.2"
 
 [build-dependencies]
 cbindgen = { version = "0.24", default-features = false }
-glob = "0.3"
-equistore = {git = "https://github.com/lab-cosmo/equistore", rev = "467baf0"}
+fs_extra = "1"
+equistore = {git = "https://github.com/lab-cosmo/equistore", rev = "6c5a833"}
 
 [dev-dependencies]
 which = "4"

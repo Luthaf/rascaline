@@ -5,7 +5,7 @@
 #include "equistore.h"
 #include "rascaline.h"
 
-#define CHECK_SUCCESS(__expr__) CHECK((__expr__) == RASCAL_SUCCESS)
+#define CHECK_SUCCESS(__expr__) REQUIRE((__expr__) == 0)
 
 rascal_system_t simple_system();
 eqs_array_t empty_array(std::vector<size_t> shape);

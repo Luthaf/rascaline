@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use log::{info, warn};
 
 use equistore::TensorMap;
@@ -49,7 +47,7 @@ impl CalculatorBase for DummyCalculator {
         AtomCenteredSamples::samples_names()
     }
 
-    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         assert_eq!(keys.names(), ["species_center"]);
         let mut samples = Vec::new();
         for [species_center] in keys.iter_fixed_size() {
@@ -73,7 +71,7 @@ impl CalculatorBase for DummyCalculator {
         }
     }
 
-    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Labels], systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         debug_assert_eq!(keys.count(), samples.len());
         let mut gradient_samples = Vec::new();
         for ([species_center], samples) in keys.iter_fixed_size().zip(samples) {
@@ -90,7 +88,7 @@ impl CalculatorBase for DummyCalculator {
         return Ok(gradient_samples);
     }
 
-    fn components(&self, keys: &Labels) -> Vec<Vec<Arc<Labels>>> {
+    fn components(&self, keys: &Labels) -> Vec<Vec<Labels>> {
         return vec![Vec::new(); keys.count()];
     }
 
@@ -98,11 +96,11 @@ impl CalculatorBase for DummyCalculator {
         vec!["index_delta", "x_y_z"]
     }
 
-    fn properties(&self, keys: &Labels) -> Vec<Arc<Labels>> {
+    fn properties(&self, keys: &Labels) -> Vec<Labels> {
         let mut properties = LabelsBuilder::new(self.properties_names());
         properties.add(&[1, 0]);
         properties.add(&[0, 1]);
-        let properties = Arc::new(properties.finish());
+        let properties = properties.finish();
 
         return vec![properties; keys.count()];
     }
@@ -119,7 +117,7 @@ impl CalculatorBase for DummyCalculator {
             let species_center = key[0].i32();
 
             let values = block.values_mut();
-            let array = values.data.as_array_mut();
+            let array = values.data.to_array_mut();
 
             for (sample_i, [system, center]) in values.samples.iter_fixed_size().enumerate() {
                 let system_i = system.usize();
@@ -152,7 +150,7 @@ impl CalculatorBase for DummyCalculator {
             }
 
             if let Some(gradient) = block.gradient_mut("positions") {
-                let array = gradient.data.as_array_mut();
+                let array = gradient.data.to_array_mut();
 
                 for gradient_sample_i in 0..array.shape()[0] {
                     for (property_i, property) in gradient.properties.iter().enumerate() {
@@ -223,12 +221,12 @@ mod tests {
         assert_eq!(keys[1], [1]);
 
         let o_block = &descriptor.block_by_id(0);
-        let values = o_block.values().data.as_array();
+        let values = o_block.values().data.to_array();
         assert_eq!(values.shape(), [1, 2]);
         assert_eq!(values.slice(s![0, ..]), aview1(&[9.0, -1.1778999999999997]));
 
         let h_block = &descriptor.block_by_id(1);
-        let values = h_block.values().data.as_array();
+        let values = h_block.values().data.to_array();
         assert_eq!(values.shape(), [2, 2]);
         assert_eq!(values.slice(s![0, ..]), aview1(&[10.0, 0.16649999999999998]));
         assert_eq!(values.slice(s![1, ..]), aview1(&[11.0, -1.3443999999999998]));

@@ -1,9 +1,9 @@
 import os
 import subprocess
-from distutils.command.build_ext import build_ext  # type: ignore
-from distutils.command.install import install as distutils_install  # type: ignore
 
 from setuptools import Extension, setup
+from setuptools.command.build_ext import build_ext
+from setuptools.command.install import install as distutils_install
 from wheel.bdist_wheel import bdist_wheel
 
 
@@ -54,11 +54,11 @@ class cmake_ext(build_ext):
         cmake_options = [
             f"-DCMAKE_INSTALL_PREFIX={install_dir}",
             f"-DCMAKE_BUILD_TYPE={RASCALINE_BUILD_TYPE}",
-            "-DBUILD_SHARED_LIBS=ON",
             # do not include chemfiles inside rascaline, instead users should
             # use chemfiles python bindings directly
-            "-DRASCAL_DISABLE_CHEMFILES=ON",
-            "-DRASCAL_BUILD_FOR_PYTHON=ON",
+            "-DRASCALINE_DISABLE_CHEMFILES=ON",
+            "-DRASCALINE_FETCH_EQUISTORE=ON",
+            "-DRASCALINE_BUILD_FOR_PYTHON=ON",
         ]
 
         if "CARGO" in os.environ:

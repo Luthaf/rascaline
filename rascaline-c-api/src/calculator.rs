@@ -1,4 +1,3 @@
-use std::convert::TryFrom;
 use std::os::raw::c_char;
 use std::ffi::CStr;
 use std::ops::{Deref, DerefMut};
@@ -157,6 +156,7 @@ pub unsafe extern fn rascal_calculator_parameters(
 /// To run the calculation for all possible labels, users should set both fields
 /// to NULL.
 #[repr(C)]
+#[derive(Debug)]
 pub struct rascal_labels_selection_t {
     /// Select a subset of labels, using the same selection criterion for all
     /// keys in the final `eqs_tensormap_t`.
@@ -179,24 +179,68 @@ pub struct rascal_labels_selection_t {
     predefined: *const eqs_tensormap_t,
 }
 
+fn c_labels_to_rust(mut labels: eqs_labels_t) -> Result<eqs_labels_t, rascaline::Error> {
+    if labels.internal_ptr_.is_null() {
+        // create new equistore-core labels
+        unsafe {
+            equistore::errors::check_status(
+                equistore::c_api::eqs_labels_create(&mut labels)
+            )?;
+        }
+
+        return Ok(labels);
+    } else {
+        // increment reference count
+        let mut clone = eqs_labels_t {
+            internal_ptr_: std::ptr::null_mut(),
+            names: std::ptr::null(),
+            values: std::ptr::null(),
+            size: 0,
+            count: 0
+        };
+        unsafe {
+            equistore::errors::check_status(
+                equistore::c_api::eqs_labels_clone(labels, &mut clone)
+            )?;
+        }
+        return Ok(clone);
+    }
+}
+
 fn convert_labels_selection<'a>(
-    value: &'a rascal_labels_selection_t,
-    labels: &'a mut Option<Labels>
+    selection: &'a rascal_labels_selection_t,
+    labels: &'a mut Option<Labels>,
+    predefined: &'a mut Option<TensorMap>,
 ) -> Result<LabelsSelection<'a>, rascaline::Error> {
-    match (value.subset.is_null(), value.predefined.is_null()) {
+    match (selection.subset.is_null(), selection.predefined.is_null()) {
         (true, true) => Ok(LabelsSelection::All),
         (false, true) => {
-            let subset = unsafe { &*value.subset };
-            *labels = Some(Labels::try_from(subset)?);
+            *labels = unsafe {
+                let raw_labels = c_labels_to_rust(*selection.subset)?;
+                Some(Labels::from_raw(raw_labels))
+            };
 
             Ok(LabelsSelection::Subset(labels.as_ref().expect("just created it")))
         }
         (true, false) => {
-            let predefined: &'a TensorMap = unsafe {
-                &*value.predefined
+            let tensor = unsafe {
+                TensorMap::from_raw(selection.predefined as *mut eqs_tensormap_t)
             };
 
-            Ok(LabelsSelection::Predefined(predefined))
+            match tensor.try_clone() {
+                Ok(copy) => {
+                    // we don't own the `tensor`, so we should not run Drop on it
+                    let _ = TensorMap::into_raw(tensor);
+                    *predefined = Some(copy);
+                }
+                Err(e) => {
+                    // same as above
+                    let _ = TensorMap::into_raw(tensor);
+                    return Err(rascaline::Error::from(e));
+                }
+            }
+
+            Ok(LabelsSelection::Predefined(predefined.as_ref().expect("just created it")))
         }
         (false, false) => {
             Err(rascaline::Error::InvalidParameter(
@@ -212,13 +256,15 @@ fn key_selection(value: *const eqs_labels_t, labels: &'_ mut Option<Labels>) -> 
     }
 
     unsafe {
-        *labels = Some(Labels::try_from(&*value)?);
+        let raw_labels = c_labels_to_rust(*value)?;
+        *labels = Some(Labels::from_raw(raw_labels));
     }
 
     return Ok(labels.as_ref());
 }
 
 /// Options that can be set to change how a calculator operates.
+#[derive(Debug)]
 #[repr(C)]
 pub struct rascal_calculation_options_t {
     /// @verbatim embed:rst:leading-asterisk
@@ -327,20 +373,35 @@ pub unsafe extern fn rascal_calculator_compute(
         }
 
         let mut selected_samples = None;
+        let mut predefined_samples = None;
+        let selected_samples = convert_labels_selection(
+            &options.selected_samples,
+            &mut selected_samples,
+            &mut predefined_samples
+        )?;
+
         let mut selected_properties = None;
+        let mut predefined_properties = None;
+        let selected_properties = convert_labels_selection(
+            &options.selected_properties,
+            &mut selected_properties,
+            &mut predefined_properties
+        )?;
+
         let mut selected_keys = None;
+        let selected_keys = key_selection(options.selected_keys, &mut selected_keys)?;
 
         let rust_options = CalculationOptions {
             gradients: &gradients,
             use_native_system: options.use_native_system,
-            selected_samples: convert_labels_selection(&options.selected_samples, &mut selected_samples)?,
-            selected_properties: convert_labels_selection(&options.selected_properties, &mut selected_properties)?,
-            selected_keys: key_selection(options.selected_keys, &mut selected_keys)?,
+            selected_samples,
+            selected_properties,
+            selected_keys,
         };
 
         let tensor = (*calculator).compute(&mut systems, rust_options)?;
 
-        *descriptor = eqs_tensormap_t::into_boxed_raw(tensor);
+        *descriptor = TensorMap::into_raw(tensor);
         Ok(())
     })
 }

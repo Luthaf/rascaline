@@ -24,11 +24,9 @@ fn values() {
 
         let keys_to_move = Labels::empty(vec!["species_center"]);
         let descriptor = descriptor.keys_to_samples(&keys_to_move, true).unwrap();
-
         let keys_to_move = Labels::empty(vec!["species_neighbor"]);
         let descriptor = descriptor.keys_to_properties(&keys_to_move, true).unwrap();
         let descriptor = descriptor.components_to_properties(&["spherical_harmonics_m"]).unwrap();
-
         let keys_to_move = Labels::empty(vec!["spherical_harmonics_l"]);
         let descriptor = descriptor.keys_to_properties(&keys_to_move, true).unwrap();
 
@@ -66,11 +64,9 @@ fn gradients() {
 
         let keys_to_move = Labels::empty(vec!["species_center"]);
         let descriptor = descriptor.keys_to_samples(&keys_to_move, true).unwrap();
-
         let keys_to_move = Labels::empty(vec!["species_neighbor"]);
         let descriptor = descriptor.keys_to_properties(&keys_to_move, true).unwrap();
         let descriptor = descriptor.components_to_properties(&["spherical_harmonics_m"]).unwrap();
-
         let keys_to_move = Labels::empty(vec!["spherical_harmonics_l"]);
         let descriptor = descriptor.keys_to_properties(&keys_to_move, true).unwrap();
 
@@ -88,7 +84,7 @@ fn gradients() {
     }
 }
 
-fn sum_gradients(n_atoms: usize, gradients: &BasicBlock) -> ArrayD<f64> {
+fn sum_gradients(n_atoms: usize, gradients: BasicBlock<'_>) -> ArrayD<f64> {
     assert_eq!(gradients.samples.names(), &["sample", "structure", "atom"]);
     let array = gradients.data.as_array();
 

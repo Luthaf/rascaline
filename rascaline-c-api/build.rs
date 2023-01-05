@@ -31,19 +31,9 @@ fn main() {
             data.write_to_file(&path);
         });
 
-    // if rascaline header generation failed, the build script always rerun
     if result.is_ok() {
-        for path in glob::glob("src/**/*.rs").unwrap().flatten() {
-            println!("cargo:rerun-if-changed={}", path.display());
-        }
+        println!("cargo:rerun-if-changed=src");
+    } else {
+        // if rascaline header generation failed, we always re-run the build script
     }
-
-    // copy the headers from equistore to include/
-    let mut path = PathBuf::from("include");
-    path.push("equistore.h");
-    std::fs::write(path, equistore::c_api::c_header_content()).expect("failed to write equistore.h");
-
-    let mut path = PathBuf::from("include");
-    path.push("equistore.hpp");
-    std::fs::write(path, equistore::c_api::cxx_header_content()).expect("failed to write equistore.hpp");
 }
