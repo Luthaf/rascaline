@@ -1,8 +1,5 @@
-use std::cell::RefCell;
 use std::sync::Arc;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
-
-use thread_local::ThreadLocal;
 
 use ndarray::s;
 use rayon::prelude::*;
@@ -16,143 +13,43 @@ use crate::systems::CellShape;
 use crate::labels::{SamplesBuilder, SpeciesFilter, AtomCenteredSamples};
 use crate::labels::{KeysBuilder, CenterSingleNeighborsSpeciesKeys};
 
-use crate::math::SphericalHarmonicsCache;
-
 use super::super::CalculatorBase;
-use super::SoapRadialIntegralCache;
 
-use super::radial_integral::SoapRadialIntegralParameters;
-use super::{CutoffFunction, RadialScaling};
-use crate::calculators::radial_basis::RadialBasis;
+use super::{SphericalExpansionByPair, SphericalExpansionParameters};
+use super::spherical_expansion_pair::{GradientsOptions, PairContribution};
 
 use super::super::{split_tensor_map_by_system, array_mut_for_system};
 
-const FOUR_PI: f64 = 4.0 * std::f64::consts::PI;
-
-/// Parameters for spherical expansion calculator.
-///
-/// The spherical expansion is at the core of representations in the SOAP
-/// (Smooth Overlap of Atomic Positions) family. See [this review
-/// article](https://doi.org/10.1063/1.5090481) for more information on the SOAP
-/// representation, and [this paper](https://doi.org/10.1063/5.0044689) for
-/// information on how it is implemented in rascaline.
-#[derive(Debug, Clone)]
-#[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
-pub struct SphericalExpansionParameters {
-    /// Spherical cutoff to use for atomic environments
-    pub cutoff: f64,
-    /// Number of radial basis function to use in the expansion
-    pub max_radial: usize,
-    /// Number of spherical harmonics to use in the expansion
-    pub max_angular: usize,
-    /// Width of the atom-centered gaussian used to create the atomic density
-    pub atomic_gaussian_width: f64,
-    /// Weight of the central atom contribution to the
-    /// features. If `1` the center atom contribution is weighted the same
-    /// as any other contribution. If `0` the central atom does not
-    /// contribute to the features at all.
-    pub center_atom_weight: f64,
-    /// Radial basis to use for the radial integral
-    pub radial_basis: RadialBasis,
-    /// Cutoff function used to smooth the behavior around the cutoff radius
-    pub cutoff_function: CutoffFunction,
-    /// radial scaling can be used to reduce the importance of neighbor atoms
-    /// further away from the center, usually improving the performance of the
-    /// model
-    #[serde(default)]
-    pub radial_scaling: RadialScaling,
-}
 
 /// The actual calculator used to compute SOAP spherical expansion coefficients
+#[derive(Debug)]
 pub struct SphericalExpansion {
-    /// Parameters governing the spherical expansion
-    parameters: SphericalExpansionParameters,
-    /// implementation + cached allocation to compute the radial integral for a
-    /// single pair
-    radial_integral: ThreadLocal<RefCell<SoapRadialIntegralCache>>,
-    /// implementation + cached allocation to compute the spherical harmonics
-    /// for a single pair
-    spherical_harmonics: ThreadLocal<RefCell<SphericalHarmonicsCache>>,
+    /// Underlying calculator, computing spherical expansion on pair at the time
+    by_pair: SphericalExpansionByPair,
     /// Cache for (-1)^l values
     m_1_pow_l: Vec<f64>,
-}
-
-impl std::fmt::Debug for SphericalExpansion {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.parameters)
-    }
 }
 
 impl SphericalExpansion {
     /// Create a new `SphericalExpansion` calculator with the given parameters
     pub fn new(parameters: SphericalExpansionParameters) -> Result<SphericalExpansion, Error> {
-        // validate parameters once in the constructor
-        parameters.cutoff_function.validate()?;
-        parameters.radial_scaling.validate()?;
-        SoapRadialIntegralCache::new(parameters.radial_basis, SoapRadialIntegralParameters {
-            max_radial: parameters.max_radial,
-            max_angular: parameters.max_angular,
-            atomic_gaussian_width: parameters.atomic_gaussian_width,
-            cutoff: parameters.cutoff,
-        })?;
-
         let m_1_pow_l = (0..=parameters.max_angular).into_iter()
             .map(|l| f64::powi(-1.0, l as i32))
             .collect::<Vec<f64>>();
 
         return Ok(SphericalExpansion {
-            parameters,
-            radial_integral: ThreadLocal::new(),
-            spherical_harmonics: ThreadLocal::new(),
+            by_pair: SphericalExpansionByPair::new(parameters)?,
             m_1_pow_l,
         });
     }
 
-    /// Compute the product of radial scaling & cutoff smoothing functions
-    fn scaling_functions(&self, r: f64) -> f64 {
-        let cutoff = self.parameters.cutoff_function.compute(r, self.parameters.cutoff);
-        let scaling = self.parameters.radial_scaling.compute(r);
-        return cutoff * scaling;
-    }
-
-    /// Compute the gradient of the product of radial scaling & cutoff smoothing functions
-    fn scaling_functions_gradient(&self, r: f64) -> f64 {
-        let cutoff = self.parameters.cutoff_function.compute(r, self.parameters.cutoff);
-        let cutoff_grad = self.parameters.cutoff_function.derivative(r, self.parameters.cutoff);
-
-        let scaling = self.parameters.radial_scaling.compute(r);
-        let scaling_grad = self.parameters.radial_scaling.derivative(r);
-
-        return cutoff_grad * scaling + cutoff * scaling_grad;
-    }
-
-    /// Compute and add the self contribution to the spherical expansion
+    /// Accumulate the self contribution to the spherical expansion
     /// coefficients, i.e. the contribution arising from the density of the
     /// center atom around itself.
-    ///
-    /// By symmetry, the center atom only contributes to the l=0 coefficients.
-    /// It also does not have contributions to the gradients
     fn do_self_contributions(&mut self, systems: &[Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
         debug_assert_eq!(descriptor.keys().names(), ["spherical_harmonics_l", "species_center", "species_neighbor"]);
-        // we could cache the self contribution since they only depend on the
-        // gaussian atomic width. For now, we recompute them all the time
 
-        let mut radial_integral = self.radial_integral.get_or(|| {
-            let radial_integral = SoapRadialIntegralCache::new(
-                self.parameters.radial_basis,
-                SoapRadialIntegralParameters {
-                    max_radial: self.parameters.max_radial,
-                    max_angular: self.parameters.max_angular,
-                    atomic_gaussian_width: self.parameters.atomic_gaussian_width,
-                    cutoff: self.parameters.cutoff,
-                }
-            ).expect("invalid parameters");
-            return RefCell::new(radial_integral);
-        }).borrow_mut();
-
-        let mut spherical_harmonics = self.spherical_harmonics.get_or(|| {
-            RefCell::new(SphericalHarmonicsCache::new(self.parameters.max_angular))
-        }).borrow_mut();
+        let self_contribution = self.by_pair.self_contribution();
 
         for (key, mut block) in descriptor.iter_mut() {
             let spherical_harmonics_l = key[0];
@@ -166,20 +63,6 @@ impl SphericalExpansion {
 
             let values = block.values_mut();
             let array = values.data.as_array_mut();
-
-            // Compute the three factors that appear in the center contribution.
-            // Note that this is simply the pair contribution for the special
-            // case where the pair distance is zero.
-            radial_integral.compute(0.0, false);
-            spherical_harmonics.compute(Vector3D::new(0.0, 0.0, 1.0), false);
-            let f_scaling = self.scaling_functions(0.0);
-
-            // The global factor of 4PI is used for the pair contributions as
-            // well. See the relevant comments there for more details.
-            let factor = self.parameters.center_atom_weight
-                * FOUR_PI
-                * f_scaling
-                * spherical_harmonics.values[[0, 0]];
 
             // Add the center contribution to relevant elements of array.
             for (sample_i, &[structure, center]) in values.samples.iter_fixed_size().enumerate() {
@@ -201,113 +84,12 @@ impl SphericalExpansion {
                 }
 
                 for (property_i, &[n]) in values.properties.iter_fixed_size().enumerate() {
-                    array[[sample_i, 0, property_i]] += factor * radial_integral.values[[0, n.usize()]];
+                    array[[sample_i, 0, property_i]] += self_contribution.values[[0, n.usize()]];
                 }
             }
         }
 
         return Ok(());
-    }
-
-    /// Compute the contribution of a single pair and store the corresponding
-    /// data inside the given descriptor.
-    ///
-    /// This will store data both for the spherical expansion with `pair.first`
-    /// as the center and `pair.second` as the neighbor, and for the spherical
-    /// expansion with `pair.second` as the center and `pair.first` as the
-    /// neighbor.
-    fn compute_for_pair(
-        &self,
-        distance: f64,
-        direction: Vector3D,
-        do_gradients: GradientsOptions,
-        contribution: &mut PairContribution,
-    ) {
-        let mut radial_integral = self.radial_integral.get_or(|| {
-            let radial_integral = SoapRadialIntegralCache::new(
-                self.parameters.radial_basis,
-                SoapRadialIntegralParameters {
-                    max_radial: self.parameters.max_radial,
-                    max_angular: self.parameters.max_angular,
-                    atomic_gaussian_width: self.parameters.atomic_gaussian_width,
-                    cutoff: self.parameters.cutoff,
-                }
-            ).expect("invalid parameters");
-            return RefCell::new(radial_integral);
-        }).borrow_mut();
-
-        let mut spherical_harmonics = self.spherical_harmonics.get_or(|| {
-            RefCell::new(SphericalHarmonicsCache::new(self.parameters.max_angular))
-        }).borrow_mut();
-
-        radial_integral.compute(distance, do_gradients.either());
-        spherical_harmonics.compute(direction, do_gradients.either());
-
-        let f_scaling = self.scaling_functions(distance);
-        let f_scaling_grad = self.scaling_functions_gradient(distance);
-
-        let mut lm_index = 0;
-        let mut lm_index_grad = 0;
-        for spherical_harmonics_l in 0..=self.parameters.max_angular {
-            let spherical_harmonics_grad = [
-                spherical_harmonics.gradients[0].slice(spherical_harmonics_l as isize),
-                spherical_harmonics.gradients[1].slice(spherical_harmonics_l as isize),
-                spherical_harmonics.gradients[2].slice(spherical_harmonics_l as isize),
-            ];
-            let spherical_harmonics = spherical_harmonics.values.slice(spherical_harmonics_l as isize);
-
-            let radial_integral_grad = radial_integral.gradients.slice(s![spherical_harmonics_l, ..]);
-            let radial_integral = radial_integral.values.slice(s![spherical_harmonics_l, ..]);
-
-            // compute the full spherical expansion coefficients & gradients
-            for sph_value in spherical_harmonics.iter() {
-                for (n, ri_value) in radial_integral.iter().enumerate() {
-                    // The first factor of 4pi arises from the integration over
-                    // the angular variables. It is included here as a global
-                    // factor since it is not part of the spherical harmonics,
-                    // and to keep the radial_integral class about the radial
-                    // part of the integration only.
-                    contribution.values[[lm_index, n]] = FOUR_PI * f_scaling * sph_value * ri_value;
-                }
-                lm_index += 1;
-            }
-
-            if let Some(ref mut gradient) = contribution.gradients {
-                let dr_d_spatial = direction;
-
-                for m in 0..(2 * spherical_harmonics_l + 1) {
-                    let sph_value = spherical_harmonics[m];
-                    let sph_grad_x = spherical_harmonics_grad[0][m];
-                    let sph_grad_y = spherical_harmonics_grad[1][m];
-                    let sph_grad_z = spherical_harmonics_grad[2][m];
-
-                    for n in 0..self.parameters.max_radial {
-                        let ri_value = radial_integral[n];
-                        let ri_grad = radial_integral_grad[n];
-
-                        gradient[[0, lm_index_grad, n]] = FOUR_PI * (
-                            f_scaling_grad * dr_d_spatial[0] * ri_value * sph_value
-                            + f_scaling * ri_grad * dr_d_spatial[0] * sph_value
-                            + f_scaling * ri_value * sph_grad_x / distance
-                        );
-
-                        gradient[[1, lm_index_grad, n]] = FOUR_PI * (
-                            f_scaling_grad * dr_d_spatial[1] * ri_value * sph_value
-                            + f_scaling * ri_grad * dr_d_spatial[1] * sph_value
-                            + f_scaling * ri_value * sph_grad_y / distance
-                        );
-
-                        gradient[[2, lm_index_grad, n]] = FOUR_PI * (
-                            f_scaling_grad * dr_d_spatial[2] * ri_value * sph_value
-                            + f_scaling * ri_grad * dr_d_spatial[2] * sph_value
-                            + f_scaling * ri_value * sph_grad_z / distance
-                        );
-                    }
-
-                    lm_index_grad += 1;
-                }
-            }
-        }
     }
 
     /// For one system, compute the spherical expansion and corresponding
@@ -353,19 +135,13 @@ impl SphericalExpansion {
             requested_centers.iter().position(|&center| center == center_i)
         }).collect::<Vec<_>>();
 
-        // total number of joined (l, m) indices
-        let lm_shape = (self.parameters.max_angular + 1) * (self.parameters.max_angular + 1);
-        let mut contribution = PairContribution {
-            values: ndarray::Array2::from_elem((lm_shape, self.parameters.max_radial), 0.0),
-            gradients: if do_gradients.either() {
-                let shape = (3, lm_shape, self.parameters.max_radial);
-                Some(ndarray::Array3::from_elem(shape, 0.0))
-            } else {
-                None
-            }
-        };
 
-        let max_radial = self.parameters.max_radial;
+        let max_angular = self.by_pair.parameters().max_angular;
+        let max_radial = self.by_pair.parameters().max_radial;
+        let mut contribution = PairContribution::new(max_radial, max_angular, do_gradients.either());
+
+        // total number of joined (l, m) indices
+        let lm_shape = (max_angular + 1) * (max_angular + 1);
         let mut result = PairAccumulationResult {
             values: ndarray::Array4::from_elem(
                 (species_mapping.len(), requested_centers.len(), lm_shape, max_radial),
@@ -399,17 +175,8 @@ impl SphericalExpansion {
         for (pair_id, pair) in pairs.iter().filter(pair_should_contribute).enumerate() {
             debug_assert!(requested_centers.contains(&pair.first) || requested_centers.contains(&pair.second));
 
-            let mut direction = pair.vector / pair.distance;
-            // Deal with the possibility that two atoms are at the same
-            // position. While this is not usual, there is no reason to prevent
-            // the calculation of spherical expansion. The user will still get a
-            // warning about atoms being very close together when calculating
-            // the neighbor list.
-            if pair.distance < 1e-6 {
-                direction = Vector3D::new(0.0, 0.0, 1.0);
-            }
-
-            self.compute_for_pair(pair.distance, direction, do_gradients, &mut contribution);
+            let direction = pair.vector / pair.distance;
+            self.by_pair.compute_for_pair(pair.distance, direction, do_gradients, &mut contribution);
 
             let inverse_cell_pair_vector = Vector3D::new(
                 pair.vector[0] * inverse_cell[0][0] + pair.vector[1] * inverse_cell[1][0] + pair.vector[2] * inverse_cell[2][0],
@@ -452,9 +219,9 @@ impl SphericalExpansion {
                                 let inverse_cell_pair_vector_2 = inverse_cell_pair_vector[spatial_2];
 
                                 let mut lm_index = 0;
-                                for spherical_harmonics_l in 0..=self.parameters.max_angular {
+                                for spherical_harmonics_l in 0..=max_angular {
                                     for _m in 0..(2 * spherical_harmonics_l + 1) {
-                                        for n in 0..self.parameters.max_radial {
+                                        for n in 0..max_radial {
                                             // SAFETY: we are doing in-bounds
                                             // access, and removing the bounds
                                             // checks is a significant speed-up
@@ -491,34 +258,7 @@ impl SphericalExpansion {
                     .push(pair_id);
 
 
-                // inverting the pair is equivalent to adding a (-1)^l
-                // factor to the pair contribution values, and -(-1)^l
-                // to the gradients
-                let mut lm_index = 0;
-                for spherical_harmonics_l in 0..=self.parameters.max_angular {
-                    let factor = self.m_1_pow_l[spherical_harmonics_l];
-                    for _m in 0..(2 * spherical_harmonics_l + 1) {
-                        for n in 0..self.parameters.max_radial {
-                            contribution.values[[lm_index, n]] *= factor;
-                        }
-                        lm_index += 1;
-                    }
-                }
-
-                if let Some(ref mut gradients) = contribution.gradients {
-                    for spatial in 0..3 {
-                        let mut lm_index = 0;
-                        for spherical_harmonics_l in 0..=self.parameters.max_angular {
-                            let factor = -self.m_1_pow_l[spherical_harmonics_l];
-                            for _m in 0..(2 * spherical_harmonics_l + 1) {
-                                for n in 0..self.parameters.max_radial {
-                                    gradients[[spatial, lm_index, n]] *= factor;
-                                }
-                                lm_index += 1;
-                            }
-                        }
-                    }
-                }
+                contribution.inverse_pair(&self.m_1_pow_l);
 
                 let species_neighbor_i = result.species_mapping[&species[neighbor_i]];
 
@@ -546,9 +286,9 @@ impl SphericalExpansion {
                                 let inverse_cell_pair_vector_2 = inverse_cell_pair_vector[spatial_2];
 
                                 let mut lm_index = 0;
-                                for spherical_harmonics_l in 0..=self.parameters.max_angular {
+                                for spherical_harmonics_l in 0..=max_angular {
                                     for _m in 0..(2 * spherical_harmonics_l + 1) {
-                                        for n in 0..self.parameters.max_radial {
+                                        for n in 0..max_radial {
                                             // SAFETY: as above
                                             unsafe {
                                                 let out = cell_gradients.uget_mut([spatial_1, spatial_2, lm_index, n]);
@@ -671,7 +411,7 @@ impl SphericalExpansion {
         let m_1_pow_l = self.m_1_pow_l[spherical_harmonics_l];
 
         let values_samples = Arc::clone(&block.values().samples);
-        let gradient = block.gradient_mut("positions").expect("TODO");
+        let gradient = block.gradient_mut("positions").expect("missing positions gradient");
         let mut array = array_mut_for_system(&mut gradient.data);
 
         for (grad_sample_i, &[sample_i, _, neighbor_i]) in gradient.samples.iter_fixed_size().enumerate() {
@@ -771,7 +511,7 @@ impl SphericalExpansion {
         };
 
         let values_samples = Arc::clone(&block.values().samples);
-        let gradient = block.gradient_mut("cell").expect("TODO");
+        let gradient = block.gradient_mut("cell").expect("missing cell gradient");
         let mut array = array_mut_for_system(&mut gradient.data);
 
         for (grad_sample_i, [sample_i]) in gradient.samples.iter_fixed_size().enumerate() {
@@ -800,26 +540,6 @@ impl SphericalExpansion {
 
         return Ok(());
     }
-}
-
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct GradientsOptions {
-    positions: bool,
-    cell: bool,
-}
-
-impl GradientsOptions {
-    pub fn either(self) -> bool {
-        return self.positions || self.cell;
-    }
-}
-
-
-/// Contribution of a single pair to the spherical expansion
-struct PairContribution {
-    values: ndarray::Array2<f64>,
-    gradients: Option<ndarray::Array3<f64>>,
 }
 
 /// Result of `accumulate_all_pairs`, summing over all pairs in a system
@@ -864,19 +584,19 @@ impl CalculatorBase for SphericalExpansion {
     }
 
     fn parameters(&self) -> String {
-        serde_json::to_string(&self.parameters).expect("failed to serialize to JSON")
+        serde_json::to_string(self.by_pair.parameters()).expect("failed to serialize to JSON")
     }
 
     fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
         let builder = CenterSingleNeighborsSpeciesKeys {
-            cutoff: self.parameters.cutoff,
+            cutoff: self.by_pair.parameters().cutoff,
             self_pairs: true,
         };
         let keys = builder.keys(systems)?;
 
         let mut builder = LabelsBuilder::new(vec!["spherical_harmonics_l", "species_center", "species_neighbor"]);
         for &[species_center, species_neighbor] in keys.iter_fixed_size() {
-            for spherical_harmonics_l in 0..=self.parameters.max_angular {
+            for spherical_harmonics_l in 0..=self.by_pair.parameters().max_angular {
                 builder.add(&[spherical_harmonics_l.into(), species_center, species_neighbor]);
             }
         }
@@ -900,7 +620,7 @@ impl CalculatorBase for SphericalExpansion {
             }
 
             let builder = AtomCenteredSamples {
-                cutoff: self.parameters.cutoff,
+                cutoff: self.by_pair.parameters().cutoff,
                 species_center: SpeciesFilter::Single(species_center.i32()),
                 species_neighbor: SpeciesFilter::Single(species_neighbor.i32()),
                 self_pairs: true,
@@ -938,7 +658,7 @@ impl CalculatorBase for SphericalExpansion {
             // TODO: we don't need to rebuild the gradient samples for different
             // spherical_harmonics_l
             let builder = AtomCenteredSamples {
-                cutoff: self.parameters.cutoff,
+                cutoff: self.by_pair.parameters().cutoff,
                 species_center: SpeciesFilter::Single(species_center.i32()),
                 species_neighbor: SpeciesFilter::Single(species_neighbor.i32()),
                 self_pairs: true,
@@ -984,7 +704,7 @@ impl CalculatorBase for SphericalExpansion {
 
     fn properties(&self, keys: &Labels) -> Vec<Arc<Labels>> {
         let mut properties = LabelsBuilder::new(self.properties_names());
-        for n in 0..self.parameters.max_radial {
+        for n in 0..self.by_pair.parameters().max_radial {
             properties.add(&[n]);
         }
         let properties = Arc::new(properties.finish());
@@ -1006,7 +726,7 @@ impl CalculatorBase for SphericalExpansion {
         systems.par_iter_mut()
             .zip_eq(&mut descriptors_by_system)
             .try_for_each(|(system, descriptor)| {
-                system.compute_neighbors(self.parameters.cutoff)?;
+                system.compute_neighbors(self.by_pair.parameters().cutoff)?;
                 let system = &**system;
 
                 // we will only run the calculation on pairs where one of the
@@ -1048,7 +768,7 @@ mod tests {
     use crate::calculators::CalculatorBase;
 
     use super::{SphericalExpansion, SphericalExpansionParameters};
-    use super::{CutoffFunction, RadialScaling};
+    use super::super::{CutoffFunction, RadialScaling};
     use crate::calculators::radial_basis::RadialBasis;
 
 

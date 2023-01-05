@@ -368,6 +368,66 @@ class SphericalExpansion(CalculatorBase):
         super().__init__("spherical_expansion", parameters)
 
 
+class SphericalExpansionByPair(CalculatorBase):
+    """
+    Pair-by-pair version of the spherical expansion of Smooth Overlap of Atomic
+    Positions (SOAP).
+
+    This is usually an intermediary step when computing the full
+    :py:class:`SphericalExpansion`, which most users do not need to care about.
+    When computing SOAP, the density around the central atom :math:`i` is a sum
+    of pair contributions:
+
+    .. math::
+        \\rho_i(\\mathbf{r}) = \\sum_j g(\\mathbf{r_{ji}} - \\mathbf{r}).
+
+    The full spherical expansion is then computed as a sum over all pairs within
+    the cutoff:
+
+    .. math::
+        \\int Y^l_m(\\mathbf{r})\\ R_n(\\mathbf{r}) \\, \\rho_i(\\mathbf{r})
+            \\mathrm{d}\\mathbf{r} = \\sum_j C^{ij}_{nlm}
+
+        C^{ij}_{nlm} = \\int Y^l_m(\\mathbf{r}) \\ R_n(\\mathbf{r}) \\,
+            g(\\mathbf{r_{ji}} - \\mathbf{r}) \\, \\mathrm{d}\\mathbf{r}
+
+    This calculators computes the individual :math:`C^{ij}_{nlm}` terms, which
+    can then be used to build multi-center representations such as the ones
+    discussed in `"Unified theory of atom-centered representations and
+    message-passing machine-learning schemes"
+    <https://doi.org/10.1063/5.0087042>`_.
+
+    For a full description of the hyper-parameters, see the corresponding
+    :ref:`documentation <spherical-expansion-by-pair>`.
+    """
+
+    def __init__(
+        self,
+        cutoff,
+        max_radial,
+        max_angular,
+        atomic_gaussian_width,
+        radial_basis,
+        center_atom_weight,
+        cutoff_function,
+        radial_scaling=None,
+    ):
+        parameters = {
+            "cutoff": cutoff,
+            "max_radial": max_radial,
+            "max_angular": max_angular,
+            "atomic_gaussian_width": atomic_gaussian_width,
+            "center_atom_weight": center_atom_weight,
+            "radial_basis": radial_basis,
+            "cutoff_function": cutoff_function,
+        }
+
+        if radial_scaling is not None:
+            parameters["radial_scaling"] = radial_scaling
+
+        super().__init__("spherical_expansion_by_pair", parameters)
+
+
 class SoapRadialSpectrum(CalculatorBase):
     """Radial spectrum of Smooth Overlap of Atomic Positions (SOAP).
 
