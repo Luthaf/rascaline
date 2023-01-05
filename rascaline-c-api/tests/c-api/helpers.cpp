@@ -121,6 +121,11 @@ eqs_array_t empty_array(std::vector<size_t> array_shape) {
         auto array_shape = static_cast<std::vector<size_t>*>(array);
         delete array_shape;
     };
+    array.copy = [](const void *array, eqs_array_t* new_array){
+        auto array_shape = static_cast<const std::vector<size_t>*>(array);
+        *new_array = empty_array(*array_shape);
+        return EQS_SUCCESS;
+    };
 
     return array;
 }

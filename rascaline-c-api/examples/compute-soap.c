@@ -13,7 +13,7 @@ int main(int argc, char* argv[]) {
     rascal_calculator_t* calculator = NULL;
     rascal_system_t* systems = NULL;
     uintptr_t n_systems = 0;
-    const double* values = NULL;
+    double* values = NULL;
     const uintptr_t* shape = NULL;
     uintptr_t shape_count = 0;
     bool got_error = true;
@@ -27,8 +27,8 @@ int main(int argc, char* argv[]) {
     options.gradients_count = 1;
 
     eqs_tensormap_t* descriptor = NULL;
-    const eqs_block_t* block = NULL;
-    eqs_array_t data = {0};
+    eqs_block_t* block = NULL;
+    eqs_array_t array = {0};
 
     // hyper-parameters for the calculation as JSON
     const char* parameters = "{\n"
@@ -95,13 +95,25 @@ int main(int argc, char* argv[]) {
         goto cleanup;
     }
 
-    status = eqs_block_data(block, "values", &data);
+    status = eqs_block_data(block, "values", &array);
     if (status != EQS_SUCCESS) {
         printf("Error: %s\n", eqs_last_error());
         goto cleanup;
     }
 
-    status = eqs_get_rust_array(&data, &values, &shape, &shape_count);
+    // callback the functions on the eqs_array_t to extract the shape/data pointer
+    status = array.shape(array.ptr, &shape, &shape_count);
+    if (status != EQS_SUCCESS) {
+        printf("Error: %s\n", eqs_last_error());
+        goto cleanup;
+    }
+
+    status = array.data(array.ptr, &values);
+    if (status != EQS_SUCCESS) {
+        printf("Error: %s\n", eqs_last_error());
+        goto cleanup;
+    }
+
     if (status != EQS_SUCCESS) {
         printf("Error: %s\n", eqs_last_error());
         goto cleanup;

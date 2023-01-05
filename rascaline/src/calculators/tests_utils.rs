@@ -63,8 +63,8 @@ fn check_compute_partial_keys(
             assert_eq!(full.values().components, partial.values().components);
             assert_eq!(full.values().properties, partial.values().properties);
 
-            let full_values = full.values().data.as_array();
-            let partial_values = partial.values().data.as_array();
+            let full_values = full.values().data.to_array();
+            let partial_values = partial.values().data.to_array();
             assert_ulps_eq!(full_values, partial_values);
         }
     }
@@ -88,11 +88,10 @@ fn check_compute_partial_properties(
     for (full, partial) in full.blocks().iter().zip(partial.blocks()) {
         assert_eq!(full.values().samples, partial.values().samples);
         assert_eq!(full.values().components, partial.values().components);
+        assert_eq!(partial.values().properties, *properties);
 
-        assert_eq!(&*partial.values().properties, properties);
-
-        let full_values = full.values().data.as_array();
-        let partial_values = partial.values().data.as_array();
+        let full_values = full.values().data.to_array();
+        let partial_values = partial.values().data.to_array();
 
         let property_axis = Axis(full_values.shape().len() - 1);
 
@@ -103,9 +102,9 @@ fn check_compute_partial_properties(
                 partial_values.index_axis(property_axis, partial_i),
             );
 
-            if let Some(full_gradient) = full.gradients().get("positions") {
+            if let Some(full_gradient) = full.gradient("positions") {
                 let full_gradient_data = full_gradient.data.as_array();
-                let partial_gradient_data = partial.gradients()["positions"].data.as_array();
+                let partial_gradient_data = partial.gradient("positions").unwrap().data.to_array();
 
                 let property_axis = Axis(full_gradient_data.shape().len() - 1);
                 assert_ulps_eq!(
@@ -136,8 +135,8 @@ fn check_compute_partial_samples(
         assert_eq!(full.values().components, partial.values().components);
         assert_eq!(full.values().properties, partial.values().properties);
 
-        let full_values = full.values().data.as_array();
-        let partial_values = partial.values().data.as_array();
+        let full_values = full.values().data.to_array();
+        let partial_values = partial.values().data.to_array();
 
         for (partial_i, sample) in partial.values().samples.iter().enumerate() {
             let sample_i = full.values().samples.position(sample).unwrap();
@@ -147,8 +146,8 @@ fn check_compute_partial_samples(
             );
         }
 
-        if let Some(full_gradient) = full.gradients().get("positions") {
-            let partial_gradient = &partial.gradients()["positions"];
+        if let Some(full_gradient) = full.gradient("positions") {
+            let partial_gradient = partial.gradient("positions").unwrap();
 
             let full_gradient_data = full_gradient.data.as_array();
             let partial_gradient_data = partial_gradient.data.as_array();
@@ -189,8 +188,8 @@ fn check_compute_partial_both(
     for (full, partial) in full.blocks().iter().zip(partial.blocks()) {
         assert_eq!(full.values().components, partial.values().components);
 
-        let full_values = full.values().data.as_array();
-        let partial_values = partial.values().data.as_array();
+        let full_values = full.values().data.to_array();
+        let partial_values = partial.values().data.to_array();
         let property_axis = Axis(full_values.shape().len() - 2);
 
         for (sample_i, sample) in partial.values().samples.iter().enumerate() {
@@ -205,8 +204,8 @@ fn check_compute_partial_both(
             }
         }
 
-        if let Some(full_gradient) = full.gradients().get("positions") {
-            let partial_gradient = &partial.gradients()["positions"];
+        if let Some(full_gradient) = full.gradient("positions") {
+            let partial_gradient = partial.gradient("positions").unwrap();
 
             let full_gradient_data = full_gradient.data.as_array();
             let partial_gradient_data = partial_gradient.data.as_array();
@@ -284,8 +283,8 @@ pub fn finite_differences_positions(mut calculator: Calculator, system: &SimpleS
                     assert_eq!(block_pos.values().samples[sample_i], block.values().samples[sample_i]);
                     assert_eq!(block_neg.values().samples[sample_i], block.values().samples[sample_i]);
 
-                    let value_pos = block_pos.values().data.as_array().index_axis(Axis(0), sample_i);
-                    let value_neg = block_neg.values().data.as_array().index_axis(Axis(0), sample_i);
+                    let value_pos = block_pos.values().data.to_array().index_axis(Axis(0), sample_i);
+                    let value_neg = block_neg.values().data.to_array().index_axis(Axis(0), sample_i);
                     let gradient = gradients.data.as_array().index_axis(Axis(0), gradient_i);
                     let gradient = gradient.index_axis(Axis(0), spatial);
 
@@ -352,8 +351,8 @@ pub fn finite_differences_cell(mut calculator: Calculator, system: &SimpleSystem
                     assert_eq!(block_pos.values().samples[sample_i], block.values().samples[sample_i]);
                     assert_eq!(block_neg.values().samples[sample_i], block.values().samples[sample_i]);
 
-                    let value_pos = block_pos.values().data.as_array().index_axis(Axis(0), sample_i);
-                    let value_neg = block_neg.values().data.as_array().index_axis(Axis(0), sample_i);
+                    let value_pos = block_pos.values().data.to_array().index_axis(Axis(0), sample_i);
+                    let value_neg = block_neg.values().data.to_array().index_axis(Axis(0), sample_i);
                     let gradient = gradients.data.as_array().index_axis(Axis(0), gradient_i);
                     let gradient = gradient.index_axis(Axis(0), spatial_1);
                     let gradient = gradient.index_axis(Axis(0), spatial_2);

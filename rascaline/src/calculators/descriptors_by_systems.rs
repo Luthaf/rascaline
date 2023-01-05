@@ -1,12 +1,10 @@
 use std::collections::BTreeMap;
-use std::sync::Arc;
 
 use rayon::prelude::*;
 
-use ndarray::{ArrayViewMutD};
-use once_cell::sync::Lazy;
+use ndarray::ArrayViewMutD;
 
-use equistore::{TensorMap, TensorBlock, eqs_array_t};
+use equistore::{TensorMap, TensorBlock};
 use equistore::{LabelsBuilder, LabelValue};
 
 
@@ -24,10 +22,6 @@ struct UnsafeArrayViewMut {
     data: *mut f64,
 }
 
-static UNSAFE_ARRAY_VIEW_DATA_ORIGIN: Lazy<equistore::DataOrigin> = Lazy::new(|| {
-    equistore::register_data_origin("rascaline.unsafe-array-view".into())
-});
-
 // SAFETY: `UnsafeArrayViewMut` can be transferred from one thread to another
 unsafe impl Send for UnsafeArrayViewMut {}
 // SAFETY: `UnsafeArrayViewMut` is Sync since there is no interior mutability
@@ -43,10 +37,6 @@ impl equistore::Array for UnsafeArrayViewMut {
         self
     }
 
-    fn origin(&self) -> equistore::DataOrigin {
-        *UNSAFE_ARRAY_VIEW_DATA_ORIGIN
-    }
-
     fn create(&self, _: &[usize]) -> Box<dyn equistore::Array> {
         unimplemented!("invalid operation on UnsafeArrayViewMut");
     }
@@ -55,7 +45,7 @@ impl equistore::Array for UnsafeArrayViewMut {
         unimplemented!("invalid operation on UnsafeArrayViewMut");
     }
 
-    fn data(&self) -> &[f64] {
+    fn data(&mut self) -> &mut [f64] {
         unimplemented!("invalid operation on UnsafeArrayViewMut");
     }
 
@@ -74,32 +64,22 @@ impl equistore::Array for UnsafeArrayViewMut {
     fn move_samples_from(
         &mut self,
         _: &dyn equistore::Array,
-        _: &[equistore::eqs_sample_mapping_t],
+        _: &[equistore::c_api::eqs_sample_mapping_t],
         _: std::ops::Range<usize>,
     ) {
         unimplemented!("invalid operation on UnsafeArrayViewMut");
     }
 }
 
-/// Extract an array stored in the `TensorBloc` returned by `split_tensor_map_by_system`
-pub fn array_mut_for_system(array: &mut eqs_array_t) -> ArrayViewMutD<'_, f64> {
-    assert_eq!(
-        array.origin().unwrap_or(equistore::eqs_data_origin_t(0)), *UNSAFE_ARRAY_VIEW_DATA_ORIGIN,
-        "invalid array type"
-    );
+/// Extract an array stored in the `TensorBlock` returned by `split_tensor_map_by_system`
+pub fn array_mut_for_system(array: equistore::ArrayRefMut<'_>) -> ArrayViewMutD<'_, f64> {
+    let array = array.to_any_mut().downcast_mut::<UnsafeArrayViewMut>().expect("invalid array type");
 
-    let array = array.ptr.cast::<Box<dyn equistore::Array>>();
-    let array: &mut UnsafeArrayViewMut = unsafe {
-        (*array).as_any_mut().downcast_mut().expect("invalid array type")
-    };
-
-    // SAFETY: we checked that the slices do not overlap when creating
+    // SAFETY: we checked that the arrays do not overlap when creating
     // `UnsafeArrayViewMut` in split_by_system
-    let slice = unsafe {
-        std::slice::from_raw_parts_mut(array.data, array.shape.iter().product())
+    return unsafe {
+        ArrayViewMutD::from_shape_ptr(array.shape.clone(), array.data)
     };
-
-    return ArrayViewMutD::from_shape(array.shape.clone(), slice).expect("wrong shape");
 }
 
 /// View inside a `TensorMap` corresponding to one system
@@ -144,7 +124,7 @@ pub fn split_tensor_map_by_system(descriptor: &mut TensorMap, n_systems: usize) 
             .zip_eq(&mut values_end)
             .zip_eq(&mut gradients_end)
             .map(|(((_, mut block), system_end), system_end_grad)| {
-                let values_samples = &block.values().samples;
+                let values_samples = &block.values_mut().samples;
                 let mut samples = LabelsBuilder::new(values_samples.names());
                 let mut samples_mapping = BTreeMap::new();
                 let mut structure_per_sample = vec![LabelValue::new(-1); values_samples.count()];
@@ -171,16 +151,16 @@ pub fn split_tensor_map_by_system(descriptor: &mut TensorMap, n_systems: usize) 
 
                 let mut shape = Vec::new();
 
-                let samples = Arc::new(samples.finish());
+                let samples = samples.finish();
                 shape.push(samples.count());
 
                 let mut components = Vec::new();
-                for component in &block.values().components {
-                    components.push(Arc::clone(component));
+                for component in &block.values_mut().components {
+                    components.push(component.clone());
                     shape.push(component.count());
                 }
 
-                let properties = Arc::clone(&block.values().properties);
+                let properties = block.values_mut().properties;
                 let n_properties = properties.count();
                 shape.push(n_properties);
 
@@ -199,11 +179,11 @@ pub fn split_tensor_map_by_system(descriptor: &mut TensorMap, n_systems: usize) 
                     data: data_ptr,
                 };
                 let mut new_block = TensorBlock::new(
-                    data, samples, components, properties
+                    data, samples, &components, properties
                 ).expect("invalid TensorBlock");
 
                 for (parameter, gradient) in block.gradients_mut() {
-                    let system_end_grad = match &**parameter {
+                    let system_end_grad = match parameter {
                         "positions" => &mut system_end_grad.positions,
                         "cell" => &mut system_end_grad.cell,
                         other => panic!("unsupported gradient parameter {}", other)
@@ -232,12 +212,12 @@ pub fn split_tensor_map_by_system(descriptor: &mut TensorMap, n_systems: usize) 
 
                     let mut shape = Vec::new();
 
-                    let samples = Arc::new(samples.finish());
+                    let samples = samples.finish();
                     shape.push(samples.count());
 
                     let mut components = Vec::new();
-                    for component in &gradient.components {
-                        components.push(Arc::clone(component));
+                    for component in gradient.components {
+                        components.push(component.clone());
                         shape.push(component.count());
                     }
 
@@ -247,14 +227,14 @@ pub fn split_tensor_map_by_system(descriptor: &mut TensorMap, n_systems: usize) 
                     let data_ptr = unsafe {
                         // SAFETY: same as the values above, this is creating
                         // multiple non-overlapping regions in memory
-                        gradient.data.as_array_mut().as_mut_ptr().add(per_sample_size * system_start_grad)
+                        gradient.data.to_array_mut().as_mut_ptr().add(per_sample_size * system_start_grad)
                     };
 
                     let data = UnsafeArrayViewMut {
                         shape: shape,
                         data: data_ptr,
                     };
-                    new_block.add_gradient(parameter, data, samples, components).expect("invalid gradients");
+                    new_block.add_gradient(parameter, data, samples, &components).expect("invalid gradients");
                 }
 
                 return new_block;

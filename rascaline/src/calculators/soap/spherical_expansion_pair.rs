@@ -1,6 +1,5 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::collections::btree_map::Entry;
-use std::sync::Arc;
 use std::cell::RefCell;
 
 use ndarray::s;
@@ -278,7 +277,7 @@ impl SphericalExpansionByPair {
             }
 
             let values = block.values_mut();
-            let array = values.data.as_array_mut();
+            let array = values.data.to_array_mut();
 
             // loop over all samples in this block, find self pairs
             // (`pair_id` is -1), and fill the data using `self_contribution`
@@ -426,7 +425,7 @@ impl SphericalExpansionByPair {
         inverse_cell_pair_vector: Vector3D,
     ) {
         let values = block.values_mut();
-        let array = values.data.as_array_mut();
+        let array = values.data.to_array_mut();
 
         let sample_i = values.samples.position(sample);
 
@@ -445,7 +444,7 @@ impl SphericalExpansionByPair {
             if let Some(ref contribution_gradients) = contribution.gradients {
                 if do_gradients.positions {
                     let gradient = block.gradient_mut("positions").expect("missing positions gradients");
-                    let array = gradient.data.as_array_mut();
+                    let array = gradient.data.to_array_mut();
                     debug_assert_eq!(gradient.samples.names(), ["sample", "structure", "atom"]);
 
                     // gradient of the pair contribution w.r.t. the position of
@@ -489,7 +488,7 @@ impl SphericalExpansionByPair {
                     debug_assert_eq!(gradient.samples.names(), ["sample"]);
                     assert_eq!(gradient.samples[sample_i][0].usize(), sample_i);
 
-                    let array = gradient.data.as_array_mut();
+                    let array = gradient.data.to_array_mut();
                     for spatial_1 in 0..3 {
                         for spatial_2 in 0..3 {
                             let inverse_cell_pair_vector_2 = inverse_cell_pair_vector[spatial_2];
@@ -558,15 +557,15 @@ impl CalculatorBase for SphericalExpansionByPair {
         return vec!["structure", "pair_id", "first_atom", "second_atom"];
     }
 
-    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         let mut result = Vec::new();
 
         // we only need to compute samples once for each l, the cache stores the
         // ones we have already computed
-        let mut cache = BTreeMap::new();
+        let mut cache: BTreeMap<_, Labels> = BTreeMap::new();
         for &[_, s1, s2] in keys.iter_fixed_size() {
             let samples = match cache.entry((s1, s2)) {
-                Entry::Occupied(entry) => Arc::clone(entry.get()),
+                Entry::Occupied(entry) => entry.get().clone(),
                 Entry::Vacant(entry) => {
                     let mut builder = LabelsBuilder::new(self.samples_names());
 
@@ -613,8 +612,8 @@ impl CalculatorBase for SphericalExpansionByPair {
                         }
                     }
 
-                    let samples = Arc::new(builder.finish());
-                    Arc::clone(entry.insert(samples))
+                    let samples = builder.finish();
+                    entry.insert(samples).clone()
                 }
             };
 
@@ -632,7 +631,7 @@ impl CalculatorBase for SphericalExpansionByPair {
         }
     }
 
-    fn positions_gradient_samples(&self, _: &Labels, samples: &[Arc<Labels>], _: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn positions_gradient_samples(&self, _: &Labels, samples: &[Labels], _: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         let mut results = Vec::new();
 
         for block_samples in samples {
@@ -647,20 +646,20 @@ impl CalculatorBase for SphericalExpansionByPair {
                 builder.add(&[sample_i.into(), system_i, second]);
             }
 
-            results.push(Arc::new(builder.finish()));
+            results.push(builder.finish());
         }
 
         return Ok(results);
     }
 
-    fn components(&self, keys: &Labels) -> Vec<Vec<Arc<Labels>>> {
+    fn components(&self, keys: &Labels) -> Vec<Vec<Labels>> {
         assert_eq!(keys.names().len(), 3);
         assert_eq!(keys.names()[0], "spherical_harmonics_l");
 
         let mut result = Vec::new();
         // only compute the components once for each `spherical_harmonics_l`,
         // and re-use the results across the other keys.
-        let mut cache: BTreeMap<_, Vec<Arc<Labels>>> = BTreeMap::new();
+        let mut cache: BTreeMap<_, Vec<Labels>> = BTreeMap::new();
         for &[spherical_harmonics_l, _, _] in keys.iter_fixed_size() {
             let components = match cache.entry(spherical_harmonics_l) {
                 Entry::Occupied(entry) => entry.get().clone(),
@@ -670,7 +669,7 @@ impl CalculatorBase for SphericalExpansionByPair {
                         component.add(&[LabelValue::new(m)]);
                     }
 
-                    let components = vec![Arc::new(component.finish())];
+                    let components = vec![component.finish()];
                     entry.insert(components).clone()
                 }
             };
@@ -685,14 +684,13 @@ impl CalculatorBase for SphericalExpansionByPair {
         vec!["n"]
     }
 
-    fn properties(&self, keys: &Labels) -> Vec<Arc<Labels>> {
+    fn properties(&self, keys: &Labels) -> Vec<Labels> {
         let mut properties = LabelsBuilder::new(self.properties_names());
         for n in 0..self.parameters.max_radial {
             properties.add(&[n]);
         }
-        let properties = Arc::new(properties.finish());
 
-        return vec![properties; keys.count()];
+        return vec![properties.finish(); keys.count()];
     }
 
     #[time_graph::instrument(name = "SphericalExpansionByPair::compute")]

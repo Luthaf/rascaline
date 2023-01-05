@@ -34,7 +34,7 @@ if(RASCAL_ENABLE_COVERAGE)
     endif()
 
     # This is taken from the output of `cargo tarpaulin --engine=llvm --print-rust-flags`
-    set(RUST_FLAGS "-Cdebuginfo=2;--cfg=tarpaulin;-Cinstrument-coverage;-Clink-dead-code" CACHE INTERNAL "" FORCE)
+    set(RUST_FLAGS "-Cdebuginfo=2 --cfg=tarpaulin -Cinstrument-coverage -Clink-dead-code" CACHE INTERNAL "" FORCE)
 endif()
 
 # make sure assert works in tests
@@ -52,11 +52,14 @@ endif()
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../.. ${CMAKE_CURRENT_BINARY_DIR}/rascaline)
 
 
-# Add rascaline to the rpath of tests, so we can load the shared library
-# directly from `target/{debug,release}/`
+# Add rascaline and equistore to the rpath of tests, so we can load the shared
+# library directly from `target/{debug,release}/`
 get_target_property(RASCALINE_LOCATION rascaline IMPORTED_LOCATION)
 get_filename_component(RASCALINE_DIRECTORY "${RASCALINE_LOCATION}" DIRECTORY)
-set(CMAKE_BUILD_RPATH "${RASCALINE_DIRECTORY}")
+
+get_target_property(EQUISTORE_LOCATION equistore::shared IMPORTED_LOCATION)
+get_filename_component(EQUISTORE_DIRECTORY "${EQUISTORE_LOCATION}" DIRECTORY)
+set(CMAKE_BUILD_RPATH "${RASCALINE_DIRECTORY};${EQUISTORE_DIRECTORY}")
 
 
 add_library(catch STATIC catch/catch.cpp)

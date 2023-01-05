@@ -1,6 +1,10 @@
 # Basic CMake integration for rascaline.
 cmake_minimum_required(VERSION 3.10)
 
+if (POLICY CMP0135)
+    cmake_policy(SET CMP0135 NEW) # Timestamp for FetchContent
+endif()
+
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING "" FORCE)
@@ -24,7 +28,9 @@ project(rascaline
     LANGUAGES C CXX
 )
 
-option(RASCAL_DISABLE_CHEMFILES "Disable the usage of chemfiles for reading structures from files" OFF)
+option(RASCALINE_DISABLE_CHEMFILES "Disable the usage of chemfiles for reading structures from files" OFF)
+option(RASCALINE_FETCH_EQUISTORE "Download and build the equistore C API before building rascaline" OFF)
+
 option(BUILD_SHARED_LIBS "Build a shared library instead of a static one" ON)
 set(RUST_BUILD_TARGET "" CACHE STRING "Cross-compilation target for rust code. Leave empty to build for the host")
 set(RUST_FLAGS "" CACHE STRING "additional rustc arguments used when compiling rascaline and dependencies")
@@ -65,12 +71,8 @@ else()
     message(FATAL_ERROR "unsuported build type: ${CMAKE_BUILD_TYPE}")
 endif()
 
-if (${RASCAL_DISABLE_CHEMFILES})
+if (${RASCALINE_DISABLE_CHEMFILES})
     set(CARGO_BUILD_ARG "${CARGO_BUILD_ARG};--no-default-features")
-endif()
-
-if (${RASCAL_BUILD_FOR_PYTHON})
-    set(CARGO_BUILD_ARG "${CARGO_BUILD_ARG};--features=serialization")
 endif()
 
 # Handle cross compilation with RUST_BUILD_TARGET
@@ -84,30 +86,6 @@ if (NOT CARGO_EXE)
         "could not find cargo, please make sure the Rust compiler is installed \
         (see https://www.rust-lang.org/tools/install) or set CARGO_EXE"
     )
-endif()
-
-execute_process(
-    COMMAND ${CARGO_EXE} "--version"
-    RESULT_VARIABLE CARGO_STATUS
-    OUTPUT_VARIABLE CARGO_VERSION
-)
-
-if(CARGO_STATUS AND NOT CARGO_STATUS EQUAL 0)
-    message(FATAL_ERROR
-        "could not run cargo, please make sure the Rust compiler is installed \
-        (see https://www.rust-lang.org/tools/install)"
-    )
-endif()
-
-set(REQUIRED_RUST_VERSION "1.53.0")
-string(REGEX REPLACE "cargo ([0-9]+\\.[0-9]+\\.[0-9]+).*" "\\1" CARGO_VERSION ${CARGO_VERSION})
-if (${CARGO_VERSION} VERSION_LESS ${REQUIRED_RUST_VERSION})
-    message(FATAL_ERROR
-        "your Rust installation is too old (you have version ${CARGO_VERSION}), \
-        at least ${REQUIRED_RUST_VERSION} is required"
-    )
-else()
-    message(STATUS "Using cargo version ${CARGO_VERSION} at ${CARGO_EXE}")
 endif()
 
 file(GLOB_RECURSE ALL_RUST_SOURCES
@@ -145,9 +123,11 @@ endif()
 
 if(${BUILD_SHARED_LIBS})
     add_library(rascaline SHARED IMPORTED GLOBAL)
+    set(RASCALINE_CAPI_LOCATION "${CARGO_TARGET_DIR}/${CMAKE_SHARED_LIBRARY_PREFIX}rascaline_c_api${CMAKE_SHARED_LIBRARY_SUFFIX}")
     set(RASCALINE_LOCATION "${CARGO_TARGET_DIR}/${CMAKE_SHARED_LIBRARY_PREFIX}rascaline${CMAKE_SHARED_LIBRARY_SUFFIX}")
 else()
     add_library(rascaline STATIC IMPORTED GLOBAL)
+    set(RASCALINE_CAPI_LOCATION "${CARGO_TARGET_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}rascaline_c_api${CMAKE_STATIC_LIBRARY_SUFFIX}")
     set(RASCALINE_LOCATION "${CARGO_TARGET_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}rascaline${CMAKE_STATIC_LIBRARY_SUFFIX}")
 endif()
 
@@ -161,8 +141,8 @@ if (UNIX)
         # set the install name to `@rpath/librascaline.dylib`
         set(SONAME_ARGS "-Clink-arg=-Wl,-install_name,@rpath/${RASCALINE_LIB_NAME}")
     else() # LINUX
-        # set the SONAME to librascaline.so
-        set(SONAME_ARGS "-Clink-arg=-Wl,-soname,${RASCALINE_LIB_NAME}")
+        # set the SONAME to librascaline.so, and the RPATH to $ORIGIN
+        set(SONAME_ARGS "-Clink-arg=-Wl,-soname,${RASCALINE_LIB_NAME},-rpath,\$ORIGIN")
     endif()
 else()
     set(SONAME_ARGS "")
@@ -175,31 +155,76 @@ else()
     set(STRIP_ARGS "")
 endif()
 
+if (RASCALINE_BUILD_FOR_PYTHON)
+    # strip dynamic library for smaller wheels to download/install
+    set(CARGO_RUSTC_ARGS "${CARGO_RUSTC_ARGS};-Cstrip=symbols")
+endif()
+
 add_custom_target(cargo-build-rascaline ALL
     COMMAND ${CMAKE_COMMAND} -E env
         MACOSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}
-        RUSTFLAGS="${RUST_FLAGS}"
+        RUSTFLAGS=${RUST_FLAGS}
         cargo rustc ${CARGO_BUILD_ARG} -- ${SONAME_ARGS} ${STRIP_ARGS}
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     DEPENDS ${ALL_RUST_SOURCES}
     COMMENT "Building ${RASCALINE_LIB_NAME} with cargo"
+    VERBATIM
+)
+
+add_custom_command(TARGET cargo-build-rascaline
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${RASCALINE_CAPI_LOCATION} ${RASCALINE_LOCATION}
+    DEPENDS cargo-build-rascaline
 )
 
 add_dependencies(rascaline cargo-build-rascaline)
 set(RASCALINE_HEADERS
-    "${PROJECT_SOURCE_DIR}/include/equistore.h"
     "${PROJECT_SOURCE_DIR}/include/rascaline.h"
-    "${PROJECT_SOURCE_DIR}/include/equistore.hpp"
     "${PROJECT_SOURCE_DIR}/include/rascaline.hpp"
 )
 set(RASCALINE_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/)
+
+set(EQUISTORE_GIT_VERSION "6c5a833")
+if (RASCALINE_FETCH_EQUISTORE)
+    message(STATUS "Fetching equistore @ ${EQUISTORE_GIT_VERSION} from github")
+
+    if (CMAKE_VERSION VERSION_LESS 3.11)
+        # cmake 3.10 (default on ubuntu 20.04) does not include FetchContent,
+        # but we can use the version from cmake 3.11 without change
+        set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/fetch-content-cmake-3.11;${CMAKE_MODULE_PATH}")
+    endif()
+
+    include(FetchContent)
+    FetchContent_Declare(
+        equistore
+        URL      https://github.com/lab-cosmo/equistore/archive/${EQUISTORE_GIT_VERSION}.zip
+        URL_HASH MD5=5adcd26f236022ea89fa0287b83c6609
+        SOURCE_SUBDIR equistore-core
+        VERBOSE
+    )
+
+    if (CMAKE_VERSION VERSION_GREATER 3.18)
+        FetchContent_MakeAvailable(equistore)
+    else()
+        if (NOT equistore_POPULATED)
+            FetchContent_Populate(equistore)
+        endif()
+
+        add_subdirectory(${equistore_SOURCE_DIR}/equistore-core ${equistore_BINARY_DIR})
+    endif()
+
+    add_dependencies(cargo-build-rascaline equistore)
+else()
+    find_package(equistore 0.1 REQUIRED CONFIG)
+endif()
 
 set_target_properties(rascaline PROPERTIES
     IMPORTED_LOCATION ${RASCALINE_LOCATION}
     INTERFACE_INCLUDE_DIRECTORIES ${RASCALINE_INCLUDE_DIR}
 )
+target_link_libraries(rascaline INTERFACE equistore)
 
-if(NOT ${RASCAL_DISABLE_CHEMFILES})
+if(NOT ${RASCALINE_DISABLE_CHEMFILES})
     # the static library will need to be linked as C++ code since it contains
     # chemfiles
     set_target_properties(rascaline PROPERTIES
@@ -207,14 +232,11 @@ if(NOT ${RASCAL_DISABLE_CHEMFILES})
     )
 endif()
 
-if(UNIX AND NOT APPLE)
-    set(LINUX TRUE)
-endif()
-
-if(LINUX)
-    set_target_properties(rascaline PROPERTIES
-        IMPORTED_LINK_INTERFACE_LIBRARIES "pthread;dl"
-    )
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT ${BUILD_SHARED_LIBS})
+    set(THREADS_PREFER_PTHREAD_FLAG ON)
+    find_package(Threads REQUIRED)
+    # the rust standard lib uses pthread and libdl on linux
+    target_link_libraries(rascaline INTERFACE Threads::Threads dl)
 endif()
 
 #------------------------------------------------------------------------------#

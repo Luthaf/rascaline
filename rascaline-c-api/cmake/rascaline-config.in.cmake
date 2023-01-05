@@ -4,7 +4,10 @@ if(rascaline_FOUND)
     return()
 endif()
 
+cmake_minimum_required(VERSION 3.10)
+
 enable_language(CXX)
+find_package(equistore 0.1 REQUIRED CONFIG)
 
 if (@BUILD_SHARED_LIBS@)
     add_library(rascaline SHARED IMPORTED GLOBAL)
@@ -18,6 +21,7 @@ set_target_properties(rascaline PROPERTIES
     # we need to link with a C++ compiler to get the C++ stdlib for chemfiles
     IMPORTED_LINK_INTERFACE_LANGUAGES CXX
 )
+target_link_libraries(rascaline INTERFACE equistore)
 
 if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.11)
     # we can not set compile features for imported targete before cmake 3.11

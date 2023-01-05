@@ -1,11 +1,10 @@
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
-use std::sync::Arc;
 
 use once_cell::sync::Lazy;
 
 use equistore::{Labels, LabelsBuilder};
-use equistore::{TensorBlock, TensorMap};
+use equistore::{TensorBlockRef, TensorBlock, TensorMap};
 use ndarray::ArrayD;
 
 use crate::{SimpleSystem, System, Error};
@@ -51,10 +50,10 @@ impl<'a> LabelsSelection<'a> {
         get_default_names: F,
         get_default_labels: G,
         get_from_block: H,
-    ) -> Result<Vec<Arc<Labels>>, Error>
+    ) -> Result<Vec<Labels>, Error>
         where F: FnOnce() -> Vec<&'call str>,
-              G: FnOnce(&Labels) -> Result<Vec<Arc<Labels>>, Error>,
-              H: Fn(&TensorBlock) -> Arc<Labels>,
+              G: FnOnce(&Labels) -> Result<Vec<Labels>, Error>,
+              H: Fn(TensorBlockRef<'_>) -> Labels,
     {
         assert_ne!(keys.count(), 0);
 
@@ -75,7 +74,7 @@ impl<'a> LabelsSelection<'a> {
                                 builder.add(entry);
                             }
                         }
-                        results.push(Arc::new(builder.finish()));
+                        results.push(builder.finish());
                     }
                 } else {
                     let mut variables_to_match = Vec::new();
@@ -109,7 +108,7 @@ impl<'a> LabelsSelection<'a> {
                                 }
                             }
                         }
-                        results.push(Arc::new(builder.finish()));
+                        results.push(builder.finish());
                     }
 
                 }
@@ -276,8 +275,7 @@ impl Calculator {
 
 
     #[time_graph::instrument(name="Calculator::prepare")]
-    fn prepare(&mut self, systems: &mut [Box<dyn System>], options: CalculationOptions,) -> Result<TensorMap, Error> {
-
+    fn prepare(&mut self, systems: &mut [Box<dyn System>], options: CalculationOptions) -> Result<TensorMap, Error> {
         let default_keys = self.implementation.keys(systems)?;
         let keys = match options.selected_keys {
             Some(keys) if keys.is_empty() => {
@@ -302,7 +300,7 @@ impl Calculator {
             &keys,
             || self.implementation.samples_names(),
             |keys| self.implementation.samples(keys, systems),
-            |block| Arc::clone(&block.values().samples)
+            |block| block.values().samples,
         )?;
 
         for &parameter in options.gradients {
@@ -343,7 +341,7 @@ impl Calculator {
                 for sample_i in 0..samples.count() {
                     builder.add(&[sample_i]);
                 }
-                cell_gradient_samples.push(Arc::new(builder.finish()));
+                cell_gradient_samples.push(builder.finish());
             }
             Some(cell_gradient_samples)
         } else {
@@ -358,16 +356,16 @@ impl Calculator {
             &keys,
             || self.implementation.properties_names(),
             |keys| Ok(self.implementation.properties(keys)),
-            |block| Arc::clone(&block.values().properties),
+            |block| block.values().properties,
         )?;
 
         assert_eq!(keys.count(), samples.len());
         assert_eq!(keys.count(), components.len());
         assert_eq!(keys.count(), properties.len());
 
-        let direction = Arc::new(Labels::new(["direction"], &[[0], [1], [2]]));
-        let direction_1 = Arc::new(Labels::new(["direction_1"], &[[0], [1], [2]]));
-        let direction_2 = Arc::new(Labels::new(["direction_2"], &[[0], [1], [2]]));
+        let direction = Labels::new(["direction"], &[[0], [1], [2]]);
+        let direction_1 = Labels::new(["direction_1"], &[[0], [1], [2]]);
+        let direction_2 = Labels::new(["direction_2"], &[[0], [1], [2]]);
 
         let mut blocks = Vec::new();
         for (block_i, ((samples, components), properties)) in samples.into_iter().zip(components).zip(properties).enumerate() {
@@ -377,8 +375,8 @@ impl Calculator {
             let mut new_block = TensorBlock::new(
                 ArrayD::from_elem(shape, 0.0),
                 samples,
-                components.clone(),
-                Arc::clone(&properties),
+                &components,
+                properties.clone(),
             )?;
 
             if let Some(ref gradient_samples) = positions_gradient_samples {
@@ -387,7 +385,7 @@ impl Calculator {
 
                 // add the x/y/z component for gradients
                 let mut components = components.clone();
-                components.insert(0, Arc::clone(&direction));
+                components.insert(0, direction.clone());
                 let shape = shape_from_labels(
                     gradient_samples, &components, &properties
                 );
@@ -395,8 +393,8 @@ impl Calculator {
                 new_block.add_gradient(
                     "positions",
                     ArrayD::from_elem(shape, 0.0),
-                    Arc::clone(gradient_samples),
-                    components,
+                    gradient_samples.clone(),
+                    &components,
                 )?;
             }
 
@@ -405,8 +403,8 @@ impl Calculator {
 
                 // add the components for cell gradients
                 let mut components = components;
-                components.insert(0, Arc::clone(&direction_2));
-                components.insert(0, Arc::clone(&direction_1));
+                components.insert(0, direction_2.clone());
+                components.insert(0, direction_1.clone());
                 let shape = shape_from_labels(
                     gradient_samples, &components, &properties
                 );
@@ -414,8 +412,8 @@ impl Calculator {
                 new_block.add_gradient(
                     "cell",
                     ArrayD::from_elem(shape, 0.0),
-                    Arc::clone(gradient_samples),
-                    components,
+                    gradient_samples.clone(),
+                    &components,
                 )?;
             }
 
@@ -454,7 +452,7 @@ impl Calculator {
     }
 }
 
-fn shape_from_labels(samples: &Labels, components: &[Arc<Labels>], properties: &Labels) -> Vec<usize> {
+fn shape_from_labels(samples: &Labels, components: &[Labels], properties: &Labels) -> Vec<usize> {
     let mut shape = vec![0; components.len() + 2];
     shape[0] = samples.count();
     let mut i = 1;

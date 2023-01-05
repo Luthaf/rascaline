@@ -1,5 +1,4 @@
-use std::collections::{BTreeSet, HashMap, BTreeMap};
-use std::sync::Arc;
+use std::collections::{BTreeSet, HashMap};
 
 use ndarray::parallel::prelude::*;
 
@@ -106,7 +105,7 @@ impl SoapPowerSpectrum {
 
         // first, go over the requested power spectrum properties and group them
         // depending on the species_neighbor
-        let mut requested_by_key = BTreeMap::new();
+        let mut requested_by_key = HashMap::new();
         let mut requested_spherical_harmonics_l = BTreeSet::new();
         for (&[center, neighbor_1, neighbor_2], block) in descriptor.keys().iter_fixed_size().zip(descriptor.blocks()) {
             let values = block.values();
@@ -143,7 +142,11 @@ impl SoapPowerSpectrum {
         // Then, loop over the requested power spectrum, and accumulate the
         // samples we want to compute.
         for (&[_, requested_center, requested_neighbor], (samples, _)) in &mut requested_by_key {
-            for (&[center, neighbor_1, neighbor_2], block) in descriptor.keys().iter_fixed_size().zip(descriptor.blocks()) {
+            for (key, block) in descriptor {
+                let center = key[0];
+                let neighbor_1 = key[1];
+                let neighbor_2 = key[2];
+
                 if center != requested_center {
                     continue;
                 }
@@ -152,7 +155,8 @@ impl SoapPowerSpectrum {
                     continue;
                 }
 
-                for sample in &*block.values().samples {
+                let values = block.values();
+                for &sample in values.samples_ref().iter_fixed_size::<2>() {
                     samples.insert(sample);
                 }
             }
@@ -165,20 +169,20 @@ impl SoapPowerSpectrum {
 
             let mut samples_builder = LabelsBuilder::new(vec!["structure", "center"]);
             for entry in samples {
-                samples_builder.add(entry);
+                samples_builder.add(&entry);
             }
-            let samples = Arc::new(samples_builder.finish());
+            let samples = samples_builder.finish();
 
             let mut properties_builder = LabelsBuilder::new(vec!["n"]);
             for entry in properties {
                 properties_builder.add(&entry);
             }
-            let properties = Arc::new(properties_builder.finish());
+            let properties = properties_builder.finish();
 
             blocks.push(TensorBlock::new(
                 EmptyArray::new(vec![samples.count(), properties.count()]),
                 samples,
-                Vec::new(),
+                &[],
                 properties,
             ).expect("invalid TensorBlock"));
         }
@@ -198,12 +202,12 @@ impl SoapPowerSpectrum {
         for key in missing_keys {
             keys_builder.add(&key);
 
-            let samples = Arc::new(Labels::empty(vec!["structure", "center"]));
-            let properties = Arc::new(Labels::empty(vec!["n"]));
+            let samples = Labels::empty(vec!["structure", "center"]);
+            let properties = Labels::empty(vec!["n"]);
             blocks.push(TensorBlock::new(
                 EmptyArray::new(vec![samples.count(), properties.count()]),
                 samples,
-                Vec::new(),
+                &[],
                 properties,
             ).expect("invalid TensorBlock"));
         }
@@ -275,7 +279,7 @@ impl SoapPowerSpectrum {
             let spx_samples_2 = &spx_block_2.values().samples;
 
             values_mapping.reserve(values.samples.count());
-            for sample in &*values.samples {
+            for sample in &values.samples {
                 let sample_1 = spx_samples_1.position(sample).expect("missing spherical expansion sample");
                 let sample_2 = spx_samples_2.position(sample).expect("missing spherical expansion sample");
                 values_mapping.push((sample_1, sample_2));
@@ -310,55 +314,39 @@ impl SoapPowerSpectrum {
     fn spx_properties_to_combine<'a>(
         key: &[LabelValue],
         properties: &Labels,
-        spherical_expansion: &'a TensorMap,
+        spherical_expansion: &HashMap<&[LabelValue], SphericalExpansionBlock<'a>>,
     ) -> Vec<SpxPropertiesToCombine<'a>> {
         let species_center = key[0];
         let species_neighbor_1 = key[1];
         let species_neighbor_2 = key[2];
 
-        let mut spx_to_combine = Vec::with_capacity(properties.count());
-        for &[l, n1, n2] in properties.iter_fixed_size() {
-            let block_1 = spherical_expansion.keys().position(
-                &[l, species_center, species_neighbor_1]
-            ).expect("missing first neighbor species block in spherical expansion");
-            let block_1 = &spherical_expansion.block_by_id(block_1);
+        return properties.par_iter().map(|property| {
+            let l = property[0];
+            let n1 = property[1];
+            let n2 = property[2];
 
-            let block_2 = spherical_expansion.keys().position(
-                &[l, species_center, species_neighbor_2]
-            ).expect("missing second neighbor species block in spherical expansion");
-            let block_2 = &spherical_expansion.block_by_id(block_2);
+            let key_1: &[_] = &[l, species_center, species_neighbor_1];
+            let block_1 = spherical_expansion.get(&key_1)
+            .expect("missing first neighbor species block in spherical expansion");
 
-            let values_1 = block_1.values().data.as_array();
-            let values_2 = block_2.values().data.as_array();
+            let key_2: &[_] = &[l, species_center, species_neighbor_2];
+            let block_2 = spherical_expansion.get(&key_2)
+                .expect("missing first neighbor species block in spherical expansion");
 
             // both blocks should had the same number of m components
-            debug_assert_eq!(values_1.shape()[1], values_2.shape()[1]);
+            debug_assert_eq!(block_1.values.shape()[1], block_2.values.shape()[1]);
 
-            let property_1 = block_1.values().properties.position(&[n1]).expect("missing n1");
-            let property_2 = block_2.values().properties.position(&[n2]).expect("missing n2");
+            let property_1 = block_1.properties.position(&[n1]).expect("missing n1");
+            let property_2 = block_2.properties.position(&[n2]).expect("missing n2");
 
-            let spx_1 = SpxData {
-                values: values_1,
-                positions_gradients: block_1.gradient("positions").map(|g| g.data.as_array()),
-                cell_gradients: block_1.gradient("cell").map(|g| g.data.as_array()),
-            };
-
-            let spx_2 = SpxData {
-                values: values_2,
-                positions_gradients: block_2.gradient("positions").map(|g| g.data.as_array()),
-                cell_gradients: block_2.gradient("cell").map(|g| g.data.as_array()),
-            };
-
-            spx_to_combine.push(SpxPropertiesToCombine {
+            SpxPropertiesToCombine {
                 spherical_harmonics_l: l.usize(),
                 property_1,
                 property_2,
-                spx_1,
-                spx_2,
-            });
-        }
-
-        return spx_to_combine;
+                spx_1: block_1.clone(),
+                spx_2: block_2.clone(),
+            }
+        }).collect();
     }
 }
 
@@ -372,14 +360,16 @@ struct SpxPropertiesToCombine<'a> {
     property_1: usize,
     /// position of n2 in the second spherical expansion properties
     property_2: usize,
-    /// first spherical expansion data
-    spx_1: SpxData<'a>,
-    /// second spherical expansion data
-    spx_2: SpxData<'a>,
+    /// first spherical expansion block
+    spx_1: SphericalExpansionBlock<'a>,
+    /// second spherical expansion block
+    spx_2: SphericalExpansionBlock<'a>,
 }
 
-/// Data from a single spherical expansion
-struct SpxData<'a> {
+/// Data from a single spherical expansion block
+#[derive(Debug, Clone)]
+struct SphericalExpansionBlock<'a> {
+    properties: Labels,
     /// spherical expansion values
     values: &'a ndarray::ArrayD<f64>,
     /// spherical expansion position gradients
@@ -424,7 +414,7 @@ impl CalculatorBase for SoapPowerSpectrum {
         AtomCenteredSamples::samples_names()
     }
 
-    fn samples(&self, keys: &equistore::Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn samples(&self, keys: &equistore::Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         assert_eq!(keys.names(), ["species_center", "species_neighbor_1", "species_neighbor_2"]);
         let mut result = Vec::new();
         for [species_center, species_neighbor_1, species_neighbor_2] in keys.iter_fixed_size() {
@@ -448,7 +438,7 @@ impl CalculatorBase for SoapPowerSpectrum {
         return Ok(result);
     }
 
-    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Labels], systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         assert_eq!(keys.names(), ["species_center", "species_neighbor_1", "species_neighbor_2"]);
         assert_eq!(keys.count(), samples.len());
 
@@ -479,7 +469,7 @@ impl CalculatorBase for SoapPowerSpectrum {
         }
     }
 
-    fn components(&self, keys: &equistore::Labels) -> Vec<Vec<Arc<Labels>>> {
+    fn components(&self, keys: &equistore::Labels) -> Vec<Vec<Labels>> {
         return vec![vec![]; keys.count()];
     }
 
@@ -487,7 +477,7 @@ impl CalculatorBase for SoapPowerSpectrum {
         vec!["l", "n1", "n2"]
     }
 
-    fn properties(&self, keys: &equistore::Labels) -> Vec<Arc<Labels>> {
+    fn properties(&self, keys: &equistore::Labels) -> Vec<Labels> {
         let mut properties = LabelsBuilder::new(self.properties_names());
         for l in 0..=self.parameters.max_angular {
             for n1 in 0..self.parameters.max_radial {
@@ -496,8 +486,7 @@ impl CalculatorBase for SoapPowerSpectrum {
                 }
             }
         }
-
-        let properties = Arc::new(properties.finish());
+        let properties = properties.finish();
 
         return vec![properties; keys.count()];
     }
@@ -514,6 +503,7 @@ impl CalculatorBase for SoapPowerSpectrum {
         }
 
         let selected = self.selected_spx_labels(descriptor);
+
         let options = CalculationOptions {
             gradients: &gradients,
             selected_samples: LabelsSelection::Predefined(&selected),
@@ -526,14 +516,24 @@ impl CalculatorBase for SoapPowerSpectrum {
             systems,
             options,
         ).expect("failed to compute spherical expansion");
-
         let samples_mapping = SoapPowerSpectrum::samples_mapping(descriptor, &spherical_expansion);
+
+        let spherical_expansion = spherical_expansion.iter().map(|(key, block)| {
+            let spx_block = SphericalExpansionBlock {
+                properties: block.values().properties,
+                values: block.values().data.to_array(),
+                positions_gradients: block.gradient("positions").map(|g| g.data.to_array()),
+                cell_gradients: block.gradient("cell").map(|g| g.data.to_array()),
+            };
+
+            (key, spx_block)
+        }).collect();
 
         for (key, mut block) in descriptor.iter_mut() {
             let species_neighbor_1 = key[1];
             let species_neighbor_2 = key[2];
 
-            let values = block.values();
+            let values = block.values_mut();
             let properties_to_combine = SoapPowerSpectrum::spx_properties_to_combine(
                 key,
                 &values.properties,
@@ -579,10 +579,10 @@ impl CalculatorBase for SoapPowerSpectrum {
                     }
                 });
 
-
             // gradients with respect to the atomic positions
             if let Some(gradients) = block.gradient_mut("positions") {
-                gradients.data.as_array_mut()
+
+                gradients.data.to_array_mut()
                     .axis_iter_mut(ndarray::Axis(0))
                     .into_par_iter()
                     .zip_eq(gradients.samples.par_iter())
@@ -639,10 +639,10 @@ impl CalculatorBase for SoapPowerSpectrum {
                     });
             }
 
-
             // gradients with respect to the cell parameters
             if let Some(gradients) = block.gradient_mut("cell") {
-                gradients.data.as_array_mut()
+
+                gradients.data.to_array_mut()
                     .axis_iter_mut(ndarray::Axis(0))
                     .into_par_iter()
                     .zip_eq(gradients.samples.par_iter())
@@ -708,6 +708,7 @@ impl CalculatorBase for SoapPowerSpectrum {
                         }
                     });
             }
+
         }
 
         Ok(())
@@ -852,31 +853,31 @@ mod tests {
 
         let empty_block = equistore::TensorBlock::new(
             EmptyArray::new(vec![1, 0]),
-            Arc::new(Labels::single()),
-            vec![],
-            Arc::new(Labels::new::<i32, 3>(["l", "n1", "n2"], &[])),
+            Labels::single(),
+            &[],
+            Labels::new::<i32, 3>(["l", "n1", "n2"], &[]),
         ).unwrap();
 
         let blocks = vec![
             // H, H-H
             equistore::TensorBlock::new(
                 EmptyArray::new(vec![1, 1]),
-                Arc::new(Labels::single()),
-                vec![],
-                Arc::new(Labels::new(["l", "n1", "n2"], &[[2, 0, 0]])),
+                Labels::single(),
+                &[],
+                Labels::new(["l", "n1", "n2"], &[[2, 0, 0]]),
             ).unwrap(),
             // H, C-H
-            empty_block.clone(),
+            empty_block.as_ref().try_clone().unwrap(),
             // H, C-C
-            empty_block.clone(),
+            empty_block.as_ref().try_clone().unwrap(),
             // C, H-H
-            empty_block.clone(),
+            empty_block.as_ref().try_clone().unwrap(),
             // C, C-H
             equistore::TensorBlock::new(
                 EmptyArray::new(vec![1, 1]),
-                Arc::new(Labels::single()),
-                vec![],
-                Arc::new(Labels::new(["l", "n1", "n2"], &[[3, 0, 0]])),
+                Labels::single(),
+                &[],
+                Labels::new(["l", "n1", "n2"], &[[3, 0, 0]]),
             ).unwrap(),
             // C, C-C
             empty_block,

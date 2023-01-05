@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use ndarray::s;
@@ -62,7 +61,7 @@ impl SphericalExpansion {
             }
 
             let values = block.values_mut();
-            let array = values.data.as_array_mut();
+            let array = values.data.to_array_mut();
 
             // Add the center contribution to relevant elements of array.
             for (sample_i, &[structure, center]) in values.samples.iter_fixed_size().enumerate() {
@@ -335,7 +334,7 @@ impl SphericalExpansion {
         };
 
         let values = block.values_mut();
-        let mut array = array_mut_for_system(&mut values.data);
+        let mut array = array_mut_for_system(values.data);
 
         for (sample_i, [_, center_i]) in values.samples.iter_fixed_size().enumerate() {
             // samples might contain entries for atoms that should not be part
@@ -410,9 +409,9 @@ impl SphericalExpansion {
         let lm_start = spherical_harmonics_l * spherical_harmonics_l;
         let m_1_pow_l = self.m_1_pow_l[spherical_harmonics_l];
 
-        let values_samples = Arc::clone(&block.values().samples);
-        let gradient = block.gradient_mut("positions").expect("missing positions gradient");
-        let mut array = array_mut_for_system(&mut gradient.data);
+        let values_samples = block.values_mut().samples;
+        let gradient = block.gradient_mut("positions").expect("TODO");
+        let mut array = array_mut_for_system(gradient.data);
 
         for (grad_sample_i, &[sample_i, _, neighbor_i]) in gradient.samples.iter_fixed_size().enumerate() {
             let center_i = values_samples[sample_i.usize()][1];
@@ -510,9 +509,9 @@ impl SphericalExpansion {
             return Ok(());
         };
 
-        let values_samples = Arc::clone(&block.values().samples);
-        let gradient = block.gradient_mut("cell").expect("missing cell gradient");
-        let mut array = array_mut_for_system(&mut gradient.data);
+        let values_samples = block.values_mut().samples;
+        let gradient = block.gradient_mut("cell").expect("TODO");
+        let mut array = array_mut_for_system(gradient.data);
 
         for (grad_sample_i, [sample_i]) in gradient.samples.iter_fixed_size().enumerate() {
             let center_i = values_samples[sample_i.usize()][1];
@@ -608,7 +607,7 @@ impl CalculatorBase for SphericalExpansion {
         AtomCenteredSamples::samples_names()
     }
 
-    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         assert_eq!(keys.names(), ["spherical_harmonics_l", "species_center", "species_neighbor"]);
 
         // only compute the samples once for each `species_center, species_neighbor`,
@@ -635,7 +634,7 @@ impl CalculatorBase for SphericalExpansion {
                 &(species_center, species_neighbor)
             ).expect("missing samples");
 
-            result.push(Arc::clone(samples));
+            result.push(samples.clone());
         }
 
         return Ok(result);
@@ -649,7 +648,7 @@ impl CalculatorBase for SphericalExpansion {
         }
     }
 
-    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Labels], systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         assert_eq!(keys.names(), ["spherical_harmonics_l", "species_center", "species_neighbor"]);
         assert_eq!(keys.count(), samples.len());
 
@@ -670,7 +669,7 @@ impl CalculatorBase for SphericalExpansion {
         return Ok(gradient_samples);
     }
 
-    fn components(&self, keys: &Labels) -> Vec<Vec<Arc<Labels>>> {
+    fn components(&self, keys: &Labels) -> Vec<Vec<Labels>> {
         assert_eq!(keys.names(), ["spherical_harmonics_l", "species_center", "species_neighbor"]);
 
         // only compute the components once for each `spherical_harmonics_l`,
@@ -686,7 +685,7 @@ impl CalculatorBase for SphericalExpansion {
                 component.add(&[LabelValue::new(m)]);
             }
 
-            let components = vec![Arc::new(component.finish())];
+            let components = vec![component.finish()];
             component_by_l.insert(*spherical_harmonics_l, components);
         }
 
@@ -702,12 +701,12 @@ impl CalculatorBase for SphericalExpansion {
         vec!["n"]
     }
 
-    fn properties(&self, keys: &Labels) -> Vec<Arc<Labels>> {
+    fn properties(&self, keys: &Labels) -> Vec<Labels> {
         let mut properties = LabelsBuilder::new(self.properties_names());
         for n in 0..self.by_pair.parameters().max_radial {
             properties.add(&[n]);
         }
-        let properties = Arc::new(properties.finish());
+        let properties = properties.finish();
 
         return vec![properties; keys.count()];
     }
@@ -732,7 +731,7 @@ impl CalculatorBase for SphericalExpansion {
                 // we will only run the calculation on pairs where one of the
                 // atom is part of the requested samples
                 let requested_centers = descriptor.iter().flat_map(|(_, block)| {
-                    block.values().samples.iter().map(|sample| sample[1].usize())
+                    block.values().samples.iter().map(|sample| sample[1].usize()).collect::<Vec<_>>()
                 }).collect::<BTreeSet<_>>();
 
                 let accumulated = self.accumulate_all_pairs(
@@ -759,7 +758,6 @@ impl CalculatorBase for SphericalExpansion {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
     use ndarray::ArrayD;
     use equistore::{Labels, TensorBlock, EmptyArray, LabelsBuilder, TensorMap};
 
@@ -802,7 +800,7 @@ mod tests {
                     ]);
                     assert!(block_i.is_some());
                     let block = &descriptor.block_by_id(block_i.unwrap());
-                    let array = block.values().data.as_array();
+                    let array = block.values().data.to_array();
                     assert_eq!(array.shape().len(), 3);
                     assert_eq!(array.shape()[1], 2 * l + 1);
                 }
@@ -898,9 +896,9 @@ mod tests {
         // species_center key.
         let block = TensorBlock::new(
             EmptyArray::new(vec![3, 1]),
-            Arc::new(Labels::new(["structure", "center"], &[[0, 0], [0, 1], [0, 2]])),
-            vec![],
-            Arc::new(Labels::single()),
+            Labels::new(["structure", "center"], &[[0, 0], [0, 1], [0, 2]]),
+            &[],
+            Labels::single(),
         ).unwrap();
 
         let mut keys = LabelsBuilder::new(vec!["spherical_harmonics_l", "species_center", "species_neighbor"]);
@@ -909,7 +907,7 @@ mod tests {
             for species_center in [1, -42] {
                 for species_neighbor in [1, -42] {
                     keys.add(&[l, species_center, species_neighbor]);
-                    blocks.push(block.clone());
+                    blocks.push(block.as_ref().try_clone().unwrap());
                 }
             }
         }
@@ -929,7 +927,7 @@ mod tests {
         let values = block.values();
 
         // entries centered on H atoms should be zero
-        assert_eq!(*values.samples, Labels::new(["structure", "center"], &[[0, 0], [0, 1], [0, 2]]));
+        assert_eq!(values.samples, Labels::new(["structure", "center"], &[[0, 0], [0, 1], [0, 2]]));
         let array = values.data.as_array();
         assert_eq!(array.index_axis(ndarray::Axis(0), 1), ArrayD::from_elem(vec![1, 6], 0.0));
         assert_eq!(array.index_axis(ndarray::Axis(0), 2), ArrayD::from_elem(vec![1, 6], 0.0));
@@ -942,7 +940,7 @@ mod tests {
         let values = block.values();
 
         // entries centered on O atoms should be zero
-        assert_eq!(*values.samples, Labels::new(["structure", "center"], &[[0, 0], [0, 1], [0, 2]]));
+        assert_eq!(values.samples, Labels::new(["structure", "center"], &[[0, 0], [0, 1], [0, 2]]));
         let array = values.data.as_array();
         assert_eq!(array.index_axis(ndarray::Axis(0), 0), ArrayD::from_elem(vec![1, 6], 0.0));
     }

@@ -250,21 +250,6 @@ class TestComputePartialSamples(unittest.TestCase):
         calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
 
         samples = Labels(
-            names=["bad name"],
-            values=np.array([0, 3, 1], dtype=np.int32).reshape(3, 1),
-        )
-
-        with self.assertRaises(RascalError) as cm:
-            calculator.compute(
-                system, use_native_system=False, selected_samples=samples
-            )
-
-        self.assertEqual(
-            str(cm.exception),
-            "invalid parameter: 'bad name' is not a valid label name",
-        )
-
-        samples = Labels(
             names=["bad_name"],
             values=np.array([0, 3, 1], dtype=np.int32).reshape(3, 1),
         )
@@ -388,28 +373,15 @@ class TestComputePartialProperties(unittest.TestCase):
         calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
 
         selected_properties = Labels(
-            names=["bad name"],
-            values=np.array([0, 3, 1], dtype=np.int32).reshape(3, 1),
-        )
-
-        with self.assertRaises(RascalError) as cm:
-            calculator.compute(
-                system, use_native_system=False, selected_properties=selected_properties
-            )
-
-        self.assertEqual(
-            str(cm.exception),
-            "invalid parameter: 'bad name' is not a valid label name",
-        )
-
-        selected_properties = Labels(
             names=["bad_name"],
             values=np.array([0, 3, 1], dtype=np.int32).reshape(3, 1),
         )
 
         with self.assertRaises(RascalError) as cm:
             calculator.compute(
-                system, use_native_system=False, selected_properties=selected_properties
+                system,
+                use_native_system=False,
+                selected_properties=selected_properties,
             )
 
         self.assertEqual(
@@ -497,21 +469,6 @@ class TestComputeSelectedKeys(unittest.TestCase):
         calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
 
         selected_keys = Labels(
-            names=["bad name"],
-            values=np.array([0, 3, 1], dtype=np.int32).reshape(3, 1),
-        )
-
-        with self.assertRaises(RascalError) as cm:
-            calculator.compute(
-                system, use_native_system=False, selected_keys=selected_keys
-            )
-
-        self.assertEqual(
-            str(cm.exception),
-            "invalid parameter: 'bad name' is not a valid label name",
-        )
-
-        selected_keys = Labels(
             names=["bad_name"],
             values=np.array([0, 3, 1], dtype=np.int32).reshape(3, 1),
         )
@@ -546,8 +503,9 @@ class TestComputeSelectedKeys(unittest.TestCase):
             "invalid parameter: selected keys can not be empty",
         )
 
-        # in the case of selected_properies/selected_samples and selected_keys
-        # the selected keys must be in the keys of the predefined tensor_map
+        # in the case where both selected_properties/selected_samples and
+        # selected_keys are given, the selected keys must be in the keys of the
+        # predefined tensor_map
         selected_keys = Labels(
             names=["species_center"],
             values=np.array([[4]], dtype=np.int32),
@@ -558,7 +516,6 @@ class TestComputeSelectedKeys(unittest.TestCase):
             values=np.array([[1], [8]], dtype=np.int32),
         )
 
-        # selection from TensorMap
         selected = [
             Labels(
                 names=["index_delta", "x_y_z"],

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use equistore::{Labels, LabelsBuilder, TensorMap};
 
 use super::CalculatorBase;
@@ -55,7 +53,7 @@ impl CalculatorBase for SortedDistances {
         AtomCenteredSamples::samples_names()
     }
 
-    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         let mut samples = Vec::new();
         if self.separate_neighbor_species {
             assert_eq!(keys.names(), ["species_center", "species_neighbor"]);
@@ -90,11 +88,11 @@ impl CalculatorBase for SortedDistances {
         return false;
     }
 
-    fn positions_gradient_samples(&self, _: &Labels, _: &[Arc<Labels>], _: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn positions_gradient_samples(&self, _: &Labels, _: &[Labels], _: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         unimplemented!()
     }
 
-    fn components(&self, keys: &Labels) -> Vec<Vec<Arc<Labels>>> {
+    fn components(&self, keys: &Labels) -> Vec<Vec<Labels>> {
         return vec![Vec::new(); keys.count()];
     }
 
@@ -102,12 +100,12 @@ impl CalculatorBase for SortedDistances {
         vec!["neighbor"]
     }
 
-    fn properties(&self, keys: &Labels) -> Vec<Arc<Labels>> {
+    fn properties(&self, keys: &Labels) -> Vec<Labels> {
         let mut properties = LabelsBuilder::new(self.properties_names());
         for i in 0..self.max_neighbors {
             properties.add(&[i]);
         }
-        let properties = Arc::new(properties.finish());
+        let properties = properties.finish();
 
         return vec![properties; keys.count()];
     }
@@ -128,7 +126,7 @@ impl CalculatorBase for SortedDistances {
             };
 
             let values = block.values_mut();
-            let array = values.data.as_array_mut();
+            let array = values.data.to_array_mut();
 
             for (sample_i, [structure_i, center_i]) in values.samples.iter_fixed_size().enumerate() {
                 let center_i = center_i.usize();
@@ -208,7 +206,8 @@ mod tests {
         let descriptor = descriptor.keys_to_samples(&keys_to_move, true).unwrap();
 
         assert_eq!(descriptor.blocks().len(), 1);
-        let values = descriptor.block_by_id(0).values().data.as_array();
+        let block = descriptor.block_by_id(0);
+        let values = block.values().data.to_array();
         assert_eq!(values.shape(), [3, 3]);
 
         assert_eq!(values.slice(s![0, ..]), aview1(&[0.957897074324794, 0.957897074324794, 1.5]));

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use equistore::{Labels, TensorMap, LabelsBuilder};
 
 use crate::{System, Error};
@@ -35,7 +33,7 @@ impl CalculatorBase for GeometricMoments {
         AtomCenteredSamples::samples_names()
     }
 
-    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         assert_eq!(keys.names(), ["species_center", "species_neighbor"]);
 
         let mut samples = Vec::new();
@@ -60,7 +58,7 @@ impl CalculatorBase for GeometricMoments {
         }
     }
 
-    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Labels], systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         assert_eq!(keys.names(), ["species_center", "species_neighbor"]);
         debug_assert_eq!(keys.count(), samples.len());
 
@@ -79,7 +77,7 @@ impl CalculatorBase for GeometricMoments {
         return Ok(gradient_samples);
     }
 
-    fn components(&self, keys: &Labels) -> Vec<Vec<Arc<Labels>>> {
+    fn components(&self, keys: &Labels) -> Vec<Vec<Labels>> {
         return vec![vec![]; keys.count()];
     }
 
@@ -87,12 +85,12 @@ impl CalculatorBase for GeometricMoments {
         vec!["k"]
     }
 
-    fn properties(&self, keys: &Labels) -> Vec<Arc<Labels>> {
+    fn properties(&self, keys: &Labels) -> Vec<Labels> {
         let mut builder = LabelsBuilder::new(self.properties_names());
         for k in 0..=self.max_moment {
             builder.add(&[k]);
         }
-        let properties = Arc::new(builder.finish());
+        let properties = builder.finish();
 
         return vec![properties; keys.count()];
     }
@@ -142,7 +140,7 @@ impl CalculatorBase for GeometricMoments {
                     let block_id = first_block_id.expect("we have a sample in this block");
                     let mut block = descriptor.block_mut_by_id(block_id);
                     let values = block.values_mut();
-                    let array = values.data.as_array_mut();
+                    let array = values.data.to_array_mut();
 
                     for (property_i, [k]) in values.properties.iter_fixed_size().enumerate() {
                         let value = f64::powi(pair.distance, k.i32()) / n_neighbors_first;
@@ -154,7 +152,7 @@ impl CalculatorBase for GeometricMoments {
                     let block_id = second_block_id.expect("we have a sample in this block");
                     let mut block = descriptor.block_mut_by_id(block_id);
                     let values = block.values_mut();
-                    let array = values.data.as_array_mut();
+                    let array = values.data.to_array_mut();
 
                     for (property_i, [k]) in values.properties.iter_fixed_size().enumerate() {
                         let value = f64::powi(pair.distance, k.i32()) / n_neighbors_second;
@@ -177,7 +175,7 @@ impl CalculatorBase for GeometricMoments {
                         let mut block = descriptor.block_mut_by_id(block_id);
 
                         let gradient = block.gradient_mut("positions").expect("missing gradient storage");
-                        let array = gradient.data.as_array_mut();
+                        let array = gradient.data.to_array_mut();
 
                         let gradient_wrt_second = gradient.samples.position(&[
                             sample_position.into(), system_i.into(), pair.second.into()
@@ -208,7 +206,7 @@ impl CalculatorBase for GeometricMoments {
                         let mut block = descriptor.block_mut_by_id(block_id);
 
                         let gradient = block.gradient_mut("positions").expect("missing gradient storage");
-                        let array = gradient.data.as_array_mut();
+                        let array = gradient.data.to_array_mut();
 
                         let gradient_wrt_first = gradient.samples.position(&[
                             sample_position.into(), system_i.into(), pair.first.into()
@@ -274,12 +272,12 @@ mod tests {
             &[[-42, 1], [1, -42], [1, 1], [1, 6], [6, 1]]
         ));
 
-        let expected_properties = Arc::new(Labels::new(["k"], &[[0]]));
+        let expected_properties = Labels::new(["k"], &[[0]]);
 
         /**********************************************************************/
         // O center, H neighbor
         let block = &descriptor.block_by_id(0);
-        assert_eq!(*block.values().samples, Labels::new(
+        assert_eq!(block.values().samples, Labels::new(
             ["structure", "center"],
             &[[0, 0]]
         ));
@@ -291,7 +289,7 @@ mod tests {
         /**********************************************************************/
         // H center, O neighbor
         let block = &descriptor.block_by_id(1);
-        assert_eq!(*block.values().samples, Labels::new(
+        assert_eq!(block.values().samples, Labels::new(
             ["structure", "center"],
             &[[0, 1], [0, 2]]
         ));
@@ -303,7 +301,7 @@ mod tests {
         /**********************************************************************/
         // H center, H neighbor
         let block = &descriptor.block_by_id(2);
-        assert_eq!(*block.values().samples, Labels::new(
+        assert_eq!(block.values().samples, Labels::new(
             ["structure", "center"],
             &[[0, 1], [0, 2]]
         ));
@@ -315,7 +313,7 @@ mod tests {
         /**********************************************************************/
         // H center, C neighbor
         let block = &descriptor.block_by_id(3);
-        assert_eq!(*block.values().samples, Labels::new(
+        assert_eq!(block.values().samples, Labels::new(
             ["structure", "center"],
             &[[1, 1]]
         ));
@@ -327,7 +325,7 @@ mod tests {
         /**********************************************************************/
         // C center, H neighbor
         let block = &descriptor.block_by_id(4);
-        assert_eq!(*block.values().samples, Labels::new(
+        assert_eq!(block.values().samples, Labels::new(
             ["structure", "center"],
             &[[1, 0]]
         ));

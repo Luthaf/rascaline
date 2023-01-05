@@ -1,6 +1,4 @@
 
-use std::sync::Arc;
-
 use equistore::{Labels, TensorMap, LabelsBuilder};
 
 use crate::{System, Error};
@@ -38,7 +36,7 @@ impl CalculatorBase for GeometricMoments {
         todo!()
     }
 
-    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         todo!()
     }
 
@@ -46,11 +44,11 @@ impl CalculatorBase for GeometricMoments {
         todo!()
     }
 
-    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Labels], systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         todo!()
     }
 
-    fn components(&self, keys: &Labels) -> Vec<Vec<Arc<Labels>>> {
+    fn components(&self, keys: &Labels) -> Vec<Vec<Labels>> {
         todo!()
     }
 
@@ -58,7 +56,7 @@ impl CalculatorBase for GeometricMoments {
         todo!()
     }
 
-    fn properties(&self, keys: &Labels) -> Vec<Arc<Labels>> {
+    fn properties(&self, keys: &Labels) -> Vec<Labels> {
         todo!()
     }
 
@@ -77,7 +75,7 @@ impl CalculatorBase for GeometricMoments {
                     let block_id = first_block_id.expect("we have a sample in this block");
                     let mut block = descriptor.block_mut_by_id(block_id);
                     let values = block.values_mut();
-                    let array = values.data.as_array_mut();
+                    let array = values.data.to_array_mut();
 
                     for (property_i, [k]) in values.properties.iter_fixed_size().enumerate() {
                         let value = f64::powi(pair.distance, k.i32()) / n_neighbors_first;
@@ -89,7 +87,7 @@ impl CalculatorBase for GeometricMoments {
                     let block_id = second_block_id.expect("we have a sample in this block");
                     let mut block = descriptor.block_mut_by_id(block_id);
                     let values = block.values_mut();
-                    let array = values.data.as_array_mut();
+                    let array = values.data.to_array_mut();
 
                     for (property_i, [k]) in values.properties.iter_fixed_size().enumerate() {
                         let value = f64::powi(pair.distance, k.i32()) / n_neighbors_second;

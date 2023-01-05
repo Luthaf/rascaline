@@ -1,6 +1,5 @@
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
-use std::sync::Arc;
 
 use rayon::prelude::*;
 use thread_local::ThreadLocal;
@@ -405,7 +404,7 @@ impl LodeSphericalExpansion {
 
                 let mut block = descriptor.block_mut_by_id(block_i);
                 let values = block.values_mut();
-                let array = values.data.as_array_mut();
+                let array = values.data.to_array_mut();
 
                 let sample = [system_i.into(), center_i.into()];
                 let sample_i = match values.samples.position(&sample) {
@@ -451,7 +450,7 @@ impl CalculatorBase for LodeSphericalExpansion {
         LongRangeSamplesPerAtom::samples_names()
     }
 
-    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         assert_eq!(keys.names(), ["spherical_harmonics_l", "species_center", "species_neighbor"]);
 
         // only compute the samples once for each `species_center, species_neighbor`,
@@ -477,7 +476,7 @@ impl CalculatorBase for LodeSphericalExpansion {
                 &(species_center, species_neighbor)
             ).expect("missing samples");
 
-            result.push(Arc::clone(samples));
+            result.push(samples.clone());
         }
 
         return Ok(result);
@@ -490,7 +489,7 @@ impl CalculatorBase for LodeSphericalExpansion {
         }
     }
 
-    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Labels], systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         assert_eq!(keys.names(), ["spherical_harmonics_l", "species_center", "species_neighbor"]);
         assert_eq!(keys.count(), samples.len());
 
@@ -508,7 +507,7 @@ impl CalculatorBase for LodeSphericalExpansion {
         return Ok(gradient_samples);
     }
 
-    fn components(&self, keys: &Labels) -> Vec<Vec<Arc<Labels>>> {
+    fn components(&self, keys: &Labels) -> Vec<Vec<Labels>> {
         assert_eq!(keys.names(), ["spherical_harmonics_l", "species_center", "species_neighbor"]);
 
         // only compute the components once for each `spherical_harmonics_l`,
@@ -524,7 +523,7 @@ impl CalculatorBase for LodeSphericalExpansion {
                 component.add(&[LabelValue::new(m)]);
             }
 
-            let components = vec![Arc::new(component.finish())];
+            let components = vec![component.finish()];
             component_by_l.insert(*spherical_harmonics_l, components);
         }
 
@@ -540,12 +539,12 @@ impl CalculatorBase for LodeSphericalExpansion {
         vec!["n"]
     }
 
-    fn properties(&self, keys: &Labels) -> Vec<Arc<Labels>> {
+    fn properties(&self, keys: &Labels) -> Vec<Labels> {
         let mut properties = LabelsBuilder::new(self.properties_names());
         for n in 0..self.parameters.max_radial {
             properties.add(&[n]);
         }
-        let properties = Arc::new(properties.finish());
+        let properties = properties.finish();
 
         return vec![properties; keys.count()];
     }
@@ -598,7 +597,7 @@ impl CalculatorBase for LodeSphericalExpansion {
 
                             let mut block = descriptor.block_mut_by_id(block_i);
                             let values = block.values_mut();
-                            let mut array = array_mut_for_system(&mut values.data);
+                            let mut array = array_mut_for_system(values.data);
 
                             let sample = [system_i.into(), center_i.into()];
                             let sample_i = match values.samples.position(&sample) {
@@ -650,7 +649,7 @@ impl CalculatorBase for LodeSphericalExpansion {
 
                             let mut block = descriptor.block_mut_by_id(block_i);
                             let values = block.values_mut();
-                            let mut array = array_mut_for_system(&mut values.data);
+                            let mut array = array_mut_for_system(values.data);
 
                             let sample = [system_i.into(), center_i.into()];
                             let sample_i = match values.samples.position(&sample) {
@@ -681,7 +680,9 @@ impl CalculatorBase for LodeSphericalExpansion {
                                 }
                             }
 
-                            if let Some(ref mut gradients) = block.gradient_mut("positions") {
+                            if let Some(gradients) = block.gradient_mut("positions") {
+                                let mut array = array_mut_for_system(gradients.data);
+
                                 for (neighbor_i, &current_neighbor_species) in species.iter().enumerate() {
                                     if neighbor_i == center_i {
                                         continue;
@@ -690,8 +691,6 @@ impl CalculatorBase for LodeSphericalExpansion {
                                     if current_neighbor_species != species_neighbor {
                                         continue;
                                     }
-
-                                    let mut array = array_mut_for_system(&mut gradients.data);
 
                                     let grad_sample_self_i = gradients.samples.position(&[
                                         sample_i.into(), system_i.into(), center_i.into()

@@ -35,20 +35,21 @@ The build and installation can be configures with a few cmake options, using
 ``-D<OPTION>=<VALUE>`` on the cmake command line, or one of the cmake GUI
 (``cmake-gui`` or ``ccmake``). Here are the main configuration options:
 
-+--------------------------+--------------------------------------------------------------------------------------+----------------+
-| Option                   | Description                                                                          | Default        |
-+==========================+======================================================================================+================+
-| CMAKE_BUILD_TYPE         | Type of build: debug or release                                                      | release        |
-+--------------------------+--------------------------------------------------------------------------------------+----------------+
-| CMAKE_INSTALL_PREFIX     | Prefix in which the library will be installed                                        | ``/usr/local`` |
-+--------------------------+--------------------------------------------------------------------------------------+----------------+
-| INCLUDE_INSTALL_DIR      | Path relative to ``CMAKE_INSTALL_PREFIX`` where the headers will be installed        | ``include``    |
-+--------------------------+--------------------------------------------------------------------------------------+----------------+
-| LIB_INSTALL_DIR          | Path relative to ``CMAKE_INSTALL_PREFIX`` where the shared library will be installed | ``lib``        |
-+--------------------------+--------------------------------------------------------------------------------------+----------------+
-| RASCAL_DISABLE_CHEMFILES | Disable the usage of chemfiles for reading structures from files                     | OFF            |
-+--------------------------+--------------------------------------------------------------------------------------+----------------+
-
++-----------------------------+--------------------------------------------------------------------------------------+----------------+
+| Option                      | Description                                                                          | Default        |
++=============================+======================================================================================+================+
+| CMAKE_BUILD_TYPE            | Type of build: debug or release                                                      | release        |
++-----------------------------+--------------------------------------------------------------------------------------+----------------+
+| CMAKE_INSTALL_PREFIX        | Prefix in which the library will be installed                                        | ``/usr/local`` |
++-----------------------------+--------------------------------------------------------------------------------------+----------------+
+| INCLUDE_INSTALL_DIR         | Path relative to ``CMAKE_INSTALL_PREFIX`` where the headers will be installed        | ``include``    |
++-----------------------------+--------------------------------------------------------------------------------------+----------------+
+| LIB_INSTALL_DIR             | Path relative to ``CMAKE_INSTALL_PREFIX`` where the shared library will be installed | ``lib``        |
++-----------------------------+--------------------------------------------------------------------------------------+----------------+
+| RASCALINE_DISABLE_CHEMFILES | Disable the usage of chemfiles for reading structures from files                     | OFF            |
++-----------------------------+--------------------------------------------------------------------------------------+----------------+
+| RASCALINE_FETCH_EQUISTORE   | Automatically fetch and build equistore (rascaline dependency)                       | OFF            |
++-----------------------------+--------------------------------------------------------------------------------------+----------------+
 
 Using the Rust library
 ----------------------

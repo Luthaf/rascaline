@@ -9,7 +9,11 @@ rust-version = "1.61"
 bench = false
 
 [features]
-default = ["chemfiles"]
+# We use a static version of equistore by default since otherwise doctests can
+# not find libequistore.so
+default = ["chemfiles", "static-equistore"]
+
+static-equistore = ["equistore/static"]
 
 [[bench]]
 name = "spherical-harmonics"
@@ -32,7 +36,7 @@ name = "soap-power-spectrum"
 harness = false
 
 [dependencies]
-equistore = {git = "https://github.com/lab-cosmo/equistore", rev = "467baf0", features = ["ndarray", "rayon"]}
+equistore = {git = "https://github.com/lab-cosmo/equistore", rev = "6c5a833", features = ["rayon"]}
 
 ndarray = {version = "0.15", features = ["approx-0_5", "rayon", "serde"]}
 num-traits = "0.2"

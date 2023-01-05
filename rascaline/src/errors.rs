@@ -11,8 +11,8 @@ pub enum Error {
     Utf8(Utf8Error),
     /// Error related to reading files with chemfiles
     Chemfiles(String),
-    /// Error related to saving files in equistore format
-    Serialization(String),
+    /// Errors coming from equistore
+    Equistore(equistore::Error),
     /// Errors coming from external callbacks, typically inside the System
     /// implementation
     External {
@@ -34,7 +34,7 @@ impl std::fmt::Display for Error {
             Error::Json(e) => write!(f, "json error: {}", e),
             Error::Utf8(e) => write!(f, "utf8 decoding error: {}", e),
             Error::Chemfiles(e) => write!(f, "chemfiles error: {}", e),
-            Error::Serialization(e) => write!(f, "serialization error: {}", e),
+            Error::Equistore(e) => write!(f, "equistore error: {}", e),
             Error::BufferSize(e) => write!(f, "buffer is not big enough: {}", e),
             Error::External{status, message} => write!(f, "error from external code (status {}): {}", status, message),
             Error::Internal(e) => write!(f, "internal error (this is likely a bug, please report it): {}", e),
@@ -48,9 +48,9 @@ impl std::error::Error for Error {
             Error::InvalidParameter(_) |
             Error::Internal(_) |
             Error::Chemfiles(_) |
-            Error::Serialization(_) |
             Error::BufferSize(_) |
             Error::External{..} => None,
+            Error::Equistore(e) => Some(e),
             Error::Json(e) => Some(e),
             Error::Utf8(e) => Some(e),
         }
@@ -71,14 +71,7 @@ impl From<Utf8Error> for Error {
 
 impl From<equistore::Error> for Error {
     fn from(error: equistore::Error) -> Error {
-        match error {
-            equistore::Error::InvalidParameter(e) => Error::InvalidParameter(e),
-            equistore::Error::BufferSize(e) => Error::BufferSize(e),
-            equistore::Error::Io(e) => Error::Serialization(e.to_string()),
-            equistore::Error::Serialization(e) => Error::Serialization(e),
-            equistore::Error::External { status, context } => Error::External { status: status.as_i32(), message: context},
-            equistore::Error::Internal(e) => Error::Internal(e),
-        }
+        return Error::Equistore(error);
     }
 }
 

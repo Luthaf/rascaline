@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use std::collections::BTreeSet;
 
 use equistore::TensorMap;
@@ -72,7 +71,7 @@ impl CalculatorBase for NeighborList {
         return vec!["structure", "pair_id", "first_atom", "second_atom"];
     }
 
-    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         assert!(self.cutoff > 0.0 && self.cutoff.is_finite());
 
         if self.full_neighbor_list {
@@ -90,7 +89,7 @@ impl CalculatorBase for NeighborList {
         }
     }
 
-    fn positions_gradient_samples(&self, _keys: &Labels, samples: &[Arc<Labels>], _systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn positions_gradient_samples(&self, _keys: &Labels, samples: &[Labels], _systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         let mut results = Vec::new();
 
         for block_samples in samples {
@@ -100,27 +99,25 @@ impl CalculatorBase for NeighborList {
                 builder.add(&[sample_i.into(), system_i, second]);
             }
 
-            results.push(Arc::new(builder.finish()));
+            results.push(builder.finish());
         }
 
         return Ok(results);
     }
 
-    fn components(&self, keys: &Labels) -> Vec<Vec<Arc<Labels>>> {
-        return vec![vec![Arc::new(Labels::new(
-            ["pair_direction"],
-            &[[0], [1], [2]]
-        ))]; keys.count()];
+    fn components(&self, keys: &Labels) -> Vec<Vec<Labels>> {
+        let components = vec![Labels::new(["pair_direction"], &[[0], [1], [2]])];
+        return vec![components; keys.count()];
     }
 
     fn properties_names(&self) -> Vec<&str> {
         vec!["distance"]
     }
 
-    fn properties(&self, keys: &Labels) -> Vec<Arc<Labels>> {
+    fn properties(&self, keys: &Labels) -> Vec<Labels> {
         let mut properties = LabelsBuilder::new(self.properties_names());
         properties.add(&[LabelValue::new(0)]);
-        let properties = Arc::new(properties.finish());
+        let properties = properties.finish();
 
         return vec![properties; keys.count()];
     }
@@ -163,7 +160,7 @@ impl HalfNeighborList {
         return Ok(keys.finish());
     }
 
-    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         let mut results = Vec::new();
 
         for [species_first, species_second] in keys.iter_fixed_size() {
@@ -188,7 +185,7 @@ impl HalfNeighborList {
                 }
             }
 
-            results.push(Arc::new(builder.finish()));
+            results.push(builder.finish());
         }
 
         return Ok(results);
@@ -233,7 +230,7 @@ impl HalfNeighborList {
                 ]);
 
                 if let Some(sample_i) = sample_i {
-                    let array = values.data.as_array_mut();
+                    let array = values.data.to_array_mut();
 
                     array[[sample_i, 0, 0]] = pair_vector[0];
                     array[[sample_i, 1, 0]] = pair_vector[1];
@@ -247,7 +244,7 @@ impl HalfNeighborList {
                             sample_i.into(), system_i.into(), atom_j.into()
                         ]).expect("missing gradient sample");
 
-                        let array = gradient.data.as_array_mut();
+                        let array = gradient.data.to_array_mut();
 
                         array[[first_grad_sample_i, 0, 0, 0]] = -1.0;
                         array[[first_grad_sample_i, 1, 1, 0]] = -1.0;
@@ -294,7 +291,7 @@ impl FullNeighborList {
         return Ok(keys.finish());
     }
 
-    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         let mut results = Vec::new();
 
         for &[species_first, species_second] in keys.iter_fixed_size() {
@@ -325,7 +322,8 @@ impl FullNeighborList {
                     }
                 }
             }
-            results.push(Arc::new(builder.finish()));
+
+            results.push(builder.finish());
         }
 
         return Ok(results);
@@ -357,7 +355,7 @@ impl FullNeighborList {
                 ]);
 
                 if let Some(sample_i) = sample_i {
-                    let array = values.data.as_array_mut();
+                    let array = values.data.to_array_mut();
 
                     array[[sample_i, 0, 0]] = pair.vector[0];
                     array[[sample_i, 1, 0]] = pair.vector[1];
@@ -371,7 +369,7 @@ impl FullNeighborList {
                             sample_i.into(), system_i.into(), pair.second.into()
                         ]).expect("missing gradient sample");
 
-                        let array = gradient.data.as_array_mut();
+                        let array = gradient.data.to_array_mut();
 
                         array[[first_grad_sample_i, 0, 0, 0]] = -1.0;
                         array[[first_grad_sample_i, 1, 1, 0]] = -1.0;
@@ -401,7 +399,7 @@ impl FullNeighborList {
                 ]);
 
                 if let Some(sample_i) = sample_i {
-                    let array = values.data.as_array_mut();
+                    let array = values.data.to_array_mut();
 
                     array[[sample_i, 0, 0]] = -pair.vector[0];
                     array[[sample_i, 1, 0]] = -pair.vector[1];
@@ -415,7 +413,7 @@ impl FullNeighborList {
                             sample_i.into(), system_i.into(), pair.first.into()
                         ]).expect("missing gradient sample");
 
-                        let array = gradient.data.as_array_mut();
+                        let array = gradient.data.to_array_mut();
 
                         array[[first_grad_sample_i, 0, 0, 0]] = -1.0;
                         array[[first_grad_sample_i, 1, 1, 0]] = -1.0;
@@ -462,19 +460,20 @@ mod tests {
         ));
 
         // O-H block
-        let block = descriptor.block_by_id(0).values();
-        assert_eq!(*block.properties, Labels::new(["distance"], &[[0]]));
+        let block = descriptor.block_by_id(0);
+        let values = block.values();
+        assert_eq!(values.properties, Labels::new(["distance"], &[[0]]));
 
-        assert_eq!(block.components.len(), 1);
-        assert_eq!(*block.components[0], Labels::new(["pair_direction"], &[[0], [1], [2]]));
+        assert_eq!(values.components.len(), 1);
+        assert_eq!(values.components[0], Labels::new(["pair_direction"], &[[0], [1], [2]]));
 
-        assert_eq!(*block.samples, Labels::new(
+        assert_eq!(values.samples, Labels::new(
             ["structure", "pair_id", "first_atom", "second_atom"],
             // we have two O-H pairs
             &[[0, 0, 0, 1], [0, 1, 0, 2]]
         ));
 
-        let array = block.data.as_array();
+        let array = values.data.as_array();
         let expected = &ndarray::arr3(&[
             [[0.0], [0.75545], [-0.58895]],
             [[0.0], [-0.75545], [-0.58895]]
@@ -482,14 +481,15 @@ mod tests {
         assert_relative_eq!(array, expected, max_relative=1e-6);
 
         // H-H block
-        let block = descriptor.block_by_id(1).values();
-        assert_eq!(*block.samples, Labels::new(
+        let block = descriptor.block_by_id(1);
+        let values = block.values();
+        assert_eq!(values.samples, Labels::new(
             ["structure", "pair_id", "first_atom", "second_atom"],
             // we have one H-H pair
             &[[0, 2, 1, 2]]
         ));
 
-        let array = block.data.as_array();
+        let array = values.data.as_array();
         let expected = &ndarray::arr3(&[
             [[0.0], [-1.5109], [0.0]]
         ]).into_dyn();
@@ -513,19 +513,20 @@ mod tests {
         ));
 
         // O-H block
-        let block = descriptor.block_by_id(0).values();
-        assert_eq!(*block.properties, Labels::new(["distance"], &[[0]]));
+        let block = descriptor.block_by_id(0);
+        let values = block.values();
+        assert_eq!(values.properties, Labels::new(["distance"], &[[0]]));
 
-        assert_eq!(block.components.len(), 1);
-        assert_eq!(*block.components[0], Labels::new(["pair_direction"], &[[0], [1], [2]]));
+        assert_eq!(values.components.len(), 1);
+        assert_eq!(values.components[0], Labels::new(["pair_direction"], &[[0], [1], [2]]));
 
-        assert_eq!(*block.samples, Labels::new(
+        assert_eq!(values.samples, Labels::new(
             ["structure", "pair_id", "first_atom", "second_atom"],
             // we have two O-H pairs
             &[[0, 0, 0, 1], [0, 1, 0, 2]]
         ));
 
-        let array = block.data.as_array();
+        let array = values.data.as_array();
         let expected = &ndarray::arr3(&[
             [[0.0], [0.75545], [-0.58895]],
             [[0.0], [-0.75545], [-0.58895]]
@@ -533,19 +534,20 @@ mod tests {
         assert_relative_eq!(array, expected, max_relative=1e-6);
 
         // H-O block
-        let block = descriptor.block_by_id(1).values();
-        assert_eq!(*block.properties, Labels::new(["distance"], &[[0]]));
+        let block = descriptor.block_by_id(1);
+        let values= block.values();
+        assert_eq!(values.properties, Labels::new(["distance"], &[[0]]));
 
-        assert_eq!(block.components.len(), 1);
-        assert_eq!(*block.components[0], Labels::new(["pair_direction"], &[[0], [1], [2]]));
+        assert_eq!(values.components.len(), 1);
+        assert_eq!(values.components[0], Labels::new(["pair_direction"], &[[0], [1], [2]]));
 
-        assert_eq!(*block.samples, Labels::new(
+        assert_eq!(values.samples, Labels::new(
             ["structure", "pair_id", "first_atom", "second_atom"],
             // we have two H-O pairs
             &[[0, 0, 1, 0], [0, 1, 2, 0]]
         ));
 
-        let array = block.data.as_array();
+        let array = values.data.as_array();
         let expected = &ndarray::arr3(&[
             [[0.0], [-0.75545], [0.58895]],
             [[0.0], [0.75545], [0.58895]]
@@ -553,14 +555,15 @@ mod tests {
         assert_relative_eq!(array, expected, max_relative=1e-6);
 
         // H-H block
-        let block = descriptor.block_by_id(2).values();
-        assert_eq!(*block.samples, Labels::new(
+        let block = descriptor.block_by_id(2);
+        let values= block.values();
+        assert_eq!(values.samples, Labels::new(
             ["structure", "pair_id", "first_atom", "second_atom"],
             // we have one H-H pair, twice
             &[[0, 2, 1, 2], [0, 2, 2, 1]]
         ));
 
-        let array = block.data.as_array();
+        let array = values.data.as_array();
         let expected = &ndarray::arr3(&[
             [[0.0], [-1.5109], [0.0]],
             [[0.0], [1.5109], [0.0]]

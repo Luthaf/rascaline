@@ -60,7 +60,6 @@ TEST_CASE("systems errors") {
     rascal_system_t system = {0};
     rascal_calculation_options_t options = {0};
 
-    // default status code when function are not defined
     eqs_tensormap_t* descriptor = nullptr;
     auto status = rascal_calculator_compute(
         calculator, &descriptor, &system, 1, options
@@ -84,4 +83,5 @@ TEST_CASE("systems errors") {
     CHECK(rascal_last_error() == expected);
 
     rascal_calculator_free(calculator);
+    eqs_tensormap_free(descriptor);
 }

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use equistore::{Labels, LabelsBuilder, TensorMap};
 
 use crate::{Error, System};
@@ -45,11 +43,7 @@ impl CalculatorBase for AtomicComposition {
         return vec!["structure", "center"];
     }
 
-    fn samples(
-        &self,
-        keys: &Labels,
-        systems: &mut [Box<dyn System>],
-    ) -> Result<Vec<Arc<Labels>>, Error> {
+    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         assert_eq!(keys.names(), ["species_center"]);
         let mut samples = Vec::new();
         for [species_center_key] in keys.iter_fixed_size() {
@@ -68,7 +62,7 @@ impl CalculatorBase for AtomicComposition {
                     }
                 }
             }
-            samples.push(Arc::new(builder.finish()));
+            samples.push(builder.finish());
         }
 
         return Ok(samples);
@@ -85,16 +79,16 @@ impl CalculatorBase for AtomicComposition {
     fn positions_gradient_samples(
         &self,
         keys: &Labels,
-        _samples: &[Arc<Labels>],
+        _samples: &[Labels],
         _systems: &mut [Box<dyn System>],
-    ) -> Result<Vec<Arc<Labels>>, Error> {
+    ) -> Result<Vec<Labels>, Error> {
         // Positions/cell gradients of the composition are zero everywhere.
         // Therefore, we only return a vector of empty labels (one for each key).
-        let gradient_samples = Arc::new(Labels::empty(vec!["sample", "structure", "atom"]));
+        let gradient_samples = Labels::empty(vec!["sample", "structure", "atom"]);
         return Ok(vec![gradient_samples; keys.count()]);
     }
 
-    fn components(&self, keys: &Labels) -> Vec<Vec<Arc<Labels>>> {
+    fn components(&self, keys: &Labels) -> Vec<Vec<Labels>> {
         return vec![Vec::new(); keys.count()];
     }
 
@@ -102,10 +96,10 @@ impl CalculatorBase for AtomicComposition {
         return vec!["count"];
     }
 
-    fn properties(&self, keys: &Labels) -> Vec<Arc<Labels>> {
+    fn properties(&self, keys: &Labels) -> Vec<Labels> {
         let mut properties = LabelsBuilder::new(self.properties_names());
         properties.add(&[0]);
-        let properties = Arc::new(properties.finish());
+        let properties = properties.finish();
 
         return vec![properties; keys.count()];
     }
@@ -121,7 +115,7 @@ impl CalculatorBase for AtomicComposition {
             let species_center = key[0].i32();
 
             let values = block.values_mut();
-            let array = values.data.as_array_mut();
+            let array = values.data.to_array_mut();
 
             for (property_i, &[count]) in values.properties.iter_fixed_size().enumerate() {
                 if count == 0 {
@@ -183,7 +177,7 @@ mod tests {
 
         assert_eq!(descriptor.blocks().len(), 2);
         // test against hydrogen block which has the id `1`
-        let values = descriptor.block_by_id(1).values().data.as_array();
+        let values = descriptor.block_by_id(1).values().data.to_array();
         assert_eq!(values.shape(), [2, 1]);
 
         assert_eq!(values, array![[1.0], [1.0]].into_dyn());
@@ -201,8 +195,8 @@ mod tests {
             .unwrap();
 
         assert_eq!(descriptor.blocks().len(), 2);
-        //test against hydrogen block which has the id `1`
-        let values = descriptor.block_by_id(1).values().data.as_array();
+        // test against hydrogen block which has the id `1`
+        let values = descriptor.block_by_id(1).values().data.to_array();
         assert_eq!(values.shape(), [1, 1]);
 
         assert_eq!(values, array![[2.0]].into_dyn());

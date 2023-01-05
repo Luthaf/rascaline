@@ -21,8 +21,11 @@ class RascalFinder(object):
 
     def __call__(self):
         if self._cached_dll is None:
+            # Load equistore shared library in the process first, to ensure
+            # the rascaline shared library can find it
+            equistore._c_lib._get_library()
+
             path = _lib_path()
-            equistore._set_equistore_library_path(path)
 
             self._cached_dll = cdll.LoadLibrary(path)
             setup_functions(self._cached_dll)
