@@ -22,7 +22,6 @@ pub fn compute_partial(
 ) {
     let full = calculator.compute(systems, Default::default()).unwrap();
 
-    dbg!(full.keys());
     assert!(full.keys().count() < keys.count(), "selected keys should be a superset of the keys");
     check_compute_partial_keys(&mut calculator, &mut *systems, &full, keys);
 
