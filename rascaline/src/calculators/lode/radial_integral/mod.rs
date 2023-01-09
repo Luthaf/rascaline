@@ -18,9 +18,9 @@ pub trait LodeRadialIntegral: std::panic::RefUnwindSafe + Send {
     /// there.
     fn compute(&self, k_norm: f64, values: ArrayViewMut2<f64>, gradients: Option<ArrayViewMut2<f64>>);
 
-    /// Compute the contribution of the central atom to the final <n l m>
+    /// Compute the contribution of the central atom to the final `<n l m>`
     /// coefficients. By symmetry, only l=0 is non-zero, so this function
-    /// returns a 1-D array containing the different <n 0 0> coefficients.
+    /// returns a 1-D array containing the different `<n 0 0>` coefficients.
     ///
     /// This function differs from the rest of LODE calculation because it goes
     /// straight from atom => n l m, without using k-space projection in the
