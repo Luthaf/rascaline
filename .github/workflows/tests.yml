@@ -152,3 +152,37 @@ jobs:
 
       - name: python build tests
         run: tox -e build-python
+
+  # third set of jobs checking containing basic rust linting
+  lint-rust:
+    runs-on: ubuntu-20.04
+    name: Lint Rust code
+    strategy:
+      matrix:
+        include:
+          - rust-version: stable
+            rust-target: x86_64-unknown-linux-gnu
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: setup rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ matrix.rust-version }}
+          default: true
+          target: ${{ matrix.rust-target }}
+
+      - name: install dependencies
+        run: |
+          wget https://github.com/BurntSushi/ripgrep/releases/download/13.0.0/ripgrep-13.0.0-x86_64-unknown-linux-musl.tar.gz
+          tar xf ripgrep-13.0.0-x86_64-unknown-linux-musl.tar.gz
+          echo "$(pwd)/ripgrep-13.0.0-x86_64-unknown-linux-musl" >> $GITHUB_PATH
+
+      - name: check for leftover dbg!
+        run: |
+          # use ripgrep (rg) to check for instances of `dbg!` in rust files.
+          # rg will return 1 if it fails to find a match, so we invert it again
+          # with the `!` builtin to get the error/success in CI
+
+          ! rg "dbg!" --type=rust --quiet
