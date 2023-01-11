@@ -294,49 +294,37 @@ impl FullNeighborList {
         return Ok(keys.finish());
     }
 
-    /// Get the samples for the two given species in a pair
-    pub(crate) fn samples_for(
-        &self,
-        species_first: LabelValue,
-        species_second: LabelValue,
-        systems: &mut [Box<dyn System>]
-    ) -> Result<LabelsBuilder, Error> {
-        let mut builder = LabelsBuilder::new(
-            vec!["structure", "pair_id", "first_atom", "second_atom"]
-        );
-        for (system_i, system) in systems.iter_mut().enumerate() {
-            system.compute_neighbors(self.cutoff)?;
-            let species = system.species()?;
-
-            for (pair_id, pair) in system.pairs()?.iter().enumerate() {
-                if species_first == species_second {
-                    // same species for both atoms in the pair
-                    if species[pair.first] == species_first.i32() && species[pair.second] == species_second.i32() {
-                        builder.add(&[system_i, pair_id, pair.first, pair.second]);
-                        if pair.first != pair.second {
-                            // do not duplicate self pairs
-                            builder.add(&[system_i, pair_id, pair.second, pair.first]);
-                        }
-                    }
-                } else {
-                    // different species
-                    if species[pair.first] == species_first.i32() && species[pair.second] == species_second.i32() {
-                        builder.add(&[system_i, pair_id, pair.first, pair.second]);
-                    } else if species[pair.second] == species_first.i32() && species[pair.first] == species_second.i32() {
-                        builder.add(&[system_i, pair_id, pair.second, pair.first]);
-                    }
-                }
-            }
-        }
-
-        return Ok(builder);
-    }
-
     fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
         let mut results = Vec::new();
 
         for &[species_first, species_second] in keys.iter_fixed_size() {
-            let builder = self.samples_for(species_first, species_second, systems)?;
+            let mut builder = LabelsBuilder::new(
+                vec!["structure", "pair_id", "first_atom", "second_atom"]
+            );
+            for (system_i, system) in systems.iter_mut().enumerate() {
+                system.compute_neighbors(self.cutoff)?;
+                let species = system.species()?;
+
+                for (pair_id, pair) in system.pairs()?.iter().enumerate() {
+                    if species_first == species_second {
+                        // same species for both atoms in the pair
+                        if species[pair.first] == species_first.i32() && species[pair.second] == species_second.i32() {
+                            builder.add(&[system_i, pair_id, pair.first, pair.second]);
+                            if pair.first != pair.second {
+                                // do not duplicate self pairs
+                                builder.add(&[system_i, pair_id, pair.second, pair.first]);
+                            }
+                        }
+                    } else {
+                        // different species
+                        if species[pair.first] == species_first.i32() && species[pair.second] == species_second.i32() {
+                            builder.add(&[system_i, pair_id, pair.first, pair.second]);
+                        } else if species[pair.second] == species_first.i32() && species[pair.first] == species_second.i32() {
+                            builder.add(&[system_i, pair_id, pair.second, pair.first]);
+                        }
+                    }
+                }
+            }
             results.push(Arc::new(builder.finish()));
         }
 
