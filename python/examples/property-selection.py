@@ -61,8 +61,10 @@ selection = Labels(
 )
 selected_descriptor = calculator.compute(frames, selected_properties=selection)
 
-selected_descriptor.keys_to_samples("species_center")
-selected_descriptor.keys_to_properties(["species_neighbor_1", "species_neighbor_2"])
+selected_descriptor = selected_descriptor.keys_to_samples("species_center")
+selected_descriptor = selected_descriptor.keys_to_properties(
+    ["species_neighbor_1", "species_neighbor_2"]
+)
 
 properties = selected_descriptor.block().properties
 

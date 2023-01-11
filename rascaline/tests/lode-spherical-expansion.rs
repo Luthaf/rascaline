@@ -20,15 +20,17 @@ fn values() {
         let (mut systems, parameters) = data::load_calculator_input(path);
 
         let mut calculator = Calculator::new("lode_spherical_expansion", parameters).unwrap();
-        let mut descriptor = calculator.compute(&mut systems, Default::default()).expect("failed to run calculation");
+        let descriptor = calculator.compute(&mut systems, Default::default()).expect("failed to run calculation");
 
         let keys_to_move = Labels::empty(vec!["species_center"]);
-        descriptor.keys_to_samples(&keys_to_move, true).unwrap();
+        let descriptor = descriptor.keys_to_samples(&keys_to_move, true).unwrap();
+
         let keys_to_move = Labels::empty(vec!["species_neighbor"]);
-        descriptor.keys_to_properties(&keys_to_move, true).unwrap();
-        descriptor.components_to_properties(&["spherical_harmonics_m"]).unwrap();
+        let descriptor = descriptor.keys_to_properties(&keys_to_move, true).unwrap();
+        let descriptor = descriptor.components_to_properties(&["spherical_harmonics_m"]).unwrap();
+
         let keys_to_move = Labels::empty(vec!["spherical_harmonics_l"]);
-        descriptor.keys_to_properties(&keys_to_move, true).unwrap();
+        let descriptor = descriptor.keys_to_properties(&keys_to_move, true).unwrap();
 
         assert_eq!(descriptor.blocks().len(), 1);
         let block = &descriptor.block_by_id(0);
@@ -60,15 +62,17 @@ fn gradients() {
             gradients: &["positions"],
             ..Default::default()
         };
-        let mut descriptor = calculator.compute(&mut systems, options).expect("failed to run calculation");
+        let descriptor = calculator.compute(&mut systems, options).expect("failed to run calculation");
 
         let keys_to_move = Labels::empty(vec!["species_center"]);
-        descriptor.keys_to_samples(&keys_to_move, true).unwrap();
+        let descriptor = descriptor.keys_to_samples(&keys_to_move, true).unwrap();
+
         let keys_to_move = Labels::empty(vec!["species_neighbor"]);
-        descriptor.keys_to_properties(&keys_to_move, true).unwrap();
-        descriptor.components_to_properties(&["spherical_harmonics_m"]).unwrap();
+        let descriptor = descriptor.keys_to_properties(&keys_to_move, true).unwrap();
+        let descriptor = descriptor.components_to_properties(&["spherical_harmonics_m"]).unwrap();
+
         let keys_to_move = Labels::empty(vec!["spherical_harmonics_l"]);
-        descriptor.keys_to_properties(&keys_to_move, true).unwrap();
+        let descriptor = descriptor.keys_to_properties(&keys_to_move, true).unwrap();
 
         assert_eq!(descriptor.blocks().len(), 1);
         let block = &descriptor.block_by_id(0);

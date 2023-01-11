@@ -202,9 +202,10 @@ mod tests {
         }) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
-        let mut descriptor = calculator.compute(&mut systems, Default::default()).unwrap();
+        let descriptor = calculator.compute(&mut systems, Default::default()).unwrap();
+
         let keys_to_move = Labels::empty(vec!["species_center"]);
-        descriptor.keys_to_samples(&keys_to_move, true).unwrap();
+        let descriptor = descriptor.keys_to_samples(&keys_to_move, true).unwrap();
 
         assert_eq!(descriptor.blocks().len(), 1);
         let values = descriptor.block_by_id(0).values().data.as_array();

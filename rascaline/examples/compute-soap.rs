@@ -35,19 +35,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // run the calculation
-    let mut descriptor = calculator.compute(&mut systems, options)?;
+    let descriptor = calculator.compute(&mut systems, options)?;
 
     // Transform the descriptor to dense representation, with one sample for
     // each atom-centered environment, and all neighbor species part of the
     // properties
     let keys_to_move = Labels::empty(vec!["species_center"]);
-    descriptor.keys_to_samples(&keys_to_move, /* sort_samples */ true)?;
+    let descriptor = descriptor.keys_to_samples(&keys_to_move, /* sort_samples */ true)?;
 
     let keys_to_move = Labels::empty(vec!["species_neighbor_1", "species_neighbor_2"]);
-    descriptor.keys_to_properties(&keys_to_move, /* sort_samples */ true)?;
+    let descriptor = descriptor.keys_to_properties(&keys_to_move, /* sort_samples */ true)?;
 
     // descriptor now contains a single block, which can be used as the input
     // to standard ML algorithms
+    let values = descriptor.block_by_id(0).values();
+    println!("the shape of the values is {:?}", values.data.as_array().shape());
 
     Ok(())
 }

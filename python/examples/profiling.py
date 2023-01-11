@@ -35,8 +35,10 @@ def compute_soap(path):
 
     calculator = SoapPowerSpectrum(**HYPER_PARAMETERS)
     descriptor = calculator.compute(frames, gradients=["positions"])
-    descriptor.keys_to_samples("species_center")
-    descriptor.keys_to_properties(["species_neighbor_1", "species_neighbor_2"])
+    descriptor = descriptor.keys_to_samples("species_center")
+    descriptor = descriptor.keys_to_properties(
+        ["species_neighbor_1", "species_neighbor_2"]
+    )
 
     return descriptor
 

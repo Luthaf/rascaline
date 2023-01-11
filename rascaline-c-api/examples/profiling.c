@@ -72,6 +72,9 @@ cleanup:
     }
 }
 
+static eqs_tensormap_t* move_keys_to_samples(eqs_tensormap_t* descriptor, const char* keys_to_move[], size_t keys_to_move_len);
+static eqs_tensormap_t* move_keys_to_properties(eqs_tensormap_t* descriptor, const char* keys_to_move[], size_t keys_to_move_len);
+
 // this is the same function as in the compute-soap.c example
 eqs_tensormap_t* compute_soap(const char* path) {
     int status = RASCAL_SUCCESS;
@@ -132,22 +135,14 @@ eqs_tensormap_t* compute_soap(const char* path) {
         goto cleanup;
     }
 
-    keys_to_move.names = keys_to_samples;
-    keys_to_move.size = 1;
-    keys_to_move.values = NULL;
-    keys_to_move.count = 0;
-    status = eqs_tensormap_keys_to_samples(descriptor, keys_to_move, true);
-    if (status != EQS_SUCCESS) {
+    descriptor = move_keys_to_samples(descriptor, keys_to_samples, 1);
+    if (descriptor == NULL) {
         printf("Error: %s\n", eqs_last_error());
         goto cleanup;
     }
 
-    keys_to_move.names = keys_to_properties;
-    keys_to_move.size = 2;
-    keys_to_move.values = NULL;
-    keys_to_move.count = 0;
-    status = eqs_tensormap_keys_to_properties(descriptor, keys_to_move, true);
-    if (status != EQS_SUCCESS) {
+    descriptor = move_keys_to_properties(descriptor, keys_to_properties, 2);
+    if (descriptor == NULL) {
         printf("Error: %s\n", eqs_last_error());
         goto cleanup;
     }
@@ -157,4 +152,36 @@ cleanup:
     rascal_basic_systems_free(systems, n_systems);
 
     return descriptor;
+}
+
+
+eqs_tensormap_t* move_keys_to_samples(eqs_tensormap_t* descriptor, const char* keys_to_move[], size_t keys_to_move_len) {
+    eqs_labels_t keys = {0};
+    eqs_tensormap_t* moved_descriptor = NULL;
+
+    keys.names = keys_to_move;
+    keys.size = keys_to_move_len;
+    keys.values = NULL;
+    keys.count = 0;
+
+    moved_descriptor = eqs_tensormap_keys_to_samples(descriptor, keys, true);
+    eqs_tensormap_free(descriptor);
+
+    return moved_descriptor;
+}
+
+
+eqs_tensormap_t* move_keys_to_properties(eqs_tensormap_t* descriptor, const char* keys_to_move[], size_t keys_to_move_len) {
+    eqs_labels_t keys = {0};
+    eqs_tensormap_t* moved_descriptor = NULL;
+
+    keys.names = keys_to_move;
+    keys.size = keys_to_move_len;
+    keys.values = NULL;
+    keys.count = 0;
+
+    moved_descriptor = eqs_tensormap_keys_to_properties(descriptor, keys, true);
+    eqs_tensormap_free(descriptor);
+
+    return moved_descriptor;
 }
