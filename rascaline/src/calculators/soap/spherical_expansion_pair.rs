@@ -582,15 +582,18 @@ impl CalculatorBase for SphericalExpansionByPair {
             let samples = match cache.entry((s1, s2)) {
                 Entry::Occupied(entry) => Arc::clone(entry.get()),
                 Entry::Vacant(entry) => {
-                    let mut samples = FullNeighborList { cutoff: self.parameters.cutoff }.samples_for(s1, s2, systems)?;
+                    let mut builder = LabelsBuilder::new(self.samples_names());
 
-                    if s1 == s2 {
-                        // we need to insert the self pairs
-                        for (system_i, system) in systems.iter().enumerate() {
-                            let species = system.species()?;
+                    for (system_i, system) in systems.iter_mut().enumerate() {
+                        system.compute_neighbors(self.parameters.cutoff)?;
+                        let species = system.species()?;
+
+                        if s1 == s2 {
+                            // same species for the two atoms, we need to insert
+                            // the self pairs
                             for center_i in 0..system.size()? {
                                 if species[center_i] == s1.i32() {
-                                    samples.add(&[
+                                    builder.add(&[
                                         system_i.into(),
                                         // set pair_id as -1 for self pairs
                                         LabelValue::new(-1),
@@ -599,11 +602,32 @@ impl CalculatorBase for SphericalExpansionByPair {
                                     ]);
                                 }
                             }
+
+                            for (pair_id, pair) in system.pairs()?.iter().enumerate() {
+                                if species[pair.first] == s1.i32() && species[pair.second] == s2.i32() {
+                                    builder.add(&[system_i, pair_id, pair.first, pair.second]);
+                                    if pair.first != pair.second {
+                                        // do not duplicate actual pairs between
+                                        // an atom and itself (these can exist
+                                        // when the cutoff is larger than the
+                                        // cell in periodic boundary conditions)
+                                        builder.add(&[system_i, pair_id, pair.second, pair.first]);
+                                    }
+                                }
+                            }
+                        } else {
+                            // different species for the two atoms
+                            for (pair_id, pair) in system.pairs()?.iter().enumerate() {
+                                if species[pair.first] == s1.i32() && species[pair.second] == s2.i32() {
+                                    builder.add(&[system_i, pair_id, pair.first, pair.second]);
+                                } else if species[pair.second] == s1.i32() && species[pair.first] == s2.i32() {
+                                    builder.add(&[system_i, pair_id, pair.second, pair.first]);
+                                }
+                            }
                         }
                     }
-                    let samples = Arc::new(samples.finish());
-                    debug_assert_eq!(samples.names(), self.samples_names());
 
+                    let samples = Arc::new(builder.finish());
                     Arc::clone(entry.insert(samples))
                 }
             };
