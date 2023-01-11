@@ -57,8 +57,8 @@ descriptor = calculator.compute(frames, gradients=["positions"])
 
 print("before: ", len(descriptor.keys))
 
-descriptor.keys_to_samples("species_center")
-descriptor.keys_to_properties(["species_neighbor_1", "species_neighbor_2"])
+descriptor = descriptor.keys_to_samples("species_center")
+descriptor = descriptor.keys_to_properties(["species_neighbor_1", "species_neighbor_2"])
 print("after: ", len(descriptor.keys))
 
 # %%

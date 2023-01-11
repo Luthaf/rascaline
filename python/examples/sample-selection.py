@@ -60,14 +60,14 @@ selection = Labels(
     values=np.array([[0], [2], [3]]),
 )
 
-descriptor_partial_structures = calculator.compute(frames, selected_samples=selection)
+descriptor_selected = calculator.compute(frames, selected_samples=selection)
 
-descriptor_partial_structures.keys_to_samples("species_center")
-descriptor_partial_structures.keys_to_properties(
+descriptor_selected = descriptor_selected.keys_to_samples("species_center")
+descriptor_selected = descriptor_selected.keys_to_properties(
     ["species_neighbor_1", "species_neighbor_2"]
 )
 
-samples = descriptor_partial_structures.block().samples
+samples = descriptor_selected.block().samples
 
 # %%
 #
@@ -86,9 +86,9 @@ selection = Labels(
     values=np.array([[0, 0], [2, 1]]),
 )
 
-descriptor_partial_structures = calculator.compute(frames, selected_samples=selection)
-descriptor_partial_structures.keys_to_samples("species_center")
-descriptor_partial_structures.keys_to_properties(
+descriptor_selected = calculator.compute(frames, selected_samples=selection)
+descriptor_selected = descriptor_selected.keys_to_samples("species_center")
+descriptor_selected = descriptor_selected.keys_to_properties(
     ["species_neighbor_1", "species_neighbor_2"]
 )
 
@@ -98,7 +98,7 @@ descriptor_partial_structures.keys_to_properties(
 
 print(
     "shape of first block of descriptor:",
-    descriptor_partial_structures.block(0).values.shape,
+    descriptor_selected.block(0).values.shape,
 )
 
 # %%
@@ -108,27 +108,27 @@ print(
 # `TensorMap` to create your selection
 
 descriptor = calculator.compute(frames)
-descriptor_partial_structures = calculator.compute(frames, selected_samples=selection)
+descriptor_selected = calculator.compute(frames, selected_samples=selection)
 
 # %%
 #
 # notice how we are passing a TensorMap as the ``selected_samples`` argument:
 
-print(type(descriptor_partial_structures))
+print(type(descriptor_selected))
 descriptor_for_comparison = calculator.compute(
-    frames, selected_samples=descriptor_partial_structures
+    frames, selected_samples=descriptor_selected
 )
 
 # %%
 #
 # The descriptor had 420 samples stored in the first block,
-# the ``descriptor_partial_structures`` had 0. So ``descriptor_for_comparison``
+# the ``descriptor_selected`` had 0. So ``descriptor_for_comparison``
 # will also have 0 samples.
 
 print("shape of first block initially:", descriptor.block(0).values.shape)
 print(
     "shape of first block of reference:",
-    descriptor_partial_structures.block(0).values.shape,
+    descriptor_selected.block(0).values.shape,
 )
 print(
     "shape of first block after selection:",

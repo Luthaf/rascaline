@@ -5,6 +5,9 @@
 #include <rascaline.h>
 #include <equistore.h>
 
+static eqs_tensormap_t* move_keys_to_samples(eqs_tensormap_t* descriptor, const char* keys_to_move[], size_t keys_to_move_len);
+static eqs_tensormap_t* move_keys_to_properties(eqs_tensormap_t* descriptor, const char* keys_to_move[], size_t keys_to_move_len);
+
 int main(int argc, char* argv[]) {
     int status = RASCAL_SUCCESS;
     rascal_calculator_t* calculator = NULL;
@@ -26,7 +29,6 @@ int main(int argc, char* argv[]) {
     eqs_tensormap_t* descriptor = NULL;
     const eqs_block_t* block = NULL;
     eqs_array_t data = {0};
-    eqs_labels_t keys_to_move = {0};
 
     // hyper-parameters for the calculation as JSON
     const char* parameters = "{\n"
@@ -74,22 +76,14 @@ int main(int argc, char* argv[]) {
     // The descriptor is an equistore `TensorMap`, containing multiple blocks.
     // We can transform it to a single block containing a dense representation,
     // with one sample for each atom-centered environment.
-    keys_to_move.names = keys_to_samples;
-    keys_to_move.size = 1;
-    keys_to_move.values = NULL;
-    keys_to_move.count = 0;
-    status = eqs_tensormap_keys_to_samples(descriptor, keys_to_move, true);
-    if (status != EQS_SUCCESS) {
+    descriptor = move_keys_to_samples(descriptor, keys_to_samples, 1);
+    if (descriptor == NULL) {
         printf("Error: %s\n", eqs_last_error());
         goto cleanup;
     }
 
-    keys_to_move.names = keys_to_properties;
-    keys_to_move.size = 2;
-    keys_to_move.values = NULL;
-    keys_to_move.count = 0;
-    status = eqs_tensormap_keys_to_properties(descriptor, keys_to_move, true);
-    if (status != EQS_SUCCESS) {
+    descriptor = move_keys_to_properties(descriptor, keys_to_properties, 2);
+    if (descriptor == NULL) {
         printf("Error: %s\n", eqs_last_error());
         goto cleanup;
     }
@@ -128,4 +122,36 @@ cleanup:
     } else {
         return 0;
     }
+}
+
+
+eqs_tensormap_t* move_keys_to_samples(eqs_tensormap_t* descriptor, const char* keys_to_move[], size_t keys_to_move_len) {
+    eqs_labels_t keys = {0};
+    eqs_tensormap_t* moved_descriptor = NULL;
+
+    keys.names = keys_to_move;
+    keys.size = keys_to_move_len;
+    keys.values = NULL;
+    keys.count = 0;
+
+    moved_descriptor = eqs_tensormap_keys_to_samples(descriptor, keys, true);
+    eqs_tensormap_free(descriptor);
+
+    return moved_descriptor;
+}
+
+
+eqs_tensormap_t* move_keys_to_properties(eqs_tensormap_t* descriptor, const char* keys_to_move[], size_t keys_to_move_len) {
+    eqs_labels_t keys = {0};
+    eqs_tensormap_t* moved_descriptor = NULL;
+
+    keys.names = keys_to_move;
+    keys.size = keys_to_move_len;
+    keys.values = NULL;
+    keys.count = 0;
+
+    moved_descriptor = eqs_tensormap_keys_to_properties(descriptor, keys, true);
+    eqs_tensormap_free(descriptor);
+
+    return moved_descriptor;
 }

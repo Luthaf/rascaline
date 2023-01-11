@@ -47,7 +47,7 @@ fn compute_soap(path: &str) -> Result<TensorMap, Box<dyn std::error::Error>> {
         }
     }"#;
 
-    let mut descriptor = time_graph::spanned!("Full calculation", {
+    let descriptor = time_graph::spanned!("Full calculation", {
         let mut calculator = Calculator::new("soap_power_spectrum", parameters.to_owned())?;
 
         let options = CalculationOptions {
@@ -58,10 +58,10 @@ fn compute_soap(path: &str) -> Result<TensorMap, Box<dyn std::error::Error>> {
     });
 
     let keys_to_move = Labels::empty(vec!["species_center"]);
-    descriptor.keys_to_samples(&keys_to_move, /* sort_samples */ true)?;
+    let descriptor = descriptor.keys_to_samples(&keys_to_move, /* sort_samples */ true)?;
 
     let keys_to_move = Labels::empty(vec!["species_neighbor_1", "species_neighbor_2"]);
-    descriptor.keys_to_properties(&keys_to_move, /* sort_samples */ true)?;
+    let descriptor = descriptor.keys_to_properties(&keys_to_move, /* sort_samples */ true)?;
 
     Ok(descriptor)
 }
