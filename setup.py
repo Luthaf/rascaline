@@ -153,6 +153,7 @@ def get_version():
 
 setup(
     version=get_version(),
+    author=", ".join(open(os.path.join(ROOT, "AUTHORS")).read().splitlines()),
     ext_modules=[
         # only declare the extension, it is built & copied as required by cmake
         # in the build_ext command
