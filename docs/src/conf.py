@@ -14,8 +14,8 @@ sys.path.append(os.path.join(ROOT, "docs", "extensions"))
 # -- Project information -----------------------------------------------------
 
 project = "Rascaline"
-copyright = f"{datetime.now().date().year}, Rascaline developers"
-author = "Rascaline developers"
+author = ", ".join(open(os.path.join(ROOT, "AUTHORS")).read().splitlines())
+copyright = f"{datetime.now().date().year}, {author}"
 
 
 def load_version_from_cargo_toml():

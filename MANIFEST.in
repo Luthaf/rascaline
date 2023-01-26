@@ -8,6 +8,8 @@ recursive-include rascaline-c-api *
 recursive-include docs/rascaline-json-schema *
 include Cargo.*
 include pyproject.toml
+include AUTHORS
+include LICENSE
 
 prune python/tests
 prune python/*.egg-info
