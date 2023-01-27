@@ -65,11 +65,6 @@ def generate_splines(
         )
         positions, values, derivatives = dynamic_spliner.spline()
 
-    # Due to the inner workings of rascaline,
-    # values and derivatives need to be multiplied by 1/(4pi):
-    values = values / (4.0 * np.pi)
-    derivatives = derivatives / (4.0 * np.pi)
-
     # Convert positions, values, derivatives into the appropriate json formats:
     spline_points = []
     for position, value, derivative in zip(positions, values, derivatives):

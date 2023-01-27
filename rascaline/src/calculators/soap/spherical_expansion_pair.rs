@@ -23,9 +23,6 @@ use super::SoapRadialIntegralCache;
 
 use super::radial_integral::SoapRadialIntegralParameters;
 
-
-const FOUR_PI: f64 = 4.0 * std::f64::consts::PI;
-
 /// Parameters for spherical expansion calculator.
 ///
 /// The spherical expansion is at the core of representations in the SOAP
@@ -249,10 +246,7 @@ impl SphericalExpansionByPair {
         spherical_harmonics.compute(Vector3D::new(0.0, 0.0, 1.0), false);
         let f_scaling = self.scaling_functions(0.0);
 
-        // The global factor of 4PI is used for the pair contributions as
-        // well. See the relevant comments there for more details.
         let factor = self.parameters.center_atom_weight
-            * FOUR_PI
             * f_scaling
             * spherical_harmonics.values[[0, 0]];
 
@@ -382,12 +376,7 @@ impl SphericalExpansionByPair {
             // compute the full spherical expansion coefficients & gradients
             for sph_value in spherical_harmonics.iter() {
                 for (n, ri_value) in radial_integral.iter().enumerate() {
-                    // The first factor of 4pi arises from the integration over
-                    // the angular variables. It is included here as a global
-                    // factor since it is not part of the spherical harmonics,
-                    // and to keep the radial_integral class about the radial
-                    // part of the integration only.
-                    contribution.values[[lm_index, n]] = FOUR_PI * f_scaling * sph_value * ri_value;
+                    contribution.values[[lm_index, n]] = f_scaling * sph_value * ri_value;
                 }
                 lm_index += 1;
             }
@@ -405,23 +394,20 @@ impl SphericalExpansionByPair {
                         let ri_value = radial_integral[n];
                         let ri_grad = radial_integral_grad[n];
 
-                        gradient[[0, lm_index_grad, n]] = FOUR_PI * (
+                        gradient[[0, lm_index_grad, n]] =
                             f_scaling_grad * dr_d_spatial[0] * ri_value * sph_value
                             + f_scaling * ri_grad * dr_d_spatial[0] * sph_value
-                            + f_scaling * ri_value * sph_grad_x / distance
-                        );
+                            + f_scaling * ri_value * sph_grad_x / distance;
 
-                        gradient[[1, lm_index_grad, n]] = FOUR_PI * (
+                        gradient[[1, lm_index_grad, n]] =
                             f_scaling_grad * dr_d_spatial[1] * ri_value * sph_value
                             + f_scaling * ri_grad * dr_d_spatial[1] * sph_value
-                            + f_scaling * ri_value * sph_grad_y / distance
-                        );
+                            + f_scaling * ri_value * sph_grad_y / distance;
 
-                        gradient[[2, lm_index_grad, n]] = FOUR_PI * (
+                        gradient[[2, lm_index_grad, n]] =
                             f_scaling_grad * dr_d_spatial[2] * ri_value * sph_value
                             + f_scaling * ri_grad * dr_d_spatial[2] * sph_value
-                            + f_scaling * ri_value * sph_grad_z / distance
-                        );
+                            + f_scaling * ri_value * sph_grad_z / distance;
                     }
 
                     lm_index_grad += 1;

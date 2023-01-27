@@ -8,8 +8,6 @@ use crate::Error;
 
 use super::SoapRadialIntegral;
 
-const SQRT_PI_OVER_4: f64 = 0.44311346272637897;
-
 /// Parameters controlling the SOAP radial integral with GTO radial basis
 #[derive(Debug, Clone, Copy)]
 pub struct SoapRadialIntegralGtoParameters {
@@ -119,14 +117,18 @@ impl SoapRadialIntegral for SoapRadialIntegralGto {
             );
         }
 
-        // Define global factor of radial integral arising from two parts:
-        // - a global factor of sqrt(pi)/4 from the integral itself
-        // - the normalization constant of the atomic Gaussian density.
-        //   We use a factor of 1/(pi*sigma^2)^0.75 which leads to
-        //   Gaussian densities that are normalized in the L2-sense, i.e.
-        //   integral_{R^3} |g(r)|^2 d^3r = 1.
-        let atomic_gaussian_normalization = (std::f64::consts::PI * self.atomic_gaussian_width_2).powf(-0.75);
-        let global_factor = SQRT_PI_OVER_4 * atomic_gaussian_normalization;
+        // Define global factor of radial integral arising from three parts:
+        // - a global 4 pi factor coming from integration of the angular part of
+        //   the radial integral (see the docs for `SoapRadialIntegral`)
+        // - a global factor of sqrt(pi)/4 from the calculation of the integral
+        //   of GTO basis functions and gaussian density
+        // - the normalization constant of the atomic Gaussian density. We use a
+        //   factor of 1/(pi*sigma^2)^0.75 which leads to Gaussian densities
+        //   that are normalized in the L2-sense, i.e. integral_{R^3} |g(r)|^2
+        //   d^3r = 1.
+        //
+        // These three factors simplify to (pi/sigma^2)^3/4
+        let global_factor = (std::f64::consts::PI / self.atomic_gaussian_width_2).powf(0.75);
 
         let c = self.atomic_gaussian_constant;
         let c_rij = c * distance;
@@ -309,7 +311,7 @@ mod tests {
         gto.compute(1e-12, values.view_mut(), Some(gradients_plus.view_mut()));
 
         assert_relative_eq!(
-            gradients, gradients_plus, epsilon=1e-12, max_relative=1e-6,
+            gradients, gradients_plus, epsilon=1e-11, max_relative=1e-6,
         );
     }
 

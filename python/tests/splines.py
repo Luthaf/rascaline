@@ -50,8 +50,7 @@ class TestSplines(unittest.TestCase):
         # check derivatives at r = 0.0
         self.assertTrue(
             np.allclose(
-                np.array(spline_points[0]["derivatives"]["data"]),
-                np.ones((9 + 1) * 12) / (4.0 * np.pi),
+                np.array(spline_points[0]["derivatives"]["data"]), np.ones((9 + 1) * 12)
             )
         )
 
@@ -63,7 +62,7 @@ class TestSplines(unittest.TestCase):
         self.assertTrue(
             np.allclose(
                 np.array(spline_points[random_spline_point]["values"]["data"]),
-                np.sin(random_x) * np.ones((9 + 1) * 12) / (4.0 * np.pi),
+                np.sin(random_x) * np.ones((9 + 1) * 12),
             )
         )
 
@@ -99,8 +98,7 @@ class TestSplines(unittest.TestCase):
         # check derivatives at r = 0.0
         self.assertTrue(
             np.allclose(
-                np.array(spline_points[0]["derivatives"]["data"]),
-                np.ones((9 + 1) * 12) / (4.0 * np.pi),
+                np.array(spline_points[0]["derivatives"]["data"]), np.ones((9 + 1) * 12)
             )
         )
 
@@ -112,7 +110,7 @@ class TestSplines(unittest.TestCase):
         self.assertTrue(
             np.allclose(
                 np.array(spline_points[random_spline_point]["values"]["data"]),
-                np.sin(random_x) * np.ones((9 + 1) * 12) / (4.0 * np.pi),
+                np.sin(random_x) * np.ones((9 + 1) * 12),
             )
         )
 
