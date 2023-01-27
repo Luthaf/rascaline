@@ -290,7 +290,6 @@ mod tests {
         let mut values = ndarray::Array1::from_elem((1,), 0.0);
         let mut gradients = ndarray::Array1::from_elem((1,), 0.0);
         for &x in &[-2.2, -1.00242144, 0.0, 0.000000001, 2.3, 3.2, 4.7, 5.3, 5.99999999] {
-            dbg!(x);
             spline.compute(x, values.view_mut(), Some(gradients.view_mut()));
             assert_relative_eq!(values[0], f64::sin(x), max_relative=1e-5, epsilon=1e-12);
             assert_relative_eq!(gradients[0], f64::cos(x), max_relative=1e-5, epsilon=1e-12);

@@ -1,5 +1,15 @@
-/// Euler's constant
-pub const EULER: f64 = 0.5772156649015329;
+mod consts {
+    /// sqrt(3)
+    pub const SQRT_3: f64 = 1.7320508075688772;
+
+    /// sqrt(2 / pi)
+    pub const SQRT_FRAC_2_PI: f64 = 0.7978845608028654;
+
+    /// Euler's constant
+    pub const EULER: f64 = 0.5772156649015329;
+}
+
+
 
 mod double_regularized_1f1;
 pub(crate) use self::double_regularized_1f1::DoubleRegularized1F1;
@@ -15,6 +25,9 @@ pub use self::erf::{erf, erfc};
 
 mod gamma;
 pub(crate) use self::gamma::{gamma, ln_gamma, digamma};
+
+mod bessel;
+pub use self::bessel::bessel_iv;
 
 mod hyp1f1;
 pub(crate) use self::hyp1f1::hyp1f1;

@@ -3,7 +3,8 @@
 
 use std::f64::consts::PI;
 
-use crate::math::{digamma, gamma, EULER};
+use crate::math::{digamma, gamma};
+use crate::math::consts::EULER;
 
 fn is_integer(x: f64) -> bool {
     return (x as i32) as f64 == x;
@@ -11,12 +12,12 @@ fn is_integer(x: f64) -> bool {
 
 /// Compute the 2F1 hypergeometric function.
 ///
-/// The current implementation does not support any of the 
+/// The current implementation does not support any of the
 /// following combination of input parameters
 ///
 ///  - `x == 1` and `c - a - b < 0`
 ///  - `c < 0` and `a < 0` and `a > c`
-///  - `c < 0` and `b < 0` and `b > c` 
+///  - `c < 0` and `b < 0` and `b > c`
 ///
 /// The implementation is translated from scipy's specfun.f, and distributed
 /// under the CSD-3-Clauses license, Copyright (c) 2001-2002 Enthought, Inc.
@@ -373,7 +374,6 @@ mod tests {
         ];
 
         for (a, b, c, x, expected) in scipy_points {
-            dbg!(a, b, c, x);
             assert_relative_eq!(hyp2f1(a, b, c, x), expected, max_relative=1e-12, epsilon=1e-15);
         }
     }
