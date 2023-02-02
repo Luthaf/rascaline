@@ -2,6 +2,7 @@ mod samples;
 
 pub use self::samples::{SpeciesFilter, SamplesBuilder};
 pub use self::samples::AtomCenteredSamples;
+pub use self::samples::SamplesPerAtom;
 pub use self::samples::LongRangeSamplesPerAtom;
 
 mod keys;

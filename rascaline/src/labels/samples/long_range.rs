@@ -31,7 +31,7 @@ impl SamplesBuilder for LongRangeSamplesPerAtom {
         for (system_i, system) in systems.iter_mut().enumerate() {
             let species = system.species()?;
 
-            // we want to take all centers matching `species_center` iff
+            // we want to take all centers matching `species_center` if
             // there is at least one atom in the system matching
             // `species_neighbor`
             let mut has_matching_neighbor = false;

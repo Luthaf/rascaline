@@ -256,6 +256,13 @@ class CalculatorBase:
         return TensorMap._from_ptr(tensor_map_ptr)
 
 
+class Composition(CalculatorBase):
+    """An composition calculator for obtaining the stoichiometric information."""
+
+    def __init__(self):
+        super().__init__("composition", {})
+
+
 class DummyCalculator(CalculatorBase):
     def __init__(self, cutoff, delta, name):
         parameters = {
