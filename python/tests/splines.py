@@ -16,7 +16,6 @@ def cosine(n, ell, r):
 
 class TestSplines(unittest.TestCase):
     def test_splines_with_n_spline_points(self):
-
         cutoff_radius = 8.0
 
         spline_points = rascaline.generate_splines(
