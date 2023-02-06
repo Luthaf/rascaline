@@ -1,4 +1,6 @@
-FROM quay.io/pypa/manylinux2010_x86_64
+# Use a many linux with a specification
+# manylinux_${GLIBCMAJOR}_${GLIBCMINOR}_${ARCH}
+FROM quay.io/pypa/manylinux_2_28_x86_64
 
 RUN yum install git -y
 RUN git config --global --add safe.directory /code

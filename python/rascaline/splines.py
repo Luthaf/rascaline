@@ -13,7 +13,6 @@ def generate_splines(
     n_spline_points=None,
     requested_accuracy=1e-8,
 ):
-
     """Spline generator for tabulated radial integrals.
 
     Besides some self-explanatory parameters, this function takes as inputs two
@@ -100,7 +99,6 @@ class DynamicSpliner:
         derivatives_fn,
         requested_accuracy,
     ) -> None:
-
         """Dynamic spline generator.
 
         This class can be used to spline any set of functions defined within
@@ -134,7 +132,6 @@ class DynamicSpliner:
             )
 
     def spline(self):
-
         """Calculates and outputs the splines.
 
         The outputs of this function are, respectively:
@@ -206,7 +203,6 @@ class DynamicSpliner:
         return spline_x, spline_f, spline_df
 
     def _compute_from_spline(self, positions):
-
         interpolated_values = []
         for x in positions:
             delta_x = self.spline_points[1].position - self.spline_points[0].position
