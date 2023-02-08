@@ -119,7 +119,7 @@ mod tests {
     fn name_and_parameters() {
         let calculator = Calculator::from(Box::new(Composition{}) as Box<dyn CalculatorBase>);
 
-        assert_eq!(calculator.name(), "atom centered composition features");
+        assert_eq!(calculator.name(), "atom-centered composition features");
         assert_eq!(calculator.parameters(), "{}");
     }
 
