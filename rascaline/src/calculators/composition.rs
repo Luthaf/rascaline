@@ -12,7 +12,15 @@ use crate::labels::{CenterSpeciesKeys, KeysBuilder};
 #[derive(Debug, Clone)]
 #[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 /// A composition calculator for obtaining the stoichiometric information.
-pub struct Composition {}
+/// 
+/// If `per_structure=false` is `False` the calculator has one property `count` that is
+/// `1` for all centers, and has a sample index that indicates the central atom type.
+/// For `per_structure=true` the structure sum is performed and calculator as one 
+/// property for each species in the dataset.
+pub struct Composition {
+    // Define if the atom numbers should be summed for each structure.
+    //pub per_structure: bool,
+}
 
 impl CalculatorBase for Composition {
     fn name(&self) -> String {
