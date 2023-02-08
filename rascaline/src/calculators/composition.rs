@@ -11,12 +11,12 @@ use crate::labels::{CenterSpeciesKeys, KeysBuilder};
 
 #[derive(Debug, Clone)]
 #[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
-/// An composition calculator for obtaining the stoichiometric information.
+/// A composition calculator for obtaining the stoichiometric information.
 pub struct Composition {}
 
 impl CalculatorBase for Composition {
     fn name(&self) -> String {
-        return "atom centered composition features".into();
+        return "atom-centered composition features".into();
     }
 
     fn parameters(&self) -> String {

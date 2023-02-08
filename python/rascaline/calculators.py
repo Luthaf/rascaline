@@ -257,7 +257,7 @@ class CalculatorBase:
 
 
 class Composition(CalculatorBase):
-    """An composition calculator for obtaining the stoichiometric information."""
+    """A composition calculator for obtaining the stoichiometric information."""
 
     def __init__(self):
         super().__init__("composition", {})
