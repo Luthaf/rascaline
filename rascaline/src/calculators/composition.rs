@@ -90,14 +90,6 @@ impl CalculatorBase for Composition {
             let values = block.values_mut();
             let array = values.data.as_array_mut();
             array.fill(1.0);
-
-            if let Some(gradient) = block.gradient_mut("positions") {
-                let array = gradient.data.as_array_mut();
-                array.fill(0.0);
-            } else if let Some(gradient) = block.gradient_mut("cell") {
-                let array = gradient.data.as_array_mut();
-                array.fill(0.0);
-            }
         }
 
         return Ok(());
