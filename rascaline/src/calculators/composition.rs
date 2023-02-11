@@ -5,17 +5,22 @@ use equistore::{Labels, LabelsBuilder, TensorMap};
 use crate::{Error, System};
 
 use super::CalculatorBase;
-use crate::labels::{SpeciesFilter, SamplesBuilder};
-use crate::labels::SamplesPerAtom;
 use crate::labels::{CenterSpeciesKeys, KeysBuilder};
+use crate::labels::{SamplesBuilder, SpeciesFilter};
+use crate::labels::{SamplesPerAtom, Structures};
 
-#[derive(Debug, Clone)]
-#[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 /// A composition calculator for obtaining the stoichiometric information.
-/// 
-/// The calculator has one property `count` that is
+///
+/// For `per_structure=false` calculator has one property `count` that is
 /// `1` for all centers, and has a sample index that indicates the central atom type.
-pub struct Composition {}
+///
+/// For `per_structure=true` the structure sum is performed and the only sample
+/// information is the structure.
+pub struct Composition {
+    // Define if the atom numbers should be summed for each structure.
+    pub per_structure: bool,
+}
 
 impl CalculatorBase for Composition {
     fn name(&self) -> String {
@@ -31,18 +36,32 @@ impl CalculatorBase for Composition {
     }
 
     fn samples_names(&self) -> Vec<&str> {
-        return SamplesPerAtom::samples_names();
+        if self.per_structure {
+            return Structures::samples_names();
+        } else {
+            return SamplesPerAtom::samples_names();
+        }
     }
 
-    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn samples(
+        &self,
+        keys: &Labels,
+        systems: &mut [Box<dyn System>],
+    ) -> Result<Vec<Arc<Labels>>, Error> {
         assert_eq!(keys.names(), ["species_center"]);
         let mut samples = Vec::new();
         for [species_center] in keys.iter_fixed_size() {
-            let builder = SamplesPerAtom {
-                species_center: SpeciesFilter::Single(species_center.i32())
+            if self.per_structure {
+                let builder = Structures {
+                    species_center: SpeciesFilter::Single(species_center.i32()),
+                };
+                samples.push(builder.samples(systems)?);
+            } else {
+                let builder = SamplesPerAtom {
+                    species_center: SpeciesFilter::Single(species_center.i32()),
+                };
+                samples.push(builder.samples(systems)?);
             };
-    
-            samples.push(builder.samples(systems)?);
         }
 
         return Ok(samples);
@@ -56,12 +75,17 @@ impl CalculatorBase for Composition {
         }
     }
 
-    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Arc<Labels>], systems: &mut [Box<dyn System>]) -> Result<Vec<Arc<Labels>>, Error> {
+    fn positions_gradient_samples(
+        &self,
+        keys: &Labels,
+        samples: &[Arc<Labels>],
+        systems: &mut [Box<dyn System>],
+    ) -> Result<Vec<Arc<Labels>>, Error> {
         debug_assert_eq!(keys.count(), samples.len());
         let mut gradient_samples = Vec::new();
         for ([species_center], samples) in keys.iter_fixed_size().zip(samples) {
             let builder = SamplesPerAtom {
-                species_center: SpeciesFilter::Single(species_center.i32())
+                species_center: SpeciesFilter::Single(species_center.i32()),
             };
 
             gradient_samples.push(builder.gradients_for(systems, samples)?);
@@ -86,13 +110,33 @@ impl CalculatorBase for Composition {
         return vec![properties; keys.count()];
     }
 
-    fn compute(&mut self, _: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
+    fn compute(
+        &mut self,
+        systems: &mut [Box<dyn System>],
+        descriptor: &mut TensorMap,
+    ) -> Result<(), Error> {
         assert_eq!(descriptor.keys().names(), ["species_center"]);
 
-        for (_, mut block) in descriptor.iter_mut() {
+        for (key, mut block) in descriptor.iter_mut() {
             let values = block.values_mut();
             let array = values.data.as_array_mut();
-            array.fill(1.0);
+
+            if self.per_structure {
+                let species = key[0].i32();
+                for (system_i, system) in systems.iter_mut().enumerate() {
+                    let all_species = system.species()?;
+                    let mut n_species = 0.;
+
+                    for &s in all_species {
+                        if s == species {
+                            n_species += 1.;
+                        }
+                    }
+                    array[[system_i, 0]] = n_species;
+                }
+            } else {
+                array.fill(1.0);
+            }
         }
 
         return Ok(());
@@ -101,29 +145,35 @@ impl CalculatorBase for Composition {
 
 #[cfg(test)]
 mod tests {
-    use ndarray::{array};
     use equistore::Labels;
+    use ndarray::array;
 
     use crate::systems::test_utils::{test_system, test_systems};
     use crate::Calculator;
 
-    use super::Composition;
     use super::super::CalculatorBase;
+    use super::Composition;
 
     #[test]
     fn name_and_parameters() {
-        let calculator = Calculator::from(Box::new(Composition{}) as Box<dyn CalculatorBase>);
+        let calculator = Calculator::from(Box::new(Composition {
+            per_structure: false,
+        }) as Box<dyn CalculatorBase>);
 
         assert_eq!(calculator.name(), "atom-centered composition features");
-        assert_eq!(calculator.parameters(), "{}");
+        assert_eq!(calculator.parameters(), "{\"per_structure\":false}");
     }
 
     #[test]
     fn values() {
-        let mut calculator = Calculator::from(Box::new(Composition {}) as Box<dyn CalculatorBase>);
+        let mut calculator = Calculator::from(Box::new(Composition {
+            per_structure: false,
+        }) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
-        let descriptor = calculator.compute(&mut systems, Default::default()).unwrap();
+        let descriptor = calculator
+            .compute(&mut systems, Default::default())
+            .unwrap();
 
         assert_eq!(descriptor.blocks().len(), 2);
         // test against hydrogen block which has the id `1`
@@ -134,8 +184,29 @@ mod tests {
     }
 
     #[test]
+    fn values_per_structure() {
+        let mut calculator = Calculator::from(Box::new(Composition {
+            per_structure: true,
+        }) as Box<dyn CalculatorBase>);
+
+        let mut systems = test_systems(&["water"]);
+        let descriptor = calculator
+            .compute(&mut systems, Default::default())
+            .unwrap();
+
+        assert_eq!(descriptor.blocks().len(), 2);
+        //test against hydrogen block which has the id `1`
+        let values = descriptor.block_by_id(1).values().data.as_array();
+        assert_eq!(values.shape(), [1, 1]);
+
+        assert_eq!(values, array![[2.0]].into_dyn());
+    }
+
+    #[test]
     fn finite_differences_positions() {
-        let calculator = Calculator::from(Box::new(Composition {}) as Box<dyn CalculatorBase>);
+        let calculator = Calculator::from(Box::new(Composition {
+            per_structure: false,
+        }) as Box<dyn CalculatorBase>);
 
         let system = test_system("water");
         let options = crate::calculators::tests_utils::FinalDifferenceOptions {
@@ -148,7 +219,8 @@ mod tests {
 
     #[test]
     fn compute_partial() {
-        let calculator = Calculator::from(Box::new(Composition{
+        let calculator = Calculator::from(Box::new(Composition {
+            per_structure: false,
         }) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
@@ -158,7 +230,11 @@ mod tests {
         let properties = Labels::new(["count"], &[[0]]);
 
         crate::calculators::tests_utils::compute_partial(
-            calculator, &mut systems, &keys, &samples, &properties
+            calculator,
+            &mut systems,
+            &keys,
+            &samples,
+            &properties,
         );
     }
 }

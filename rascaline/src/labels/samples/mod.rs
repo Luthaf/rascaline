@@ -61,3 +61,6 @@ pub use self::center_only::SamplesPerAtom;
 
 mod long_range;
 pub use self::long_range::LongRangeSamplesPerAtom;
+
+mod structure_only;
+pub use self::structure_only::Structures;
