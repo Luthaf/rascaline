@@ -257,7 +257,11 @@ class CalculatorBase:
 
 
 class Composition(CalculatorBase):
-    """A composition calculator for obtaining the stoichiometric information."""
+    """A composition calculator for obtaining the stoichiometric information.
+
+    The calculator has one property ``count`` that is ``1`` for all centers,
+    and has a sample index that indicates the central atom type.
+    """
 
     def __init__(self):
         super().__init__("composition", {})

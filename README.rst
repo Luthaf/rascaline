@@ -51,6 +51,8 @@ List of implemented representations
      - Each pair is represented by the vector between the atoms. This is
        intended to be used as a starting point for more complex representations
      - positions
+   * - Composition
+       Obtaining the stoichiometric information of a structure
 
 .. inclusion-marker-representations-end
 
