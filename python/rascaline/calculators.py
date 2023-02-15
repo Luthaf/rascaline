@@ -256,21 +256,21 @@ class CalculatorBase:
         return TensorMap._from_ptr(tensor_map_ptr)
 
 
-class Composition(CalculatorBase):
-    """A composition calculator for obtaining the stoichiometric information.
+class AtomicAtomicComposition(CalculatorBase):
+    """An atomic composition calculator for obtaining the stoichiometric information.
 
-    For `per_structure=false` calculator has one property `count` that is
-    `1` for all centers, and has a sample index that indicates the central atom type.
+    For ``per_structure=False`` calculator has one property ``count`` that is
+    ``1`` for all centers, and has a sample index that indicates the central atom type.
 
-    For `per_structure=true` the structure sum is performed and the only sample
-    information is the structure.
+    For ``per_structure=True`` a sum for each structure is performed. The number of
+    atoms per structure is saved. The only sample left is names ``structure``.
     """
 
     def __init__(self, per_structure):
         paramteres = {
             "per_structure": per_structure,
         }
-        super().__init__("composition", paramteres)
+        super().__init__("atomicatomiccomposition", paramteres)
 
 
 class DummyCalculator(CalculatorBase):

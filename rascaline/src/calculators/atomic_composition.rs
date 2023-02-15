@@ -9,20 +9,20 @@ use crate::labels::{CenterSpeciesKeys, KeysBuilder};
 use crate::labels::{SamplesBuilder, SpeciesFilter};
 use crate::labels::{SamplesPerAtom, Structures};
 
-#[derive(Debug, Clone, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
-/// A composition calculator for obtaining the stoichiometric information.
+
+/// An atomic composition calculator for obtaining the stoichiometric information.
 ///
-/// For `per_structure=false` calculator has one property `count` that is
+/// For `per_structure=False` calculator has one property `count` that is
 /// `1` for all centers, and has a sample index that indicates the central atom type.
 ///
-/// For `per_structure=true` the structure sum is performed and the only sample
-/// information is the structure.
-pub struct Composition {
+/// For `per_structure=True` a sum for each structure is performed and the number of 
+/// atoms per structure is saved. The only sample left is names ``structure``.
+pub struct AtomicComposition {
     // Define if the atom numbers should be summed for each structure.
     pub per_structure: bool,
 }
 
-impl CalculatorBase for Composition {
+impl CalculatorBase for AtomicComposition {
     fn name(&self) -> String {
         return "atom-centered composition features".into();
     }
@@ -37,10 +37,10 @@ impl CalculatorBase for Composition {
 
     fn samples_names(&self) -> Vec<&str> {
         if self.per_structure {
-            return Structures::samples_names();
-        } else {
-            return SamplesPerAtom::samples_names();
+            return vec!["structure"];
         }
+
+        return vec!["structure", "center"];
     }
 
     fn samples(
@@ -152,11 +152,11 @@ mod tests {
     use crate::Calculator;
 
     use super::super::CalculatorBase;
-    use super::Composition;
+    use super::AtomicComposition;
 
     #[test]
     fn name_and_parameters() {
-        let calculator = Calculator::from(Box::new(Composition {
+        let calculator = Calculator::from(Box::new(AtomicComposition {
             per_structure: false,
         }) as Box<dyn CalculatorBase>);
 
@@ -166,7 +166,7 @@ mod tests {
 
     #[test]
     fn values() {
-        let mut calculator = Calculator::from(Box::new(Composition {
+        let mut calculator = Calculator::from(Box::new(AtomicComposition {
             per_structure: false,
         }) as Box<dyn CalculatorBase>);
 
@@ -185,7 +185,7 @@ mod tests {
 
     #[test]
     fn values_per_structure() {
-        let mut calculator = Calculator::from(Box::new(Composition {
+        let mut calculator = Calculator::from(Box::new(AtomicComposition {
             per_structure: true,
         }) as Box<dyn CalculatorBase>);
 
@@ -204,7 +204,7 @@ mod tests {
 
     #[test]
     fn finite_differences_positions() {
-        let calculator = Calculator::from(Box::new(Composition {
+        let calculator = Calculator::from(Box::new(AtomicComposition {
             per_structure: false,
         }) as Box<dyn CalculatorBase>);
 
@@ -218,8 +218,23 @@ mod tests {
     }
 
     #[test]
+    fn finite_differences_positions_per_structure() {
+        let calculator = Calculator::from(Box::new(AtomicComposition {
+            per_structure: true,
+        }) as Box<dyn CalculatorBase>);
+
+        let system = test_system("water");
+        let options = crate::calculators::tests_utils::FinalDifferenceOptions {
+            displacement: 1e-6,
+            max_relative: 1e-5,
+            epsilon: 1e-16,
+        };
+        crate::calculators::tests_utils::finite_differences_positions(calculator, &system, options);
+    }
+
+    #[test]
     fn compute_partial() {
-        let calculator = Calculator::from(Box::new(Composition {
+        let calculator = Calculator::from(Box::new(AtomicComposition {
             per_structure: false,
         }) as Box<dyn CalculatorBase>);
 
