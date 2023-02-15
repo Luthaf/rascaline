@@ -84,11 +84,17 @@ impl CalculatorBase for AtomicComposition {
         debug_assert_eq!(keys.count(), samples.len());
         let mut gradient_samples = Vec::new();
         for ([species_center], samples) in keys.iter_fixed_size().zip(samples) {
-            let builder = SamplesPerAtom {
-                species_center: SpeciesFilter::Single(species_center.i32()),
-            };
-
-            gradient_samples.push(builder.gradients_for(systems, samples)?);
+            if self.per_structure {
+                let builder = Structures {
+                    species_center: SpeciesFilter::Single(species_center.i32()),
+                };
+                gradient_samples.push(builder.gradients_for(systems, samples)?);
+            } else {
+                let builder = SamplesPerAtom {
+                    species_center: SpeciesFilter::Single(species_center.i32()),
+                };
+                gradient_samples.push(builder.gradients_for(systems, samples)?);
+            }
         }
 
         return Ok(gradient_samples);
