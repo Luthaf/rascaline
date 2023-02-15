@@ -1,10 +1,10 @@
-// Eigen deatomiccomposition of symmetric matrix. Adapted from
+// Eigendecomposition of symmetric matrix. Adapted from
 // https://github.com/xasmx/rust-la, which is a Rust port of the JAMA implementation
 // https://en.wikipedia.org/wiki/JAMA_(numerical_linear_algebra_library)
 
 use ndarray::{Array2, Array1};
 
-/// Eigendeatomiccomposition of a real symmetric matrix into eigenvalues and eigenvectors
+/// Eigendecomposition of a real symmetric matrix into eigenvalues and eigenvectors
 #[derive(Debug, Clone)]
 pub struct SymmetricEigen {
     /// Eigenvalues of the input matrix, sorted in increasing order
@@ -243,7 +243,7 @@ impl SymmetricEigen {
         }
     }
 
-    /// Compute the eigendeatomiccomposition of a symmetric real matrix
+    /// Compute the eigendecomposition of a symmetric real matrix
     #[allow(clippy::float_cmp)]
     pub fn new(matrix: Array2<f64>) -> SymmetricEigen {
         assert_eq!(matrix.nrows(), matrix.ncols());

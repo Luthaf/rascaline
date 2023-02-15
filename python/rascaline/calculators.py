@@ -256,7 +256,7 @@ class CalculatorBase:
         return TensorMap._from_ptr(tensor_map_ptr)
 
 
-class AtomicAtomicComposition(CalculatorBase):
+class AtomicComposition(CalculatorBase):
     """An atomic composition calculator for obtaining the stoichiometric information.
 
     For ``per_structure=False`` calculator has one property ``count`` that is
@@ -270,7 +270,7 @@ class AtomicAtomicComposition(CalculatorBase):
         paramteres = {
             "per_structure": per_structure,
         }
-        super().__init__("atomicatomiccomposition", paramteres)
+        super().__init__("atomiccomposition", paramteres)
 
 
 class DummyCalculator(CalculatorBase):

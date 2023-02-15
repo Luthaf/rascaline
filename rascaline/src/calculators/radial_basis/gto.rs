@@ -59,7 +59,7 @@ impl GtoRadialBasis {
             .collect::<Array1<_>>();
 
         let overlap = self.overlap();
-        // compute overlap^-1/2 through its eigendeatomiccomposition
+        // compute overlap^-1/2 through its eigendecomposition
         let mut eigen = crate::math::SymmetricEigen::new(overlap);
         for n in 0..self.max_radial {
             if eigen.eigenvalues[n] <= f64::EPSILON {

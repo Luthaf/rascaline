@@ -52,7 +52,8 @@ List of implemented representations
        intended to be used as a starting point for more complex representations
      - positions
    * - AtomicComposition
-       Obtaining the stoichiometric information of a structure
+     - Obtaining the stoichiometric information of a structure
+     - positions and cell
 
 .. inclusion-marker-representations-end
 
