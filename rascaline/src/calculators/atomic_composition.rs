@@ -6,8 +6,6 @@ use crate::{Error, System};
 
 use super::CalculatorBase;
 use crate::labels::{CenterSpeciesKeys, KeysBuilder};
-use crate::labels::{SamplesBuilder, SpeciesFilter};
-use crate::labels::{SamplesPerAtom, Structures};
 
 
 /// An atomic composition calculator for obtaining the stoichiometric information.
@@ -15,7 +13,7 @@ use crate::labels::{SamplesPerAtom, Structures};
 /// For `per_structure=False` calculator has one property `count` that is
 /// `1` for all centers, and has a sample index that indicates the central atom type.
 ///
-/// For `per_structure=True` a sum for each structure is performed and the number of 
+/// For `per_structure=True` a sum for each structure is performed and the number of
 /// atoms per structure is saved. The only sample left is names ``structure``.
 pub struct AtomicComposition {
     // Define if the atom numbers should be summed for each structure.
@@ -50,18 +48,23 @@ impl CalculatorBase for AtomicComposition {
     ) -> Result<Vec<Arc<Labels>>, Error> {
         assert_eq!(keys.names(), ["species_center"]);
         let mut samples = Vec::new();
-        for [species_center] in keys.iter_fixed_size() {
-            if self.per_structure {
-                let builder = Structures {
-                    species_center: SpeciesFilter::Single(species_center.i32()),
-                };
-                samples.push(builder.samples(systems)?);
-            } else {
-                let builder = SamplesPerAtom {
-                    species_center: SpeciesFilter::Single(species_center.i32()),
-                };
-                samples.push(builder.samples(systems)?);
-            };
+        for [species_center_key] in keys.iter_fixed_size() {
+            let mut builder = LabelsBuilder::new(self.samples_names());
+
+            for (system_i, system) in systems.iter_mut().enumerate() {
+                if self.per_structure {
+                    builder.add(&[system_i]);
+                } else {
+                    let species = system.species()?;
+
+                    for (center_i, &species_center_sys) in species.iter().enumerate() {
+                        if species_center_key.i32() == species_center_sys {
+                            builder.add(&[system_i, center_i]);
+                        }
+                    }
+                }
+            }
+            samples.push(Arc::new(builder.finish()));
         }
 
         return Ok(samples);
@@ -83,20 +86,25 @@ impl CalculatorBase for AtomicComposition {
     ) -> Result<Vec<Arc<Labels>>, Error> {
         debug_assert_eq!(keys.count(), samples.len());
         let mut gradient_samples = Vec::new();
-        for ([species_center], samples) in keys.iter_fixed_size().zip(samples) {
+        for ([species_center_key], samples) in keys.iter_fixed_size().zip(samples) {
+            let mut builder = LabelsBuilder::new(vec!["sample", "structure", "atom"]);
             if self.per_structure {
-                let builder = Structures {
-                    species_center: SpeciesFilter::Single(species_center.i32()),
-                };
-                gradient_samples.push(builder.gradients_for(systems, samples)?);
-            } else {
-                let builder = SamplesPerAtom {
-                    species_center: SpeciesFilter::Single(species_center.i32()),
-                };
-                gradient_samples.push(builder.gradients_for(systems, samples)?);
-            }
-        }
+                for (system_i, system) in systems.iter_mut().enumerate() {
+                    let species = system.species()?;
 
+                    for (center_i, &species_center_sys) in species.iter().enumerate() {
+                        if species_center_key.i32() == species_center_sys {
+                            builder.add(&[system_i, system_i, center_i]);
+                        }
+                    }
+                }
+            } else {
+                for (sample_i, [structure_i, center_i]) in samples.iter_fixed_size().enumerate() {
+                    builder.add(&[sample_i, structure_i.usize(), center_i.usize()]);
+                }
+            }
+            gradient_samples.push(Arc::new(builder.finish()));
+        }
         return Ok(gradient_samples);
     }
 
