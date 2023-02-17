@@ -169,23 +169,37 @@ pub struct CalculationOptions<'a> {
     /// The following gradients are available:
     ///
     /// - ``"positions"``, for gradients of the representation with respect to
-    ///   the atomic positions;
-    /// - ``"cell"``, for gradients of the representation with respect to the
-    ///   cell vectors. Cell gradients are computed as
+    ///   atomic positions. Positions gradients are computed as
     ///
-    ///   $$ \frac{\partial \langle q \vert A \rangle} {\partial \mathbf{h}} $$
+    ///   $$ \frac{\partial \langle q \vert A_i \rangle}
+    ///           {\partial \mathbf{r_j}} $$
     ///
-    ///   where $\mathbf{h}$ is the cell matrix and $\langle q \vert A \rangle$
-    ///   indicates each of the components of the representation.
+    ///   where $\langle q \vert A_i \rangle$ is the representation around
+    ///   atom $i$ and $\mathbf{r_j}$ is the position vector of the
+    ///   atom $j$.
     ///
-    ///   **Note**: When computing the virial, one often needs to evaluate the
-    ///   gradient of the representation with respect to the strain $\epsilon$.
-    ///   To recover the typical expression from the cell gradient one has to
-    ///   multiply the cell gradients with the cell matrix $\mathbf{h}$
+    ///   **Note**: Position gradients of an atom are computed with respect to all
+    ///   other atoms within the representation. To recover the force one has to
+    ///   accumulate all pairs associated with atom $i$.
     ///
-    ///   $$ -\frac{\partial \langle q \vert A \rangle} {\partial\epsilon} =
-    ///      -\frac{\partial \langle q \vert A \rangle} {\partial \mathbf{h}}
-    ///             \cdot \mathbf{h} $$
+    /// - ``"cell"``, for gradients of the representation with respect to cell
+    ///   vectors. Cell gradients are computed as
+    ///
+    ///   $$ \frac{\partial \langle q \vert A_i \rangle}
+    ///            {\partial \mathbf{h}} $$
+    ///
+    ///   where $\mathbf{h}$ is the cell matrix.
+    ///
+    ///   **Note**: When computing the virial, one often needs to evaluate
+    ///   the gradient of the representation with respect to the strain
+    ///   $\epsilon$. To recover the typical expression from the cell
+    ///   gradient one has to multiply the cell gradients with the cell
+    ///   matrix $\mathbf{h}$
+    ///
+    ///   $$ -\frac{\partial \langle q \vert A \rangle}
+    ///            {\partial\epsilon}
+    ///        = -\frac{\partial \langle q \vert A \rangle}
+    ///                {\partial \mathbf{h}} \cdot \mathbf{h} $$
     pub gradients: &'a[&'a str],
     /// Copy the data from systems into native `SimpleSystem`. This can be
     /// faster than having to cross the FFI boundary too often.

@@ -17,6 +17,10 @@ with ``Calculator::new`` in Rust, ``rascal_calculator`` in C or
 given as a JSON formatted string. The possible fields in the JSON are documented
 as a `JSON schema`_, and rendered in the pages below.
 
+After the initialization of each calculator the computation of the
+representations is performed using the
+:py:func:`rascaline.calculators.CalculatorBase.compute()` method.
+
 .. _JSON schema: https://json-schema.org/
 
 .. toctree::
