@@ -1,8 +1,8 @@
 """
 .. _userdoc-tutorials-get-started:
 
-First SOAP calculation
-======================
+First descriptor computation
+============================
 
 This is an introduction to the rascaline interface using a molecular crystals
 dataset using the Python interface. If you are interested in another
@@ -83,8 +83,8 @@ print(
 # opposition to parameters of machine learning models. Hyper parameters are a
 # crucial part of calculating descriptors. Poorly selected hyper parameters will
 # lead to a poor description of your dataset as discussed in the `literature
-# <https://arxiv.org/abs/1502.02127>`_. The effect of
-# changing some hyper parameters is discussed in a :ref:`second tutorial
+# <https://arxiv.org/abs/1502.02127>`_. The effect of changing some hyper
+# parameters is discussed in a :ref:`second tutorial
 # <userdoc-tutorials-understanding-hypers>`.
 
 HYPER_PARAMETERS = {
@@ -101,8 +101,9 @@ HYPER_PARAMETERS = {
 # %%
 #
 # After we set the hyper parameters we initialize a
-# :class:`rascaline.calculators.SphericalExpansion`
-# object with hyper parameters defined above.
+# :class:`rascaline.calculators.SphericalExpansion` object with hyper parameters
+# defined above and run the
+# :py:func:`rascaline.calculators.CalculatorBase.compute()` method.
 
 calculator = SphericalExpansion(**HYPER_PARAMETERS)
 descriptor0 = calculator.compute(frame0)
@@ -110,100 +111,209 @@ print(type(descriptor0))
 
 # %%
 #
-# The descriptor format is a :class:`equistore.tensor.TensorMap` object.
-# Equistore is like numpy for storing representations of atomistic ML data.
-# Extensive details on the equistore are covered in the `corresponding
-# documentation <https://lab-cosmo.github.io/equistore/>`_.
+# The descriptor format is a :class:`equistore.TensorMap` object. Equistore is
+# like numpy for storing representations of atomistic ML data. Extensive details
+# on the equistore are covered in the `corresponding documentation
+# <https://lab-cosmo.github.io/equistore/>`_.
 #
 # We will now have a look at how the data is stored inside
-# :class:`equistore.tensor.TensorMap` objects.
+# :class:`equistore.TensorMap` objects.
 
 
 print(descriptor0)
 
 # %%
 #
-# The :class:`equistore.tensor.TensorMap` is structured in ``blocks``, each
-# associated with a key. Here we have one block for each angular channel
-# labeled by ``spherical_harmonics_l``,
-# the central atom species ``species_center`` and neighbor atom species
-# labeled by ``species_neighbor``. Different atomic species are
-# represented using their atomic number, e.g. 1 for hydrogen, 6 for carbon, etc.
-# Our descriptor contains 112 blocks covering all combinations of the angular
-# channels and the elements.
+# The :class:`equistore.TensorMap` is structured in several instances of an
+# :class:`equistore.TensorBlock`. To distinguish the block each block is
+# associated with a unique key. For the current example, we have one block for
+# each angular channel labeled by ``spherical_harmonics_l``, the central atom
+# species ``species_center`` and neighbor atom species labeled by
+# ``species_neighbor``. Different atomic species are represented using their
+# atomic number, e.g. 1 for hydrogen, 6 for carbon, etc. To summarize, this
+# descriptor contains 112 blocks covering all combinations of the angular
+# channels of the central and neighbor atom species in our dataset.
 #
-# Let us take a look at the first block in detail. The 0th block contains the
-# descriptor for the 0th angular channel between the hydrogen-hydrogen pairs.
+# Let us take a look at the second block (at index 1) in detail. This block
+# contains the descriptor for the :math:`l=1` angular channel for
+# hydrogen-hydrogen pairs.
 
-print(descriptor0.keys[0])
+block = descriptor0.block(1)
+print(descriptor0.keys[1])
+
 
 # %%
 #
-# The values are stored in an array. Let us take a look at its dimensions given
-# by the shape attribute.
-
-
-print(descriptor0.block(1).values.shape)
-
-# %%
-# The first dimension is 8 because we have eight hydrogen atoms in our frame.
-# The second dimension
-# is associated with the selected angular channel and has a size of
-# :math:$2l + 1$, where :math:`l` is the current
-# ``spherical_harmonics_l`` channel.
-# Here it dimension is 1 because we are looking at the ``spherical_harmonics_l=0``
-# channel. The last value represents the number
-# of radial channels. We choose ``max_radial=9`` in the hyper parameters above
-# so there are 9 values in the last dimension.
+# The descriptor values
+# ---------------------
 #
-# Let's take a look at the values of the representation (also called features)
-# associated with the first hydrogen:
+# The values of the representation are stored as an array. Each entry in this
+# array also has associated unique metadata as each block. For the spherical
+# expansion calculator used in this tutorial the values have three dimensions
+# which we can verify from the ``.shape`` attribute.
 
-print(descriptor0.block(0).values[0])
+
+print(block.values.shape)
 
 # %%
 #
-# As you see the values are floating point numbers between -1 and 1. Values in
-# this range are reasonable and can be directly used as an input for a machine
-# learning algorithm.
+# The descriptor values
+# ---------------------
+#
+# The first dimension is denoted by the `samples`, the intermediate dimension by
+# `components`, and the last dimension by `properties`. The "sample dimension"
+# has a length of eight because we have eight hydrogen atoms in the first frame.
+# We can reveal more detailed metadata information about the sample-dimension
+# printing of the :py:attr:`equistore.TensorBlock.samples` attribute of the
+# block
+
+print(block.samples)
+
+# %%
+#
+# The result is an :class:`equistore.TensorMap` instance. It contains in total
+# eight tuples each with two values. The tuple values are named as follows
+
+print(block.samples.names)
+
+# %%
+#
+# Meaning that the first entry of each tuple indicates the _structure_, which is
+# 0 for all because we only computed the representation of a single frame. The
+# second entry of each tuple refers to the index of the _center_ atom.
+#
+# We can do a similar investigation for the second dimension: the
+# :py:attr:`equistore.TensorBlock.components`.
+
+print(block.components)
+
+# %%
+#
+# Here, the components are associated with the angular channels of the
+# representation. The size of ``spherical_harmonics_m`` is :math:`2l + 1`, where
+# :math:`l` is the current ``spherical_harmonics_l`` of the block. Here, its
+# dimension is three because we are looking at the ``spherical_harmonics_l=1``
+# block. You may have noticed that the return value of the last call is a
+# :class:`list` of :class:`equistore.Labels` and not a single ``Labels``
+# instance. The reason is that a block can have several component dimensions as
+# we will see below for the gradients.
+#
+# The last value represents the number of radial channels. For the
+# :py:attr:`equistore.TensorBlock.properties` dimension we find an object
+
+print(block.properties)
+
+# %%
+#
+# containing a tuple of only one value ranging from 0 to 8. The name of this entry is
+
+print(block.properties.names)
+
+# %%
+#
+# and denoting the radial channels. The range results from our choice of
+# ``max_radial = 9`` in the hyper parameters above.
+#
+# After looking at the metadata we can investigate the actual data of the
+# representation in more details
+
+print(block.values[0, 0, :])
+
+# %%
+#
+# By using ``[0, 0, :]`` we selected the first hydrogen and the first ``m``
+# channel. As you the output shows the values are floating point numbers between
+# ``-1.0`` and ``1.0``. Values in this range are reasonable and can be directly
+# used as input for a machine learning algorithm.
 #
 # Rascaline is also able to process more than one structure within one function
 # call. You can process a whole dataset with
 
 descriptor_full = calculator.compute(frames)
-print(descriptor_full.block(0).values.shape)
+
+block_full = descriptor_full.block(0)
+print(block_full.values.shape)
 
 # %%
 #
-# Now, the 0th block of the :class:`equistore.tensor.TensorMap` contains not 8
-# but 420 entries in the first dimensions. This reflects the fact that in total
-# we have 420 hydrogen atoms in the whole dataset.
-#
+# Now, the 0th block of the :class:`equistore.TensorMap` contains not eight but
+# 420 entries in the first dimensions. This reflects the fact that in total we
+# have 420 hydrogen atoms in the whole dataset.
 #
 # If you want to use another calculator instead of
-# :class:`rascaline.calculators.SphericalExpansion` shown here
-# check out the :ref:`userdoc-references` section.
+# :class:`rascaline.calculators.SphericalExpansion` shown here check out the
+# :ref:`userdoc-references` section.
 #
 # Computing gradients
 # -------------------
 #
-# Additionally, rascaline is also able to calculate the gradients with respect
-# to positions, which is useful for constructing an ML potential and running
-# simulations. ``gradients``
-# of the representation with respect to atomic positions can be calculated by
-# setting the ``gradients`` parameter of the compute method to
+# Additionally, rascaline is also able to calculate gradients on top of the
+# values. Gradients are useful for constructing an ML potential and running
+# simulations. For example ``gradients`` of the representation with respect to
+# atomic positions can be calculated by setting the ``gradients`` parameter of
+# the :py:func:`rascaline.calculators.CalculatorBase.compute()` method to
 # ``["positions"]``.
 
-descriptor = calculator.compute(frame0, gradients=["positions"])
-print(descriptor.block(0).gradient("positions").data.shape)
+descriptor_gradients = calculator.compute(frame0, gradients=["positions"])
+
+block_gradients = descriptor_gradients.block(0)
+gradient_position = block_gradients.gradient("positions")
+
+print(gradient_position.data.shape)
 
 # %%
 #
-# The gradients are stored in the data attribute. The shape of gradients of the
-# first frame is calculated as follows: `8*8=64` gradients for all
-# hydrogen-hydrogen pairs. Rascaline can also calculate gradients with respect
-# to the cell by setting ``gradients=["cell"]``. Cell gradients are useful when
-# computing stress and pressure.
+# The calculated descriptor contains the values and in each block the associated
+# position gradients as an :class:`equistore.block.Gradient` instance. The
+# actual values are stored in the ``data`` attribute. Similar to the features
+# the gradient data also has associated metadata. But, compared to the values
+# were we found three dimensions, and gradients have four. Again the first is
+# called `samples` and the `properties`. The dimensions between the sample and
+# property dimensions are denoted by `components`.
+#
+# Looking at the shape in more detail we find that we have 52 samples, which is
+# much more compared to features where we only have eight samples. This arises
+# from the fact that we calculate the position gradient for each pair in the
+# structure. For our selected block these are all hydrogen-hydrogen pairs.
+# Naively one would come up with ``8 * 8 = 64`` samples, but rascaline already
+# ignores pairs that are outside of the cutoff radius. Their position gradient
+# is always zero. The :attr:`equistore.block.Gradient.samples` attribute shows
+# this in detail.
+
+print(gradient_position.samples)
+
+# %%
+#
+# Note that we have a tuple of three with the names
+
+print(gradient_position.samples.names)
+
+# %%
+#
+# In the above output of the Labels instance for example the `(2, 0, 17)` entry
+# is missing indicating that this pair is outside of the cutoff.
+#
+# Now looking at the :attr:`equistore.block.Gradient.components`
+
+print(gradient_position.components)
+
+# %%
+#
+# we find two of them. Besides the `spherical_harmonics_m` component that is
+# also present in the features position gradients also have a component
+# indicating the direction of the gradient vector.
+#
+# Finally, the :attr:`equistore.block.Gradient.properties` dimension is the same
+# as for the values
+
+print(gradient_position.properties)
+
+# %%
+#
+# Rascaline can also calculate gradients with respect to the cell. For this, you
+# have to add ``"cell"`` to the list parsed to the ``gradients`` parameter of
+# the :py:func:`rascaline.calculators.CalculatorBase.compute()` method. Cell
+# gradients are useful when computing the stress and the pressure.
 #
 # If you want to know about the effect of changing hypers take a look at the
 # next tutorial. If you want to solve an explicit problem our

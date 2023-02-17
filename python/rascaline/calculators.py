@@ -171,18 +171,29 @@ class CalculatorBase:
             ``<parameter>`` is ``"positions"`` or ``"cell"``. The following
             gradients are available:
 
-            - ``"positions"``, for gradients of the representation with respect
-              to the atomic positions;
-            - ``"cell"``, for gradients of the representation with respect to
-              the cell vectors. Cell gradients are computed as
+            - ``"positions"``, for gradients of the representation with respect to
+              atomic positions. Positions gradients are computed as
 
               .. math::
-                  \frac{\partial \langle q \vert A \rangle}
+                  \frac{\partial \langle q \vert A_i \rangle}
+                       {\partial \mathbf{r_j}}
+
+              where :math:`\langle q \vert A_i \rangle` is the representation around
+              atom :math:`i` and :math:`\mathbf{r_j}` is the position vector of the
+              atom :math:`j`.
+
+              **Note**: Position gradients of an atom are computed with respect to all
+              other atoms within the representation. To recover the force one has to
+              accumulate all pairs associated with atom :math:`i`.
+
+            - ``"cell"``, for gradients of the representation with respect to cell
+              vectors. Cell gradients are computed as
+
+              .. math::
+                  \frac{\partial \langle q \vert A_i \rangle}
                        {\partial \mathbf{h}}
 
-              where :math:`\mathbf{h}` is the cell matrix and :math:`\langle q
-              \vert A \rangle` indicates each of the components of the
-              representation.
+              where :math:`\mathbf{h}` is the cell matrix.
 
               **Note**: When computing the virial, one often needs to evaluate
               the gradient of the representation with respect to the strain
