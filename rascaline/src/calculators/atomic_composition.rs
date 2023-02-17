@@ -16,7 +16,7 @@ use crate::labels::{CenterSpeciesKeys, KeysBuilder};
 /// For `per_structure=True` a sum for each structure is performed and the number of
 /// atoms per structure is saved. The only sample left is names ``structure``.
 pub struct AtomicComposition {
-    // Define if the atom numbers should be summed for each structure.
+    /// Sum atom numbers for each structure.
     pub per_structure: bool,
 }
 

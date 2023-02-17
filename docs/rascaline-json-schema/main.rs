@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use schemars::schema::RootSchema;
 
+use rascaline::calculators::AtomicComposition;
 use rascaline::calculators::SortedDistances;
 use rascaline::calculators::SphericalExpansionParameters;
 use rascaline::calculators::LodeSphericalExpansionParameters;
@@ -33,6 +34,7 @@ fn save_schema(name: &str, schema: RootSchema) {
 }
 
 fn main() {
+    generate_schema!(AtomicComposition);
     generate_schema!(NeighborList);
     generate_schema!(SortedDistances);
     generate_schema!("SphericalExpansionByPair", SphericalExpansionParameters);
