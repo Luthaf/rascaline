@@ -59,7 +59,7 @@ def _set_logging_callback_impl(library, function):
             function(log_level, message.decode("utf8"))
         except Exception as e:
             warnings.warn(
-                msg=f"exception raised in logging callback: {e}",
+                message=f"exception raised in logging callback: {e}",
                 category=ResourceWarning,
                 stacklevel=1,
             )

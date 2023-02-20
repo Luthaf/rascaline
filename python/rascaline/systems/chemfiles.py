@@ -11,7 +11,7 @@ try:
 
     if not chemfiles.__version__.startswith("0.10"):
         warnings.warn(
-            mgs="found chemfiles, but the version is not supported: "
+            message="found chemfiles, but the version is not supported: "
             "we need chemfiles v0.10.",
             category=ImportWarning,
             stacklevel=1,
