@@ -58,7 +58,11 @@ def _set_logging_callback_impl(library, function):
         try:
             function(log_level, message.decode("utf8"))
         except Exception as e:
-            warnings.warn(f"exception raised in logging callback: {e}", ResourceWarning)
+            warnings.warn(
+                message=f"exception raised in logging callback: {e}",
+                category=ResourceWarning,
+                stacklevel=1,
+            )
 
     # store the current callback in a global python variable to prevent it from
     # being garbage-collected.

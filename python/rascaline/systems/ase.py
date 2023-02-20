@@ -56,7 +56,8 @@ class AseSystem(SystemBase):
             if np.all(np.bitwise_not(atoms_pbc)):
                 warnings.warn(
                     "periodic boundary conditions are disabled, but the cell "
-                    "matrix is not zero, we will set the cell to zero."
+                    "matrix is not zero, we will set the cell to zero.",
+                    stacklevel=1,
                 )
                 self._cell[:, :] = 0.0
             else:
