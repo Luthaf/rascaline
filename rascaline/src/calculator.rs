@@ -485,7 +485,7 @@ macro_rules! add_calculator {
 // [calculator-registration]
 static REGISTERED_CALCULATORS: Lazy<BTreeMap<&'static str, CalculatorCreator>> = Lazy::new(|| {
     let mut map = BTreeMap::new();
-    add_calculator!(map, "atomiccomposition", AtomicComposition);
+    add_calculator!(map, "atomic_composition", AtomicComposition);
     add_calculator!(map, "dummy_calculator", DummyCalculator);
     add_calculator!(map, "neighbor_list", NeighborList);
     add_calculator!(map, "sorted_distances", SortedDistances);

@@ -267,10 +267,10 @@ class AtomicComposition(CalculatorBase):
     """
 
     def __init__(self, per_structure):
-        paramteres = {
+        parameters = {
             "per_structure": per_structure,
         }
-        super().__init__("atomiccomposition", paramteres)
+        super().__init__("atomic_composition", parameters)
 
 
 class DummyCalculator(CalculatorBase):
