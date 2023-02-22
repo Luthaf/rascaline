@@ -132,27 +132,35 @@ impl CalculatorBase for AtomicComposition {
         assert_eq!(descriptor.keys().names(), ["species_center"]);
 
         for (key, mut block) in descriptor.iter_mut() {
+            let species_center = key[0].i32();
+
             let values = block.values_mut();
             let array = values.data.as_array_mut();
 
-            if self.per_structure {
-                let species = key[0].i32();
-                for (system_i, system) in systems.iter_mut().enumerate() {
-                    let all_species = system.species()?;
-                    let mut n_species = 0.;
+            for property_i in 0..values.properties.size() {
+                if property_i == 0 {
+                    for (sample_i, samples) in values.samples.iter().enumerate() {
+                        let mut value = 0.0;
 
-                    for &s in all_species {
-                        if s == species {
-                            n_species += 1.;
+                        if self.per_structure {
+                            // Current system is saved in the 0th index of the samples.
+                            let system_i = samples[0].usize();
+                            let system = &mut *systems[system_i];
+                            let all_species = system.species()?;
+
+                            for &species in all_species {
+                                if species == species_center {
+                                    value += 1.0;
+                                }
+                            }
+                        } else {
+                            value += 1.0; 
                         }
+                        array[[sample_i, property_i]] = value;
                     }
-                    array[[system_i, 0]] = n_species;
                 }
-            } else {
-                array.fill(1.0);
             }
         }
-
         return Ok(());
     }
 }
