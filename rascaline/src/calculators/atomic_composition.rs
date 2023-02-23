@@ -137,18 +137,16 @@ impl CalculatorBase for AtomicComposition {
             let values = block.values_mut();
             let array = values.data.as_array_mut();
 
-            for property_i in 0..values.properties.size() {
-                if property_i == 0 {
+            for (property_i, &[count]) in values.properties.iter_fixed_size().enumerate() {
+                if count == 0 {
                     for (sample_i, samples) in values.samples.iter().enumerate() {
                         let mut value = 0.0;
 
                         if self.per_structure {
                             // Current system is saved in the 0th index of the samples.
                             let system_i = samples[0].usize();
-                            let system = &mut *systems[system_i];
-                            let all_species = system.species()?;
-
-                            for &species in all_species {
+                            let system = &systems[system_i];
+                            for &species in system.species()? {
                                 if species == species_center {
                                     value += 1.0;
                                 }
