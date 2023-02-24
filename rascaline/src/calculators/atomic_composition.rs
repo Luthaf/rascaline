@@ -81,31 +81,11 @@ impl CalculatorBase for AtomicComposition {
     fn positions_gradient_samples(
         &self,
         keys: &Labels,
-        samples: &[Arc<Labels>],
-        systems: &mut [Box<dyn System>],
+        _samples: &[Arc<Labels>],
+        _systems: &mut [Box<dyn System>],
     ) -> Result<Vec<Arc<Labels>>, Error> {
-        debug_assert_eq!(keys.count(), samples.len());
-        let mut gradient_samples = Vec::new();
-        for ([species_center_key], samples) in keys.iter_fixed_size().zip(samples) {
-            let mut builder = LabelsBuilder::new(vec!["sample", "structure", "atom"]);
-            if self.per_structure {
-                for (system_i, system) in systems.iter_mut().enumerate() {
-                    let species = system.species()?;
-
-                    for (center_i, &species_center_sys) in species.iter().enumerate() {
-                        if species_center_key.i32() == species_center_sys {
-                            builder.add(&[system_i, system_i, center_i]);
-                        }
-                    }
-                }
-            } else {
-                for (sample_i, [structure_i, center_i]) in samples.iter_fixed_size().enumerate() {
-                    builder.add(&[sample_i, structure_i.usize(), center_i.usize()]);
-                }
-            }
-            gradient_samples.push(Arc::new(builder.finish()));
-        }
-        return Ok(gradient_samples);
+    let gradient_samples = Arc::new(Labels::empty(vec!["sample", "structure", "atom"]));
+    return Ok(vec![gradient_samples; keys.count()]);
     }
 
     fn components(&self, keys: &Labels) -> Vec<Vec<Arc<Labels>>> {
@@ -152,7 +132,7 @@ impl CalculatorBase for AtomicComposition {
                                 }
                             }
                         } else {
-                            value += 1.0; 
+                            value += 1.0;
                         }
                         array[[sample_i, property_i]] = value;
                     }
