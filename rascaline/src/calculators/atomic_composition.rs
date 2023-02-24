@@ -15,6 +15,10 @@ use crate::labels::{CenterSpeciesKeys, KeysBuilder};
 ///
 /// For `per_structure=True` a sum for each structure is performed and the number of
 /// atoms per structure is saved. The only sample left is names ``structure``.
+///
+/// Positions/cell gradients of the composition are zero everywhere. Therefore, the
+/// gradient data will only be an empty array.
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 pub struct AtomicComposition {
     /// Sum atom numbers for each structure.
     pub per_structure: bool,
@@ -84,8 +88,10 @@ impl CalculatorBase for AtomicComposition {
         _samples: &[Arc<Labels>],
         _systems: &mut [Box<dyn System>],
     ) -> Result<Vec<Arc<Labels>>, Error> {
-    let gradient_samples = Arc::new(Labels::empty(vec!["sample", "structure", "atom"]));
-    return Ok(vec![gradient_samples; keys.count()]);
+        // Positions/cell gradients of the composition are zero everywhere.
+        // Therefore, we only return a vector of empty labels (one for each key).
+        let gradient_samples = Arc::new(Labels::empty(vec!["sample", "structure", "atom"]));
+        return Ok(vec![gradient_samples; keys.count()]);
     }
 
     fn components(&self, keys: &Labels) -> Vec<Vec<Arc<Labels>>> {
