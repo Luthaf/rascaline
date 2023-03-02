@@ -1,4 +1,4 @@
-// Eigen decomposition of symmetric matrix. Adapted from
+// Eigendecomposition of symmetric matrix. Adapted from
 // https://github.com/xasmx/rust-la, which is a Rust port of the JAMA implementation
 // https://en.wikipedia.org/wiki/JAMA_(numerical_linear_algebra_library)
 

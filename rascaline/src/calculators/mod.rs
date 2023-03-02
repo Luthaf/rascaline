@@ -70,6 +70,9 @@ pub trait CalculatorBase: std::panic::RefUnwindSafe {
 #[cfg(test)]
 pub(crate) mod tests_utils;
 
+mod atomic_composition;
+pub use self::atomic_composition::AtomicComposition;
+
 mod dummy_calculator;
 pub use self::dummy_calculator::DummyCalculator;
 
