@@ -24,7 +24,7 @@ equistore = {git = "https://github.com/lab-cosmo/equistore", rev = "467baf0"}
 ndarray = "0.15"
 log = { version = "0.4", features = ["std"] }
 once_cell = "1"
-time-graph = {version = "0.1.3", features = ["table", "json"]}
+time-graph = {version = "0.3.0", features = ["table", "json"]}
 libc = "0.2"
 
 [build-dependencies]
