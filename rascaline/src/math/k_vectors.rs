@@ -87,7 +87,7 @@ mod tests {
     use super::*;
     use crate::Matrix3;
 
-    const SQRT_3: f64 = 1.7320508075688772;
+    /// sqrt(5)
     const SQRT_5: f64 = 2.23606797749979;
 
     #[test]
@@ -117,8 +117,8 @@ mod tests {
             1.0 + eps,
             std::f64::consts::SQRT_2 - eps,
             std::f64::consts::SQRT_2 + eps,
-            SQRT_3 - eps,
-            SQRT_3 + eps,
+            crate::math::consts::SQRT_3 - eps,
+            crate::math::consts::SQRT_3 + eps,
             2.0 - eps,
             SQRT_5 - eps,
         ];

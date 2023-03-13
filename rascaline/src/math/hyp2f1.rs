@@ -3,7 +3,8 @@
 
 use std::f64::consts::PI;
 
-use crate::math::{digamma, gamma, EULER};
+use crate::math::{digamma, gamma};
+use crate::math::consts::EULER;
 
 fn is_integer(x: f64) -> bool {
     return (x as i32) as f64 == x;

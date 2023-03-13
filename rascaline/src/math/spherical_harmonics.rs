@@ -9,8 +9,6 @@ use crate::Vector3D;
 
 /// `\sqrt{\frac{1}{2 \pi}}`
 const SQRT_1_OVER_2PI: f64 = 0.3989422804014327;
-/// `\sqrt{3}`
-const SQRT_3: f64 = 1.7320508075688772;
 /// `\sqrt{3 / 2}`
 const SQRT_3_OVER_2: f64 = 1.224744871391589;
 
@@ -229,7 +227,7 @@ impl SphericalHarmonics {
         self.legendre_polynomials[[0, 0]] = value;
 
         if self.max_angular > 0 {
-            self.legendre_polynomials[[1, 0]] = cos_theta * SQRT_3 * value;
+            self.legendre_polynomials[[1, 0]] = cos_theta * crate::math::consts::SQRT_3 * value;
             value *= -SQRT_3_OVER_2 * sin_theta;
             self.legendre_polynomials[[1, 1]] = value;
 

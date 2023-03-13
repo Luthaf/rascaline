@@ -324,7 +324,7 @@ pub fn digamma(x: f64) -> f64 {
 mod tests {
     use super::*;
     use approx::assert_relative_eq;
-    use crate::math::EULER;
+    use crate::math::consts::EULER;
 
     #[test]
     fn test_gamma() {
