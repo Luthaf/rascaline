@@ -73,7 +73,7 @@ jobs:
       - name: build wheel in docker
         run: docker run --rm -v $(pwd):/code manylinux-with-rust bash -c "cd /code && /opt/python/cp38-cp38/bin/python setup.py bdist_wheel"
       - name: run auditwheel in docker
-        run: docker run --rm -v $(pwd):/code manylinux-with-rust bash -c "auditwheel repair /code/dist/*.whl -w /code/dist"
+        run: docker run --rm -v $(pwd):/code manylinux-with-rust bash -c "auditwheel repair --exclude libequistore.so /code/dist/*.whl -w /code/dist"
       - name: remove wheel with wrong tag
         run: sudo rm dist/*linux_x86_64.whl
       - uses: actions/upload-artifact@v3
