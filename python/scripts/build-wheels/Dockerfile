@@ -1,6 +1,9 @@
 # Use manylinux docker image as a base
 FROM quay.io/pypa/manylinux2010_x86_64
 
+# We need a more recent audiwheel
+RUN /opt/_internal/pipx/venvs/auditwheel/bin/python -m pip install --upgrade auditwheel
+
 RUN yum install git -y
 RUN git config --global --add safe.directory /code
 

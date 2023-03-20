@@ -1,3 +1,4 @@
+import glob
 import os
 import subprocess
 
@@ -80,6 +81,13 @@ class cmake_ext(build_ext):
             ["cmake", "--build", build_dir, "--target", "install"],
             check=True,
         )
+
+        # do not include equistore libraries/headers with rascaline wheel
+        for file in glob.glob(os.path.join(install_dir, "lib", "*equistore*")):
+            os.unlink(file)
+
+        for file in glob.glob(os.path.join(install_dir, "include", "equistore*")):
+            os.unlink(file)
 
 
 def get_version():
