@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-from collections import namedtuple
-
 import numpy as np
 
 
@@ -87,9 +85,6 @@ def generate_splines(
     return spline_points
 
 
-SplinePoint = namedtuple("SplinePoint", ["position", "values", "derivatives"])
-
-
 class DynamicSpliner:
     def __init__(
         self,
@@ -120,16 +115,14 @@ class DynamicSpliner:
         self.values_fn = values_fn
         self.derivatives_fn = derivatives_fn
         self.requested_accuracy = requested_accuracy
-        self.spline_points = []
 
+        # initialize spline with 11 points
         positions = np.linspace(start, stop, 11)
-        values = values_fn(positions)
-        derivatives = derivatives_fn(positions)
+        self.spline_positions = positions
+        self.spline_values = values_fn(positions)
+        self.spline_derivatives = derivatives_fn(positions)
 
-        for index in range(len(positions)):
-            self.spline_points.append(
-                SplinePoint(positions[index], values[index], derivatives[index])
-            )
+        self.number_of_custom_axes = len(self.spline_values.shape) - 1
 
     def spline(self):
         """Calculates and outputs the splines.
@@ -148,7 +141,7 @@ class DynamicSpliner:
         """
 
         while True:
-            n_intermediate_positions = len(self.spline_points) - 1
+            n_intermediate_positions = len(self.spline_positions) - 1
 
             if n_intermediate_positions >= 50000:
                 raise ValueError(
@@ -156,9 +149,7 @@ class DynamicSpliner:
                     There might be a problem with the functions to be splined"
                 )
 
-            half_step = (
-                self.spline_points[1].position - self.spline_points[0].position
-            ) / 2
+            half_step = (self.spline_positions[1] - self.spline_positions[0]) / 2
             intermediate_positions = np.linspace(
                 self.start + half_step, self.stop - half_step, n_intermediate_positions
             )
@@ -167,9 +158,10 @@ class DynamicSpliner:
             new_values = self.values_fn(intermediate_positions)
 
             mean_absolute_error = np.mean(np.abs(estimated_values - new_values))
-            mean_relative_error = np.mean(
-                np.abs((estimated_values - new_values) / new_values)
-            )
+            with np.errstate(divide="ignore"):  # Ignore divide-by-zero warnings
+                mean_relative_error = np.mean(
+                    np.abs((estimated_values - new_values) / new_values)
+                )
 
             if (
                 mean_absolute_error < self.requested_accuracy
@@ -179,52 +171,52 @@ class DynamicSpliner:
 
             new_derivatives = self.derivatives_fn(intermediate_positions)
 
-            for index in range(len(intermediate_positions)):
-                self.spline_points.append(
-                    SplinePoint(
-                        intermediate_positions[index],
-                        new_values[index],
-                        new_derivatives[index],
-                    )
-                )
+            concatenated_positions = np.concatenate(
+                [self.spline_positions, intermediate_positions], axis=0
+            )
+            concatenated_values = np.concatenate(
+                [self.spline_values, new_values], axis=0
+            )
+            concatenated_derivatives = np.concatenate(
+                [self.spline_derivatives, new_derivatives], axis=0
+            )
 
-            self.spline_points.sort(key=lambda x: x.position)
+            sort_indices = np.argsort(concatenated_positions, axis=0)
 
-        spline_x = np.array(
-            [spline_point.position for spline_point in self.spline_points]
-        )
-        spline_f = np.array(
-            [spline_point.values for spline_point in self.spline_points]
-        )
-        spline_df = np.array(
-            [spline_point.derivatives for spline_point in self.spline_points]
-        )
+            self.spline_positions = concatenated_positions[sort_indices]
+            self.spline_values = concatenated_values[sort_indices]
+            self.spline_derivatives = concatenated_derivatives[sort_indices]
 
-        return spline_x, spline_f, spline_df
+        return self.spline_positions, self.spline_values, self.spline_derivatives
 
     def _compute_from_spline(self, positions):
-        interpolated_values = []
-        for x in positions:
-            delta_x = self.spline_points[1].position - self.spline_points[0].position
-            n = int(np.floor(x / delta_x))
+        x = positions
+        delta_x = self.spline_positions[1] - self.spline_positions[0]
+        n = (np.floor(x / delta_x)).astype(np.int32)
 
-            t = (x - n * delta_x) / delta_x
-            t_2 = t**2
-            t_3 = t**3
+        t = (x - n * delta_x) / delta_x
+        t_2 = t**2
+        t_3 = t**3
 
-            h00 = 2.0 * t_3 - 3.0 * t_2 + 1.0
-            h10 = t_3 - 2.0 * t_2 + t
-            h01 = -2.0 * t_3 + 3.0 * t_2
-            h11 = t_3 - t_2
+        h00 = 2.0 * t_3 - 3.0 * t_2 + 1.0
+        h10 = t_3 - 2.0 * t_2 + t
+        h01 = -2.0 * t_3 + 3.0 * t_2
+        h11 = t_3 - t_2
 
-            p_k = self.spline_points[n].values
-            p_k_1 = self.spline_points[n + 1].values
+        p_k = self.spline_values[n]
+        p_k_1 = self.spline_values[n + 1]
 
-            m_k = self.spline_points[n].derivatives
-            m_k_1 = self.spline_points[n + 1].derivatives
+        m_k = self.spline_derivatives[n]
+        m_k_1 = self.spline_derivatives[n + 1]
 
-            interpolated_values.append(
-                h00 * p_k + h10 * delta_x * m_k + h01 * p_k_1 + h11 * delta_x * m_k_1
-            )
+        new_shape = (-1,) + (1,) * self.number_of_custom_axes
+        h00 = h00.reshape(new_shape)
+        h10 = h10.reshape(new_shape)
+        h01 = h01.reshape(new_shape)
+        h11 = h11.reshape(new_shape)
+
+        interpolated_values = (
+            h00 * p_k + h10 * delta_x * m_k + h01 * p_k_1 + h11 * delta_x * m_k_1
+        )
 
         return np.array(interpolated_values)
