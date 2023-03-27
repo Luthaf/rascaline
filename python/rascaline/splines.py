@@ -219,4 +219,4 @@ class DynamicSpliner:
             h00 * p_k + h10 * delta_x * m_k + h01 * p_k_1 + h11 * delta_x * m_k_1
         )
 
-        return np.array(interpolated_values)
+        return interpolated_values
