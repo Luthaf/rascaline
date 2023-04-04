@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import ctypes
 from ctypes import POINTER, c_double, c_void_p, pointer
 

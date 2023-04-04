@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from ._c_api import RASCAL_SUCCESS
 from ._c_lib import _get_library
 

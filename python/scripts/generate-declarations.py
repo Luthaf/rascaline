@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 import os
-import sys
 
 from pycparser import c_ast, parse_file
 
@@ -210,7 +208,7 @@ def generate_structs(file, structs):
 
 
 def generate_functions(file, functions):
-    file.write(f"\n\ndef setup_functions(lib):\n")
+    file.write("\n\ndef setup_functions(lib):\n")
     file.write("    from .status import _check_rascal_status_t\n")
 
     for function in functions:
@@ -236,8 +234,7 @@ def generate_declarations():
     outpath = os.path.join(ROOT, "..", "rascaline", "_c_api.py")
     with open(outpath, "w") as file:
         file.write(
-            """# -*- coding: utf-8 -*-
-'''Automatically-generated file, do not edit!!!'''
+            """'''Automatically-generated file, do not edit!!!'''
 # flake8: noqa
 
 import ctypes

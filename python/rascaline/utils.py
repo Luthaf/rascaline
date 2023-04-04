@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import ctypes
 
 from ._c_api import RASCAL_BUFFER_SIZE_ERROR
