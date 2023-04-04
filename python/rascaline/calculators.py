@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import ctypes
 import json
 from typing import List, Optional, Union

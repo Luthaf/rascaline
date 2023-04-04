@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 '''Automatically-generated file, do not edit!!!'''
 # flake8: noqa
 
