@@ -185,6 +185,7 @@ set(RASCALINE_HEADERS
 set(RASCALINE_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/)
 
 set(EQUISTORE_GIT_VERSION "6c5a833")
+set(EQUISTORE_REQUIRED_VERSION "0.1")
 if (RASCALINE_FETCH_EQUISTORE)
     message(STATUS "Fetching equistore @ ${EQUISTORE_GIT_VERSION} from github")
 
@@ -215,7 +216,7 @@ if (RASCALINE_FETCH_EQUISTORE)
 
     add_dependencies(cargo-build-rascaline equistore)
 else()
-    find_package(equistore 0.1 REQUIRED CONFIG)
+    find_package(equistore ${EQUISTORE_REQUIRED_VERSION} REQUIRED CONFIG)
 endif()
 
 set_target_properties(rascaline PROPERTIES

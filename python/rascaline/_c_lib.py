@@ -10,9 +10,6 @@ from .log import _set_logging_callback_impl, default_logging_callback
 
 _HERE = os.path.realpath(os.path.dirname(__file__))
 
-# path that can be used with cmake to access the rascaline library and headers
-cmake_prefix_path = os.path.join(_HERE, "lib", "cmake")
-
 
 class RascalFinder(object):
     def __init__(self):
