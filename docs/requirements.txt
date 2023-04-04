@@ -5,7 +5,7 @@ breathe >=4.33  # C and C++ => sphinx through doxygen
 sphinx-gallery  # convert python files into nice documentation
 sphinx-tabs     # tabs for code examples (one tab per language)
 pygments >=2.11 # syntax highligthing
-toml            #
+toml            # to extract version number out of Cargo.toml
 myst-parser     # markdown => rst translation, used in extensions/rascaline_json_schema
 
 # dependencies for the tutorials
