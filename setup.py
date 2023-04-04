@@ -1,5 +1,6 @@
 import glob
 import os
+import shutil
 import subprocess
 
 from setuptools import Extension, setup
@@ -82,9 +83,12 @@ class cmake_ext(build_ext):
             check=True,
         )
 
-        # do not include equistore libraries/headers with rascaline wheel
+        # do not include equistore libraries/headers/cmake config within
+        # rascaline wheel
         for file in glob.glob(os.path.join(install_dir, "lib", "*equistore*")):
             os.unlink(file)
+
+        shutil.rmtree(os.path.join(install_dir, "lib", "cmake", "equistore"))
 
         for file in glob.glob(os.path.join(install_dir, "include", "equistore*")):
             os.unlink(file)
