@@ -208,29 +208,34 @@ impl<D: ndarray::Dimension> HermitCubicSpline<D> {
     /// optionally `gradients`.
     pub fn compute(&self, x: f64, values: ArrayViewMut<f64, D>, gradients: Option<ArrayViewMut<f64, D>>) {
         debug_assert!(x.is_finite());
-        debug_assert!(x >= self.parameters.start && x < self.parameters.stop);
+        debug_assert!(x >= self.parameters.start && x <= self.parameters.stop);
         debug_assert_eq!(values.shape(), self.parameters.shape);
         if let Some(ref gradients) = gradients {
             debug_assert_eq!(gradients.shape(), self.parameters.shape);
         }
 
-
         // notation in this function follows
         // https://en.wikipedia.org/wiki/Cubic_Hermite_spline
 
-        let k = match self.points.binary_search_by(
+        let mut k = match self.points.binary_search_by(
             |v| v.position.partial_cmp(&x).expect("got NaN")
         ) {
             Ok(k) => k,
             Err(k) => k - 1,
         };
 
+        // If we are evaluating at exactly the last spline point, use the
+        // previous point as a basis, and t will be 1 below.
+        if k == self.points.len() - 1 {
+            k -= 1;
+        }
+
         let point_k = &self.points[k];
         let point_k_1 = &self.points[k + 1];
 
         let x_k = point_k.position;
         let x_k_1 = point_k_1.position;
-        debug_assert!(x_k <= x && x < x_k_1);
+        debug_assert!(x_k <= x && x <= x_k_1);
 
         let delta = x_k_1 - x_k;
         let t = (x - x_k) / delta;
@@ -289,7 +294,7 @@ mod tests {
 
         let mut values = ndarray::Array1::from_elem((1,), 0.0);
         let mut gradients = ndarray::Array1::from_elem((1,), 0.0);
-        for &x in &[-2.2, -1.00242144, 0.0, 0.000000001, 2.3, 3.2, 4.7, 5.3, 5.99999999] {
+        for &x in &[-3.0, -2.2, -1.00242144, 0.0, 0.000000001, 2.3, 3.2, 4.7, 5.3, 5.99999999, 6.0] {
             spline.compute(x, values.view_mut(), Some(gradients.view_mut()));
             assert_relative_eq!(values[0], f64::sin(x), max_relative=1e-5, epsilon=1e-12);
             assert_relative_eq!(gradients[0], f64::cos(x), max_relative=1e-5, epsilon=1e-12);
