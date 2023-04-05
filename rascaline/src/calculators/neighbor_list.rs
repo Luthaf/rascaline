@@ -37,6 +37,8 @@ pub struct NeighborList {
     /// `i-j` and once as `j-i`), or a half neighbor list (each pair only
     /// appears once)
     pub full_neighbor_list: bool,
+    /// Should we compute self-neighbor terms
+    pub self_terms: bool,
 }
 
 /// Sort a pair and return true if the pair was inverted
@@ -58,12 +60,12 @@ impl CalculatorBase for NeighborList {
     }
 
     fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
-        assert!(self.cutoff > 0.0 && self.cutoff.is_finite());
+        assert!(self.cutoff >= 0.0 && self.cutoff.is_finite());
 
         if self.full_neighbor_list {
-            FullNeighborList { cutoff: self.cutoff }.keys(systems)
+            FullNeighborList { cutoff: self.cutoff, self_terms: self.self_terms }.keys(systems)
         } else {
-            HalfNeighborList { cutoff: self.cutoff }.keys(systems)
+            HalfNeighborList { cutoff: self.cutoff, self_terms: self.self_terms }.keys(systems)
         }
     }
 
@@ -72,12 +74,12 @@ impl CalculatorBase for NeighborList {
     }
 
     fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
-        assert!(self.cutoff > 0.0 && self.cutoff.is_finite());
+        assert!(self.cutoff >= 0.0 && self.cutoff.is_finite());
 
         if self.full_neighbor_list {
-            FullNeighborList { cutoff: self.cutoff }.samples(keys, systems)
+            FullNeighborList { cutoff: self.cutoff, self_terms: self.self_terms }.samples(keys, systems)
         } else {
-            HalfNeighborList { cutoff: self.cutoff }.samples(keys, systems)
+            HalfNeighborList { cutoff: self.cutoff, self_terms: self.self_terms }.samples(keys, systems)
         }
     }
 
@@ -95,6 +97,10 @@ impl CalculatorBase for NeighborList {
         for block_samples in samples {
             let mut builder = LabelsBuilder::new(vec!["sample", "structure", "atom"]);
             for (sample_i, &[system_i, _, first, second]) in block_samples.iter_fixed_size().enumerate() {
+                // self pairs do not contribute to gradients
+                if pair_id == -1 {
+                    continue;
+                }
                 builder.add(&[sample_i.into(), system_i, first]);
                 builder.add(&[sample_i.into(), system_i, second]);
             }
@@ -125,9 +131,9 @@ impl CalculatorBase for NeighborList {
     #[time_graph::instrument(name = "NeighborList::compute")]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
         if self.full_neighbor_list {
-            FullNeighborList { cutoff: self.cutoff }.compute(systems, descriptor)
+            FullNeighborList { cutoff: self.cutoff, self_terms: self.self_terms }.compute(systems, descriptor)
         } else {
-            HalfNeighborList { cutoff: self.cutoff }.compute(systems, descriptor)
+            HalfNeighborList { cutoff: self.cutoff, self_terms: self.self_terms }.compute(systems, descriptor)
         }
     }
 }
@@ -137,6 +143,7 @@ impl CalculatorBase for NeighborList {
 #[derive(Debug, Clone)]
 struct HalfNeighborList {
     cutoff: f64,
+    self_terms: bool
 }
 
 impl HalfNeighborList {
@@ -183,7 +190,21 @@ impl HalfNeighborList {
                         builder.add(&[system_i, pair_id, atom_i, atom_j]);
                     }
                 }
+                if self.self_terms && species_first == species_second {
+                    for center_i in 0..system.size()? {
+                        if species[center_i] == species_first.i32() {
+                            builder.add(&[
+                                system_i.into(),
+                                // set pair_id as -1 for self pairs
+                                LabelValue::new(-1),
+                                center_i.into(),
+                                center_i.into(),
+                            ]);
+                        }
+                    }
+                }
             }
+
 
             results.push(builder.finish());
         }
@@ -267,6 +288,7 @@ impl HalfNeighborList {
 #[derive(Debug, Clone)]
 pub struct FullNeighborList {
     pub cutoff: f64,
+    pub self_terms: bool
 }
 
 impl FullNeighborList {
@@ -318,6 +340,19 @@ impl FullNeighborList {
                             builder.add(&[system_i, pair_id, pair.first, pair.second]);
                         } else if species[pair.second] == species_first.i32() && species[pair.first] == species_second.i32() {
                             builder.add(&[system_i, pair_id, pair.second, pair.first]);
+                        }
+                    }
+                }
+                if self.self_terms && species_first == species_second {
+                    for center_i in 0..system.size()? {
+                        if species[center_i] == species_first.i32() {
+                            builder.add(&[
+                                system_i.into(),
+                                // set pair_id as -1 for self pairs
+                                LabelValue::new(-1),
+                                center_i.into(),
+                                center_i.into(),
+                            ]);
                         }
                     }
                 }

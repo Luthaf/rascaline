@@ -521,7 +521,7 @@ impl CalculatorBase for SphericalExpansionByPair {
 
     fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
         // the species part of the keys is the same for all l
-        let species_keys = FullNeighborList { cutoff: self.parameters.cutoff }.keys(systems)?;
+        let species_keys = FullNeighborList { cutoff: self.parameters.cutoff, self_terms: false }.keys(systems)?;
         let mut all_species_pairs = species_keys.iter().map(|p| (p[0], p[1])).collect::<BTreeSet<_>>();
 
         // also include self-pairs in case they are missing from species_keys

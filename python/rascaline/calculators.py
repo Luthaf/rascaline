@@ -318,10 +318,11 @@ class NeighborList(CalculatorBase):
     larger than the cell).
     """
 
-    def __init__(self, cutoff, full_neighbor_list):
+    def __init__(self, cutoff, full_neighbor_list, self_terms):
         parameters = {
             "cutoff": cutoff,
             "full_neighbor_list": full_neighbor_list,
+            "self_terms": self_terms,
         }
         super().__init__("neighbor_list", parameters)
 
