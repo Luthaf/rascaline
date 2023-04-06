@@ -96,7 +96,7 @@ impl CalculatorBase for NeighborList {
 
         for block_samples in samples {
             let mut builder = LabelsBuilder::new(vec!["sample", "structure", "atom"]);
-            for (sample_i, &[system_i, _, first, second]) in block_samples.iter_fixed_size().enumerate() {
+            for (sample_i, &[system_i, pair_id, first, second]) in block_samples.iter_fixed_size().enumerate() {
                 // self pairs do not contribute to gradients
                 if pair_id == -1 {
                     continue;
