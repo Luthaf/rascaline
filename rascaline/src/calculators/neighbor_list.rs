@@ -483,6 +483,7 @@ mod tests {
         let mut calculator = Calculator::from(Box::new(NeighborList{
             cutoff: 2.0,
             full_neighbor_list: false,
+            self_terms: false,
         }) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
@@ -536,6 +537,7 @@ mod tests {
         let mut calculator = Calculator::from(Box::new(NeighborList{
             cutoff: 2.0,
             full_neighbor_list: true,
+            self_terms: false,
         }) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
@@ -612,6 +614,7 @@ mod tests {
         let calculator = Calculator::from(Box::new(NeighborList{
             cutoff: 1.0,
             full_neighbor_list: false,
+            self_terms: false,
         }) as Box<dyn CalculatorBase>);
 
         let system = test_system("water");
@@ -626,6 +629,7 @@ mod tests {
         let calculator = Calculator::from(Box::new(NeighborList{
             cutoff: 1.0,
             full_neighbor_list: true,
+            self_terms: false,
         }) as Box<dyn CalculatorBase>);
         crate::calculators::tests_utils::finite_differences_positions(calculator, &system, options);
     }
@@ -636,6 +640,7 @@ mod tests {
         let calculator = Calculator::from(Box::new(NeighborList{
             cutoff: 1.0,
             full_neighbor_list: false,
+            self_terms: false,
         }) as Box<dyn CalculatorBase>);
         let mut systems = test_systems(&["water", "methane"]);
 
@@ -662,6 +667,7 @@ mod tests {
         let calculator = Calculator::from(Box::new(NeighborList{
             cutoff: 1.0,
             full_neighbor_list: true,
+            self_terms: false,
         }) as Box<dyn CalculatorBase>);
         crate::calculators::tests_utils::compute_partial(
             calculator, &mut systems, &keys, &samples, &properties
