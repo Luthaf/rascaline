@@ -17,9 +17,9 @@ part of the features for our model.
 The first part of this example repeats the :ref:`userdoc-how-to-computing-soap`,
 so we suggest that you read it initially.
 
-We will use the implementation of Farthest Point Sampling from scikit-cosmo,
+We will use the implementation of Farthest Point Sampling from scikit-matter,
 if you want to learn more have a look at the
-`scikit-cosmo documentation <https://scikit-cosmo.readthedocs.io/en/latest/>`_.
+`scikit-matter documentation <https://scikit-matter.readthedocs.io/en/latest/>`_.
 
 You can obtain a testing dataset from our :download:`website <../../static/dataset.xyz>`.
 
