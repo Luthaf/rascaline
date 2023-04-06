@@ -137,7 +137,7 @@ intersphinx_mapping = {
     "equistore": ("https://lab-cosmo.github.io/equistore/latest/", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
-    "skcosmo": ("https://scikit-matter.readthedocs.io/en/latest/", None),
+    "skmatter": ("https://scikit-matter.readthedocs.io/en/latest/", None),
     "python": ("https://docs.python.org/3", None),
 }
 
