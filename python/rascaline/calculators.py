@@ -307,8 +307,8 @@ class NeighborList(CalculatorBase):
 
     Self pairs (pairs between an atom and periodic copy itself) can appear when
     the cutoff is larger than the cell under periodic boundary conditions. Self
-    pairs with a distance of 0 are not included in this calculator, even though
-    they are required when computing SOAP.
+    pairs with a distance of 0 are only included when the user passes
+    ``self_terms=True``, which is not the default behavior.
 
     This sample produces a single property (``"distance"``) with three
     components (``"pair_direction"``) containing the x, y, and z component of
@@ -318,7 +318,7 @@ class NeighborList(CalculatorBase):
     larger than the cell).
     """
 
-    def __init__(self, cutoff, full_neighbor_list, self_terms):
+    def __init__(self, cutoff, full_neighbor_list, self_terms=False):
         parameters = {
             "cutoff": cutoff,
             "full_neighbor_list": full_neighbor_list,
