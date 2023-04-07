@@ -38,7 +38,7 @@ pub struct NeighborList {
     /// appears once)
     pub full_neighbor_list: bool,
     /// Should we compute self-neighbor terms
-    pub self_terms: bool,
+    pub self_pairs: bool,
 }
 
 /// Sort a pair and return true if the pair was inverted
@@ -63,9 +63,9 @@ impl CalculatorBase for NeighborList {
         assert!(self.cutoff >= 0.0 && self.cutoff.is_finite());
 
         if self.full_neighbor_list {
-            FullNeighborList { cutoff: self.cutoff, self_terms: self.self_terms }.keys(systems)
+            FullNeighborList { cutoff: self.cutoff, self_pairs: self.self_pairs }.keys(systems)
         } else {
-            HalfNeighborList { cutoff: self.cutoff, self_terms: self.self_terms }.keys(systems)
+            HalfNeighborList { cutoff: self.cutoff, self_pairs: self.self_pairs }.keys(systems)
         }
     }
 
@@ -77,9 +77,9 @@ impl CalculatorBase for NeighborList {
         assert!(self.cutoff >= 0.0 && self.cutoff.is_finite());
 
         if self.full_neighbor_list {
-            FullNeighborList { cutoff: self.cutoff, self_terms: self.self_terms }.samples(keys, systems)
+            FullNeighborList { cutoff: self.cutoff, self_pairs: self.self_pairs }.samples(keys, systems)
         } else {
-            HalfNeighborList { cutoff: self.cutoff, self_terms: self.self_terms }.samples(keys, systems)
+            HalfNeighborList { cutoff: self.cutoff, self_pairs: self.self_pairs }.samples(keys, systems)
         }
     }
 
@@ -131,9 +131,9 @@ impl CalculatorBase for NeighborList {
     #[time_graph::instrument(name = "NeighborList::compute")]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
         if self.full_neighbor_list {
-            FullNeighborList { cutoff: self.cutoff, self_terms: self.self_terms }.compute(systems, descriptor)
+            FullNeighborList { cutoff: self.cutoff, self_pairs: self.self_pairs }.compute(systems, descriptor)
         } else {
-            HalfNeighborList { cutoff: self.cutoff, self_terms: self.self_terms }.compute(systems, descriptor)
+            HalfNeighborList { cutoff: self.cutoff, self_pairs: self.self_pairs }.compute(systems, descriptor)
         }
     }
 }
@@ -143,7 +143,7 @@ impl CalculatorBase for NeighborList {
 #[derive(Debug, Clone)]
 struct HalfNeighborList {
     cutoff: f64,
-    self_terms: bool
+    self_pairs: bool
 }
 
 impl HalfNeighborList {
@@ -190,7 +190,7 @@ impl HalfNeighborList {
                         builder.add(&[system_i, pair_id, atom_i, atom_j]);
                     }
                 }
-                if self.self_terms && species_first == species_second {
+                if self.self_pairs && species_first == species_second {
                     for center_i in 0..system.size()? {
                         if species[center_i] == species_first.i32() {
                             builder.add(&[
@@ -288,7 +288,7 @@ impl HalfNeighborList {
 #[derive(Debug, Clone)]
 pub struct FullNeighborList {
     pub cutoff: f64,
-    pub self_terms: bool
+    pub self_pairs: bool
 }
 
 impl FullNeighborList {
@@ -343,7 +343,7 @@ impl FullNeighborList {
                         }
                     }
                 }
-                if self.self_terms && species_first == species_second {
+                if self.self_pairs && species_first == species_second {
                     for center_i in 0..system.size()? {
                         if species[center_i] == species_first.i32() {
                             builder.add(&[
@@ -483,7 +483,7 @@ mod tests {
         let mut calculator = Calculator::from(Box::new(NeighborList{
             cutoff: 2.0,
             full_neighbor_list: false,
-            self_terms: false,
+            self_pairs: false,
         }) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
@@ -537,7 +537,7 @@ mod tests {
         let mut calculator = Calculator::from(Box::new(NeighborList{
             cutoff: 2.0,
             full_neighbor_list: true,
-            self_terms: false,
+            self_pairs: false,
         }) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
@@ -614,7 +614,7 @@ mod tests {
         let calculator = Calculator::from(Box::new(NeighborList{
             cutoff: 1.0,
             full_neighbor_list: false,
-            self_terms: false,
+            self_pairs: false,
         }) as Box<dyn CalculatorBase>);
 
         let system = test_system("water");
@@ -629,7 +629,7 @@ mod tests {
         let calculator = Calculator::from(Box::new(NeighborList{
             cutoff: 1.0,
             full_neighbor_list: true,
-            self_terms: false,
+            self_pairs: false,
         }) as Box<dyn CalculatorBase>);
         crate::calculators::tests_utils::finite_differences_positions(calculator, &system, options);
     }
@@ -640,7 +640,7 @@ mod tests {
         let calculator = Calculator::from(Box::new(NeighborList{
             cutoff: 1.0,
             full_neighbor_list: false,
-            self_terms: false,
+            self_pairs: false,
         }) as Box<dyn CalculatorBase>);
         let mut systems = test_systems(&["water", "methane"]);
 
@@ -667,10 +667,33 @@ mod tests {
         let calculator = Calculator::from(Box::new(NeighborList{
             cutoff: 1.0,
             full_neighbor_list: true,
-            self_terms: false,
+            self_pairs: false,
         }) as Box<dyn CalculatorBase>);
         crate::calculators::tests_utils::compute_partial(
             calculator, &mut systems, &keys, &samples, &properties
         );
+    }
+
+    #[test]
+    fn check_self_pairs() {
+        // checking for self terms
+        let mut calculator = Calculator::from(Box::new(NeighborList{
+            cutoff: 2.0,
+            full_neighbor_list: true,
+            self_pairs: true,
+        }) as Box<dyn CalculatorBase>);
+        let mut systems = test_systems(&["water"]);
+
+        let descriptor = calculator.compute(&mut systems, Default::default()).unwrap();
+
+        // H-H block
+        let block = descriptor.block_by_id(2);
+        let values= block.values();
+        assert_eq!(values.samples, Labels::new(
+            ["structure", "pair_id", "first_atom", "second_atom"],
+            // we have one H-H pair and two self-pairs
+            &[[0, 2, 1, 2], [0, 2, 2, 1], [0, -1, 1, 1], [0, -1, 2, 2]]
+        ));
+
     }
 }
