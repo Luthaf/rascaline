@@ -74,7 +74,7 @@ impl CalculatorBase for NeighborList {
     }
 
     fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
-        assert!(self.cutoff >= 0.0 && self.cutoff.is_finite());
+        assert!(self.cutoff > 0.0 && self.cutoff.is_finite());
 
         if self.full_neighbor_list {
             FullNeighborList { cutoff: self.cutoff, self_pairs: self.self_pairs }.samples(keys, systems)
