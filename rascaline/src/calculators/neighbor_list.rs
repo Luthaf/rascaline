@@ -37,7 +37,9 @@ pub struct NeighborList {
     /// `i-j` and once as `j-i`), or a half neighbor list (each pair only
     /// appears once)
     pub full_neighbor_list: bool,
-    /// Should we compute self-neighbor terms
+    /// Should individual atoms be considered their own neighbor? Setting this
+    /// to `true` will add "self pairs", i.e. pairs between an atom and itself,
+    /// with the distance 0. The `pair_id` of such pairs is set to -1.
     pub self_pairs: bool,
 }
 
@@ -157,6 +159,14 @@ impl HalfNeighborList {
                 let (species_pair, _) = sort_pair((species[pair.first], species[pair.second]));
                 all_species_pairs.insert(species_pair);
             }
+
+            // make sure we have self-pairs keys even if the system does not
+            // contain any neighbors with the same species
+            if self.self_pairs {
+                for &species in species {
+                    all_species_pairs.insert((species, species));
+                }
+            }
         }
 
         let mut keys = LabelsBuilder::new(vec!["species_first_atom", "species_second_atom"]);
@@ -190,6 +200,8 @@ impl HalfNeighborList {
                         builder.add(&[system_i, pair_id, atom_i, atom_j]);
                     }
                 }
+
+                // handle self pairs
                 if self.self_pairs && species_first == species_second {
                     for center_i in 0..system.size()? {
                         if species[center_i] == species_first.i32() {
@@ -303,6 +315,14 @@ impl FullNeighborList {
                 all_species_pairs.insert((species[pair.first], species[pair.second]));
                 all_species_pairs.insert((species[pair.second], species[pair.first]));
             }
+
+            // make sure we have self-pairs keys even if the system does not
+            // contain any neighbors with the same species
+            if self.self_pairs {
+                for &species in species {
+                    all_species_pairs.insert((species, species));
+                }
+            }
         }
 
         let mut keys = LabelsBuilder::new(vec!["species_first_atom", "species_second_atom"]);
@@ -343,6 +363,8 @@ impl FullNeighborList {
                         }
                     }
                 }
+
+                // handle self pairs
                 if self.self_pairs && species_first == species_second {
                     for center_i in 0..system.size()? {
                         if species[center_i] == species_first.i32() {
@@ -676,7 +698,6 @@ mod tests {
 
     #[test]
     fn check_self_pairs() {
-        // checking for self terms
         let mut calculator = Calculator::from(Box::new(NeighborList{
             cutoff: 2.0,
             full_neighbor_list: true,
@@ -686,8 +707,14 @@ mod tests {
 
         let descriptor = calculator.compute(&mut systems, Default::default()).unwrap();
 
+        // we have a block for O-O pairs (-42, -42)
+        assert_eq!(descriptor.keys(), &Labels::new(
+            ["species_first_atom", "species_second_atom"],
+            &[[-42, -42], [-42, 1], [1, -42], [1, 1]]
+        ));
+
         // H-H block
-        let block = descriptor.block_by_id(2);
+        let block = descriptor.block_by_id(3);
         let values= block.values();
         assert_eq!(values.samples, Labels::new(
             ["structure", "pair_id", "first_atom", "second_atom"],
