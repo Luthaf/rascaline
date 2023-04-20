@@ -37,6 +37,10 @@ pub struct NeighborList {
     /// `i-j` and once as `j-i`), or a half neighbor list (each pair only
     /// appears once)
     pub full_neighbor_list: bool,
+    /// Should individual atoms be considered their own neighbor? Setting this
+    /// to `true` will add "self pairs", i.e. pairs between an atom and itself,
+    /// with the distance 0. The `pair_id` of such pairs is set to -1.
+    pub self_pairs: bool,
 }
 
 /// Sort a pair and return true if the pair was inverted
@@ -61,9 +65,9 @@ impl CalculatorBase for NeighborList {
         assert!(self.cutoff > 0.0 && self.cutoff.is_finite());
 
         if self.full_neighbor_list {
-            FullNeighborList { cutoff: self.cutoff }.keys(systems)
+            FullNeighborList { cutoff: self.cutoff, self_pairs: self.self_pairs }.keys(systems)
         } else {
-            HalfNeighborList { cutoff: self.cutoff }.keys(systems)
+            HalfNeighborList { cutoff: self.cutoff, self_pairs: self.self_pairs }.keys(systems)
         }
     }
 
@@ -75,9 +79,9 @@ impl CalculatorBase for NeighborList {
         assert!(self.cutoff > 0.0 && self.cutoff.is_finite());
 
         if self.full_neighbor_list {
-            FullNeighborList { cutoff: self.cutoff }.samples(keys, systems)
+            FullNeighborList { cutoff: self.cutoff, self_pairs: self.self_pairs }.samples(keys, systems)
         } else {
-            HalfNeighborList { cutoff: self.cutoff }.samples(keys, systems)
+            HalfNeighborList { cutoff: self.cutoff, self_pairs: self.self_pairs }.samples(keys, systems)
         }
     }
 
@@ -94,7 +98,11 @@ impl CalculatorBase for NeighborList {
 
         for block_samples in samples {
             let mut builder = LabelsBuilder::new(vec!["sample", "structure", "atom"]);
-            for (sample_i, &[system_i, _, first, second]) in block_samples.iter_fixed_size().enumerate() {
+            for (sample_i, &[system_i, pair_id, first, second]) in block_samples.iter_fixed_size().enumerate() {
+                // self pairs do not contribute to gradients
+                if pair_id == -1 {
+                    continue;
+                }
                 builder.add(&[sample_i.into(), system_i, first]);
                 builder.add(&[sample_i.into(), system_i, second]);
             }
@@ -125,9 +133,9 @@ impl CalculatorBase for NeighborList {
     #[time_graph::instrument(name = "NeighborList::compute")]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
         if self.full_neighbor_list {
-            FullNeighborList { cutoff: self.cutoff }.compute(systems, descriptor)
+            FullNeighborList { cutoff: self.cutoff, self_pairs: self.self_pairs }.compute(systems, descriptor)
         } else {
-            HalfNeighborList { cutoff: self.cutoff }.compute(systems, descriptor)
+            HalfNeighborList { cutoff: self.cutoff, self_pairs: self.self_pairs }.compute(systems, descriptor)
         }
     }
 }
@@ -137,6 +145,7 @@ impl CalculatorBase for NeighborList {
 #[derive(Debug, Clone)]
 struct HalfNeighborList {
     cutoff: f64,
+    self_pairs: bool
 }
 
 impl HalfNeighborList {
@@ -149,6 +158,14 @@ impl HalfNeighborList {
             for pair in system.pairs()? {
                 let (species_pair, _) = sort_pair((species[pair.first], species[pair.second]));
                 all_species_pairs.insert(species_pair);
+            }
+
+            // make sure we have self-pairs keys even if the system does not
+            // contain any neighbors with the same species
+            if self.self_pairs {
+                for &species in species {
+                    all_species_pairs.insert((species, species));
+                }
             }
         }
 
@@ -183,7 +200,23 @@ impl HalfNeighborList {
                         builder.add(&[system_i, pair_id, atom_i, atom_j]);
                     }
                 }
+
+                // handle self pairs
+                if self.self_pairs && species_first == species_second {
+                    for center_i in 0..system.size()? {
+                        if species[center_i] == species_first.i32() {
+                            builder.add(&[
+                                system_i.into(),
+                                // set pair_id as -1 for self pairs
+                                LabelValue::new(-1),
+                                center_i.into(),
+                                center_i.into(),
+                            ]);
+                        }
+                    }
+                }
             }
+
 
             results.push(builder.finish());
         }
@@ -267,6 +300,7 @@ impl HalfNeighborList {
 #[derive(Debug, Clone)]
 pub struct FullNeighborList {
     pub cutoff: f64,
+    pub self_pairs: bool
 }
 
 impl FullNeighborList {
@@ -280,6 +314,14 @@ impl FullNeighborList {
             for pair in system.pairs()? {
                 all_species_pairs.insert((species[pair.first], species[pair.second]));
                 all_species_pairs.insert((species[pair.second], species[pair.first]));
+            }
+
+            // make sure we have self-pairs keys even if the system does not
+            // contain any neighbors with the same species
+            if self.self_pairs {
+                for &species in species {
+                    all_species_pairs.insert((species, species));
+                }
             }
         }
 
@@ -318,6 +360,21 @@ impl FullNeighborList {
                             builder.add(&[system_i, pair_id, pair.first, pair.second]);
                         } else if species[pair.second] == species_first.i32() && species[pair.first] == species_second.i32() {
                             builder.add(&[system_i, pair_id, pair.second, pair.first]);
+                        }
+                    }
+                }
+
+                // handle self pairs
+                if self.self_pairs && species_first == species_second {
+                    for center_i in 0..system.size()? {
+                        if species[center_i] == species_first.i32() {
+                            builder.add(&[
+                                system_i.into(),
+                                // set pair_id as -1 for self pairs
+                                LabelValue::new(-1),
+                                center_i.into(),
+                                center_i.into(),
+                            ]);
                         }
                     }
                 }
@@ -448,6 +505,7 @@ mod tests {
         let mut calculator = Calculator::from(Box::new(NeighborList{
             cutoff: 2.0,
             full_neighbor_list: false,
+            self_pairs: false,
         }) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
@@ -501,6 +559,7 @@ mod tests {
         let mut calculator = Calculator::from(Box::new(NeighborList{
             cutoff: 2.0,
             full_neighbor_list: true,
+            self_pairs: false,
         }) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
@@ -577,6 +636,7 @@ mod tests {
         let calculator = Calculator::from(Box::new(NeighborList{
             cutoff: 1.0,
             full_neighbor_list: false,
+            self_pairs: false,
         }) as Box<dyn CalculatorBase>);
 
         let system = test_system("water");
@@ -591,6 +651,7 @@ mod tests {
         let calculator = Calculator::from(Box::new(NeighborList{
             cutoff: 1.0,
             full_neighbor_list: true,
+            self_pairs: false,
         }) as Box<dyn CalculatorBase>);
         crate::calculators::tests_utils::finite_differences_positions(calculator, &system, options);
     }
@@ -601,6 +662,7 @@ mod tests {
         let calculator = Calculator::from(Box::new(NeighborList{
             cutoff: 1.0,
             full_neighbor_list: false,
+            self_pairs: false,
         }) as Box<dyn CalculatorBase>);
         let mut systems = test_systems(&["water", "methane"]);
 
@@ -627,9 +689,38 @@ mod tests {
         let calculator = Calculator::from(Box::new(NeighborList{
             cutoff: 1.0,
             full_neighbor_list: true,
+            self_pairs: false,
         }) as Box<dyn CalculatorBase>);
         crate::calculators::tests_utils::compute_partial(
             calculator, &mut systems, &keys, &samples, &properties
         );
+    }
+
+    #[test]
+    fn check_self_pairs() {
+        let mut calculator = Calculator::from(Box::new(NeighborList{
+            cutoff: 2.0,
+            full_neighbor_list: true,
+            self_pairs: true,
+        }) as Box<dyn CalculatorBase>);
+        let mut systems = test_systems(&["water"]);
+
+        let descriptor = calculator.compute(&mut systems, Default::default()).unwrap();
+
+        // we have a block for O-O pairs (-42, -42)
+        assert_eq!(descriptor.keys(), &Labels::new(
+            ["species_first_atom", "species_second_atom"],
+            &[[-42, -42], [-42, 1], [1, -42], [1, 1]]
+        ));
+
+        // H-H block
+        let block = descriptor.block_by_id(3);
+        let values= block.values();
+        assert_eq!(values.samples, Labels::new(
+            ["structure", "pair_id", "first_atom", "second_atom"],
+            // we have one H-H pair and two self-pairs
+            &[[0, 2, 1, 2], [0, 2, 2, 1], [0, -1, 1, 1], [0, -1, 2, 2]]
+        ));
+
     }
 }

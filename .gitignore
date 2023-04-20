@@ -9,3 +9,4 @@ dist/
 *.egg-info
 __pycache__/
 .vscode
+*.DS_Store
