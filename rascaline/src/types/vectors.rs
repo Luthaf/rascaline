@@ -330,7 +330,7 @@ impl Default for Vector3D {
 }
 
 #[cfg(test)]
-#[allow(clippy::op_ref)]
+#[allow(clippy::op_ref, clippy::let_underscore_untyped)]
 mod tests {
     use crate::{Matrix3, Vector3D};
     use std::f64;

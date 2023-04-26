@@ -107,8 +107,9 @@ fn madelung() {
                 let descriptor = calculator.compute(&mut crystal.systems, options).unwrap();
 
                 let madelung = factor * (
-                        crystal.charges[0] * descriptor.block_by_id(0).values().data.as_array()[[0, 0, 0]]
-                      + crystal.charges[1] * descriptor.block_by_id(1).values().data.as_array()[[0, 0, 0]]);
+                    crystal.charges[0] * descriptor.block_by_id(0).values().to_array()[[0, 0, 0]]
+                    + crystal.charges[1] * descriptor.block_by_id(1).values().to_array()[[0, 0, 0]]
+                );
 
                 assert_relative_eq!(madelung, crystal.madelung, max_relative=8e-2);
             }
@@ -151,8 +152,9 @@ fn madelung_high_accuracy() {
         let descriptor = calculator.compute(&mut crystal.systems, options).unwrap();
 
         let madelung = factor * (
-                crystal.charges[0] * descriptor.block_by_id(0).values().data.as_array()[[0, 0, 0]]
-                + crystal.charges[1] * descriptor.block_by_id(1).values().data.as_array()[[0, 0, 0]]);
+            crystal.charges[0] * descriptor.block_by_id(0).values().to_array()[[0, 0, 0]]
+            + crystal.charges[1] * descriptor.block_by_id(1).values().to_array()[[0, 0, 0]]
+        );
 
         assert_relative_eq!(madelung, crystal.madelung, max_relative=5e-5);
     }

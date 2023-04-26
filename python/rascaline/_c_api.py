@@ -6,7 +6,7 @@ import enum
 import platform
 from ctypes import CFUNCTYPE, POINTER
 
-from equistore._c_api import eqs_labels_t, eqs_tensormap_t
+from equistore.core._c_api import eqs_labels_t, eqs_tensormap_t
 from numpy.ctypeslib import ndpointer
 
 

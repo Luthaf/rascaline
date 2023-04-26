@@ -87,8 +87,9 @@ impl CalculatorBase for GeometricMoments {
                         let block_id = first_block_id.expect("we have a sample in this block");
                         let mut block = descriptor.block_mut_by_id(block_id);
 
-                        let gradient = block.gradient_mut("positions").expect("missing gradient storage");
-                        let array = gradient.data.to_array_mut();
+                        let mut gradient = block.gradient_mut("positions").expect("missing gradient storage");
+                        let gradient = gradient.data_mut();
+                        let array = gradient.values.to_array_mut();
 
                         let gradient_wrt_second = gradient.samples.position(&[
                             sample_position.into(), system_i.into(), pair.second.into()
@@ -121,8 +122,9 @@ impl CalculatorBase for GeometricMoments {
                         let block_id = second_block_id.expect("we have a sample in this block");
                         let mut block = descriptor.block_mut_by_id(block_id);
 
-                        let gradient = block.gradient_mut("positions").expect("missing gradient storage");
-                        let array = gradient.data.to_array_mut();
+                        let mut gradient = block.gradient_mut("positions").expect("missing gradient storage");
+                        let gradient = gradient.data_mut();
+                        let array = gradient.values.to_array_mut();
 
                         let gradient_wrt_first = gradient.samples.position(&[
                             sample_position.into(), system_i.into(), pair.first.into()

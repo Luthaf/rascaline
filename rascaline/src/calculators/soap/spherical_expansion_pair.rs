@@ -175,7 +175,7 @@ impl SphericalExpansionByPair {
     pub fn new(parameters: SphericalExpansionParameters) -> Result<SphericalExpansionByPair, Error> {
         parameters.validate()?;
 
-        let m_1_pow_l = (0..=parameters.max_angular).into_iter()
+        let m_1_pow_l = (0..=parameters.max_angular)
             .map(|l| f64::powi(-1.0, l as i32))
             .collect::<Vec<f64>>();
 
@@ -276,12 +276,12 @@ impl SphericalExpansionByPair {
                 continue;
             }
 
-            let values = block.values_mut();
-            let array = values.data.to_array_mut();
+            let data = block.data_mut();
+            let array = data.values.to_array_mut();
 
             // loop over all samples in this block, find self pairs
             // (`pair_id` is -1), and fill the data using `self_contribution`
-            for (sample_i, &[structure, pair_id, atom_1, atom_2]) in values.samples.iter_fixed_size().enumerate() {
+            for (sample_i, &[structure, pair_id, atom_1, atom_2]) in data.samples.iter_fixed_size().enumerate() {
                 // it is possible that the samples from values.samples are not
                 // part of the systems (the user requested extra samples). In
                 // that case, we need to skip anything that does not exist, or
@@ -302,7 +302,7 @@ impl SphericalExpansionByPair {
                     continue;
                 }
 
-                for (property_i, &[n]) in values.properties.iter_fixed_size().enumerate() {
+                for (property_i, &[n]) in data.properties.iter_fixed_size().enumerate() {
                     array[[sample_i, 0, property_i]] = self_contribution.values[[0, n.usize()]];
                 }
             }
@@ -424,16 +424,16 @@ impl SphericalExpansionByPair {
         do_gradients: GradientsOptions,
         inverse_cell_pair_vector: Vector3D,
     ) {
-        let values = block.values_mut();
-        let array = values.data.to_array_mut();
+        let data = block.data_mut();
+        let array = data.values.to_array_mut();
 
-        let sample_i = values.samples.position(sample);
+        let sample_i = data.samples.position(sample);
 
         if let Some(sample_i) = sample_i {
             let lm_start = spherical_harmonics_l * spherical_harmonics_l;
 
             for m in 0..(2 * spherical_harmonics_l + 1) {
-                for (property_i, [n]) in values.properties.iter_fixed_size().enumerate() {
+                for (property_i, [n]) in data.properties.iter_fixed_size().enumerate() {
                     unsafe {
                         let out = array.uget_mut([sample_i, m, property_i]);
                         *out += *contribution.values.uget([lm_start + m, n.usize()]);
@@ -443,8 +443,10 @@ impl SphericalExpansionByPair {
 
             if let Some(ref contribution_gradients) = contribution.gradients {
                 if do_gradients.positions {
-                    let gradient = block.gradient_mut("positions").expect("missing positions gradients");
-                    let array = gradient.data.to_array_mut();
+                    let mut gradient = block.gradient_mut("positions").expect("missing positions gradients");
+                    let gradient = gradient.data_mut();
+
+                    let array = gradient.values.to_array_mut();
                     debug_assert_eq!(gradient.samples.names(), ["sample", "structure", "atom"]);
 
                     // gradient of the pair contribution w.r.t. the position of
@@ -483,12 +485,13 @@ impl SphericalExpansionByPair {
                 }
 
                 if do_gradients.cell {
-                    let gradient = block.gradient_mut("cell").expect("missing cell gradients");
+                    let mut gradient = block.gradient_mut("cell").expect("missing cell gradients");
+                    let gradient = gradient.data_mut();
 
                     debug_assert_eq!(gradient.samples.names(), ["sample"]);
                     assert_eq!(gradient.samples[sample_i][0].usize(), sample_i);
 
-                    let array = gradient.data.to_array_mut();
+                    let array = gradient.values.to_array_mut();
                     for spatial_1 in 0..3 {
                         for spatial_2 in 0..3 {
                             let inverse_cell_pair_vector_2 = inverse_cell_pair_vector[spatial_2];
@@ -929,26 +932,23 @@ mod tests {
             by_pair.keys().iter().collect::<Vec<_>>(),
         );
 
-        for (block, reference) in by_pair.blocks().iter().zip(expected.blocks()) {
-            let reference = reference.values();
-            let reference_samples = &reference.samples;
-            let reference_data = reference.data.as_array();
+        for (block, spx) in by_pair.blocks().iter().zip(expected.blocks()) {
+            let spx = spx.data();
+            let spx_values = spx.values.as_array();
 
-            let values = block.values();
-            let samples = &values.samples;
-            let data = values.data.as_array();
+            let block = block.data();
+            let values = block.values.as_array();
 
-            for (reference_sample, row) in reference_samples.iter().zip(reference_data.axis_iter(Axis(0))) {
-                let mut sum = row.to_owned();
-                sum.fill(0.0);
+            for (spx_sample, expected) in spx.samples.iter().zip(spx_values.axis_iter(Axis(0))) {
+                let mut sum = ndarray::Array::zeros(expected.raw_dim());
 
-                for (sample_i, &[structure, _, center, _]) in samples.iter_fixed_size().enumerate() {
-                    if reference_sample[0] == structure && reference_sample[1] == center {
-                        sum += &data.slice(s![sample_i, .., ..]);
+                for (sample_i, &[structure, _, center, _]) in block.samples.iter_fixed_size().enumerate() {
+                    if spx_sample[0] == structure && spx_sample[1] == center {
+                        sum += &values.slice(s![sample_i, .., ..]);
                     }
                 }
 
-                assert_ulps_eq!(sum, row);
+                assert_ulps_eq!(sum, expected);
             }
         }
     }

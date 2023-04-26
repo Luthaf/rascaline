@@ -101,15 +101,13 @@ impl SoapRadialSpectrum {
             // spherical_harmonics_l is always 0
             keys_builder.add(&[LabelValue::new(0), center, neighbor]);
 
+            let block = block.data();
             blocks.push(
                 TensorBlock::new(
-                    EmptyArray::new(vec![
-                        block.values().samples.count(),
-                        block.values().properties.count(),
-                    ]),
-                    block.values().samples.clone(),
+                    EmptyArray::new(vec![block.samples.count(), block.properties.count()]),
+                    &block.samples,
                     &[],
-                    block.values().properties.clone(),
+                    &block.properties,
                 ).expect("invalid TensorBlock")
             );
         }
@@ -232,8 +230,8 @@ impl CalculatorBase for SoapRadialSpectrum {
         for ((_, mut block), (_, block_spx)) in
             descriptor.iter_mut().zip(spherical_expansion.iter())
         {
-            let array = block.values_mut().data.to_array_mut();
-            let array_spx = block_spx.values().data.to_array();
+            let array = block.values_mut().to_array_mut();
+            let array_spx = block_spx.values().to_array();
             let shape = array_spx.shape();
             // shape[1] is the m component
             debug_assert_eq!(shape[1], 1);
@@ -242,12 +240,12 @@ impl CalculatorBase for SoapRadialSpectrum {
             ).expect("wrong shape");
             array.assign(&array_spx_reshaped);
 
-            if let Some(gradient) = block.gradient_mut("positions") {
+            if let Some(mut gradient) = block.gradient_mut("positions") {
                 let gradient_spx = block_spx.gradient("positions").expect("missing spherical expansion gradients");
-                debug_assert_eq!(gradient.samples, gradient_spx.samples);
+                debug_assert_eq!(gradient.samples(), gradient_spx.samples());
 
-                let array = gradient.data.to_array_mut();
-                let array_spx = gradient_spx.data.as_array();
+                let array = gradient.values_mut().to_array_mut();
+                let array_spx = gradient_spx.values().to_array();
                 let shape = array_spx.shape();
                 // shape[2] is the m component
                 debug_assert_eq!(shape[2], 1);
@@ -258,12 +256,12 @@ impl CalculatorBase for SoapRadialSpectrum {
                 array.assign(&array_spx_reshaped);
             }
 
-            if let Some(gradient) = block.gradient_mut("cell") {
+            if let Some(mut gradient) = block.gradient_mut("cell") {
                 let gradient_spx = block_spx.gradient("cell").expect("missing spherical expansion gradients");
-                debug_assert_eq!(gradient.samples, gradient_spx.samples);
+                debug_assert_eq!(gradient.samples(), gradient_spx.samples());
 
-                let array = gradient.data.to_array_mut();
-                let array_spx = gradient_spx.data.as_array();
+                let array = gradient.values_mut().to_array_mut();
+                let array_spx = gradient_spx.values().to_array();
                 let shape = array_spx.shape();
                 // shape[2] is the m component
                 debug_assert_eq!(shape[3], 1);

@@ -2,8 +2,8 @@ import ctypes
 import json
 from typing import List, Optional, Union
 
-from equistore import Labels, TensorMap
-from equistore._c_api import eqs_tensormap_t
+from equistore.core import Labels, TensorMap
+from equistore.core._c_api import eqs_tensormap_t
 
 from ._c_api import rascal_calculation_options_t, rascal_system_t
 from ._c_lib import _get_library
@@ -552,7 +552,7 @@ class LodeSphericalExpansion(CalculatorBase):
     each atom on a basis of radial functions and spherical harmonics.
     This representation is not rotationally invariant.
 
-    See [this article](https://aip.scitation.org/doi/10.1063/1.5128375)
+    See `this article <https://aip.scitation.org/doi/10.1063/1.5128375>`_
     for more information on the LODE representation.
 
     For a full description of the hyper-parameters, see the corresponding

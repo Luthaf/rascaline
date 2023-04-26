@@ -17,7 +17,7 @@ chemfiles = ["rascaline/chemfiles"]
 
 [dependencies]
 rascaline = {path = "../rascaline", version = "0.1.0", default-features = false}
-equistore = {git = "https://github.com/lab-cosmo/equistore", rev = "6c5a833"}
+equistore = {git = "https://github.com/lab-cosmo/equistore", rev = "e5b9dc365369ba2584ea01e9d6a4d648008aaab8"}
 
 ndarray = "0.15"
 log = { version = "0.4", features = ["std"] }
@@ -28,7 +28,7 @@ libc = "0.2"
 [build-dependencies]
 cbindgen = { version = "0.24", default-features = false }
 fs_extra = "1"
-equistore = {git = "https://github.com/lab-cosmo/equistore", rev = "6c5a833"}
+equistore = {git = "https://github.com/lab-cosmo/equistore", rev = "e5b9dc365369ba2584ea01e9d6a4d648008aaab8"}
 
 [dev-dependencies]
 which = "4"

@@ -290,7 +290,7 @@ impl LodeSphericalExpansion {
                 } else if potential_exponent == 5.0 {
                     f64::exp(-x) + x * expi(-x)
                 } else if potential_exponent == 6.0 {
-                    ((2.0 - 4.0 * x) * f64::exp(-x) 
+                    ((2.0 - 4.0 * x) * f64::exp(-x)
                         + 4.0 * f64::sqrt(std::f64::consts::PI) * x.powf(1.5) * erfc(f64::sqrt(x))) / 3.0
                 } else if potential_exponent == 7.0 {
                     (1.0 - x) * f64::exp(-x) / 2.0 - x.powi(2)/2.0 * expi(-x)
@@ -403,16 +403,16 @@ impl LodeSphericalExpansion {
                 let block_i = block_i.expect("we just checked");
 
                 let mut block = descriptor.block_mut_by_id(block_i);
-                let values = block.values_mut();
-                let array = values.data.to_array_mut();
+                let block = block.data_mut();
+                let array = block.values.to_array_mut();
 
                 let sample = [system_i.into(), center_i.into()];
-                let sample_i = match values.samples.position(&sample) {
+                let sample_i = match block.samples.position(&sample) {
                     Some(s) => s,
                     None => continue
                 };
 
-                for (property_i, [n]) in values.properties.iter_fixed_size().enumerate() {
+                for (property_i, [n]) in block.properties.iter_fixed_size().enumerate() {
                     let n = n.usize();
                     array[[sample_i, 0, property_i]] -= (1.0 - self.parameters.center_atom_weight) * central_atom_contrib[n];
                 }
@@ -596,16 +596,16 @@ impl CalculatorBase for LodeSphericalExpansion {
                             ]).expect("missing block");
 
                             let mut block = descriptor.block_mut_by_id(block_i);
-                            let values = block.values_mut();
-                            let mut array = array_mut_for_system(values.data);
+                            let data = block.data_mut();
+                            let mut array = array_mut_for_system(data.values);
 
                             let sample = [system_i.into(), center_i.into()];
-                            let sample_i = match values.samples.position(&sample) {
+                            let sample_i = match data.samples.position(&sample) {
                                 Some(s) => s,
                                 None => continue
                             };
 
-                            for (_property_i, [n]) in values.properties.iter_fixed_size().enumerate() {
+                            for (_property_i, [n]) in data.properties.iter_fixed_size().enumerate() {
                                 let n = n.usize();
                                 array[[sample_i, 0, _property_i]] += global_factor * k0_contrib[[n]];
                             }
@@ -648,17 +648,17 @@ impl CalculatorBase for LodeSphericalExpansion {
 
 
                             let mut block = descriptor.block_mut_by_id(block_i);
-                            let values = block.values_mut();
-                            let mut array = array_mut_for_system(values.data);
+                            let data = block.data_mut();
+                            let mut array = array_mut_for_system(data.values);
 
                             let sample = [system_i.into(), center_i.into()];
-                            let sample_i = match values.samples.position(&sample) {
+                            let sample_i = match data.samples.position(&sample) {
                                 Some(s) => s,
                                 None => continue
                             };
 
                             for m in 0..(2 * spherical_harmonics_l + 1) {
-                                for (property_i, [n]) in values.properties.iter_fixed_size().enumerate() {
+                                for (property_i, [n]) in data.properties.iter_fixed_size().enumerate() {
                                     let n = n.usize();
 
                                     let mut value = 0.0;
@@ -680,8 +680,9 @@ impl CalculatorBase for LodeSphericalExpansion {
                                 }
                             }
 
-                            if let Some(gradients) = block.gradient_mut("positions") {
-                                let mut array = array_mut_for_system(gradients.data);
+                            if let Some(mut gradient) = block.gradient_mut("positions") {
+                                let gradient = gradient.data_mut();
+                                let mut array = array_mut_for_system(gradient.values);
 
                                 for (neighbor_i, &current_neighbor_species) in species.iter().enumerate() {
                                     if neighbor_i == center_i {
@@ -692,11 +693,11 @@ impl CalculatorBase for LodeSphericalExpansion {
                                         continue;
                                     }
 
-                                    let grad_sample_self_i = gradients.samples.position(&[
+                                    let grad_sample_self_i = gradient.samples.position(&[
                                         sample_i.into(), system_i.into(), center_i.into()
                                     ]).expect("missing self gradient sample");
 
-                                    let grad_sample_other_i = gradients.samples.position(&[
+                                    let grad_sample_other_i = gradient.samples.position(&[
                                         sample_i.into(), system_i.into(), neighbor_i.into()
                                     ]).expect("missing gradient sample");
 
@@ -725,7 +726,7 @@ impl CalculatorBase for LodeSphericalExpansion {
                                     let sf_grad = Array1::from(sf_grad);
 
                                     for m in 0..(2 * spherical_harmonics_l + 1) {
-                                        for (property_i, [n]) in gradients.properties.iter_fixed_size().enumerate() {
+                                        for (property_i, [n]) in gradient.properties.iter_fixed_size().enumerate() {
                                             let n = n.usize();
 
                                             let mut grad = Vector3D::zero();

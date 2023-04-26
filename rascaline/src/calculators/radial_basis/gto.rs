@@ -44,7 +44,7 @@ impl GtoRadialBasis {
 
     /// Get the vector of GTO Gaussian width, i.e. `cutoff * max(√n, 1) / n_max`
     pub fn gaussian_widths(&self) -> Vec<f64> {
-        return (0..self.max_radial).into_iter().map(|n| {
+        return (0..self.max_radial).map(|n| {
             let n = n as f64;
             let n_max = self.max_radial as f64;
             self.cutoff * f64::max(f64::sqrt(n), 1.0) / n_max

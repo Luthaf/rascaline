@@ -95,7 +95,7 @@ int main(int argc, char* argv[]) {
         goto cleanup;
     }
 
-    status = eqs_block_data(block, "values", &array);
+    status = eqs_block_data(block, &array);
     if (status != EQS_SUCCESS) {
         printf("Error: %s\n", eqs_last_error());
         goto cleanup;

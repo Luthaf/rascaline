@@ -36,7 +36,7 @@ name = "soap-power-spectrum"
 harness = false
 
 [dependencies]
-equistore = {git = "https://github.com/lab-cosmo/equistore", rev = "6c5a833", features = ["rayon"]}
+equistore = {git = "https://github.com/lab-cosmo/equistore", rev = "e5b9dc365369ba2584ea01e9d6a4d648008aaab8", features = ["rayon"]}
 
 ndarray = {version = "0.15", features = ["approx-0_5", "rayon", "serde"]}
 num-traits = "0.2"

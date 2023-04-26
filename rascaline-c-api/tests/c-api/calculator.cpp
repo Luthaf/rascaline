@@ -514,7 +514,7 @@ void check_block(
 
     /**************************************************************************/
     eqs_labels_t labels = {0};
-    status = eqs_block_labels(block, "values", 0, &labels);
+    status = eqs_block_labels(block, 0, &labels);
     CHECK_SUCCESS(status);
 
     CHECK(labels.size == 2);
@@ -529,7 +529,7 @@ void check_block(
     eqs_labels_free(&labels);
 
     /**************************************************************************/
-    status = eqs_block_labels(block, "values", 1, &labels);
+    status = eqs_block_labels(block, 1, &labels);
     CHECK_SUCCESS(status);
 
     CHECK(labels.size == 2);
@@ -545,7 +545,7 @@ void check_block(
 
     /**************************************************************************/
     eqs_array_t array = {0};
-    status = eqs_block_data(block, "values", &array);
+    status = eqs_block_data(block, &array);
     CHECK_SUCCESS(status);
 
 
@@ -568,7 +568,11 @@ void check_block(
     CHECK(actual_values == values);
 
     /**************************************************************************/
-    status = eqs_block_labels(block, "positions", 0, &labels);
+    eqs_block_t* gradients_block = nullptr;
+    status = eqs_block_gradient(block, "positions", &gradients_block);
+    CHECK_SUCCESS(status);
+
+    status = eqs_block_labels(gradients_block, 0, &labels);
     CHECK_SUCCESS(status);
 
     CHECK(labels.size == 3);
@@ -584,7 +588,7 @@ void check_block(
     eqs_labels_free(&labels);
 
     /**************************************************************************/
-    status = eqs_block_data(block, "positions", &array);
+    status = eqs_block_data(gradients_block, &array);
     CHECK_SUCCESS(status);
 
     status = array.shape(array.ptr, &shape, &shape_count);

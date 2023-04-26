@@ -2,7 +2,7 @@ import os
 import sys
 from ctypes import cdll
 
-import equistore
+import equistore.core
 
 from ._c_api import setup_functions
 from .log import _set_logging_callback_impl, default_logging_callback
@@ -19,7 +19,7 @@ class RascalFinder(object):
         if self._cached_dll is None:
             # Load equistore shared library in the process first, to ensure
             # the rascaline shared library can find it
-            equistore._c_lib._get_library()
+            equistore.core._c_lib._get_library()
 
             path = _lib_path()
 

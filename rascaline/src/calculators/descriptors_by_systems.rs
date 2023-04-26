@@ -124,13 +124,14 @@ pub fn split_tensor_map_by_system(descriptor: &mut TensorMap, n_systems: usize) 
             .zip_eq(&mut values_end)
             .zip_eq(&mut gradients_end)
             .map(|(((_, mut block), system_end), system_end_grad)| {
-                let values_samples = &block.values_mut().samples;
-                let mut samples = LabelsBuilder::new(values_samples.names());
+                let mut block_data = block.data_mut();
+
+                let mut samples = LabelsBuilder::new(block_data.samples.names());
                 let mut samples_mapping = BTreeMap::new();
-                let mut structure_per_sample = vec![LabelValue::new(-1); values_samples.count()];
+                let mut structure_per_sample = vec![LabelValue::new(-1); block_data.samples.count()];
 
                 let system_start = *system_end;
-                for (sample_i, &[structure, center]) in values_samples.iter_fixed_size().enumerate().skip(system_start) {
+                for (sample_i, &[structure, center]) in block_data.samples.iter_fixed_size().enumerate().skip(system_start) {
                     structure_per_sample[sample_i] = structure;
 
                     if structure.usize() == system_i {
@@ -154,14 +155,11 @@ pub fn split_tensor_map_by_system(descriptor: &mut TensorMap, n_systems: usize) 
                 let samples = samples.finish();
                 shape.push(samples.count());
 
-                let mut components = Vec::new();
-                for component in &block.values_mut().components {
-                    components.push(component.clone());
+                for component in &*block_data.components {
                     shape.push(component.count());
                 }
 
-                let properties = block.values_mut().properties;
-                let n_properties = properties.count();
+                let n_properties = block_data.properties.count();
                 shape.push(n_properties);
 
                 let per_sample_size: usize = shape.iter().skip(1).product();
@@ -171,18 +169,23 @@ pub fn split_tensor_map_by_system(descriptor: &mut TensorMap, n_systems: usize) 
                     //
                     // `per_sample_size * system_start` skips all the data
                     // associated with the previous systems.
-                    block.values_mut().data.as_array_mut().as_mut_ptr().add(per_sample_size * system_start)
+                    block_data.values.as_array_mut().as_mut_ptr().add(per_sample_size * system_start)
                 };
 
-                let data = UnsafeArrayViewMut {
+                let values = UnsafeArrayViewMut {
                     shape: shape,
                     data: data_ptr,
                 };
                 let mut new_block = TensorBlock::new(
-                    data, samples, &components, properties
+                    values,
+                    &samples,
+                    &block_data.components,
+                    &block_data.properties,
                 ).expect("invalid TensorBlock");
 
-                for (parameter, gradient) in block.gradients_mut() {
+                for (parameter, mut gradient) in block.gradients_mut() {
+                    let gradient = gradient.data_mut();
+
                     let system_end_grad = match parameter {
                         "positions" => &mut system_end_grad.positions,
                         "cell" => &mut system_end_grad.cell,
@@ -215,9 +218,7 @@ pub fn split_tensor_map_by_system(descriptor: &mut TensorMap, n_systems: usize) 
                     let samples = samples.finish();
                     shape.push(samples.count());
 
-                    let mut components = Vec::new();
-                    for component in gradient.components {
-                        components.push(component.clone());
+                    for component in &*gradient.components {
                         shape.push(component.count());
                     }
 
@@ -227,14 +228,23 @@ pub fn split_tensor_map_by_system(descriptor: &mut TensorMap, n_systems: usize) 
                     let data_ptr = unsafe {
                         // SAFETY: same as the values above, this is creating
                         // multiple non-overlapping regions in memory
-                        gradient.data.to_array_mut().as_mut_ptr().add(per_sample_size * system_start_grad)
+                        gradient.values.to_array_mut().as_mut_ptr().add(per_sample_size * system_start_grad)
                     };
 
-                    let data = UnsafeArrayViewMut {
+                    let values = UnsafeArrayViewMut {
                         shape: shape,
                         data: data_ptr,
                     };
-                    new_block.add_gradient(parameter, data, samples, &components).expect("invalid gradients");
+
+                    new_block.add_gradient(
+                        parameter,
+                        TensorBlock::new(
+                            values,
+                            &samples,
+                            &gradient.components,
+                            &gradient.properties,
+                        ).expect("created invalid gradients")
+                    ).expect("created invalid gradients");
                 }
 
                 return new_block;

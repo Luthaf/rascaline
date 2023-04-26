@@ -74,7 +74,7 @@ impl CalculatorBase for GeometricMoments {
                 // This will be `None` if the block or samples are not present
                 // in the descriptor, i.e. if the user did not request them.
                 let first_sample_position = if let Some(block_id) = first_block_id {
-                    descriptor.block_by_id(block_id).values().samples.position(&[
+                    descriptor.block_by_id(block_id).samples().position(&[
                         system_i.into(), pair.first.into()
                     ])
                 } else {
@@ -87,7 +87,7 @@ impl CalculatorBase for GeometricMoments {
                 ]);
                 // get the sample corresponding to the first atom as a center
                 let second_sample_position = if let Some(block_id) = second_block_id {
-                    descriptor.block_by_id(block_id).values().samples.position(&[
+                    descriptor.block_by_id(block_id).samples().position(&[
                         system_i.into(), pair.second.into()
                     ])
                 } else {

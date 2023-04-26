@@ -6,7 +6,7 @@ Property Selection
 """
 import chemfiles
 import numpy as np
-from equistore import EquistoreError, Labels, TensorBlock, TensorMap
+from equistore.core import EquistoreError, Labels, TensorBlock, TensorMap
 from skmatter.feature_selection import FPS
 
 from rascaline import SoapPowerSpectrum

@@ -111,7 +111,7 @@ impl CalculatorBase for GeometricMoments {
                 ]);
 
                 let first_sample_position = if let Some(block_id) = first_block_id {
-                    descriptor.block_by_id(block_id).values().samples.position(&[
+                    descriptor.block_by_id(block_id).samples().position(&[
                         system_i.into(), pair.first.into()
                     ])
                 } else {
@@ -122,7 +122,7 @@ impl CalculatorBase for GeometricMoments {
                     species[pair.second].into(), species[pair.first].into(),
                 ]);
                 let second_sample_position = if let Some(block_id) = second_block_id {
-                    descriptor.block_by_id(block_id).values().samples.position(&[
+                    descriptor.block_by_id(block_id).samples().position(&[
                         system_i.into(), pair.second.into()
                     ])
                 } else {
@@ -139,10 +139,10 @@ impl CalculatorBase for GeometricMoments {
                 if let Some(sample_i) = first_sample_position {
                     let block_id = first_block_id.expect("we have a sample in this block");
                     let mut block = descriptor.block_mut_by_id(block_id);
-                    let values = block.values_mut();
-                    let array = values.data.to_array_mut();
+                    let block = block.data_mut();
+                    let array = block.values.to_array_mut();
 
-                    for (property_i, [k]) in values.properties.iter_fixed_size().enumerate() {
+                    for (property_i, [k]) in block.properties.iter_fixed_size().enumerate() {
                         let value = f64::powi(pair.distance, k.i32()) / n_neighbors_first;
                         array[[sample_i, property_i]] += value;
                     }
@@ -151,10 +151,10 @@ impl CalculatorBase for GeometricMoments {
                 if let Some(sample_i) = second_sample_position {
                     let block_id = second_block_id.expect("we have a sample in this block");
                     let mut block = descriptor.block_mut_by_id(block_id);
-                    let values = block.values_mut();
-                    let array = values.data.to_array_mut();
+                    let block = block.data_mut();
+                    let array = block.values.to_array_mut();
 
-                    for (property_i, [k]) in values.properties.iter_fixed_size().enumerate() {
+                    for (property_i, [k]) in block.properties.iter_fixed_size().enumerate() {
                         let value = f64::powi(pair.distance, k.i32()) / n_neighbors_second;
                         array[[sample_i, property_i]] += value;
                     }
@@ -174,8 +174,9 @@ impl CalculatorBase for GeometricMoments {
                         let block_id = first_block_id.expect("we have a sample in this block");
                         let mut block = descriptor.block_mut_by_id(block_id);
 
-                        let gradient = block.gradient_mut("positions").expect("missing gradient storage");
-                        let array = gradient.data.to_array_mut();
+                        let mut gradient = block.gradient_mut("positions").expect("missing gradient storage");
+                        let gradient = gradient.data_mut();
+                        let array = gradient.values.to_array_mut();
 
                         let gradient_wrt_second = gradient.samples.position(&[
                             sample_position.into(), system_i.into(), pair.second.into()
@@ -205,8 +206,9 @@ impl CalculatorBase for GeometricMoments {
                         let block_id = second_block_id.expect("we have a sample in this block");
                         let mut block = descriptor.block_mut_by_id(block_id);
 
-                        let gradient = block.gradient_mut("positions").expect("missing gradient storage");
-                        let array = gradient.data.to_array_mut();
+                        let mut gradient = block.gradient_mut("positions").expect("missing gradient storage");
+                        let gradient = gradient.data_mut();
+                        let array = gradient.values.to_array_mut();
 
                         let gradient_wrt_first = gradient.samples.position(&[
                             sample_position.into(), system_i.into(), pair.first.into()
@@ -277,62 +279,62 @@ mod tests {
         /**********************************************************************/
         // O center, H neighbor
         let block = &descriptor.block_by_id(0);
-        assert_eq!(block.values().samples, Labels::new(
+        assert_eq!(block.samples(), Labels::new(
             ["structure", "center"],
             &[[0, 0]]
         ));
 
-        assert_eq!(block.values().properties, expected_properties);
+        assert_eq!(block.properties(), expected_properties);
 
-        assert_eq!(block.values().data.as_array(), array![[2.0 / 2.0]].into_dyn());
+        assert_eq!(block.values().as_array(), array![[2.0 / 2.0]].into_dyn());
 
         /**********************************************************************/
         // H center, O neighbor
         let block = &descriptor.block_by_id(1);
-        assert_eq!(block.values().samples, Labels::new(
+        assert_eq!(block.samples(), Labels::new(
             ["structure", "center"],
             &[[0, 1], [0, 2]]
         ));
 
-        assert_eq!(block.values().properties, expected_properties);
+        assert_eq!(block.properties(), expected_properties);
 
-        assert_eq!(block.values().data.as_array(), array![[1.0 / 2.0], [1.0 / 2.0]].into_dyn());
+        assert_eq!(block.values().as_array(), array![[1.0 / 2.0], [1.0 / 2.0]].into_dyn());
 
         /**********************************************************************/
         // H center, H neighbor
         let block = &descriptor.block_by_id(2);
-        assert_eq!(block.values().samples, Labels::new(
+        assert_eq!(block.samples(), Labels::new(
             ["structure", "center"],
             &[[0, 1], [0, 2]]
         ));
 
-        assert_eq!(block.values().properties, expected_properties);
+        assert_eq!(block.properties(), expected_properties);
 
-        assert_eq!(block.values().data.as_array(), array![[1.0 / 2.0], [1.0 / 2.0]].into_dyn());
+        assert_eq!(block.values().as_array(), array![[1.0 / 2.0], [1.0 / 2.0]].into_dyn());
 
         /**********************************************************************/
         // H center, C neighbor
         let block = &descriptor.block_by_id(3);
-        assert_eq!(block.values().samples, Labels::new(
+        assert_eq!(block.samples(), Labels::new(
             ["structure", "center"],
             &[[1, 1]]
         ));
 
-        assert_eq!(block.values().properties, expected_properties);
+        assert_eq!(block.properties(), expected_properties);
 
-        assert_eq!(block.values().data.as_array(), array![[1.0 / 1.0]].into_dyn());
+        assert_eq!(block.values().as_array(), array![[1.0 / 1.0]].into_dyn());
 
         /**********************************************************************/
         // C center, H neighbor
         let block = &descriptor.block_by_id(4);
-        assert_eq!(block.values().samples, Labels::new(
+        assert_eq!(block.samples(), Labels::new(
             ["structure", "center"],
             &[[1, 0]]
         ));
 
-        assert_eq!(block.values().properties, expected_properties);
+        assert_eq!(block.properties(), expected_properties);
 
-        assert_eq!(block.values().data.as_array(), array![[1.0 / 1.0]].into_dyn());
+        assert_eq!(block.values().as_array(), array![[1.0 / 1.0]].into_dyn());
     }
 }
 // [property-test]

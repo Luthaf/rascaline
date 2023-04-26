@@ -114,12 +114,12 @@ impl CalculatorBase for AtomicComposition {
         for (key, mut block) in descriptor.iter_mut() {
             let species_center = key[0].i32();
 
-            let values = block.values_mut();
-            let array = values.data.to_array_mut();
+            let block = block.data_mut();
+            let array = block.values.to_array_mut();
 
-            for (property_i, &[count]) in values.properties.iter_fixed_size().enumerate() {
+            for (property_i, &[count]) in block.properties.iter_fixed_size().enumerate() {
                 if count == 0 {
-                    for (sample_i, samples) in values.samples.iter().enumerate() {
+                    for (sample_i, samples) in block.samples.iter().enumerate() {
                         let mut value = 0.0;
 
                         if self.per_structure {
@@ -177,7 +177,7 @@ mod tests {
 
         assert_eq!(descriptor.blocks().len(), 2);
         // test against hydrogen block which has the id `1`
-        let values = descriptor.block_by_id(1).values().data.to_array();
+        let values = descriptor.block_by_id(1).values().to_array();
         assert_eq!(values.shape(), [2, 1]);
 
         assert_eq!(values, array![[1.0], [1.0]].into_dyn());
@@ -196,7 +196,7 @@ mod tests {
 
         assert_eq!(descriptor.blocks().len(), 2);
         // test against hydrogen block which has the id `1`
-        let values = descriptor.block_by_id(1).values().data.to_array();
+        let values = descriptor.block_by_id(1).values().to_array();
         assert_eq!(values.shape(), [1, 1]);
 
         assert_eq!(values, array![[2.0]].into_dyn());

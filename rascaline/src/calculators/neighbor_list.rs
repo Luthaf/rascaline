@@ -257,19 +257,22 @@ impl HalfNeighborList {
                 ]).expect("missing block");
 
                 let mut block = descriptor.block_mut_by_id(block_id);
-                let values = block.values_mut();
-                let sample_i = values.samples.position(&[
+                let block_data = block.data_mut();
+
+                let sample_i = block_data.samples.position(&[
                     system_i.into(), pair_id.into(), atom_i.into(), atom_j.into()
                 ]);
 
                 if let Some(sample_i) = sample_i {
-                    let array = values.data.to_array_mut();
+                    let array = block_data.values.to_array_mut();
 
                     array[[sample_i, 0, 0]] = pair_vector[0];
                     array[[sample_i, 1, 0]] = pair_vector[1];
                     array[[sample_i, 2, 0]] = pair_vector[2];
 
-                    if let Some(gradient) = block.gradient_mut("positions") {
+                    if let Some(mut gradient) = block.gradient_mut("positions") {
+                        let gradient = gradient.data_mut();
+
                         let first_grad_sample_i = gradient.samples.position(&[
                             sample_i.into(), system_i.into(), atom_i.into()
                         ]).expect("missing gradient sample");
@@ -277,7 +280,7 @@ impl HalfNeighborList {
                             sample_i.into(), system_i.into(), atom_j.into()
                         ]).expect("missing gradient sample");
 
-                        let array = gradient.data.to_array_mut();
+                        let array = gradient.values.to_array_mut();
 
                         array[[first_grad_sample_i, 0, 0, 0]] = -1.0;
                         array[[first_grad_sample_i, 1, 1, 0]] = -1.0;
@@ -406,19 +409,22 @@ impl FullNeighborList {
 
                 // first, the pair first -> second
                 let mut block = descriptor.block_mut_by_id(first_block_id);
-                let values = block.values_mut();
-                let sample_i = values.samples.position(&[
+                let block_data = block.data_mut();
+
+                let sample_i = block_data.samples.position(&[
                     system_i.into(), pair_id.into(), pair.first.into(), pair.second.into()
                 ]);
 
                 if let Some(sample_i) = sample_i {
-                    let array = values.data.to_array_mut();
+                    let array = block_data.values.to_array_mut();
 
                     array[[sample_i, 0, 0]] = pair.vector[0];
                     array[[sample_i, 1, 0]] = pair.vector[1];
                     array[[sample_i, 2, 0]] = pair.vector[2];
 
-                    if let Some(gradient) = block.gradient_mut("positions") {
+                    if let Some(mut gradient) = block.gradient_mut("positions") {
+                        let gradient = gradient.data_mut();
+
                         let first_grad_sample_i = gradient.samples.position(&[
                             sample_i.into(), system_i.into(), pair.first.into()
                         ]).expect("missing gradient sample");
@@ -426,7 +432,7 @@ impl FullNeighborList {
                             sample_i.into(), system_i.into(), pair.second.into()
                         ]).expect("missing gradient sample");
 
-                        let array = gradient.data.to_array_mut();
+                        let array = gradient.values.to_array_mut();
 
                         array[[first_grad_sample_i, 0, 0, 0]] = -1.0;
                         array[[first_grad_sample_i, 1, 1, 0]] = -1.0;
@@ -450,19 +456,21 @@ impl FullNeighborList {
                     block
                 };
 
-                let values = block.values_mut();
-                let sample_i = values.samples.position(&[
+                let block_data = block.data_mut();
+                let sample_i = block_data.samples.position(&[
                     system_i.into(), pair_id.into(), pair.second.into(), pair.first.into()
                 ]);
 
                 if let Some(sample_i) = sample_i {
-                    let array = values.data.to_array_mut();
+                    let array = block_data.values.to_array_mut();
 
                     array[[sample_i, 0, 0]] = -pair.vector[0];
                     array[[sample_i, 1, 0]] = -pair.vector[1];
                     array[[sample_i, 2, 0]] = -pair.vector[2];
 
-                    if let Some(gradient) = block.gradient_mut("positions") {
+                    if let Some(mut gradient) = block.gradient_mut("positions") {
+                        let gradient = gradient.data_mut();
+
                         let first_grad_sample_i = gradient.samples.position(&[
                             sample_i.into(), system_i.into(), pair.second.into()
                         ]).expect("missing gradient sample");
@@ -470,7 +478,7 @@ impl FullNeighborList {
                             sample_i.into(), system_i.into(), pair.first.into()
                         ]).expect("missing gradient sample");
 
-                        let array = gradient.data.to_array_mut();
+                        let array = gradient.values.to_array_mut();
 
                         array[[first_grad_sample_i, 0, 0, 0]] = -1.0;
                         array[[first_grad_sample_i, 1, 1, 0]] = -1.0;
@@ -519,19 +527,18 @@ mod tests {
 
         // O-H block
         let block = descriptor.block_by_id(0);
-        let values = block.values();
-        assert_eq!(values.properties, Labels::new(["distance"], &[[0]]));
+        assert_eq!(block.properties(), Labels::new(["distance"], &[[0]]));
 
-        assert_eq!(values.components.len(), 1);
-        assert_eq!(values.components[0], Labels::new(["pair_direction"], &[[0], [1], [2]]));
+        assert_eq!(block.components().len(), 1);
+        assert_eq!(block.components()[0], Labels::new(["pair_direction"], &[[0], [1], [2]]));
 
-        assert_eq!(values.samples, Labels::new(
+        assert_eq!(block.samples(), Labels::new(
             ["structure", "pair_id", "first_atom", "second_atom"],
             // we have two O-H pairs
             &[[0, 0, 0, 1], [0, 1, 0, 2]]
         ));
 
-        let array = values.data.as_array();
+        let array = block.values().to_array();
         let expected = &ndarray::arr3(&[
             [[0.0], [0.75545], [-0.58895]],
             [[0.0], [-0.75545], [-0.58895]]
@@ -540,14 +547,13 @@ mod tests {
 
         // H-H block
         let block = descriptor.block_by_id(1);
-        let values = block.values();
-        assert_eq!(values.samples, Labels::new(
+        assert_eq!(block.samples(), Labels::new(
             ["structure", "pair_id", "first_atom", "second_atom"],
             // we have one H-H pair
             &[[0, 2, 1, 2]]
         ));
 
-        let array = values.data.as_array();
+        let array = block.values().to_array();
         let expected = &ndarray::arr3(&[
             [[0.0], [-1.5109], [0.0]]
         ]).into_dyn();
@@ -573,19 +579,18 @@ mod tests {
 
         // O-H block
         let block = descriptor.block_by_id(0);
-        let values = block.values();
-        assert_eq!(values.properties, Labels::new(["distance"], &[[0]]));
+        assert_eq!(block.properties(), Labels::new(["distance"], &[[0]]));
 
-        assert_eq!(values.components.len(), 1);
-        assert_eq!(values.components[0], Labels::new(["pair_direction"], &[[0], [1], [2]]));
+        assert_eq!(block.components().len(), 1);
+        assert_eq!(block.components()[0], Labels::new(["pair_direction"], &[[0], [1], [2]]));
 
-        assert_eq!(values.samples, Labels::new(
+        assert_eq!(block.samples(), Labels::new(
             ["structure", "pair_id", "first_atom", "second_atom"],
             // we have two O-H pairs
             &[[0, 0, 0, 1], [0, 1, 0, 2]]
         ));
 
-        let array = values.data.as_array();
+        let array = block.values().to_array();
         let expected = &ndarray::arr3(&[
             [[0.0], [0.75545], [-0.58895]],
             [[0.0], [-0.75545], [-0.58895]]
@@ -594,19 +599,18 @@ mod tests {
 
         // H-O block
         let block = descriptor.block_by_id(1);
-        let values= block.values();
-        assert_eq!(values.properties, Labels::new(["distance"], &[[0]]));
+        assert_eq!(block.properties(), Labels::new(["distance"], &[[0]]));
 
-        assert_eq!(values.components.len(), 1);
-        assert_eq!(values.components[0], Labels::new(["pair_direction"], &[[0], [1], [2]]));
+        assert_eq!(block.components().len(), 1);
+        assert_eq!(block.components()[0], Labels::new(["pair_direction"], &[[0], [1], [2]]));
 
-        assert_eq!(values.samples, Labels::new(
+        assert_eq!(block.samples(), Labels::new(
             ["structure", "pair_id", "first_atom", "second_atom"],
             // we have two H-O pairs
             &[[0, 0, 1, 0], [0, 1, 2, 0]]
         ));
 
-        let array = values.data.as_array();
+        let array = block.values().to_array();
         let expected = &ndarray::arr3(&[
             [[0.0], [-0.75545], [0.58895]],
             [[0.0], [0.75545], [0.58895]]
@@ -615,14 +619,13 @@ mod tests {
 
         // H-H block
         let block = descriptor.block_by_id(2);
-        let values= block.values();
-        assert_eq!(values.samples, Labels::new(
+        assert_eq!(block.samples(), Labels::new(
             ["structure", "pair_id", "first_atom", "second_atom"],
             // we have one H-H pair, twice
             &[[0, 2, 1, 2], [0, 2, 2, 1]]
         ));
 
-        let array = values.data.as_array();
+        let array = block.values().to_array();
         let expected = &ndarray::arr3(&[
             [[0.0], [-1.5109], [0.0]],
             [[0.0], [1.5109], [0.0]]
@@ -715,8 +718,8 @@ mod tests {
 
         // H-H block
         let block = descriptor.block_by_id(3);
-        let values= block.values();
-        assert_eq!(values.samples, Labels::new(
+        let block = block.data();
+        assert_eq!(*block.samples, Labels::new(
             ["structure", "pair_id", "first_atom", "second_atom"],
             // we have one H-H pair and two self-pairs
             &[[0, 2, 1, 2], [0, 2, 2, 1], [0, -1, 1, 1], [0, -1, 2, 2]]
