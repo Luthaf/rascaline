@@ -59,8 +59,8 @@ fn lode_vs_soap() {
 
     for (soap, lode) in lode_descriptor.blocks().iter().zip(soap_descriptor.blocks()) {
         assert_relative_eq!(
-            lode.values().data.as_array(),
-            soap.values().data.as_array(),
+            lode.values().to_array(),
+            soap.values().to_array(),
             max_relative=1e-4
         );
     }

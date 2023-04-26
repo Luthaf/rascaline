@@ -259,7 +259,7 @@ descriptor_gradients = calculator.compute(frame0, gradients=["positions"])
 block_gradients = descriptor_gradients.block(0)
 gradient_position = block_gradients.gradient("positions")
 
-print(gradient_position.data.shape)
+print(gradient_position.values.shape)
 
 # %%
 #

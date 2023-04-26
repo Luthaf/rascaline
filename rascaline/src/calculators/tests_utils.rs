@@ -59,12 +59,12 @@ fn check_compute_partial_keys(
         let partial = partial.block(&selected_key).expect("missing block in partial");
         let full = full.block(&selected_key);
         if let Ok(full) = full {
-            assert_eq!(full.values().samples, partial.values().samples);
-            assert_eq!(full.values().components, partial.values().components);
-            assert_eq!(full.values().properties, partial.values().properties);
+            assert_eq!(full.samples(), partial.samples());
+            assert_eq!(full.components(), partial.components());
+            assert_eq!(full.properties(), partial.properties());
 
-            let full_values = full.values().data.to_array();
-            let partial_values = partial.values().data.to_array();
+            let full_values = full.values().to_array();
+            let partial_values = partial.values().to_array();
             assert_ulps_eq!(full_values, partial_values);
         }
     }
@@ -86,25 +86,25 @@ fn check_compute_partial_properties(
 
     assert_eq!(full.keys(), partial.keys());
     for (full, partial) in full.blocks().iter().zip(partial.blocks()) {
-        assert_eq!(full.values().samples, partial.values().samples);
-        assert_eq!(full.values().components, partial.values().components);
-        assert_eq!(partial.values().properties, *properties);
+        assert_eq!(full.samples(), partial.samples());
+        assert_eq!(full.components(), partial.components());
+        assert_eq!(partial.properties(), *properties);
 
-        let full_values = full.values().data.to_array();
-        let partial_values = partial.values().data.to_array();
+        let full_values = full.values().to_array();
+        let partial_values = partial.values().to_array();
 
         let property_axis = Axis(full_values.shape().len() - 1);
 
         for (partial_i, property) in properties.iter().enumerate() {
-            let property_i = full.values().properties.position(property).unwrap();
+            let property_i = full.properties().position(property).unwrap();
             assert_ulps_eq!(
                 full_values.index_axis(property_axis, property_i),
                 partial_values.index_axis(property_axis, partial_i),
             );
 
             if let Some(full_gradient) = full.gradient("positions") {
-                let full_gradient_data = full_gradient.data.as_array();
-                let partial_gradient_data = partial.gradient("positions").unwrap().data.to_array();
+                let full_gradient_data = full_gradient.values().to_array();
+                let partial_gradient_data = partial.gradient("positions").unwrap().values().to_array();
 
                 let property_axis = Axis(full_gradient_data.shape().len() - 1);
                 assert_ulps_eq!(
@@ -132,14 +132,14 @@ fn check_compute_partial_samples(
 
     assert_eq!(full.keys(), partial.keys());
     for (full, partial) in full.blocks().iter().zip(partial.blocks()) {
-        assert_eq!(full.values().components, partial.values().components);
-        assert_eq!(full.values().properties, partial.values().properties);
+        assert_eq!(full.components(), partial.components());
+        assert_eq!(full.properties(), partial.properties());
 
-        let full_values = full.values().data.to_array();
-        let partial_values = partial.values().data.to_array();
+        let full_values = full.values().to_array();
+        let partial_values = partial.values().to_array();
 
-        for (partial_i, sample) in partial.values().samples.iter().enumerate() {
-            let sample_i = full.values().samples.position(sample).unwrap();
+        for (partial_i, sample) in partial.samples().iter().enumerate() {
+            let sample_i = full.samples().position(sample).unwrap();
             assert_ulps_eq!(
                 full_values.index_axis(Axis(0), sample_i),
                 partial_values.index_axis(Axis(0), partial_i),
@@ -149,14 +149,14 @@ fn check_compute_partial_samples(
         if let Some(full_gradient) = full.gradient("positions") {
             let partial_gradient = partial.gradient("positions").unwrap();
 
-            let full_gradient_data = full_gradient.data.as_array();
-            let partial_gradient_data = partial_gradient.data.as_array();
+            let full_gradient_data = full_gradient.values().to_array();
+            let partial_gradient_data = partial_gradient.values().to_array();
 
-            for (grad_sample_i, grad_sample) in partial_gradient.samples.iter().enumerate() {
-                let sample = &partial.values().samples[grad_sample[0].usize()];
-                let full_sample_i = full.values().samples.position(sample).unwrap();
+            for (grad_sample_i, grad_sample) in partial_gradient.samples().iter().enumerate() {
+                let sample = &partial.samples()[grad_sample[0].usize()];
+                let full_sample_i = full.samples().position(sample).unwrap();
 
-                let full_grad_sample_i = full_gradient.samples.position(
+                let full_grad_sample_i = full_gradient.samples().position(
                     &[full_sample_i.into(), grad_sample[1], grad_sample[2]]
                 ).unwrap();
 
@@ -186,16 +186,16 @@ fn check_compute_partial_both(
 
     assert_eq!(full.keys(), partial.keys());
     for (full, partial) in full.blocks().iter().zip(partial.blocks()) {
-        assert_eq!(full.values().components, partial.values().components);
+        assert_eq!(full.components(), partial.components());
 
-        let full_values = full.values().data.to_array();
-        let partial_values = partial.values().data.to_array();
+        let full_values = full.values().to_array();
+        let partial_values = partial.values().to_array();
         let property_axis = Axis(full_values.shape().len() - 2);
 
-        for (sample_i, sample) in partial.values().samples.iter().enumerate() {
+        for (sample_i, sample) in partial.samples().iter().enumerate() {
             for (property_i, property) in properties.iter().enumerate() {
-                let full_property_i = full.values().properties.position(property).unwrap();
-                let full_sample_i = full.values().samples.position(sample).unwrap();
+                let full_property_i = full.properties().position(property).unwrap();
+                let full_sample_i = full.samples().position(sample).unwrap();
 
                 assert_ulps_eq!(
                     full_values.index_axis(Axis(0), full_sample_i).index_axis(property_axis, full_property_i),
@@ -207,21 +207,21 @@ fn check_compute_partial_both(
         if let Some(full_gradient) = full.gradient("positions") {
             let partial_gradient = partial.gradient("positions").unwrap();
 
-            let full_gradient_data = full_gradient.data.as_array();
-            let partial_gradient_data = partial_gradient.data.as_array();
+            let full_gradient_data = full_gradient.values().to_array();
+            let partial_gradient_data = partial_gradient.values().to_array();
 
             let property_axis = Axis(full_gradient_data.shape().len() - 2);
 
-            for (grad_sample_i, grad_sample) in partial_gradient.samples.iter().enumerate() {
-                let sample = &partial.values().samples[grad_sample[0].usize()];
-                let full_sample_i = full.values().samples.position(sample).unwrap();
+            for (grad_sample_i, grad_sample) in partial_gradient.samples().iter().enumerate() {
+                let sample = &partial.samples()[grad_sample[0].usize()];
+                let full_sample_i = full.samples().position(sample).unwrap();
 
-                let full_grad_sample_i = full_gradient.samples.position(
+                let full_grad_sample_i = full_gradient.samples().position(
                     &[full_sample_i.into(), grad_sample[1], grad_sample[2]]
                 ).unwrap();
 
                 for (property_i, property) in properties.iter().enumerate() {
-                    let full_property_i = full.values().properties.position(property).unwrap();
+                    let full_property_i = full.properties().position(property).unwrap();
 
                     assert_ulps_eq!(
                         full_gradient_data.index_axis(Axis(0), full_grad_sample_i).index_axis(property_axis, full_property_i),
@@ -273,19 +273,19 @@ pub fn finite_differences_positions(mut calculator: Calculator, system: &SimpleS
                 let block_pos = &updated_pos.block_by_id(block_i);
                 let block_neg = &updated_neg.block_by_id(block_i);
 
-                for (gradient_i, [sample_i, _, atom]) in gradients.samples.iter_fixed_size().enumerate() {
+                for (gradient_i, [sample_i, _, atom]) in gradients.samples().iter_fixed_size().enumerate() {
                     if atom.usize() != atom_i {
                         continue;
                     }
                     let sample_i = sample_i.usize();
 
                     // check that the same sample is here in both descriptors
-                    assert_eq!(block_pos.values().samples[sample_i], block.values().samples[sample_i]);
-                    assert_eq!(block_neg.values().samples[sample_i], block.values().samples[sample_i]);
+                    assert_eq!(block_pos.samples()[sample_i], block.samples()[sample_i]);
+                    assert_eq!(block_neg.samples()[sample_i], block.samples()[sample_i]);
 
-                    let value_pos = block_pos.values().data.to_array().index_axis(Axis(0), sample_i);
-                    let value_neg = block_neg.values().data.to_array().index_axis(Axis(0), sample_i);
-                    let gradient = gradients.data.as_array().index_axis(Axis(0), gradient_i);
+                    let value_pos = block_pos.values().to_array().index_axis(Axis(0), sample_i);
+                    let value_neg = block_neg.values().to_array().index_axis(Axis(0), sample_i);
+                    let gradient = gradients.values().to_array().index_axis(Axis(0), gradient_i);
                     let gradient = gradient.index_axis(Axis(0), spatial);
 
                     assert_eq!(value_pos.shape(), gradient.shape());
@@ -344,16 +344,16 @@ pub fn finite_differences_cell(mut calculator: Calculator, system: &SimpleSystem
                 let block_pos = &updated_pos.block_by_id(block_i);
                 let block_neg = &updated_neg.block_by_id(block_i);
 
-                for (gradient_i, [sample_i]) in gradients.samples.iter_fixed_size().enumerate() {
+                for (gradient_i, [sample_i]) in gradients.samples().iter_fixed_size().enumerate() {
                     let sample_i = sample_i.usize();
 
                     // check that the same sample is here in both descriptors
-                    assert_eq!(block_pos.values().samples[sample_i], block.values().samples[sample_i]);
-                    assert_eq!(block_neg.values().samples[sample_i], block.values().samples[sample_i]);
+                    assert_eq!(block_pos.samples()[sample_i], block.samples()[sample_i]);
+                    assert_eq!(block_neg.samples()[sample_i], block.samples()[sample_i]);
 
-                    let value_pos = block_pos.values().data.to_array().index_axis(Axis(0), sample_i);
-                    let value_neg = block_neg.values().data.to_array().index_axis(Axis(0), sample_i);
-                    let gradient = gradients.data.as_array().index_axis(Axis(0), gradient_i);
+                    let value_pos = block_pos.values().to_array().index_axis(Axis(0), sample_i);
+                    let value_neg = block_neg.values().to_array().index_axis(Axis(0), sample_i);
+                    let gradient = gradients.values().to_array().index_axis(Axis(0), gradient_i);
                     let gradient = gradient.index_axis(Axis(0), spatial_1);
                     let gradient = gradient.index_axis(Axis(0), spatial_2);
 

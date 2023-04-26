@@ -116,7 +116,7 @@ TEST_CASE("Compute descriptor") {
                 {2, 0, 2}, {2, 0, 3},
             }
         ));
-        CHECK(gradient.data() == equistore::NDArray<double>(
+        CHECK(gradient.values() == equistore::NDArray<double>(
             {
                 0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
                 0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
@@ -150,7 +150,7 @@ TEST_CASE("Compute descriptor") {
             {"sample", "structure", "atom"},
             {{0, 0, 0}, {0, 0, 1}}
         ));
-        CHECK(gradient.data() == equistore::NDArray<double>(
+        CHECK(gradient.values() == equistore::NDArray<double>(
             {
                 0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
                 0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
@@ -198,7 +198,7 @@ TEST_CASE("Compute descriptor") {
                 {1, 0, 2}, {1, 0, 3},
             }
         ));
-        CHECK(gradient.data() == equistore::NDArray<double>(
+        CHECK(gradient.values() == equistore::NDArray<double>(
             {
                 0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
                 0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
@@ -229,7 +229,7 @@ TEST_CASE("Compute descriptor") {
             {"sample", "structure", "atom"},
             {}
         ));
-        CHECK(gradient.data() == equistore::NDArray<double>(
+        CHECK(gradient.values() == equistore::NDArray<double>(
             std::vector<double>{},
             {0, 3, 2}
         ));
@@ -275,7 +275,7 @@ TEST_CASE("Compute descriptor") {
                 {2, 0, 2}, {2, 0, 3},
             }
         ));
-        CHECK(gradient.data() == equistore::NDArray<double>(
+        CHECK(gradient.values() == equistore::NDArray<double>(
             {
                 1.0, /**/ 1.0, /**/ 1.0,
                 1.0, /**/ 1.0, /**/ 1.0,
@@ -309,7 +309,7 @@ TEST_CASE("Compute descriptor") {
             {"sample", "structure", "atom"},
             {{0, 0, 0}, {0, 0, 1}}
         ));
-        CHECK(gradient.data() == equistore::NDArray<double>(
+        CHECK(gradient.values() == equistore::NDArray<double>(
             {
                 1.0, /**/ 1.0, /**/ 1.0,
                 1.0, /**/ 1.0, /**/ 1.0,
@@ -377,7 +377,7 @@ TEST_CASE("Compute descriptor") {
                 {0, 0, 2}, {0, 0, 3},
             }
         ));
-        CHECK(gradient.data() == equistore::NDArray<double>(
+        CHECK(gradient.values() == equistore::NDArray<double>(
             {
                 1.0, /**/ 1.0, /**/ 1.0,
                 1.0, /**/ 1.0, /**/ 1.0,
@@ -405,7 +405,7 @@ TEST_CASE("Compute descriptor") {
             {"sample", "structure", "atom"},
             {{0, 0, 0}, {0, 0, 1}}
         ));
-        CHECK(gradient.data() == equistore::NDArray<double>(
+        CHECK(gradient.values() == equistore::NDArray<double>(
             {
                 0.0, /**/ 0.0, /**/ 0.0,
                 0.0, /**/ 0.0, /**/ 0.0,

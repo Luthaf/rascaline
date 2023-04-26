@@ -108,8 +108,7 @@ impl SoapPowerSpectrum {
         let mut requested_by_key = HashMap::new();
         let mut requested_spherical_harmonics_l = BTreeSet::new();
         for (&[center, neighbor_1, neighbor_2], block) in descriptor.keys().iter_fixed_size().zip(descriptor.blocks()) {
-            let values = block.values();
-            for &[l, n1, n2] in values.properties.iter_fixed_size() {
+            for &[l, n1, n2] in block.properties().iter_fixed_size() {
                 requested_spherical_harmonics_l.insert(l.usize());
 
                 let (_, properties) = requested_by_key.entry([l, center, neighbor_1]).or_insert_with(|| {
@@ -155,8 +154,7 @@ impl SoapPowerSpectrum {
                     continue;
                 }
 
-                let values = block.values();
-                for &sample in values.samples_ref().iter_fixed_size::<2>() {
+                for &sample in block.samples().iter_fixed_size::<2>() {
                     samples.insert(sample);
                 }
             }
@@ -181,9 +179,9 @@ impl SoapPowerSpectrum {
 
             blocks.push(TensorBlock::new(
                 EmptyArray::new(vec![samples.count(), properties.count()]),
-                samples,
+                &samples,
                 &[],
-                properties,
+                &properties,
             ).expect("invalid TensorBlock"));
         }
 
@@ -206,9 +204,9 @@ impl SoapPowerSpectrum {
             let properties = Labels::empty(vec!["n"]);
             blocks.push(TensorBlock::new(
                 EmptyArray::new(vec![samples.count(), properties.count()]),
-                samples,
+                &samples,
                 &[],
-                properties,
+                &properties,
             ).expect("invalid TensorBlock"));
         }
 
@@ -234,19 +232,20 @@ impl SoapPowerSpectrum {
             let species_neighbor_1 = key[1];
             let species_neighbor_2 = key[2];
 
-            let values = block.values();
-            if values.properties.count() == 0 {
+            let block_data = block.data();
+            if block_data.properties.count() == 0 {
                 // no properties to compute, we don't really care about sample
                 // mapping and we can not compute the real one (there is no l to
                 // find the corresponding spx block), so we'll create a dummy
                 // sample mapping / gradient sample mapping
                 let mut values_mapping = Vec::new();
-                for i in 0..values.samples.count() {
+                for i in 0..block_data.samples.count() {
                     values_mapping.push((i, i));
                 }
 
                 let mut gradient_mapping = Vec::new();
                 if let Some(gradient) = block.gradient("positions") {
+                    let gradient = gradient.data();
                     for i in 0..gradient.samples.count() {
                         gradient_mapping.push((Some(i), Some(i)));
                     }
@@ -264,22 +263,22 @@ impl SoapPowerSpectrum {
             // the spherical expansion samples are the same for all
             // `spherical_harmonics_l` values, so we only need to compute it for
             // the first one.
-            let first_l = values.properties[0][0];
+            let first_l = block_data.properties[0][0];
 
             let block_id_1 = spherical_expansion.keys().position(&[
                 first_l, species_center, species_neighbor_1
             ]).expect("missing block in spherical expansion");
             let spx_block_1 = &spherical_expansion.block_by_id(block_id_1);
-            let spx_samples_1 = &spx_block_1.values().samples;
+            let spx_samples_1 = spx_block_1.samples();
 
             let block_id_2 = spherical_expansion.keys().position(&[
                 first_l, species_center, species_neighbor_2
             ]).expect("missing block in spherical expansion");
             let spx_block_2 = &spherical_expansion.block_by_id(block_id_2);
-            let spx_samples_2 = &spx_block_2.values().samples;
+            let spx_samples_2 = spx_block_2.samples();
 
-            values_mapping.reserve(values.samples.count());
-            for sample in &values.samples {
+            values_mapping.reserve(block_data.samples.count());
+            for sample in &*block_data.samples {
                 let sample_1 = spx_samples_1.position(sample).expect("missing spherical expansion sample");
                 let sample_2 = spx_samples_2.position(sample).expect("missing spherical expansion sample");
                 values_mapping.push((sample_1, sample_2));
@@ -290,12 +289,16 @@ impl SoapPowerSpectrum {
                 let spx_gradient_1 = spx_block_1.gradient("positions").expect("missing spherical expansion gradients");
                 let spx_gradient_2 = spx_block_2.gradient("positions").expect("missing spherical expansion gradients");
 
-                gradient_mapping.reserve(gradient.samples.count());
+                let gradient_samples = gradient.samples();
+                gradient_mapping.reserve(gradient_samples.count());
 
-                for gradient_sample in gradient.samples.iter() {
+                let spx_gradient_1_samples = spx_gradient_1.samples();
+                let spx_gradient_2_samples = spx_gradient_2.samples();
+
+                for gradient_sample in gradient_samples.iter() {
                     gradient_mapping.push((
-                        spx_gradient_1.samples.position(gradient_sample),
-                        spx_gradient_2.samples.position(gradient_sample),
+                        spx_gradient_1_samples.position(gradient_sample),
+                        spx_gradient_2_samples.position(gradient_sample),
                     ));
                 }
             }
@@ -520,10 +523,10 @@ impl CalculatorBase for SoapPowerSpectrum {
 
         let spherical_expansion = spherical_expansion.iter().map(|(key, block)| {
             let spx_block = SphericalExpansionBlock {
-                properties: block.values().properties,
-                values: block.values().data.to_array(),
-                positions_gradients: block.gradient("positions").map(|g| g.data.to_array()),
-                cell_gradients: block.gradient("cell").map(|g| g.data.to_array()),
+                properties: block.properties(),
+                values: block.values().to_array(),
+                positions_gradients: block.gradient("positions").map(|g| g.values().to_array()),
+                cell_gradients: block.gradient("cell").map(|g| g.values().to_array()),
             };
 
             (key, spx_block)
@@ -533,16 +536,16 @@ impl CalculatorBase for SoapPowerSpectrum {
             let species_neighbor_1 = key[1];
             let species_neighbor_2 = key[2];
 
-            let values = block.values_mut();
+            let mut block_data = block.data_mut();
             let properties_to_combine = SoapPowerSpectrum::spx_properties_to_combine(
                 key,
-                &values.properties,
+                &block_data.properties,
                 &spherical_expansion,
             );
 
             let mapping = samples_mapping.get(key).expect("missing sample mapping");
 
-            block.values_mut().data.as_array_mut()
+            block_data.values.as_array_mut()
                 .axis_iter_mut(ndarray::Axis(0))
                 .into_par_iter()
                 .zip_eq(&mapping.values)
@@ -580,12 +583,13 @@ impl CalculatorBase for SoapPowerSpectrum {
                 });
 
             // gradients with respect to the atomic positions
-            if let Some(gradients) = block.gradient_mut("positions") {
+            if let Some(mut gradient) = block.gradient_mut("positions") {
+                let gradient = gradient.data_mut();
 
-                gradients.data.to_array_mut()
+                gradient.values.to_array_mut()
                     .axis_iter_mut(ndarray::Axis(0))
                     .into_par_iter()
-                    .zip_eq(gradients.samples.par_iter())
+                    .zip_eq(gradient.samples.par_iter())
                     .zip_eq(&mapping.gradients)
                     .for_each(|((mut values, gradient_sample), &(spx_grad_sample_1, spx_grad_sample_2))| {
                         for (property_i, spx) in properties_to_combine.iter().enumerate() {
@@ -640,12 +644,13 @@ impl CalculatorBase for SoapPowerSpectrum {
             }
 
             // gradients with respect to the cell parameters
-            if let Some(gradients) = block.gradient_mut("cell") {
+            if let Some(mut gradient) = block.gradient_mut("cell") {
+                let gradient = gradient.data_mut();
 
-                gradients.data.to_array_mut()
+                gradient.values.to_array_mut()
                     .axis_iter_mut(ndarray::Axis(0))
                     .into_par_iter()
-                    .zip_eq(gradients.samples.par_iter())
+                    .zip_eq(gradient.samples.par_iter())
                     .for_each(|(mut values, gradient_sample)| {
                         for (property_i, spx) in properties_to_combine.iter().enumerate() {
                             let SpxPropertiesToCombine { spx_1, spx_2, ..} = spx;
@@ -853,18 +858,18 @@ mod tests {
 
         let empty_block = equistore::TensorBlock::new(
             EmptyArray::new(vec![1, 0]),
-            Labels::single(),
+            &Labels::single(),
             &[],
-            Labels::new::<i32, 3>(["l", "n1", "n2"], &[]),
+            &Labels::new::<i32, 3>(["l", "n1", "n2"], &[]),
         ).unwrap();
 
         let blocks = vec![
             // H, H-H
             equistore::TensorBlock::new(
                 EmptyArray::new(vec![1, 1]),
-                Labels::single(),
+                &Labels::single(),
                 &[],
-                Labels::new(["l", "n1", "n2"], &[[2, 0, 0]]),
+                &Labels::new(["l", "n1", "n2"], &[[2, 0, 0]]),
             ).unwrap(),
             // H, C-H
             empty_block.as_ref().try_clone().unwrap(),
@@ -875,9 +880,9 @@ mod tests {
             // C, C-H
             equistore::TensorBlock::new(
                 EmptyArray::new(vec![1, 1]),
-                Labels::single(),
+                &Labels::single(),
                 &[],
-                Labels::new(["l", "n1", "n2"], &[[3, 0, 0]]),
+                &Labels::new(["l", "n1", "n2"], &[[3, 0, 0]]),
             ).unwrap(),
             // C, C-C
             empty_block,
@@ -899,12 +904,12 @@ mod tests {
 
         assert_eq!(descriptor.keys(), selection.keys());
 
-        assert_eq!(descriptor.block_by_id(0).values().data.as_array().shape(), [4, 1]);
-        assert_eq!(descriptor.block_by_id(1).values().data.as_array().shape(), [4, 0]);
-        assert_eq!(descriptor.block_by_id(2).values().data.as_array().shape(), [4, 0]);
-        assert_eq!(descriptor.block_by_id(3).values().data.as_array().shape(), [1, 0]);
-        assert_eq!(descriptor.block_by_id(4).values().data.as_array().shape(), [1, 1]);
-        assert_eq!(descriptor.block_by_id(5).values().data.as_array().shape(), [1, 0]);
+        assert_eq!(descriptor.block_by_id(0).values().as_array().shape(), [4, 1]);
+        assert_eq!(descriptor.block_by_id(1).values().as_array().shape(), [4, 0]);
+        assert_eq!(descriptor.block_by_id(2).values().as_array().shape(), [4, 0]);
+        assert_eq!(descriptor.block_by_id(3).values().as_array().shape(), [1, 0]);
+        assert_eq!(descriptor.block_by_id(4).values().as_array().shape(), [1, 1]);
+        assert_eq!(descriptor.block_by_id(5).values().as_array().shape(), [1, 0]);
     }
 
     #[test]
@@ -928,7 +933,7 @@ mod tests {
         let descriptor_scaled = calculator.compute(system, Default::default()).unwrap();
 
         for (block, block_scaled) in descriptor.blocks().iter().zip(descriptor_scaled.blocks()) {
-            assert_eq!(block.values().data.as_array(), 4.0 * block_scaled.values().data.as_array());
+            assert_eq!(block.values().as_array(), 4.0 * block_scaled.values().as_array());
         }
     }
 }

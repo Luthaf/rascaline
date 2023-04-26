@@ -125,10 +125,10 @@ impl CalculatorBase for SortedDistances {
                 None
             };
 
-            let values = block.values_mut();
-            let array = values.data.to_array_mut();
+            let block_data = block.data_mut();
+            let array = block_data.values.to_array_mut();
 
-            for (sample_i, [structure_i, center_i]) in values.samples.iter_fixed_size().enumerate() {
+            for (sample_i, [structure_i, center_i]) in block_data.samples.iter_fixed_size().enumerate() {
                 let center_i = center_i.usize();
 
                 let system = &mut systems[structure_i.usize()];
@@ -158,7 +158,7 @@ impl CalculatorBase for SortedDistances {
                 distances.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
                 distances.resize(self.max_neighbors, self.cutoff);
 
-                for (property_i, [neighbor]) in values.properties.iter_fixed_size().enumerate() {
+                for (property_i, [neighbor]) in block_data.properties.iter_fixed_size().enumerate() {
                     array[[sample_i, property_i]] = distances[neighbor.usize()];
                 }
             }
@@ -207,7 +207,7 @@ mod tests {
 
         assert_eq!(descriptor.blocks().len(), 1);
         let block = descriptor.block_by_id(0);
-        let values = block.values().data.to_array();
+        let values = block.values().to_array();
         assert_eq!(values.shape(), [3, 3]);
 
         assert_eq!(values.slice(s![0, ..]), aview1(&[0.957897074324794, 0.957897074324794, 1.5]));

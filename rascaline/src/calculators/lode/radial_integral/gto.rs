@@ -172,7 +172,6 @@ impl LodeRadialIntegral for LodeRadialIntegralGto {
         };
         let gto_gaussian_widths = basis.gaussian_widths();
         let n_eff: Vec<f64> = (0..max_radial)
-            .into_iter()
             .map(|n| 0.5 * (3. + n as f64))
             .collect();
 

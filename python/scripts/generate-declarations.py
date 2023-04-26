@@ -1,11 +1,15 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 import os
 
+import equistore.core
 from pycparser import c_ast, parse_file
 
 
 ROOT = os.path.dirname(__file__)
 FAKE_INCLUDES = os.path.join(ROOT, "include")
+EQUISTORE_INCLUDE = os.path.join(
+    equistore.core.utils.cmake_prefix_path, "..", "..", "include"
+)
 RASCALINE_HEADER = os.path.relpath(
     os.path.join(ROOT, "..", "..", "rascaline-c-api", "include", "rascaline.h")
 )
@@ -79,7 +83,7 @@ class AstVisitor(c_ast.NodeVisitor):
 
 
 def parse(file):
-    cpp_args = ["-E", "-I", FAKE_INCLUDES]
+    cpp_args = ["-E", "-I", FAKE_INCLUDES, "-I", EQUISTORE_INCLUDE]
     ast = parse_file(file, use_cpp=True, cpp_path="gcc", cpp_args=cpp_args)
 
     visitor = AstVisitor()
@@ -242,7 +246,7 @@ import enum
 import platform
 from ctypes import CFUNCTYPE, POINTER
 
-from equistore._c_api import eqs_labels_t, eqs_tensormap_t
+from equistore.core._c_api import eqs_labels_t, eqs_tensormap_t
 from numpy.ctypeslib import ndpointer
 
 

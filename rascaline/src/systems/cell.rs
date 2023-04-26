@@ -253,19 +253,19 @@ mod tests {
     #[test]
     #[should_panic(expected = "Cell lengths must be positive")]
     fn negative_cubic() {
-        let _ = UnitCell::cubic(-4.0);
+        UnitCell::cubic(-4.0);
     }
 
     #[test]
     #[should_panic(expected = "Cell lengths must be positive")]
     fn negative_ortho() {
-        let _ = UnitCell::orthorhombic(3.0, 0.0, -5.0);
+        UnitCell::orthorhombic(3.0, 0.0, -5.0);
     }
 
     #[test]
     #[should_panic(expected = "Cell lengths must be positive")]
     fn negative_triclinic() {
-        let _ = UnitCell::triclinic(3.0, 0.0, -5.0, 90.0, 90.0, 90.0);
+        UnitCell::triclinic(3.0, 0.0, -5.0, 90.0, 90.0, 90.0);
     }
 
     #[test]

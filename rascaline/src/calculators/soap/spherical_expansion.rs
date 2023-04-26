@@ -32,7 +32,7 @@ pub struct SphericalExpansion {
 impl SphericalExpansion {
     /// Create a new `SphericalExpansion` calculator with the given parameters
     pub fn new(parameters: SphericalExpansionParameters) -> Result<SphericalExpansion, Error> {
-        let m_1_pow_l = (0..=parameters.max_angular).into_iter()
+        let m_1_pow_l = (0..=parameters.max_angular)
             .map(|l| f64::powi(-1.0, l as i32))
             .collect::<Vec<f64>>();
 
@@ -60,11 +60,11 @@ impl SphericalExpansion {
                 continue;
             }
 
-            let values = block.values_mut();
-            let array = values.data.to_array_mut();
+            let block = block.data_mut();
+            let array = block.values.to_array_mut();
 
             // Add the center contribution to relevant elements of array.
-            for (sample_i, &[structure, center]) in values.samples.iter_fixed_size().enumerate() {
+            for (sample_i, &[structure, center]) in block.samples.iter_fixed_size().enumerate() {
                 // it is possible that the samples from values.samples are not
                 // part of the systems (the user requested extra samples). In
                 // that case, we need to skip anything that does not exist, or
@@ -82,7 +82,7 @@ impl SphericalExpansion {
                     continue;
                 }
 
-                for (property_i, &[n]) in values.properties.iter_fixed_size().enumerate() {
+                for (property_i, &[n]) in block.properties.iter_fixed_size().enumerate() {
                     array[[sample_i, 0, property_i]] += self_contribution.values[[0, n.usize()]];
                 }
             }
@@ -315,7 +315,7 @@ impl SphericalExpansion {
         key: &[LabelValue],
         block: &mut TensorBlockRefMut,
         system: &dyn System,
-        data: &PairAccumulationResult,
+        result: &PairAccumulationResult,
     ) -> Result<(), Error> {
         let species = system.species()?;
         let system_size = system.size()?;
@@ -325,7 +325,7 @@ impl SphericalExpansion {
         let species_neighbor = key[2];
 
         let lm_start = spherical_harmonics_l * spherical_harmonics_l;
-        let species_neighbor_i = if let Some(s) = data.species_mapping.get(&species_neighbor.i32()) {
+        let species_neighbor_i = if let Some(s) = result.species_mapping.get(&species_neighbor.i32()) {
             *s
         } else {
             // this block does not correspond to actual species in the current
@@ -333,26 +333,26 @@ impl SphericalExpansion {
             return Ok(());
         };
 
-        let values = block.values_mut();
-        let mut array = array_mut_for_system(values.data);
+        let block = block.data_mut();
+        let mut array = array_mut_for_system(block.values);
 
-        for (sample_i, [_, center_i]) in values.samples.iter_fixed_size().enumerate() {
+        for (sample_i, [_, center_i]) in block.samples.iter_fixed_size().enumerate() {
             // samples might contain entries for atoms that should not be part
             // of this block, these entries can be manually requested by users.
             if center_i.usize() >= system_size || species[center_i.usize()] != species_center {
                 continue;
             }
-            let mapped_center = data.centers_mapping[center_i.usize()].expect("this center should be part of the mapping");
+            let mapped_center = result.centers_mapping[center_i.usize()].expect("this center should be part of the mapping");
 
             for m in 0..(2 * spherical_harmonics_l + 1) {
-                for (property_i, [n]) in values.properties.iter_fixed_size().enumerate() {
+                for (property_i, [n]) in block.properties.iter_fixed_size().enumerate() {
                     // SAFETY: we are doing in-bounds access, and removing the
                     // bounds checks is a significant speed-up for this code.
                     // There is also a bounds check when running tests in debug
                     // mode.
                     unsafe {
                         let out = array.uget_mut([sample_i, m, property_i]);
-                        *out += *data.values.uget([species_neighbor_i, mapped_center, lm_start + m, n.usize()]);
+                        *out += *result.values.uget([species_neighbor_i, mapped_center, lm_start + m, n.usize()]);
                     }
                 }
             }
@@ -379,22 +379,21 @@ impl SphericalExpansion {
         key: &[LabelValue],
         block: &mut TensorBlockRefMut,
         system: &dyn System,
-        data: &PairAccumulationResult,
+        result: &PairAccumulationResult,
     ) -> Result<(), Error> {
-        let positions_gradients_by_pair = if let Some(ref data) = data.positions_gradients_by_pair {
+        let positions_gradients_by_pair = if let Some(ref data) = result.positions_gradients_by_pair {
             data
         } else {
             // no positions gradients, return early
             return Ok(());
         };
 
-        let positions_gradients_self = data.positions_gradients_self.as_ref()
-            .expect("missing self gradients");
+        let positions_gradients_self = result.positions_gradients_self.as_ref().expect("missing self gradients");
 
         let spherical_harmonics_l = key[0].usize();
         let species_center = key[1];
         let species_neighbor = key[2];
-        let species_neighbor_i = if let Some(s) = data.species_mapping.get(&species_neighbor.i32()) {
+        let species_neighbor_i = if let Some(s) = result.species_mapping.get(&species_neighbor.i32()) {
             *s
         } else {
             // this block does not correspond to actual species in the current
@@ -409,9 +408,11 @@ impl SphericalExpansion {
         let lm_start = spherical_harmonics_l * spherical_harmonics_l;
         let m_1_pow_l = self.m_1_pow_l[spherical_harmonics_l];
 
-        let values_samples = block.values_mut().samples;
-        let gradient = block.gradient_mut("positions").expect("TODO");
-        let mut array = array_mut_for_system(gradient.data);
+        let values_samples = block.samples();
+
+        let mut gradient = block.gradient_mut("positions").expect("missing positions gradients");
+        let gradient = gradient.data_mut();
+        let mut array = array_mut_for_system(gradient.values);
 
         for (grad_sample_i, &[sample_i, _, neighbor_i]) in gradient.samples.iter_fixed_size().enumerate() {
             let center_i = values_samples[sample_i.usize()][1];
@@ -426,7 +427,7 @@ impl SphericalExpansion {
                 // we already summed over the contributions from all pairs this
                 // center is part of in `data.positions_gradients_self`
 
-                let mapped_center = data.centers_mapping[center_i.usize()]
+                let mapped_center = result.centers_mapping[center_i.usize()]
                     .expect("this center should be part of the requested centers");
 
                 for spatial in 0..3 {
@@ -447,7 +448,7 @@ impl SphericalExpansion {
                 let neighbor_i = neighbor_i.usize();
                 debug_assert!(species[neighbor_i] == species_neighbor);
 
-                for &pair_id in &data.pair_to_pair_ids[&(center_i.usize(), neighbor_i)] {
+                for &pair_id in &result.pair_to_pair_ids[&(center_i.usize(), neighbor_i)] {
                     let pair = pairs[pair_id];
                     let factor = if pair.first == center_i.usize() {
                         debug_assert_eq!(pair.second, neighbor_i);
@@ -484,9 +485,9 @@ impl SphericalExpansion {
         key: &[LabelValue],
         block: &mut TensorBlockRefMut,
         system: &dyn System,
-        data: &PairAccumulationResult,
+        result: &PairAccumulationResult,
     ) -> Result<(), Error> {
-        let contributions = if let Some(ref data) = data.cell_gradients {
+        let contributions = if let Some(ref data) = result.cell_gradients {
             data
         } else {
             // no cell gradients, return early
@@ -501,7 +502,7 @@ impl SphericalExpansion {
         let species_neighbor = key[2];
 
         let lm_start = spherical_harmonics_l * spherical_harmonics_l;
-        let species_neighbor_i = if let Some(s) = data.species_mapping.get(&species_neighbor.i32()) {
+        let species_neighbor_i = if let Some(s) = result.species_mapping.get(&species_neighbor.i32()) {
             *s
         } else {
             // this block does not correspond to actual species in the current
@@ -509,9 +510,10 @@ impl SphericalExpansion {
             return Ok(());
         };
 
-        let values_samples = block.values_mut().samples;
-        let gradient = block.gradient_mut("cell").expect("TODO");
-        let mut array = array_mut_for_system(gradient.data);
+        let values_samples = block.samples();
+        let mut gradient = block.gradient_mut("cell").expect("missing cell gradients");
+        let gradient = gradient.data_mut();
+        let mut array = array_mut_for_system(gradient.values);
 
         for (grad_sample_i, [sample_i]) in gradient.samples.iter_fixed_size().enumerate() {
             let center_i = values_samples[sample_i.usize()][1];
@@ -520,7 +522,7 @@ impl SphericalExpansion {
             // not be part of this block, since they are not manually specified
             // by the users
             debug_assert!(center_i.usize() < system_size && species[center_i.usize()] == species_center);
-            let mapped_center = data.centers_mapping[center_i.usize()].expect("this center should be part of the mapping");
+            let mapped_center = result.centers_mapping[center_i.usize()].expect("this center should be part of the mapping");
 
             for spatial_1 in 0..3 {
                 for spatial_2 in 0..3 {
@@ -731,7 +733,7 @@ impl CalculatorBase for SphericalExpansion {
                 // we will only run the calculation on pairs where one of the
                 // atom is part of the requested samples
                 let requested_centers = descriptor.iter().flat_map(|(_, block)| {
-                    block.values().samples.iter().map(|sample| sample[1].usize()).collect::<Vec<_>>()
+                    block.samples().iter().map(|sample| sample[1].usize()).collect::<Vec<_>>()
                 }).collect::<BTreeSet<_>>();
 
                 let accumulated = self.accumulate_all_pairs(
@@ -800,7 +802,7 @@ mod tests {
                     ]);
                     assert!(block_i.is_some());
                     let block = &descriptor.block_by_id(block_i.unwrap());
-                    let array = block.values().data.to_array();
+                    let array = block.values().to_array();
                     assert_eq!(array.shape().len(), 3);
                     assert_eq!(array.shape()[1], 2 * l + 1);
                 }
@@ -896,9 +898,9 @@ mod tests {
         // species_center key.
         let block = TensorBlock::new(
             EmptyArray::new(vec![3, 1]),
-            Labels::new(["structure", "center"], &[[0, 0], [0, 1], [0, 2]]),
+            &Labels::new(["structure", "center"], &[[0, 0], [0, 1], [0, 2]]),
             &[],
-            Labels::single(),
+            &Labels::single(),
         ).unwrap();
 
         let mut keys = LabelsBuilder::new(vec!["spherical_harmonics_l", "species_center", "species_neighbor"]);
@@ -924,11 +926,11 @@ mod tests {
         assert_eq!(descriptor.keys()[0], [0, -42, -42]);
 
         let block = descriptor.block_by_id(0);
-        let values = block.values();
+        let block = block.data();
 
         // entries centered on H atoms should be zero
-        assert_eq!(values.samples, Labels::new(["structure", "center"], &[[0, 0], [0, 1], [0, 2]]));
-        let array = values.data.as_array();
+        assert_eq!(*block.samples, Labels::new(["structure", "center"], &[[0, 0], [0, 1], [0, 2]]));
+        let array = block.values.as_array();
         assert_eq!(array.index_axis(ndarray::Axis(0), 1), ArrayD::from_elem(vec![1, 6], 0.0));
         assert_eq!(array.index_axis(ndarray::Axis(0), 2), ArrayD::from_elem(vec![1, 6], 0.0));
 
@@ -937,11 +939,11 @@ mod tests {
         assert_eq!(descriptor.keys()[21], [0, 1, 1]);
 
         let block = descriptor.block_by_id(21);
-        let values = block.values();
+        let block = block.data();
 
         // entries centered on O atoms should be zero
-        assert_eq!(values.samples, Labels::new(["structure", "center"], &[[0, 0], [0, 1], [0, 2]]));
-        let array = values.data.as_array();
+        assert_eq!(*block.samples, Labels::new(["structure", "center"], &[[0, 0], [0, 1], [0, 2]]));
+        let array = block.values.as_array();
         assert_eq!(array.index_axis(ndarray::Axis(0), 0), ArrayD::from_elem(vec![1, 6], 0.0));
     }
 }

@@ -1,7 +1,7 @@
 import unittest
 
 import numpy as np
-from equistore import Labels, TensorBlock, TensorMap
+from equistore.core import Labels, TensorBlock, TensorMap
 
 from rascaline import RascalError, SortedDistances
 from rascaline.calculators import DummyCalculator
@@ -98,11 +98,11 @@ class TestDummyCalculator(unittest.TestCase):
         self.assertEqual(tuple(H_block.properties[1]), (0, 1))
 
         gradient = H_block.gradient("positions")
-        self.assertEqual(gradient.data.shape, (5, 3, 2))
-        for i in range(gradient.data.shape[0]):
-            self.assertTrue(np.all(gradient.data[i, 0, :] == (0, 1)))
-            self.assertTrue(np.all(gradient.data[i, 1, :] == (0, 1)))
-            self.assertTrue(np.all(gradient.data[i, 2, :] == (0, 1)))
+        self.assertEqual(gradient.values.shape, (5, 3, 2))
+        for i in range(gradient.values.shape[0]):
+            self.assertTrue(np.all(gradient.values[i, 0, :] == (0, 1)))
+            self.assertTrue(np.all(gradient.values[i, 1, :] == (0, 1)))
+            self.assertTrue(np.all(gradient.values[i, 2, :] == (0, 1)))
 
         self.assertEqual(len(gradient.samples), 5)
         self.assertEqual(gradient.samples.names, ("sample", "structure", "atom"))

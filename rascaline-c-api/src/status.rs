@@ -114,11 +114,13 @@ macro_rules! check_pointers {
 #[no_mangle]
 pub unsafe extern fn rascal_last_error() -> *const c_char {
     let mut result = std::ptr::null();
-    let wrapper = std::panic::AssertUnwindSafe(&mut result);
+    let unwind_wrapper = std::panic::AssertUnwindSafe(&mut result);
     let status = catch_unwind(move || {
-        let wrapper = wrapper;
+        // force the closure to capture the full unwind_wrapper, not just
+        // unwind_wrapper.0
+        let _ = &unwind_wrapper;
         LAST_ERROR_MESSAGE.with(|message| {
-            *wrapper.0 = message.borrow().as_ptr();
+            *unwind_wrapper.0 = message.borrow().as_ptr();
         });
         Ok(())
     });

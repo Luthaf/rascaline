@@ -300,7 +300,7 @@ impl Calculator {
             &keys,
             || self.implementation.samples_names(),
             |keys| self.implementation.samples(keys, systems),
-            |block| block.values().samples,
+            |block| block.samples(),
         )?;
 
         for &parameter in options.gradients {
@@ -356,7 +356,7 @@ impl Calculator {
             &keys,
             || self.implementation.properties_names(),
             |keys| Ok(self.implementation.properties(keys)),
-            |block| block.values().properties,
+            |block| block.properties(),
         )?;
 
         assert_eq!(keys.count(), samples.len());
@@ -374,9 +374,9 @@ impl Calculator {
             );
             let mut new_block = TensorBlock::new(
                 ArrayD::from_elem(shape, 0.0),
-                samples,
+                &samples,
                 &components,
-                properties.clone(),
+                &properties,
             )?;
 
             if let Some(ref gradient_samples) = positions_gradient_samples {
@@ -392,10 +392,13 @@ impl Calculator {
 
                 new_block.add_gradient(
                     "positions",
-                    ArrayD::from_elem(shape, 0.0),
-                    gradient_samples.clone(),
-                    &components,
-                )?;
+                    TensorBlock::new(
+                        ArrayD::from_elem(shape, 0.0),
+                        gradient_samples,
+                        &components,
+                        &properties
+                    ).expect("generated invalid gradient")
+                ).expect("generated invalid gradient");
             }
 
             if let Some(ref gradient_samples) = cell_gradient_samples {
@@ -411,10 +414,13 @@ impl Calculator {
 
                 new_block.add_gradient(
                     "cell",
-                    ArrayD::from_elem(shape, 0.0),
-                    gradient_samples.clone(),
-                    &components,
-                )?;
+                    TensorBlock::new(
+                        ArrayD::from_elem(shape, 0.0),
+                        gradient_samples,
+                        &components,
+                        &properties
+                    ).expect("generated invalid gradient")
+                ).expect("generated invalid gradient");
             }
 
             blocks.push(new_block);
