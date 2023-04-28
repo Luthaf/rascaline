@@ -24,8 +24,8 @@ def catch_exceptions(function):
 class SystemBase:
     """Base class implementing the ``System`` trait in rascaline.
 
-    Developers should implement this class to add new kinds of system that
-    work with rascaline.
+    Developers should implement this class to add new kinds of system that work
+    with rascaline.
 
     Most users should use one of the already provided implementation, such as
     :py:class:`rascaline.systems.AseSystem` or
@@ -61,7 +61,7 @@ class SystemBase:
             Implementation of ``rascal_system_t::size`` using
             :py:func:`SystemBase.size`.
             """
-            size[0] = get_self(user_data).size()
+            size[0] = c_uintptr_t(get_self(user_data).size())
 
         # use struct.XXX.__class__ to get the right type for all functions
         struct.size = struct.size.__class__(rascal_system_size)
@@ -74,7 +74,7 @@ class SystemBase:
             """
             self = get_self(user_data)
 
-            species = np.array(self.species(), dtype=np.int32)
+            species = np.asarray(self.species(), order="C", dtype=np.int32)
             data[0] = species.ctypes.data
             self._keepalive["species"] = species
 
@@ -87,7 +87,7 @@ class SystemBase:
             :py:func:`SystemBase.positions`.
             """
             self = get_self(user_data)
-            positions = np.array(self.positions(), dtype=c_double)
+            positions = np.asarray(self.positions(), order="C", dtype=c_double)
 
             assert len(positions.shape) == 2
             assert positions.shape[1] == 3
@@ -104,7 +104,7 @@ class SystemBase:
             :py:func:`SystemBase.cell`.
             """
             self = get_self(user_data)
-            cell = np.array(self.cell(), dtype=c_double)
+            cell = np.asarray(self.cell(), order="C", dtype=c_double)
             assert cell.shape == (3, 3)
 
             data[0] = cell[0][0]
@@ -140,7 +140,11 @@ class SystemBase:
             """
             self = get_self(user_data)
 
-            pairs = np.array(self.pairs(), dtype=rascal_pair_t)
+            pairs = np.asarray(
+                self.pairs(),
+                order="C",
+                dtype=rascal_pair_t,
+            )
 
             count[0] = c_uintptr_t(len(pairs))
             data[0] = pairs.ctypes.data
@@ -156,7 +160,11 @@ class SystemBase:
             """
             self = get_self(user_data)
 
-            pairs = np.array(self.pairs_containing(center), dtype=rascal_pair_t)
+            pairs = np.asarray(
+                self.pairs_containing(center),
+                order="C",
+                dtype=rascal_pair_t,
+            )
 
             count[0] = c_uintptr_t(len(pairs))
             data[0] = pairs.ctypes.data
@@ -170,53 +178,62 @@ class SystemBase:
 
     def size(self):
         """Get the number of atoms in this system as an integer."""
+
         raise NotImplementedError("System.size method is not implemented")
 
     def species(self):
         """Get the atomic species of all atoms in the system.
 
-        Get a list of integers or a 1D numpy array of integers containing the atomic
-        species for each atom in the system. Each different atomic species
-        should be identified with a different value.
-        These values are usually the atomic number, but don't have to be.
+        Get a list of integers or a 1D numpy array of integers (ideally 32-bit
+        integers, otherwise they will be converted on the fly) containing the
+        atomic species for each atom in the system. Different atomic species
+        should be identified with a different value. These values are usually
+        the atomic number, but don't have to be.
         """
+
         raise NotImplementedError("System.species method is not implemented")
 
     def positions(self):
         """Get the cartesian position of all atoms in this system.
 
         The returned positions must be convertible to a numpy array of
-        shape ``(self.size(), 3)``.
+        shape ``(self.size(), 3)``, with a dtype of `np.float64`.
         """
+
         raise NotImplementedError("System.positions method is not implemented")
 
     def cell(self):
         """Get the 3x3 matrix representing unit cell of the system.
 
-        The cell should be written in row major order, i.e. `[[ax, ay, az],
-        [bx, by, bz], [cx, cy, cz]]`, where a/b/c are the unit cell vectors.
+        The cell should be written in row major order, i.e. `[[ax, ay, az], [bx,
+        by, bz], [cx, cy, cz]]`, where a/b/c are the unit cell vectors.
+
+        If the cell is returned as a numpy array, it should have a dtype of
+        `np.float64`.
         """
+
         raise NotImplementedError("System.cell method is not implemented")
 
     def compute_neighbors(self, cutoff):
         """Compute the neighbor list with the given ``cutoff``.
 
-        Store it for later access using :py:func:`rascaline.SystemBase.pairs`
-        or :py:func:`rascaline.SystemBase.pairs_containing`.
+        Store it for later access using :py:func:`rascaline.SystemBase.pairs` or
+        :py:func:`rascaline.SystemBase.pairs_containing`.
         """
+
         raise NotImplementedError("System.compute_neighbors method is not implemented")
 
     def pairs(self):
         """Atoms pairs in this system.
 
-        The pairs are those which were
-        computed by the last call :py:func:`SystemBase.compute_neighbors`
+        The pairs are those which were computed by the last call
+        :py:func:`SystemBase.compute_neighbors`
 
         Get all neighbor pairs in this system as a list of tuples ``(int, int,
         float, (float, float, float))`` containing the indexes of the first and
-        second atom in the pair, the distance between the atoms, and the
-        wrapped between them. Alternatively, this function can return a numpy
-        array with ``dtype=rascal_pair_t``.
+        second atom in the pair, the distance between the atoms, and the wrapped
+        between them. Alternatively, this function can return a 1D numpy array
+        with ``dtype=rascal_pair_t``.
 
         The list of pair should only contain each pair once (and not twice as
         ``i-j`` and ``j-i``), should not contain self pairs (``i-i``); and
@@ -227,6 +244,7 @@ class SystemBase:
         This function is only valid to call after a call to
         :py:func:`rascaline.SystemBase.compute_neighbors` to set the cutoff.
         """
+
         raise NotImplementedError("System.pairs method is not implemented")
 
     def pairs_containing(self, center):
@@ -234,9 +252,11 @@ class SystemBase:
         Get all neighbor pairs in this system containing the atom with index
         ``center``.
 
-        The same restrictions on the list of pairs as
-        :py:func:`rascaline.SystemBase.pairs` applies, with the additional
-        condition that the pair ``i-j`` should be included both in the list
-        returned by ``pairs_containing(i)`` and ``pairs_containing(j)``.
+        The return type of this function should be the same as
+        :py:func:`rascaline.SystemBase.pairs`. The same restrictions on the list
+        of pairs also applies, with the additional condition that the pair
+        ``i-j`` should be included both in the list returned by
+        ``pairs_containing(i)`` and ``pairs_containing(j)``.
         """
+
         raise NotImplementedError("System.pairs_containing method is not implemented")
