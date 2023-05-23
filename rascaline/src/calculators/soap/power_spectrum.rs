@@ -384,9 +384,11 @@ struct SphericalExpansionBlock<'a> {
 /// Indexes of the spherical expansion samples/rows corresponding to each power
 /// spectrum row.
 struct SamplesMapping {
-    /// Mapping for the values.
+    /// Mapping for the values: if the row `i` of the power spectrum is a
+    /// combination of the rows `j` and `k` of two spherical expansion blocks,
+    /// then this vector will contain `(j, k)` at index `i`
     values: Vec<(usize, usize)>,
-    /// Mapping for the gradients.
+    /// Mapping for the gradients, with a similar layout as the `values`
     ///
     /// Some samples might not be defined in both of the spherical expansion
     /// blocks being considered, for examples when dealing with two different
