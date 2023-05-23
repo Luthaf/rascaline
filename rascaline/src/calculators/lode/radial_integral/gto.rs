@@ -122,6 +122,7 @@ impl LodeRadialIntegral for LodeRadialIntegralGto {
             );
 
             for l in 0..(self.parameters.max_angular + 1) {
+                assert!(values[[l, n]].is_finite());
                 values[[l, n]] *= factor;
                 if let Some(ref mut gradients) = gradients {
                     gradients[[l, n]] *= k_norm_sigma_n_2 * factor;
