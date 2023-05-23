@@ -151,6 +151,13 @@ impl SoapRadialIntegral for SoapRadialIntegralGto {
                 let n_l_3_over_2 = 0.5 * (n + l) as f64 + 1.5;
                 let c_dn = (c + gto_constant).powf(-n_l_3_over_2);
 
+                if !values[[l, n]].is_finite() {
+                    panic!(
+                        "Failed to compute radial integral with GTO basis. \
+                        Try increasing decreasing the `cutoff`, or increasing `atomic_gaussian_width`."
+                    );
+                }
+
                 values[[l, n]] *= c_dn * factor;
                 if let Some(ref mut gradients) = gradients {
                     gradients[[l, n]] *= c_dn * factor * 2.0 * z / distance;
