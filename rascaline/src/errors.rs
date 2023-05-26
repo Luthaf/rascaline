@@ -37,7 +37,13 @@ impl std::fmt::Display for Error {
             Error::Equistore(e) => write!(f, "equistore error: {}", e),
             Error::BufferSize(e) => write!(f, "buffer is not big enough: {}", e),
             Error::External{status, message} => write!(f, "error from external code (status {}): {}", status, message),
-            Error::Internal(e) => write!(f, "internal error (this is likely a bug, please report it): {}", e),
+            Error::Internal(e) => {
+                write!(f, "internal error")?;
+                if e.contains("assertion failed") {
+                    write!(f, " (this is likely a bug, please report it)")?;
+                }
+                write!(f, ": {}", e)
+            }
         }
     }
 }
