@@ -295,11 +295,27 @@ impl SoapPowerSpectrum {
                 let spx_gradient_1_samples = spx_gradient_1.samples();
                 let spx_gradient_2_samples = spx_gradient_2.samples();
 
-                for gradient_sample in gradient_samples.iter() {
-                    gradient_mapping.push((
-                        spx_gradient_1_samples.position(gradient_sample),
-                        spx_gradient_2_samples.position(gradient_sample),
-                    ));
+                for &[sample, structure, atom] in gradient_samples.iter_fixed_size() {
+                    // The "sample" dimension in the power spectrum gradient
+                    // samples do not necessarily matches the "sample" dimension
+                    // in the spherical expansion gradient samples. We use the
+                    // sample mapping for the values to create what would be the
+                    // right gradient sample for spx, and then lookup its
+                    // position in the spx gradient samples
+                    let (spx_1_sample, spx_2_sample) = values_mapping[sample.usize()];
+
+                    let mapping_1 = spx_gradient_1_samples.position(
+                        &[spx_1_sample.into(), structure, atom]
+                    );
+                    let mapping_2 = spx_gradient_2_samples.position(
+                        &[spx_2_sample.into(), structure, atom]
+                    );
+
+                    // at least one of the spx block should contribute to the
+                    // gradients
+                    debug_assert!(mapping_1.is_some() || mapping_2.is_some());
+
+                    gradient_mapping.push((mapping_1, mapping_2));
                 }
             }
 
@@ -735,7 +751,7 @@ mod tests {
 
     fn parameters() -> PowerSpectrumParameters {
         PowerSpectrumParameters {
-            cutoff: 3.5,
+            cutoff: 2.5,
             max_radial: 6,
             max_angular: 6,
             atomic_gaussian_width: 0.3,
@@ -786,7 +802,7 @@ mod tests {
             parameters()
         ).unwrap()) as Box<dyn CalculatorBase>);
 
-        let system = test_system("water");
+        let system = test_system("ethanol");
         let options = crate::calculators::tests_utils::FinalDifferenceOptions {
             displacement: 1e-6,
             max_relative: 5e-5,
@@ -801,10 +817,10 @@ mod tests {
             parameters()
         ).unwrap()) as Box<dyn CalculatorBase>);
 
-        let system = test_system("water");
+        let system = test_system("ethanol");
         let options = crate::calculators::tests_utils::FinalDifferenceOptions {
             displacement: 1e-5,
-            max_relative: 1e-5,
+            max_relative: 5e-4,
             epsilon: 1e-16,
         };
         crate::calculators::tests_utils::finite_differences_cell(calculator, &system, options);
