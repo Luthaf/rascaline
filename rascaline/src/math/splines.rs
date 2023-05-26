@@ -103,7 +103,7 @@ impl<D: ndarray::Dimension> HermitCubicSpline<D> {
         let grid_step = (parameters.stop - parameters.start) / (initial_grid_size - 1) as f64;
 
         let mut points = Vec::new();
-        for k in 0..initial_grid_size {
+        for k in 0..(initial_grid_size - 1) {
             let position = parameters.start + k as f64 * grid_step;
             let (value, derivative) = function(position);
 
@@ -116,6 +116,17 @@ impl<D: ndarray::Dimension> HermitCubicSpline<D> {
 
             points.push(HermitSplinePoint { position, value, derivative });
         }
+
+        // Add a point exactly at `parameters.stop`
+        let position = parameters.stop;
+        let (value, derivative) = function(position);
+        if value.shape() != parameters.shape || derivative.shape() != parameters.shape  {
+            return Err(Error::InvalidParameter(format!(
+                "function ({:?}) or gradient of the function ({:?}) returned a different shape than expected ({:?})",
+                value.shape(), derivative.shape(), parameters.shape
+            )));
+        }
+        points.push(HermitSplinePoint { position, value, derivative });
 
         let mut spline = HermitCubicSpline::new(parameters, points);
 
