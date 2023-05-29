@@ -38,11 +38,11 @@ jobs:
             rust-version: beta
             rust-target: x86_64-unknown-linux-gnu
             build-type: debug
-          # check the build on a stock Ubuntu 20.04, including cmake 3.10 and
-          # Python 3.7
+          # check the build on a stock Ubuntu 20.04, including cmake 3.16 and
+          # Python 3.8
           - os: ubuntu-20.04
-            rust-version: from Ubuntu
-            container: ubuntu:18.04
+            rust-version: "1.61"
+            container: ubuntu:20.04
             rust-target: x86_64-unknown-linux-gnu
             build-type: debug
           - os: macos-11
@@ -51,15 +51,12 @@ jobs:
             build-type: debug
     steps:
       - name: install dependencies in container
-        if: matrix.container == 'ubuntu:18.04'
+        if: matrix.container == 'ubuntu:20.04'
         run: |
           apt update
           apt install -y software-properties-common
-          add-apt-repository -y ppa:git-core/ppa
-          add-apt-repository ppa:deadsnakes/ppa
-          apt install -y cmake make gcc g++ git curl rustc cargo
-          apt install -y python3.7 python3-pip
-          ln -s /usr/bin/python3.7 /usr/bin/python
+          apt install -y cmake make gcc g++ git curl python3-pip
+          ln -s /usr/bin/python3 /usr/bin/python
 
       - uses: actions/checkout@v3
 
@@ -71,7 +68,6 @@ jobs:
 
       - name: setup rust
         uses: actions-rs/toolchain@v1
-        if: "!matrix.container"
         with:
           profile: minimal
           toolchain: ${{ matrix.rust-version }}

@@ -184,7 +184,7 @@ set(RASCALINE_HEADERS
 )
 set(RASCALINE_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/)
 
-set(EQUISTORE_GIT_VERSION "e5b9dc365369ba2584ea01e9d6a4d648008aaab8")
+set(EQUISTORE_GIT_VERSION "3bced4c")
 set(EQUISTORE_REQUIRED_VERSION "0.1")
 if (RASCALINE_FETCH_EQUISTORE)
     message(STATUS "Fetching equistore @ ${EQUISTORE_GIT_VERSION} from github")
@@ -199,7 +199,7 @@ if (RASCALINE_FETCH_EQUISTORE)
     FetchContent_Declare(
         equistore
         URL      https://github.com/lab-cosmo/equistore/archive/${EQUISTORE_GIT_VERSION}.zip
-        URL_HASH MD5=3731b1878528e4af0c16c3ae479767b8
+        URL_HASH MD5=0e673b31572967df992bd3e39010a94f
         SOURCE_SUBDIR equistore-core
         VERBOSE
     )
