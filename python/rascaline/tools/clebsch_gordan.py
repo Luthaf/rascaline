@@ -206,8 +206,9 @@ class ClebschGordanReal:
                 )
             )
             for L in range(max(l1, l2) - min(l1, l2), min(self._l_max, (l1 + l2)) + 1):
-                # supports missing L components, e.g. if they are zero because of symmetry
-                if not L in lcomponents:
+                # supports missing L components,
+                # e.g. if they are zero because of symmetry
+                if L not in lcomponents:
                     continue
                 for M in range(2 * L + 1):
                     for m1, m2, cg in self._cg[(l1, l2, L)][M]:
@@ -282,9 +283,11 @@ def _complex_clebsch_gordan_matrix(l1, l2, L):
     ... sph_harm(m, 1, 0.2, 0.2) for m in range(-1, 1+1)
     >>> ])
     >>> comp_sph_2 = np.array([sph_harm(m, 1, 0.2, 0.2) for m in range(-1, 1+1)])
-    >>> # obtain the (unnormalized) spherical harmonics with l = 2 by contraction over m1 and m2
+    >>> # obtain the (unnormalized) spherical harmonics
+    >>> # with l = 2 by contraction over m1 and m2
     >>> comp_sph_2_u = np.einsum("ijk,i,j->k", C_112, comp_sph_1, comp_sph_2)
-    >>> # we can check that they differ from the spherical harmonics by a constant factor
+    >>> # we can check that they differ from the spherical harmonics
+    >>> # by a constant factor
     >>> comp_sph_2 = np.array([sph_harm(m, 2, 0.2, 0.2) for m in range(-2, 2+1)])
     >>> print(comp_sph_2 / comp_sph_2_u)
     ... [3.23604319-1.69568664e-16j 3.23604319+7.31506235e-17j
