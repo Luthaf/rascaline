@@ -275,13 +275,21 @@ def _complex_clebsch_gordan_matrix(l1, l2, L):
     one can obtain the spherical harmonics L from two sets of
     spherical harmonics with l1 and l2 (up to a normalization factor).
     E.g.:
+    Args:
+        l1: l number for the first set of spherical harmonics
+        l2: l number for the second set of spherical harmonics
+        L: l number For the third set of spherical harmonics
+    Returns:
+        cg: CG matrix for transforming complex-valued spherical harmonics
 
     >>> from scipy.special import sph_harm
+    >>> import numpy as np
+    >>> import wigners
     ...
     >>> C_112 = _complex_clebsch_gordan_matrix(1, 1, 2)
     >>> comp_sph_1 = np.array([
     ... sph_harm(m, 1, 0.2, 0.2) for m in range(-1, 1+1)
-    >>> ])
+    ... ])
     >>> comp_sph_2 = np.array([sph_harm(m, 1, 0.2, 0.2) for m in range(-1, 1+1)])
     >>> # obtain the (unnormalized) spherical harmonics
     >>> # with l = 2 by contraction over m1 and m2
@@ -289,17 +297,9 @@ def _complex_clebsch_gordan_matrix(l1, l2, L):
     >>> # we can check that they differ from the spherical harmonics
     >>> # by a constant factor
     >>> comp_sph_2 = np.array([sph_harm(m, 2, 0.2, 0.2) for m in range(-2, 2+1)])
-    >>> print(comp_sph_2 / comp_sph_2_u)
-    ... [3.23604319-1.69568664e-16j 3.23604319+7.31506235e-17j
-    ...  3.23604319+0.00000000e+00j 3.23604319-7.31506235e-17j
-    ...  3.23604319+1.69568664e-16j]
-
-    Args:
-        l1: l number for the first set of spherical harmonics
-        l2: l number for the second set of spherical harmonics
-        L: l number For the third set of spherical harmonics
-    Returns:
-        cg: CG matrix for transforming complex-valued spherical harmonics
+    >>> ratio = comp_sph_2 / comp_sph_2_u
+    >>> np.allclose(ratio[0], ratio)
+    True
     """
     if np.abs(l1 - l2) > L or np.abs(l1 + l2) < L:
         return np.zeros((2 * l1 + 1, 2 * l2 + 1, 2 * L + 1), dtype=np.double)
