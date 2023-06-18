@@ -61,14 +61,14 @@ For details, tutorials, and examples, please have a look at our `documentation`_
 
 .. _`documentation`: https://luthaf.fr/rascaline/index.html
 
-.. |test| image:: https://github.com/Luthaf/rascaline/actions/workflows/tests.yml/badge.svg
-   :alt: Github Actions Tests Job Status
-   :target: https://github.com/Luthaf/rascaline/actions/workflows/tests.yml
+.. |test| image:: https://img.shields.io/github/checks-status/luthaf/rascaline/master
+    :alt: Github Actions tests status
+    :target: https://github.com/Luthaf/rascaline/actions?query=branch%3Amaster
 
 .. |docs| image:: https://img.shields.io/badge/documentation-latest-sucess
-   :alt: Documentation
-   :target: `documentation`_
+    :alt: Documentation
+    :target: `documentation`_
 
 .. |cov| image:: https://codecov.io/gh/Luthaf/rascaline/branch/master/graph/badge.svg
-   :alt: Coverage Status
-   :target: https://codecov.io/gh/Luthaf/rascaline
+    :alt: Coverage Status
+    :target: https://codecov.io/gh/Luthaf/rascaline
