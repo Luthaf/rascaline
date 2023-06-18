@@ -4,7 +4,7 @@ if(rascaline_FOUND)
     return()
 endif()
 
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.16)
 enable_language(CXX)
 
 if (@BUILD_SHARED_LIBS@)
@@ -39,12 +39,7 @@ set_target_properties(rascaline PROPERTIES
 
 find_package(equistore @EQUISTORE_REQUIRED_VERSION@ REQUIRED CONFIG)
 target_link_libraries(rascaline INTERFACE equistore)
-
-if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.11)
-    # we can not set compile features for imported targete before cmake 3.11
-    # users will have to manually request C++11
-    target_compile_features(rascaline INTERFACE cxx_std_11)
-endif()
+target_compile_features(rascaline INTERFACE cxx_std_11)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT @BUILD_SHARED_LIBS@)
     set(THREADS_PREFER_PTHREAD_FLAG ON)

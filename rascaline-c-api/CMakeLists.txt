@@ -1,13 +1,9 @@
 # Basic CMake integration for rascaline.
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.16)
 
 if (POLICY CMP0135)
     cmake_policy(SET CMP0135 NEW) # Timestamp for FetchContent
 endif()
-
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING "" FORCE)
 
 if (POLICY CMP0077)
     # use variables to set OPTIONS
@@ -189,12 +185,6 @@ set(EQUISTORE_REQUIRED_VERSION "0.1")
 if (RASCALINE_FETCH_EQUISTORE)
     message(STATUS "Fetching equistore @ ${EQUISTORE_GIT_VERSION} from github")
 
-    if (CMAKE_VERSION VERSION_LESS 3.11)
-        # cmake 3.10 (default on ubuntu 20.04) does not include FetchContent,
-        # but we can use the version from cmake 3.11 without change
-        set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/fetch-content-cmake-3.11;${CMAKE_MODULE_PATH}")
-    endif()
-
     include(FetchContent)
     FetchContent_Declare(
         equistore
@@ -223,7 +213,8 @@ set_target_properties(rascaline PROPERTIES
     IMPORTED_LOCATION ${RASCALINE_LOCATION}
     INTERFACE_INCLUDE_DIRECTORIES ${RASCALINE_INCLUDE_DIR}
 )
-target_link_libraries(rascaline INTERFACE equistore)
+target_link_libraries(rascaline INTERFACE equistore::shared)
+target_compile_features(rascaline INTERFACE cxx_std_11)
 
 if(NOT ${RASCALINE_DISABLE_CHEMFILES})
     # the static library will need to be linked as C++ code since it contains
