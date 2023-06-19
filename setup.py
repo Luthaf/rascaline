@@ -163,26 +163,27 @@ def get_version():
     return version
 
 
-setup(
-    version=get_version(),
-    author=", ".join(open(os.path.join(ROOT, "AUTHORS")).read().splitlines()),
-    ext_modules=[
-        # only declare the extension, it is built & copied as required by cmake
-        # in the build_ext command
-        Extension(name="rascaline", sources=[]),
-    ],
-    cmdclass={
-        "build_ext": cmake_ext,
-        "bdist_wheel": universal_wheel,
-        # HACK: do not use the new setuptools install implementation, it tries
-        # to install the package with `easy_install`, which fails to resolve the
-        # freshly installed package and tries to load it from pypi.
-        "install": distutils_install,
-    },
-    package_data={
-        "rascaline": [
-            "rascaline/lib/*",
-            "rascaline/include/*",
-        ]
-    },
-)
+if __name__ == "__main__":
+    setup(
+        version=get_version(),
+        author=", ".join(open(os.path.join(ROOT, "AUTHORS")).read().splitlines()),
+        ext_modules=[
+            # only declare the extension, it is built & copied as required by cmake
+            # in the build_ext command
+            Extension(name="rascaline", sources=[]),
+        ],
+        cmdclass={
+            "build_ext": cmake_ext,
+            "bdist_wheel": universal_wheel,
+            # HACK: do not use the new setuptools install implementation, it tries
+            # to install the package with `easy_install`, which fails to resolve the
+            # freshly installed package and tries to load it from pypi.
+            "install": distutils_install,
+        },
+        package_data={
+            "rascaline": [
+                "rascaline/lib/*",
+                "rascaline/include/*",
+            ]
+        },
+    )
