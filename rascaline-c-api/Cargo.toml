@@ -8,6 +8,7 @@ rust-version = "1.61"
 [lib]
 # when https://github.com/rust-lang/cargo/pull/8789 lands, use it here!
 # until then, build all the crate-type we need
+name = "rascaline"
 crate-type = ["cdylib", "staticlib"]
 bench = false
 

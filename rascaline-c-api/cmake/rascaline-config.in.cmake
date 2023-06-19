@@ -1,49 +1,79 @@
 @PACKAGE_INIT@
 
+cmake_minimum_required(VERSION 3.16)
+
 if(rascaline_FOUND)
     return()
 endif()
 
-cmake_minimum_required(VERSION 3.16)
 enable_language(CXX)
 
-if (@BUILD_SHARED_LIBS@)
-    add_library(rascaline SHARED IMPORTED GLOBAL)
+if (WIN32)
+    set(RASCALINE_SHARED_LOCATION ${PACKAGE_PREFIX_DIR}/@BIN_INSTALL_DIR@/@RASCALINE_SHARED_LIB_NAME@)
+    set(RASCALINE_IMPLIB_LOCATION ${PACKAGE_PREFIX_DIR}/@LIB_INSTALL_DIR@/@RASCALINE_IMPLIB_NAME@)
 else()
-    add_library(rascaline STATIC IMPORTED GLOBAL)
+    set(RASCALINE_SHARED_LOCATION ${PACKAGE_PREFIX_DIR}/@LIB_INSTALL_DIR@/@RASCALINE_SHARED_LIB_NAME@)
 endif()
 
-# check that all expected files exist
-if (NOT EXISTS ${PACKAGE_PREFIX_DIR}/@LIB_INSTALL_DIR@/@RASCALINE_LIB_NAME@)
-    message(FATAL_ERROR "unable to find rascaline library at ${PACKAGE_PREFIX_DIR}/@LIB_INSTALL_DIR@/@RASCALINE_LIB_NAME@")
+set(RASCALINE_STATIC_LOCATION ${PACKAGE_PREFIX_DIR}/@LIB_INSTALL_DIR@/@RASCALINE_STATIC_LIB_NAME@)
+set(RASCALINE_INCLUDE ${PACKAGE_PREFIX_DIR}/@INCLUDE_INSTALL_DIR@/)
+
+if (NOT EXISTS ${RASCALINE_INCLUDE}/rascaline.h OR NOT EXISTS ${RASCALINE_INCLUDE}/rascaline.hpp)
+    message(FATAL_ERROR "could not find rascaline headers in '${RASCALINE_INCLUDE}', please re-install rascaline")
 endif()
-
-if (NOT EXISTS ${PACKAGE_PREFIX_DIR}/@INCLUDE_INSTALL_DIR@/rascaline.h)
-    message(FATAL_ERROR "unable to find rascaline header at ${PACKAGE_PREFIX_DIR}/@INCLUDE_INSTALL_DIR@/rascaline.h")
-endif()
-
-if (NOT EXISTS ${PACKAGE_PREFIX_DIR}/@INCLUDE_INSTALL_DIR@/rascaline.hpp)
-    message(FATAL_ERROR "unable to find rascaline header at ${PACKAGE_PREFIX_DIR}/@INCLUDE_INSTALL_DIR@/rascaline.hpp")
-endif()
-
-
-# create an imported rascaline target
-set_target_properties(rascaline PROPERTIES
-    IMPORTED_LOCATION ${PACKAGE_PREFIX_DIR}/@LIB_INSTALL_DIR@/@RASCALINE_LIB_NAME@
-    INTERFACE_INCLUDE_DIRECTORIES ${PACKAGE_PREFIX_DIR}/@INCLUDE_INSTALL_DIR@/
-    # we might need to link with a C++ compiler to get the C++ stdlib for
-    # chemfiles, if the chemfiles feature is enabled
-    IMPORTED_LINK_INTERFACE_LANGUAGES CXX
-)
-
 
 find_package(equistore @EQUISTORE_REQUIRED_VERSION@ REQUIRED CONFIG)
-target_link_libraries(rascaline INTERFACE equistore)
-target_compile_features(rascaline INTERFACE cxx_std_11)
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT @BUILD_SHARED_LIBS@)
-    set(THREADS_PREFER_PTHREAD_FLAG ON)
-    find_package(Threads REQUIRED)
-    # the rust standard lib uses pthread and libdl on linux
-    target_link_libraries(rascaline INTERFACE Threads::Threads dl)
+# Shared library target
+if (@RASCALINE_INSTALL_BOTH_STATIC_SHARED@ OR @BUILD_SHARED_LIBS@)
+    if (NOT EXISTS ${RASCALINE_SHARED_LOCATION})
+        message(FATAL_ERROR "could not find rascaline library at '${RASCALINE_SHARED_LOCATION}', please re-install rascaline")
+    endif()
+
+    add_library(rascaline::shared SHARED IMPORTED GLOBAL)
+    set_target_properties(rascaline::shared PROPERTIES
+        IMPORTED_LOCATION ${RASCALINE_SHARED_LOCATION}
+        INTERFACE_INCLUDE_DIRECTORIES ${RASCALINE_INCLUDE}
+        IMPORTED_LINK_INTERFACE_LANGUAGES CXX
+    )
+    target_link_libraries(rascaline::shared INTERFACE equistore::shared)
+
+    target_compile_features(rascaline::shared INTERFACE cxx_std_11)
+
+    if (WIN32)
+        if (NOT EXISTS ${RASCALINE_IMPLIB_LOCATION})
+            message(FATAL_ERROR "could not find rascaline library at '${RASCALINE_IMPLIB_LOCATION}', please re-install rascaline")
+        endif()
+
+        set_target_properties(rascaline::shared PROPERTIES
+            IMPORTED_IMPLIB ${RASCALINE_IMPLIB_LOCATION}
+        )
+    endif()
+endif()
+
+
+# Static library target
+if (@RASCALINE_INSTALL_BOTH_STATIC_SHARED@ OR NOT @BUILD_SHARED_LIBS@)
+    if (NOT EXISTS ${RASCALINE_STATIC_LOCATION})
+        message(FATAL_ERROR "could not find rascaline library at '${RASCALINE_STATIC_LOCATION}', please re-install rascaline")
+    endif()
+
+    add_library(rascaline::static STATIC IMPORTED GLOBAL)
+    set_target_properties(rascaline::static PROPERTIES
+        IMPORTED_LOCATION ${RASCALINE_STATIC_LOCATION}
+        INTERFACE_INCLUDE_DIRECTORIES ${RASCALINE_INCLUDE}
+        INTERFACE_LINK_LIBRARIES "@CARGO_DEFAULT_LIBRARIES@"
+        IMPORTED_LINK_INTERFACE_LANGUAGES CXX
+    )
+    target_link_libraries(rascaline::static INTERFACE equistore::shared)
+
+    target_compile_features(rascaline::static INTERFACE cxx_std_11)
+endif()
+
+
+# Export either the shared or static library as the rascaline target
+if (@BUILD_SHARED_LIBS@)
+    add_library(rascaline ALIAS rascaline::shared)
+else()
+    add_library(rascaline ALIAS rascaline::static)
 endif()

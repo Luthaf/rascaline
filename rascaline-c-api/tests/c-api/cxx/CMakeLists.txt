@@ -4,7 +4,7 @@ foreach(_file_ ${ALL_TESTS})
     get_filename_component(_name_ ${_file_} NAME_WE)
     set(_name_ cxx-${_name_})
     add_executable(${_name_} ${_file_})
-    target_link_libraries(${_name_} rascaline catch)
+    target_link_libraries(${_name_} rascaline::shared catch)
     add_test(
         NAME ${_name_}
         COMMAND ${TEST_COMMAND} $<TARGET_FILE:${_name_}>
@@ -17,7 +17,7 @@ foreach(_file_ ${EXAMPLES})
     get_filename_component(_name_ ${_file_} NAME_WE)
     set(_name_ example-cxx-${_name_})
     add_executable(${_name_} ${_file_})
-    target_link_libraries(${_name_} rascaline)
+    target_link_libraries(${_name_} rascaline::shared)
 endforeach()
 
 add_test(
