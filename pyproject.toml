@@ -1,10 +1,59 @@
+[project]
+name = "rascaline"
+dynamic = ["version", "authors"]
+requires-python = ">=3.7"
+
+readme = "README.rst"
+license = {text = "BSD-3-Clause"}
+description = "Computing representations for atomistic machine learning"
+
+keywords = ["computational science", "machine learning", "molecular modeling", "atomistic representations"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: POSIX",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "equistore-core @ https://github.com/lab-cosmo/equistore/archive/3bced4c.zip#subdirectory=python/equistore-core",
+]
+
+[project.urls]
+homepage = "https://luthaf.fr/rascaline/latest/"
+documentation = "https://luthaf.fr/rascaline/latest/"
+repository = "https://github.com/Luthaf/rascaline"
+# changelog = "TODO"
+
+### ======================================================================== ###
+
 [build-system]
 requires = [
-    "setuptools >=44",
-    "wheel >=0.36",
+    "setuptools >=61",
+    "wheel >=0.38",
     "cmake",
 ]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+zip-safe = true
+
+[tool.setuptools.packages.find]
+where = ["python"]
+include = ["rascaline*"]
+namespaces = false
+
+### ======================================================================== ###
 
 [tool.black]
 extend-exclude = """
@@ -24,11 +73,6 @@ known_local_folder = [
 include_trailing_comma = true
 lines_after_imports = 2
 known_first_party = "rascaline"
-
-[tool.check-manifest]
-# we want to include Cargo.lock in the sdist to ensure the same version of
-# depencencies will be picked when building wheels from source
-ignore = ["Cargo.lock"]
 
 ### ======================================================================== ###
 
