@@ -29,3 +29,9 @@ known_first_party = "rascaline"
 # we want to include Cargo.lock in the sdist to ensure the same version of
 # depencencies will be picked when building wheels from source
 ignore = ["Cargo.lock"]
+
+### ======================================================================== ###
+
+[tool.pytest.ini_options]
+python_files = ["*.py"]
+testpaths = ["python/tests"]
