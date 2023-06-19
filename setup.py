@@ -58,9 +58,9 @@ class cmake_ext(build_ext):
             f"-DCMAKE_BUILD_TYPE={RASCALINE_BUILD_TYPE}",
             # do not include chemfiles inside rascaline, instead users should
             # use chemfiles python bindings directly
-            "-DRASCALINE_DISABLE_CHEMFILES=ON",
+            "-DRASCALINE_ENABLE_CHEMFILES=OFF",
             "-DRASCALINE_FETCH_EQUISTORE=ON",
-            "-DRASCALINE_BUILD_FOR_PYTHON=ON",
+            "-DEXTRA_RUST_FLAGS=-Cstrip=symbols",
         ]
 
         if "CARGO" in os.environ:

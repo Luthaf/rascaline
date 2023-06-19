@@ -54,7 +54,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../.. ${CMAKE_CURRENT_BINARY_DIR}/r
 
 # Add rascaline and equistore to the rpath of tests, so we can load the shared
 # library directly from `target/{debug,release}/`
-get_target_property(RASCALINE_LOCATION rascaline IMPORTED_LOCATION)
+get_target_property(RASCALINE_LOCATION rascaline::shared IMPORTED_LOCATION)
 get_filename_component(RASCALINE_DIRECTORY "${RASCALINE_LOCATION}" DIRECTORY)
 
 get_target_property(EQUISTORE_LOCATION equistore::shared IMPORTED_LOCATION)
@@ -66,7 +66,7 @@ add_library(catch STATIC catch/catch.cpp)
 target_include_directories(catch PUBLIC catch)
 
 add_library(tests_helpers STATIC helpers.cpp)
-target_link_libraries(tests_helpers rascaline)
+target_link_libraries(tests_helpers rascaline::shared)
 
 
 find_program(VALGRIND valgrind)
@@ -88,7 +88,7 @@ enable_testing()
 foreach(_file_ ${ALL_TESTS})
     get_filename_component(_name_ ${_file_} NAME_WE)
     add_executable(${_name_} ${_file_})
-    target_link_libraries(${_name_} rascaline catch tests_helpers)
+    target_link_libraries(${_name_} rascaline::shared catch tests_helpers)
     add_test(
         NAME ${_name_}
         COMMAND ${TEST_COMMAND} $<TARGET_FILE:${_name_}>
@@ -102,7 +102,7 @@ foreach(_file_ ${EXAMPLES})
     get_filename_component(_name_ ${_file_} NAME_WE)
     set(_name_ example-${_name_})
     add_executable(${_name_} ${_file_})
-    target_link_libraries(${_name_} rascaline)
+    target_link_libraries(${_name_} rascaline::shared)
 endforeach()
 
 set(XYZ_EXAMPLE_FILE ${CMAKE_CURRENT_SOURCE_DIR}/../../../rascaline/examples/data/water.xyz)
