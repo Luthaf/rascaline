@@ -35,7 +35,7 @@ class AseSystem(SystemBase):
         """:param atoms: `ase.Atoms`_ object to be wrapped in this ``AseSystem``"""
         super().__init__()
         if not isinstance(atoms, ase.Atoms):
-            raise Exception("this class expects ASE.Atoms objects")
+            raise TypeError("this class expects ASE.Atoms objects")
 
         # normalize pbc to three values
         if isinstance(atoms.pbc, bool):
@@ -47,7 +47,7 @@ class AseSystem(SystemBase):
         # validate pcb consistency with the cell matrix
         if np.all(np.abs(self._cell) < 1e-9):
             if np.any(atoms_pbc):
-                raise Exception(
+                raise ValueError(
                     "periodic boundary conditions are enabled, "
                     "but the cell matrix is zero everywhere. "
                     "You should set pbc to `False`, or the cell to its value."
@@ -61,7 +61,7 @@ class AseSystem(SystemBase):
                 )
                 self._cell[:, :] = 0.0
             else:
-                raise Exception(
+                raise ValueError(
                     "different periodic boundary conditions on different axis "
                     "are not supported"
                 )
