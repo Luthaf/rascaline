@@ -2,6 +2,7 @@ import glob
 import os
 import shutil
 import subprocess
+import sys
 
 from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
@@ -17,8 +18,6 @@ if RASCALINE_BUILD_TYPE not in ["debug", "release"]:
         f"invalid build type passed: '{RASCALINE_BUILD_TYPE}',"
         "expected 'debug' or 'release'"
     )
-
-RUST_BUILD_TARGET = os.environ.get("RUST_BUILD_TARGET", None)
 
 
 class universal_wheel(bdist_wheel):
@@ -60,14 +59,49 @@ class cmake_ext(build_ext):
             # use chemfiles python bindings directly
             "-DRASCALINE_ENABLE_CHEMFILES=OFF",
             "-DRASCALINE_FETCH_EQUISTORE=ON",
+            "-DRASCALINE_INSTALL_BOTH_STATIC_SHARED=OFF",
+            "-DBUILD_SHARED_LIBS=ON",
             "-DEXTRA_RUST_FLAGS=-Cstrip=symbols",
         ]
 
         if "CARGO" in os.environ:
             cmake_options.append(f"-DCARGO_EXE={os.environ['CARGO']}")
 
-        if RUST_BUILD_TARGET is not None:
-            cmake_options.append(f"-DRUST_BUILD_TARGET={RUST_BUILD_TARGET}")
+        # Handle cross-compilation by detecting cibuildwheels environnement
+        # variables
+        if sys.platform.startswith("darwin"):
+            # ARCHFLAGS is set by cibuildwheels
+            ARCHFLAGS = os.environ.get("ARCHFLAGS")
+            if ARCHFLAGS is not None:
+                archs = filter(
+                    lambda u: bool(u),
+                    ARCHFLAGS.strip().split("-arch "),
+                )
+                archs = list(archs)
+                assert len(archs) == 1
+                arch = archs[0].strip()
+
+                if arch == "x86_64":
+                    cmake_options.append("-DRUST_BUILD_TARGET=x86_64-apple-darwin")
+                elif arch == "arm64":
+                    cmake_options.append("-DRUST_BUILD_TARGET=aarch64-apple-darwin")
+                else:
+                    raise ValueError(f"unknown arch: {arch}")
+
+        elif sys.platform.startswith("linux"):
+            # we set RUST_BUILD_TARGET in out custom docker image
+            RUST_BUILD_TARGET = os.environ.get("RUST_BUILD_TARGET")
+            if RUST_BUILD_TARGET is not None:
+                cmake_options.append(f"-DRUST_BUILD_TARGET={RUST_BUILD_TARGET}")
+
+        elif sys.platform.startswith("win32"):
+            # CARGO_BUILD_TARGET is set by cibuildwheels
+            CARGO_BUILD_TARGET = os.environ.get("CARGO_BUILD_TARGET")
+            if CARGO_BUILD_TARGET is not None:
+                cmake_options.append(f"-DRUST_BUILD_TARGET={CARGO_BUILD_TARGET}")
+
+        else:
+            raise ValueError(f"unknown platform: {sys.platform}")
 
         subprocess.run(
             ["cmake", source_dir, *cmake_options],
@@ -85,7 +119,10 @@ class cmake_ext(build_ext):
 
         # do not include equistore libraries/headers/cmake config within
         # rascaline wheel
-        for file in glob.glob(os.path.join(install_dir, "lib", "*equistore*")):
+        for file in glob.glob(os.path.join(install_dir, "lib", "libequistore.*")):
+            os.unlink(file)
+
+        for file in glob.glob(os.path.join(install_dir, "bin", "equistore.dll")):
             os.unlink(file)
 
         shutil.rmtree(os.path.join(install_dir, "lib", "cmake", "equistore"))
