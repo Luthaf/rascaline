@@ -1,7 +1,7 @@
 from rascaline import SystemBase
 
 
-class TestSystem(SystemBase):
+class SystemForTests(SystemBase):
     def size(self):
         return 4
 

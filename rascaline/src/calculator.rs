@@ -125,10 +125,15 @@ impl<'a> LabelsSelection<'a> {
                     )));
                 }
                 for key in keys.iter() {
-                    if !tensor.keys().contains(key){
+                    if !tensor.keys().contains(key) {
+                        let key_print = keys.names().iter()
+                            .zip(key)
+                            .map(|(n, v)| format!("{}={}", n, v))
+                            .collect::<Vec<_>>()
+                            .join(", ");
                         return Err(Error::InvalidParameter(format!(
-                            "expected a key [{}] in predefined {} selection",
-                            key.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(", "),
+                            "expected a block for ({}) in predefined {} selection",
+                            key_print,
                             label_kind,
                         )));
                     }
