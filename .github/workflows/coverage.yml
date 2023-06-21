@@ -44,6 +44,16 @@ jobs:
           path: .tox
           key: tox-${{ matrix.os }}-${{ hashFiles('pyproject.toml', 'setup.cfg', 'tox.ini') }}
 
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
+      - name: Setup sccache environnement variables
+        run: |
+          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
+          echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+          echo "CMAKE_C_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
+          echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
+
       - name: collect rust and C/C++ coverage
         env:
           RASCALINE_TEST_WITH_STATIC_LIB: "1"
