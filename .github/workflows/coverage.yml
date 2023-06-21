@@ -6,6 +6,10 @@ on:
   pull_request:
     # Check all PR
 
+concurrency:
+  group: coverage-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
 jobs:
   coverage:
     runs-on: ubuntu-22.04

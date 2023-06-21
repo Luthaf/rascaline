@@ -7,6 +7,10 @@ on:
   pull_request:
     # Check all PR
 
+concurrency:
+  group: wheels-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
 jobs:
   build-wheels:
     runs-on: ${{ matrix.os }}
