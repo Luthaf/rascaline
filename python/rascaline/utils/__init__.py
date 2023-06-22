@@ -2,6 +2,11 @@ import os
 
 import equistore.core
 
+from .power_spectrum import PowerSpectrum
+
+
+__all__ = ["PowerSpectrum"]
+
 
 # path that can be used with cmake to access the rascaline library and headers
 _HERE = os.path.realpath(os.path.dirname(__file__))
