@@ -211,7 +211,7 @@ endif()
 # ============================================================================ #
 # Setup equistore
 
-set(EQUISTORE_GIT_VERSION "3bced4c")
+set(EQUISTORE_GIT_VERSION "a9b9a2a")
 set(EQUISTORE_REQUIRED_VERSION "0.1")
 if (RASCALINE_FETCH_EQUISTORE)
     message(STATUS "Fetching equistore @ ${EQUISTORE_GIT_VERSION} from github")
@@ -220,7 +220,7 @@ if (RASCALINE_FETCH_EQUISTORE)
     FetchContent_Declare(
         equistore
         URL      https://github.com/lab-cosmo/equistore/archive/${EQUISTORE_GIT_VERSION}.zip
-        URL_HASH MD5=0e673b31572967df992bd3e39010a94f
+        URL_HASH MD5=ca2600edc4f143d5c98af03b71aee433
         SOURCE_SUBDIR equistore-core
         VERBOSE
     )

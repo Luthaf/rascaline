@@ -114,11 +114,14 @@ def fps_feature_selection(descriptor, n_to_select):
     the right structure to be used as properties selection with rascaline calculators
     """
     blocks = []
-    for _, block in descriptor:
+    for block in descriptor:
         # create a separate FPS selector for each block
         fps = FPS(n_to_select=n_to_select)
         mask = fps.fit(block.values).get_support()
-        selected_properties = block.properties[mask]
+        selected_properties = Labels(
+            names=block.properties.names,
+            values=block.properties.values[mask],
+        )
         # The only important data here is the properties, so we create empty
         # sets of samples and components.
         blocks.append(

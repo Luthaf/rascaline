@@ -43,7 +43,7 @@ def test_compute():
     )
 
     assert len(descriptor.keys) == 2
-    assert descriptor.keys.names == ("species_center",)
+    assert descriptor.keys.names == ["species_center"]
     assert tuple(descriptor.keys[0]) == (1,)
     assert tuple(descriptor.keys[1]) == (8,)
 
@@ -53,14 +53,14 @@ def test_compute():
     assert np.all(H_block.values[1] == (3, 3))
 
     assert len(H_block.samples) == 2
-    assert H_block.samples.names == ("structure", "center")
+    assert H_block.samples.names == ["structure", "center"]
     assert tuple(H_block.samples[0]) == (0, 0)
     assert tuple(H_block.samples[1]) == (0, 1)
 
     assert len(H_block.components) == 0
 
     assert len(H_block.properties) == 2
-    assert H_block.properties.names == ("index_delta", "x_y_z")
+    assert H_block.properties.names == ["index_delta", "x_y_z"]
     assert tuple(H_block.properties[0]) == (1, 0)
     assert tuple(H_block.properties[1]) == (0, 1)
 
@@ -72,7 +72,7 @@ def test_compute():
         assert np.all(gradient.values[i, 2, :] == (0, 1))
 
     assert len(gradient.samples) == 5
-    assert gradient.samples.names == ("sample", "structure", "atom")
+    assert gradient.samples.names == ["sample", "structure", "atom"]
     assert tuple(gradient.samples[0]) == (0, 0, 0)
     assert tuple(gradient.samples[1]) == (0, 0, 1)
     assert tuple(gradient.samples[2]) == (1, 0, 0)
@@ -82,13 +82,13 @@ def test_compute():
     assert len(gradient.components) == 1
     component = gradient.components[0]
     assert len(component) == 3
-    assert component.names == ("direction",)
+    assert component.names == ["direction"]
     assert tuple(component[0]) == (0,)
     assert tuple(component[1]) == (1,)
     assert tuple(component[2]) == (2,)
 
     assert len(gradient.properties) == 2
-    assert gradient.properties.names == ("index_delta", "x_y_z")
+    assert gradient.properties.names == ["index_delta", "x_y_z"]
     assert tuple(gradient.properties[0]) == (1, 0)
     assert tuple(gradient.properties[1]) == (0, 1)
 
@@ -106,7 +106,7 @@ def test_compute_multiple_systems():
     H_block = descriptor.block(species_center=1)
     assert H_block.values.shape == (6, 2)
     expected = np.array([(0, 0), (0, 1), (1, 0), (1, 1), (2, 0), (2, 1)])
-    assert np.all(H_block.samples.view(np.int32).reshape(6, 2) == expected)
+    np.testing.assert_equal(H_block.samples.values, expected)
 
     O_block = descriptor.block(species_center=8)
     assert O_block.values.shape == (6, 2)
