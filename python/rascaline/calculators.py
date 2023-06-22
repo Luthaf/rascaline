@@ -5,11 +5,31 @@ from typing import List, Optional, Union
 from equistore.core import Labels, TensorMap
 from equistore.core._c_api import eqs_tensormap_t
 
-from ._c_api import rascal_calculation_options_t, rascal_system_t
+from ._c_api import (
+    RASCAL_BUFFER_SIZE_ERROR,
+    rascal_calculation_options_t,
+    rascal_system_t,
+)
 from ._c_lib import _get_library
-from .status import _check_rascal_pointer
+from .status import RascalError, _check_rascal_pointer
 from .systems import IntoSystem, wrap_system
-from .utils import _call_with_growing_buffer
+
+
+def _call_with_growing_buffer(callback, initial=1024):
+    bufflen = initial
+
+    while True:
+        buffer = ctypes.create_string_buffer(bufflen)
+        try:
+            callback(buffer, bufflen)
+            break
+        except RascalError as e:
+            if e.status == RASCAL_BUFFER_SIZE_ERROR:
+                # grow the buffer and retry
+                bufflen *= 2
+            else:
+                raise
+    return buffer.value.decode("utf8")
 
 
 def _convert_systems(systems):
