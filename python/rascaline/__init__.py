@@ -1,3 +1,4 @@
+from . import utils  # noqa
 from .log import set_logging_callback  # noqa
 from .profiling import Profiler  # noqa
 from .status import RascalError  # noqa

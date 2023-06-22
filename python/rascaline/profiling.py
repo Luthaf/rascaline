@@ -1,5 +1,5 @@
 from ._c_lib import _get_library
-from .utils import _call_with_growing_buffer
+from .calculators import _call_with_growing_buffer
 
 
 class Profiler:
