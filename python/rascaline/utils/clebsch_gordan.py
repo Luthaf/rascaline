@@ -194,3 +194,26 @@ def _complex_clebsch_gordan_matrix(l1, l2, L):
         return np.zeros((2 * l1 + 1, 2 * l2 + 1, 2 * L + 1), dtype=np.double)
     else:
         return wigners.clebsch_gordan_array(l1, l2, L)
+
+
+
+# ===== For writing a dense version in the future? =====
+
+# def _clebsch_gordan_combine_dense(
+#     l1_mu_values,#: Array[samples, 2 * l1 + 1, q_properties], # mu values for l1
+#     l2_mu_values,#: Array[samples, 2 * l2 + 1, p_properties], # mu values for l2
+#     lam: int,
+#     cg_cache,#: Array[(2 * l1 +1) * (2 * l2 +1), (2 * lam + 1)]
+#     ) -> None: #Array[samples, 2 * lam + 1, q_properties * p_properties]:
+#     """
+#     :param l1_mu_values: mu values for l1
+#     :param l2_mu_values: mu values for l2
+#     :returns lam_mu_values: of shape [samples, (2 * l1 + 1)* (2 * l2 + 1), q_properties, p_properties]
+#     """
+#     # 
+#     #l1l2_mu_values = l1_mu_values[:,  None,  :] * l2_mu_values[:, :, None, :]
+#     #return einops.einsum(l1_mu_values, l2_mu_values, cg_cache, "samples l1_mu q_properties, samples l2_mu p_properties,  l1_mu l2_mu lam_mu -> samples lam_mu (q_properties p_properties)")
+
+#     # more readable subscript
+#     #"samples l1_mu q_properties, samples l2_mu p_properties,  l1_mu l2_mu lam_mu -> samples lam_mu (q_properties p_properties)"
+#     return np.einsum("slq, skp, lkL -> sLqp", l1_mu_values, l2_mu_values, cg_cache).reshape(l1_mu_values.shape[0], 2*lam+1, -1)
