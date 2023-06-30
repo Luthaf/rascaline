@@ -9,11 +9,65 @@ import wigners
 from equistore.core import Labels, TensorBlock, TensorMap
 
 
+def _clebsch_gordan_combine(
+    arr_1: np.ndarray,
+    arr_2: np.ndarray,
+    lamb: int,
+    cg_cache,
+) -> np.ndarray:
+    """
+    Couples arrays corresponding to the irreducible spherical components of 2
+    angular channels l1 and l2 using the appropriate Clebsch-Gordan
+    coefficients. As l1 and l2 can be combined to form multiple lambda channels,
+    this function returns the coupling to a single specified channel `lambda`.
+
+    `arr_1` has shape (n_i, 2 * l1 + 1, n_p) and `arr_2` has shape (n_i, 2 * l2
+    + 1, n_q). n_i is the number of samples, n_p and n_q are the number of
+    properties in each array. The number of samples in each array must be the
+    same.
+
+    The ouput array has shape (n_i, 2 * lambda + 1, n_p * n_q), where lambda is
+    the input parameter `lamb`.
+
+    The Clebsch-Gordan coefficients are cached in `cg_cache`. Currently, these
+    must be produced by the ClebschGordanReal class in this module.
+    """
+    # Check the first dimension of the arrays are the same (i.e. same samples)
+    assert arr_1.shape[0] == arr_2.shape[0]
+
+    # Define useful dimensions
+    n_i = arr_1.shape[0]  # number of samples
+    n_p = arr_1.shape[2]  # number of properties in arr_1
+    n_q = arr_2.shape[2]  # number of properties in arr_2
+
+    # Infer l1 and l2 from the len of the lenght of axis 1 of each tensor
+    l1 = int((arr_1.shape[1] - 1) / 2)
+    l2 = int((arr_2.shape[1] - 1) / 2)
+
+    # Get the corresponding Clebsch-Gordan coefficients
+    cg_coeffs = cg_cache.coeffs[(l1, l2, lamb)]
+
+    # Initialise output array
+    arr_out = np.zeros((n_i, 2 * lamb + 1, n_p * n_q))
+
+    # Fill in each mu component of the output array in turn
+    for mu in range(2 * lamb + 1):
+        # Iterate over the Clebsch-Gordan coefficients for this mu
+        for m1, m2, cg_coeff in cg_coeffs[mu]:
+            # Broadcast arrays, multiply together and with CG coeff
+            out_arr[:, mu, :] = (
+                arr_1[:, m1, :, None] * arr_2[:, m2, None, :] * cg_coeff
+            ).reshape(n_i, n_p * n_q)
+
+    return arr_out
+
+
 class ClebschGordanReal:
     """
     Class for computing Clebsch-Gordan coefficients for real spherical
     harmonics.
     """
+
     def __init__(self, l_max: int):
         self.l_max = l_max
         self.coeffs = ClebschGordanReal.build_coeff_dict(self.l_max)
@@ -34,9 +88,7 @@ class ClebschGordanReal:
 
         for l1 in range(l_max + 1):
             for l2 in range(l_max + 1):
-                for L in range(
-                    max(l1, l2) - min(l1, l2), min(l_max, (l1 + l2)) + 1
-                ):
+                for L in range(max(l1, l2) - min(l1, l2), min(l_max, (l1 + l2)) + 1):
                     complex_cg = _complex_clebsch_gordan_matrix(l1, l2, L)
 
                     real_cg = (r2c[l1].T @ complex_cg.reshape(2 * l1 + 1, -1)).reshape(
@@ -71,6 +123,7 @@ class ClebschGordanReal:
                     coeff_dict[(l1, l2, L)] = new_cg
 
         return coeff_dict
+
 
 def _real2complex(L: int) -> np.ndarray:
     """
