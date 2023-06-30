@@ -12,7 +12,7 @@ foreach(_file_ ${ALL_TESTS})
     )
 endforeach()
 
-file(GLOB EXAMPLES ../../../examples/*.cpp)
+file(GLOB EXAMPLES ../../examples/*.cpp)
 foreach(_file_ ${EXAMPLES})
     get_filename_component(_name_ ${_file_} NAME_WE)
     set(_name_ example-cxx-${_name_})

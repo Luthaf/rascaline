@@ -4,7 +4,7 @@
 
 TEST_CASE("basic systems") {
     auto systems = rascaline::BasicSystems(
-        "../../../../rascaline/benches/data/silicon_bulk.xyz"
+        "../../../rascaline/benches/data/silicon_bulk.xyz"
     );
 
     CHECK(systems.count() == 30);

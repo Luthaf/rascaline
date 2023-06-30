@@ -7,7 +7,7 @@ TEST_CASE("basic systems") {
     rascal_system_t* systems = nullptr;
     uintptr_t count = 0;
 
-    const char* path = "../../../rascaline/benches/data/silicon_bulk.xyz";
+    const char* path = "../../rascaline/benches/data/silicon_bulk.xyz";
     CHECK_SUCCESS(rascal_basic_systems_read(path, &systems, &count));
     CHECK(count == 30);
 

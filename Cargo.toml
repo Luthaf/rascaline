@@ -3,5 +3,6 @@
 members = [
     "rascaline",
     "rascaline-c-api",
+    "python",
     "docs/rascaline-json-schema",
 ]
