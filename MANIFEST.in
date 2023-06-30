@@ -6,6 +6,10 @@ prune docs
 recursive-include rascaline *
 recursive-include rascaline-c-api *
 recursive-include docs/rascaline-json-schema *
+
+include python/Cargo.toml
+include python/lib.rs
+
 include Cargo.*
 include pyproject.toml
 include AUTHORS
@@ -20,8 +24,5 @@ prune rascaline/examples
 
 prune rascaline-c-api/tests
 prune rascaline-c-api/examples
-prune rascaline-c-api/target
-
-
 
 exclude tox.ini
