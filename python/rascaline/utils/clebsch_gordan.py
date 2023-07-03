@@ -9,59 +9,6 @@ import wigners
 from equistore.core import Labels, TensorBlock, TensorMap
 
 
-def _clebsch_gordan_combine(
-    arr_1: np.ndarray,
-    arr_2: np.ndarray,
-    lamb: int,
-    cg_cache,
-) -> np.ndarray:
-    """
-    Couples arrays corresponding to the irreducible spherical components of 2
-    angular channels l1 and l2 using the appropriate Clebsch-Gordan
-    coefficients. As l1 and l2 can be combined to form multiple lambda channels,
-    this function returns the coupling to a single specified channel `lambda`.
-
-    `arr_1` has shape (n_i, 2 * l1 + 1, n_p) and `arr_2` has shape (n_i, 2 * l2
-    + 1, n_q). n_i is the number of samples, n_p and n_q are the number of
-    properties in each array. The number of samples in each array must be the
-    same.
-
-    The ouput array has shape (n_i, 2 * lambda + 1, n_p * n_q), where lambda is
-    the input parameter `lamb`.
-
-    The Clebsch-Gordan coefficients are cached in `cg_cache`. Currently, these
-    must be produced by the ClebschGordanReal class in this module.
-    """
-    # Check the first dimension of the arrays are the same (i.e. same samples)
-    assert arr_1.shape[0] == arr_2.shape[0]
-
-    # Define useful dimensions
-    n_i = arr_1.shape[0]  # number of samples
-    n_p = arr_1.shape[2]  # number of properties in arr_1
-    n_q = arr_2.shape[2]  # number of properties in arr_2
-
-    # Infer l1 and l2 from the len of the lenght of axis 1 of each tensor
-    l1 = int((arr_1.shape[1] - 1) / 2)
-    l2 = int((arr_2.shape[1] - 1) / 2)
-
-    # Get the corresponding Clebsch-Gordan coefficients
-    cg_coeffs = cg_cache.coeffs[(l1, l2, lamb)]
-
-    # Initialise output array
-    arr_out = np.zeros((n_i, 2 * lamb + 1, n_p * n_q))
-
-    # Fill in each mu component of the output array in turn
-    for mu in range(2 * lamb + 1):
-        # Iterate over the Clebsch-Gordan coefficients for this mu
-        for m1, m2, cg_coeff in cg_coeffs[mu]:
-            # Broadcast arrays, multiply together and with CG coeff
-            out_arr[:, mu, :] = (
-                arr_1[:, m1, :, None] * arr_2[:, m2, None, :] * cg_coeff
-            ).reshape(n_i, n_p * n_q)
-
-    return arr_out
-
-
 class ClebschGordanReal:
     """
     Class for computing Clebsch-Gordan coefficients for real spherical
@@ -196,21 +143,94 @@ def _complex_clebsch_gordan_matrix(l1, l2, L):
         return wigners.clebsch_gordan_array(l1, l2, L)
 
 
+def _clebsch_gordan_combine(
+    arr_1: np.ndarray,
+    arr_2: np.ndarray,
+    lamb: int,
+    cg_cache,
+    use_sparse: bool = True,
+) -> np.ndarray:
+    """
+    Couples arrays corresponding to the irreducible spherical components of 2
+    angular channels l1 and l2 using the appropriate Clebsch-Gordan
+    coefficients. As l1 and l2 can be combined to form multiple lambda channels,
+    this function returns the coupling to a single specified channel `lambda`.
+
+    `arr_1` has shape (n_i, 2 * l1 + 1, n_p) and `arr_2` has shape (n_i, 2 * l2
+    + 1, n_q). n_i is the number of samples, n_p and n_q are the number of
+    properties in each array. The number of samples in each array must be the
+    same.
+
+    The ouput array has shape (n_i, 2 * lambda + 1, n_p * n_q), where lambda is
+    the input parameter `lamb`.
+
+    The Clebsch-Gordan coefficients are cached in `cg_cache`. Currently, these
+    must be produced by the ClebschGordanReal class in this module.
+
+    Either performs the operation in a dense or sparse manner, depending on the
+    value of `sparse`.
+    """
+    # Check the first dimension of the arrays are the same (i.e. same samples)
+    if use_sparse:
+        return _clebsch_gordan_combine_sparse(arr_1, arr_2, lamb, cg_cache)
+    return _clebsch_gordan_dense(arr_1, arr_2, lamb, cg_cache)
+
+
+def _clebsch_gordan_combine_sparse(
+    arr_1: np.ndarray,
+    arr_2: np.ndarray,
+    lamb: int,
+    cg_cache,
+) -> np.ndarray:
+    assert arr_1.shape[0] == arr_2.shape[0]
+
+    # Define useful dimensions
+    n_i = arr_1.shape[0]  # number of samples
+    n_p = arr_1.shape[2]  # number of properties in arr_1
+    n_q = arr_2.shape[2]  # number of properties in arr_2
+
+    # Infer l1 and l2 from the len of the lenght of axis 1 of each tensor
+    l1 = int((arr_1.shape[1] - 1) / 2)
+    l2 = int((arr_2.shape[1] - 1) / 2)
+
+    # Get the corresponding Clebsch-Gordan coefficients
+    cg_coeffs = cg_cache.coeffs[(l1, l2, lamb)]
+
+    # Initialise output array
+    arr_out = np.zeros((n_i, 2 * lamb + 1, n_p * n_q))
+
+    # Fill in each mu component of the output array in turn
+    for mu in range(2 * lamb + 1):
+        # Iterate over the Clebsch-Gordan coefficients for this mu
+        for m1, m2, cg_coeff in cg_coeffs[mu]:
+            # Broadcast arrays, multiply together and with CG coeff
+            arr_out[:, mu, :] = (
+                arr_1[:, m1, :, None] * arr_2[:, m2, None, :] * cg_coeff
+            ).reshape(n_i, n_p * n_q)
+
+    return arr_out
+
 
 # ===== For writing a dense version in the future =====
 
-def _clebsch_gordan_dense(l1_mu_values, l2_mu_values, lam: int, cg_cache):
-    """
-    l1_mu_values,#: Array[samples, 2 * l1 + 1, q_properties], # mu values for l1
-    l2_mu_values,#: Array[samples, 2 * l2 + 1, p_properties], # mu values for l2
-    lam: int,
-    cg_cache,#: Array[(2 * l1 +1) * (2 * l2 +1), (2 * lam + 1)]
-    ) -> None: #Array[samples, 2 * lam + 1, q_properties * p_properties]:
 
-    :param l1_mu_values: array with the mu values for l1 with shape [samples, 2 * l1 + 1, q_properties]
-    :param l2_mu_values: array with the mu values for l1 with shape [samples, 2 * l2 + 1, p_properties]
-    :param lam: int resulting coupled channel
-    :param cg_cache: array of shape [(2 * l1 +1) * (2 * l2 +1), (2 * lam + 1)]
+def _clebsch_gordan_combine_dense(
+    arr_1: np.ndarray,
+    arr_2: np.ndarray,
+    lamb: int,
+    cg_cache,
+) -> np.ndarray:
+    """
+    arr_1,#: Array[samples, 2 * l1 + 1, q_properties], # mu values for l1
+    arr_2,#: Array[samples, 2 * l2 + 1, p_properties], # mu values for l2
+    lamb: int,
+    cg_cache,#: Array[(2 * l1 +1) * (2 * l2 +1), (2 * lamb + 1)]
+    ) -> None: #Array[samples, 2 * lamb + 1, q_properties * p_properties]:
+
+    :param arr_1: array with the mu values for l1 with shape [samples, 2 * l1 + 1, q_properties]
+    :param arr_2: array with the mu values for l1 with shape [samples, 2 * l2 + 1, p_properties]
+    :param lamb: int resulting coupled channel
+    :param cg_cache: array of shape [(2 * l1 +1) * (2 * l2 +1), (2 * lamb + 1)]
     :returns lam_mu_values: array of shape [samples, (2 * l1 + 1)* (2 * l2 + 1), q_properties, p_properties]
 
     >>> N_SAMPLES = 30
@@ -219,26 +239,26 @@ def _clebsch_gordan_dense(l1_mu_values, l2_mu_values, lam: int, cg_cache):
     >>> L1 = 2
     >>> L2 = 3
     >>> LAM = 2
-    >>> l1_mu_values = np.random.rand(N_SAMPLES, 2*L1+1, N_Q_PROPERTIES)
-    >>> l2_mu_values = np.random.rand(N_SAMPLES, 2*L2+1, N_P_PROPERTIES)
+    >>> arr_1 = np.random.rand(N_SAMPLES, 2*L1+1, N_Q_PROPERTIES)
+    >>> arr_2 = np.random.rand(N_SAMPLES, 2*L2+1, N_P_PROPERTIES)
     >>> cg_cache = np.random.rand(2*L1+1, 2*L2+1, 2*LAM+1)
-    >>> out1 = _clebsch_gordan_dense(l1_mu_values, l2_mu_values, LAM, cg_cache)
-    >>> out2 = np.einsum("slq, skp, lkL -> sLqp", l1_mu_values, l2_mu_values, cg_cache).reshape(l1_mu_values.shape[0], 2*LAM+1, -1)
+    >>> out1 = _clebsch_gordan_dense(arr_1, arr_2, LAM, cg_cache)
+    >>> out2 = np.einsum("slq, skp, lkL -> sLqp", arr_1, arr_2, cg_cache).reshape(arr_1.shape[0], 2*LAM+1, -1)
     >>> print(np.allclose(out1, out2))
     True
     """
     # l1_mu q, samples l2_mu p -> samples l2_mu p l1_mu q
     # we broadcast it in this way so we only need to do one swapaxes in the next step
-    out = l1_mu_values[:, None, None, :, :] * l2_mu_values[:, :, :,  None, None]
+    out = arr_1[:, None, None, :, :] * arr_2[:, :, :, None, None]
     # samples l2_mu p l1_mu q -> samples q p l1_mu l2_mu
-    out = out.swapaxes(1,4)
+    out = out.swapaxes(1, 4)
     # samples q p l1_mu l2_mu ->  samples (q p) (l1_mu l2_mu)
-    out = out.reshape(-1, l1_mu_values.shape[2]*l2_mu_values.shape[2], l1_mu_values.shape[1]*l2_mu_values.shape[1])
+    out = out.reshape(
+        -1, arr_1.shape[2] * arr_2.shape[2], arr_1.shape[1] * arr_2.shape[1]
+    )
     # l1_mu l2_mu lam_mu -> (l1_mu l2_mu) lam_mu
-    cg_cache = cg_cache.reshape(-1, 2*lam+1)
+    cg_cache = cg_cache.reshape(-1, 2 * lamb + 1)
     # samples (q p) (l1_mu l2_mu), (l1_mu l2_mu) lam_mu -> samples (q p) lam_mu
-    out = out @ cg_cache.reshape(-1, 2*lam+1)
+    out = out @ cg_cache.reshape(-1, 2 * lamb + 1)
     # samples (q p) lam_mu -> samples lam_mu (q p)
-    return out.swapaxes(1,2)
-
-
+    return out.swapaxes(1, 2)
