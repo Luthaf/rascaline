@@ -197,23 +197,48 @@ def _complex_clebsch_gordan_matrix(l1, l2, L):
 
 
 
-# ===== For writing a dense version in the future? =====
+# ===== For writing a dense version in the future =====
 
-# def _clebsch_gordan_combine_dense(
-#     l1_mu_values,#: Array[samples, 2 * l1 + 1, q_properties], # mu values for l1
-#     l2_mu_values,#: Array[samples, 2 * l2 + 1, p_properties], # mu values for l2
-#     lam: int,
-#     cg_cache,#: Array[(2 * l1 +1) * (2 * l2 +1), (2 * lam + 1)]
-#     ) -> None: #Array[samples, 2 * lam + 1, q_properties * p_properties]:
-#     """
-#     :param l1_mu_values: mu values for l1
-#     :param l2_mu_values: mu values for l2
-#     :returns lam_mu_values: of shape [samples, (2 * l1 + 1)* (2 * l2 + 1), q_properties, p_properties]
-#     """
-#     # 
-#     #l1l2_mu_values = l1_mu_values[:,  None,  :] * l2_mu_values[:, :, None, :]
-#     #return einops.einsum(l1_mu_values, l2_mu_values, cg_cache, "samples l1_mu q_properties, samples l2_mu p_properties,  l1_mu l2_mu lam_mu -> samples lam_mu (q_properties p_properties)")
+def _clebsch_gordan_dense(l1_mu_values, l2_mu_values, lam: int, cg_cache):
+    """
+    l1_mu_values,#: Array[samples, 2 * l1 + 1, q_properties], # mu values for l1
+    l2_mu_values,#: Array[samples, 2 * l2 + 1, p_properties], # mu values for l2
+    lam: int,
+    cg_cache,#: Array[(2 * l1 +1) * (2 * l2 +1), (2 * lam + 1)]
+    ) -> None: #Array[samples, 2 * lam + 1, q_properties * p_properties]:
 
-#     # more readable subscript
-#     #"samples l1_mu q_properties, samples l2_mu p_properties,  l1_mu l2_mu lam_mu -> samples lam_mu (q_properties p_properties)"
-#     return np.einsum("slq, skp, lkL -> sLqp", l1_mu_values, l2_mu_values, cg_cache).reshape(l1_mu_values.shape[0], 2*lam+1, -1)
+    :param l1_mu_values: array with the mu values for l1 with shape [samples, 2 * l1 + 1, q_properties]
+    :param l2_mu_values: array with the mu values for l1 with shape [samples, 2 * l2 + 1, p_properties]
+    :param lam: int resulting coupled channel
+    :param cg_cache: array of shape [(2 * l1 +1) * (2 * l2 +1), (2 * lam + 1)]
+    :returns lam_mu_values: array of shape [samples, (2 * l1 + 1)* (2 * l2 + 1), q_properties, p_properties]
+
+    >>> N_SAMPLES = 30
+    >>> N_Q_PROPERTIES = 10
+    >>> N_P_PROPERTIES = 8
+    >>> L1 = 2
+    >>> L2 = 3
+    >>> LAM = 2
+    >>> l1_mu_values = np.random.rand(N_SAMPLES, 2*L1+1, N_Q_PROPERTIES)
+    >>> l2_mu_values = np.random.rand(N_SAMPLES, 2*L2+1, N_P_PROPERTIES)
+    >>> cg_cache = np.random.rand(2*L1+1, 2*L2+1, 2*LAM+1)
+    >>> out1 = _clebsch_gordan_dense(l1_mu_values, l2_mu_values, LAM, cg_cache)
+    >>> out2 = np.einsum("slq, skp, lkL -> sLqp", l1_mu_values, l2_mu_values, cg_cache).reshape(l1_mu_values.shape[0], 2*LAM+1, -1)
+    >>> print(np.allclose(out1, out2))
+    True
+    """
+    # l1_mu q, samples l2_mu p -> samples l2_mu p l1_mu q
+    # we broadcast it in this way so we only need to do one swapaxes in the next step
+    out = l1_mu_values[:, None, None, :, :] * l2_mu_values[:, :, :,  None, None]
+    # samples l2_mu p l1_mu q -> samples q p l1_mu l2_mu
+    out = out.swapaxes(1,4)
+    # samples q p l1_mu l2_mu ->  samples (q p) (l1_mu l2_mu)
+    out = out.reshape(-1, l1_mu_values.shape[2]*l2_mu_values.shape[2], l1_mu_values.shape[1]*l2_mu_values.shape[1])
+    # l1_mu l2_mu lam_mu -> (l1_mu l2_mu) lam_mu
+    cg_cache = cg_cache.reshape(-1, 2*lam+1)
+    # samples (q p) (l1_mu l2_mu), (l1_mu l2_mu) lam_mu -> samples (q p) lam_mu
+    out = out @ cg_cache.reshape(-1, 2*lam+1)
+    # samples (q p) lam_mu -> samples lam_mu (q p)
+    return out.swapaxes(1,2)
+
+
