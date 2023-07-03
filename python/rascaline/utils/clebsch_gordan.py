@@ -9,6 +9,9 @@ import wigners
 from equistore.core import Labels, TensorBlock, TensorMap
 
 
+# ===== Class for calculating Clebsch-Gordan coefficients =====
+
+
 class ClebschGordanReal:
     """
     Class for computing Clebsch-Gordan coefficients for real spherical
@@ -143,6 +146,98 @@ def _complex_clebsch_gordan_matrix(l1, l2, L):
         return wigners.clebsch_gordan_array(l1, l2, L)
 
 
+# ===== Methods for performing CG combinations =====
+
+
+def _combine_single_center(
+    tensor_1: TensorMap,
+    tensor_2: TensorMap,
+    lambdas: Sequence[int],
+    cg_cache,
+    use_sparse: bool = True,
+) -> TensorMap:
+    """
+    For 2 TensorMaps with body orders nu and eta respectively, combines their
+    blocks to form a new TensorMap with body order (nu + eta).
+
+    Assumes
+    """
+    access_keys_1, access_keys_2, combined_keys = _create_combined_keys(
+        tensor_1.keys, tensor_2.keys, lambdas
+    )
+    combined_blocks = []
+    for key_1, key_2, combined_key in zip(access_keys_1, access_keys_2, combined_keys):
+        # Extract the pair of blocks to combine
+        block_1, block_2 = tensor_1[key_1], tensor_2[key_2]
+
+        # Extract the desired lambda value
+        lamb = combined_key["spherical_harmonics"]
+
+        # Combine the blocks into a new TensorBlock
+        combined_blocks.append(
+            _combine_single_center_block_pair(block_1, block_2, lamb)
+        )
+
+    combined_tensor = TensorMap(combined_keys, combined_blocks)
+
+    # Account for body-order multiplicity
+    combined_tensor = _apply_body_order_corrections(combined_tensor)
+
+    # Move the l1, l2 keys to the properties
+    combined_tensor = combined_tensor.keys_to_properties(["l1", "l2"])
+
+    return combined_tensor
+
+
+def _combine_single_center_block_pair(
+    block_1: TensorBlock,
+    block_2: TensorBlock,
+    lamb: int,
+    cg_cache,
+    use_sparse: bool = True,
+) -> TensorBlock:
+    """
+    For a given pair of TensorBlocks and desired lambda value, combines the
+    values arrays and returns in a new TensorBlock.
+    """
+    # Check metadata
+    if not equistore.equal_metadata(block_1, block_2, check=["samples"]):
+        raise ValueError(
+            "TensorBlock pair to combine must have equal samples in the same order"
+        )
+    if block_1.properties.names != block_2.properties.names:
+        raise ValueError(
+            "TensorBlock pair to combine must have equal properties in the same order"
+        )
+
+    # Do the CG combination - no shape pre-processing required
+    combined_values = _clebsch_gordan_combine(
+        block_1.values, block_2.values, lamb, cg_cache
+    )
+
+    # Create a TensorBlock
+    combined_block = TensorBlock(
+        values=combined_values,
+        samples=block_1.samples,
+        components=Labels(
+            names=["spherical_harmonics_m"],
+            values=np.arange(-lamb, lamb + 1),
+        ),
+        properties=Labels(
+            names=["n_1", "n_2"],
+            values=np.array(
+                [
+                    [i, j]
+                    for j in block_2.properties.values
+                    for i in block_1.properties.values
+                ]
+            ),
+        ),
+    )
+
+    return combined_block
+
+
 def _clebsch_gordan_combine(
     arr_1: np.ndarray,
     arr_2: np.ndarray,
@@ -182,9 +277,13 @@ def _clebsch_gordan_combine_sparse(
     lamb: int,
     cg_cache,
 ) -> np.ndarray:
+    """
+    TODO: docstring
+    """
+    # Samples dimensions must be the same
     assert arr_1.shape[0] == arr_2.shape[0]
 
-    # Define useful dimensions
+    # Define other useful dimensions
     n_i = arr_1.shape[0]  # number of samples
     n_p = arr_1.shape[2]  # number of properties in arr_1
     n_q = arr_2.shape[2]  # number of properties in arr_2
@@ -262,3 +361,39 @@ def _clebsch_gordan_combine_dense(
     out = out @ cg_cache.reshape(-1, 2 * lamb + 1)
     # samples (q p) lam_mu -> samples lam_mu (q p)
     return out.swapaxes(1, 2)
+
+
+def _apply_body_order_corrections(tensor: TensorMap) -> TensorMap:
+    """
+    Applies the appropriate prefactors to the block values of the output
+    TensorMap (i.e. post-CG combination) according to its body order.
+    """
+    return tensor
+
+
+def _create_combined_keys(
+    keys_1: Labels, keys_2: Labels, lambdas: Sequence[int]
+) -> Sequence[Labels]:
+    """
+    Given the keys of 2 TensorMaps and a list of desired lambda values, creates
+    the correct keys for the TensorMap returned after CG combination.
+
+    The input keys `keys_1` and `keys_2` must contain names
+    "spherical_harmonics_l" and "species_center".
+
+    Returned is a tuple of 3 Labels objects. The first and second returned
+    Labels objects correspond to the keys of the input TensorMaps, and the third
+    Labels object to the keys of the output TensorMap.
+    """
+    # Alex's code here
+    return access_keys_1, access_keys_2, combined_keys
+
+    # # Don't compute redundant (l1, l2) pairs
+    # if l1 < l2:
+    #     continue
+
+    # # Compute non-zero lanbda values
+    # allowed_lambdas = range(np.abs(l1 - l2), abs(l1 + l2) + 1)
+    # for lamb in allowed_lambdas:
+    #     if lamb not in lambdas:
+    #         continue
