@@ -402,15 +402,26 @@ def _create_combined_keys(
             if abs(l1-l2) > lam or lam > (l1+l2):
                 continue
 
-            l1_labels.append({"species_center": species_1, "spherical_harmonics_l": l1})
-            l2_labels.append({"species_center": species_1, "spherical_harmonics_l": l2})
-            l1l2lam_labels.append({
-                "spherical_harmonics_l": lam,
-                "species_center": species_1,
-                "l1": l1,
-                "l2": l2,
-                })
-    return l1_labels, l2_labels, l1l2lam_labels
+            l1_labels.append([species_1, l1])
+            l2_labels.append([species_1, l2])
+            l1l2lam_labels.append([
+                lam,
+                species_1,
+                l1,
+                l2,
+            ])
+    return (Labels(
+             names=["spherical_harmonics_l", "species_center"],
+             values=np.array(l1_labels)
+           ),
+           Labels(
+             names=["spherical_harmonics_l", "species_center"],
+             values=np.array(l2_labels)
+           ),
+           Labels(
+             names=["spherical_harmonics_l", "species_center", "l1", "l2"],
+             values=np.array(l1l2lam_labels)
+           ))
 
     # # Don't compute redundant (l1, l2) pairs
     # if l1 < l2:
