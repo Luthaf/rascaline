@@ -1,12 +1,19 @@
 """
 Module for computing Clebsch-gordan iterations with equistore TensorMaps.
 """
+import itertools
 from typing import Sequence
 import numpy as np
 
 import wigners
 
+import equistore
 from equistore.core import Labels, TensorBlock, TensorMap
+
+
+# TODO:
+# - [ ] Add support for dense operation
+# - [ ] Account for body-order multiplicity
 
 
 # ===== Class for calculating Clebsch-Gordan coefficients =====
@@ -149,6 +156,26 @@ def _complex_clebsch_gordan_matrix(l1, l2, L):
 # ===== Methods for performing CG combinations =====
 
 
+def _combine_multi_centers(
+    tensor_1: TensorMap,
+    tensor_2: TensorMap,
+    lambdas: Sequence[int],
+    cg_cache,
+    use_sparse: bool = True,
+):
+    """ """
+
+
+def _combine_multi_centers_block_pair(
+    block_1: TensorBlock,
+    block_2: TensorBlock,
+    lamb: int,
+    cg_cache,
+    use_sparse: bool = True,
+):
+    """ """
+
+
 def _combine_single_center(
     tensor_1: TensorMap,
     tensor_2: TensorMap,
@@ -162,25 +189,40 @@ def _combine_single_center(
 
     Assumes
     """
-    access_keys_1, access_keys_2, combined_keys = _create_combined_keys(
-        tensor_1.keys, tensor_2.keys, lambdas
-    )
+    # Check metadata
+    if not equistore.equal_metadata(tensor_1, tensor_2, check=["samples"]):
+        raise ValueError(
+            "TensorMap pair to combine must have equal samples in the same order"
+        )
+    # Get the correct keys for the combined TensorMap
+    combined_keys = _create_combined_keys(tensor_1.keys, tensor_2.keys, lambdas)
+
+    # Iterate over pairs of blocks and combine
     combined_blocks = []
-    for key_1, key_2, combined_key in zip(access_keys_1, access_keys_2, combined_keys):
+    for combined_key in combined_keys:
         # Extract the pair of blocks to combine
-        block_1, block_2 = tensor_1[key_1], tensor_2[key_2]
+        block_1 = tensor_1.block(
+            spherical_harmonics_l=combined_key["l1"],
+            species_center=combined_key["species_center"],
+        )
+        block_2 = tensor_1.block(
+            spherical_harmonics_l=combined_key["l2"],
+            species_center=combined_key["species_center"],
+        )
 
         # Extract the desired lambda value
-        lamb = combined_key["spherical_harmonics"]
+        lamb = combined_key["spherical_harmonics_l"]
 
         # Combine the blocks into a new TensorBlock
         combined_blocks.append(
-            _combine_single_center_block_pair(block_1, block_2, lamb)
+            _combine_single_center_block_pair(
+                block_1, block_2, lamb, cg_cache, use_sparse
+            )
         )
-
+    # Construct our combined TensorMap
     combined_tensor = TensorMap(combined_keys, combined_blocks)
 
-    # Account for body-order multiplicity
+    # TODO: Account for body-order multiplicity
     combined_tensor = _apply_body_order_corrections(combined_tensor)
 
     # Move the l1, l2 keys to the properties
@@ -201,16 +243,13 @@ def _combine_single_center_block_pair(
     values arrays and returns in a new TensorBlock.
     """
     # Check metadata
-    if not equistore.equal_metadata(block_1, block_2, check=["samples"]):
-        raise ValueError(
-            "TensorBlock pair to combine must have equal samples in the same order"
-        )
     if block_1.properties.names != block_2.properties.names:
         raise ValueError(
             "TensorBlock pair to combine must have equal properties in the same order"
         )
 
     # Do the CG combination - no shape pre-processing required
+    # print(block_1.values.shape, block_2.values.shape, lamb)
     combined_values = _clebsch_gordan_combine(
         block_1.values, block_2.values, lamb, cg_cache
     )
@@ -219,17 +258,19 @@ def _combine_single_center_block_pair(
     combined_block = TensorBlock(
         values=combined_values,
         samples=block_1.samples,
-        components=Labels(
-            names=["spherical_harmonics_m"],
-            values=np.arange(-lamb, lamb + 1),
-        ),
+        components=[
+            Labels(
+                names=["spherical_harmonics_m"],
+                values=np.arange(-lamb, lamb + 1).reshape(-1, 1),
+            ),
+        ],
         properties=Labels(
-            names=["n_1", "n_2"],
+            names=["n1", "n2", "neighbor_1", "neighbor_2"],
             values=np.array(
                 [
-                    [i, j]
-                    for j in block_2.properties.values
-                    for i in block_1.properties.values
+                    [n1, n2, neighbor_1, neighbor_2]
+                    for (n2, neighbor_2) in block_2.properties.values
+                    for (n1, neighbor_1) in block_1.properties.values
                 ]
             ),
         ),
@@ -289,8 +330,8 @@ def _clebsch_gordan_combine_sparse(
     n_q = arr_2.shape[2]  # number of properties in arr_2
 
     # Infer l1 and l2 from the len of the lenght of axis 1 of each tensor
-    l1 = int((arr_1.shape[1] - 1) / 2)
-    l2 = int((arr_2.shape[1] - 1) / 2)
+    l1 = (arr_1.shape[1] - 1) // 2
+    l2 = (arr_2.shape[1] - 1) // 2
 
     # Get the corresponding Clebsch-Gordan coefficients
     cg_coeffs = cg_cache.coeffs[(l1, l2, lamb)]
@@ -385,50 +426,24 @@ def _create_combined_keys(
     Labels objects correspond to the keys of the input TensorMaps, and the third
     Labels object to the keys of the output TensorMap.
     """
-    l1s_species_center = keys_1.values[:, keys_1.names.index("species_center")]
-    l2s_species_center = keys_2.values[:, keys_2.names.index("species_center")]
-    l1s_spherical_harmonics_l = keys_1.values[:, keys_1.names.index("spherical_harmonics_l")]
-    l2s_spherical_harmonics_l = keys_2.values[:, keys_2.names.index("spherical_harmonics_l")]
-    l1_labels = []
-    l2_labels = []
-    l1l2lam_labels = []
-    for species_1, species_2, l1, l2 in zip(l1s_species_center, l2s_species_center, l1s_spherical_harmonics_l, l2s_spherical_harmonics_l):
-        if species_1 != species_2:
+    # Find the pair product of the keys
+    combined_vals = set()
+    for (l1, a), (l2, a2) in itertools.product(keys_1, keys_2):
+        # Only combine blocks of the same chemical species
+        if a != a2:
             continue
 
+        # Skip redundant lower triangle of (l1, l2) combinations
         if l1 < l2:
             continue
-        for lam in lambdas:
-            if abs(l1-l2) > lam or lam > (l1+l2):
+
+        # Only combine to create blocks of desired lambda values
+        for lam in np.arange(abs(l1 - l2), abs(l1 + l2) + 1):
+            if lam not in lambdas:
                 continue
+            combined_vals.add((lam, a, l1, l2))
 
-            l1_labels.append([species_1, l1])
-            l2_labels.append([species_1, l2])
-            l1l2lam_labels.append([
-                lam,
-                species_1,
-                l1,
-                l2,
-            ])
-    return (Labels(
-             names=["spherical_harmonics_l", "species_center"],
-             values=np.array(l1_labels)
-           ),
-           Labels(
-             names=["spherical_harmonics_l", "species_center"],
-             values=np.array(l2_labels)
-           ),
-           Labels(
-             names=["spherical_harmonics_l", "species_center", "l1", "l2"],
-             values=np.array(l1l2lam_labels)
-           ))
-
-    # # Don't compute redundant (l1, l2) pairs
-    # if l1 < l2:
-    #     continue
-
-    # # Compute non-zero lanbda values
-    # allowed_lambdas = range(np.abs(l1 - l2), abs(l1 + l2) + 1)
-    # for lamb in allowed_lambdas:
-    #     if lamb not in lambdas:
-    #         continue
+    return Labels(
+        names=["spherical_harmonics_l", "species_center", "l1", "l2"],
+        values=np.array(list(combined_vals)),
+    )
