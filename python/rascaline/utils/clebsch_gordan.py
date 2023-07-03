@@ -385,8 +385,32 @@ def _create_combined_keys(
     Labels objects correspond to the keys of the input TensorMaps, and the third
     Labels object to the keys of the output TensorMap.
     """
-    # Alex's code here
-    return access_keys_1, access_keys_2, combined_keys
+    l1s_species_center = keys_1.values[:, keys_1.names.index("species_center")]
+    l2s_species_center = keys_2.values[:, keys_2.names.index("species_center")]
+    l1s_spherical_harmonics_l = keys_1.values[:, keys_1.names.index("spherical_harmonics_l")]
+    l2s_spherical_harmonics_l = keys_2.values[:, keys_2.names.index("spherical_harmonics_l")]
+    l1_labels = []
+    l2_labels = []
+    l1l2lam_labels = []
+    for species_1, species_2, l1, l2 in zip(l1s_species_center, l2s_species_center, l1s_spherical_harmonics_l, l2s_spherical_harmonics_l):
+        if species_1 != species_2:
+            continue
+
+        if l1 < l2:
+            continue
+        for lam in lambdas:
+            if abs(l1-l2) > lam or lam > (l1+l2):
+                continue
+
+            l1_labels.append({"species_center": species_1, "spherical_harmonics_l": l1})
+            l2_labels.append({"species_center": species_1, "spherical_harmonics_l": l2})
+            l1l2lam_labels.append({
+                "spherical_harmonics_l": lam,
+                "species_center": species_1,
+                "l1": l1,
+                "l2": l2,
+                })
+    return l1_labels, l2_labels, l1l2lam_labels
 
     # # Don't compute redundant (l1, l2) pairs
     # if l1 < l2:
