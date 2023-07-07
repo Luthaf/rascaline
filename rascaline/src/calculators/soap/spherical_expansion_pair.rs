@@ -833,7 +833,7 @@ mod tests {
             atomic_gaussian_width: 0.3,
             center_atom_weight: 1.0,
             radial_basis: RadialBasis::splined_gto(1e-8),
-            radial_scaling: RadialScaling::Willatt2018 { scale: 1.5, rate: 0.8, exponent: 2},
+            radial_scaling: RadialScaling::Willatt2018 { scale: 1.5, rate: 0.8, exponent: 2.0},
             cutoff_function: CutoffFunction::ShiftedCosine { width: 0.5 },
         }
     }
