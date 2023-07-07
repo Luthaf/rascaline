@@ -2,18 +2,22 @@
 Module for computing Clebsch-gordan iterations with equistore TensorMaps.
 """
 import itertools
-from typing import Sequence
-import numpy as np
+from typing import Optional, Sequence
 
-import wigners
+import ase
+import numpy as np
 
 import equistore
 from equistore.core import Labels, TensorBlock, TensorMap
+import rascaline
+
+import wigners
 
 
 # TODO:
 # - [ ] Add support for dense operation
 # - [ ] Account for body-order multiplicity
+# - [ ] Account for nu and sigma combinations!
 
 
 # ===== Class for calculating Clebsch-Gordan coefficients =====
@@ -156,6 +160,9 @@ def _complex_clebsch_gordan_matrix(l1, l2, L):
 # ===== Methods for performing CG combinations =====
 
 
+# ===== Fxns for combining multi center descriptors =====
+
+
 def _combine_multi_centers(
     tensor_1: TensorMap,
     tensor_2: TensorMap,
@@ -174,6 +181,86 @@ def _combine_multi_centers_block_pair(
     use_sparse: bool = True,
 ):
     """ """
+
+
+# ===== Fxns for combining single center descriptors =====
+
+
+def n_body_iteration(
+    frames: Sequence[ase.Atoms],
+    rascal_hypers: dict,
+    nu: int,
+    lambdas: int,
+    cg_cache,
+    use_sparse: bool = True,
+    intermediate_lambda_max: Optional[int] = None,
+    selected_samples: Optional[Labels] = None,
+) -> TensorMap:
+    """
+    Based on the passed ``rascal_hypers``, generates a rascaline
+    SphericalExpansion (i.e. nu = 1 body order descriptor) and combines it
+    iteratively to generate a descriptor of order ``nu``.
+
+    The returned TensorMap will only contain blocks with angular channels of
+    target order lambda corresponding to those passed in ``lambdas``.
+
+    Passing ``intermediate_lambda_max`` will place a maximum on the angular
+    order of blocks created by combination at each CG combination step.
+    """
+    # Generate rascaline SphericalExpansion
+    calculator = rascaline.SphericalExpansion(**rascal_hypers)
+    nu1 = calculator.compute(frames, selected_samples=selected_samples)
+    nu1 = nu1.keys_to_properties("species_neighbor")
+
+    # Standardize metadata
+    nu1 = _add_nu_sigma_to_key_names(nu1)
+
+    return _combine_single_center_to_body_order(
+        nu1, nu1, lambdas, nu_target=2, cg_cache=cg_cache, use_sparse=use_sparse
+    )
+
+
+def _combine_single_center_to_body_order(
+    tensor_1: TensorMap,
+    tensor_2: TensorMap,
+    lambdas: Sequence[int],
+    nu_target: int,
+    cg_cache,
+    use_sparse: bool = True,
+) -> TensorMap:
+    """
+    Assumes standradized metadata:
+
+    Key names are:
+
+    ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center",
+    "l1", "l2", ...]
+
+    Samples of pairs of blocks corresponding to the same chemical species are
+    equivalent in the two TensorMaps. Samples names are ["structure", "center"]
+
+    Components names are [["spherical_harmonics_m"],] for each block.
+
+    Property names are ["n1", "n2", ..., "species_neighbor_1",
+    "species_neighbor_2", ...] for each block.
+    """
+    assert nu_target == 2  # only implemented for nu = 2
+
+    combined_tensor = _combine_single_center(
+        tensor_1, tensor_2, lambdas, cg_cache, use_sparse
+    )
+
+    # Now we have reached the desired body order:
+
+    # TODO: Account for body-order multiplicity
+    combined_tensor = _apply_body_order_corrections(combined_tensor)
+
+    # Move the [l1, l2, ...] keys to the properties
+    combined_tensor = combined_tensor.keys_to_properties(
+        ["l" + str(i) for i in range(1, len(combined_tensor.keys.names) - 3)]
+    )
+
+    return combined_tensor
 
 
 def _combine_single_center(
@@ -222,12 +309,6 @@ def _combine_single_center(
     # Construct our combined TensorMap
     combined_tensor = TensorMap(combined_keys, combined_blocks)
 
-    # TODO: Account for body-order multiplicity
-    combined_tensor = _apply_body_order_corrections(combined_tensor)
-
-    # Move the l1, l2 keys to the properties
-    combined_tensor = combined_tensor.keys_to_properties(["l1", "l2"])
-
     return combined_tensor
 
 
@@ -265,7 +346,7 @@ def _combine_single_center_block_pair(
             ),
         ],
         properties=Labels(
-            names=["n1", "n2", "neighbor_1", "neighbor_2"],
+            names=["n1", "n2", "species_neighbor_1", "species_neighbor_2"],
             values=np.array(
                 [
                     [n1, n2, neighbor_1, neighbor_2]
@@ -277,6 +358,9 @@ def _combine_single_center_block_pair(
     )
 
     return combined_block
+
+
+# ===== Mathematical manipulation fxns
 
 
 def _clebsch_gordan_combine(
@@ -351,9 +435,6 @@ def _clebsch_gordan_combine_sparse(
     return arr_out
 
 
-# ===== For writing a dense version in the future =====
-
-
 def _clebsch_gordan_combine_dense(
     arr_1: np.ndarray,
     arr_2: np.ndarray,
@@ -412,6 +493,23 @@ def _apply_body_order_corrections(tensor: TensorMap) -> TensorMap:
     return tensor
 
 
+# Commented out but left as reference. Not needed as we are just writing an
+# end-to-end pipeline for SphericalExpansion -> NICE.
+# def _check_nu_combination_valid() -> bool:
+#     """ """
+#     #     # Check "order_nu" of each TM to see that it can iteratively add to nu
+#     #     nu1 = np.unique(tensor_1.keys.column("order_nu"))
+#     #     nu2 = np.unique(tensor_2.keys.column("order_nu"))
+#     #     assert len(nu1) != 1
+#     #     assert len(nu2) != 1
+#     #     nu1, nu2 = nu1[0], nu2[0]
+#     #     assert _check_nu_combination_valid(nu1, nu2, nu)
+#     return True
+
+
+# ===== Fxns to manipulate metadata of TensorMaps =====
+
+
 def _create_combined_keys(
     keys_1: Labels, keys_2: Labels, lambdas: Sequence[int]
 ) -> Sequence[Labels]:
@@ -428,7 +526,9 @@ def _create_combined_keys(
     """
     # Find the pair product of the keys
     combined_vals = set()
-    for (l1, a), (l2, a2) in itertools.product(keys_1, keys_2):
+    for key_1, key_2 in itertools.product(keys_1, keys_2):
+        nu1, sig1, l1, a = key_1.values[:4]
+        nu2, sig2, l2, a2 = key_2.values[:4]
         # Only combine blocks of the same chemical species
         if a != a2:
             continue
@@ -438,12 +538,49 @@ def _create_combined_keys(
             continue
 
         # Only combine to create blocks of desired lambda values
+        # TODO: nu and sigma combinations!
         for lam in np.arange(abs(l1 - l2), abs(l1 + l2) + 1):
             if lam not in lambdas:
                 continue
-            combined_vals.add((lam, a, l1, l2))
+            combined_vals.add((nu1, sig1, lam, a, l1, l2))
 
     return Labels(
-        names=["spherical_harmonics_l", "species_center", "l1", "l2"],
+        names=[
+            "order_nu",
+            "inversion_sigma",
+            "spherical_harmonics_l",
+            "species_center",
+            "l1",
+            "l2",
+        ],
         values=np.array(list(combined_vals)),
     )
+
+
+def _add_nu_sigma_to_key_names(tensor: TensorMap) -> TensorMap:
+    """
+    Prepends key names "order_nu" and "inversion_sigma" respectively to the key
+    names of ``tensor``.
+
+    For instance, if `tensor.keys.names` is ["spherical_harmonics_l",
+    "species_center"], the returned tensor will have keys with names
+    ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center"].
+    """
+    keys = tensor.keys
+    prepend_list = []
+    if "inversion_sigma" in keys.names:
+        assert keys.names.index("inversion_sigma") == 1
+    else:
+        prepend_list = [1] + prepend_list
+    if "order_nu" in keys.names:
+        assert keys.names.index("order_nu") == 0
+    else:
+        prepend_list = [1] + prepend_list
+
+    new_keys = Labels(
+        names=["order_nu", "inversion_sigma"] + keys.names,
+        values=np.array([prepend_list + key_list for key_list in keys.values.tolist()]),
+    )
+    new_blocks = [block.copy() for block in tensor]
+
+    return TensorMap(keys=new_keys, blocks=new_blocks)
