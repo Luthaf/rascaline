@@ -17,6 +17,7 @@ import wigners
 # TODO:
 # - [ ] Add support for dense operation
 # - [ ] Account for body-order multiplicity
+# - [ ] Gradients?
 
 
 # ===== Class for calculating Clebsch-Gordan coefficients =====
@@ -168,8 +169,9 @@ def _combine_multi_centers(
     lambdas: Sequence[int],
     cg_cache,
     use_sparse: bool = True,
-):
+) -> TensorMap:
     """ """
+    raise NotImplementedError
 
 
 def _combine_multi_centers_block_pair(
@@ -178,14 +180,15 @@ def _combine_multi_centers_block_pair(
     lamb: int,
     cg_cache,
     use_sparse: bool = True,
-):
+) -> TensorMap:
     """ """
+    raise NotImplementedError
 
 
 # ===== Fxns for combining single center descriptors =====
 
 
-def n_body_iteration(
+def n_body_iteration_single_center(
     frames: Sequence[ase.Atoms],
     rascal_hypers: dict,
     nu: int,
