@@ -2,6 +2,7 @@ import os
 
 import equistore.core
 
+from . import clebsch_gordan 
 from .power_spectrum import PowerSpectrum
 
 
