@@ -1,10 +1,8 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-mod utils;
-
 #[test]
-fn check_python() {
+fn run_python_tests() {
     if cfg!(tarpaulin) {
         // do not run this test when collecting Rust coverage
         return;

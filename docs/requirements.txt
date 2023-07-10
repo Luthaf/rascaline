@@ -9,7 +9,7 @@ toml            # to extract version number out of Cargo.toml
 myst-parser     # markdown => rst translation, used in extensions/rascaline_json_schema
 
 # dependencies for the tutorials
-equistore @ https://github.com/lab-cosmo/equistore/archive/a9b9a2a.zip
+equistore @ https://github.com/lab-cosmo/equistore/archive/c022fde.zip
 chemfiles
 matplotlib
 skmatter

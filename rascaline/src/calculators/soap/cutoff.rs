@@ -77,7 +77,7 @@ pub enum RadialScaling {
     Willatt2018 {
         scale: f64,
         rate: f64,
-        exponent: i32,
+        exponent: f64,
     },
 }
 
@@ -106,7 +106,7 @@ impl RadialScaling {
                     )));
                 }
 
-                if *exponent <= 0 {
+                if *exponent <= 0.0 {
                     return Err(Error::InvalidParameter(format!(
                         "expected positive exponent for Willatt2018 radial scaling function, got {}",
                         exponent
@@ -122,7 +122,7 @@ impl RadialScaling {
         match self {
             RadialScaling::None {} => 1.0,
             RadialScaling::Willatt2018 { rate, scale, exponent } => {
-                rate / (rate + (r / scale).powi(*exponent))
+                rate / (rate + (r / scale).powf(*exponent))
             }
         }
     }
@@ -133,7 +133,7 @@ impl RadialScaling {
             RadialScaling::None {} => 0.0,
             RadialScaling::Willatt2018 { scale, rate, exponent } => {
                 let rs = r / scale;
-                let rs_m1 = rs.powi(exponent - 1);
+                let rs_m1 = rs.powf(exponent - 1.0);
                 let rs_m = rs * rs_m1;
                 let factor = - rate * (*exponent as f64) / scale;
 

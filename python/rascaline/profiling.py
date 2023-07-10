@@ -19,6 +19,7 @@ class Profiler:
 
         with rascaline.Profiler() as profiler:
             # run some calculations
+            ...
 
         print(profiler.as_short_table())
     """

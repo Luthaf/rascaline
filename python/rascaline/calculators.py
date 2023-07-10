@@ -533,6 +533,10 @@ class SoapPowerSpectrum(CalculatorBase):
 
     For a full description of the hyper-parameters, see the corresponding
     :ref:`documentation <soap-power-spectrum>`.
+
+    .. seealso::
+        :py:class:`rascaline.utils.PowerSpectrum` is an implementation that
+        allows to compute the power spectrum from different spherical expansions.
     """
 
     def __init__(

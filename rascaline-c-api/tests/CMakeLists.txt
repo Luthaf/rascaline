@@ -49,7 +49,7 @@ else()
     string(TOLOWER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE)
 endif()
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../.. ${CMAKE_CURRENT_BINARY_DIR}/rascaline)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_CURRENT_BINARY_DIR}/rascaline)
 
 
 # Add rascaline and equistore to the rpath of tests, so we can load the shared
@@ -97,7 +97,7 @@ foreach(_file_ ${ALL_TESTS})
 endforeach()
 
 # make sure example compile and run
-file(GLOB EXAMPLES ../../examples/*.c)
+file(GLOB EXAMPLES ../examples/*.c)
 foreach(_file_ ${EXAMPLES})
     get_filename_component(_name_ ${_file_} NAME_WE)
     set(_name_ example-${_name_})
@@ -105,7 +105,7 @@ foreach(_file_ ${EXAMPLES})
     target_link_libraries(${_name_} rascaline::shared)
 endforeach()
 
-set(XYZ_EXAMPLE_FILE ${CMAKE_CURRENT_SOURCE_DIR}/../../../rascaline/examples/data/water.xyz)
+set(XYZ_EXAMPLE_FILE ${CMAKE_CURRENT_SOURCE_DIR}/../../rascaline/examples/data/water.xyz)
 add_test(
     NAME example-c-compute-soap
     COMMAND ${TEST_COMMAND} $<TARGET_FILE:example-compute-soap> ${XYZ_EXAMPLE_FILE}
