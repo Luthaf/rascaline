@@ -218,6 +218,7 @@ def n_body_iteration_single_center(
     use_sparse: bool = True,
     intermediate_lambda_max: Optional[int] = None,
     selected_samples: Optional[Labels] = None,
+    species_neighbors: Optional[Sequence[int]] = None,
 ) -> TensorMap:
     """
     Based on the passed ``rascal_hypers``, generates a rascaline
@@ -253,8 +254,17 @@ def n_body_iteration_single_center(
     calculator = rascaline.SphericalExpansion(**rascal_hypers)
     nu1 = calculator.compute(frames, selected_samples=selected_samples)
 
-    # Move the "species_neighbor" key to the properties
-    nu1 = nu1.keys_to_properties("species_neighbor")
+    # Move the "species_neighbor" key to the properties. If species_neighbors is
+    # passed as a list of int, sparsity can be created in the properties for
+    # these species.
+    if species_neighbors is None:
+        keys_to_move = "species_neighbor"
+    else:
+        keys_to_move = Labels(
+            names=["species_neighbor"],
+            values=np.array(species_neighbors).reshape(-1, 1),
+        )
+    nu1 = nu1.keys_to_properties(keys_to_move=keys_to_move)
 
     # Standardize the key names metadata
     nu1 = _add_nu_sigma_to_key_names(nu1)
