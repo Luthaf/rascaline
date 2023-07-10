@@ -17,7 +17,6 @@ import wigners
 # TODO:
 # - [ ] Add support for dense operation
 # - [ ] Account for body-order multiplicity
-# - [ ] Account for nu and sigma combinations!
 
 
 # ===== Class for calculating Clebsch-Gordan coefficients =====
@@ -272,9 +271,8 @@ def _combine_single_center(
 ) -> TensorMap:
     """
     For 2 TensorMaps with body orders nu and eta respectively, combines their
-    blocks to form a new TensorMap with body order (nu + eta).
-
-    Assumes
+    blocks to form a new TensorMap with body order (nu + eta). Returns blocks
+    only with angular orders corresponding to those passed in ``lambdas``.
     """
     # Check metadata
     if not equistore.equal_metadata(tensor_1, tensor_2, check=["samples"]):
@@ -515,44 +513,88 @@ def _create_combined_keys(
 ) -> Sequence[Labels]:
     """
     Given the keys of 2 TensorMaps and a list of desired lambda values, creates
-    the correct keys for the TensorMap returned after CG combination.
+    the correct keys for the TensorMap returned after one CG combination.
 
-    The input keys `keys_1` and `keys_2` must contain names
-    "spherical_harmonics_l" and "species_center".
+    The input keys `keys_1` and `keys_2` must follow the key name convention:
 
-    Returned is a tuple of 3 Labels objects. The first and second returned
-    Labels objects correspond to the keys of the input TensorMaps, and the third
-    Labels object to the keys of the output TensorMap.
+    ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center",
+    "l1", "l2", ...]
+
+    Returned is a Labels object corresponding to the appropriate keys of the
+    output TensorMap created by a CG combination step.
     """
+    # Check key names match internal convention
+    for keys in [keys_1, keys_2]:
+        assert np.all(
+            keys.names[:4]
+            == [
+                "order_nu",
+                "inversion_sigma",
+                "spherical_harmonics_l",
+                "species_center",
+            ]
+        )
+    # Iteratively check the remaining key names are "l1", "l2", ... We will need
+    # these counters later to name the output keys.
+    l_counter_1, l_counter_2 = 0, 0
+
+    # First do for keys_1
+    for name in keys_1.names[4:]:
+        assert name[0] == "l"
+        l_counter_1 += 1
+        assert int(name[1:]) == l_counter_1
+
+    # Then do for keys_2
+    for name in keys_2.names[4:]:
+        assert name[0] == "l"
+        l_counter_2 += 1
+        assert int(name[1:]) == l_counter_2
+
     # Find the pair product of the keys
     combined_vals = set()
     for key_1, key_2 in itertools.product(keys_1, keys_2):
-        nu1, sig1, l1, a = key_1.values[:4]
-        nu2, sig2, l2, a2 = key_2.values[:4]
+        # Unpack relevant key values
+        nu1, sig1, lam1, a = key_1.values[:4]
+        nu2, sig2, lam2, a2 = key_2.values[:4]
+
         # Only combine blocks of the same chemical species
         if a != a2:
             continue
 
-        # Skip redundant lower triangle of (l1, l2) combinations
-        if l1 < l2:
+        # Skip redundant lower triangle of (lam1, lam2) combinations
+        if lam1 < lam2:
             continue
 
+        # Get the list of previous l values from each key
+        l_list_1, l_list_2 = key_1.values[4:].tolist(), key_2.values[4:].tolist()
+
+        # Calculate new nu
+        nu = nu1 + nu2
+
         # Only combine to create blocks of desired lambda values
-        # TODO: nu and sigma combinations!
-        for lam in np.arange(abs(l1 - l2), abs(l1 + l2) + 1):
+        nonzero_lams = np.arange(abs(lam1 - lam2), abs(lam1 + lam2) + 1)
+        for lam in nonzero_lams:
             if lam not in lambdas:
                 continue
-            combined_vals.add((nu1, sig1, lam, a, l1, l2))
+
+            # Calculate new sigma
+            sig = sig1 * sig2 * (-1) ** (lam1 + lam2 + lam)
+
+            # Create a key tuple, ordering the "l1", "l2", etc values
+            l_list = [lam1] + l_list_1 + [lam2] + l_list_2
+            key_tuple = (nu, sig, lam, a, *l_list)
+            combined_vals.add(key_tuple)
+
+    # Create the output key names
+    new_names = [
+        "order_nu",
+        "inversion_sigma",
+        "spherical_harmonics_l",
+        "species_center",
+    ] + [f"l{i}" for i in range(1, l_counter_1 + l_counter_2 + 3)]
 
     return Labels(
-        names=[
-            "order_nu",
-            "inversion_sigma",
-            "spherical_harmonics_l",
-            "species_center",
-            "l1",
-            "l2",
-        ],
+        names=new_names,
         values=np.array(list(combined_vals)),
     )
 
