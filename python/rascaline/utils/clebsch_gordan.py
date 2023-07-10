@@ -395,13 +395,15 @@ def _combine_single_center_block_pair(
                 values=np.arange(-lam, lam + 1).reshape(-1, 1),
             ),
         ],
+        # TODO: account for more "species_neighbor_x" and "nx", i.e. for higher
+        # body order
         properties=Labels(
             names=["n1", "n2", "species_neighbor_1", "species_neighbor_2"],
             values=np.array(
                 [
                     [n1, n2, neighbor_1, neighbor_2]
-                    for (n2, neighbor_2) in block_2.properties.values
-                    for (n1, neighbor_1) in block_1.properties.values
+                    for (neighbor_2, n2) in block_2.properties.values
+                    for (neighbor_1, n1) in block_1.properties.values
                 ]
             ),
         ),
