@@ -4,7 +4,7 @@ import pytest
 from rascaline import RascalError
 from rascaline.calculators import DummyCalculator
 
-from test_systems import SystemForTests
+from ..test_systems import SystemForTests
 
 
 def test_name():

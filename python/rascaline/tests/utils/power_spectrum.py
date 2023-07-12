@@ -2,12 +2,12 @@
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
-from test_utils import finite_differences_positions
 
 import rascaline
 from rascaline.utils import PowerSpectrum
 
-from test_systems import SystemForTests
+from ..test_systems import SystemForTests
+from .test_utils import finite_differences_positions
 
 
 ase = pytest.importorskip("ase")

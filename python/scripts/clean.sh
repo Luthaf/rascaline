@@ -1,12 +1,15 @@
-#!/usr/bin/env bash
-set -ux
-ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && cd ../.. && pwd )"
+#/usr/bin/env bash
 
-echo $ROOT
+# This script removes all temporary files created by Python during
+# installation and tests running.
 
-rm -rf $ROOT/build
-rm -rf $ROOT/dist
-rm -rf $ROOT/.tox
+set -eux
 
-rm -rf $ROOT/python/*.egg-info
-rm -rf $ROOT/python/*/__pycache__
+ROOT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}")/../.. && pwd)
+cd $ROOT_DIR
+
+rm -rf build/
+rm -rf dist/
+
+find . -name "*.egg-info" -exec rm -rf "{}" +
+find . -name "__pycache__" -exec rm -rf "{}" +
