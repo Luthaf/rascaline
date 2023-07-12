@@ -59,7 +59,7 @@ jobs:
         run: |
           apt update
           apt install -y software-properties-common
-          apt install -y cmake make gcc g++ git curl python3-pip
+          apt install -y cmake make gcc g++ git curl python3-pip python3-venv
           ln -s /usr/bin/python3 /usr/bin/python
 
       - uses: actions/checkout@v3
