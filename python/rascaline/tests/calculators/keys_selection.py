@@ -5,7 +5,7 @@ from equistore.core import Labels, TensorBlock, TensorMap
 from rascaline import RascalError
 from rascaline.calculators import DummyCalculator
 
-from test_systems import SystemForTests
+from ..test_systems import SystemForTests
 
 
 def _tensor_map_selection(label_type, keys, labels):

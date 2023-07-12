@@ -5,7 +5,7 @@ from equistore.core import Labels, TensorBlock, TensorMap
 from rascaline import RascalError
 from rascaline.calculators import DummyCalculator
 
-from test_systems import SystemForTests
+from ..test_systems import SystemForTests
 
 
 def _tensor_map_selection(label_type, keys, labels):
@@ -38,24 +38,23 @@ def test_selection():
     system = SystemForTests()
     calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
 
-    # Manually constructing the selected properties
-    selected_properties = Labels(
-        names=["index_delta", "x_y_z"],
-        values=np.array([[1, 0]], dtype=np.int32),
+    # Manually constructing the selected samples
+    selected_samples = Labels(
+        names=["structure", "center"],
+        values=np.array([(0, 0), (0, 3), (0, 1)], dtype=np.int32),
     )
     descriptor = calculator.compute(
-        system, use_native_system=False, selected_properties=selected_properties
+        system, use_native_system=False, selected_samples=selected_samples
     )
 
     H_block = descriptor.block(species_center=1)
-    assert H_block.values.shape == (2, 1)
-    assert np.all(H_block.values[0] == (2,))
-    assert np.all(H_block.values[1] == (3,))
+    assert H_block.values.shape == (2, 2)
+    assert np.all(H_block.values[0] == (2, 1))
+    assert np.all(H_block.values[1] == (3, 3))
 
     O_block = descriptor.block(species_center=8)
-    assert O_block.values.shape == (2, 1)
-    assert np.all(O_block.values[0] == (4,))
-    assert np.all(O_block.values[1] == (5,))
+    assert O_block.values.shape == (1, 2)
+    assert np.all(O_block.values[0] == (5, 5))
 
 
 def test_subset_variables():
@@ -63,43 +62,42 @@ def test_subset_variables():
     calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
 
     # Only a subset of the variables defined
-    selected_properties = Labels(
-        names=["index_delta"],
-        values=np.array([[1]], dtype=np.int32),
+    selected_samples = Labels(
+        names=["center"],
+        values=np.array([0, 3, 1], dtype=np.int32).reshape(3, 1),
     )
     descriptor = calculator.compute(
-        system, use_native_system=False, selected_properties=selected_properties
+        system, use_native_system=False, selected_samples=selected_samples
     )
 
     H_block = descriptor.block(species_center=1)
-    assert H_block.values.shape == (2, 1)
-    assert np.all(H_block.values[0] == (2,))
-    assert np.all(H_block.values[1] == (3,))
+    assert H_block.values.shape == (2, 2)
+    assert np.all(H_block.values[0] == (2, 1))
+    assert np.all(H_block.values[1] == (3, 3))
 
     O_block = descriptor.block(species_center=8)
-    assert O_block.values.shape == (2, 1)
-    assert np.all(O_block.values[0] == (4,))
-    assert np.all(O_block.values[1] == (5,))
+    assert O_block.values.shape == (1, 2)
+    assert np.all(O_block.values[0] == (5, 5))
 
 
 def test_empty_selection():
     system = SystemForTests()
     calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
 
-    # empty selected features
-    selected_properties = Labels(
-        names=["index_delta", "x_y_z"],
-        values=np.array([], dtype=np.int32).reshape(0, 2),
+    # empty selected samples
+    selected_samples = Labels(
+        names=["center"],
+        values=np.empty((0, 1), dtype=np.int32),
     )
     descriptor = calculator.compute(
-        system, use_native_system=False, selected_properties=selected_properties
+        system, use_native_system=False, selected_samples=selected_samples
     )
 
     H_block = descriptor.block(species_center=1)
-    assert H_block.values.shape == (2, 0)
+    assert H_block.values.shape == (0, 2)
 
     O_block = descriptor.block(species_center=8)
-    assert O_block.values.shape == (2, 0)
+    assert O_block.values.shape == (0, 2)
 
 
 def test_predefined_selection():
@@ -114,47 +112,41 @@ def test_predefined_selection():
     # selection from TensorMap
     selected = [
         Labels(
-            names=["index_delta", "x_y_z"],
-            values=np.array([[1, 0]], dtype=np.int32),
-        ),
-        Labels(
-            names=["index_delta", "x_y_z"],
+            names=["structure", "center"],
             values=np.array([[0, 1]], dtype=np.int32),
         ),
+        Labels(
+            names=["structure", "center"],
+            values=np.array([[0, 3]], dtype=np.int32),
+        ),
     ]
-    selected_properties = _tensor_map_selection("properties", keys, selected)
+    selected_samples = _tensor_map_selection("samples", keys, selected)
 
     descriptor = calculator.compute(
-        system, use_native_system=False, selected_properties=selected_properties
+        system, use_native_system=False, selected_samples=selected_samples
     )
 
     H_block = descriptor.block(species_center=1)
-    assert H_block.values.shape == (2, 1)
-    assert np.all(H_block.values[0] == (2,))
-    assert np.all(H_block.values[1] == (3,))
+    assert H_block.values.shape == (1, 2)
+    assert np.all(H_block.values[0] == (3, 3))
 
     O_block = descriptor.block(species_center=8)
-    assert O_block.values.shape == (2, 1)
-    assert np.all(O_block.values[0] == (6,))
-    assert np.all(O_block.values[1] == (5,))
+    assert O_block.values.shape == (1, 2)
+    assert np.all(O_block.values[0] == (5, 5))
 
 
 def test_errors():
     system = SystemForTests()
     calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
 
-    selected_properties = Labels(
+    samples = Labels(
         names=["bad_name"],
         values=np.array([0, 3, 1], dtype=np.int32).reshape(3, 1),
     )
 
     message = (
-        "invalid parameter: 'bad_name' in properties selection is not "
-        "one of the properties of this calculator"
+        "invalid parameter: 'bad_name' in samples selection is not one "
+        "of the samples of this calculator"
     )
     with pytest.raises(RascalError, match=message):
-        calculator.compute(
-            system,
-            use_native_system=False,
-            selected_properties=selected_properties,
-        )
+        calculator.compute(system, use_native_system=False, selected_samples=samples)

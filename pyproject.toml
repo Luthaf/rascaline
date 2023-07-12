@@ -49,7 +49,7 @@ build-backend = "setuptools.build_meta"
 zip-safe = true
 
 [tool.setuptools.packages.find]
-where = ["python"]
+where = ["python/rascaline"]
 include = ["rascaline*"]
 namespaces = false
 
@@ -57,19 +57,13 @@ namespaces = false
 
 [tool.black]
 extend-exclude = """
-    /python/rascaline/_c_api\\.py
+    /python/rascaline/rascaline/_c_api\\.py
 """
 
 [tool.isort]
 profile = "black"
 line_length = 88
 indent = 4
-known_local_folder = [
-    "html_hidden",
-    "myst_parser",
-    "save_data",
-    "test_systems",
-]
 include_trailing_comma = true
 lines_after_imports = 2
 known_first_party = "rascaline"
@@ -78,4 +72,4 @@ known_first_party = "rascaline"
 
 [tool.pytest.ini_options]
 python_files = ["*.py"]
-testpaths = ["python/tests"]
+testpaths = ["python/rascaline/tests"]
