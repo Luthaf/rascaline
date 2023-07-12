@@ -61,9 +61,7 @@ get_target_property(EQUISTORE_LOCATION equistore::shared IMPORTED_LOCATION)
 get_filename_component(EQUISTORE_DIRECTORY "${EQUISTORE_LOCATION}" DIRECTORY)
 set(CMAKE_BUILD_RPATH "${RASCALINE_DIRECTORY};${EQUISTORE_DIRECTORY}")
 
-
-add_library(catch STATIC catch/catch.cpp)
-target_include_directories(catch PUBLIC catch)
+add_subdirectory(catch)
 
 add_library(tests_helpers STATIC helpers.cpp)
 target_link_libraries(tests_helpers rascaline::shared)
