@@ -135,7 +135,7 @@ impl RadialScaling {
                 let rs = r / scale;
                 let rs_m1 = rs.powf(exponent - 1.0);
                 let rs_m = rs * rs_m1;
-                let factor = - rate * (*exponent as f64) / scale;
+                let factor = - rate * exponent / scale;
 
                 factor * rs_m1 / ((rate + rs_m) * (rate + rs_m))
             }
