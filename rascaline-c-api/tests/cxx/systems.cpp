@@ -81,9 +81,7 @@ TEST_CASE("systems errors") {
     })";
 
     auto system = BadSystem();
-    auto systems = std::vector<rascaline::System*>();
-    systems.push_back(&system);
     auto calculator = rascaline::Calculator("dummy_calculator", HYPERS_JSON);
 
-    CHECK_THROWS_WITH(calculator.compute(systems), "unimplemented function 'species'");
+    CHECK_THROWS_WITH(calculator.compute(system), "unimplemented function 'species'");
 }
