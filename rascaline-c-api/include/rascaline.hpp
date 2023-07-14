@@ -606,28 +606,63 @@ public:
     }
 
     /// Runs a calculation with this calculator on the given ``systems``
-    equistore::TensorMap compute(std::vector<System*>& systems, const CalculationOptions& options = CalculationOptions()) const {
-        auto rascal_systems = std::vector<rascal_system_t>();
-        for (auto& system: systems) {
-            assert(system != nullptr);
-            rascal_systems.push_back(system->as_rascal_system_t());
-        }
-
+    equistore::TensorMap compute(
+        std::vector<rascal_system_t>& systems,
+        const CalculationOptions& options = CalculationOptions()
+    ) const {
         eqs_tensormap_t* descriptor = nullptr;
 
         details::check_status(rascal_calculator_compute(
             calculator_,
             &descriptor,
-            rascal_systems.data(),
-            rascal_systems.size(),
+            systems.data(),
+            systems.size(),
             options.as_rascal_calculation_options_t()
         ));
 
         return equistore::TensorMap(descriptor);
     }
 
-    /// Runs a calculation with this calculator on the given basic ``systems``
-    equistore::TensorMap compute(BasicSystems& systems, const CalculationOptions& options = CalculationOptions()) const {
+    /// Runs a calculation for multiple `systems`
+    template<typename SystemImpl, typename std::enable_if<std::is_base_of<System, SystemImpl>::value, bool>::type = true>
+    equistore::TensorMap compute(
+        std::vector<SystemImpl>& systems,
+        const CalculationOptions& options = CalculationOptions()
+    ) const {
+        auto rascal_systems = std::vector<rascal_system_t>();
+        for (auto& system: systems) {
+            rascal_systems.push_back(system.as_rascal_system_t());
+        }
+
+        return this->compute(rascal_systems, std::move(options));
+    }
+
+    /// Runs a calculation for a single `system`
+    template<typename SystemImpl, typename std::enable_if<std::is_base_of<System, SystemImpl>::value, bool>::type = true>
+    equistore::TensorMap compute(
+        SystemImpl& system,
+        const CalculationOptions& options = CalculationOptions()
+    ) const {
+        eqs_tensormap_t* descriptor = nullptr;
+
+        auto rascal_system = system.as_rascal_system_t();
+        details::check_status(rascal_calculator_compute(
+            calculator_,
+            &descriptor,
+            &rascal_system,
+            1,
+            options.as_rascal_calculation_options_t()
+        ));
+
+        return equistore::TensorMap(descriptor);
+    }
+
+    /// Runs a calculation for all the `systems` that where read from a file
+    /// using the `BasicSystems(std::string path)` constructor
+    equistore::TensorMap compute(
+        BasicSystems& systems,
+        const CalculationOptions& options = CalculationOptions()
+    ) const {
         eqs_tensormap_t* descriptor = nullptr;
 
         details::check_status(rascal_calculator_compute(
