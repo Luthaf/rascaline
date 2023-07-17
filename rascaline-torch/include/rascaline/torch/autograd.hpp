@@ -41,7 +41,8 @@ public:
         torch::Tensor all_cells,
         CalculatorHolder& calculator,
         std::vector<TorchSystem> systems,
-        equistore_torch::TorchTensorMap* descriptor
+        equistore_torch::TorchTensorMap* descriptor,
+        std::vector<std::string> forward_gradients
     );
 
     /// Backward step: get the gradients of some quantity `A` w.r.t. the outputs
