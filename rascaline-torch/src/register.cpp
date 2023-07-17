@@ -1,6 +1,7 @@
 #include <torch/script.h>
 
 #include "rascaline/torch/system.hpp"
+#include "rascaline/torch/calculator.hpp"
 using namespace rascaline_torch;
 
 TORCH_LIBRARY(rascaline, m) {
@@ -18,5 +19,27 @@ TORCH_LIBRARY(rascaline, m) {
         .def_property("species", &SystemHolder::get_species)
         .def_property("positions", &SystemHolder::get_positions)
         .def_property("cell", &SystemHolder::get_cell)
+        ;
+
+    m.class_<CalculatorHolder>("CalculatorHolder")
+        .def(torch::init<std::string, std::string>(),
+            DOCSTRING,
+            {torch::arg("name"), torch::arg("parameters")}
+        )
+        .def("compute", &CalculatorHolder::compute,
+            DOCSTRING,
+            {torch::arg("systems")}
+        )
+        .def_pickle(
+            // __getstate__
+            [](const TorchCalculator& self) -> std::vector<std::string> {
+                return {self->name(), self->parameters()};
+            },
+            // __setstate__
+            [](std::vector<std::string> state) -> TorchCalculator {
+                return c10::make_intrusive<CalculatorHolder>(
+                    state[0], state[1]
+                );
+            })
         ;
 }
