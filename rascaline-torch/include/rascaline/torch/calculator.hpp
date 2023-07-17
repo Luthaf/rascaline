@@ -44,7 +44,8 @@ public:
     /// `gradients` controls which gradients will be stored in the
     /// output TensorMap
     equistore_torch::TorchTensorMap compute(
-        std::vector<TorchSystem> systems
+        std::vector<TorchSystem> systems,
+        std::vector<std::string> gradients = {}
     );
 
 private:
