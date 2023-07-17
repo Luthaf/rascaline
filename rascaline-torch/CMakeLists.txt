@@ -88,12 +88,14 @@ endif()
 
 set(RASCALINE_TORCH_HEADERS
     "include/rascaline/torch/system.hpp"
+    "include/rascaline/torch/autograd.hpp"
     "include/rascaline/torch/calculator.hpp"
     "include/rascaline/torch.hpp"
 )
 
 set(RASCALINE_TORCH_SOURCE
     "src/system.cpp"
+    "src/autograd.cpp"
     "src/calculator.cpp"
     "src/register.cpp"
 )
