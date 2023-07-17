@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "rascaline/torch/autograd.hpp"
 
 using namespace rascaline_torch;
@@ -14,28 +16,52 @@ static bool all_systems_use_native(const std::vector<TorchSystem>& systems) {
     return result;
 }
 
+static bool contains(const std::vector<std::string>& haystack, const std::string& needle) {
+    return std::find(std::begin(haystack), std::end(haystack), needle) != std::end(haystack);
+}
+
 std::vector<torch::Tensor> RascalineAutograd::forward(
     torch::autograd::AutogradContext *ctx,
     torch::Tensor all_positions,
     torch::Tensor all_cells,
     CalculatorHolder& calculator,
     std::vector<TorchSystem> systems,
-    equistore_torch::TorchTensorMap* tensor_map
+    equistore_torch::TorchTensorMap* tensor_map,
+    std::vector<std::string> forward_gradients
 ) {
+    // =============== Handle all options for the calculation =============== //
     auto calculation_options = rascaline::CalculationOptions();
-    if (all_positions.requires_grad()) {
+
+    // which gradients should we compute? We have to compute some gradient
+    // either if positions/cell has `requires_grad` set to `true`, or if the
+    // user requested specific gradients in `forward_gradients`
+    for (const auto& parameter: forward_gradients) {
+        if (parameter != "positions" && parameter != "cell") {
+            C10_THROW_ERROR(ValueError, "invalid parameter in forward gradients: " + parameter);
+        }
+    }
+
+    if (contains(forward_gradients, "positions") || all_positions.requires_grad()) {
         calculation_options.gradients.push_back("positions");
     }
 
-    if (all_cells.requires_grad()) {
+    if (contains(forward_gradients, "cell") || all_cells.requires_grad()) {
         calculation_options.gradients.push_back("cell");
+    }
+
+    // where all computed gradients explicitly requested in forward_gradients?
+    bool all_forward_gradients = true;
+    for (const auto& parameter: calculation_options.gradients) {
+        if (!contains(forward_gradients, parameter)) {
+            all_forward_gradients = false;
+        }
     }
 
     calculation_options.use_native_system = all_systems_use_native(systems);
     // TODO: selected_properties
     // TODO: selected_samples
-    // TODO: keep_forward_gradients
 
+    // =================== run the actual calculation ======================= //
     auto structures_start = std::vector<int64_t>();
     int64_t current_start = 0;
     for (auto& system: systems) {
@@ -43,10 +69,9 @@ std::vector<torch::Tensor> RascalineAutograd::forward(
         current_start += system->size();
     }
 
-    // run the actual calculation
     auto descriptor = calculator.compute_impl(systems, calculation_options);
 
-    // extract the data for autograd
+    // ================== extract the data for autograd ===================== //
     auto values_by_block = std::vector<torch::Tensor>();
     for (int64_t i=0; i<descriptor->keys()->count(); i++) {
         // this add a reference to the torch::Tensor already in `descriptor`
@@ -54,12 +79,40 @@ std::vector<torch::Tensor> RascalineAutograd::forward(
         values_by_block.push_back(descriptor->block_by_id(i)->values());
     }
 
-    // save the required data for backward pass
+    // ============== save the required data for backward pass ============== //
     ctx->save_for_backward({all_positions, all_cells});
     ctx->saved_data["descriptor"] = descriptor;
     ctx->saved_data["structures_start"] = structures_start;
 
-    *tensor_map = std::move(descriptor);
+
+    // ==================== "return" the right TensorMap ==================== //
+    if (all_forward_gradients) {
+        *tensor_map = std::move(descriptor);
+    } else {
+        // create a new TensorMap with only the requested forward gradients
+        auto new_blocks = std::vector<equistore_torch::TorchTensorBlock>();
+        for (int64_t i=0; i<descriptor->keys()->count(); i++) {
+            auto block = descriptor->block_by_id(i);
+
+            auto new_block = torch::make_intrusive<equistore_torch::TensorBlockHolder>(
+                block->values(),
+                block->samples(),
+                block->components(),
+                block->properties()
+            );
+
+            for (const auto& parameter: forward_gradients) {
+                auto gradient = block->gradient(parameter);
+                new_block->add_gradient(parameter, gradient);
+            }
+
+            new_blocks.push_back(std::move(new_block));
+        }
+        *tensor_map = torch::make_intrusive<equistore_torch::TensorMapHolder>(
+            descriptor->keys(),
+            std::move(new_blocks)
+        );
+    }
 
     return values_by_block;
 }
@@ -68,7 +121,7 @@ torch::autograd::variable_list RascalineAutograd::backward(
     torch::autograd::AutogradContext *ctx,
     torch::autograd::variable_list grad_outputs
 ) {
-    /* get the saved data from the forward pass */
+    // ============== get the saved data from the forward pass ============== //
     auto saved_variables = ctx->get_saved_variables();
     auto all_positions = saved_variables[0];
     auto all_cells = saved_variables[1];
@@ -79,7 +132,7 @@ torch::autograd::variable_list RascalineAutograd::backward(
     auto n_blocks = grad_outputs.size();
     assert(descriptor->keys()->count() == n_blocks);
 
-    /* gradient w.r.t. positions */
+    // ===================== gradient w.r.t. positions ====================== //
     auto positions_grad = torch::Tensor();
     if (all_positions.requires_grad()) {
         positions_grad = torch::zeros_like(all_positions);
@@ -137,7 +190,7 @@ torch::autograd::variable_list RascalineAutograd::backward(
         }
     }
 
-    /* gradient w.r.t. cell */
+    // ======================= gradient w.r.t. cell ========================= //
     auto cell_grad = torch::Tensor();
     if (all_cells.requires_grad()) {
         cell_grad = torch::zeros_like(all_cells);
@@ -214,6 +267,7 @@ torch::autograd::variable_list RascalineAutograd::backward(
     return {
         positions_grad,
         cell_grad,
+        torch::Tensor(),
         torch::Tensor(),
         torch::Tensor(),
         torch::Tensor(),

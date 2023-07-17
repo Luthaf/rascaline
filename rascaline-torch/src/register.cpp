@@ -26,10 +26,10 @@ TORCH_LIBRARY(rascaline, m) {
             DOCSTRING,
             {torch::arg("name"), torch::arg("parameters")}
         )
-        .def("compute", &CalculatorHolder::compute,
-            DOCSTRING,
-            {torch::arg("systems")}
-        )
+        .def("compute", &CalculatorHolder::compute, DOCSTRING, {
+            torch::arg("systems"),
+            torch::arg("gradients") = std::vector<std::string>()
+        })
         .def_pickle(
             // __getstate__
             [](const TorchCalculator& self) -> std::vector<std::string> {

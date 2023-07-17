@@ -75,10 +75,9 @@ TEST_CASE("Calculator") {
         CHECK(block->gradients_list().empty());
     }
 
-    SECTION("Compute -- gradients") {
+    SECTION("Compute -- all gradients") {
         auto system = test_system(true, false);
-
-        auto descriptor = calculator.compute({system});
+        auto descriptor = calculator.compute({system}, /* forward_gradients */ {"positions"});
 
         CHECK(*descriptor->keys() == equistore::Labels(
             {"species_center"},
@@ -138,6 +137,74 @@ TEST_CASE("Calculator") {
             0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
         }).reshape({2, 3, 2});
         CHECK(torch::all(gradient->values() == expected).item<bool>());
+    }
+
+    SECTION("Compute -- no forward gradients") {
+        auto system = test_system(true, false);
+        auto descriptor = calculator.compute({system}, /* forward_gradients */ {});
+
+        CHECK(*descriptor->keys() == equistore::Labels(
+            {"species_center"},
+            {{1}, {6}}
+        ));
+
+        // H block
+        auto block = descriptor->block_by_id(0);
+
+        auto values = block->values();
+        CHECK(values.requires_grad() == true);
+
+        auto grad_fn = values.grad_fn();
+        REQUIRE(grad_fn);
+        CHECK(grad_fn->name() == "torch::autograd::CppNode<rascaline_torch::RascalineAutograd>");
+
+        // no forward gradients
+        CHECK(block->gradients_list().empty());
+
+        // C block
+        block = descriptor->block_by_id(1);
+
+        values = block->values();
+        CHECK(values.requires_grad() == true);
+
+        grad_fn = values.grad_fn();
+        REQUIRE(grad_fn);
+        CHECK(grad_fn->name() == "torch::autograd::CppNode<rascaline_torch::RascalineAutograd>");
+
+        // no forward gradients
+        CHECK(block->gradients_list().empty());
+    }
+
+    SECTION("Compute -- no backward gradients") {
+        auto system = test_system(false, false);
+        auto descriptor = calculator.compute({system}, /* forward_gradients */ {"positions"});
+
+        CHECK(*descriptor->keys() == equistore::Labels(
+            {"species_center"},
+            {{1}, {6}}
+        ));
+
+        // H block
+        auto block = descriptor->block_by_id(0);
+
+        auto values = block->values();
+        CHECK(values.requires_grad() == false);
+        CHECK(values.grad_fn() == nullptr);
+
+        // forward gradients
+        auto gradient = block->gradient("positions");
+        CHECK(gradient->samples()->count() == 8);
+
+        // C block
+        block = descriptor->block_by_id(1);
+
+        values = block->values();
+        CHECK(values.requires_grad() == false);
+        CHECK(values.grad_fn() == nullptr);
+
+        // forward gradients
+        gradient = block->gradient("positions");
+        CHECK(gradient->samples()->count() == 2);
     }
 }
 

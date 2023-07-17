@@ -71,7 +71,8 @@ equistore_torch::TorchTensorMap CalculatorHolder::compute_impl(
 
 
 equistore_torch::TorchTensorMap CalculatorHolder::compute(
-    std::vector<TorchSystem> systems
+    std::vector<TorchSystem> systems,
+    std::vector<std::string> gradients
 ) {
     auto all_positions_vec = std::vector<torch::Tensor>();
     all_positions_vec.reserve(systems.size());
@@ -94,8 +95,9 @@ equistore_torch::TorchTensorMap CalculatorHolder::compute(
         all_positions,
         all_cells,
         *this,
-        systems,
-        &descriptor
+        std::move(systems),
+        &descriptor,
+        std::move(gradients)
     );
 
     return descriptor;
