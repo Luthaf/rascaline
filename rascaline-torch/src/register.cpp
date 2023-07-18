@@ -15,6 +15,7 @@ TORCH_LIBRARY(rascaline, m) {
             {torch::arg("species"), torch::arg("positions"), torch::arg("cell")}
         )
         .def("__str__", &SystemHolder::__str__)
+        .def("__repr__", &SystemHolder::__str__)
         .def("__len__", &SystemHolder::__len__)
         .def_property("species", &SystemHolder::get_species)
         .def_property("positions", &SystemHolder::get_positions)

@@ -115,6 +115,8 @@ jobs:
       - name: integration tests
         env:
           RASCALINE_TEST_WITH_STATIC_LIB: ${{ matrix.test-static-lib || 0 }}
+          # Use the CPU only version of torch when building/running the code
+          PIP_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
         run: cargo test --test "*" --target ${{ matrix.rust-target }} ${{ matrix.cargo-build-flags }}
 
   # second set of jobs checking that (non-test) code still compiles/run as expected

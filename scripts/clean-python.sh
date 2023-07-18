@@ -5,11 +5,14 @@
 
 set -eux
 
-ROOT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}")/../.. && pwd)
+ROOT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
 cd $ROOT_DIR
 
-rm -rf build/
-rm -rf dist/
+rm -rf dist
+rm -rf build
+
+rm -rf python/rascaline-torch/dist
+rm -rf python/rascaline-torch/build
 
 find . -name "*.egg-info" -exec rm -rf "{}" +
 find . -name "__pycache__" -exec rm -rf "{}" +
