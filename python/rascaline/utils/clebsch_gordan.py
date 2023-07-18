@@ -283,7 +283,7 @@ def n_body_iteration_single_center(
     # TODO: Combine to the desired body order iteratively. Currently only a
     # single CG iteration to body order nu = 2 is implemented.
     combined_tensor = nu1_tensor.copy()
-    for _ in range(nu_target):
+    for _ in range(1, nu_target):
         combined_tensor = _combine_single_center(
             tensor_1=combined_tensor,
             tensor_2=nu1_tensor,
@@ -427,16 +427,24 @@ def _combine_single_center_block_pair(
     values arrays and returns in a new TensorBlock.
     """
     # Check metadata
-    if block_1.properties.names != block_2.properties.names:
-        raise ValueError(
-            "TensorBlock pair to combine must have equal properties in the same order"
-        )
+    #if block_1.properties.names != block_2.properties.names:
+    #    raise ValueError(
+    #        "TensorBlock pair to combine must have equal properties in the same order"
+    #    )
 
     # Do the CG combination - no shape pre-processing required
     # print(block_1.values.shape, block_2.values.shape, lam)
     combined_values = _clebsch_gordan_combine(
         block_1.values, block_2.values, lam, cg_cache
     )
+    #TODO: Add comments
+    combined_nu = int(len(block_1.properties.names)/2 + 1)
+    n_names = [f"n_{i}" for i in range(1, combined_nu+1)]
+    neighbor_names = [f"species_neighbor_{i}" for i in range(1, combined_nu+1)]
+    prop_names = [item for i in zip(neighbor_names,n_names) for item in i]
+    prop_vals = np.array([np.concatenate((b2, b1)) 
+                          for b2 in block_2.properties.values
+                          for b1 in block_1.properties.values])
 
     # Create a TensorBlock
     combined_block = TensorBlock(
@@ -451,14 +459,8 @@ def _combine_single_center_block_pair(
         # TODO: account for more "species_neighbor_x" and "nx", i.e. for higher
         # body order
         properties=Labels(
-            names=["n1", "n2", "species_neighbor_1", "species_neighbor_2"],
-            values=np.array(
-                [
-                    [n1, n2, neighbor_1, neighbor_2]
-                    for (neighbor_2, n2) in block_2.properties.values
-                    for (neighbor_1, n1) in block_1.properties.values
-                ]
-            ),
+            names=prop_names,
+            values=prop_vals,
         ),
     )
 
