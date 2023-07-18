@@ -18,4 +18,17 @@ from ._c_lib import _load_library
 _load_library()
 
 from . import utils  # noqa
-from .system import System, system_to_torch  # noqa
+from .calculator_base import CalculatorModule  # noqa
+from .system import System, systems_to_torch  # noqa
+
+
+# don't forget to also update `rascaline/__init__.py` and
+# `rascaline/torch/calculators.py` when modifying this file
+from .calculators import AtomicComposition  # noqa  isort: skip
+from .calculators import SortedDistances  # noqa  isort: skip
+from .calculators import NeighborList  # noqa  isort: skip
+from .calculators import LodeSphericalExpansion  # noqa isort: skip
+from .calculators import SphericalExpansion  # noqa  isort: skip
+from .calculators import SphericalExpansionByPair  # noqa  isort: skip
+from .calculators import SoapRadialSpectrum  # noqa  isort: skip
+from .calculators import SoapPowerSpectrum  # noqa  isort: skip

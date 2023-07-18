@@ -4,6 +4,7 @@ Available Calculators
 .. autoclass:: rascaline.calculators.CalculatorBase
     :members:
 
+--------------------------------------------------------------------------------
 
 .. autoclass:: rascaline.AtomicComposition
     :members:

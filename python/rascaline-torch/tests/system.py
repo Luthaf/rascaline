@@ -1,5 +1,5 @@
+import ase
 import numpy as np
-import pytest
 import torch
 
 from rascaline.torch import System, systems_to_torch
@@ -38,8 +38,6 @@ def test_system():
 
 
 def test_system_conversion_from_ase():
-    ase = pytest.importorskip("ase")
-
     atoms = ase.Atoms(
         "CO",
         positions=[(0, 0, 0), (0, 0, 2)],
