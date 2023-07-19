@@ -37,7 +37,8 @@ int main(int argc, char* argv[]) {
     descriptor.keys_to_properties(std::vector<std::string>{"species_neighbor_1", "species_neighbor_2"});
 
     // extract values from the descriptor in the only remaining block
-    auto values = descriptor.block_by_id(0).values();
+    auto block = descriptor.block_by_id(0);
+    auto values = block.values();
 
     // you can now use values as the input of a machine learning algorithm
 

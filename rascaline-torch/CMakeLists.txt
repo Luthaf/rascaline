@@ -58,7 +58,7 @@ find_package(Torch 1.11 REQUIRED)
 # ============================================================================ #
 # Setup equistore_torch
 
-set(EQUISTORE_GIT_VERSION "c022fde")
+set(EQUISTORE_GIT_VERSION "ee5ab99")
 set(REQUIRED_EQUISTORE_TORCH_VERSION "0.1")
 if (RASCALINE_TORCH_FETCH_EQUISTORE_TORCH)
     message(STATUS "Fetching equistore_torch @ ${EQUISTORE_GIT_VERSION} from github")
@@ -67,7 +67,7 @@ if (RASCALINE_TORCH_FETCH_EQUISTORE_TORCH)
     FetchContent_Declare(
         equistore_torch
         URL      https://github.com/lab-cosmo/equistore/archive/${EQUISTORE_GIT_VERSION}.zip
-        URL_HASH MD5=ff9f924ee7c24f2b237a60bec08e7270
+        URL_HASH MD5=c632a7104ef719ac3842e35ee680dcbb
         SOURCE_SUBDIR equistore-torch
         VERBOSE
     )

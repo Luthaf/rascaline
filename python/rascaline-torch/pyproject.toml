@@ -38,7 +38,7 @@ requires = [
     "wheel >=0.38",
     "cmake",
     "torch >= 1.11",
-    "equistore-torch @ https://github.com/lab-cosmo/equistore/archive/c022fde.zip#subdirectory=python/equistore-torch",
+    "equistore-torch @ https://github.com/lab-cosmo/equistore/archive/ee5ab99.zip#subdirectory=python/equistore-torch",
 ]
 
 # use a custom build backend to add a dependency on the right version of rascaline
