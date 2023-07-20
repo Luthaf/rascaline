@@ -9,6 +9,7 @@ by programming languages.
     :maxdepth: 1
 
     Python <python/index>
+    TorchScript <torch/index>
     Rust <rust>
     C <c/index>
     C++ <cxx/index>

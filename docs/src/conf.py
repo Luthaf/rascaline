@@ -11,6 +11,9 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 sys.path.append(os.path.join(ROOT, "docs", "extensions"))
 
+os.environ["RASCALINE_IMPORT_FOR_SPHINX"] = "1"
+os.environ["EQUISTORE_IMPORT_FOR_SPHINX"] = "1"
+
 # -- Project information -----------------------------------------------------
 
 project = "Rascaline"
