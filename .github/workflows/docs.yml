@@ -16,21 +16,29 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
+
       - name: setup rust
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
+
       - name: setup Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.10"
+
       - name: install dependencies
         run: |
           pip install tox
           sudo apt install doxygen
+
       - name: build documentation
         run: tox -e docs
+        env:
+          # Use the CPU only version of torch when building/running the code
+          PIP_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
+
       - name: put documentation in the website
         run: |
           git clone https://github.com/$GITHUB_REPOSITORY --branch gh-pages gh-pages
@@ -45,6 +53,7 @@ jobs:
               rm -rf latest
               mv ../docs/build/html latest
           fi
+
       - name: deploy to gh-pages
         if: github.event_name == 'push'
         uses: peaceiris/actions-gh-pages@v3
