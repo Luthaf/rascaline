@@ -61,6 +61,7 @@ impl SoapRadialIntegralSpline {
         return Ok(SoapRadialIntegralSpline { spline });
     }
 
+    /// Create a new `SoapRadialIntegralSpline` with user-defined spline points.
     pub fn from_tabulated(
         parameters: SoapRadialIntegralSplineParameters,
         spline_points: Vec<SplinePoint>
