@@ -427,24 +427,21 @@ def _combine_single_center_block_pair(
     values arrays and returns in a new TensorBlock.
     """
     # Check metadata
-    #if block_1.properties.names != block_2.properties.names:
+    # if block_1.properties.names != block_2.properties.names:
     #    raise ValueError(
     #        "TensorBlock pair to combine must have equal properties in the same order"
     #    )
 
     # Do the CG combination - no shape pre-processing required
-    # print(block_1.values.shape, block_2.values.shape, lam)
     combined_values = _clebsch_gordan_combine(
         block_1.values, block_2.values, lam, cg_cache
     )
-    #TODO: Add comments
-    combined_nu = int(len(block_1.properties.names)/2 + 1)
-    n_names = [f"n_{i}" for i in range(1, combined_nu+1)]
-    neighbor_names = [f"species_neighbor_{i}" for i in range(1, combined_nu+1)]
-    prop_names = [item for i in zip(neighbor_names,n_names) for item in i]
-    prop_vals = np.array([np.concatenate((b2, b1)) 
-                          for b2 in block_2.properties.values
-                          for b1 in block_1.properties.values])
+
+    #
+    combined_nu = int(len(block_1.properties.names) / 2 + 1)
+    n_names = [f"n_{i}" for i in range(1, combined_nu + 1)]
+    neighbor_names = [f"species_neighbor_{i}" for i in range(1, combined_nu + 1)]
+    prop_names = [item for i in zip(neighbor_names, n_names) for item in i]
 
     # Create a TensorBlock
     combined_block = TensorBlock(
@@ -460,7 +457,13 @@ def _combine_single_center_block_pair(
         # body order
         properties=Labels(
             names=prop_names,
-            values=prop_vals,
+            values=np.array(
+                [
+                    np.concatenate((b2, b1))
+                    for b2 in block_2.properties.values
+                    for b1 in block_1.properties.values
+                ]
+            ),
         ),
     )
 
@@ -635,7 +638,7 @@ def _create_combined_keys(
     "l1", "l2", ..., f"l{`nu`}", "k2", ..., f"k{`nu`-1}"]. The "lx" columns
     track the l values of the nu=1 blocks that were previously combined. The
     "kx" columns tracks the intermediate lambda values of nu > 1 blocks that
-    haev been combined.
+    have been combined.
 
     For instance, a TensorMap of body order nu=4 will have key names
     ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center",
@@ -727,7 +730,7 @@ def _create_combined_keys(
             sig = sig1 * sig2 * (-1) ** (lam1 + lam2 + lam)
 
             # Extract the l and k lists from keys_1
-            l_list = key_1.values[4 : 4 + (nu1 + 1)].tolist()
+            l_list = key_1.values[4 : 4 + nu1].tolist()
             k_list = key_1.values[4 + nu1 :].tolist()
 
             # Build the new keys values. l{nu} is `lam2`` (i.e.
@@ -738,6 +741,8 @@ def _create_combined_keys(
             keys_1_entries.append(key_1)
             keys_2_entries.append(key_2)
 
+    # print(new_names)
+    # print(new_key_values)
     # Define new keys as the full product of keys_1 and keys_2
     combined_keys = Labels(names=new_names, values=np.array(new_key_values))
 
@@ -752,7 +757,6 @@ def _create_combined_keys(
 
         # Sort the l list
         l_list_sorted = sorted(l_list)
-        key_slice_sorted = tuple(first_part + l_list_sorted)
 
         # Compare the sliced key with the one recreated when the l list is
         # sorted. If they are identical, this is the key of the block that we
