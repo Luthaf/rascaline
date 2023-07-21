@@ -2,6 +2,7 @@
 
 #include "rascaline/torch/system.hpp"
 #include "rascaline/torch/calculator.hpp"
+
 using namespace rascaline_torch;
 
 TORCH_LIBRARY(rascaline, m) {
@@ -31,6 +32,10 @@ TORCH_LIBRARY(rascaline, m) {
             torch::arg("systems"),
             torch::arg("gradients") = std::vector<std::string>()
         })
+        .def("register_autograd", &CalculatorHolder::register_autograd, DOCSTRING, {
+            torch::arg("systems"),
+            torch::arg("descriptor") 
+        })
         .def_property("name", &CalculatorHolder::name)
         .def_property("parameters", &CalculatorHolder::parameters)
         .def_pickle(
@@ -44,5 +49,7 @@ TORCH_LIBRARY(rascaline, m) {
                     state[0], state[1]
                 );
             })
+
         ;
+
 }

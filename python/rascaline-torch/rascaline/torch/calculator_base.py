@@ -38,6 +38,37 @@ class CalculatorModule(torch.nn.Module):
         """parameters (formatted as JSON) used to create this calculator"""
         return self._c.parameters
 
+    def register_autograd(
+        self,
+        systems: Union[System, List[System]],
+        descriptor: equistore.torch.TensorMap,
+    )
+        """Registers the gradients in ``descriptor`` of the given ``systems`` so
+        they are available on backpropagation
+
+        .. seealso::
+
+            :py:func:`rascaline.CalculatorBase.compute` for more information on the
+            different parameters of this function.
+
+        :param systems: single system or list of systems on which to run the
+            calculation. If any of the systems' ``positions`` or ``cell`` has
+            ``requires_grad`` set to ``True``, then the corresponding gradients are
+            computed and registered as a custom node in the computational graph, to
+            allow backward propagation of the gradients later.
+
+        :param descriptor: TODO
+        """
+        # PR COMMENT I had the feeling that this is better in a seperate function
+        #            rather than intermengling computation and registration
+
+        # TODO some check that systems.grad and descriptor gradients agree
+
+        if not isinstance(systems, list):
+            systems = [systems]
+
+        self._c.register_autograd(systems=systems, descriptor=descriptor)
+
     def compute(
         self,
         systems: Union[System, List[System]],

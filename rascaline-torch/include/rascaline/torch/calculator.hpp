@@ -43,6 +43,11 @@ public:
         std::vector<std::string> gradients = {}
     );
 
+    void register_autograd(
+        std::vector<TorchSystem> systems,
+        equistore_torch::TorchTensorMap descriptor
+    );
+
 private:
     friend class RascalineAutograd;
 

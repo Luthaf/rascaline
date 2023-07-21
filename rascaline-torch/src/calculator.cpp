@@ -102,3 +102,24 @@ equistore_torch::TorchTensorMap CalculatorHolder::compute(
 
     return descriptor;
 }
+
+void CalculatorHolder::register_autograd(
+    std::vector<TorchSystem> systems,
+    equistore_torch::TorchTensorMap descriptor
+) {
+
+    auto all_positions = std::vector<torch::Tensor>();
+    auto all_cells = std::vector<torch::Tensor>();
+
+    for (const auto& system: systems) {
+        all_positions.push_back(system->get_positions());
+        all_cells.push_back(system->get_cell());
+    }
+
+    auto _ = EquistoreAutograd::apply(
+        torch::vstack(all_positions),
+        torch::vstack(all_cells),
+        descriptor,
+        std::move(systems)
+    );
+}

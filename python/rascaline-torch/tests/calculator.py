@@ -13,6 +13,22 @@ def system():
         cell=torch.tensor([[10, 0, 0], [0, 10, 0], [0, 0, 10]]),
     )
 
+def test_register_autograd(system):
+    calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
+    system.positions.requires_grad_() # TODO move this to register_autograd function
+    descriptor = calculator.compute(system, gradients=["positions"])
+
+    loss = torch.tensor(0.)
+    for _, block in descriptor.items():
+        loss += torch.sum(block.values)
+    loss.backward()
+
+    # e.g. second batch
+    calculator.register_autograd(system, descriptor)
+    loss = torch.tensor(0.)
+    for _, block in descriptor.items():
+        loss += torch.sum(block.values)
+    loss.backward()
 
 def test_compute(system):
     calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
