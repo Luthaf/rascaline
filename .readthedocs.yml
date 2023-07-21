@@ -12,7 +12,7 @@ build:
     - cmake
   tools:
     python: "3.10"
-    rust: "1.61"
+    rust: "1.64"  # RDT does not offer our minimal version 1.63
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:

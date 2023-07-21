@@ -103,24 +103,15 @@ if(CARGO_STATUS AND NOT CARGO_STATUS EQUAL 0)
     )
 endif()
 
-set(REQUIRED_RUST_VERSION "1.61.0")
 if (CARGO_VERSION_RAW MATCHES "cargo ([0-9]+\\.[0-9]+\\.[0-9]+).*")
     set(CARGO_VERSION "${CMAKE_MATCH_1}")
 else()
     message(FATAL_ERROR "failed to determine cargo version, output was: ${CARGO_VERSION_RAW}")
 endif()
-
-if (${CARGO_VERSION} VERSION_LESS ${REQUIRED_RUST_VERSION})
-    message(FATAL_ERROR
-        "your Rust installation is too old (you have version ${CARGO_VERSION}), \
-        at least ${REQUIRED_RUST_VERSION} is required"
-    )
-else()
-    if(NOT "${CACHED_LAST_CARGO_VERSION}" STREQUAL ${CARGO_VERSION})
-        set(CACHED_LAST_CARGO_VERSION ${CARGO_VERSION} CACHE INTERNAL "Last version of cargo used in configuration")
-        message(STATUS "Using cargo version ${CARGO_VERSION} at ${CARGO_EXE}")
-        set(CARGO_VERSION_CHANGED TRUE)
-    endif()
+if(NOT "${CACHED_LAST_CARGO_VERSION}" STREQUAL ${CARGO_VERSION})
+    set(CACHED_LAST_CARGO_VERSION ${CARGO_VERSION} CACHE INTERNAL "Last version of cargo used in configuration")
+    message(STATUS "Using cargo version ${CARGO_VERSION} at ${CARGO_EXE}")
+    set(CARGO_VERSION_CHANGED TRUE)
 endif()
 
 # ============================================================================ #
