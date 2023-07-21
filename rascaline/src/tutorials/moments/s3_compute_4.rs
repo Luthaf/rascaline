@@ -28,6 +28,10 @@ impl CalculatorBase for GeometricMoments {
         todo!()
     }
 
+    fn cutoffs(&self) -> &[f64] {
+        todo!()
+    }
+
     fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
         todo!()
     }

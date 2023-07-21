@@ -605,6 +605,18 @@ public:
         }
     }
 
+    /// Get all radial cutoffs used by this `Calculator`'s neighbors lists
+    std::vector<double> cutoffs() const {
+        const double* data = nullptr;
+        uintptr_t length = 0;
+        details::check_status(rascal_calculator_cutoffs(
+            calculator_,
+            &data,
+            &length
+        ));
+        return std::vector<double>(data, data + length);
+    }
+
     /// Runs a calculation with this calculator on the given ``systems``
     equistore::TensorMap compute(
         std::vector<rascal_system_t>& systems,

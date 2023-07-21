@@ -522,6 +522,10 @@ impl CalculatorBase for SphericalExpansionByPair {
         serde_json::to_string(&self.parameters).expect("failed to serialize to JSON")
     }
 
+    fn cutoffs(&self) -> &[f64] {
+        std::slice::from_ref(&self.parameters.cutoff)
+    }
+
     fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
         // the species part of the keys is the same for all l
         let species_keys = FullNeighborList { cutoff: self.parameters.cutoff, self_pairs: false }.keys(systems)?;

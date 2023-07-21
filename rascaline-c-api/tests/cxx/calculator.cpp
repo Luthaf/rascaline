@@ -56,6 +56,17 @@ TEST_CASE("Calculator parameters") {
         auto calculator = rascaline::Calculator("dummy_calculator", HYPERS_JSON);
         CHECK(calculator.parameters() == HYPERS_JSON);
     }
+
+    SECTION("cutoffs") {
+        std::string HYPERS_JSON = R"({
+            "cutoff": 3.5,
+            "delta": 25,
+            "name": "bar",
+            "gradients": false
+        })";
+        auto calculator = rascaline::Calculator("dummy_calculator", HYPERS_JSON);
+        CHECK(calculator.cutoffs() == std::vector<double>{3.5});
+    }
 }
 
 TEST_CASE("calculator creation errors") {
