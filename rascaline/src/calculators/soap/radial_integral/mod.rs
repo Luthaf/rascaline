@@ -104,13 +104,19 @@ impl SoapRadialIntegralCache {
                     Box::new(gto) as Box<dyn SoapRadialIntegral>
                 }
             }
-
-            RadialBasis::TabulatedRadialIntegral {points} => {
+            RadialBasis::TabulatedRadialIntegral {points, center_contribution} => {
                 let parameters = SoapRadialIntegralSplineParameters {
                     max_radial: parameters.max_radial,
                     max_angular: parameters.max_angular,
                     cutoff: parameters.cutoff,
                 };
+
+                if center_contribution.is_some() {
+                    Error::InvalidParameter(
+                        "For a tabulated radial integral with SOAP the
+                        `center_contribution` is superflous.".into());
+                }
+                
                 Box::new(SoapRadialIntegralSpline::from_tabulated(
                     parameters, points
                 )?)

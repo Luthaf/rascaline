@@ -91,8 +91,20 @@ impl LodeRadialIntegralCache {
                     Box::new(gto) as Box<dyn LodeRadialIntegral>
                 }
             }
-            RadialBasis::TabulatedRadialIntegral {points: _} => {
-                return Err(Error::InvalidParameter("LODE does not support a tabulated radial integral for the moment".into()));
+            RadialBasis::TabulatedRadialIntegral {points, center_contribution} => {
+                let parameters = LodeRadialIntegralSplineParameters {
+                    max_radial: parameters.max_radial,
+                    max_angular: parameters.max_angular,
+                    cutoff: parameters.cutoff,
+                };
+
+                let center_contribution = center_contribution.ok_or(Error::InvalidParameter(
+                    "For a tabulated radial integral with LODE please provide the
+                    `center_contribution`.".into()))?;
+
+                Box::new(LodeRadialIntegralSpline::from_tabulated(
+                    parameters, points, center_contribution
+                )?)
             }
         };
         let shape = (parameters.max_angular + 1, parameters.max_radial);
