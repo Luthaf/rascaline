@@ -235,7 +235,7 @@ def generate_functions(file, functions):
 def generate_declarations():
     data = parse(RASCALINE_HEADER)
 
-    outpath = os.path.join(ROOT, "..", "rascaline", "_c_api.py")
+    outpath = os.path.join(ROOT, "..", "rascaline", "rascaline", "_c_api.py")
     with open(outpath, "w") as file:
         file.write(
             """'''Automatically-generated file, do not edit!!!'''

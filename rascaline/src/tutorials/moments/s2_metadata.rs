@@ -27,6 +27,12 @@ impl CalculatorBase for GeometricMoments {
     }
     // [CalculatorBase::parameters]
 
+    // [CalculatorBase::cutoffs]
+    fn cutoffs(&self) -> &[f64] {
+        std::slice::from_ref(&self.cutoff)
+    }
+    // [CalculatorBase::cutoffs]
+
     // [CalculatorBase::keys]
     fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
         let builder = CenterSingleNeighborsSpeciesKeys {

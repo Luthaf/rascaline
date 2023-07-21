@@ -130,6 +130,13 @@ def setup_functions(lib):
     ]
     lib.rascal_calculator_parameters.restype = _check_rascal_status_t
 
+    lib.rascal_calculator_cutoffs.argtypes = [
+        POINTER(rascal_calculator_t),
+        POINTER(POINTER(ctypes.c_double)),
+        POINTER(c_uintptr_t)
+    ]
+    lib.rascal_calculator_cutoffs.restype = _check_rascal_status_t
+
     lib.rascal_calculator_compute.argtypes = [
         POINTER(rascal_calculator_t),
         POINTER(POINTER(eqs_tensormap_t)),

@@ -117,7 +117,7 @@ trait.
    :end-before: [CalculatorBase::name]
    :dedent: 4
 
-Then, the ``get_parameters`` function should return the parameters used to
+Then, the ``parameters`` function should return the parameters used to
 create the current instance of the calculator in JSON format. To this end, we
 use `serde`_ and ``serde_json`` everywhere in rascaline, so it is a good idea to
 do the same here. Let's start by adding the corresponding ``#[derive]`` to the
@@ -143,6 +143,17 @@ contained maps with non-string keys, which is not the case here. ``expect``
 allow us to indicate we don't ever expect this function to fail, but if it were
 to return an error, then the code would immediately stop and show the given
 message (using a `panic`_).
+
+Finally, the ``cutoffs`` function should return all the radial cutoffs used
+in neighbors lists. Here, we only have one --- ``self.cutoffs`` --- and we use
+``std::slice::from_ref`` to construct a list with a single element from a
+scalar.
+
+.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s2_metadata.rs
+   :language: rust
+   :start-after: [CalculatorBase::cutoffs]
+   :end-before: [CalculatorBase::cutoffs]
+   :dedent: 4
 
 .. _Result: https://doc.rust-lang.org/std/result/index.html
 .. _panic: https://doc.rust-lang.org/std/macro.panic.html

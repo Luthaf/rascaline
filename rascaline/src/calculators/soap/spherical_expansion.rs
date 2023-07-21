@@ -588,6 +588,10 @@ impl CalculatorBase for SphericalExpansion {
         serde_json::to_string(self.by_pair.parameters()).expect("failed to serialize to JSON")
     }
 
+    fn cutoffs(&self) -> &[f64] {
+        self.by_pair.cutoffs()
+    }
+
     fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
         let builder = CenterSingleNeighborsSpeciesKeys {
             cutoff: self.by_pair.parameters().cutoff,

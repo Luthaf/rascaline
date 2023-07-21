@@ -39,6 +39,10 @@ impl CalculatorBase for DummyCalculator {
         serde_json::to_string(self).expect("failed to serialize to JSON")
     }
 
+    fn cutoffs(&self) -> &[f64] {
+        std::slice::from_ref(&self.cutoff)
+    }
+
     fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
         return CenterSpeciesKeys.keys(systems);
     }

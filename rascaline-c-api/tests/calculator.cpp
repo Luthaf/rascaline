@@ -96,6 +96,24 @@ TEST_CASE("calculator parameters") {
 
         rascal_calculator_free(calculator);
     }
+
+    SECTION("cutoffs") {
+        std::string HYPERS_JSON = R"({
+            "cutoff": 3.5,
+            "delta": 25,
+            "name": "bar"
+        })";
+        auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON.c_str());
+        REQUIRE(calculator != nullptr);
+
+        const double* cutoffs = nullptr;
+        uintptr_t cutoffs_count = 0;
+        CHECK_SUCCESS(rascal_calculator_cutoffs(calculator, &cutoffs, &cutoffs_count));
+        CHECK(cutoffs_count == 1);
+        CHECK(cutoffs[0] == 3.5);
+
+        rascal_calculator_free(calculator);
+    }
 }
 
 TEST_CASE("calculator creation errors") {

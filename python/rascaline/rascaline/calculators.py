@@ -7,6 +7,7 @@ from equistore.core._c_api import eqs_tensormap_t
 
 from ._c_api import (
     RASCAL_BUFFER_SIZE_ERROR,
+    c_uintptr_t,
     rascal_calculation_options_t,
     rascal_system_t,
 )
@@ -138,7 +139,7 @@ class CalculatorBase:
         self._as_parameter_ = 0
 
     @property
-    def name(self):
+    def name(self) -> str:
         """Name of this calculator."""
         return _call_with_growing_buffer(
             lambda buffer, bufflen: self._lib.rascal_calculator_name(
@@ -147,18 +148,32 @@ class CalculatorBase:
         )
 
     @property
-    def c_name(self):
+    def c_name(self) -> str:
         """Name used to register & create this calculator."""
         return self._c_name
 
     @property
-    def parameters(self):
+    def parameters(self) -> str:
         """Parameters (formatted as JSON) used to create this calculator."""
         return _call_with_growing_buffer(
             lambda buffer, bufflen: self._lib.rascal_calculator_parameters(
                 self, buffer, bufflen
             )
         )
+
+    @property
+    def cutoffs(self) -> List[float]:
+        """all the radial cutoffs used by this calculator's neighbors lists"""
+
+        cutoffs = ctypes.POINTER(ctypes.c_double)()
+        cutoffs_count = c_uintptr_t()
+        self._lib.rascal_calculator_cutoffs(self, cutoffs, cutoffs_count)
+
+        result = []
+        for i in range(cutoffs_count.value):
+            result.append(cutoffs[i])
+
+        return result
 
     def compute(
         self,

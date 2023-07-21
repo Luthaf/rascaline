@@ -422,6 +422,10 @@ impl CalculatorBase for SoapPowerSpectrum {
         serde_json::to_string(&self.parameters).expect("failed to serialize to JSON")
     }
 
+    fn cutoffs(&self) -> &[f64] {
+        self.spherical_expansion.cutoffs()
+    }
+
     fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<equistore::Labels, Error> {
         let builder = CenterTwoNeighborsSpeciesKeys {
             cutoff: self.parameters.cutoff,

@@ -432,6 +432,10 @@ impl CalculatorBase for LodeSphericalExpansion {
         serde_json::to_string(&self.parameters).expect("failed to serialize to JSON")
     }
 
+    fn cutoffs(&self) -> &[f64] {
+        &[]
+    }
+
     fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
         let builder = AllSpeciesPairsKeys {};
         let keys = builder.keys(systems)?;
