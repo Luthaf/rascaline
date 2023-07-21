@@ -57,7 +57,7 @@ on rascaline:
 - **the rust compiler**: you will need both ``rustc`` (the compiler) and
   ``cargo`` (associated build tool). You can install both using `rustup`_, or
   use a version provided by your operating system. We need at least Rust version
-  1.61 to build rascaline.
+  1.63 to build rascaline.
 - **Python**: you can install ``Python`` and ``pip`` from your operating system.
   We require a Python version of at least 3.6.
 - **tox**: a Python test runner, cf https://tox.readthedocs.io/en/latest/. You
