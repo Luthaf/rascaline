@@ -91,25 +91,16 @@ class ClebschGordanReal:
                     real_cg = real_cg @ c2r[lam].T
 
                     if (l1 + l2 + lam) % 2 == 0:
-                        rcg = np.real(real_cg)
+                        cg_l1l2lam = np.real(real_cg)
                     else:
-                        rcg = np.imag(real_cg)
+                        cg_l1l2lam  = np.imag(real_cg)
 
                     if sparse:
-                        new_cg = []
-                        for mu in range(2 * lam + 1):
-                            cg_nonzero = np.where(np.abs(rcg[:, :, mu]) > 1e-15)
-                            cg_M = np.zeros(
-                                len(cg_nonzero[0]),
-                                dtype=[("m1", ">i4"), ("m2", ">i4"), ("cg", ">f8")],
-                            )
-                            cg_M["m1"] = cg_nonzero[0]
-                            cg_M["m2"] = cg_nonzero[1]
-                            cg_M["cg"] = rcg[cg_nonzero[0], cg_nonzero[1], mu]
-                            new_cg.append(cg_M)
-                    else:
-                        new_cg = rcg
-                    coeff_dict[(l1, l2, lam)] = new_cg
+                        # if sparse we make a dictionary out of the matrix
+                        nonzeros_cg_coeffs_idx = np.where(np.abs(cg_l1l2lam) > 1e-15)
+                        cg_l1l2lam = {(m1, m2, mu): cg_l1l2lam[m1, m2, mu]
+                                for m1, m2, mu in zip(*nonzeros_cg_coeffs_idx)}
+                    coeff_dict[(l1, l2, lam)] = cg_l1l2lam
 
         return coeff_dict
 
@@ -537,13 +528,11 @@ def _clebsch_gordan_combine_sparse(
     arr_out = np.zeros((n_i, 2 * lam + 1, n_p * n_q))
 
     # Fill in each mu component of the output array in turn
-    for mu in range(2 * lam + 1):
-        # Iterate over the Clebsch-Gordan coefficients for this mu
-        for m1, m2, cg_coeff in cg_coeffs[mu]:
-            # Broadcast arrays, multiply together and with CG coeff
-            arr_out[:, mu, :] += (
-                arr_1[:, m1, :, None] * arr_2[:, m2, None, :] * cg_coeff
-            ).reshape(n_i, n_p * n_q)
+    for m1, m2, mu in cg_coeffs.keys():
+        # Broadcast arrays, multiply together and with CG coeff
+        arr_out[:, mu, :] += (
+            arr_1[:, m1, :, None] * arr_2[:, m2, None, :] * cg_coeffs[(m1, m2, mu)]
+        ).reshape(n_i, n_p * n_q)
 
     return arr_out
 
