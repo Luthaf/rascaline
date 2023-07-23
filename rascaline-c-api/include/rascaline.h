@@ -210,9 +210,7 @@ typedef struct rascal_system_t {
    * cutoff passed in the last call to `compute_neighbors`. This function is
    * only valid to call after a call to `compute_neighbors`.
    */
-  rascal_status_t (*pairs)(const void *user_data,
-                           const struct rascal_pair_t **pairs,
-                           uintptr_t *count);
+  rascal_status_t (*pairs)(const void *user_data, const struct rascal_pair_t **pairs, uintptr_t *count);
   /**
    * This function should set `*pairs` to a pointer to the first element of a
    * contiguous array containing all pairs in this system containing the atom
@@ -224,10 +222,7 @@ typedef struct rascal_system_t {
    * included both in the return of `pairs_containing(i)` and
    * `pairs_containing(j)`.
    */
-  rascal_status_t (*pairs_containing)(const void *user_data,
-                                      uintptr_t center,
-                                      const struct rascal_pair_t **pairs,
-                                      uintptr_t *count);
+  rascal_status_t (*pairs_containing)(const void *user_data, uintptr_t center, const struct rascal_pair_t **pairs, uintptr_t *count);
 } rascal_system_t;
 
 /**

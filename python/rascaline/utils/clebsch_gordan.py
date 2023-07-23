@@ -48,12 +48,17 @@ class ClebschGordanReal:
     the `l2` angular channel into the irreducible tensor of order `lambda`.
     """
 
-    def __init__(self, lambda_max: int):
-        self.lambda_max = lambda_max
-        self.coeffs = ClebschGordanReal.build_coeff_dict(self.lambda_max)
+    def __init__(self, lambda_max: int, sparse: bool = True):
+        self._lambda_max = lambda_max
+        self._sparse = sparse
+        self._coeffs = ClebschGordanReal.build_coeff_dict(self._lambda_max, self._sparse)
+
+    @property
+    def coeffs(self):
+        return self._coeffs
 
     @staticmethod
-    def build_coeff_dict(lambda_max: int):
+    def build_coeff_dict(lambda_max: int, sparse: bool):
         """
         Builds a dictionary of Clebsch-Gordan coefficients for all possible
         combination of l1 and l2, up to lambda_max.
@@ -90,18 +95,20 @@ class ClebschGordanReal:
                     else:
                         rcg = np.imag(real_cg)
 
-                    new_cg = []
-                    for mu in range(2 * lam + 1):
-                        cg_nonzero = np.where(np.abs(rcg[:, :, mu]) > 1e-15)
-                        cg_M = np.zeros(
-                            len(cg_nonzero[0]),
-                            dtype=[("m1", ">i4"), ("m2", ">i4"), ("cg", ">f8")],
-                        )
-                        cg_M["m1"] = cg_nonzero[0]
-                        cg_M["m2"] = cg_nonzero[1]
-                        cg_M["cg"] = rcg[cg_nonzero[0], cg_nonzero[1], mu]
-                        new_cg.append(cg_M)
-
+                    if sparse:
+                        new_cg = []
+                        for mu in range(2 * lam + 1):
+                            cg_nonzero = np.where(np.abs(rcg[:, :, mu]) > 1e-15)
+                            cg_M = np.zeros(
+                                len(cg_nonzero[0]),
+                                dtype=[("m1", ">i4"), ("m2", ">i4"), ("cg", ">f8")],
+                            )
+                            cg_M["m1"] = cg_nonzero[0]
+                            cg_M["m2"] = cg_nonzero[1]
+                            cg_M["cg"] = rcg[cg_nonzero[0], cg_nonzero[1], mu]
+                            new_cg.append(cg_M)
+                    else:
+                        new_cg = rcg
                     coeff_dict[(l1, l2, lam)] = new_cg
 
         return coeff_dict
@@ -227,7 +234,7 @@ def n_body_iteration_single_center(
 
     The returned TensorMap will only contain blocks with angular channels of
     target order lambda corresponding to those passed in ``lambdas``.
-
+k_angular
     Passing ``lambda_cut`` will place a maximum on the angular
     order of blocks created by combination at each CG combination step.
 
@@ -253,12 +260,7 @@ def n_body_iteration_single_center(
         )
 
     # Define the cached CG coefficients - currently only sparse CG matrices implemented
-    if use_sparse:
-        cg_cache = ClebschGordanReal(lambda_cut)
-    else:
-        raise NotImplementedError(
-            "currently CG iterations only implemented for use_sparse=True"
-        )
+    cg_cache = ClebschGordanReal(lambda_cut, use_sparse)
 
     # Generate a rascaline SphericalExpansion, for only the selected samples if
     # applicable
@@ -434,7 +436,7 @@ def _combine_single_center_block_pair(
 
     # Do the CG combination - no shape pre-processing required
     combined_values = _clebsch_gordan_combine(
-        block_1.values, block_2.values, lam, cg_cache
+        block_1.values, block_2.values, lam, cg_cache, use_sparse
     )
 
     #
@@ -503,7 +505,7 @@ def _clebsch_gordan_combine(
     # Check the first dimension of the arrays are the same (i.e. same samples)
     if use_sparse:
         return _clebsch_gordan_combine_sparse(arr_1, arr_2, lam, cg_cache)
-    raise NotImplementedError
+    return _clebsch_gordan_combine_dense(arr_1, arr_2, lam, cg_cache)
     # return _clebsch_gordan_dense(arr_1, arr_2, lam, cg_cache)
 
 
@@ -539,7 +541,7 @@ def _clebsch_gordan_combine_sparse(
         # Iterate over the Clebsch-Gordan coefficients for this mu
         for m1, m2, cg_coeff in cg_coeffs[mu]:
             # Broadcast arrays, multiply together and with CG coeff
-            arr_out[:, mu, :] = (
+            arr_out[:, mu, :] += (
                 arr_1[:, m1, :, None] * arr_2[:, m2, None, :] * cg_coeff
             ).reshape(n_i, n_p * n_q)
 
@@ -547,23 +549,19 @@ def _clebsch_gordan_combine_sparse(
 
 
 def _clebsch_gordan_combine_dense(
-    arr_1: np.ndarray,
-    arr_2: np.ndarray,
+    arr_1,
+    arr_2,
     lam: int,
     cg_cache,
-) -> np.ndarray:
+):
     """
-    arr_1,#: Array[samples, 2 * l1 + 1, q_properties], # mu values for l1
-    arr_2,#: Array[samples, 2 * l2 + 1, p_properties], # mu values for l2
-    lam: int,
-    cg_cache,#: Array[(2 * l1 +1) * (2 * l2 +1), (2 * lam + 1)]
-    ) -> None: #Array[samples, 2 * lam + 1, q_properties * p_properties]:
 
-    :param arr_1: array with the mu values for l1 with shape [samples, 2 * l1 + 1, q_properties]
-    :param arr_2: array with the mu values for l1 with shape [samples, 2 * l2 + 1, p_properties]
+    :param arr_1: array with the m values for l1 with shape [n_samples, 2 * l1 + 1, n_q_properties]
+    :param arr_2: array with the m values for l2 with shape [n_samples, 2 * l2 + 1, n_p_properties]
     :param lam: int resulting coupled channel
     :param cg_cache: array of shape [(2 * l1 +1) * (2 * l2 +1), (2 * lam + 1)]
-    :returns lam_mu_values: array of shape [samples, (2 * l1 + 1)* (2 * l2 + 1), q_properties, p_properties]
+
+    :returns lam_mu_values: array of shape [samples, (2*lam+1), q_properties*p_properties]
 
     >>> N_SAMPLES = 30
     >>> N_Q_PROPERTIES = 10
@@ -573,27 +571,37 @@ def _clebsch_gordan_combine_dense(
     >>> LAM = 2
     >>> arr_1 = np.random.rand(N_SAMPLES, 2*L1+1, N_Q_PROPERTIES)
     >>> arr_2 = np.random.rand(N_SAMPLES, 2*L2+1, N_P_PROPERTIES)
-    >>> cg_cache = np.random.rand(2*L1+1, 2*L2+1, 2*LAM+1)
+    >>> cg_cache = {(L1, L2, LAM): np.random.rand(2*L1+1, 2*L2+1, 2*LAM+1)}
     >>> out1 = _clebsch_gordan_dense(arr_1, arr_2, LAM, cg_cache)
-    >>> out2 = np.einsum("slq, skp, lkL -> sLqp", arr_1, arr_2, cg_cache).reshape(arr_1.shape[0], 2*LAM+1, -1)
+    >>> # (samples l1_m  q_features) (samples l2_m p_features),
+    >>> #   (l1_m  l2_m  lambda_mu)
+    >>> # --> (samples, lambda_mu q_features p_features)
+    >>> # in einsum l1_m is l, l2_m is k, lambda_mu is L
+    >>> out2 = np.einsum("slq, skp, lkL -> sLqp", arr_1, arr_2, cg_cache[(L1, L2, LAM)])
+    >>> # --> (samples lambda_mu (q_features p_features))
+    >>> out2 = out2.reshape(arr_1.shape[0], 2*LAM+1, -1)
     >>> print(np.allclose(out1, out2))
     True
     """
-    raise NotImplementedError
-    # l1_mu q, samples l2_mu p -> samples l2_mu p l1_mu q
+    # Infer l1 and l2 from the len of the length of axis 1 of each tensor
+    l1 = (arr_1.shape[1] - 1) // 2
+    l2 = (arr_2.shape[1] - 1) // 2
+    cg_coeffs = cg_cache.coeffs[(l1, l2, lam)]
+
+    # (samples None None l1_mu q) * (samples l2_mu p None None) -> (samples l2_mu p l1_mu q)
     # we broadcast it in this way so we only need to do one swapaxes in the next step
     out = arr_1[:, None, None, :, :] * arr_2[:, :, :, None, None]
-    # samples l2_mu p l1_mu q -> samples q p l1_mu l2_mu
+    # (samples l2_mu p l1_mu q) -> (samples q p l1_mu l2_mu)
     out = out.swapaxes(1, 4)
-    # samples q p l1_mu l2_mu ->  samples (q p) (l1_mu l2_mu)
+    # samples (q p l1_mu l2_mu) -> (samples (q p) (l1_mu l2_mu))
     out = out.reshape(
         -1, arr_1.shape[2] * arr_2.shape[2], arr_1.shape[1] * arr_2.shape[1]
     )
-    # l1_mu l2_mu lam_mu -> (l1_mu l2_mu) lam_mu
-    cg_cache = cg_cache.reshape(-1, 2 * lam + 1)
-    # samples (q p) (l1_mu l2_mu), (l1_mu l2_mu) lam_mu -> samples (q p) lam_mu
-    out = out @ cg_cache.reshape(-1, 2 * lam + 1)
-    # samples (q p) lam_mu -> samples lam_mu (q p)
+    # (l1_mu l2_mu lam_mu) -> ((l1_mu l2_mu) lam_mu)
+    cg_coeffs = cg_coeffs.reshape(-1, 2 * lam + 1)
+    # (samples (q p) (l1_mu l2_mu)) @ ((l1_mu l2_mu) lam_mu) -> samples (q p) lam_mu
+    out = out @ cg_coeffs
+    # (samples (q p) lam_mu) -> (samples lam_mu (q p))
     return out.swapaxes(1, 2)
 
 
