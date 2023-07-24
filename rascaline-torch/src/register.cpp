@@ -1,6 +1,7 @@
 #include <torch/script.h>
 
 #include "rascaline/torch/system.hpp"
+#include "rascaline/torch/autograd.hpp"
 #include "rascaline/torch/calculator.hpp"
 using namespace rascaline_torch;
 

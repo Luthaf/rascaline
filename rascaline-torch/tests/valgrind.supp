@@ -5,3 +5,23 @@
    ...
    fun:exit
 }
+
+{
+   dlopen loading torch extensions
+   Memcheck:Addr8
+   fun:strncmp
+   ...
+   fun:_dl_open
+   fun:dlopen_doit
+}
+
+{
+   MKL get_max_threads
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   ...
+   fun:mkl_serv_malloc
+   fun:mkl_serv_domain_get_max_threads
+   ...
+}
