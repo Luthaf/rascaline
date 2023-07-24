@@ -2,6 +2,7 @@
 
 #include "rascaline/torch/autograd.hpp"
 
+using namespace equistore_torch;
 using namespace rascaline_torch;
 
 #define stringify(str) #str
@@ -30,13 +31,33 @@ static bool contains(const std::vector<std::string>& haystack, const std::string
     return std::find(std::begin(haystack), std::end(haystack), needle) != std::end(haystack);
 }
 
+static std::vector<TorchTensorBlock> extract_gradient_blocks(
+    const TorchTensorMap& tensor,
+    const std::string& parameter
+) {
+    auto gradients = std::vector<TorchTensorBlock>();
+    for (int64_t i=0; i<tensor->keys()->count(); i++) {
+        auto block = tensor->block_by_id(i);
+        auto gradient = block->gradient(parameter);
+
+        gradients.push_back(torch::make_intrusive<TensorBlockHolder>(
+            gradient->values(),
+            gradient->samples(),
+            gradient->components(),
+            gradient->properties()
+        ));
+    }
+
+    return gradients;
+}
+
 std::vector<torch::Tensor> RascalineAutograd::forward(
     torch::autograd::AutogradContext *ctx,
     torch::Tensor all_positions,
     torch::Tensor all_cells,
     CalculatorHolder& calculator,
     std::vector<TorchSystem> systems,
-    equistore_torch::TorchTensorMap* tensor_map,
+    TorchTensorMap* tensor_map,
     std::vector<std::string> forward_gradients
 ) {
     // =============== Handle all options for the calculation =============== //
@@ -91,20 +112,48 @@ std::vector<torch::Tensor> RascalineAutograd::forward(
 
     // ============== save the required data for backward pass ============== //
     ctx->save_for_backward({all_positions, all_cells});
-    ctx->saved_data["descriptor"] = descriptor;
-    ctx->saved_data["structures_start"] = structures_start;
+    ctx->saved_data.emplace("structures_start", std::move(structures_start));
 
+    // We can not store the full TensorMap in `ctx`, because that would create a
+    // reference cycle: the `TensorMap`'s blocks `values` will have their
+    // `grad_fn` set to something which can call `RascalineAutograd::backward`,
+    // and stores the `ctx`. But the `ctx` would also contain a reference to the
+    // full `TensorMap`. This reference cycle means that the memory for the
+    // TensorMap would be leaked forever.
+    //
+    // Instead, we extract only the data we need to run the backward pass here
+    // (i.e. gradients blocks for positions autograd, gradients blocks and
+    // samples for cell autograd).
+    auto backward_gradients = std::vector<std::string>();
+    if (all_positions.requires_grad()) {
+        ctx->saved_data.emplace(
+            "positions_gradients",
+            extract_gradient_blocks(descriptor, "positions")
+        );
+    }
+
+    if (all_cells.requires_grad()) {
+        ctx->saved_data.emplace(
+            "cell_gradients",
+            extract_gradient_blocks(descriptor, "cell")
+        );
+
+        auto all_samples = std::vector<TorchLabels>();
+        for (int64_t i=0; i<descriptor->keys()->count(); i++) {
+            auto block = descriptor->block_by_id(i);
+            all_samples.push_back(block->samples());
+        }
+        ctx->saved_data.emplace("samples", std::move(all_samples));
+    }
 
     // ==================== "return" the right TensorMap ==================== //
     if (all_forward_gradients) {
         *tensor_map = std::move(descriptor);
     } else {
-        // create a new TensorMap with only the requested forward gradients
-        auto new_blocks = std::vector<equistore_torch::TorchTensorBlock>();
+        auto new_blocks = std::vector<TorchTensorBlock>();
         for (int64_t i=0; i<descriptor->keys()->count(); i++) {
             auto block = descriptor->block_by_id(i);
-
-            auto new_block = torch::make_intrusive<equistore_torch::TensorBlockHolder>(
+            auto new_block = torch::make_intrusive<TensorBlockHolder>(
                 block->values(),
                 block->samples(),
                 block->components(),
@@ -118,7 +167,8 @@ std::vector<torch::Tensor> RascalineAutograd::forward(
 
             new_blocks.push_back(std::move(new_block));
         }
-        *tensor_map = torch::make_intrusive<equistore_torch::TensorMapHolder>(
+
+        *tensor_map = torch::make_intrusive<TensorMapHolder>(
             descriptor->keys(),
             std::move(new_blocks)
         );
@@ -136,27 +186,39 @@ torch::autograd::variable_list RascalineAutograd::backward(
     auto all_positions = saved_variables[0];
     auto all_cells = saved_variables[1];
 
-    auto descriptor = ctx->saved_data["descriptor"].toCustomClass<equistore_torch::TensorMapHolder>();
     auto structures_start = ctx->saved_data["structures_start"].toIntVector();
 
     auto n_blocks = grad_outputs.size();
-    always_assert(descriptor->keys()->count() == n_blocks);
-
     for (size_t i=0; i<n_blocks; i++) {
         // TODO: do not make everything contiguous, instead check how much
         // slower `torch::dot` is here.
         grad_outputs[i] = grad_outputs[i].contiguous();
     }
 
-    // ===================== gradient w.r.t. positions ====================== //
     auto positions_grad = torch::Tensor();
+    auto cell_grad = torch::Tensor();
+    if (n_blocks == 0) {
+        return {
+            positions_grad,
+            cell_grad,
+            torch::Tensor(),
+            torch::Tensor(),
+            torch::Tensor(),
+            torch::Tensor(),
+        };
+    }
+
+    // ===================== gradient w.r.t. positions ====================== //
     if (all_positions.requires_grad()) {
+        const auto& positions_gradients = ctx->saved_data["positions_gradients"].toListRef();
+        always_assert(positions_gradients.size() == n_blocks);
+
         positions_grad = torch::zeros_like(all_positions);
         assert(positions_grad.is_contiguous() && positions_grad.is_cpu());
         auto positions_grad_ptr = positions_grad.data_ptr<double>();
 
         for (size_t block_i=0; block_i<n_blocks; block_i++) {
-            auto gradient = descriptor->block_by_id(block_i)->gradient("positions");
+            auto gradient = positions_gradients[block_i].toCustomClass<TensorBlockHolder>();
 
             auto samples = gradient->samples();
             auto samples_values = samples->values();
@@ -207,31 +269,37 @@ torch::autograd::variable_list RascalineAutograd::backward(
     }
 
     // ======================= gradient w.r.t. cell ========================= //
-    auto cell_grad = torch::Tensor();
     if (all_cells.requires_grad()) {
+        const auto& cell_gradients = ctx->saved_data["cell_gradients"].toListRef();
+        always_assert(cell_gradients.size() == n_blocks);
+
+        const auto& all_samples = ctx->saved_data["samples"].toListRef();
+        always_assert(all_samples.size() == n_blocks);
+
         cell_grad = torch::zeros_like(all_cells);
         always_assert(cell_grad.is_contiguous() && cell_grad.is_cpu());
         auto cell_grad_ptr = cell_grad.data_ptr<double>();
 
         // find the index of the "structure" dimension in the samples
-        auto sample_names = descriptor->sample_names();
+        const auto& first_sample_names = all_samples[0].toCustomClass<LabelsHolder>()->names();
         auto structure_dimension_it = std::find(
-            std::begin(sample_names),
-            std::end(sample_names),
+            std::begin(first_sample_names),
+            std::end(first_sample_names),
             "structure"
         );
-        if (structure_dimension_it == std::end(sample_names)) {
+        if (structure_dimension_it == std::end(first_sample_names)) {
             C10_THROW_ERROR(ValueError,
                 "could not find 'structure' in the samples, this calculator is missing it"
             );
         }
-        int64_t structure_dimension = std::distance(std::begin(sample_names), structure_dimension_it);
+        int64_t structure_dimension = std::distance(std::begin(first_sample_names), structure_dimension_it);
 
         for (size_t block_i=0; block_i<n_blocks; block_i++) {
-            auto block = descriptor->block_by_id(block_i);
-            auto gradient = block->gradient("cell");
+            auto gradient = cell_gradients[block_i].toCustomClass<TensorBlockHolder>();
+            auto block_samples = all_samples[block_i].toCustomClass<LabelsHolder>();
+            always_assert(first_sample_names == block_samples->names());
 
-            auto structures = block->samples()->values().index({torch::indexing::Slice(), structure_dimension});
+            auto structures = block_samples->values().index({torch::indexing::Slice(), structure_dimension});
 
             auto samples = gradient->samples();
             auto samples_values = samples->values();
