@@ -99,7 +99,6 @@ impl SoapRadialIntegral for SoapRadialIntegralSpline {
 mod tests {
     use approx::assert_relative_eq;
     use ndarray::Array;
-    use serde_json::{json, Value};
 
     use super::*;
     use super::super::{SoapRadialIntegralGto, SoapRadialIntegralGtoParameters};
