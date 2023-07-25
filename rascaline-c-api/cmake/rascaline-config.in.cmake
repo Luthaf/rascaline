@@ -38,7 +38,7 @@ if (@RASCALINE_INSTALL_BOTH_STATIC_SHARED@ OR @BUILD_SHARED_LIBS@)
     )
     target_link_libraries(rascaline::shared INTERFACE equistore::shared)
 
-    target_compile_features(rascaline::shared INTERFACE cxx_std_11)
+    target_compile_features(rascaline::shared INTERFACE cxx_std_17)
 
     if (WIN32)
         if (NOT EXISTS ${RASCALINE_IMPLIB_LOCATION})
@@ -67,7 +67,7 @@ if (@RASCALINE_INSTALL_BOTH_STATIC_SHARED@ OR NOT @BUILD_SHARED_LIBS@)
     )
     target_link_libraries(rascaline::static INTERFACE equistore::shared)
 
-    target_compile_features(rascaline::static INTERFACE cxx_std_11)
+    target_compile_features(rascaline::static INTERFACE cxx_std_17)
 endif()
 
 
