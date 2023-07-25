@@ -514,6 +514,83 @@ TEST_CASE("Compute descriptor") {
         eqs_tensormap_free(descriptor);
         rascal_calculator_free(calculator);
     }
+
+    SECTION("Partial compute -- key selection") {
+        // check key selection: we add a non-existing key (12) and remove an
+        // existing one (1) from the default set of keys. We also put the keys
+        // in a different order than what would be the default (6, 12).
+
+        eqs_labels_t selected_keys = {0};
+        const char* samples_names[] = {"species_center"};
+        selected_keys.names = samples_names;
+        selected_keys.size = 1;
+
+        int32_t samples_values[] = {12, 6};
+        selected_keys.values = samples_values;
+        selected_keys.count = 2;
+
+        auto system = simple_system();
+
+        rascal_calculation_options_t options = {0};
+        const char* gradients_list[] = {"positions"};
+        options.gradients = gradients_list;
+        options.gradients_count = 1;
+        options.selected_keys = &selected_keys;
+
+        auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);
+        REQUIRE(calculator != nullptr);
+
+        eqs_tensormap_t* descriptor = nullptr;
+        auto status = rascal_calculator_compute(
+            calculator, &descriptor, &system, 1, options
+        );
+        CHECK_SUCCESS(status);
+
+        eqs_labels_t keys = {0};
+        status = eqs_tensormap_keys(descriptor, &keys);
+        CHECK_SUCCESS(status);
+
+        CHECK(keys.size == 1);
+        CHECK(keys.names[0] == std::string("species_center"));
+        CHECK(keys.count == 2);
+        CHECK(keys.values[0] == 12);
+        CHECK(keys.values[1] == 6);
+        eqs_labels_free(&keys);
+
+        auto samples = std::vector<int32_t>{};
+        auto properties = std::vector<int32_t>{
+            1, 0, 0, 1
+        };
+        auto values = std::vector<double>{};
+        auto gradient_samples = std::vector<int32_t>{};
+        auto gradients = std::vector<double>{};
+
+        // empty block, species 12 is not present in the system
+        check_block(descriptor, 0, samples, properties, values, gradient_samples, gradients);
+
+        samples = std::vector<int32_t>{
+            0, 0,
+        };
+        properties = std::vector<int32_t>{
+            1, 0, 0, 1
+        };
+        values = std::vector<double>{
+            4, 3
+        };
+        gradient_samples = std::vector<int32_t>{
+            0, 0, 0, /**/ 0, 0, 1,
+        };
+        gradients = std::vector<double>{
+            0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
+            0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0
+        };
+
+        // C block
+        check_block(descriptor, 1, samples, properties, values, gradient_samples, gradients);
+
+        eqs_tensormap_free(descriptor);
+        rascal_calculator_free(calculator);
+    }
 }
 
 void check_block(

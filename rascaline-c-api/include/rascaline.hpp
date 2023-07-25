@@ -455,6 +455,12 @@ public:
     /// Selection of properties to compute for the samples
     LabelsSelection selected_properties = LabelsSelection::all();
 
+    /// Selection for the keys to include in the output. Set this to
+    /// `std::nullopt` to use the default set of keys, as determined by the
+    /// calculator. Note that this default set of keys can depend on which
+    /// systems we are running the calculation on.
+    std::optional<equistore::Labels> selected_keys = std::nullopt;
+
     /// @verbatim embed:rst:leading-slashes
     /// List of gradients that should be computed. If this list is empty no
     /// gradients are computed.
@@ -504,7 +510,7 @@ public:
     ///
     /// This is an advanced function that most users don't need to call
     /// directly.
-    rascal_calculation_options_t as_rascal_calculation_options_t() const {
+    rascal_calculation_options_t as_rascal_calculation_options_t() {
         auto options = rascal_calculation_options_t{};
         std::memset(&options, 0, sizeof(rascal_calculation_options_t));
 
@@ -516,8 +522,18 @@ public:
         options.selected_samples = this->selected_samples.as_rascal_labels_selection_t();
         options.selected_properties = this->selected_properties.as_rascal_labels_selection_t();
 
+        if (this->selected_keys) {
+            // store the raw eqs_labels_t in a class variable to make sure
+            // it lives longer than this function
+            this->raw_selected_keys_ = this->selected_keys->as_eqs_labels_t();
+            options.selected_keys = &this->raw_selected_keys_;
+        }
+
         return options;
     }
+
+private:
+    eqs_labels_t raw_selected_keys_;
 };
 
 
