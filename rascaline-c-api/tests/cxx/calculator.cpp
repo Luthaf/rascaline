@@ -56,6 +56,17 @@ TEST_CASE("Calculator parameters") {
         auto calculator = rascaline::Calculator("dummy_calculator", HYPERS_JSON);
         CHECK(calculator.parameters() == HYPERS_JSON);
     }
+
+    SECTION("cutoffs") {
+        std::string HYPERS_JSON = R"({
+            "cutoff": 3.5,
+            "delta": 25,
+            "name": "bar",
+            "gradients": false
+        })";
+        auto calculator = rascaline::Calculator("dummy_calculator", HYPERS_JSON);
+        CHECK(calculator.cutoffs() == std::vector<double>{3.5});
+    }
 }
 
 TEST_CASE("calculator creation errors") {
@@ -77,9 +88,7 @@ TEST_CASE("Compute descriptor") {
         "cutoff": 3.0, "delta": 4, "name": ""
     })";
 
-    auto system = TestSystem();
-    auto systems = std::vector<rascaline::System*>();
-    systems.push_back(&system);
+    auto systems = std::vector<TestSystem>{TestSystem()};
     auto calculator = rascaline::Calculator("dummy_calculator", HYPERS_JSON);
 
     SECTION("Full compute") {

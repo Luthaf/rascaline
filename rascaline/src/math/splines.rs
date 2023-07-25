@@ -9,8 +9,8 @@ const MAX_SPLINE_SIZE: usize = 10_000;
 
 /// [Hermit cubit spline][splines-wiki] implementation.
 ///
-/// This kind of spline uses information of the value of a function on control
-/// points as well as the gradient of the function at these points. This
+/// This kind of spline uses information of the values of a function on control
+/// points as well as the derivatives of the function at these points. This
 /// implementation takes a single scalar as input, and output array values, i.e.
 /// we can spline functions of the form `R -> R^n`.
 ///
@@ -18,7 +18,7 @@ const MAX_SPLINE_SIZE: usize = 10_000;
 #[derive(Debug, Clone)]
 pub struct HermitCubicSpline<D: ndarray::Dimension> {
     parameters: SplineParameters,
-    points: Vec<HermitSplinePoint<D>>,
+    pub(crate) points: Vec<HermitSplinePoint<D>>,
 }
 
 
@@ -38,10 +38,10 @@ pub struct SplineParameters {
 pub struct HermitSplinePoint<D: ndarray::Dimension> {
     /// Position of the point
     pub(crate) position: f64,
-    /// Value of the function to interpolate at the position
-    pub(crate) value: Array<f64, D>,
-    /// Derivative of the function to interpolate at the position
-    pub(crate) derivative: Array<f64, D>,
+    /// Values of the function to interpolate at the position
+    pub(crate) values: Array<f64, D>,
+    /// Derivatives of the function to interpolate at the position
+    pub(crate) derivatives: Array<f64, D>,
 }
 
 impl<D: ndarray::Dimension> HermitCubicSpline<D> {
@@ -69,8 +69,8 @@ impl<D: ndarray::Dimension> HermitCubicSpline<D> {
     /// Create a new `HermitCubicSpline` from the given function, trying to
     /// reach the given accuracy on average.
     ///
-    /// When called, the `function` should return a tuple of `(value, gradient)`
-    /// at the input position, where `value` and `gradient` are arrays with the
+    /// When called, the `function` should return a tuple of `(values, derivatives)`
+    /// at the input position, where `values` and `derivatives` are arrays with the
     /// same shape as `parameter.shape`.
     ///
     /// Points are added to the spline until the requested accuracy is reached.
@@ -105,28 +105,28 @@ impl<D: ndarray::Dimension> HermitCubicSpline<D> {
         let mut points = Vec::new();
         for k in 0..(initial_grid_size - 1) {
             let position = parameters.start + k as f64 * grid_step;
-            let (value, derivative) = function(position);
+            let (values, derivatives) = function(position);
 
-            if value.shape() != parameters.shape || derivative.shape() != parameters.shape  {
+            if values.shape() != parameters.shape || derivatives.shape() != parameters.shape  {
                 return Err(Error::InvalidParameter(format!(
                     "function ({:?}) or gradient of the function ({:?}) returned a different shape than expected ({:?})",
-                    value.shape(), derivative.shape(), parameters.shape
+                    values.shape(), derivatives.shape(), parameters.shape
                 )));
             }
 
-            points.push(HermitSplinePoint { position, value, derivative });
+            points.push(HermitSplinePoint { position, values, derivatives });
         }
 
         // Add a point exactly at `parameters.stop`
         let position = parameters.stop;
-        let (value, derivative) = function(position);
-        if value.shape() != parameters.shape || derivative.shape() != parameters.shape  {
+        let (values, derivatives) = function(position);
+        if values.shape() != parameters.shape || derivatives.shape() != parameters.shape  {
             return Err(Error::InvalidParameter(format!(
                 "function ({:?}) or gradient of the function ({:?}) returned a different shape than expected ({:?})",
-                value.shape(), derivative.shape(), parameters.shape
+                values.shape(), derivatives.shape(), parameters.shape
             )));
         }
-        points.push(HermitSplinePoint { position, value, derivative });
+        points.push(HermitSplinePoint { position, values, derivatives });
 
         let mut spline = HermitCubicSpline::new(parameters, points);
 
@@ -145,24 +145,24 @@ impl<D: ndarray::Dimension> HermitCubicSpline<D> {
             for k in 0..(spline.len() - 1) {
                 let position = (positions[k] + positions[k + 1]) / 2.0;
 
-                let (value, derivative) = function(position);
+                let (values, derivatives) = function(position);
 
                 interpolated.fill(0.0);
                 spline.compute(position, interpolated.view_mut(), None);
 
                 // get the error across all values in the arrays
-                azip!((interpolated in &interpolated, value in &value) {
-                    let absolute_error = f64::abs(interpolated - value);
+                azip!((interpolated in &interpolated, values in &values) {
+                    let absolute_error = f64::abs(interpolated - values);
                     if absolute_error > max_absolute_error {
                         max_absolute_error = absolute_error;
                     }
 
                     mean_absolute_error += absolute_error;
-                    mean_relative_error += f64::abs((interpolated - value) / value);
+                    mean_relative_error += f64::abs((interpolated - values) / values);
                     error_count += 1;
                 });
 
-                new_points.push(HermitSplinePoint { position, value, derivative });
+                new_points.push(HermitSplinePoint { position, values, derivatives });
             }
             mean_absolute_error /= error_count as f64;
             mean_relative_error /= error_count as f64;
@@ -259,11 +259,11 @@ impl<D: ndarray::Dimension> HermitCubicSpline<D> {
         let h01 = -2.0 * t_3 + 3.0 * t_2;
         let h11 = t_3 - t_2;
 
-        let p_k = &point_k.value;
-        let p_k_1 = &point_k_1.value;
+        let p_k = &point_k.values;
+        let p_k_1 = &point_k_1.values;
 
-        let m_k = &point_k.derivative;
-        let m_k_1 = &point_k_1.derivative;
+        let m_k = &point_k.derivatives;
+        let m_k_1 = &point_k_1.derivatives;
 
         azip!((v in values, p_k in p_k, p_k_1 in p_k_1, m_k in m_k, m_k_1 in m_k_1) {
             *v = h00 * p_k + h10 * delta * m_k + h01 * p_k_1 + h11 * delta * m_k_1;

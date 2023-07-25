@@ -35,7 +35,7 @@ jobs:
             cargo-build-flags: --release
             do-valgrind: true
           - os: ubuntu-20.04
-            rust-version: 1.61
+            rust-version: 1.63
             rust-target: x86_64-unknown-linux-gnu
             build-type: debug
           - os: ubuntu-20.04
@@ -45,7 +45,7 @@ jobs:
           # check the build on a stock Ubuntu 20.04, including cmake 3.16 and
           # Python 3.8
           - os: ubuntu-20.04
-            rust-version: "1.61"
+            rust-version: "1.63"
             container: ubuntu:20.04
             rust-target: x86_64-unknown-linux-gnu
             build-type: debug

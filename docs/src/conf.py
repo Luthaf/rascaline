@@ -115,7 +115,7 @@ autodoc_typehints_format = "short"
 
 sphinx_gallery_conf = {
     "filename_pattern": "/*",
-    "examples_dirs": ["../../python/examples"],
+    "examples_dirs": ["../../python/rascaline/examples"],
     "gallery_dirs": ["examples"],
     "min_reported_time": 60,
     # Make the code snippet for rascaline functions clickable

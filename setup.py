@@ -5,8 +5,9 @@ import subprocess
 import sys
 
 from setuptools import Extension, setup
+from setuptools.command.bdist_egg import bdist_egg
 from setuptools.command.build_ext import build_ext
-from setuptools.command.install import install as distutils_install
+from setuptools.command.sdist import sdist
 from wheel.bdist_wheel import bdist_wheel
 
 
@@ -131,16 +132,41 @@ class cmake_ext(build_ext):
             os.unlink(file)
 
 
-def get_version():
-    """
-    Get the version of equistore from the Cargo.toml file and git metadata.
+class bdist_egg_disabled(bdist_egg):
+    """Disabled version of bdist_egg
 
-    If git is available, it is used to check if we are installing a development
-    version or a released version (by checking how many commits happened since
-    the last tag).
+    Prevents setup.py install performing setuptools' default easy_install,
+    which it should never ever do.
     """
+
+    def run(self):
+        sys.exit(
+            "Aborting implicit building of eggs. "
+            + "Use `pip install .` or `python setup.py bdist_wheel && pip "
+            + "uninstall equistore -y && pip install dist/equistore-*.whl` "
+            + "to install from source."
+        )
+
+
+class sdist_git_version(sdist):
+    """
+    Create a sdist with an additional generated file containing the extra
+    version from git.
+    """
+
+    def run(self):
+        with open("git_extra_version", "w") as fd:
+            fd.write(git_extra_version())
+
+        # run original sdist
+        super().run()
+
+        os.unlink("git_extra_version")
+
+
+def get_rust_version():
     # read version from Cargo.toml
-    with open("rascaline-c-api/Cargo.toml") as fd:
+    with open(os.path.join(ROOT, "rascaline-c-api", "Cargo.toml")) as fd:
         for line in fd:
             if line.startswith("version"):
                 _, version = line.split(" = ")
@@ -149,6 +175,16 @@ def get_version():
                 # take the first version in the file, this should be the right
                 # version
                 break
+
+    return version
+
+
+def git_extra_version():
+    """
+    If git is available, it is used to check if we are installing a development
+    version or a released version (by checking how many commits happened since
+    the last tag).
+    """
 
     # Add pre-release info the version
     try:
@@ -193,17 +229,30 @@ def get_version():
         n_commits_since_tag = n_commits_since_tag.stdout.decode("utf8").strip()
 
         if n_commits_since_tag != 0:
-            version += ".dev" + n_commits_since_tag
+            return ".dev" + n_commits_since_tag
     except Exception:
         pass
 
-    return version
+    return ""
 
 
 if __name__ == "__main__":
+    if os.path.exists("git_extra_version"):
+        # we are building from a sdist, without git available, but the git
+        # version was recorded in a git_extra_version file
+        with open("git_extra_version") as fd:
+            extra_version = fd.read()
+    else:
+        extra_version = git_extra_version()
+
+    version = get_rust_version() + extra_version
+
+    with open(os.path.join(ROOT, "AUTHORS")) as fd:
+        authors = fd.read().splitlines()
+
     setup(
-        version=get_version(),
-        author=", ".join(open(os.path.join(ROOT, "AUTHORS")).read().splitlines()),
+        version=version,
+        author=", ".join(authors),
         ext_modules=[
             # only declare the extension, it is built & copied as required by cmake
             # in the build_ext command
@@ -211,11 +260,9 @@ if __name__ == "__main__":
         ],
         cmdclass={
             "build_ext": cmake_ext,
+            "bdist_egg": bdist_egg if "bdist_egg" in sys.argv else bdist_egg_disabled,
             "bdist_wheel": universal_wheel,
-            # HACK: do not use the new setuptools install implementation, it tries
-            # to install the package with `easy_install`, which fails to resolve the
-            # freshly installed package and tries to load it from pypi.
-            "install": distutils_install,
+            "sdist": sdist_git_version,
         },
         package_data={
             "rascaline": [

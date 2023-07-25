@@ -31,6 +31,10 @@ impl CalculatorBase for AtomicComposition {
         return serde_json::to_string(self).expect("failed to serialize to JSON");
     }
 
+    fn cutoffs(&self) -> &[f64] {
+        &[]
+    }
+
     fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
         return CenterSpeciesKeys.keys(systems);
     }

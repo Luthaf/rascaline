@@ -10,6 +10,7 @@ The following functions operate on :c:type:`rascal_calculator_t`:
 - :c:func:`rascal_calculator_compute`: run the actual calculation
 - :c:func:`rascal_calculator_name` get the name of a calculator
 - :c:func:`rascal_calculator_parameters`: get the hyper-parameters of a calculator
+- :c:func:`rascal_calculator_cutoffs`: get the cutoffs of a calculator
 
 ---------------------------------------------------------------------
 
@@ -22,6 +23,8 @@ The following functions operate on :c:type:`rascal_calculator_t`:
 .. doxygenfunction:: rascal_calculator_name
 
 .. doxygenfunction:: rascal_calculator_parameters
+
+.. doxygenfunction:: rascal_calculator_cutoffs
 
 ---------------------------------------------------------------------
 

@@ -150,6 +150,38 @@ pub unsafe extern fn rascal_calculator_parameters(
     })
 }
 
+
+/// Get all radial cutoffs used by this `calculator`'s neighbors lists (which
+/// can be an empty list).
+///
+/// The `*cutoffs` pointer will be pointing to data inside the `calculator`, and
+/// is only valid when the `calculator` itself is.
+///
+/// @param calculator pointer to an existing calculator
+/// @param cutoffs pointer to be filled with the address of the first element of
+///                an array of cutoffs
+/// @param cutoffs_count pointer to be filled with the number of elements in the
+///                      `cutoffs` array
+/// @returns The status code of this operation. If the status is not
+///          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the full
+///          error message.
+#[no_mangle]
+pub unsafe extern fn rascal_calculator_cutoffs(
+    calculator: *const rascal_calculator_t,
+    cutoffs: *mut *const f64,
+    cutoffs_count: *mut usize
+) -> rascal_status_t {
+    catch_unwind(|| {
+        check_pointers!(calculator, cutoffs, cutoffs_count);
+
+        let slice = (*calculator).cutoffs();
+        *cutoffs = slice.as_ptr();
+        *cutoffs_count = slice.len();
+
+        Ok(())
+    })
+}
+
 /// Rules to select labels (either samples or properties) on which the user
 /// wants to run a calculation
 ///

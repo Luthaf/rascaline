@@ -278,6 +278,11 @@ impl Calculator {
         &self.parameters
     }
 
+    /// Get the all radial cutoffs used by this Calculator's neighbors lists
+    /// (which can be an empty list)
+    pub fn cutoffs(&self) -> &[f64] {
+        self.implementation.cutoffs()
+    }
 
     #[time_graph::instrument(name="Calculator::prepare")]
     fn prepare(&mut self, systems: &mut [Box<dyn System>], options: CalculationOptions) -> Result<TensorMap, Error> {

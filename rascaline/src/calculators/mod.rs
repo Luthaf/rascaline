@@ -17,6 +17,10 @@ pub trait CalculatorBase: std::panic::RefUnwindSafe {
     /// Get the parameters used to create this Calculator as a JSON string
     fn parameters(&self) -> String;
 
+    /// Get the all radial cutoffs used by this Calculator's neighbors lists
+    /// (which can be an empty list)
+    fn cutoffs(&self) -> &[f64];
+
     /// Get the set of keys for this calculator and the given systems
     fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error>;
 

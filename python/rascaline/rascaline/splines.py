@@ -1,28 +1,29 @@
+from typing import Callable, Optional
+
 import numpy as np
 
 
 def generate_splines(
-    radial_basis,
-    radial_basis_derivatives,
-    max_radial,
-    max_angular,
-    cutoff_radius,
-    n_spline_points=None,
-    requested_accuracy=1e-8,
+    radial_basis: Callable[[int, int, np.ndarray], np.ndarray],
+    radial_basis_derivatives: Callable[[int, int, np.ndarray], np.ndarray],
+    max_radial: int,
+    max_angular: int,
+    cutoff_radius: float,
+    n_spline_points: Optional[int] = None,
+    requested_accuracy: float = 1e-8,
 ):
     """Spline generator for tabulated radial integrals.
 
     Besides some self-explanatory parameters, this function takes as inputs two
-    functions, namely radial_basis and radial_basis_derivatives. These must be
-    able to calculate the radial basis functions by taking n, l, and r as their
-    inputs, where n and l are integers and r is a numpy 1-D array that contains
-    the spline points at which the radial basis function (or its derivative)
-    needs to be evaluated. These functions should return a numpy 1-D array
-    containing the values of the radial basis function (or its derivative)
-    corresponding to the specified n and l, and evaluated at all points in the
-    r array. If specified, n_spline_points determines how many spline points
-    will be used for each splined radial basis function. Alternatively, the user
-    can specify a requested accuracy. Spline points will be added until either
+    functions, namely radial_basis and radial_basis_derivatives. These must be able to
+    calculate the radial basis functions by taking n, l, and r as their inputs, where n
+    and l are integers and r is a numpy 1-D array that contains the spline points at
+    which the radial basis function (or its derivative) needs to be evaluated. These
+    functions should return a numpy 1-D array containing the values of the radial basis
+    function (or its derivative) corresponding to the specified n and l, and evaluated
+    at all points in the r array. If specified, n_spline_points determines how many
+    spline points will be used for each splined radial basis function. Alternatively,
+    the user can specify a requested accuracy. Spline points will be added until either
     the relative error or the absolute error fall below the requested accuracy on
     average across all radial basis functions.
     """
@@ -87,26 +88,25 @@ def generate_splines(
 class DynamicSpliner:
     def __init__(
         self,
-        start,
-        stop,
-        values_fn,
-        derivatives_fn,
-        requested_accuracy,
+        start: float,
+        stop: float,
+        values_fn: Callable[[np.ndarray], np.ndarray],
+        derivatives_fn: Callable[[np.ndarray], np.ndarray],
+        requested_accuracy: float = 1e-8,
     ) -> None:
         """Dynamic spline generator.
 
-        This class can be used to spline any set of functions defined within
-        the start-stop interval. Cubic Hermite splines
-        (https://en.wikipedia.org/wiki/Cubic_Hermite_spline) are used.
-        The same spline points will be used for all functions, and more will
-        be added until either the relative error or the absolute error fall below
-        the requested accuracy on average across all functions.
-        The functions are specified via values_fn and derivatives_fn.
-        These must be able to take a numpy 1D array of positions as their input,
-        and they must output a numpy array where the first dimension corresponds
-        to the input positions, while other dimensions are arbitrary and can
-        correspond to any way in which the target functions can be classified.
-        The splines can be obtained via the spline method.
+        This class can be used to spline any set of functions defined within the
+        start-stop interval. Cubic Hermite splines
+        (https://en.wikipedia.org/wiki/Cubic_Hermite_spline) are used. The same spline
+        points will be used for all functions, and more will be added until either the
+        relative error or the absolute error fall below the requested accuracy on
+        average across all functions. The functions are specified via values_fn and
+        derivatives_fn. These must be able to take a numpy 1D array of positions as
+        their input, and they must output a numpy array where the first dimension
+        corresponds to the input positions, while other dimensions are arbitrary and can
+        correspond to any way in which the target functions can be classified. The
+        splines can be obtained via the spline method.
         """
 
         self.start = start
@@ -127,16 +127,14 @@ class DynamicSpliner:
         """Calculates and outputs the splines.
 
         The outputs of this function are, respectively:
-        - A numpy 1D array containing the spline positions. These are equally
-          spaced in the start-stop interval.
-        - A numpy ndarray containing the values of the splined functions at the
-          spline positions. The first dimension corresponds to the spline
-          positions, while all subsequent dimensions are consistent with the
-          values_fn and get_function_derivative provided during
-          initialization of the class.
-        - A numpy ndarray containing the derivatives of the splined functions
-          at the spline positions, with the same structure as that of the
-          ndarray of values.
+        - A numpy 1D array containing the spline positions. These are equally spaced in
+          the start-stop interval.
+        - A numpy ndarray containing the values of the splined functions at the spline
+          positions. The first dimension corresponds to the spline positions, while all
+          subsequent dimensions are consistent with the values_fn and
+          `get_function_derivative` provided during initialization of the class.
+        - A numpy ndarray containing the derivatives of the splined functions at the
+          spline positions, with the same structure as that of the ndarray of values.
         """
 
         while True:

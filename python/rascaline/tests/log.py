@@ -8,7 +8,7 @@ from rascaline.log import (
     default_logging_callback,
 )
 
-from test_systems import SystemForTests
+from .test_systems import SystemForTests
 
 
 def setup_module(module):

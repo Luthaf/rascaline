@@ -4,7 +4,7 @@ import pytest
 from rascaline import RascalError
 from rascaline.calculators import DummyCalculator
 
-from test_systems import SystemForTests
+from ..test_systems import SystemForTests
 
 
 def test_name():
@@ -24,6 +24,8 @@ def test_name():
 def test_parameters():
     calculator = DummyCalculator(cutoff=3.2, delta=12, name="foo")
     assert calculator.parameters == '{"cutoff": 3.2, "delta": 12, "name": "foo"}'
+
+    assert calculator.cutoffs == [3.2]
 
 
 def test_bad_parameters():

@@ -476,6 +476,26 @@ rascal_status_t rascal_calculator_parameters(const struct rascal_calculator_t *c
                                              uintptr_t bufflen);
 
 /**
+ * Get all radial cutoffs used by this `calculator`'s neighbors lists (which
+ * can be an empty list).
+ *
+ * The `*cutoffs` pointer will be pointing to data inside the `calculator`, and
+ * is only valid when the `calculator` itself is.
+ *
+ * @param calculator pointer to an existing calculator
+ * @param cutoffs pointer to be filled with the address of the first element of
+ *                an array of cutoffs
+ * @param cutoffs_count pointer to be filled with the number of elements in the
+ *                      `cutoffs` array
+ * @returns The status code of this operation. If the status is not
+ *          `RASCAL_SUCCESS`, you can use `rascal_last_error()` to get the full
+ *          error message.
+ */
+rascal_status_t rascal_calculator_cutoffs(const struct rascal_calculator_t *calculator,
+                                          const double **cutoffs,
+                                          uintptr_t *cutoffs_count);
+
+/**
  * Compute the representation of the given list of `systems` with a
  * `calculator`
  *
