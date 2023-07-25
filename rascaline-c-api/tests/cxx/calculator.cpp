@@ -172,10 +172,7 @@ TEST_CASE("Compute descriptor") {
         auto options = rascaline::CalculationOptions();
         options.gradients.push_back("positions");
         options.selected_samples = rascaline::LabelsSelection::subset(
-            std::make_shared<equistore::Labels>(equistore::Labels(
-                {"structure", "center"},
-                {{0, 1}, {0, 3}}
-            ))
+            equistore::Labels({"structure", "center"}, {{0, 1}, {0, 3}})
         );
         auto descriptor = calculator.compute(systems, options);
 
@@ -248,10 +245,7 @@ TEST_CASE("Compute descriptor") {
         auto options = rascaline::CalculationOptions();
         options.gradients.push_back("positions");
         options.selected_properties = rascaline::LabelsSelection::subset(
-            std::make_shared<equistore::Labels>(equistore::Labels(
-                {"index_delta", "x_y_z"},
-                {{0, 1}}
-            ))
+            equistore::Labels({"index_delta", "x_y_z"}, {{0, 1}})
         );
         auto descriptor = calculator.compute(systems, options);
 

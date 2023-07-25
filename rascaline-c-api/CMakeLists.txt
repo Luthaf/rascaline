@@ -299,7 +299,7 @@ set_target_properties(rascaline::shared PROPERTIES
     # since it might contains chemfiles
     IMPORTED_LINK_INTERFACE_LANGUAGES CXX
 )
-target_compile_features(rascaline::shared INTERFACE cxx_std_11)
+target_compile_features(rascaline::shared INTERFACE cxx_std_17)
 
 if (WIN32)
     set_target_properties(rascaline::shared PROPERTIES
@@ -315,7 +315,7 @@ set_target_properties(rascaline::static PROPERTIES
     # since it might contains chemfiles
     IMPORTED_LINK_INTERFACE_LANGUAGES CXX
 )
-target_compile_features(equistore::static INTERFACE cxx_std_11)
+target_compile_features(equistore::static INTERFACE cxx_std_17)
 
 
 if (BUILD_SHARED_LIBS)
