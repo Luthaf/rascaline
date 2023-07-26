@@ -225,8 +225,18 @@ if (RASCALINE_FETCH_EQUISTORE)
 
         add_subdirectory(${equistore_SOURCE_DIR}/equistore-core ${equistore_BINARY_DIR})
     endif()
+
+    # equistore will be installed in the same place as rascaline, so set
+    # the RPATH to ${ORIGIN} to load the file from there
+    set(EQUISTORE_RPATH "$$\\{ORIGIN\\}")
 else()
     find_package(equistore ${EQUISTORE_REQUIRED_VERSION} REQUIRED CONFIG)
+
+    # in case rascaline gets installed in a different place than equistore,
+    # set the RPATH to the directory where we found equistore
+    get_target_property(EQUISTORE_LOCATION equistore::shared IMPORTED_LOCATION)
+    get_filename_component(EQUISTORE_LOCATION ${EQUISTORE_LOCATION} DIRECTORY)
+    set(EQUISTORE_RPATH "${EQUISTORE_LOCATION}")
 endif()
 
 # ============================================================================ #
@@ -261,7 +271,7 @@ if (UNIX)
         set(CARGO_RUSTC_ARGS "-Clink-arg=-Wl,-install_name,@rpath/${RASCALINE_SHARED_LIB_NAME}")
     else() # LINUX
         # set the SONAME to libequistore.so
-        set(CARGO_RUSTC_ARGS "-Clink-arg=-Wl,-soname,${RASCALINE_SHARED_LIB_NAME}")
+        set(CARGO_RUSTC_ARGS "-Clink-arg=-Wl,-soname,${RASCALINE_SHARED_LIB_NAME},-rpath=${EQUISTORE_RPATH}")
     endif()
 else()
     set(CARGO_RUSTC_ARGS "")
