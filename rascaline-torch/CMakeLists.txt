@@ -120,6 +120,13 @@ set_target_properties(rascaline_torch PROPERTIES
     CXX_VISIBILITY_PRESET hidden
 )
 
+if (RASCALINE_TORCH_FETCH_EQUISTORE_TORCH)
+    # If we install equistore_torch together with rascaline_torch, we need to
+    # set the RPATH to $ORIGIN to make sure rascaline_torch can find
+    # equistore_torch.
+    set_target_properties(rascaline_torch PROPERTIES INSTALL_RPATH "$ORIGIN")
+endif()
+
 include(GenerateExportHeader)
 generate_export_header(rascaline_torch
     BASE_NAME RASCALINE_TORCH

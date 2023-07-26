@@ -1,14 +1,18 @@
-# include(CMakeFindDependencyMacro)
+include(CMakeFindDependencyMacro)
 
-# # use the same version for equistore-core as the main CMakeLists.txt
-# set(REQUIRED_EQUISTORE_VERSION @REQUIRED_EQUISTORE_VERSION@)
-# find_package(equistore ${REQUIRED_EQUISTORE_VERSION} CONFIG REQUIRED)
+# use the same version for rascaline as the main CMakeLists.txt
+set(REQUIRED_RASCALINE_VERSION @REQUIRED_RASCALINE_VERSION@)
+find_package(rascaline ${REQUIRED_RASCALINE_VERSION} CONFIG REQUIRED)
 
-# # We can only load equistore_torch with the exact same version of Torch that
-# # was used to compile it (and is stored in BUILD_TORCH_VERSION)
-# set(BUILD_TORCH_VERSION @Torch_VERSION@)
+# use the same version for equistore_torch as the main CMakeLists.txt
+set(REQUIRED_EQUISTORE_TORCH_VERSION @REQUIRED_EQUISTORE_TORCH_VERSION@)
+find_package(equistore_torch ${REQUIRED_EQUISTORE_TORCH_VERSION} CONFIG REQUIRED)
 
-# find_package(Torch ${BUILD_TORCH_VERSION} REQUIRED EXACT)
+# We can only load rascaline_torch with the exact same version of Torch that
+# was used to compile it (and is stored in BUILD_TORCH_VERSION)
+set(BUILD_TORCH_VERSION @Torch_VERSION@)
+
+find_package(Torch ${BUILD_TORCH_VERSION} REQUIRED EXACT)
 
 
-# include(${CMAKE_CURRENT_LIST_DIR}/equistore_torch-targets.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/rascaline_torch-targets.cmake)
