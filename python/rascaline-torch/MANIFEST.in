@@ -1,5 +1,10 @@
+global-exclude *.pyc
+global-exclude .DS_Store
+
 include pyproject.toml
 include AUTHORS
 include LICENSE
 
 include rascaline-torch.tar.gz
+
+include build-backend/backend.py
