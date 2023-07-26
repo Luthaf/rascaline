@@ -66,7 +66,7 @@ jobs:
           lcov --remove coverage.info '/usr/*' "$(pwd)/rascaline-c-api/tests/*" "$(pwd)/rascaline-c-api/examples/*" --output-file coverage.info
 
       - name: collect Python coverage
-        run: tox
+        run: tox -e all-deps
 
       - name: upload to codecov.io
         uses: codecov/codecov-action@v3

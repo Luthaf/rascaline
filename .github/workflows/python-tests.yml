@@ -65,6 +65,9 @@ jobs:
 
       - name: run tox
         run: tox
+        env:
+          # Use the CPU only version of torch when building/running the code
+          PIP_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
 
   # second set of jobs checking that (non-test) code still compiles/run as expected
   prevent-bitrot:
@@ -102,3 +105,6 @@ jobs:
 
       - name: python build tests
         run: tox -e build-python
+        env:
+          # Use the CPU only version of torch when building/running the code
+          PIP_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
