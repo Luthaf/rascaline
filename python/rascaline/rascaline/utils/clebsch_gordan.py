@@ -51,7 +51,9 @@ class ClebschGordanReal:
     def __init__(self, lambda_max: int, sparse: bool = True):
         self._lambda_max = lambda_max
         self._sparse = sparse
-        self._coeffs = ClebschGordanReal.build_coeff_dict(self._lambda_max, self._sparse)
+        self._coeffs = ClebschGordanReal.build_coeff_dict(
+            self._lambda_max, self._sparse
+        )
 
     @property
     def coeffs(self):
@@ -93,13 +95,15 @@ class ClebschGordanReal:
                     if (l1 + l2 + lam) % 2 == 0:
                         cg_l1l2lam = np.real(real_cg)
                     else:
-                        cg_l1l2lam  = np.imag(real_cg)
+                        cg_l1l2lam = np.imag(real_cg)
 
                     if sparse:
                         # if sparse we make a dictionary out of the matrix
                         nonzeros_cg_coeffs_idx = np.where(np.abs(cg_l1l2lam) > 1e-15)
-                        cg_l1l2lam = {(m1, m2, mu): cg_l1l2lam[m1, m2, mu]
-                                for m1, m2, mu in zip(*nonzeros_cg_coeffs_idx)}
+                        cg_l1l2lam = {
+                            (m1, m2, mu): cg_l1l2lam[m1, m2, mu]
+                            for m1, m2, mu in zip(*nonzeros_cg_coeffs_idx)
+                        }
                     coeff_dict[(l1, l2, lam)] = cg_l1l2lam
 
         return coeff_dict
@@ -225,18 +229,10 @@ def n_body_iteration_single_center(
 
     The returned TensorMap will only contain blocks with angular channels of
     target order lambda corresponding to those passed in ``lambdas``.
-k_angular
-    Passing ``lambda_cut`` will place a maximum on the angular
+
+    Passing ``lambda_cut`` will place a maximum value on the angular
     order of blocks created by combination at each CG combination step.
-
-    NOTE: currently only lambda-SOAP (nu_target = 2) is implemented.
     """
-    # TODO: remove once we can perform higher body orders.
-    # if nu_target > 2:
-    #     raise NotImplementedError(
-    #         "currently CG iterations only implemented for max body order nu=2"
-    #     )
-
     # Set default lambda_cut if not passed
     if lambda_cut is None:
         # WARNING: the default is the maximum possible angular order for the
@@ -270,12 +266,21 @@ k_angular
         )
     nu1_tensor = nu1_tensor.keys_to_properties(keys_to_move=keys_to_move)
 
-    # Standardize the key names metadata
-    nu1_tensor = _add_nu_sigma_to_key_names(nu1_tensor)
+    # # Standardize the key names metadata
+    # nu1_tensor = _add_nu_sigma_to_key_names(nu1_tensor)
 
-    # TODO: Combine to the desired body order iteratively. Currently only a
-    # single CG iteration to body order nu = 2 is implemented.
+    # Add "order_nu" and "inversion_sigma" key dimensions, both with values 1
+    nu1_tensor = equistore.insert_dimension(
+        nu1_tensor, axis="keys", name="order_nu", values=np.array([1]), index=0
+    )
+    nu1_tensor = equistore.insert_dimension(
+        nu1_tensor, axis="keys", name="inversion_sigma", values=np.array([1]), index=1
+    )
+
+    # Create a copy of the nu = 1 TensorMap to combine with itself
     combined_tensor = nu1_tensor.copy()
+
+    # Iteratively combine untilt the target body order is reached
     for _ in range(1, nu_target):
         combined_tensor = _combine_single_center(
             tensor_1=combined_tensor,
@@ -285,14 +290,16 @@ k_angular
             use_sparse=use_sparse,
         )
 
-    # TODO: Account for body-order multiplicity
+    # TODO: Account for body-order multiplicity and normalize block values
     # combined_tensor = _apply_body_order_corrections(combined_tensor)
+    # combined_tensor = _normalize_blocks(combined_tensor)
 
     # Move the [l1, l2, ...] keys to the properties
-    combined_tensor = combined_tensor.keys_to_properties(
-        [f"l{i}" for i in range(1, nu_target + 1)]
-        + [f"k{i}" for i in range(2, nu_target)]
-    )
+    if nu_target > 1:
+        combined_tensor = combined_tensor.keys_to_properties(
+            [f"l{i}" for i in range(1, nu_target + 1)]
+            + [f"k{i}" for i in range(2, nu_target)]
+        )
 
     return combined_tensor
 
@@ -330,8 +337,8 @@ def _combine_single_center(
 
     .. math ::
 
-        \bra{ n_1 l_1 ; n_2 l_2 k_2 ; ... ; n_{\nu-1} l_{\nu-1} k_{\nu-1} ;
-        n_{\nu} l_{\nu} k_{\nu}; \lambda } \ket{ \rho^{\otimes \nu}; \lambda M }
+        \bra{ n_1 l_1 ; n_2 l_2 k_2 ; ... ; n{\nu-1} l_{\nu-1} k_{\nu-1} ;
+        n{\nu} l_{\nu} k_{\nu}; \lambda } \ket{ \rho^{\otimes \nu}; \lambda M }
 
     The keys of `tensor_2` must follow the key name convention:
 
@@ -345,12 +352,11 @@ def _combine_single_center(
     Property names are ["n1", "n2", ..., "species_neighbor_1",
     "species_neighbor_2", ...] for each block.
     """
-    # TODO: Check all the samples are equivalent
-    # if not equistore.equal_metadata(tensor_1, tensor_2, check=["samples"]):
-    #     raise ValueError(
-    #         "TensorMaps `tensor_1` and `tensor_2` to combine must have equivalent keys "
-    #         "(order agnostic), and equal samples (same order)"
-    #     )
+
+    # TODO: what metadata can we check for equivalence here?
+    # - Keys are not the same in general, as we accumulate "lx" and "kx"
+    #   dimensions
+    
 
     # Get the correct keys for the combined TensorMap
     (
@@ -365,28 +371,7 @@ def _combine_single_center(
     for combined_key, key_1, key_2, multi in zip(
         combined_keys, keys_1_entries, keys_2_entries, multiplicity_list
     ):
-        # # Parse info from the combined key
-        # nu, sig, lam, a = combined_key.values[:4]
-        # if nu > 2:
-        #     lam_prev_1 = combined_key[f"k{nu-1}"]
-        # else:
-        #     lam_prev_1 = combined_key[f"spherical_harmonics_l"]
-        # lam_prev_2 = combined_key[f"l{nu}"]
-
-        # # Extract the pair of blocks to combine. The lambda values of the block
-        # # pair being combined are stored in `combination_info`.
-        # l_list = combined_key.values[4 : 4 + (nu + 1) - 1].tolist()
-        # k_list = combined_key.values[4 + (nu + 1) : -1].tolist()
-        # block_1 = tensor_1.block(
-        #     order_nu=nu,
-        #     inversion_sigma=sig,
-        #     spherical_harmonics_l=lam_prev_1,
-        #     species_center=a,
-        #     **{f"l{i + 1}": l for i, l in enumerate(l_list)},
-        #     **{f"k{i + 2}": k for i, k in enumerate(k_list)},
-        # )
-        # block_2 = tensor_2.block(spherical_harmonics_l=lam_prev_2,
-        # species_center=a)
+        # Retrieve the blocks
         block_1 = tensor_1[key_1]
         block_2 = tensor_2[key_2]
 
@@ -419,20 +404,18 @@ def _combine_single_center_block_pair(
     For a given pair of TensorBlocks and desired lambda value, combines the
     values arrays and returns in a new TensorBlock.
     """
-    # Check metadata
-    # if block_1.properties.names != block_2.properties.names:
-    #    raise ValueError(
-    #        "TensorBlock pair to combine must have equal properties in the same order"
-    #    )
 
-    # Do the CG combination - no shape pre-processing required
+    # Do the CG combination - single center so no shape pre-processing required
     combined_values = _clebsch_gordan_combine(
         block_1.values, block_2.values, lam, cg_cache, use_sparse
     )
 
-    #
-    combined_nu = int(len(block_1.properties.names) / 2 + 1)
-    n_names = [f"n_{i}" for i in range(1, combined_nu + 1)]
+    # Infer the new nu value: block 1's properties are nu pairs of
+    # "species_neighbor_x" and "nx".
+    combined_nu = int((len(block_1.properties.names) / 2) + 1)
+    
+    # Define the new property names for "nx" and "species_neighbor_x"
+    n_names = [f"n{i}" for i in range(1, combined_nu + 1)]
     neighbor_names = [f"species_neighbor_{i}" for i in range(1, combined_nu + 1)]
     prop_names = [item for i in zip(neighbor_names, n_names) for item in i]
 
@@ -446,8 +429,6 @@ def _combine_single_center_block_pair(
                 values=np.arange(-lam, lam + 1).reshape(-1, 1),
             ),
         ],
-        # TODO: account for more "species_neighbor_x" and "nx", i.e. for higher
-        # body order
         properties=Labels(
             names=prop_names,
             values=np.array(
@@ -507,7 +488,20 @@ def _clebsch_gordan_combine_sparse(
     cg_cache,
 ) -> np.ndarray:
     """
-    TODO: docstring
+    TODO: finish docstring.
+
+    Performs a Clebsch-Gordan combination step on 2 arrays using sparse
+    operations.
+
+    :param arr_1: array with the m values for l1 with shape [n_samples, 2 * l1 +
+        1, n_q_properties]
+    :param arr_2: array with the m values for l2 with shape [n_samples, 2 * l2 +
+        1, n_p_properties]
+    :param lam: int value of the resulting coupled channel
+    :param cg_cache: sparse dictionary with keys (m1, m2, mu) and array values
+        being sparse blocks of shape <TODO: fill out>
+
+    :returns: array of shape [n_samples, (2*lam+1), q_properties * p_properties]
     """
     # Samples dimensions must be the same
     assert arr_1.shape[0] == arr_2.shape[0]
@@ -538,19 +532,26 @@ def _clebsch_gordan_combine_sparse(
 
 
 def _clebsch_gordan_combine_dense(
-    arr_1,
-    arr_2,
+    arr_1: np.ndarray,
+    arr_2: np.ndarray,
     lam: int,
     cg_cache,
-):
+) -> np.ndarray:
     """
+    Performs a Clebsch-Gordan combination step on 2 arrays using a dense
+    operation.
 
-    :param arr_1: array with the m values for l1 with shape [n_samples, 2 * l1 + 1, n_q_properties]
-    :param arr_2: array with the m values for l2 with shape [n_samples, 2 * l2 + 1, n_p_properties]
-    :param lam: int resulting coupled channel
-    :param cg_cache: array of shape [(2 * l1 +1) * (2 * l2 +1), (2 * lam + 1)]
+    :param arr_1: array with the m values for l1 with shape [n_samples, 2 * l1 +
+        1, n_q_properties]
+    :param arr_2: array with the m values for l2 with shape [n_samples, 2 * l2 +
+        1, n_p_properties]
+    :param lam: int value of the resulting coupled channel
+    :param cg_cache: dense array of shape [(2 * l1 +1) * (2 * l2 +1), (2 * lam +
+        1)]
 
-    :returns lam_mu_values: array of shape [samples, (2*lam+1), q_properties*p_properties]
+    :returns: array of shape [n_samples, (2*lam+1), q_properties * p_properties]
+
+    TODO: do we need this example here? Could it be moved to a test?
 
     >>> N_SAMPLES = 30
     >>> N_Q_PROPERTIES = 10
@@ -579,19 +580,24 @@ def _clebsch_gordan_combine_dense(
 
     # (samples None None l1_mu q) * (samples l2_mu p None None) -> (samples l2_mu p l1_mu q)
     # we broadcast it in this way so we only need to do one swapaxes in the next step
-    out = arr_1[:, None, None, :, :] * arr_2[:, :, :, None, None]
+    arr_out = arr_1[:, None, None, :, :] * arr_2[:, :, :, None, None]
+
     # (samples l2_mu p l1_mu q) -> (samples q p l1_mu l2_mu)
-    out = out.swapaxes(1, 4)
+    arr_out = arr_out.swapaxes(1, 4)
+
     # samples (q p l1_mu l2_mu) -> (samples (q p) (l1_mu l2_mu))
-    out = out.reshape(
+    arr_out = arr_out.reshape(
         -1, arr_1.shape[2] * arr_2.shape[2], arr_1.shape[1] * arr_2.shape[1]
     )
+
     # (l1_mu l2_mu lam_mu) -> ((l1_mu l2_mu) lam_mu)
     cg_coeffs = cg_coeffs.reshape(-1, 2 * lam + 1)
+
     # (samples (q p) (l1_mu l2_mu)) @ ((l1_mu l2_mu) lam_mu) -> samples (q p) lam_mu
-    out = out @ cg_coeffs
+    arr_out = arr_out @ cg_coeffs
+
     # (samples (q p) lam_mu) -> (samples lam_mu (q p))
-    return out.swapaxes(1, 2)
+    return arr_out.swapaxes(1, 2)
 
 
 def _apply_body_order_corrections(tensor: TensorMap) -> TensorMap:
@@ -602,18 +608,12 @@ def _apply_body_order_corrections(tensor: TensorMap) -> TensorMap:
     return tensor
 
 
-# Commented out but left as reference. Not needed as we are just writing an
-# end-to-end pipeline for SphericalExpansion -> NICE.
-# def _check_nu_combination_valid() -> bool:
-#     """ """
-#     #     # Check "order_nu" of each TM to see that it can iteratively add to nu
-#     #     nu1 = np.unique(tensor_1.keys.column("order_nu"))
-#     #     nu2 = np.unique(tensor_2.keys.column("order_nu"))
-#     #     assert len(nu1) != 1
-#     #     assert len(nu2) != 1
-#     #     nu1, nu2 = nu1[0], nu2[0]
-#     #     assert _check_nu_combination_valid(nu1, nu2, nu)
-#     return True
+def _normalize_blocks(tensor: TensorMap) -> TensorMap:
+    """
+    Applies corrections to the block values based on their 'leaf' l-values, such
+    that the norm is preserved.
+    """
+    return tensor
 
 
 # ===== Fxns to manipulate metadata of TensorMaps =====
@@ -738,8 +738,6 @@ def _create_combined_keys(
             keys_1_entries.append(key_1)
             keys_2_entries.append(key_2)
 
-    # print(new_names)
-    # print(new_key_values)
     # Define new keys as the full product of keys_1 and keys_2
     combined_keys = Labels(names=new_names, values=np.array(new_key_values))
 
@@ -787,38 +785,3 @@ def _create_combined_keys(
     ]
 
     return combined_keys_red, keys_1_entries_red, keys_2_entries_red, mult_list
-
-
-def _add_nu_sigma_to_key_names(tensor: TensorMap) -> TensorMap:
-    """
-    Prepends key names "order_nu" and "inversion_sigma" respectively to the key
-    names of ``tensor``. This function should only be used on a nu=1
-    SphericalExpansion.
-
-    For instance, for a tensor with `tensor.keys.names` as
-    ["spherical_harmonics_l", "species_center"], the returned tensor will have
-    keys with names ["order_nu", "inversion_sigma", "spherical_harmonics_l",
-    "species_center"].
-    """
-    keys = tensor.keys
-    if keys.names != ["spherical_harmonics_l", "species_center"]:
-        raise ValueError(
-            "this function is only intended to be used on nu=1 SphericalExpansion"
-        )
-    prepend_list = []
-    if "inversion_sigma" in keys.names:
-        assert keys.names.index("inversion_sigma") == 1
-    else:
-        prepend_list = [1] + prepend_list
-    if "order_nu" in keys.names:
-        assert keys.names.index("order_nu") == 0
-    else:
-        prepend_list = [1] + prepend_list
-
-    new_keys = Labels(
-        names=["order_nu", "inversion_sigma"] + keys.names,
-        values=np.array([prepend_list + key_list for key_list in keys.values.tolist()]),
-    )
-    new_blocks = [block.copy() for block in tensor]
-
-    return TensorMap(keys=new_keys, blocks=new_blocks)
