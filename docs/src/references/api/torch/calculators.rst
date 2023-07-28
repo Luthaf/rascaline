@@ -4,6 +4,8 @@ Calculators
 .. autoclass:: rascaline.torch.CalculatorModule
     :members:
 
+.. autofunction:: rascaline.torch.register_autograd
+
 --------------------------------------------------------------------------------
 
 .. autoclass:: rascaline.torch.AtomicComposition

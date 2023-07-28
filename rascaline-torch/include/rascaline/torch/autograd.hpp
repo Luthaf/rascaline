@@ -1,6 +1,7 @@
 #ifndef RASCALINE_TORCH_AUTOGRAD_HPP
 #define RASCALINE_TORCH_AUTOGRAD_HPP
 
+#include <ATen/core/ivalue.h>
 #include <torch/autograd.h>
 
 #include <equistore/torch.hpp>
@@ -18,31 +19,29 @@ namespace rascaline_torch {
 /// care of by the `compute` function below.
 class RASCALINE_TORCH_EXPORT RascalineAutograd: public torch::autograd::Function<RascalineAutograd> {
 public:
-    /// Compute the representation of the `systems` using the `calculator`,
-    /// registering the operation as a node in Torch's computational graph.
+    /// Register a pseudo node in Torch's computational graph going from
+    /// `all_positions` and `all_cell` to the values in `block`; using the
+    /// pre-computed gradients in `block`.
     ///
-    /// `_all_positions` and `all_cell` are only used to make sure torch
-    /// registers nodes in the calculation graph. They must be the same as
-    /// `torch::vstack([s->get_positions() for s in systems])` and
-    /// `torch::vstack([s->get_cell() for s in systems])` respectively.
+    /// If `all_positions.requires_grad` is True, `block` must have a
+    /// `"positions"` gradient; and `structures_start` should contain the index
+    /// of the first atom of each structure in `all_positions`.
     ///
-    /// This function "returns" an equistore TensorMap in it's last parameter,
-    /// which should then be passed on to C++/Python code.
+    /// If `all_cells.requires_grad` is True, `block` must have a `"cell"`
+    /// gradient, and the block samples must contain a `"stucture"` dimension.
     ///
-    /// This function also actually returns a list of torch::Tensor containing
-    /// the values for each block in the TensorMap. This should be left unused,
-    /// and is only there to make sure torch registers a `grad_fn` for the
-    /// tensors stored inside the TensorMap (the tensors in the TensorMap are
-    /// references to the ones returned by this function, so when a `grad_fn` is
-    /// added to one, it is also added to the other).
+    /// This function returns a vector with one element corresponding to
+    /// `block.values`, which should be left unused. It is only there to make
+    /// sure torch registers a `grad_fn` for the tensors stored inside the
+    /// TensorBlock (the values in the TensorBlock are references to the ones
+    /// returned by this function, so when a `grad_fn` is added to one, it is
+    /// also added to the other).
     static std::vector<torch::Tensor> forward(
         torch::autograd::AutogradContext *ctx,
         torch::Tensor all_positions,
         torch::Tensor all_cells,
-        CalculatorHolder& calculator,
-        std::vector<TorchSystem> systems,
-        equistore_torch::TorchTensorMap* descriptor,
-        std::vector<std::string> forward_gradients
+        torch::IValue structures_start,
+        equistore_torch::TorchTensorBlock block
     );
 
     /// Backward step: get the gradients of some quantity `A` w.r.t. the outputs

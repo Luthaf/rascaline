@@ -4,6 +4,7 @@ import ase
 import pytest
 import torch
 
+import rascaline.torch
 from rascaline.torch import SoapPowerSpectrum, SphericalExpansion, System
 
 
@@ -104,6 +105,42 @@ def test_power_spectrum_positions_grad():
     assert torch.autograd.gradcheck(
         _compute_power_spectrum,
         (species, positions, cell),
+        fast_mode=True,
+    )
+
+
+def test_power_spectrum_positions_grad_register_autograd():
+    # check autograd when registering the graph after pre-computing a representation
+    species, positions, cell = _create_random_system(n_atoms=75, cell_size=5.0)
+
+    calculator = SoapPowerSpectrum(**HYPERS)
+    precomputed = calculator(System(species, positions, cell), gradients=["positions"])
+
+    # no grad_fn for now
+    assert precomputed.block(0).values.grad_fn is None
+
+    def compute(positions, cell):
+        system = System(
+            positions=positions,
+            species=species,
+            cell=cell,
+        )
+
+        descriptor = rascaline.torch.register_autograd(system, precomputed)
+        descriptor = descriptor.keys_to_samples("species_center")
+        descriptor = descriptor.keys_to_properties(
+            ["species_neighbor_1", "species_neighbor_2"]
+        )
+
+        # a grad_fn have been added!
+        assert descriptor.block(0).values.grad_fn is not None
+
+        return descriptor.block(0).values
+
+    positions.requires_grad = True
+    assert torch.autograd.gradcheck(
+        compute,
+        (positions, cell),
         fast_mode=True,
     )
 

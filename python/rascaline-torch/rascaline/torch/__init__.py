@@ -18,7 +18,7 @@ from ._c_lib import _load_library
 _load_library()
 
 from . import utils  # noqa
-from .calculator_base import CalculatorModule  # noqa
+from .calculator_base import CalculatorModule, register_autograd  # noqa
 from .system import System, systems_to_torch  # noqa
 
 

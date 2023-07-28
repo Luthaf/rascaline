@@ -5,3 +5,6 @@ Calculators
 
 .. doxygenclass:: rascaline_torch::CalculatorHolder
     :members:
+
+
+.. doxygenfunction:: rascaline_torch::register_autograd

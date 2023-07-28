@@ -9,6 +9,38 @@ from .system import System
 CalculatorHolder = torch.classes.rascaline.CalculatorHolder
 
 
+def register_autograd(
+    systems: Union[List[System], System],
+    precomputed: equistore.torch.TensorMap,
+    forward_gradients: Optional[List[str]] = None,
+) -> equistore.torch.TensorMap:
+    """
+    Register autograd nodes between ``system.positions`` and ``system.cell`` for each of
+    the systems and the values in the ``precomputed``
+    :py:class:`equistore.torch.TensorMap`.
+
+    This is an advanced function must users should not need to use.
+
+    The autograd nodes ``backward`` function will use the gradients already stored in
+    ``precomputed``, meaning that if any of the system's positions ``requires_grad``,
+    ``precomputed`` must contain ``"positions"`` gradients. Similarly, if any of the
+    system's cell ``requires_grad``, ``precomputed`` must contain ``"cell"`` gradients.
+
+    :param systems: list of system used to compute ``precomputed``
+    :param precomputed: precomputed :py:class:`equistore.torch.TensorMap`
+    :param forward_gradients: which gradients to keep in the output, defaults to None
+    """
+    if forward_gradients is None:
+        forward_gradients = []
+
+    if not isinstance(systems, list):
+        systems = [systems]
+
+    return torch.ops.rascaline.register_autograd(
+        systems, precomputed, forward_gradients
+    )
+
+
 class CalculatorModule(torch.nn.Module):
     """
     This is the base class for calculators in rascaline-torch, providing the
