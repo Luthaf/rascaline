@@ -11,6 +11,7 @@ use super::{catch_unwind, rascal_status_t};
 
 /// Pair of atoms coming from a neighbor list
 #[repr(C)]
+#[allow(non_camel_case_types)]
 pub struct rascal_pair_t {
     /// index of the first atom in the pair
     pub first: usize,
@@ -55,6 +56,7 @@ pub struct rascal_pair_t {
 // Finally `extern` defaults to `extern "C"`, setting the ABI of the function to
 // the default C ABI on the current system.
 #[repr(C)]
+#[allow(non_camel_case_types)]
 pub struct rascal_system_t {
     /// User-provided data should be stored here, it will be passed as the
     /// first parameter to all function pointers below.
