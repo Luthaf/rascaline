@@ -49,16 +49,27 @@ public:
     );
 
 private:
-    friend class RascalineAutograd;
-
-    /// Actual implementation of `compute`, used by `RascalineAutograd`
-    equistore_torch::TorchTensorMap compute_impl(
-        std::vector<TorchSystem>& systems,
-        rascaline::CalculationOptions options
-    );
-
     rascaline::Calculator calculator_;
 };
+
+
+/// Register autograd nodes between `system.positions` and `system.cell` for
+/// each of the systems and the values in the `precomputed` TensorMap.
+///
+/// This is an advanced function must users should not need to use.
+///
+/// The autograd nodes `backward()` function will use the gradients already
+/// stored in `precomputed`, meaning that if any of the system's positions
+/// `requires_grad`, `precomputed` must contain `"positions"` gradients.
+/// Similarly, if any of the system's cell `requires_grad`, `precomputed` must
+/// contain `"cell"` gradients.
+///
+/// `forward_gradients` controls which gradients are left inside the TensorMap.
+equistore_torch::TorchTensorMap RASCALINE_TORCH_EXPORT register_autograd(
+    std::vector<TorchSystem> systems,
+    equistore_torch::TorchTensorMap precomputed,
+    std::vector<std::string> forward_gradients
+);
 
 }
 

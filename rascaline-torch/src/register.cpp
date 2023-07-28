@@ -47,4 +47,13 @@ TORCH_LIBRARY(rascaline, m) {
                 );
             })
         ;
+
+    m.def(
+        "register_autograd("
+            "__torch__.torch.classes.rascaline.System[] systems,"
+            "__torch__.torch.classes.equistore.TensorMap precomputed,"
+            "str[] forward_gradients"
+        ") -> __torch__.torch.classes.equistore.TensorMap",
+        register_autograd
+    );
 }

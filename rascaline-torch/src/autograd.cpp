@@ -67,22 +67,6 @@ struct CellGrad: torch::autograd::Function<CellGrad> {
         }                                                                      \
     } while (false)
 
-static bool all_systems_use_native(const std::vector<TorchSystem>& systems) {
-    auto result = systems[0]->use_native_system();
-    for (const auto& system: systems) {
-        if (system->use_native_system() != result) {
-            C10_THROW_ERROR(ValueError,
-                "either all or none of the systems should have pre-defined neighbor lists"
-            );
-        }
-    }
-    return result;
-}
-
-static bool contains(const std::vector<std::string>& haystack, const std::string& needle) {
-    return std::find(std::begin(haystack), std::end(haystack), needle) != std::end(haystack);
-}
-
 static std::vector<TorchTensorBlock> extract_gradient_blocks(
     const TorchTensorMap& tensor,
     const std::string& parameter
@@ -111,126 +95,36 @@ std::vector<torch::Tensor> RascalineAutograd::forward(
     torch::autograd::AutogradContext *ctx,
     torch::Tensor all_positions,
     torch::Tensor all_cells,
-    CalculatorHolder& calculator,
-    std::vector<TorchSystem> systems,
-    TorchTensorMap* tensor_map,
-    std::vector<std::string> forward_gradients
+    torch::IValue structures_start,
+    equistore_torch::TorchTensorBlock block
 ) {
-    // =============== Handle all options for the calculation =============== //
-    auto calculation_options = rascaline::CalculationOptions();
-
-    // which gradients should we compute? We have to compute some gradient
-    // either if positions/cell has `requires_grad` set to `true`, or if the
-    // user requested specific gradients in `forward_gradients`
-    for (const auto& parameter: forward_gradients) {
-        if (parameter != "positions" && parameter != "cell") {
-            C10_THROW_ERROR(ValueError, "invalid parameter in forward gradients: " + parameter);
-        }
-    }
-
-    if (contains(forward_gradients, "positions") || all_positions.requires_grad()) {
-        calculation_options.gradients.push_back("positions");
-    }
-
-    if (contains(forward_gradients, "cell") || all_cells.requires_grad()) {
-        calculation_options.gradients.push_back("cell");
-    }
-
-    // where all computed gradients explicitly requested in forward_gradients?
-    bool all_forward_gradients = true;
-    for (const auto& parameter: calculation_options.gradients) {
-        if (!contains(forward_gradients, parameter)) {
-            all_forward_gradients = false;
-        }
-    }
-
-    calculation_options.use_native_system = all_systems_use_native(systems);
-    // TODO: selected_properties
-    // TODO: selected_samples
-
-    // =================== run the actual calculation ======================= //
-    auto structures_start = std::vector<int64_t>();
-    int64_t current_start = 0;
-    for (auto& system: systems) {
-        structures_start.push_back(current_start);
-        current_start += system->size();
-    }
-
-    auto descriptor = calculator.compute_impl(systems, calculation_options);
-
-    // ================== extract the data for autograd ===================== //
-    auto values_by_block = std::vector<torch::Tensor>();
-    for (int64_t i=0; i<descriptor->keys()->count(); i++) {
-        // this add a reference to the torch::Tensor already in `descriptor`
-        // inside `values_by_block`
-        values_by_block.push_back(descriptor->block_by_id(i)->values());
-    }
-
-    // ============== save the required data for backward pass ============== //
     ctx->save_for_backward({all_positions, all_cells});
-    ctx->saved_data.emplace("structures_start", std::move(structures_start));
 
-    // We can not store the full TensorMap in `ctx`, because that would create a
-    // reference cycle: the `TensorMap`'s blocks `values` will have their
-    // `grad_fn` set to something which can call `RascalineAutograd::backward`,
-    // and stores the `ctx`. But the `ctx` would also contain a reference to the
-    // full `TensorMap`. This reference cycle means that the memory for the
-    // TensorMap would be leaked forever.
-    //
-    // Instead, we extract only the data we need to run the backward pass here
-    // (i.e. gradients blocks for positions autograd, gradients blocks and
-    // samples for cell autograd).
-    auto backward_gradients = std::vector<std::string>();
     if (all_positions.requires_grad()) {
-        ctx->saved_data.emplace(
-            "positions_gradients",
-            extract_gradient_blocks(descriptor, "positions")
+        ctx->saved_data.emplace("structures_start", structures_start);
+
+        auto gradient = block->gradient("positions");
+        ctx->saved_data["positions_gradients"] = torch::make_intrusive<TensorBlockHolder>(
+            gradient->values(),
+            gradient->samples(),
+            gradient->components(),
+            gradient->properties()
         );
     }
 
     if (all_cells.requires_grad()) {
-        ctx->saved_data.emplace(
-            "cell_gradients",
-            extract_gradient_blocks(descriptor, "cell")
-        );
+        ctx->saved_data["samples"] = block->samples();
 
-        auto all_samples = std::vector<TorchLabels>();
-        for (int64_t i=0; i<descriptor->keys()->count(); i++) {
-            auto block = descriptor->block_by_id(i);
-            all_samples.push_back(block->samples());
-        }
-        ctx->saved_data.emplace("samples", std::move(all_samples));
-    }
-
-    // ==================== "return" the right TensorMap ==================== //
-    if (all_forward_gradients) {
-        *tensor_map = std::move(descriptor);
-    } else {
-        auto new_blocks = std::vector<TorchTensorBlock>();
-        for (int64_t i=0; i<descriptor->keys()->count(); i++) {
-            auto block = descriptor->block_by_id(i);
-            auto new_block = torch::make_intrusive<TensorBlockHolder>(
-                block->values(),
-                block->samples(),
-                block->components(),
-                block->properties()
-            );
-
-            for (const auto& parameter: forward_gradients) {
-                auto gradient = block->gradient(parameter);
-                new_block->add_gradient(parameter, gradient);
-            }
-
-            new_blocks.push_back(std::move(new_block));
-        }
-
-        *tensor_map = torch::make_intrusive<TensorMapHolder>(
-            descriptor->keys(),
-            std::move(new_blocks)
+        auto gradient = block->gradient("cell");
+        ctx->saved_data["cell_gradients"] = torch::make_intrusive<TensorBlockHolder>(
+            gradient->values(),
+            gradient->samples(),
+            gradient->components(),
+            gradient->properties()
         );
     }
 
-    return values_by_block;
+    return {block->values()};
 }
 
 std::vector<torch::Tensor> RascalineAutograd::backward(
@@ -242,96 +136,62 @@ std::vector<torch::Tensor> RascalineAutograd::backward(
     auto all_positions = saved_variables[0];
     auto all_cells = saved_variables[1];
 
-    auto structures_start = ctx->saved_data["structures_start"];
-
-    auto n_blocks = grad_outputs.size();
-    for (size_t i=0; i<n_blocks; i++) {
-        // TODO: do not make everything contiguous, instead check how much
-        // slower `torch::dot` is here.
-        grad_outputs[i] = grad_outputs[i].contiguous();
-    }
+    always_assert(grad_outputs.size() == 1);
+    // TODO: explore not not making this contiguous, instead using
+    // torch::dot/torch::einsum if they are not too slow.
+    grad_outputs[0] = grad_outputs[0].contiguous();
 
     auto positions_grad = torch::Tensor();
     auto cell_grad = torch::Tensor();
-    if (n_blocks == 0) {
-        return {
-            positions_grad,
-            cell_grad,
-            torch::Tensor(),
-            torch::Tensor(),
-            torch::Tensor(),
-            torch::Tensor(),
-        };
-    }
 
     // ===================== gradient w.r.t. positions ====================== //
     if (all_positions.requires_grad()) {
-        positions_grad = torch::zeros_like(all_positions);
+        auto forward_gradient = ctx->saved_data["positions_gradients"].toCustomClass<TensorBlockHolder>();
+        auto structures_start = ctx->saved_data["structures_start"];
 
-        const auto& forward_gradients = ctx->saved_data["positions_gradients"].toListRef();
-        always_assert(forward_gradients.size() == n_blocks);
+        auto output = PositionsGrad::apply(
+            all_positions,
+            grad_outputs[0],
+            forward_gradient,
+            structures_start
+        );
 
-        for (size_t block_i=0; block_i<n_blocks; block_i++) {
-            auto forward_gradient = forward_gradients[block_i].toCustomClass<TensorBlockHolder>();
-            auto output = PositionsGrad::apply(
-                all_positions,
-                grad_outputs[block_i],
-                forward_gradient,
-                structures_start
-            );
-
-            positions_grad += output[0];
-        }
+        positions_grad = output[0];
     }
 
     // ======================= gradient w.r.t. cell ========================= //
     if (all_cells.requires_grad()) {
-        cell_grad = torch::zeros_like(all_cells);
-
-        const auto& forward_gradients = ctx->saved_data["cell_gradients"].toListRef();
-        always_assert(forward_gradients.size() == n_blocks);
-
-        const auto& all_samples = ctx->saved_data["samples"].toListRef();
-        always_assert(all_samples.size() == n_blocks);
+        auto forward_gradient = ctx->saved_data["cell_gradients"].toCustomClass<TensorBlockHolder>();
+        auto block_samples = ctx->saved_data["samples"].toCustomClass<LabelsHolder>();
 
         // find the index of the "structure" dimension in the samples
-        const auto& first_sample_names = all_samples[0].toCustomClass<LabelsHolder>()->names();
+        const auto& sample_names = block_samples->names();
         auto structure_dimension_it = std::find(
-            std::begin(first_sample_names),
-            std::end(first_sample_names),
+            std::begin(sample_names),
+            std::end(sample_names),
             "structure"
         );
-        if (structure_dimension_it == std::end(first_sample_names)) {
+        if (structure_dimension_it == std::end(sample_names)) {
             C10_THROW_ERROR(ValueError,
                 "could not find 'structure' in the samples, this calculator is missing it"
             );
         }
-        int64_t structure_dimension = std::distance(std::begin(first_sample_names), structure_dimension_it);
+        int64_t structure_dimension = std::distance(std::begin(sample_names), structure_dimension_it);
 
-        for (size_t block_i=0; block_i<n_blocks; block_i++) {
-            auto forward_gradient = forward_gradients[block_i].toCustomClass<TensorBlockHolder>();
-            auto block_samples = all_samples[block_i].toCustomClass<LabelsHolder>();
-            always_assert(first_sample_names == block_samples->names());
+        auto structures = block_samples->values().index({torch::indexing::Slice(), structure_dimension});
+        auto output = CellGrad::apply(
+            all_cells,
+            grad_outputs[0],
+            forward_gradient,
+            structures
+        );
 
-            auto structures = block_samples->values().index({torch::indexing::Slice(), structure_dimension});
-
-            auto output = CellGrad::apply(
-                all_cells,
-                grad_outputs[block_i],
-                forward_gradient,
-                structures
-            );
-
-            cell_grad += output[0];
-        }
-
+        cell_grad = output[0];
     }
 
     return {
         positions_grad,
         cell_grad,
-        torch::Tensor(),
-        torch::Tensor(),
         torch::Tensor(),
         torch::Tensor(),
     };
