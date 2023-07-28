@@ -1,5 +1,7 @@
 use ndarray::{ArrayViewMut2, Array2};
 
+use log::warn;
+
 use crate::Error;
 use crate::calculators::radial_basis::RadialBasis;
 
@@ -112,11 +114,12 @@ impl SoapRadialIntegralCache {
                 };
 
                 if center_contribution.is_some() {
-                    Error::InvalidParameter(
-                        "For a tabulated radial integral with SOAP the
-                        `center_contribution` is superflous.".into());
+                    warn!(
+                        "`center_contribution` is not used in SOAP radial \
+                        integral and will be ignored"
+                    );
                 }
-                
+
                 Box::new(SoapRadialIntegralSpline::from_tabulated(
                     parameters, points
                 )?)
