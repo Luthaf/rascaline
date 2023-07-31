@@ -385,7 +385,7 @@ def _combine_single_center(
                 combined_key["spherical_harmonics_l"],
                 cg_cache,
                 use_sparse,
-                correction_factor=multi,
+                correction_factor=np.sqrt(multi),
             )
         )
 
