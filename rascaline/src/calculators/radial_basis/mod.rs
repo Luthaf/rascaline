@@ -27,8 +27,17 @@ pub enum RadialBasis {
     ///
     /// The easiest way to create a set of spline points is the
     /// `rascaline.generate_splines` Python function.
+    ///
+    /// For LODE calculations also the contribution of the central atom have to be
+    /// provided. The `center_contribution` is defined as `c_n =
+    /// \sqrt{4π} \int dr r^2 R_n(r) g(r)` where `g(r)` is a radially symmetric density
+    /// function, `R_n(r)` the radial basis function and `n` the current radial channel.
+    /// Note that the integration range was deliberately left ambiguous since it depends
+    /// on the radial basis, i.e. for the GTO basis, `r \in R^+` is used, while `r \in
+    /// [0, cutoff]` for the monomial basis.
     TabulatedRadialIntegral {
         points: Vec<SplinePoint>,
+        center_contribution: Option<Vec<f64>>,
     }
 }
 

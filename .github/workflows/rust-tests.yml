@@ -1,4 +1,4 @@
-name: Test
+name: Rust tests
 
 on:
   push:
@@ -7,13 +7,13 @@ on:
     # Check all PR
 
 concurrency:
-  group: tests-${{ github.ref }}
+  group: rust-tests-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
 
 jobs:
   tests:
     runs-on: ${{ matrix.os }}
-    name: ${{ matrix.os }} / rust ${{ matrix.rust-version }} / ${{ matrix.build-type }} ${{ matrix.extra-name }}
+    name: ${{ matrix.os }} / rust ${{ matrix.rust-version }} ${{ matrix.extra-name }}
     container: ${{ matrix.container }}
     strategy:
       matrix:
@@ -22,33 +22,22 @@ jobs:
             rust-version: stable
             rust-target: x86_64-unknown-linux-gnu
             build-type: debug
-          - os: ubuntu-20.04
-            rust-version: stable
-            rust-target: x86_64-unknown-linux-gnu
-            build-type: debug
             test-static-lib: true
-            extra-name: static C library
+            extra-name: / static C library
           - os: ubuntu-20.04
             rust-version: stable
             rust-target: x86_64-unknown-linux-gnu
             build-type: release
             cargo-build-flags: --release
             do-valgrind: true
-          - os: ubuntu-20.04
-            rust-version: 1.63
-            rust-target: x86_64-unknown-linux-gnu
-            build-type: debug
-          - os: ubuntu-20.04
-            rust-version: beta
-            rust-target: x86_64-unknown-linux-gnu
-            build-type: debug
-          # check the build on a stock Ubuntu 20.04, including cmake 3.16 and
-          # Python 3.8
+            extra-name: / release valgrind
+          # check the build on a stock Ubuntu 20.04, including cmake 3.16
           - os: ubuntu-20.04
             rust-version: "1.63"
             container: ubuntu:20.04
             rust-target: x86_64-unknown-linux-gnu
             build-type: debug
+            extra-name: / cmake 3.16
           - os: macos-11
             rust-version: stable
             rust-target: x86_64-apple-darwin
@@ -68,21 +57,13 @@ jobs:
         uses: actions/setup-python@v4
         if: "!matrix.container"
         with:
-          python-version: "3.10"
+          python-version: "3.11"
 
       - name: setup rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: ${{ matrix.rust-version }}
-          default: true
           target: ${{ matrix.rust-target }}
-
-      - name: install python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install tox
-          echo "tox_version=$(tox --version | awk '{split($0, s," "); print s[1]}')" >> $GITHUB_ENV
 
       - name: install valgrind
         if: matrix.do-valgrind
@@ -100,12 +81,6 @@ jobs:
           echo "CMAKE_C_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
           echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
 
-      - name: cache tox environments
-        uses: actions/cache@v3
-        with:
-          path: .tox
-          key: tox-${{ env.tox_version }}-${{ matrix.os }}-${{ hashFiles('pyproject.toml', 'setup.cfg', 'tox.ini') }}
-
       - name: unit tests
         run: cargo test --lib --target ${{ matrix.rust-target }} ${{ matrix.cargo-build-flags }}
 
@@ -115,45 +90,26 @@ jobs:
       - name: integration tests
         env:
           RASCALINE_TEST_WITH_STATIC_LIB: ${{ matrix.test-static-lib || 0 }}
-        run: cargo test --test "*" --target ${{ matrix.rust-target }} ${{ matrix.cargo-build-flags }}
+        run: |
+          cargo test --test "*" --package rascaline --target ${{ matrix.rust-target }} ${{ matrix.cargo-build-flags }}
+          cargo test --test "*" --package rascaline-c-api --target ${{ matrix.rust-target }} ${{ matrix.cargo-build-flags }}
 
   # second set of jobs checking that (non-test) code still compiles/run as expected
   prevent-bitrot:
     runs-on: ubuntu-20.04
-    name: check examples / benchmarks / Python build
+    name: check examples / benchmarks
     strategy:
       matrix:
-        python-version: ['3.7', '3.11']
         include:
-          - rust-version: stable
-            rust-target: x86_64-unknown-linux-gnu
+          - rust-version:
+            rust-target:
     steps:
       - uses: actions/checkout@v3
 
-      - name: set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-
       - name: setup rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
-          toolchain: ${{ matrix.rust-version }}
-          default: true
-          target: ${{ matrix.rust-target }}
-
-      - name: install python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install tox
-          echo "tox_version=$(tox --version | awk '{split($0, s," "); print s[1]}')" >> $GITHUB_ENV
-
-      - name: cache tox environments
-        uses: actions/cache@v3
-        with:
-          path: .tox
-          key: tox-${{ env.tox_version }}-${{ matrix.os }}-${{ hashFiles('pyproject.toml', 'setup.cfg', 'tox.ini') }}
+          toolchain: stable
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.3
@@ -171,9 +127,6 @@ jobs:
       - name: check that benchmarks compile and run once
         run: cargo bench -- --test
 
-      - name: python build tests
-        run: tox -e build-python
-
   # third set of jobs checking containing basic rust linting
   lint-rust:
     runs-on: ubuntu-20.04
@@ -187,11 +140,9 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: setup rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: ${{ matrix.rust-version }}
-          default: true
           target: ${{ matrix.rust-target }}
 
       - name: install dependencies

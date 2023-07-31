@@ -11,6 +11,7 @@
 #include <mutex>
 #include <memory>
 #include <utility>
+#include <optional>
 #include <stdexcept>
 #include <exception>
 #include <unordered_map>
@@ -345,7 +346,7 @@ class LabelsSelection {
 public:
     /// Use all possible labels for this calculation
     static LabelsSelection all() {
-        return LabelsSelection(nullptr, nullptr);
+        return LabelsSelection(std::nullopt, nullptr);
     }
 
     /// Select a subset of labels, using the same selection criterion for all
@@ -358,7 +359,7 @@ public:
     /// If the `selection` contains a subset of the variables of the full set of
     /// labels, then only entries from the full set which match one of the entry
     /// in this selection for all of the selection variable will be used.
-    static LabelsSelection subset(std::shared_ptr<equistore::Labels> selection) {
+    static LabelsSelection subset(equistore::Labels selection) {
         return LabelsSelection(std::move(selection), nullptr);
     }
 
@@ -369,13 +370,13 @@ public:
     /// `selection`, which must have the same set of keys as the full
     /// calculation.
     static LabelsSelection predefined(std::shared_ptr<equistore::TensorMap> selection) {
-        return LabelsSelection(nullptr, std::move(selection));
+        return LabelsSelection(std::nullopt, std::move(selection));
     }
 
     ~LabelsSelection() = default;
 
     /// LabelsSelection can be copy-constructed
-    LabelsSelection(const LabelsSelection& other): LabelsSelection(nullptr, nullptr) {
+    LabelsSelection(const LabelsSelection& other): LabelsSelection(std::nullopt, nullptr) {
         *this = other;
     }
 
@@ -383,15 +384,15 @@ public:
     LabelsSelection& operator=(const LabelsSelection& other) {
         this->subset_ = other.subset_;
         this->predefined_ = other.predefined_;
-        if (this->subset_ != nullptr) {
-            this->c_subset_ = subset_->as_eqs_labels_t();
+        if (this->subset_) {
+            this->raw_subset_ = subset_->as_eqs_labels_t();
         }
 
         return *this;
     }
 
     /// LabelsSelection can be move-constructed
-    LabelsSelection(LabelsSelection&& other): LabelsSelection(nullptr, nullptr) {
+    LabelsSelection(LabelsSelection&& other): LabelsSelection(std::nullopt, nullptr) {
         *this = std::move(other);
     }
 
@@ -399,13 +400,13 @@ public:
     LabelsSelection& operator=(LabelsSelection&& other) {
         this->subset_ = std::move(other.subset_);
         this->predefined_ = std::move(other.predefined_);
-        if (this->subset_ != nullptr) {
-            this->c_subset_ = subset_->as_eqs_labels_t();
+        if (this->subset_) {
+            this->raw_subset_ = subset_->as_eqs_labels_t();
         }
 
-        other.subset_ = nullptr;
+        other.subset_ = std::nullopt;
         other.predefined_ = nullptr;
-        std::memset(&other.c_subset_, 0, sizeof(eqs_labels_t));
+        std::memset(&other.raw_subset_, 0, sizeof(eqs_labels_t));
 
         return *this;
     }
@@ -415,8 +416,8 @@ public:
         auto selection = rascal_labels_selection_t{};
         std::memset(&selection, 0, sizeof(rascal_labels_selection_t));
 
-        if (subset_ != nullptr) {
-            selection.subset = &c_subset_;
+        if (subset_) {
+            selection.subset = &raw_subset_;
         }
 
         if (predefined_ != nullptr) {
@@ -427,17 +428,17 @@ public:
     }
 
 private:
-    LabelsSelection(std::shared_ptr<equistore::Labels> subset, std::shared_ptr<equistore::TensorMap> predefined):
-        subset_(std::move(subset)), c_subset_(), predefined_(std::move(predefined))
+    LabelsSelection(std::optional<equistore::Labels> subset, std::shared_ptr<equistore::TensorMap> predefined):
+        subset_(std::move(subset)), raw_subset_(), predefined_(std::move(predefined))
     {
-        std::memset(&c_subset_, 0, sizeof(eqs_labels_t));
-        if (subset_ != nullptr) {
-            c_subset_ = subset_->as_eqs_labels_t();
+        std::memset(&raw_subset_, 0, sizeof(eqs_labels_t));
+        if (subset_) {
+            raw_subset_ = subset_->as_eqs_labels_t();
         }
     }
 
-    std::shared_ptr<equistore::Labels> subset_;
-    eqs_labels_t c_subset_;
+    std::optional<equistore::Labels> subset_;
+    eqs_labels_t raw_subset_;
     std::shared_ptr<equistore::TensorMap> predefined_;
 };
 
@@ -453,6 +454,12 @@ public:
     LabelsSelection selected_samples = LabelsSelection::all();
     /// Selection of properties to compute for the samples
     LabelsSelection selected_properties = LabelsSelection::all();
+
+    /// Selection for the keys to include in the output. Set this to
+    /// `std::nullopt` to use the default set of keys, as determined by the
+    /// calculator. Note that this default set of keys can depend on which
+    /// systems we are running the calculation on.
+    std::optional<equistore::Labels> selected_keys = std::nullopt;
 
     /// @verbatim embed:rst:leading-slashes
     /// List of gradients that should be computed. If this list is empty no
@@ -503,7 +510,7 @@ public:
     ///
     /// This is an advanced function that most users don't need to call
     /// directly.
-    rascal_calculation_options_t as_rascal_calculation_options_t() const {
+    rascal_calculation_options_t as_rascal_calculation_options_t() {
         auto options = rascal_calculation_options_t{};
         std::memset(&options, 0, sizeof(rascal_calculation_options_t));
 
@@ -515,8 +522,18 @@ public:
         options.selected_samples = this->selected_samples.as_rascal_labels_selection_t();
         options.selected_properties = this->selected_properties.as_rascal_labels_selection_t();
 
+        if (this->selected_keys) {
+            // store the raw eqs_labels_t in a class variable to make sure
+            // it lives longer than this function
+            this->raw_selected_keys_ = this->selected_keys->as_eqs_labels_t();
+            options.selected_keys = &this->raw_selected_keys_;
+        }
+
         return options;
     }
+
+private:
+    eqs_labels_t raw_selected_keys_;
 };
 
 
@@ -620,7 +637,7 @@ public:
     /// Runs a calculation with this calculator on the given ``systems``
     equistore::TensorMap compute(
         std::vector<rascal_system_t>& systems,
-        const CalculationOptions& options = CalculationOptions()
+        CalculationOptions options = CalculationOptions()
     ) const {
         eqs_tensormap_t* descriptor = nullptr;
 
@@ -639,7 +656,7 @@ public:
     template<typename SystemImpl, typename std::enable_if<std::is_base_of<System, SystemImpl>::value, bool>::type = true>
     equistore::TensorMap compute(
         std::vector<SystemImpl>& systems,
-        const CalculationOptions& options = CalculationOptions()
+        CalculationOptions options = CalculationOptions()
     ) const {
         auto rascal_systems = std::vector<rascal_system_t>();
         for (auto& system: systems) {
@@ -653,7 +670,7 @@ public:
     template<typename SystemImpl, typename std::enable_if<std::is_base_of<System, SystemImpl>::value, bool>::type = true>
     equistore::TensorMap compute(
         SystemImpl& system,
-        const CalculationOptions& options = CalculationOptions()
+        CalculationOptions options = CalculationOptions()
     ) const {
         eqs_tensormap_t* descriptor = nullptr;
 
@@ -673,7 +690,7 @@ public:
     /// using the `BasicSystems(std::string path)` constructor
     equistore::TensorMap compute(
         BasicSystems& systems,
-        const CalculationOptions& options = CalculationOptions()
+        CalculationOptions options = CalculationOptions()
     ) const {
         eqs_tensormap_t* descriptor = nullptr;
 

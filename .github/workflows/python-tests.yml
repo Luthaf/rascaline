@@ -1,0 +1,104 @@
+name: Python tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    # Check all PR
+
+concurrency:
+  group: python-tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
+jobs:
+  tests:
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    container: ${{ matrix.container }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-20.04
+            rust-target: x86_64-unknown-linux-gnu
+            python-version: "3.7"
+          - os: ubuntu-20.04
+            rust-target: x86_64-unknown-linux-gnu
+            python-version: "3.11"
+          - os: macos-11
+            rust-target: x86_64-apple-darwin
+            python-version: "3.11"
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: setup rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          target: ${{ matrix.rust-target }}
+
+      - name: install python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install tox
+          echo "tox_version=$(tox --version | awk '{split($0, s," "); print s[1]}')" >> $GITHUB_ENV
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
+      - name: Setup sccache environnement variables
+        run: |
+          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
+          echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+          echo "CMAKE_C_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
+          echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
+
+      - name: cache tox environments
+        uses: actions/cache@v3
+        with:
+          path: .tox
+          key: tox-${{ env.tox_version }}-${{ matrix.os }}-${{ hashFiles('tox.ini') }}
+
+      - name: run tox
+        run: tox
+
+  # second set of jobs checking that (non-test) code still compiles/run as expected
+  prevent-bitrot:
+    runs-on: ${{ matrix.os }}
+    name: Python ${{ matrix.python-version }} / check build
+    strategy:
+      matrix:
+        python-version: ['3.7', '3.11']
+        os: [ubuntu-20.04]
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: setup rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          target: x86_64-unknown-linux-gnu
+
+      - name: install python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install tox
+          echo "tox_version=$(tox --version | awk '{split($0, s," "); print s[1]}')" >> $GITHUB_ENV
+
+      - name: cache tox environments
+        uses: actions/cache@v3
+        with:
+          path: .tox
+          key: tox-${{ env.tox_version }}-${{ matrix.os }}-${{ hashFiles('tox.ini') }}
+
+      - name: python build tests
+        run: tox -e build-python

@@ -1,5 +1,7 @@
 use ndarray::{ArrayViewMut2, Array2};
 
+use log::warn;
+
 use crate::Error;
 use crate::calculators::radial_basis::RadialBasis;
 
@@ -104,13 +106,20 @@ impl SoapRadialIntegralCache {
                     Box::new(gto) as Box<dyn SoapRadialIntegral>
                 }
             }
-
-            RadialBasis::TabulatedRadialIntegral {points} => {
+            RadialBasis::TabulatedRadialIntegral {points, center_contribution} => {
                 let parameters = SoapRadialIntegralSplineParameters {
                     max_radial: parameters.max_radial,
                     max_angular: parameters.max_angular,
                     cutoff: parameters.cutoff,
                 };
+
+                if center_contribution.is_some() {
+                    warn!(
+                        "`center_contribution` is not used in SOAP radial \
+                        integral and will be ignored"
+                    );
+                }
+
                 Box::new(SoapRadialIntegralSpline::from_tabulated(
                     parameters, points
                 )?)

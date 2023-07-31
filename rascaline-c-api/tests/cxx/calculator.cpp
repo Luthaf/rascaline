@@ -172,10 +172,7 @@ TEST_CASE("Compute descriptor") {
         auto options = rascaline::CalculationOptions();
         options.gradients.push_back("positions");
         options.selected_samples = rascaline::LabelsSelection::subset(
-            std::make_shared<equistore::Labels>(equistore::Labels(
-                {"structure", "center"},
-                {{0, 1}, {0, 3}}
-            ))
+            equistore::Labels({"structure", "center"}, {{0, 1}, {0, 3}})
         );
         auto descriptor = calculator.compute(systems, options);
 
@@ -248,10 +245,7 @@ TEST_CASE("Compute descriptor") {
         auto options = rascaline::CalculationOptions();
         options.gradients.push_back("positions");
         options.selected_properties = rascaline::LabelsSelection::subset(
-            std::make_shared<equistore::Labels>(equistore::Labels(
-                {"index_delta", "x_y_z"},
-                {{0, 1}}
-            ))
+            equistore::Labels({"index_delta", "x_y_z"}, {{0, 1}})
         );
         auto descriptor = calculator.compute(systems, options);
 
@@ -420,6 +414,54 @@ TEST_CASE("Compute descriptor") {
                 0.0, /**/ 0.0, /**/ 0.0,
             },
             {2, 3, 1}
+        ));
+    }
+
+    SECTION("Partial compute -- key selection") {
+        // check key selection: we add a non-existing key (12) and remove an
+        // existing one (1) from the default set of keys. We also put the keys
+        // in a different order than what would be the default (6, 12).
+
+        auto options = rascaline::CalculationOptions();
+        options.selected_keys = equistore::Labels(
+            {"species_center"},
+            {{12}, {6}}
+        );
+        auto descriptor = calculator.compute(systems, options);
+
+        CHECK(descriptor.keys() == equistore::Labels(
+            {"species_center"},
+            {{12}, {6}}
+        ));
+
+        // empty block
+        auto block = descriptor.block_by_id(0);
+        CHECK(block.samples() == equistore::Labels(
+            {"structure", "center"},
+            {}
+        ));
+        CHECK(block.properties() == equistore::Labels(
+            {"index_delta", "x_y_z"},
+            {{1, 0}, {0, 1}}
+        ));
+        CHECK(block.values() == equistore::NDArray<double>(
+            std::vector<double>{},
+            {0, 2}
+        ));
+
+        // C block
+        block = descriptor.block_by_id(1);
+        CHECK(block.samples() == equistore::Labels(
+            {"structure", "center"},
+            {{0, 0}}
+        ));
+        CHECK(block.properties() == equistore::Labels(
+            {"index_delta", "x_y_z"},
+            {{1, 0}, {0, 1}}
+        ));
+        CHECK(block.values() == equistore::NDArray<double>(
+            {4.0, 3.0},
+            {1, 2}
         ));
     }
 }

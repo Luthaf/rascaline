@@ -151,6 +151,7 @@ pub unsafe extern fn rascal_calculator_parameters(
 }
 
 
+#[allow(clippy::doc_markdown)]
 /// Get all radial cutoffs used by this `calculator`'s neighbors lists (which
 /// can be an empty list).
 ///
@@ -189,6 +190,7 @@ pub unsafe extern fn rascal_calculator_cutoffs(
 /// to NULL.
 #[repr(C)]
 #[derive(Debug)]
+#[allow(non_camel_case_types)]
 pub struct rascal_labels_selection_t {
     /// Select a subset of labels, using the same selection criterion for all
     /// keys in the final `eqs_tensormap_t`.
@@ -296,8 +298,9 @@ fn key_selection(value: *const eqs_labels_t, labels: &'_ mut Option<Labels>) -> 
 }
 
 /// Options that can be set to change how a calculator operates.
-#[derive(Debug)]
 #[repr(C)]
+#[derive(Debug)]
+#[allow(non_camel_case_types)]
 pub struct rascal_calculation_options_t {
     /// @verbatim embed:rst:leading-asterisk
     /// Array of NULL-terminated strings containing the gradients to compute.
