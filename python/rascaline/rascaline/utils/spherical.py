@@ -242,6 +242,43 @@ def rotate_ase_frame(frame) -> Tuple[ase.Atoms, Tuple[float, float, float]]:
     return rotated_frame, (alpha, beta, gamma)
 
 
+def invert_ase_frame(frame) -> ase.Atoms:
+    """
+    Make a copy of the input ``frame``. Randomly rotates its xyz and cell
+    coordinates and returns the new frame, and euler angles alpha, beta, and
+    gamma.
+    """
+    # Copy the frame
+    inverted_frame = frame.copy()
+    # Invert the positions and cell
+    inverted_frame.positions = -1 * inverted_frame.positions @ R.T
+    inverted_frame.cell = -1 * inverted_frame.cell @ R.T
+
+    return inverted_frame
+
+
+def invert_tensormap(tensor: TensorMap) -> TensorMap:
+    """
+    Takes a TensorMap in the spherical basis and perform a parity inversion.
+    This amounts to applying a factor of (-1) to all odd parity blocks, i.e.
+    those with key values of "order_nu" equal to -1.
+    """
+    new_blocks = []
+    for key, block in tensor.items():
+        if key["inversion_sigma"] == -1:
+            new_block = TensorBlock(
+                values=block.values * 1,
+                samples=block.samples,
+                components=block.components,
+                properties=block.properties,
+            )
+        else:
+            new_block = block.copy()
+        new_blocks.append(new_block)
+
+    return TensorMap(tensor.keys, new_blocks)
+
+
 def _wigner_d(l, alpha, beta, gamma):
     """Computes a Wigner D matrix
      D^l_{mm'}(alpha, beta, gamma)
@@ -993,7 +1030,6 @@ def _remove_suffix(names, new_suffix=""):
         else:
             rname.append(name[: match.start()] + new_suffix)
     return rname
-
 
 
 def lambda_soap_vector(
