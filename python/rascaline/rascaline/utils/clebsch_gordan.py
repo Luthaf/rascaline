@@ -353,12 +353,7 @@ def _combine_single_center(
     "species_neighbor_2", ...] for each block.
     """
 
-    # TODO: what metadata can we check for equivalence here?
-    # - Keys are not the same in general, as we accumulate "lx" and "kx"
-    #   dimensions
-    
-
-    # Get the correct keys for the combined TensorMap
+    # Get the correct keys for the combined output TensorMap
     (
         combined_keys,
         keys_1_entries,
@@ -478,7 +473,6 @@ def _clebsch_gordan_combine(
     if use_sparse:
         return _clebsch_gordan_combine_sparse(arr_1, arr_2, lam, cg_cache)
     return _clebsch_gordan_combine_dense(arr_1, arr_2, lam, cg_cache)
-    # return _clebsch_gordan_dense(arr_1, arr_2, lam, cg_cache)
 
 
 def _clebsch_gordan_combine_sparse(
@@ -665,18 +659,17 @@ def _create_combined_keys(
     corresponding key. The correction_factor terms are the prefactors that
     account for the redundancy in the CG combination.
     """
-    # Check that the body order of the second TensorMap is nu = 1
-    assert np.all(keys_2.column("order_nu") == 1)
-
     # Get the body order of the first TensorMap.
     nu1 = np.unique(keys_1.column("order_nu"))[0]
+
+    # Define nu value of output TensorMap
+    nu = nu1 + 1
+
+    # Check the body order of the first TensorMap.
     assert np.all(keys_1.column("order_nu") == nu1)
 
     # The second by convention should be nu = 1.
     assert np.all(keys_2.column("order_nu") == 1)
-
-    # Define nu value of output TensorMap
-    nu = nu1 + 1
 
     # If nu = 1, the key names don't yet have any "lx" columns
     if nu1 == 1:
