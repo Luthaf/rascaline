@@ -670,20 +670,20 @@ def lambda_soap_vector(
         samples of the input frames.
     """
     # Generate Rascaline spherical expansion
-    calculator = rascaline.SphericalExpansion(**rascal_hypers)
     if lambda_cut is None:
         lambda_cut = 2 * rascal_hypers["max_angular"]
     else:
         if lambda_cut > 2 * rascal_hypers["max_angular"]:
             raise ValueError(
                 "As this function generates 2-body features (nu=2), "
-                "`lambda_cut` must be <= 2 x rascal_hypers['max_angular'] "
-                f"`rascal_hypers`. Received {lambda_cut}."
+                "`lambda_cut` cannot be more than 2 x rascal_hypers['max_angular'] "
+                f"or less than rascal_hypers['max_angular']. Received {lambda_cut}."
             )
     # Pre-calculate ClebschGordan coefficients
     cg = ClebschGordanReal(l_max=lambda_cut)
 
     # Generate descriptor via Spherical Expansion
+    calculator = rascaline.SphericalExpansion(**rascal_hypers)
     nu1 = calculator.compute(frames, selected_samples=selected_samples)
 
     # nu=1 features

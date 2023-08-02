@@ -2,7 +2,7 @@
 Module for computing Clebsch-gordan iterations with equistore TensorMaps.
 """
 import itertools
-from typing import Optional, Sequence, Tuple
+from typing import Optional, Sequence, Tuple, Union
 
 import ase
 import numpy as np
@@ -212,15 +212,77 @@ def _combine_multi_centers_block_pair(
 # ===== Fxns for combining single center descriptors =====
 
 
+def lambda_soap_vector(
+    frames: Sequence[ase.Atoms],
+    rascal_hypers: dict,
+    lambdas: Sequence[int],
+    lambda_cut: Optional[int] = None,
+    only_keep_parity: Optional[Union[int, dict]] = None,
+    selected_samples: Optional[Labels] = None,
+    species_neighbors: Optional[Sequence[int]] = None,
+) -> TensorMap:
+    """
+    A higher-level wrapper for the :py:func:`n_body_iteration_single_center`
+    function specifically for generating lambda-SOAP vectors in the equistore
+    format, with some added metadata manipulation.
+
+    The hyperparameters `rascal_hypers` are used to generate a nu=1
+    SphericalExpansion object with rascaline, and these are then combined with a
+    single Clebsch-Gordan iteration step to form the nu=2 lambda-SOAP
+    descriptor. Only the target spherical channels given in `lambdas` are
+    calculated and returned.
+
+    `lambda_cut` can be set to reduce the memory overhead of the calculation, at
+    the cost of loss of information. The theoretical maximum (and default) value
+    is nu_target * rascal_hypers["max_angular"], though a lower value can be
+    set. `nu_target` is the target body-order of the descriptor (by definition
+    nu=2 for lambda-SOAP). Using the default (and theoretical maximum) value can
+    lead to memory blow-up for large systems and hgih body-orders, so this value
+    needs to be tailored for the computation and system. Note that truncating
+    this value to less than the default will lead to some information loss.
+
+    If `only_keep_parity` is passed, then only the specified parities are
+    returned in the output TensorMap. For instance, passing as an int +1 means
+    only blocks with even parity will be returned. If a dict, the parities kept
+    for each target lambda can be specified. Any lambdasIf false, all blocks of both odd
+    and even parity are returned. In the latter case, the output TensorMap will
+    have a key dimension "inversion_sigma" that tracks the parity.
+    """
+    # Generate lambda-SOAP using rascaline.utils
+    lsoap = n_body_iteration_single_center(
+        frames,
+        rascal_hypers=rascal_hypers,
+        nu_target=2,
+        lambdas=lambdas,
+        lambda_cut=lambda_cut,
+        selected_samples=selected_samples,
+        species_neighbors=species_neighbors,
+        only_keep_parity=only_keep_parity,
+        use_sparse=True,
+    )
+
+    # Drop the redundant key name "order_nu". This is by definition 2 for all
+    # lambda-SOAP blocks.
+    lsoap = equistore.remove_dimension(lsoap, axis="keys", name="order_nu")
+
+    # If a single parity is requested, drop the now redundant "inversion_sigma"
+    # key name
+    if isinstance(only_keep_parity, int):
+        lsoap = equistore.remove_dimension(lsoap, axis="keys", name="inversion_sigma")
+
+    return lsoap
+
+
 def n_body_iteration_single_center(
     frames: Sequence[ase.Atoms],
     rascal_hypers: dict,
     nu_target: int,
     lambdas: Sequence[int],
-    use_sparse: bool = True,
     lambda_cut: Optional[int] = None,
     selected_samples: Optional[Labels] = None,
     species_neighbors: Optional[Sequence[int]] = None,
+    only_keep_parity: Optional[Union[int, dict]] = None,
+    use_sparse: bool = True,
 ) -> TensorMap:
     """
     Based on the passed ``rascal_hypers``, generates a rascaline
@@ -236,17 +298,38 @@ def n_body_iteration_single_center(
     # Set default lambda_cut if not passed
     if lambda_cut is None:
         # WARNING: the default is the maximum possible angular order for the
-        # given hypers and target body order. Memory exoplosion possible!
+        # given hypers and target body order. Memory explosion possible!
         # TODO: better default value here?
-        lambda_cut = nu_target * np.max(rascal_hypers["max_angular"])
+        lambda_cut = nu_target * rascal_hypers["max_angular"]
 
     # Check `lambda_cut` is valid
-    if lambda_cut > nu_target * np.max(rascal_hypers["max_angular"]):
+    if not (
+        rascal_hypers["max_angular"]
+        <= lambda_cut
+        <= nu_target * rascal_hypers["max_angular"]
+    ):
         raise ValueError(
-            "`lambda_cut` must be less than `nu_target` * `rascal_hypers['max_angular']`"
+            "`lambda_cut` cannot be more than `nu_target` * `rascal_hypers['max_angular']`"
+            " or less than `rascal_hypers['max_angular']`"
         )
 
-    # Define the cached CG coefficients - currently only sparse CG matrices implemented
+    # Check `lambdas` are valid
+    if not (np.min(lambdas) >= 0 and np.max(lambdas) <= lambda_cut):
+        raise ValueError(
+            "All `lambdas` must be >= 0 and <= `lambda_cut`"
+        )
+
+    # Check `only_keep_parity` is valid
+    if isinstance(only_keep_parity, int):
+        if only_keep_parity not in [None, -1, 1]:
+            raise ValueError(
+                "If passing `only_keep_parity` as int, it must be -1 or +1"
+            )
+    elif isinstance(only_keep_parity, dict):
+        # TODO: implement parity to keep by l channel
+        raise NotImplementedError("parity to keep by l channel not yet implemented.")
+
+    # Define the cached CG coefficients, either as sparse dicts or dense arrays 
     cg_cache = ClebschGordanReal(lambda_cut, use_sparse)
 
     # Generate a rascaline SphericalExpansion, for only the selected samples if
@@ -266,9 +349,6 @@ def n_body_iteration_single_center(
         )
     nu1_tensor = nu1_tensor.keys_to_properties(keys_to_move=keys_to_move)
 
-    # # Standardize the key names metadata
-    # nu1_tensor = _add_nu_sigma_to_key_names(nu1_tensor)
-
     # Add "order_nu" and "inversion_sigma" key dimensions, both with values 1
     nu1_tensor = equistore.insert_dimension(
         nu1_tensor, axis="keys", name="order_nu", values=np.array([1]), index=0
@@ -280,14 +360,26 @@ def n_body_iteration_single_center(
     # Create a copy of the nu = 1 TensorMap to combine with itself
     combined_tensor = nu1_tensor.copy()
 
-    # Iteratively combine untilt the target body order is reached
-    for _ in range(1, nu_target):
+    # Iteratively combine until the target body order is reached
+    n_iterations = nu_target - 1
+    for iteration in range(1, n_iterations + 1):
+        # If we want to filter based on parity, only do so on the final CG
+        # iteration
+        keep_parity = None
+        if iteration < n_iterations:
+            keep_parity = None
+        else:
+            assert iteration == n_iterations
+            keep_parity = only_keep_parity
+
+        # Perform a CG iteration step
         combined_tensor = _combine_single_center(
             tensor_1=combined_tensor,
             tensor_2=nu1_tensor,
             lambdas=lambdas,
             cg_cache=cg_cache,
             use_sparse=use_sparse,
+            only_keep_parity=keep_parity,
         )
 
     # TODO: Account for body-order multiplicity and normalize block values
@@ -310,6 +402,7 @@ def _combine_single_center(
     lambdas: Sequence[int],
     cg_cache,
     use_sparse: bool = True,
+    only_keep_parity: Optional[int] = None,
 ) -> TensorMap:
     """
     For 2 TensorMaps, ``tensor_1`` and ``tensor_2``, with body orders nu and 1
@@ -359,7 +452,7 @@ def _combine_single_center(
         keys_1_entries,
         keys_2_entries,
         multiplicity_list,
-    ) = _create_combined_keys(tensor_1.keys, tensor_2.keys, lambdas)
+    ) = _create_combined_keys(tensor_1.keys, tensor_2.keys, lambdas, only_keep_parity)
 
     # Iterate over pairs of blocks and combine
     combined_blocks = []
@@ -408,7 +501,7 @@ def _combine_single_center_block_pair(
     # Infer the new nu value: block 1's properties are nu pairs of
     # "species_neighbor_x" and "nx".
     combined_nu = int((len(block_1.properties.names) / 2) + 1)
-    
+
     # Define the new property names for "nx" and "species_neighbor_x"
     n_names = [f"n{i}" for i in range(1, combined_nu + 1)]
     neighbor_names = [f"species_neighbor_{i}" for i in range(1, combined_nu + 1)]
@@ -614,7 +707,10 @@ def _normalize_blocks(tensor: TensorMap) -> TensorMap:
 
 
 def _create_combined_keys(
-    keys_1: Labels, keys_2: Labels, lambdas: Sequence[int]
+    keys_1: Labels,
+    keys_2: Labels,
+    lambdas: Sequence[int],
+    only_keep_parity: Optional[Union[int, dict]] = None,
 ) -> Tuple[Labels, Sequence[Sequence[int]]]:
     """
     Given the keys of 2 TensorMaps and a list of desired lambda values, creates
@@ -658,6 +754,13 @@ def _create_combined_keys(
     values of the blocks that combine to form the block indexed by the
     corresponding key. The correction_factor terms are the prefactors that
     account for the redundancy in the CG combination.
+
+    The `only_keep_parity` argument can be used to return only keys with a
+    certain parity. Passing as None (default) will return both +1 and -1 parity
+    keys. Passing, for instance, `only_keep_parity=+1` will only return keys
+    with even parity. Warning: this should be used with caution if performing
+    multiple CG combination steps. Typically this functionality should only be
+    used in the last CG combination step.
     """
     # Get the body order of the first TensorMap.
     nu1 = np.unique(keys_1.column("order_nu"))[0]
@@ -691,6 +794,14 @@ def _create_combined_keys(
         == ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center"]
     )
 
+    # Check `only_keep_parity` argument
+    if only_keep_parity is None:
+        only_keep_parity = [+1, -1]
+    else:
+        assert isinstance(only_keep_parity, int)
+        assert only_keep_parity in [+1, -1]
+        only_keep_parity = [only_keep_parity]
+
     # Define key names of output Labels (i.e. for combined TensorMap)
     new_names = (
         ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center"]
@@ -718,6 +829,10 @@ def _create_combined_keys(
 
             # Calculate new sigma
             sig = sig1 * sig2 * (-1) ** (lam1 + lam2 + lam)
+
+            # Skip keys that don't give the desired parity
+            if sig not in only_keep_parity:
+                continue
 
             # Extract the l and k lists from keys_1
             l_list = key_1.values[4 : 4 + nu1].tolist()
