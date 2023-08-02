@@ -261,7 +261,8 @@ def invert_tensormap(tensor: TensorMap) -> TensorMap:
     """
     Takes a TensorMap in the spherical basis and perform a parity inversion.
     This amounts to applying a factor of (-1) to all odd parity blocks, i.e.
-    those with key values of "order_nu" equal to -1.
+    those with key values of "order_nu" equal to -1. It also applies a
+    (potentially extra) factor of (-1) to blocks with odd l channel.
     """
     new_blocks = []
     for key, block in tensor.items():
@@ -1040,6 +1041,7 @@ def _remove_suffix(names, new_suffix=""):
 def lambda_soap_vector(
     frames: list,
     rascal_hypers: dict,
+    lambdas: Sequence[int],
     lambda_cut: Optional[int] = None,
     selected_samples: Optional[Labels] = None,
     neighbor_species: Optional[Sequence[int]] = None,
@@ -1137,5 +1139,12 @@ def lambda_soap_vector(
 
         # Drop the inversion_sigma key name as this is now +1 for all blocks
         lsoap = equistore.remove_dimension(lsoap, axis="keys", name="inversion_sigma")
+
+    # Drop all blocks that don't correspond to the target lambdas
+    keys_to_drop = Labels(
+        names=lsoap.keys.names,
+        values=lsoap.keys.values[[v not in lambdas for v in lsoap.keys.column("spherical_harmonics_l")]],
+    )
+    lsoap = equistore.drop_blocks(lsoap, keys=keys_to_drop)
 
     return lsoap
