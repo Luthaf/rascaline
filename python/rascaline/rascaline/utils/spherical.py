@@ -265,15 +265,20 @@ def invert_tensormap(tensor: TensorMap) -> TensorMap:
     """
     new_blocks = []
     for key, block in tensor.items():
+        multiplier = 1
+
         if key["inversion_sigma"] == -1:
-            new_block = TensorBlock(
-                values=block.values * 1,
-                samples=block.samples,
-                components=block.components,
-                properties=block.properties,
-            )
-        else:
-            new_block = block.copy()
+            multiplier *= -1
+
+        if key["spherical_harmonics_l"] % 2 == 1:
+            multiplier *= -1
+
+        new_block = TensorBlock(
+            values=block.values * multiplier,
+            samples=block.samples,
+            components=block.components,
+            properties=block.properties,
+        )
         new_blocks.append(new_block)
 
     return TensorMap(tensor.keys, new_blocks)
