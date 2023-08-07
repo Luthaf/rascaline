@@ -183,9 +183,17 @@ class PowerSpectrum:
         ]
         assert spherical_expansion_1.keys.names == expected_key_names
         assert spherical_expansion_1.property_names == ["n"]
-        spherical_expansion_1 = spherical_expansion_1.keys_to_properties(
-            "species_neighbor"
+
+        # Fill blocks with `species_neighbor` from ALL blocks. If we don't do this
+        # merging blocks along the ``sample`` direction might be not possible.
+        keys_to_move = Labels(
+            names="species_neighbor",
+            values=np.unique(spherical_expansion_1.keys["species_neighbor"]).reshape(
+                -1, 1
+            ),
         )
+
+        spherical_expansion_1 = spherical_expansion_1.keys_to_properties(keys_to_move)
 
         if self.calculator_2 is None:
             spherical_expansion_2 = spherical_expansion_1
@@ -197,8 +205,16 @@ class PowerSpectrum:
             )
             assert spherical_expansion_2.keys.names == expected_key_names
             assert spherical_expansion_2.property_names == ["n"]
+
+            keys_to_move = Labels(
+                names="species_neighbor",
+                values=np.unique(
+                    spherical_expansion_2.keys["species_neighbor"]
+                ).reshape(-1, 1),
+            )
+
             spherical_expansion_2 = spherical_expansion_2.keys_to_properties(
-                "species_neighbor"
+                keys_to_move
             )
 
         blocks = []
@@ -212,7 +228,7 @@ class PowerSpectrum:
                 spherical_harmonics_l=ell, species_center=species_center
             )
             for block_2 in blocks_2:
-                # Makre sure that samples are the same. This should not happen.
+                # Make sure that samples are the same. This should not happen.
                 assert block_1.samples == block_2.samples
 
                 properties = Labels(
@@ -258,7 +274,7 @@ def _positions_gradients(new_block, block_1, block_2, factor):
     gradient_2 = block_2.gradient("positions")
 
     if len(gradient_1.samples) == 0 or len(gradient_2.samples) == 0:
-        gradients_samples = Labels.empty()
+        gradients_samples = Labels.empty(names=["sample", "structure", "atom"])
         gradient_values = np.array([]).reshape(0, 1, len(new_block.properties))
     else:
         # The "sample" dimension in the power spectrum gradient samples do
