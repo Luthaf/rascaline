@@ -9,7 +9,8 @@ import equistore
 from equistore import Labels, TensorBlock, TensorMap
 import equistore.operations
 
-from rascaline.utils import clebsch_gordan
+from rascaline.utils.clebsch_gordan import ClebschGordanReal, _clebsch_gordan_combine_dense, _clebsch_gordan_combine_sparse, n_body_iteration_single_center, _combine_single_center
+
 
 def random_equivariant_array(n_samples=30, n_q_properties=10, n_p_properties=8, l=1, seed=None):
     if seed is not None:
@@ -18,28 +19,67 @@ def random_equivariant_array(n_samples=30, n_q_properties=10, n_p_properties=8, 
     equi_l_array = np.random.rand(n_samples, 2*l+1, n_q_properties)
     return equi_l_array
 
-def equivariant_combinable_arrays(n_samples=30, n_q_properties=10, n_p_properties=8, l1=2, l2=1, lam=2, seed=None):
-    # check if valid blocks
-    assert abs(l1 - l2) <= lam and lam <= l1 + l2, f"(l1={l1}, l2={l2}, lam={lam} is not valid combination, |l1-l2| <= lam <= l1+l2 must be valid"
-    if seed is not None:
-        np.random.seed(seed)
-
-    equi_l1_array = random_equivariant_array(n_samples, n_q_properties, n_p_properties, l=l1)
-    equi_l2_array = random_equivariant_array(n_samples, n_q_properties, n_p_properties, l=l2)
-    return equi_l1_array, equi_l2_array, lam
-
 @pytest.mark.parametrize(
-    "equi_l1_array, equi_l2_array, lam",
-    [equivariant_combinable_arrays(seed=51)],
+    "equi_l1_array, equi_l2_array, lam_max",
+    [(random_equivariant_array(l=1, seed=51), random_equivariant_array(l=2, seed=52), 2)],
 )
-def test_clebsch_gordan_combine_dense_sparse_agree(equi_l1_array, equi_l2_array, lam):
-    cg_cache_sparse = clebsch_gordan.ClebschGordanReal(lambda_max=lam, sparse=True)
-    out_sparse = clebsch_gordan._clebsch_gordan_combine_sparse(equi_l1_array, equi_l2_array, lam, cg_cache_sparse)
+def test_clebsch_gordan_combine_dense_sparse_agree(equi_l1_array, equi_l2_array, lam_max):
+    # TODO change to a fixture that precomputes random_equivariant_arrays up to |l1-l2| <= lam max <= l1+l2
+    #      as we well as CG coeffs
+    cg_cache_sparse = ClebschGordanReal(lambda_max=lam_max, sparse=True)
+    out_sparse = _clebsch_gordan_combine_sparse(equi_l1_array, equi_l2_array, lam_max, cg_cache_sparse)
 
-    cg_cache_dense = clebsch_gordan.ClebschGordanReal(lambda_max=lam, sparse=False)
-    out_dense = clebsch_gordan._clebsch_gordan_combine_dense(equi_l1_array, equi_l2_array, lam, cg_cache_dense)
+    cg_cache_dense = ClebschGordanReal(lambda_max=lam_max, sparse=False)
+    out_dense = _clebsch_gordan_combine_dense(equi_l1_array, equi_l2_array, lam_max, cg_cache_dense)
 
     assert np.allclose(out_sparse, out_dense)
+
+@pytest.mark.parametrize(
+    "equi_l1_array, equi_l2_array",
+    [(random_equivariant_array(l=1, seed=51), random_equivariant_array(l=1, seed=52))],
+)
+def test_clebsch_gordan_orthogonality(equi_l1_array, equi_l2_array):
+    """
+    Test orthogonality relationships
+
+    References
+    ----------
+
+    https://en.wikipedia.org/wiki/Clebsch%E2%80%93Gordan_coefficients#Orthogonality_relations
+    """
+    l1 = (equi_l1_array.shape[1]-1)//2
+    l2 = (equi_l2_array.shape[1]-1)//2
+    lam_min = abs(l1-l2)
+    lam_max = l1+l2
+
+    cg_cache_dense = ClebschGordanReal(lambda_max=lam_max, sparse=False)
+    # cache cg mats
+    cg_mats = {}
+    for lam in range(lam_min, lam_max+1):
+        cg_mats[lam] = cg_cache_dense.coeffs[(l1, l2, lam)].reshape(-1, 2*lam+1)
+
+    # We test lam dimension
+    # \sum_{-m1 \leq l1 \leq m1, -m2 \leq l2 \leq m2} 
+    #           <λμ|l1m1,l2m2> <l1m1',l2m2'|λμ'> = δ_μμ'
+    for lam in range(lam_min, lam_max):
+        cg_mat = cg_mats[lam]
+        dot_product = cg_mat.T @ cg_mat
+        diag_mask = np.zeros(dot_product.shape, dtype=np.bool_)
+        diag_mask[np.diag_indices(len(dot_product))] = True
+        assert np.allclose(dot_product[~diag_mask], np.zeros(dot_product.shape)[~diag_mask])
+        assert np.allclose(dot_product[diag_mask], dot_product[diag_mask][0])
+
+    # We test l1 l2 dimension
+    # \sum_{|l1-l2| \leq λ \leq l1+l2} \sum_{-μ \leq λ \leq μ}
+    #            <l1m1,l2m2|λμ> <λμ|l1m1,l2m2> = δ_m1m1' δ_m2m2'
+    dot_product = np.zeros((len(cg_mats[0]), len(cg_mats[0])))
+    for lam in range(lam_min, lam_max+1):
+        cg_mat = cg_mats[lam]
+        dot_product += cg_mat @ cg_mat.T
+    diag_mask = np.zeros(dot_product.shape, dtype=np.bool_)
+    diag_mask[np.diag_indices(len(dot_product))] = True
+    assert np.allclose(dot_product[~diag_mask], np.zeros(dot_product.shape)[~diag_mask])
+    assert np.allclose(dot_product[diag_mask], dot_product[diag_mask][0])
 
 @pytest.fixture
 def h2o_frame():
@@ -48,11 +88,11 @@ def h2o_frame():
                                        [ 0.066334,  0.000000,  0.003701]])
 
 def test_n_body_iteration_single_center_dense_sparse_agree(h2o_frame):
-    lmax = 5
+    lmax = 2
     lambdas = np.array([0, 2])
     rascal_hypers = {
         "cutoff": 3.0,  # Angstrom
-        "max_radial": 6,  # Exclusive
+        "max_radial": 2,  # Exclusive
         "max_angular": lmax,  # Inclusive
         "atomic_gaussian_width": 0.2,
         "radial_basis": {"Gto": {}},
@@ -60,7 +100,7 @@ def test_n_body_iteration_single_center_dense_sparse_agree(h2o_frame):
         "center_atom_weight": 1.0,
     }
 
-    n_body_sparse = clebsch_gordan.n_body_iteration_single_center(
+    n_body_sparse = n_body_iteration_single_center(
         [h2o_frame],
         rascal_hypers=rascal_hypers,
         nu_target=3,
@@ -70,7 +110,7 @@ def test_n_body_iteration_single_center_dense_sparse_agree(h2o_frame):
         use_sparse=True
     )
 
-    n_body_dense = clebsch_gordan.n_body_iteration_single_center(
+    n_body_dense = n_body_iteration_single_center(
         [h2o_frame],
         rascal_hypers=rascal_hypers,
         nu_target=3,
@@ -83,52 +123,74 @@ def test_n_body_iteration_single_center_dense_sparse_agree(h2o_frame):
     assert equistore.operations.allclose(n_body_sparse, n_body_dense, atol=1e-8, rtol=1e-8)
 
 
-#def test_combine_single_center_orthogonality(h2o_frame):
-#    lmax = 5
-#    lambdas = np.array([0, 2])
-#    rascal_hypers = {
-#        "cutoff": 3.0,  # Angstrom
-#        "max_radial": 6,  # Exclusive
-#        "max_angular": lmax,  # Inclusive
-#        "atomic_gaussian_width": 0.2,
-#        "radial_basis": {"Gto": {}},
-#        "cutoff_function": {"ShiftedCosine": {"width": 0.5}},
-#        "center_atom_weight": 1.0,
-#    }
-#
-#    frames = [ase.Atoms('H2O', positions=[[-0.526383, -0.769327, -0.029366],
-#                                          [-0.526383,  0.769327, -0.029366],
-#                                          [ 0.066334,  0.000000,  0.003701]])]
-#
-#    # Generate a rascaline SphericalExpansion, for only the selected samples if
-#    # applicable
-#    calculator = rascaline.SphericalExpansion(**rascal_hypers)
-#    nu1_tensor = calculator.compute(frames, selected_samples=selected_samples)
-#    combined_tensor = nu1_tensor.copy()
-#
-#    cg_cache = ClebschGordanReal(lambda_cut, use_sparse)
-#    lambdas = np.array([0, 2])
-#
-#    combined_tensor = _combine_single_center(
-#        tensor_1=combined_tensor,
-#        tensor_2=nu1_tensor,
-#        lambdas=lambdas,
-#        cg_cache=cg_cache,
-#        use_sparse=Ture,
-#        only_keep_parity=keep_parity,
-#    )
-#
-#    n_body_sparse = clebsch_gordan.n_body_iteration_single_center(
-#        nu_target=3,
-#        lambdas=lambdas,
-#        lambda_cut=lmax * 2,
-#        species_neighbors=[1, 8, 6],
-#        use_sparse=True
-#    )
-#
-#    np.linalg.norm
-#    n_body_sparse
-#
+def test_combine_single_center_orthogonality(h2o_frame):
+    l = 1
+    lam_min = 0
+    lam_max = 2*l
+    rascal_hypers = {
+        "cutoff": 3.0,  # Angstrom
+        "max_radial": 6,  # Exclusive
+        "max_angular": l,  # Inclusive
+        "atomic_gaussian_width": 0.2,
+        "radial_basis": {"Gto": {}},
+        "cutoff_function": {"ShiftedCosine": {"width": 0.5}},
+        "center_atom_weight": 1.0,
+    }
+
+    frames = [ase.Atoms('H2O', positions=[[-0.526383, -0.769327, -0.029366],
+                                          [-0.526383,  0.769327, -0.029366],
+                                          [ 0.066334,  0.000000,  0.003701]])]
+
+    # Generate a rascaline SphericalExpansion, for only the selected samples if
+    # applicable
+    calculator = rascaline.SphericalExpansion(**rascal_hypers)
+    nu1_tensor = calculator.compute(frames)
+    # Move the "species_neighbor" key to the properties. If species_neighbors is
+    # passed as a list of int, sparsity can be created in the properties for
+    # these species.
+    keys_to_move = "species_neighbor"
+    nu1_tensor = nu1_tensor.keys_to_properties(keys_to_move=keys_to_move)
+    # Add "order_nu" and "inversion_sigma" key dimensions, both with values 1
+    nu1_tensor = equistore.insert_dimension(
+        nu1_tensor, axis="keys", name="order_nu", values=np.array([1]), index=0
+    )
+    nu1_tensor = equistore.insert_dimension(
+        nu1_tensor, axis="keys", name="inversion_sigma", values=np.array([1]), index=1
+    )
+    combined_tensor = nu1_tensor.copy()
+
+    use_sparse = True
+    cg_cache = ClebschGordanReal(lam_max, sparse=use_sparse)
+    lambdas = np.array(range(lam_max))
+
+    combined_tensor = _combine_single_center(
+        tensor_1=combined_tensor,
+        tensor_2=nu1_tensor,
+        lambdas=lambdas,
+        cg_cache=cg_cache,
+        use_sparse=use_sparse, # TODO remove use_sparse parameter, can be referred from cg_cache
+        only_keep_parity=True,
+    )
+    nu_target = 1
+
+    #order_nu  inversion_sigma  spherical_harmonics_l  species_center
+    #"spherical_harmonics_l",
+    combined_tensor = combined_tensor.keys_to_properties(["l1", "l2", "inversion_sigma", "order_nu"])
+    combined_tensor = combined_tensor.keys_to_samples(["species_center"])
+    n_samples = combined_tensor[0].values.shape[0]
+    combined_tensor_values = np.hstack(
+                            [combined_tensor.block(Labels("spherical_harmonics_l", np.array([[l]]))).values.reshape(n_samples, -1)
+                                for l in combined_tensor.keys["spherical_harmonics_l"]])
+    combined_tensor_norm = np.linalg.norm(combined_tensor_values, axis=1)
+
+    nu1_tensor = nu1_tensor.keys_to_properties(["inversion_sigma", "order_nu"])
+    nu1_tensor = nu1_tensor.keys_to_samples(["species_center"])
+    nu1_tensor_values = np.hstack(
+                            [nu1_tensor.block(Labels("spherical_harmonics_l", np.array([[l]]))).values.reshape(n_samples, -1)
+                                for l in nu1_tensor.keys["spherical_harmonics_l"]])
+    nu1_tensor_norm = np.linalg.norm(nu1_tensor_values, axis=1)
+    assert np.allclose(combined_tensor_norm, nu1_tensor_norm)
+
 
 
 # old test that become decprecated through prototyping on API
