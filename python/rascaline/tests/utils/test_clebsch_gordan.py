@@ -143,7 +143,6 @@ class TestClebschGordan:
         )
         combined_tensor = nu1_tensor.copy()
 
-        use_sparse = True
         lambdas = np.array(range(lam_max))
 
         combined_tensor = _combine_single_center(
@@ -151,7 +150,6 @@ class TestClebschGordan:
             tensor_2=nu1_tensor,
             lambdas=lambdas,
             cg_cache=self.cg_cache_sparse,
-            use_sparse=use_sparse, # TODO remove use_sparse parameter, can be referred from cg_cache
             only_keep_parity=True,
         )
         nu_target = 1
