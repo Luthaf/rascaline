@@ -56,6 +56,14 @@ class ClebschGordanReal:
         )
 
     @property
+    def lambda_max(self)
+        return self._lambda_max
+
+    @property
+    def sprase(self)
+        return self._sparse
+
+    @property
     def coeffs(self):
         return self._coeffs
 
@@ -378,7 +386,6 @@ def n_body_iteration_single_center(
             tensor_2=nu1_tensor,
             lambdas=lambdas,
             cg_cache=cg_cache,
-            use_sparse=use_sparse,
             only_keep_parity=keep_parity,
         )
 
@@ -401,7 +408,6 @@ def _combine_single_center(
     tensor_2: TensorMap,
     lambdas: Sequence[int],
     cg_cache,
-    use_sparse: bool = True,
     only_keep_parity: Optional[int] = None,
 ) -> TensorMap:
     """
@@ -472,7 +478,6 @@ def _combine_single_center(
                 block_2,
                 combined_key["spherical_harmonics_l"],
                 cg_cache,
-                use_sparse,
                 correction_factor=np.sqrt(multi),
             )
         )
@@ -485,7 +490,6 @@ def _combine_single_center_block_pair(
     block_2: TensorBlock,
     lam: int,
     cg_cache,
-    use_sparse: bool = True,
     correction_factor: float = 1.0,
 ) -> TensorBlock:
     """
@@ -495,7 +499,7 @@ def _combine_single_center_block_pair(
 
     # Do the CG combination - single center so no shape pre-processing required
     combined_values = _clebsch_gordan_combine(
-        block_1.values, block_2.values, lam, cg_cache, use_sparse
+        block_1.values, block_2.values, lam, cg_cache
     )
 
     # Infer the new nu value: block 1's properties are nu pairs of
@@ -540,7 +544,6 @@ def _clebsch_gordan_combine(
     arr_2: np.ndarray,
     lam: int,
     cg_cache,
-    use_sparse: bool = True,
 ) -> np.ndarray:
     """
     Couples arrays corresponding to the irreducible spherical components of 2
@@ -563,7 +566,7 @@ def _clebsch_gordan_combine(
     value of `sparse`.
     """
     # Check the first dimension of the arrays are the same (i.e. same samples)
-    if use_sparse:
+    if cg_cache.sparse:
         return _clebsch_gordan_combine_sparse(arr_1, arr_2, lam, cg_cache)
     return _clebsch_gordan_combine_dense(arr_1, arr_2, lam, cg_cache)
 
