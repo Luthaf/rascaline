@@ -1,3 +1,4 @@
+import pytest
 import numpy as np
 
 import ase.io
@@ -10,26 +11,43 @@ import equistore.operations
 
 from rascaline.utils import clebsch_gordan
 
-def test_clebsch_gordan_combine_dense_sparse_agree():
-    N_SAMPLES = 30
-    N_Q_PROPERTIES = 10
-    N_P_PROPERTIES = 8
-    L1 = 2
-    L2 = 1
-    LAM = 2
-    arr_1 = np.random.rand(N_SAMPLES, 2*L1+1, N_Q_PROPERTIES)
-    arr_2 = np.random.rand(N_SAMPLES, 2*L2+1, N_P_PROPERTIES)
+def random_equivariant_array(n_samples=30, n_q_properties=10, n_p_properties=8, l=1, seed=None):
+    if seed is not None:
+        np.random.seed(seed)
 
-    cg_cache_sparse = clebsch_gordan.ClebschGordanReal(lambda_max=LAM, sparse=True)
-    out_sparse = clebsch_gordan._clebsch_gordan_combine_sparse(arr_1, arr_2, LAM, cg_cache_sparse)
+    equi_l_array = np.random.rand(n_samples, 2*l+1, n_q_properties)
+    return equi_l_array
 
-    cg_cache_dense = clebsch_gordan.ClebschGordanReal(lambda_max=LAM, sparse=False)
-    out_dense = clebsch_gordan._clebsch_gordan_combine_dense(arr_1, arr_2, LAM, cg_cache_dense)
+def equivariant_combinable_arrays(n_samples=30, n_q_properties=10, n_p_properties=8, l1=2, l2=1, lam=2, seed=None):
+    # check if valid blocks
+    assert abs(l1 - l2) <= lam and lam <= l1 + l2, f"(l1={l1}, l2={l2}, lam={lam} is not valid combination, |l1-l2| <= lam <= l1+l2 must be valid"
+    if seed is not None:
+        np.random.seed(seed)
+
+    equi_l1_array = random_equivariant_array(n_samples, n_q_properties, n_p_properties, l=l1)
+    equi_l2_array = random_equivariant_array(n_samples, n_q_properties, n_p_properties, l=l2)
+    return equi_l1_array, equi_l2_array, lam
+
+@pytest.mark.parametrize(
+    "equi_l1_array, equi_l2_array, lam",
+    [equivariant_combinable_arrays(seed=51)],
+)
+def test_clebsch_gordan_combine_dense_sparse_agree(equi_l1_array, equi_l2_array, lam):
+    cg_cache_sparse = clebsch_gordan.ClebschGordanReal(lambda_max=lam, sparse=True)
+    out_sparse = clebsch_gordan._clebsch_gordan_combine_sparse(equi_l1_array, equi_l2_array, lam, cg_cache_sparse)
+
+    cg_cache_dense = clebsch_gordan.ClebschGordanReal(lambda_max=lam, sparse=False)
+    out_dense = clebsch_gordan._clebsch_gordan_combine_dense(equi_l1_array, equi_l2_array, lam, cg_cache_dense)
 
     assert np.allclose(out_sparse, out_dense)
 
+@pytest.fixture
+def h2o_frame():
+    return ase.Atoms('H2O', positions=[[-0.526383, -0.769327, -0.029366],
+                                       [-0.526383,  0.769327, -0.029366],
+                                       [ 0.066334,  0.000000,  0.003701]])
 
-def test_n_body_iteration_single_center_dense_sparse_agree():
+def test_n_body_iteration_single_center_dense_sparse_agree(h2o_frame):
     lmax = 5
     lambdas = np.array([0, 2])
     rascal_hypers = {
@@ -42,12 +60,8 @@ def test_n_body_iteration_single_center_dense_sparse_agree():
         "center_atom_weight": 1.0,
     }
 
-    frames = [ase.Atoms('H2O', positions=[[-0.526383, -0.769327, -0.029366],
-                                          [-0.526383,  0.769327, -0.029366],
-                                          [ 0.066334,  0.000000,  0.003701]])]
-
     n_body_sparse = clebsch_gordan.n_body_iteration_single_center(
-        frames,
+        [h2o_frame],
         rascal_hypers=rascal_hypers,
         nu_target=3,
         lambdas=lambdas,
@@ -57,7 +71,7 @@ def test_n_body_iteration_single_center_dense_sparse_agree():
     )
 
     n_body_dense = clebsch_gordan.n_body_iteration_single_center(
-        frames,
+        [h2o_frame],
         rascal_hypers=rascal_hypers,
         nu_target=3,
         lambdas=lambdas,
@@ -67,6 +81,55 @@ def test_n_body_iteration_single_center_dense_sparse_agree():
     )
 
     assert equistore.operations.allclose(n_body_sparse, n_body_dense, atol=1e-8, rtol=1e-8)
+
+
+#def test_combine_single_center_orthogonality(h2o_frame):
+#    lmax = 5
+#    lambdas = np.array([0, 2])
+#    rascal_hypers = {
+#        "cutoff": 3.0,  # Angstrom
+#        "max_radial": 6,  # Exclusive
+#        "max_angular": lmax,  # Inclusive
+#        "atomic_gaussian_width": 0.2,
+#        "radial_basis": {"Gto": {}},
+#        "cutoff_function": {"ShiftedCosine": {"width": 0.5}},
+#        "center_atom_weight": 1.0,
+#    }
+#
+#    frames = [ase.Atoms('H2O', positions=[[-0.526383, -0.769327, -0.029366],
+#                                          [-0.526383,  0.769327, -0.029366],
+#                                          [ 0.066334,  0.000000,  0.003701]])]
+#
+#    # Generate a rascaline SphericalExpansion, for only the selected samples if
+#    # applicable
+#    calculator = rascaline.SphericalExpansion(**rascal_hypers)
+#    nu1_tensor = calculator.compute(frames, selected_samples=selected_samples)
+#    combined_tensor = nu1_tensor.copy()
+#
+#    cg_cache = ClebschGordanReal(lambda_cut, use_sparse)
+#    lambdas = np.array([0, 2])
+#
+#    combined_tensor = _combine_single_center(
+#        tensor_1=combined_tensor,
+#        tensor_2=nu1_tensor,
+#        lambdas=lambdas,
+#        cg_cache=cg_cache,
+#        use_sparse=Ture,
+#        only_keep_parity=keep_parity,
+#    )
+#
+#    n_body_sparse = clebsch_gordan.n_body_iteration_single_center(
+#        nu_target=3,
+#        lambdas=lambdas,
+#        lambda_cut=lmax * 2,
+#        species_neighbors=[1, 8, 6],
+#        use_sparse=True
+#    )
+#
+#    np.linalg.norm
+#    n_body_sparse
+#
+
 
 # old test that become decprecated through prototyping on API
 #def test_soap_kernel():
