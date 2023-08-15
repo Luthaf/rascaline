@@ -19,6 +19,11 @@ build:
       # the `python` section below since it does not allow to specify
       # `--extra-index-url`
       - pip install --extra-index-url https://download.pytorch.org/whl/cpu python/rascaline-torch
+    pre_build:
+      # Pre-build Rust code here to avoid timeout when building docs
+      - cargo build
+      - cargo build --release
+      - cargo doc -p rascaline
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
