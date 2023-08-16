@@ -24,13 +24,98 @@ def catch_exceptions(function):
 class SystemBase:
     """Base class implementing the ``System`` trait in rascaline.
 
-    Developers should implement this class to add new kinds of system that work
-    with rascaline.
+    Developers should implement this class to add new kinds of system that work with
+    rascaline.
 
     Most users should use one of the already provided implementation, such as
     :py:class:`rascaline.systems.AseSystem` or
-    :py:class:`rascaline.systems.ChemfilesSystem` instead of using this class
-    directly.
+    :py:class:`rascaline.systems.ChemfilesSystem` instead of using this class directly.
+
+    A very simple implementation of the interface is given below as starting point. The
+    example does not implement a neighbor list, and it can only be used by setting
+    ``use_native_system=True`` in
+    :py:meth:`rascaline.calculators.CalculatorBase.compute`, to transfer the data to the
+    native code and compute the neighbors list there.
+
+    >>> import rascaline
+    >>> import numpy as np
+    >>>
+    >>> class SimpleSystem(rascaline.systems.SystemBase):
+    ...     def __init__(self, species, positions, cell):
+    ...         super().__init__()
+    ...
+    ...         # species should be a 1D array of integers
+    ...         species = np.asarray(species)
+    ...         assert len(species.shape) == 1
+    ...         assert species.dtype == np.int32
+    ...         self._species = species
+    ...
+    ...         # positions should be a 2D array of float
+    ...         positions = np.asarray(positions)
+    ...         assert len(positions.shape) == 2
+    ...         assert positions.shape[0] == species.shape[0]
+    ...         assert positions.shape[1] == 3
+    ...         assert positions.dtype == np.float64
+    ...         self._positions = positions
+    ...
+    ...         # cell should be a 3x3 array of float
+    ...         cell = np.asarray(cell)
+    ...         assert len(cell.shape) == 2
+    ...         assert cell.shape[0] == 3
+    ...         assert cell.shape[1] == 3
+    ...         assert cell.dtype == np.float64
+    ...         self._cell = cell
+    ...
+    ...     def size(self):
+    ...         return len(self._species)
+    ...
+    ...     def species(self):
+    ...         return self._species
+    ...
+    ...     def positions(self):
+    ...         return self._positions
+    ...
+    ...     def cell(self):
+    ...         return self._cell
+    ...
+    ...     def compute_neighbors(self, cutoff):
+    ...         raise NotImplementedError("this system does not have a neighbors list")
+    ...
+    ...     def pairs(self):
+    ...         raise NotImplementedError("this system does not have a neighbors list")
+    ...
+    ...     def pairs_containing(self, center):
+    ...         raise NotImplementedError("this system does not have a neighbors list")
+    ...
+    >>> system = SimpleSystem(
+    ...     species=np.random.randint(2, size=25, dtype=np.int32),
+    ...     positions=6 * np.random.uniform(size=(25, 3)),
+    ...     cell=6 * np.eye(3),
+    ... )
+    >>>
+    >>> calculator = rascaline.SortedDistances(
+    ...     cutoff=3.3,
+    ...     max_neighbors=4,
+    ...     separate_neighbor_species=True,
+    ... )
+    >>>
+    >>> # this works, and uses our new system
+    >>> calculator.compute(system)
+    TensorMap with 4 blocks
+    keys: species_center  species_neighbor
+                0                0
+                0                1
+                1                0
+                1                1
+    >>> # this does not work, since the code is trying to get a neighbors list
+    >>> try:
+    ...     calculator.compute(system, use_native_system=False)
+    ... except rascaline.RascalError as e:
+    ...     raise e.__cause__
+    ...
+    Traceback (most recent call last):
+        ...
+    NotImplementedError: this system does not have a neighbors list
     """
 
     def __init__(self):
