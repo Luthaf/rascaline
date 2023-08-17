@@ -1,5 +1,5 @@
 # sphinx dependencies
-sphinx
+sphinx < 7.2    # breathe is not compatible with sphinx 7.2 yet
 furo            # sphinx theme
 breathe >=4.33  # C and C++ => sphinx through doxygen
 sphinx-gallery  # convert python files into nice documentation
