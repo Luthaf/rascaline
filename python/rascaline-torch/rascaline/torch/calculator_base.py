@@ -57,13 +57,20 @@ class CalculatorModule(torch.nn.Module):
 
     def __init__(self, name: str, parameters: str):
         """"""
+        # empty docstring here for the docs to render corectly
         super().__init__()
+        self._c_name = name
         self._c = CalculatorHolder(name=name, parameters=parameters)
 
     @property
     def name(self) -> str:
         """name of this calculator"""
         return self._c.name
+
+    @property
+    def c_name(self) -> str:
+        """name used to register & create this calculator"""
+        return self._c_name
 
     @property
     def parameters(self) -> str:
@@ -79,6 +86,7 @@ class CalculatorModule(torch.nn.Module):
         self,
         systems: Union[System, List[System]],
         gradients: Optional[List[str]] = None,
+        use_native_system: bool = True,
     ) -> equistore.torch.TensorMap:
         """Runs a calculation with this calculator on the given ``systems``.
 
@@ -97,6 +105,10 @@ class CalculatorModule(torch.nn.Module):
             ``None`` or an empty list ``[]``, no gradients are kept in the output. Some
             gradients might still be computed at runtime to allow for backward
             propagation.
+
+        :param use_native_system: This can only be :py:obj:`True`, and is here for
+            compatibility with the same parameter on
+            :py:meth:`rascaline.calculators.CalculatorBase.compute`.
         """
         if gradients is None:
             gradients = []
@@ -104,13 +116,20 @@ class CalculatorModule(torch.nn.Module):
         if not isinstance(systems, list):
             systems = [systems]
 
+        # We have this parameter to have the same API as rascaline.
+        if not use_native_system:
+            raise ValueError("only `use_native_system=True` is supported")
+
         return self._c.compute(systems=systems, gradients=gradients)
 
     def forward(
         self,
         systems: List[System],
         gradients: Optional[List[str]] = None,
+        use_native_system: bool = True,
     ) -> equistore.torch.TensorMap:
         """forward just calls :py:meth:`CalculatorModule.compute`"""
 
-        return self.compute(systems=systems, gradients=gradients)
+        return self.compute(
+            systems=systems, gradients=gradients, use_native_system=use_native_system
+        )

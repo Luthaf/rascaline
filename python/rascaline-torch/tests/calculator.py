@@ -19,6 +19,7 @@ def test_parameters():
 
     expected = "dummy test calculator with cutoff: 3.2 - delta: 2 - name: foo"
     assert calculator.name == expected
+    assert calculator.c_name == "dummy_calculator"
 
     expected = '{"cutoff": 3.2, "delta": 2, "name": "foo"}'
     assert calculator.parameters == expected
@@ -86,6 +87,12 @@ def test_compute(system):
     assert O_block.values.shape == (2, 2)
     assert torch.all(O_block.values[0] == torch.tensor([4, 6]))
     assert torch.all(O_block.values[1] == torch.tensor([5, 6]))
+
+
+def test_compute_native_system_error_raise(system):
+    calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
+    with pytest.raises(ValueError, match="only `use_native_system=True` is supported"):
+        calculator.compute(system, gradients=["positions"], use_native_system=False)
 
 
 def test_compute_multiple_systems(system):
