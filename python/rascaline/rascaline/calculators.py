@@ -37,29 +37,48 @@ class DummyCalculator(CalculatorBase):
 
 class NeighborList(CalculatorBase):
     """
-    This calculator computes the neighbor list for a given spherical cutoff, and
-    returns the list of distance vectors between all pairs of atoms strictly
-    inside the cutoff.
+    This calculator computes the neighbor list for a given spherical cutoff, and returns
+    the list of distance vectors between all pairs of atoms strictly inside the cutoff.
 
-    Users can request either a "full" neighbor list (including an entry for both
-    ``i - j`` pairs and ``j - i`` pairs) or save memory/computational by only
-    working with "half" neighbor list (only including one entry for each ``i/j``
-    pair)
+    Users can request either a "full" neighbor list (including an entry for both ``i -
+    j`` pairs and ``j - i`` pairs) or save memory/computational by only working with
+    "half" neighbor list (only including one entry for each ``i/j`` pair)
 
-    Self pairs (pairs between an atom and periodic copy itself) can appear when
-    the cutoff is larger than the cell under periodic boundary conditions. Self
-    pairs with a distance of 0 are only included when the user passes
-    ``self_pairs=True``, which is not the default behavior.
+    Pairs between an atom and it's own periodic copy can appear when the cutoff is
+    larger than the cell under periodic boundary conditions. Self pairs with a distance
+    of 0 (i.e. self pairs inside the original unit cell) are only included when using
+    ``self_pairs=True``.
 
-    This sample produces a single property (``"distance"``) with three
-    components (``"pair_direction"``) containing the x, y, and z component of
-    the vector from the first atom in the pair to the second. In addition to the
-    atom indexes, the samples also contain a pair index, to be able to
-    distinguish between multiple pairs between the same atom (if the cutoff is
-    larger than the cell).
+    The ``quantity`` parameter determine what will be included in the output. It can
+    take one of three values:
+
+    - ``"Distance"``, to get the distance between the atoms, accounting for periodic
+      boundary conditions. This is the default.
+    - ``"CellShiftVector"``, to get the cell shift vector, which can then be used to
+      apply periodic boundary conditions and compute the distance vector.
+
+      If ``S`` is the cell shift vector, ``rij`` the pair distance vector, ``ri`` and
+      ``rj`` the position of the atoms, ``rij = rj - ri + S``.
+    - ``"CellShiftIndices"``, to get three integers indicating the number of cell
+      vectors (``A``, ``B``, and ``C``) entering the cell shift.
+
+      If the cell vectors are ``A``, ``B``, and ``C``, this returns three integers
+      ``sa``, ``sb``, and ``sc`` such that the cell shift ``S = sa * A + sb * B + sc *
+      C``.
+
+    This calculator produces a single property (``"distance"``, ``"cell_shift_vector"``,
+    or ``"cell_shift_indices"``) with three components (``"pair_direction"``) containing
+    the x, y, and z component of the requested vector. In addition to the atom indexes,
+    the samples also contain a pair index, to be able to distinguish between multiple
+    pairs between the same atom (if the cutoff is larger than the cell).
     """
 
-    def __init__(self, cutoff, full_neighbor_list, self_pairs=False):
+    def __init__(
+        self,
+        cutoff: float,
+        full_neighbor_list: bool,
+        self_pairs: bool = False,
+    ):
         parameters = {
             "cutoff": cutoff,
             "full_neighbor_list": full_neighbor_list,

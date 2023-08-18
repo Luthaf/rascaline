@@ -17,17 +17,17 @@ use crate::{Error, System};
 /// working with "half" neighbor list (only including one entry for each `i/j`
 /// pair)
 ///
-/// Self pairs (pairs between an atom and periodic copy itself) can appear when
-/// the cutoff is larger than the cell under periodic boundary conditions. Self
-/// pairs with a distance of 0 are not included in this calculator, even though
-/// they are required when computing SOAP.
+/// Pairs between an atom and it's own periodic copy can appear when the cutoff
+/// is larger than the cell under periodic boundary conditions. Self pairs with
+/// a distance of 0 (i.e. self pairs inside the original unit cell) are only
+/// included when using `self_pairs = true`.
 ///
-/// This sample produces a single property (`"distance"`) with three components
-/// (`"pair_direction"`) containing the x, y, and z component of the vector from
-/// the first atom in the pair to the second. In addition to the atom indexes,
-/// the samples also contain a pair index, to be able to distinguish between
-/// multiple pairs between the same atom (if the cutoff is larger than the
-/// cell).
+/// This calculator produces a single property (``"distance"``) with three
+/// components (``"pair_direction"``) containing the x, y, and z component of
+/// the distance vector of the pair.
+///
+/// The samples also contain the two atoms indexes, as well as the number of
+/// cell boundaries crossed to create this pair.
 #[derive(Debug, Clone)]
 #[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 pub struct NeighborList {
@@ -69,23 +69,35 @@ impl CalculatorBase for NeighborList {
         assert!(self.cutoff > 0.0 && self.cutoff.is_finite());
 
         if self.full_neighbor_list {
-            FullNeighborList { cutoff: self.cutoff, self_pairs: self.self_pairs }.keys(systems)
+            FullNeighborList {
+                cutoff: self.cutoff,
+                self_pairs: self.self_pairs,
+            }.keys(systems)
         } else {
-            HalfNeighborList { cutoff: self.cutoff, self_pairs: self.self_pairs }.keys(systems)
+            HalfNeighborList {
+                cutoff: self.cutoff,
+                self_pairs: self.self_pairs,
+            }.keys(systems)
         }
     }
 
     fn samples_names(&self) -> Vec<&str> {
-        return vec!["structure", "pair_id", "first_atom", "second_atom"];
+        return vec!["structure", "first_atom", "second_atom", "cell_shift_a", "cell_shift_b", "cell_shift_c"];
     }
 
     fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         assert!(self.cutoff > 0.0 && self.cutoff.is_finite());
 
         if self.full_neighbor_list {
-            FullNeighborList { cutoff: self.cutoff, self_pairs: self.self_pairs }.samples(keys, systems)
+            FullNeighborList {
+                cutoff: self.cutoff,
+                self_pairs: self.self_pairs,
+            }.samples(keys, systems)
         } else {
-            HalfNeighborList { cutoff: self.cutoff, self_pairs: self.self_pairs }.samples(keys, systems)
+            HalfNeighborList {
+                cutoff: self.cutoff,
+                self_pairs: self.self_pairs,
+            }.samples(keys, systems)
         }
     }
 
@@ -102,9 +114,9 @@ impl CalculatorBase for NeighborList {
 
         for block_samples in samples {
             let mut builder = LabelsBuilder::new(vec!["sample", "structure", "atom"]);
-            for (sample_i, &[system_i, pair_id, first, second]) in block_samples.iter_fixed_size().enumerate() {
+            for (sample_i, &[system_i, first, second, cell_a, cell_b, cell_c]) in block_samples.iter_fixed_size().enumerate() {
                 // self pairs do not contribute to gradients
-                if pair_id == -1 {
+                if first == second && cell_a == 0 && cell_b == 0 && cell_c == 0 {
                     continue;
                 }
                 builder.add(&[sample_i.into(), system_i, first]);
@@ -137,9 +149,15 @@ impl CalculatorBase for NeighborList {
     #[time_graph::instrument(name = "NeighborList::compute")]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
         if self.full_neighbor_list {
-            FullNeighborList { cutoff: self.cutoff, self_pairs: self.self_pairs }.compute(systems, descriptor)
+            FullNeighborList {
+                cutoff: self.cutoff,
+                self_pairs: self.self_pairs,
+            }.compute(systems, descriptor)
         } else {
-            HalfNeighborList { cutoff: self.cutoff, self_pairs: self.self_pairs }.compute(systems, descriptor)
+            HalfNeighborList {
+                cutoff: self.cutoff,
+                self_pairs: self.self_pairs,
+            }.compute(systems, descriptor)
         }
     }
 }
@@ -149,7 +167,7 @@ impl CalculatorBase for NeighborList {
 #[derive(Debug, Clone)]
 struct HalfNeighborList {
     cutoff: f64,
-    self_pairs: bool
+    self_pairs: bool,
 }
 
 impl HalfNeighborList {
@@ -185,15 +203,29 @@ impl HalfNeighborList {
         let mut results = Vec::new();
 
         for [species_first, species_second] in keys.iter_fixed_size() {
-            let mut builder = LabelsBuilder::new(
-                vec!["structure", "pair_id", "first_atom", "second_atom"]
-            );
+            let mut builder = LabelsBuilder::new(vec![
+                "structure",
+                "first_atom",
+                "second_atom",
+                "cell_shift_a",
+                "cell_shift_b",
+                "cell_shift_c"
+            ]);
+
             for (system_i, system) in systems.iter_mut().enumerate() {
                 system.compute_neighbors(self.cutoff)?;
                 let species = system.species()?;
 
-                for (pair_id, pair) in system.pairs()?.iter().enumerate() {
+                for pair in system.pairs()? {
                     let ((species_i, species_j), invert) = sort_pair((species[pair.first], species[pair.second]));
+
+                    let shifts = pair.cell_shift_indices;
+                    let (cell_a, cell_b, cell_c) = if invert {
+                        (-shifts[0], -shifts[1], -shifts[2])
+                    } else {
+                        (shifts[0], shifts[1], shifts[2])
+                    };
+
                     let (atom_i, atom_j) = if invert {
                         (pair.second, pair.first)
                     } else {
@@ -201,7 +233,14 @@ impl HalfNeighborList {
                     };
 
                     if species_i == species_first.i32() && species_j == species_second.i32() {
-                        builder.add(&[system_i, pair_id, atom_i, atom_j]);
+                        builder.add(&[
+                            LabelValue::from(system_i),
+                            LabelValue::from(atom_i),
+                            LabelValue::from(atom_j),
+                            LabelValue::from(cell_a),
+                            LabelValue::from(cell_b),
+                            LabelValue::from(cell_c),
+                        ]);
                     }
                 }
 
@@ -211,16 +250,16 @@ impl HalfNeighborList {
                         if species[center_i] == species_first.i32() {
                             builder.add(&[
                                 system_i.into(),
-                                // set pair_id as -1 for self pairs
-                                LabelValue::new(-1),
                                 center_i.into(),
                                 center_i.into(),
+                                LabelValue::from(0),
+                                LabelValue::from(0),
+                                LabelValue::from(0),
                             ]);
                         }
                     }
                 }
             }
-
 
             results.push(builder.finish());
         }
@@ -233,7 +272,7 @@ impl HalfNeighborList {
             system.compute_neighbors(self.cutoff)?;
             let species = system.species()?;
 
-            for (pair_id, pair) in system.pairs()?.iter().enumerate() {
+            for pair in system.pairs()? {
                 // Sort the species in the pair to ensure a canonical order of
                 // the atoms in it. This guarantee that multiple call to this
                 // calculator always returns pairs in the same order, even if
@@ -250,6 +289,13 @@ impl HalfNeighborList {
                     pair.vector
                 };
 
+                let shifts = pair.cell_shift_indices;
+                let (cell_a, cell_b, cell_c) = if invert {
+                    (-shifts[0], -shifts[1], -shifts[2])
+                } else {
+                    (shifts[0], shifts[1], shifts[2])
+                };
+
                 let (atom_i, atom_j) = if invert {
                     (pair.second, pair.first)
                 } else {
@@ -264,12 +310,16 @@ impl HalfNeighborList {
                 let block_data = block.data_mut();
 
                 let sample_i = block_data.samples.position(&[
-                    system_i.into(), pair_id.into(), atom_i.into(), atom_j.into()
+                    LabelValue::from(system_i),
+                    LabelValue::from(atom_i),
+                    LabelValue::from(atom_j),
+                    LabelValue::from(cell_a),
+                    LabelValue::from(cell_b),
+                    LabelValue::from(cell_c),
                 ]);
 
                 if let Some(sample_i) = sample_i {
                     let array = block_data.values.to_array_mut();
-
                     array[[sample_i, 0, 0]] = pair_vector[0];
                     array[[sample_i, 1, 0]] = pair_vector[1];
                     array[[sample_i, 2, 0]] = pair_vector[2];
@@ -307,7 +357,7 @@ impl HalfNeighborList {
 #[derive(Debug, Clone)]
 pub struct FullNeighborList {
     pub cutoff: f64,
-    pub self_pairs: bool
+    pub self_pairs: bool,
 }
 
 impl FullNeighborList {
@@ -340,33 +390,73 @@ impl FullNeighborList {
         return Ok(keys.finish());
     }
 
-    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
+    pub(crate) fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         let mut results = Vec::new();
 
         for &[species_first, species_second] in keys.iter_fixed_size() {
-            let mut builder = LabelsBuilder::new(
-                vec!["structure", "pair_id", "first_atom", "second_atom"]
-            );
+            let mut builder = LabelsBuilder::new(vec![
+                "structure",
+                "first_atom",
+                "second_atom",
+                "cell_shift_a",
+                "cell_shift_b",
+                "cell_shift_c"
+            ]);
+
             for (system_i, system) in systems.iter_mut().enumerate() {
                 system.compute_neighbors(self.cutoff)?;
                 let species = system.species()?;
 
-                for (pair_id, pair) in system.pairs()?.iter().enumerate() {
+                for pair in system.pairs()? {
+                    let cell_a = pair.cell_shift_indices[0];
+                    let cell_b = pair.cell_shift_indices[1];
+                    let cell_c = pair.cell_shift_indices[2];
+
                     if species_first == species_second {
                         // same species for both atoms in the pair
                         if species[pair.first] == species_first.i32() && species[pair.second] == species_second.i32() {
-                            builder.add(&[system_i, pair_id, pair.first, pair.second]);
+                            builder.add(&[
+                                LabelValue::from(system_i),
+                                LabelValue::from(pair.first),
+                                LabelValue::from(pair.second),
+                                LabelValue::from(cell_a),
+                                LabelValue::from(cell_b),
+                                LabelValue::from(cell_c),
+                            ]);
+
                             if pair.first != pair.second {
-                                // do not duplicate self pairs
-                                builder.add(&[system_i, pair_id, pair.second, pair.first]);
+                                // if the pair is between two different atoms,
+                                // also add the reversed (second -> first) pair.
+                                builder.add(&[
+                                    LabelValue::from(system_i),
+                                    LabelValue::from(pair.second),
+                                    LabelValue::from(pair.first),
+                                    LabelValue::from(-cell_a),
+                                    LabelValue::from(-cell_b),
+                                    LabelValue::from(-cell_c),
+                                ]);
                             }
                         }
                     } else {
-                        // different species
+                        // different species, find the right order for the pair
                         if species[pair.first] == species_first.i32() && species[pair.second] == species_second.i32() {
-                            builder.add(&[system_i, pair_id, pair.first, pair.second]);
+                            builder.add(&[
+                                LabelValue::from(system_i),
+                                LabelValue::from(pair.first),
+                                LabelValue::from(pair.second),
+                                LabelValue::from(cell_a),
+                                LabelValue::from(cell_b),
+                                LabelValue::from(cell_c),
+                            ]);
                         } else if species[pair.second] == species_first.i32() && species[pair.first] == species_second.i32() {
-                            builder.add(&[system_i, pair_id, pair.second, pair.first]);
+                            builder.add(&[
+                                LabelValue::from(system_i),
+                                LabelValue::from(pair.second),
+                                LabelValue::from(pair.first),
+                                LabelValue::from(-cell_a),
+                                LabelValue::from(-cell_b),
+                                LabelValue::from(-cell_c),
+                            ]);
                         }
                     }
                 }
@@ -377,10 +467,11 @@ impl FullNeighborList {
                         if species[center_i] == species_first.i32() {
                             builder.add(&[
                                 system_i.into(),
-                                // set pair_id as -1 for self pairs
-                                LabelValue::new(-1),
                                 center_i.into(),
                                 center_i.into(),
+                                LabelValue::from(0),
+                                LabelValue::from(0),
+                                LabelValue::from(0),
                             ]);
                         }
                     }
@@ -393,12 +484,13 @@ impl FullNeighborList {
         return Ok(results);
     }
 
+    #[allow(clippy::too_many_lines)]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
         for (system_i, system) in systems.iter_mut().enumerate() {
             system.compute_neighbors(self.cutoff)?;
             let species = system.species()?;
 
-            for (pair_id, pair) in system.pairs()?.iter().enumerate() {
+            for pair in system.pairs()?.iter() {
                 let first_block_id = descriptor.keys().position(&[
                     species[pair.first].into(), species[pair.second].into()
                 ]).expect("missing block");
@@ -415,13 +507,21 @@ impl FullNeighborList {
                 let mut block = descriptor.block_mut_by_id(first_block_id);
                 let block_data = block.data_mut();
 
+                let cell_a = pair.cell_shift_indices[0];
+                let cell_b = pair.cell_shift_indices[1];
+                let cell_c = pair.cell_shift_indices[2];
+
                 let sample_i = block_data.samples.position(&[
-                    system_i.into(), pair_id.into(), pair.first.into(), pair.second.into()
+                    LabelValue::from(system_i),
+                    LabelValue::from(pair.first),
+                    LabelValue::from(pair.second),
+                    LabelValue::from(cell_a),
+                    LabelValue::from(cell_b),
+                    LabelValue::from(cell_c),
                 ]);
 
                 if let Some(sample_i) = sample_i {
                     let array = block_data.values.to_array_mut();
-
                     array[[sample_i, 0, 0]] = pair.vector[0];
                     array[[sample_i, 1, 0]] = pair.vector[1];
                     array[[sample_i, 2, 0]] = pair.vector[2];
@@ -462,12 +562,16 @@ impl FullNeighborList {
 
                 let block_data = block.data_mut();
                 let sample_i = block_data.samples.position(&[
-                    system_i.into(), pair_id.into(), pair.second.into(), pair.first.into()
+                    LabelValue::from(system_i),
+                    LabelValue::from(pair.second),
+                    LabelValue::from(pair.first),
+                    LabelValue::from(-cell_a),
+                    LabelValue::from(-cell_b),
+                    LabelValue::from(-cell_c),
                 ]);
 
                 if let Some(sample_i) = sample_i {
                     let array = block_data.values.to_array_mut();
-
                     array[[sample_i, 0, 0]] = -pair.vector[0];
                     array[[sample_i, 1, 0]] = -pair.vector[1];
                     array[[sample_i, 2, 0]] = -pair.vector[2];
@@ -537,9 +641,9 @@ mod tests {
         assert_eq!(block.components()[0], Labels::new(["pair_direction"], &[[0], [1], [2]]));
 
         assert_eq!(block.samples(), Labels::new(
-            ["structure", "pair_id", "first_atom", "second_atom"],
+            ["structure", "first_atom", "second_atom", "cell_shift_a", "cell_shift_b", "cell_shift_c"],
             // we have two O-H pairs
-            &[[0, 0, 0, 1], [0, 1, 0, 2]]
+            &[[0, 0, 1, 0, 0, 0], [0, 0, 2, 0, 0, 0]]
         ));
 
         let array = block.values().to_array();
@@ -552,9 +656,9 @@ mod tests {
         // H-H block
         let block = descriptor.block_by_id(1);
         assert_eq!(block.samples(), Labels::new(
-            ["structure", "pair_id", "first_atom", "second_atom"],
+            ["structure", "first_atom", "second_atom", "cell_shift_a", "cell_shift_b", "cell_shift_c"],
             // we have one H-H pair
-            &[[0, 2, 1, 2]]
+            &[[0, 1, 2, 0, 0, 0]]
         ));
 
         let array = block.values().to_array();
@@ -589,9 +693,9 @@ mod tests {
         assert_eq!(block.components()[0], Labels::new(["pair_direction"], &[[0], [1], [2]]));
 
         assert_eq!(block.samples(), Labels::new(
-            ["structure", "pair_id", "first_atom", "second_atom"],
+            ["structure", "first_atom", "second_atom", "cell_shift_a", "cell_shift_b", "cell_shift_c"],
             // we have two O-H pairs
-            &[[0, 0, 0, 1], [0, 1, 0, 2]]
+            &[[0, 0, 1, 0, 0, 0], [0, 0, 2, 0, 0, 0]]
         ));
 
         let array = block.values().to_array();
@@ -609,9 +713,9 @@ mod tests {
         assert_eq!(block.components()[0], Labels::new(["pair_direction"], &[[0], [1], [2]]));
 
         assert_eq!(block.samples(), Labels::new(
-            ["structure", "pair_id", "first_atom", "second_atom"],
+            ["structure", "first_atom", "second_atom", "cell_shift_a", "cell_shift_b", "cell_shift_c"],
             // we have two H-O pairs
-            &[[0, 0, 1, 0], [0, 1, 2, 0]]
+            &[[0, 1, 0, 0, 0, 0], [0, 2, 0, 0, 0, 0]]
         ));
 
         let array = block.values().to_array();
@@ -624,9 +728,9 @@ mod tests {
         // H-H block
         let block = descriptor.block_by_id(2);
         assert_eq!(block.samples(), Labels::new(
-            ["structure", "pair_id", "first_atom", "second_atom"],
+            ["structure", "first_atom", "second_atom", "cell_shift_a", "cell_shift_b", "cell_shift_c"],
             // we have one H-H pair, twice
-            &[[0, 2, 1, 2], [0, 2, 2, 1]]
+            &[[0, 1, 2, 0, 0, 0], [0, 2, 1, 0, 0, 0]]
         ));
 
         let array = block.values().to_array();
@@ -640,7 +744,7 @@ mod tests {
     #[test]
     fn finite_differences_positions() {
         // half neighbor list
-        let calculator = Calculator::from(Box::new(NeighborList{
+        let calculator = Calculator::from(Box::new(NeighborList {
             cutoff: 1.0,
             full_neighbor_list: false,
             self_pairs: false,
@@ -655,7 +759,7 @@ mod tests {
         crate::calculators::tests_utils::finite_differences_positions(calculator, &system, options);
 
         // full neighbor list
-        let calculator = Calculator::from(Box::new(NeighborList{
+        let calculator = Calculator::from(Box::new(NeighborList {
             cutoff: 1.0,
             full_neighbor_list: true,
             self_pairs: false,
@@ -666,7 +770,7 @@ mod tests {
     #[test]
     fn compute_partial() {
         // half neighbor list
-        let calculator = Calculator::from(Box::new(NeighborList{
+        let calculator = Calculator::from(Box::new(NeighborList {
             cutoff: 1.0,
             full_neighbor_list: false,
             self_pairs: false,
@@ -693,7 +797,7 @@ mod tests {
         );
 
         // full neighbor list
-        let calculator = Calculator::from(Box::new(NeighborList{
+        let calculator = Calculator::from(Box::new(NeighborList {
             cutoff: 1.0,
             full_neighbor_list: true,
             self_pairs: false,
@@ -705,7 +809,7 @@ mod tests {
 
     #[test]
     fn check_self_pairs() {
-        let mut calculator = Calculator::from(Box::new(NeighborList{
+        let mut calculator = Calculator::from(Box::new(NeighborList {
             cutoff: 2.0,
             full_neighbor_list: true,
             self_pairs: true,
@@ -724,9 +828,14 @@ mod tests {
         let block = descriptor.block_by_id(3);
         let block = block.data();
         assert_eq!(*block.samples, Labels::new(
-            ["structure", "pair_id", "first_atom", "second_atom"],
-            // we have one H-H pair and two self-pairs
-            &[[0, 2, 1, 2], [0, 2, 2, 1], [0, -1, 1, 1], [0, -1, 2, 2]]
+            ["structure", "first_atom", "second_atom", "cell_shift_a", "cell_shift_b", "cell_shift_c"],
+            &[
+                // we have one H-H pair and two self-pairs
+                [0, 1, 2, 0, 0, 0],
+                [0, 2, 1, 0, 0, 0],
+                [0, 1, 1, 0, 0, 0],
+                [0, 2, 2, 0, 0, 0],
+            ]
         ));
 
     }
