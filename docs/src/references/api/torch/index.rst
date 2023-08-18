@@ -27,6 +27,7 @@ of rascaline are documented below for an usage from Python:
 
     systems
     calculators
+    utils/index
 
 --------------------------------------------------------------------------------
 
