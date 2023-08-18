@@ -148,7 +148,7 @@ class CalculatorBase:
         self._as_parameter_ = 0
 
     @property
-    def name(self):
+    def name(self) -> str:
         """name of this calculator"""
         return _call_with_growing_buffer(
             lambda buffer, bufflen: self._lib.rascal_calculator_name(
@@ -157,7 +157,7 @@ class CalculatorBase:
         )
 
     @property
-    def c_name(self):
+    def c_name(self) -> str:
         """name used to register & create this calculator"""
         return self._c_name
 
@@ -202,7 +202,7 @@ class CalculatorBase:
             Multiple types of systems are supported, see the documentation of
             :py:class:`rascaline.IntoSystem` to get the full list.
 
-        :param use_native_system: If ``True`` (this is the default), copy data
+        :param use_native_system: If :py:obj:`True` (this is the default), copy data
             from the ``systems`` into Rust ``SimpleSystem``. This can be a lot
             faster than having to cross the FFI boundary often when accessing
             the neighbor list. Otherwise the Python neighbor list is used.
