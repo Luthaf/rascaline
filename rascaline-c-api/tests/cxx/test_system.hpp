@@ -17,7 +17,7 @@ class TestSystem: public rascaline::System {
 
     const double* positions() const override {
         static double POSITIONS[4][3] = {
-            {0, 0, 0},
+            {10, 10, 10},
             {1, 1, 1},
             {2, 2, 2},
             {3, 3, 3},
@@ -40,30 +40,30 @@ class TestSystem: public rascaline::System {
 
     const std::vector<rascal_pair_t>& pairs() const override {
         static std::vector<rascal_pair_t> PAIRS = {
-            {0, 1, SQRT_3, {1, 1, 1}},
-            {1, 2, SQRT_3, {1, 1, 1}},
-            {2, 3, SQRT_3, {1, 1, 1}},
+            {0, 1, SQRT_3, {1.0, 1.0, 1.0}, {1, 1, 1}},
+            {1, 2, SQRT_3, {1.0, 1.0, 1.0}, {0, 0, 0}},
+            {2, 3, SQRT_3, {1.0, 1.0, 1.0}, {0, 0, 0}},
         };
         return PAIRS;
     }
 
     const std::vector<rascal_pair_t>& pairs_containing(uintptr_t center) const override {
         static std::vector<rascal_pair_t> PAIRS_0 = {
-            {0, 1, SQRT_3, {1, 1, 1}},
+            {0, 1, SQRT_3, {1.0, 1.0, 1.0}, {1, 1, 1}},
         };
 
         static std::vector<rascal_pair_t> PAIRS_1 = {
-            {0, 1, SQRT_3, {1, 1, 1}},
-            {1, 2, SQRT_3, {1, 1, 1}},
+            {0, 1, SQRT_3, {1.0, 1.0, 1.0}, {1, 1, 1}},
+            {1, 2, SQRT_3, {1.0, 1.0, 1.0}, {0, 0, 0}},
         };
 
         static std::vector<rascal_pair_t> PAIRS_2 = {
-            {1, 2, SQRT_3, {1, 1, 1}},
-            {2, 3, SQRT_3, {1, 1, 1}},
+            {1, 2, SQRT_3, {1.0, 1.0, 1.0}, {0, 0, 0}},
+            {2, 3, SQRT_3, {1.0, 1.0, 1.0}, {0, 0, 0}},
         };
 
         static std::vector<rascal_pair_t> PAIRS_3 = {
-            {2, 3, SQRT_3, {1, 1, 1}},
+            {2, 3, SQRT_3, {1.0, 1.0, 1.0}, {0, 0, 0}},
         };
 
         if (center == 0) {

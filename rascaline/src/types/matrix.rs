@@ -497,74 +497,74 @@ impl From<[[f64; 3]; 3]> for Matrix3 {
     }
 }
 
+impl approx::AbsDiffEq for Matrix3 {
+    type Epsilon = <f64 as approx::AbsDiffEq>::Epsilon;
+
+    fn default_epsilon() -> Self::Epsilon {
+        f64::default_epsilon()
+    }
+
+    fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
+        f64::abs_diff_eq(&self[0][0], &other[0][0], epsilon) &&
+        f64::abs_diff_eq(&self[0][1], &other[0][1], epsilon) &&
+        f64::abs_diff_eq(&self[0][2], &other[0][2], epsilon) &&
+
+        f64::abs_diff_eq(&self[1][0], &other[1][0], epsilon) &&
+        f64::abs_diff_eq(&self[1][1], &other[1][1], epsilon) &&
+        f64::abs_diff_eq(&self[1][2], &other[1][2], epsilon) &&
+
+        f64::abs_diff_eq(&self[2][0], &other[2][0], epsilon) &&
+        f64::abs_diff_eq(&self[2][1], &other[2][1], epsilon) &&
+        f64::abs_diff_eq(&self[2][2], &other[2][2], epsilon)
+    }
+}
+
+impl approx::RelativeEq for Matrix3 {
+    fn default_max_relative() -> Self::Epsilon {
+        f64::default_max_relative()
+    }
+
+    fn relative_eq(&self, other: &Self, epsilon: Self::Epsilon, max_relative: Self::Epsilon) -> bool {
+        f64::relative_eq(&self[0][0], &other[0][0], epsilon, max_relative) &&
+        f64::relative_eq(&self[0][1], &other[0][1], epsilon, max_relative) &&
+        f64::relative_eq(&self[0][2], &other[0][2], epsilon, max_relative) &&
+
+        f64::relative_eq(&self[1][0], &other[1][0], epsilon, max_relative) &&
+        f64::relative_eq(&self[1][1], &other[1][1], epsilon, max_relative) &&
+        f64::relative_eq(&self[1][2], &other[1][2], epsilon, max_relative) &&
+
+        f64::relative_eq(&self[2][0], &other[2][0], epsilon, max_relative) &&
+        f64::relative_eq(&self[2][1], &other[2][1], epsilon, max_relative) &&
+        f64::relative_eq(&self[2][2], &other[2][2], epsilon, max_relative)
+    }
+}
+
+impl approx::UlpsEq for Matrix3 {
+    fn default_max_ulps() -> u32 {
+        f64::default_max_ulps()
+    }
+
+    fn ulps_eq(&self, other: &Self, epsilon: Self::Epsilon, max_ulps: u32) -> bool {
+        f64::ulps_eq(&self[0][0], &other[0][0], epsilon, max_ulps) &&
+        f64::ulps_eq(&self[0][1], &other[0][1], epsilon, max_ulps) &&
+        f64::ulps_eq(&self[0][2], &other[0][2], epsilon, max_ulps) &&
+
+        f64::ulps_eq(&self[1][0], &other[1][0], epsilon, max_ulps) &&
+        f64::ulps_eq(&self[1][1], &other[1][1], epsilon, max_ulps) &&
+        f64::ulps_eq(&self[1][2], &other[1][2], epsilon, max_ulps) &&
+
+        f64::ulps_eq(&self[2][0], &other[2][0], epsilon, max_ulps) &&
+        f64::ulps_eq(&self[2][1], &other[2][1], epsilon, max_ulps) &&
+        f64::ulps_eq(&self[2][2], &other[2][2], epsilon, max_ulps)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::Vector3D;
 
-    use approx::{AbsDiffEq, RelativeEq, UlpsEq, assert_ulps_eq};
-
-    impl AbsDiffEq for Matrix3 {
-        type Epsilon = <f64 as AbsDiffEq>::Epsilon;
-
-        fn default_epsilon() -> Self::Epsilon {
-            f64::default_epsilon()
-        }
-
-        fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
-            f64::abs_diff_eq(&self[0][0], &other[0][0], epsilon) &&
-            f64::abs_diff_eq(&self[0][1], &other[0][1], epsilon) &&
-            f64::abs_diff_eq(&self[0][2], &other[0][2], epsilon) &&
-
-            f64::abs_diff_eq(&self[1][0], &other[1][0], epsilon) &&
-            f64::abs_diff_eq(&self[1][1], &other[1][1], epsilon) &&
-            f64::abs_diff_eq(&self[1][2], &other[1][2], epsilon) &&
-
-            f64::abs_diff_eq(&self[2][0], &other[2][0], epsilon) &&
-            f64::abs_diff_eq(&self[2][1], &other[2][1], epsilon) &&
-            f64::abs_diff_eq(&self[2][2], &other[2][2], epsilon)
-        }
-    }
-
-    impl RelativeEq for Matrix3 {
-        fn default_max_relative() -> Self::Epsilon {
-            f64::default_max_relative()
-        }
-
-        fn relative_eq(&self, other: &Self, epsilon: Self::Epsilon, max_relative: Self::Epsilon) -> bool {
-            f64::relative_eq(&self[0][0], &other[0][0], epsilon, max_relative) &&
-            f64::relative_eq(&self[0][1], &other[0][1], epsilon, max_relative) &&
-            f64::relative_eq(&self[0][2], &other[0][2], epsilon, max_relative) &&
-
-            f64::relative_eq(&self[1][0], &other[1][0], epsilon, max_relative) &&
-            f64::relative_eq(&self[1][1], &other[1][1], epsilon, max_relative) &&
-            f64::relative_eq(&self[1][2], &other[1][2], epsilon, max_relative) &&
-
-            f64::relative_eq(&self[2][0], &other[2][0], epsilon, max_relative) &&
-            f64::relative_eq(&self[2][1], &other[2][1], epsilon, max_relative) &&
-            f64::relative_eq(&self[2][2], &other[2][2], epsilon, max_relative)
-        }
-    }
-
-    impl UlpsEq for Matrix3 {
-        fn default_max_ulps() -> u32 {
-            f64::default_max_ulps()
-        }
-
-        fn ulps_eq(&self, other: &Self, epsilon: Self::Epsilon, max_ulps: u32) -> bool {
-            f64::ulps_eq(&self[0][0], &other[0][0], epsilon, max_ulps) &&
-            f64::ulps_eq(&self[0][1], &other[0][1], epsilon, max_ulps) &&
-            f64::ulps_eq(&self[0][2], &other[0][2], epsilon, max_ulps) &&
-
-            f64::ulps_eq(&self[1][0], &other[1][0], epsilon, max_ulps) &&
-            f64::ulps_eq(&self[1][1], &other[1][1], epsilon, max_ulps) &&
-            f64::ulps_eq(&self[1][2], &other[1][2], epsilon, max_ulps) &&
-
-            f64::ulps_eq(&self[2][0], &other[2][0], epsilon, max_ulps) &&
-            f64::ulps_eq(&self[2][1], &other[2][1], epsilon, max_ulps) &&
-            f64::ulps_eq(&self[2][2], &other[2][2], epsilon, max_ulps)
-        }
-    }
+    use approx::assert_ulps_eq;
 
     #[test]
     fn specials_matrix() {

@@ -89,21 +89,21 @@ class AseSystem(SystemBase):
 
         self._pairs = []
 
-        nl_result = neighborlist.neighbor_list("ijdD", self._atoms, cutoff)
-        for i, j, d, D in zip(*nl_result):
+        nl_result = neighborlist.neighbor_list("ijdDS", self._atoms, cutoff)
+        for i, j, d, D, S in zip(*nl_result):
             if j < i:
                 # we want a half neighbor list, so drop all duplicated
                 # neighbors
                 continue
-            self._pairs.append((i, j, d, D))
+            self._pairs.append((i, j, d, D, S))
 
         self._pairs_by_center = []
         for _ in range(self.size()):
             self._pairs_by_center.append([])
 
-        for i, j, d, D in self._pairs:
-            self._pairs_by_center[i].append((i, j, d, D))
-            self._pairs_by_center[j].append((i, j, d, D))
+        for i, j, d, D, S in self._pairs:
+            self._pairs_by_center[i].append((i, j, d, D, S))
+            self._pairs_by_center[j].append((i, j, d, D, S))
 
     def pairs(self):
         return self._pairs

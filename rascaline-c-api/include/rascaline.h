@@ -131,10 +131,17 @@ typedef struct rascal_pair_t {
    */
   double distance;
   /**
-   * vector from the first atom to the second atom, wrapped inside the unit
-   * cell as required by periodic boundary conditions.
+   * vector from the first atom to the second atom, accounting for periodic
+   * boundary conditions. This should be
+   * `position[second] - position[first] + H * cell_shift`
+   * where `H` is the cell matrix.
    */
   double vector[3];
+  /**
+   * How many cell shift where applied to the `second` atom to create this
+   * pair.
+   */
+  int32_t cell_shift_indices[3];
 } rascal_pair_t;
 
 /**

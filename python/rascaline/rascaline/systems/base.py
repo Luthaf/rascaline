@@ -314,17 +314,18 @@ class SystemBase:
         The pairs are those which were computed by the last call
         :py:func:`SystemBase.compute_neighbors`
 
-        Get all neighbor pairs in this system as a list of tuples ``(int, int,
-        float, (float, float, float))`` containing the indexes of the first and
-        second atom in the pair, the distance between the atoms, and the wrapped
-        between them. Alternatively, this function can return a 1D numpy array
-        with ``dtype=rascal_pair_t``.
+        Get all neighbor pairs in this system as a list of tuples ``(int, int, float,
+        (float, float, float), (int, int, int))`` containing the indexes of the first
+        and second atom in the pair, the distance between the atoms, the vector between
+        them, and the cell shift. The vector should be ``position[first] -
+        position[second] * + H * cell_shift`` where ``H`` is the cell matrix.
+        Alternatively, this function can return a 1D numpy array with
+        ``dtype=rascal_pair_t``.
 
-        The list of pair should only contain each pair once (and not twice as
-        ``i-j`` and ``j-i``), should not contain self pairs (``i-i``); and
-        should only contains pairs where the distance between atoms is actually
-        bellow the cutoff passed in the last call to
-        :py:func:`rascaline.SystemBase.compute_neighbors`.
+        The list of pair should only contain each pair once (and not twice as ``i-j``
+        and ``j-i``), should not contain self pairs (``i-i``); and should only contains
+        pairs where the distance between atoms is actually bellow the cutoff passed in
+        the last call to :py:func:`rascaline.SystemBase.compute_neighbors`.
 
         This function is only valid to call after a call to
         :py:func:`rascaline.SystemBase.compute_neighbors` to set the cutoff.

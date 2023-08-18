@@ -49,8 +49,8 @@ def test_selection():
 
     H_block = descriptor.block(species_center=1)
     assert H_block.values.shape == (2, 2)
-    assert np.all(H_block.values[0] == (2, 1))
-    assert np.all(H_block.values[1] == (3, 3))
+    assert np.all(H_block.values[0] == (2, 11))
+    assert np.all(H_block.values[1] == (3, 13))
 
     O_block = descriptor.block(species_center=8)
     assert O_block.values.shape == (1, 2)
@@ -72,8 +72,8 @@ def test_subset_variables():
 
     H_block = descriptor.block(species_center=1)
     assert H_block.values.shape == (2, 2)
-    assert np.all(H_block.values[0] == (2, 1))
-    assert np.all(H_block.values[1] == (3, 3))
+    assert np.all(H_block.values[0] == (2, 11))
+    assert np.all(H_block.values[1] == (3, 13))
 
     O_block = descriptor.block(species_center=8)
     assert O_block.values.shape == (1, 2)
@@ -128,7 +128,7 @@ def test_predefined_selection():
 
     H_block = descriptor.block(species_center=1)
     assert H_block.values.shape == (1, 2)
-    assert np.all(H_block.values[0] == (3, 3))
+    assert np.all(H_block.values[0] == (3, 13))
 
     O_block = descriptor.block(species_center=8)
     assert O_block.values.shape == (1, 2)
