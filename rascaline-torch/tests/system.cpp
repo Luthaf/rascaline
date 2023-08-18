@@ -17,8 +17,8 @@ TEST_CASE("Systems") {
 
         CHECK(system.use_native_system() == true);
 
-        system.set_precomputed_pairs(3.2, {{0, 1, 0.0, {0.0, 0.0, 0.0}}});
-        system.set_precomputed_pairs(4.5, {{3, 2, 0.0, {0.0, 0.0, 0.0}}});
+        system.set_precomputed_pairs(3.2, {{0, 1, 0.0, {0.0, 0.0, 0.0}, {0, 1, 0}}});
+        system.set_precomputed_pairs(4.5, {{3, 2, 0.0, {0.0, 0.0, 0.0}, {0, 1, 0}}});
         CHECK(system.use_native_system() == false);
 
         CHECK_THROWS_WITH(

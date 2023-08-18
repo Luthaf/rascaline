@@ -17,7 +17,7 @@ rascal_system_t simple_system() {
 
     system.positions = [](const void* _, const double** positions) {
         static double POSITIONS[4][3] = {
-            {0, 0, 0},
+            {10, 10, 10},
             {1, 1, 1},
             {2, 2, 2},
             {3, 3, 3},
@@ -53,9 +53,9 @@ rascal_system_t simple_system() {
 
     system.pairs = [](const void* _, const rascal_pair_t** pairs, uintptr_t* count) {
         static rascal_pair_t PAIRS[] = {
-            {0, 1, SQRT_3, {1, 1, 1}},
-            {1, 2, SQRT_3, {1, 1, 1}},
-            {2, 3, SQRT_3, {1, 1, 1}},
+            {0, 1, SQRT_3, {1.0, 1.0, 1.0}, {1, 1, 1}},
+            {1, 2, SQRT_3, {1.0, 1.0, 1.0}, {0, 0, 0}},
+            {2, 3, SQRT_3, {1.0, 1.0, 1.0}, {0, 0, 0}},
         };
 
         *pairs = PAIRS;
@@ -65,21 +65,21 @@ rascal_system_t simple_system() {
 
     system.pairs_containing = [](const void* _, uintptr_t center, const rascal_pair_t** pairs, uintptr_t* count){
         static rascal_pair_t PAIRS_0[] = {
-            {0, 1, SQRT_3, {1, 1, 1}},
+            {0, 1, SQRT_3, {1.0, 1.0, 1.0}, {1, 1, 1}},
         };
 
         static rascal_pair_t PAIRS_1[] = {
-            {0, 1, SQRT_3, {1, 1, 1}},
-            {1, 2, SQRT_3, {1, 1, 1}},
+            {0, 1, SQRT_3, {1.0, 1.0, 1.0}, {1, 1, 1}},
+            {1, 2, SQRT_3, {1.0, 1.0, 1.0}, {0, 0, 0}},
         };
 
         static rascal_pair_t PAIRS_2[] = {
-            {1, 2, SQRT_3, {1, 1, 1}},
-            {2, 3, SQRT_3, {1, 1, 1}},
+            {1, 2, SQRT_3, {1.0, 1.0, 1.0}, {0, 0, 0}},
+            {2, 3, SQRT_3, {1.0, 1.0, 1.0}, {0, 0, 0}},
         };
 
         static rascal_pair_t PAIRS_3[] = {
-            {2, 3, SQRT_3, {1, 1, 1}},
+            {2, 3, SQRT_3, {1.0, 1.0, 1.0}, {0, 0, 0}},
         };
 
         if (center == 0) {

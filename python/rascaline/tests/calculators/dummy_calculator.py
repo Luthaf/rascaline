@@ -51,8 +51,8 @@ def test_compute():
 
     H_block = descriptor.block(species_center=1)
     assert H_block.values.shape == (2, 2)
-    assert np.all(H_block.values[0] == (2, 1))
-    assert np.all(H_block.values[1] == (3, 3))
+    assert np.all(H_block.values[0] == (2, 11))
+    assert np.all(H_block.values[1] == (3, 13))
 
     assert len(H_block.samples) == 2
     assert H_block.samples.names == ["structure", "center"]
