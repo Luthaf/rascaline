@@ -281,12 +281,13 @@ impl SphericalExpansionByPair {
 
             // loop over all samples in this block, find self pairs
             // (`pair_id` is -1), and fill the data using `self_contribution`
-            for (sample_i, &[structure, pair_id, atom_1, atom_2]) in data.samples.iter_fixed_size().enumerate() {
+            for (sample_i, &[structure, atom_1, atom_2, cell_a, cell_b, cell_c]) in data.samples.iter_fixed_size().enumerate() {
                 // it is possible that the samples from values.samples are not
                 // part of the systems (the user requested extra samples). In
                 // that case, we need to skip anything that does not exist, or
                 // with a different species center
-                if structure.usize() >= systems.len() || pair_id != -1 {
+                let is_self_pair = atom_1 == atom_2 && cell_a == 0 && cell_b == 0 && cell_c == 0;
+                if structure.usize() >= systems.len() || !is_self_pair {
                     continue;
                 }
 
@@ -452,7 +453,7 @@ impl SphericalExpansionByPair {
                     // gradient of the pair contribution w.r.t. the position of
                     // the first atom
                     let first_grad_sample_i = gradient.samples.position(&[
-                        sample_i.into(), /* structure */ sample[0], /* pair.first */ sample[2]
+                        sample_i.into(), /* structure */ sample[0], /* pair.first */ sample[1]
                     ]).expect("missing first gradient sample");
 
                     for spatial in 0..3 {
@@ -469,7 +470,7 @@ impl SphericalExpansionByPair {
                     // gradient of the pair contribution w.r.t. the position of
                     // the second atom
                     let second_grad_sample_i = gradient.samples.position(&[
-                        sample_i.into(), /* structure */ sample[0], /* pair.second */ sample[3]
+                        sample_i.into(), /* structure */ sample[0], /* pair.second */ sample[2]
                     ]).expect("missing second gradient sample");
 
                     for spatial in 0..3 {
@@ -527,22 +528,12 @@ impl CalculatorBase for SphericalExpansionByPair {
     }
 
     fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
-        // the species part of the keys is the same for all l
-        let species_keys = FullNeighborList { cutoff: self.parameters.cutoff, self_pairs: false }.keys(systems)?;
-        let mut all_species_pairs = species_keys.iter().map(|p| (p[0], p[1])).collect::<BTreeSet<_>>();
-
-        // also include self-pairs in case they are missing from species_keys
-        let mut all_species = BTreeSet::new();
-        for system in systems {
-            let species = system.species()?;
-            for &species in species {
-                all_species.insert(species);
-            }
-        }
-
-        for species in all_species {
-            all_species_pairs.insert((species.into(), species.into()));
-        }
+        // the species part of the keys is the same for all l, and the same as
+        // what a FullNeighborList with `self_pairs=True` produces.
+        let full_neighbors_list_keys = FullNeighborList {
+            cutoff: self.parameters.cutoff,
+            self_pairs: true,
+        }.keys(systems)?;
 
         let mut keys = LabelsBuilder::new(vec![
             "spherical_harmonics_l",
@@ -550,7 +541,7 @@ impl CalculatorBase for SphericalExpansionByPair {
             "species_atom_2"
         ]);
 
-        for (s1, s2) in all_species_pairs {
+        for &[s1, s2] in full_neighbors_list_keys.iter_fixed_size() {
             for l in 0..=self.parameters.max_angular {
                 keys.add(&[l.into(), s1, s2]);
             }
@@ -561,70 +552,58 @@ impl CalculatorBase for SphericalExpansionByPair {
     }
 
     fn samples_names(&self) -> Vec<&str> {
-        return vec!["structure", "pair_id", "first_atom", "second_atom"];
+        return vec!["structure", "first_atom", "second_atom", "cell_shift_a", "cell_shift_b", "cell_shift_c"];
     }
 
     fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
-        let mut result = Vec::new();
-
-        // we only need to compute samples once for each l, the cache stores the
-        // ones we have already computed
-        let mut cache: BTreeMap<_, Labels> = BTreeMap::new();
+        // get all species pairs in keys as a new set of Labels
+        let mut species_keys = BTreeSet::new();
         for &[_, s1, s2] in keys.iter_fixed_size() {
-            let samples = match cache.entry((s1, s2)) {
-                Entry::Occupied(entry) => entry.get().clone(),
-                Entry::Vacant(entry) => {
-                    let mut builder = LabelsBuilder::new(self.samples_names());
+            species_keys.insert((s1, s2));
+        }
+        let mut builder = LabelsBuilder::new(vec!["species_atom_1", "species_atom_2"]);
+        for (s1, s2) in species_keys {
+            builder.add(&[s1, s2]);
+        }
+        let species_keys = builder.finish();
 
-                    for (system_i, system) in systems.iter_mut().enumerate() {
-                        system.compute_neighbors(self.parameters.cutoff)?;
-                        let species = system.species()?;
+        // for l=0, we want to include self pairs in the samples
+        let mut samples_by_species_l0: BTreeMap<_, Labels> = BTreeMap::new();
+        let full_neighbors_list_samples = FullNeighborList {
+            cutoff: self.parameters.cutoff,
+            self_pairs: true,
+        }.samples(&species_keys, systems)?;
 
-                        if s1 == s2 {
-                            // same species for the two atoms, we need to insert
-                            // the self pairs
-                            for center_i in 0..system.size()? {
-                                if species[center_i] == s1.i32() {
-                                    builder.add(&[
-                                        system_i.into(),
-                                        // set pair_id as -1 for self pairs
-                                        LabelValue::new(-1),
-                                        center_i.into(),
-                                        center_i.into(),
-                                    ]);
-                                }
-                            }
+        debug_assert_eq!(species_keys.count(), full_neighbors_list_samples.len());
+        for (&[s1, s2], samples) in species_keys.iter_fixed_size().zip(full_neighbors_list_samples) {
+            samples_by_species_l0.insert((s1, s2), samples);
+        }
 
-                            for (pair_id, pair) in system.pairs()?.iter().enumerate() {
-                                if species[pair.first] == s1.i32() && species[pair.second] == s2.i32() {
-                                    builder.add(&[system_i, pair_id, pair.first, pair.second]);
-                                    if pair.first != pair.second {
-                                        // do not duplicate actual pairs between
-                                        // an atom and itself (these can exist
-                                        // when the cutoff is larger than the
-                                        // cell in periodic boundary conditions)
-                                        builder.add(&[system_i, pair_id, pair.second, pair.first]);
-                                    }
-                                }
-                            }
-                        } else {
-                            // different species for the two atoms
-                            for (pair_id, pair) in system.pairs()?.iter().enumerate() {
-                                if species[pair.first] == s1.i32() && species[pair.second] == s2.i32() {
-                                    builder.add(&[system_i, pair_id, pair.first, pair.second]);
-                                } else if species[pair.second] == s1.i32() && species[pair.first] == s2.i32() {
-                                    builder.add(&[system_i, pair_id, pair.second, pair.first]);
-                                }
-                            }
-                        }
-                    }
+        // we only need to compute samples once for each l>0, so we compute them
+        // using FullNeighborList::samples, store them in a (species, species)
+        // => Labels map and then re-use them from this map as needed.
+        let mut samples_by_species: BTreeMap<_, Labels> = BTreeMap::new();
+        if self.parameters.max_angular > 0 {
+            let full_neighbors_list_samples = FullNeighborList {
+                cutoff: self.parameters.cutoff,
+                self_pairs: false,
+            }.samples(&species_keys, systems)?;
 
-                    let samples = builder.finish();
-                    entry.insert(samples).clone()
-                }
+            debug_assert_eq!(species_keys.count(), full_neighbors_list_samples.len());
+            for (&[s1, s2], samples) in species_keys.iter_fixed_size().zip(full_neighbors_list_samples) {
+                samples_by_species.insert((s1, s2), samples);
+            }
+        }
+
+        let mut result = Vec::new();
+        for &[l, s1, s2] in keys.iter_fixed_size() {
+            let samples = if l.i32() == 0 {
+                samples_by_species_l0.get(&(s1, s2)).expect("missing samples for one species pair")
+            } else {
+                samples_by_species.get(&(s1, s2)).expect("missing samples for one species pair")
             };
 
-            result.push(samples);
+            result.push(samples.clone());
         }
 
         return Ok(result);
@@ -643,12 +622,11 @@ impl CalculatorBase for SphericalExpansionByPair {
 
         for block_samples in samples {
             let mut builder = LabelsBuilder::new(vec!["sample", "structure", "atom"]);
-            for (sample_i, &[system_i, pair_id, first, second]) in block_samples.iter_fixed_size().enumerate() {
+            for (sample_i, &[system_i, first, second, cell_a, cell_b, cell_c]) in block_samples.iter_fixed_size().enumerate() {
                 // self pairs do not contribute to gradients
-                if pair_id == -1 {
+                if first == second && cell_a == 0 && cell_b == 0 && cell_c == 0 {
                     continue;
                 }
-
                 builder.add(&[sample_i.into(), system_i, first]);
                 builder.add(&[sample_i.into(), system_i, second]);
             }
@@ -733,7 +711,7 @@ impl CalculatorBase for SphericalExpansionByPair {
                 Matrix3::zero()
             };
 
-            for (pair_id, pair) in system.pairs()?.iter().enumerate() {
+            for pair in system.pairs()? {
                 let direction = pair.vector / pair.distance;
                 self.compute_for_pair(pair.distance, direction, do_gradients, &mut contribution);
 
@@ -742,6 +720,10 @@ impl CalculatorBase for SphericalExpansionByPair {
                     pair.vector[0] * inverse_cell[0][1] + pair.vector[1] * inverse_cell[1][1] + pair.vector[2] * inverse_cell[2][1],
                     pair.vector[0] * inverse_cell[0][2] + pair.vector[1] * inverse_cell[1][2] + pair.vector[2] * inverse_cell[2][2],
                 );
+
+                let cell_shift_a = pair.cell_shift_indices[0];
+                let cell_shift_b = pair.cell_shift_indices[1];
+                let cell_shift_c = pair.cell_shift_indices[2];
 
                 let species_first = species[pair.first];
                 let species_second = species[pair.second];
@@ -754,10 +736,12 @@ impl CalculatorBase for SphericalExpansionByPair {
 
                     if let Some(block_i) = block_i {
                         let sample = &[
-                            system_i.into(),
-                            pair_id.into(),
-                            pair.first.into(),
-                            pair.second.into(),
+                            LabelValue::from(system_i),
+                            LabelValue::from(pair.first),
+                            LabelValue::from(pair.second),
+                            LabelValue::from(cell_shift_a),
+                            LabelValue::from(cell_shift_b),
+                            LabelValue::from(cell_shift_c),
                         ];
 
                         SphericalExpansionByPair::accumulate_in_block(
@@ -789,10 +773,12 @@ impl CalculatorBase for SphericalExpansionByPair {
 
                     if let Some(block_i) = block_i {
                         let sample = &[
-                            system_i.into(),
-                            pair_id.into(),
-                            pair.second.into(),
-                            pair.first.into(),
+                            LabelValue::from(system_i),
+                            LabelValue::from(pair.second),
+                            LabelValue::from(pair.first),
+                            LabelValue::from(-cell_shift_a),
+                            LabelValue::from(-cell_shift_b),
+                            LabelValue::from(-cell_shift_c),
                         ];
 
                         SphericalExpansionByPair::accumulate_in_block(
@@ -943,10 +929,11 @@ mod tests {
             let block = block.data();
             let values = block.values.as_array();
 
+            assert_eq!(spx.samples.names(), ["structure", "center"]);
             for (spx_sample, expected) in spx.samples.iter().zip(spx_values.axis_iter(Axis(0))) {
                 let mut sum = ndarray::Array::zeros(expected.raw_dim());
 
-                for (sample_i, &[structure, _, center, _]) in block.samples.iter_fixed_size().enumerate() {
+                for (sample_i, &[structure, center, _, _, _, _]) in block.samples.iter_fixed_size().enumerate() {
                     if spx_sample[0] == structure && spx_sample[1] == center {
                         sum += &values.slice(s![sample_i, .., ..]);
                     }
