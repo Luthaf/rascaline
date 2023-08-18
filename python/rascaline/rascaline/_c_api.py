@@ -46,6 +46,7 @@ class rascal_pair_t(ctypes.Structure):
         ("second", c_uintptr_t),
         ("distance", ctypes.c_double),
         ("vector", ctypes.c_double * 3),
+        ("cell_shift_indices", ctypes.c_int32 * 3),
     ]
 
 

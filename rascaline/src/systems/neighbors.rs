@@ -14,7 +14,7 @@ const MAX_NUMBER_OF_CELLS: f64 = 1e5;
 /// The cell shift can be used to reconstruct the vector between two points,
 /// wrapped inside the unit cell.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct CellShift([isize; 3]);
+pub struct CellShift([i32; 3]);
 
 impl std::ops::Add<CellShift> for CellShift {
     type Output = CellShift;
@@ -39,7 +39,7 @@ impl std::ops::Sub<CellShift> for CellShift {
 }
 
 impl std::ops::Index<usize> for CellShift {
-    type Output = isize;
+    type Output = i32;
 
     fn index(&self, index: usize) -> &Self::Output {
         &self.0[index]
@@ -88,7 +88,7 @@ pub struct AtomData {
 pub struct CellList {
     /// How many cells do we need to look at when searching neighbors to include
     /// all neighbors below cutoff
-    n_search: [isize; 3],
+    n_search: [i32; 3],
     /// the cells themselves
     cells: ndarray::Array3<Vec<AtomData>>,
     /// Unit cell defining periodic boundary conditions
@@ -132,9 +132,9 @@ impl CellList {
         // number of cells to search in each direction to make sure all possible
         // pairs below the cutoff are accounted for.
         let mut n_search = [
-            f64::trunc(cutoff * n_cells[0] / distances_between_faces[0]) as isize,
-            f64::trunc(cutoff * n_cells[1] / distances_between_faces[1]) as isize,
-            f64::trunc(cutoff * n_cells[2] / distances_between_faces[2]) as isize,
+            f64::trunc(cutoff * n_cells[0] / distances_between_faces[0]) as i32,
+            f64::trunc(cutoff * n_cells[1] / distances_between_faces[1]) as i32,
+            f64::trunc(cutoff * n_cells[2] / distances_between_faces[2]) as i32,
         ];
 
         let n_cells = [
@@ -176,9 +176,9 @@ impl CellList {
 
         // find the cell in which this atom should go
         let cell_index = [
-            f64::floor(fractional[0] * n_cells[0] as f64) as isize,
-            f64::floor(fractional[1] * n_cells[1] as f64) as isize,
-            f64::floor(fractional[2] * n_cells[2] as f64) as isize,
+            f64::floor(fractional[0] * n_cells[0] as f64) as i32,
+            f64::floor(fractional[1] * n_cells[1] as f64) as i32,
+            f64::floor(fractional[2] * n_cells[2] as f64) as i32,
         ];
 
         // deal with pbc by wrapping the atom inside if it was outside of the
@@ -231,9 +231,9 @@ impl CellList {
                 for delta_y in search_y.clone() {
                     for delta_z in search_z.clone() {
                         let cell_i = [
-                            cell_i_x as isize + delta_x,
-                            cell_i_y as isize + delta_y,
-                            cell_i_z as isize + delta_z,
+                            cell_i_x as i32 + delta_x,
+                            cell_i_y as i32 + delta_y,
+                            cell_i_z as i32 + delta_z,
                         ];
 
                         // shift vector from one cell to the other and index of
@@ -284,8 +284,9 @@ impl CellList {
 /// Function to compute both quotient and remainder of the division of a by b.
 /// This function follows Python convention, making sure the remainder have the
 /// same sign as `b`.
-fn divmod(a: isize, b: usize) -> (isize, usize) {
-    let b = b as isize;
+fn divmod(a: i32, b: usize) -> (i32, usize) {
+    debug_assert!(b < (i32::MAX as usize));
+    let b = b as i32;
     let mut quotient = a / b;
     let mut remainder = a % b;
     if remainder < 0 {
@@ -296,7 +297,7 @@ fn divmod(a: isize, b: usize) -> (isize, usize) {
 }
 
 /// Apply the [`divmod`] function to three components at the time
-fn divmod_vec(a: [isize; 3], b: [usize; 3]) -> ([isize; 3], [usize; 3]) {
+fn divmod_vec(a: [i32; 3], b: [usize; 3]) -> ([i32; 3], [usize; 3]) {
     let (qx, rx) = divmod(a[0], b[0]);
     let (qy, ry) = divmod(a[1], b[1]);
     let (qz, rz) = divmod(a[2], b[2]);
@@ -349,6 +350,7 @@ impl NeighborsList {
                     second: pair.second,
                     distance: distance2.sqrt(),
                     vector: vector,
+                    cell_shift_indices: pair.shift.0
                 };
 
                 pairs.push(pair);
@@ -424,26 +426,27 @@ mod tests {
         let neighbors = NeighborsList::new(&positions, cell, 3.0);
 
         let expected = [
-            Vector3D::new(0.0, -1.0, -1.0),
-            Vector3D::new(1.0, 0.0, -1.0),
-            Vector3D::new(1.0, -1.0, 0.0),
-            Vector3D::new(-1.0, 0.0, -1.0),
-            Vector3D::new(0.0, 1.0, -1.0),
-            Vector3D::new(-1.0, -1.0, 0.0),
-            Vector3D::new(1.0, 1.0, 0.0),
-            Vector3D::new(0.0, -1.0, 1.0),
-            Vector3D::new(1.0, 0.0, 1.0),
-            Vector3D::new(-1.0, 1.0, 0.0),
-            Vector3D::new(-1.0, 0.0, 1.0),
-            Vector3D::new(0.0, 1.0, 1.0),
+            (Vector3D::new(0.0, -1.0, -1.0), [-1, 0, 0]),
+            (Vector3D::new(1.0, 0.0, -1.0),  [-1, 0, 1]),
+            (Vector3D::new(1.0, -1.0, 0.0),  [-1, 1, 0]),
+            (Vector3D::new(-1.0, 0.0, -1.0), [0, -1, 0]),
+            (Vector3D::new(0.0, 1.0, -1.0),  [0, -1, 1]),
+            (Vector3D::new(-1.0, -1.0, 0.0), [0, 0, -1]),
+            (Vector3D::new(1.0, 1.0, 0.0),   [0, 0, 1]),
+            (Vector3D::new(0.0, -1.0, 1.0),  [0, 1, -1]),
+            (Vector3D::new(1.0, 0.0, 1.0),   [0, 1, 0]),
+            (Vector3D::new(-1.0, 1.0, 0.0),  [1, -1, 0]),
+            (Vector3D::new(-1.0, 0.0, 1.0),  [1, 0, -1]),
+            (Vector3D::new(0.0, 1.0, 1.0),   [1, 0, 0]),
         ];
 
         assert_eq!(neighbors.pairs.len(), 12);
-        for (pair, vector) in neighbors.pairs.iter().zip(&expected) {
+        for (pair, (vector, shifts)) in neighbors.pairs.iter().zip(&expected) {
             assert_eq!(pair.first, 0);
             assert_eq!(pair.second, 0);
             assert_ulps_eq!(pair.distance, 2.1213203435596424);
             assert_ulps_eq!(pair.vector / 1.5, vector);
+            assert_eq!(&pair.cell_shift_indices, shifts);
         }
     }
 
@@ -473,6 +476,7 @@ mod tests {
         for (pair, expected) in neighbors.pairs.iter().zip(&expected) {
             assert_eq!(pair.first, expected.0);
             assert_eq!(pair.second, expected.1);
+            assert_eq!(pair.cell_shift_indices, [0, 0, 0]);
             assert_ulps_eq!(pair.distance, 2.0);
         }
     }

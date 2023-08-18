@@ -8,7 +8,7 @@ use crate::labels::{SpeciesFilter, SamplesBuilder};
 use crate::labels::AtomCenteredSamples;
 use crate::labels::{CenterSpeciesKeys, KeysBuilder};
 
-use crate::{Error, System};
+use crate::{Error, System, Vector3D};
 
 /// A stupid calculator implementation used to test the API, and API binding to
 /// C/Python/etc.
@@ -137,8 +137,51 @@ impl CalculatorBase for DummyCalculator {
                         system.compute_neighbors(self.cutoff)?;
 
                         let positions = system.positions()?;
+                        let cell = system.cell()?.matrix();
                         let mut sum = positions[center_i][0] + positions[center_i][1] + positions[center_i][2];
                         for pair in system.pairs()? {
+                            // this code just check for consistency in the
+                            // neighbor list
+                            let shift = pair.cell_shift_indices[0] as f64 * Vector3D::from(cell[0])
+                                + pair.cell_shift_indices[1] as f64 * Vector3D::from(cell[1])
+                                + pair.cell_shift_indices[2] as f64 * Vector3D::from(cell[2]);
+                            let from_shift = positions[pair.second] - positions[pair.first] + shift;
+                            if !approx::relative_eq!(from_shift, pair.vector, max_relative=1e-6) {
+                                return Err(Error::InvalidParameter(format!(
+                                    "system implementation returned inconsistent neighbors list:\
+                                    pair.vector is {:?}, but the cell shift give {:?} for atoms {}-{}",
+                                    pair.vector, from_shift, pair.first, pair.second
+                                )));
+                            }
+
+                            if !approx::relative_eq!(pair.vector.norm(), pair.distance, max_relative=1e-6) {
+                                return Err(Error::InvalidParameter(format!(
+                                    "system implementation returned inconsistent neighbors list:\
+                                    pair.vector norm is {}, but pair.distance is {} for atoms {}-{}",
+                                    pair.vector.norm(), pair.distance, pair.first, pair.second
+                                )));
+                            }
+
+                            let pairs_by_center = system.pairs_containing(pair.first)?;
+                            if !pairs_by_center.iter().any(|p| p == pair) {
+                                return Err(Error::InvalidParameter(format!(
+                                    "system implementation returned inconsistent neighbors list:\
+                                    pairs_containing({}) does not contains a pair for atoms {}-{}",
+                                    pair.first, pair.first, pair.second
+                                )));
+                            }
+
+                            let pairs_by_center = system.pairs_containing(pair.second)?;
+                            if !pairs_by_center.iter().any(|p| p == pair) {
+                                return Err(Error::InvalidParameter(format!(
+                                    "system implementation returned inconsistent neighbors list:\
+                                    pairs_containing({}) does not contains a pair for atoms {}-{}",
+                                    pair.second, pair.first, pair.second
+                                )));
+                            }
+                            // end of neighbors list consistency check
+
+                            // actual values calculation
                             if pair.first == center_i {
                                 sum += positions[pair.second][0] + positions[pair.second][1] + positions[pair.second][2];
                             }

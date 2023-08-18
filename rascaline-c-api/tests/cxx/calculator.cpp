@@ -112,7 +112,7 @@ TEST_CASE("Compute descriptor") {
             {{1, 0}, {0, 1}}
         ));
         CHECK(block.values() == metatensor::NDArray<double>(
-            {5.0, 9.0, 6.0, 18.0, 7.0, 15.0},
+            {5.0, 39.0, 6.0, 18.0, 7.0, 15.0},
             {3, 2}
         ));
 
@@ -150,7 +150,7 @@ TEST_CASE("Compute descriptor") {
             {{1, 0}, {0, 1}}
         ));
         CHECK(block.values() == metatensor::NDArray<double>(
-            {4.0, 3.0},
+            {4.0, 33.0},
             {1, 2}
         ));
 
@@ -192,7 +192,7 @@ TEST_CASE("Compute descriptor") {
             {{1, 0}, {0, 1}}
         ));
         CHECK(block.values() == metatensor::NDArray<double>(
-            {5.0, 9.0, 7.0, 15.0},
+            {5.0, 39.0, 7.0, 15.0},
             {2, 2}
         ));
 
@@ -265,7 +265,7 @@ TEST_CASE("Compute descriptor") {
             {{0, 1}}
         ));
         CHECK(block.values() == metatensor::NDArray<double>(
-            {9.0, 18.0, 15.0},
+            {39.0, 18.0, 15.0},
             {3, 1}
         ));
 
@@ -303,7 +303,7 @@ TEST_CASE("Compute descriptor") {
             {{0, 1}}
         ));
         CHECK(block.values() == metatensor::NDArray<double>(
-            {3.0},
+            {33.0},
             {1, 1}
         ));
 
@@ -460,7 +460,7 @@ TEST_CASE("Compute descriptor") {
             {{1, 0}, {0, 1}}
         ));
         CHECK(block.values() == metatensor::NDArray<double>(
-            {4.0, 3.0},
+            {4.0, 33.0},
             {1, 2}
         ));
     }

@@ -19,9 +19,14 @@ pub struct rascal_pair_t {
     pub second: usize,
     /// distance between the two atoms
     pub distance: f64,
-    /// vector from the first atom to the second atom, wrapped inside the unit
-    /// cell as required by periodic boundary conditions.
+    /// vector from the first atom to the second atom, accounting for periodic
+    /// boundary conditions. This should be
+    /// `position[second] - position[first] + H * cell_shift`
+    /// where `H` is the cell matrix.
     pub vector: [f64; 3],
+    /// How many cell shift where applied to the `second` atom to create this
+    /// pair.
+    pub cell_shift_indices: [i32; 3],
 }
 
 /// A `rascal_system_t` deals with the storage of atoms and related information,
