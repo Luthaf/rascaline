@@ -140,7 +140,7 @@ impl CalculatorBase for NeighborList {
 
     fn properties(&self, keys: &Labels) -> Vec<Labels> {
         let mut properties = LabelsBuilder::new(self.properties_names());
-        properties.add(&[LabelValue::new(0)]);
+        properties.add(&[LabelValue::new(1)]);
         let properties = properties.finish();
 
         return vec![properties; keys.count()];
@@ -321,9 +321,13 @@ impl HalfNeighborList {
 
                     if let Some(sample_i) = sample_i {
                         let array = block_data.values.to_array_mut();
-                        array[[sample_i, 0, 0]] = pair_vector[0];
-                        array[[sample_i, 1, 0]] = pair_vector[1];
-                        array[[sample_i, 2, 0]] = pair_vector[2];
+                        for (property_i, &[distance]) in block_data.properties.iter_fixed_size().enumerate() {
+                            if distance == 1 {
+                                array[[sample_i, 0, property_i]] = pair_vector[0];
+                                array[[sample_i, 1, property_i]] = pair_vector[1];
+                                array[[sample_i, 2, property_i]] = pair_vector[2];
+                            }
+                        }
 
                         if let Some(mut gradient) = block.gradient_mut("positions") {
                             let gradient = gradient.data_mut();
@@ -337,13 +341,17 @@ impl HalfNeighborList {
 
                             let array = gradient.values.to_array_mut();
 
-                            array[[first_grad_sample_i, 0, 0, 0]] = -1.0;
-                            array[[first_grad_sample_i, 1, 1, 0]] = -1.0;
-                            array[[first_grad_sample_i, 2, 2, 0]] = -1.0;
+                            for (property_i, &[distance]) in gradient.properties.iter_fixed_size().enumerate() {
+                                if distance == 1 {
+                                    array[[first_grad_sample_i, 0, 0, property_i]] = -1.0;
+                                    array[[first_grad_sample_i, 1, 1, property_i]] = -1.0;
+                                    array[[first_grad_sample_i, 2, 2, property_i]] = -1.0;
 
-                            array[[second_grad_sample_i, 0, 0, 0]] = 1.0;
-                            array[[second_grad_sample_i, 1, 1, 0]] = 1.0;
-                            array[[second_grad_sample_i, 2, 2, 0]] = 1.0;
+                                    array[[second_grad_sample_i, 0, 0, property_i]] = 1.0;
+                                    array[[second_grad_sample_i, 1, 1, property_i]] = 1.0;
+                                    array[[second_grad_sample_i, 2, 2, property_i]] = 1.0;
+                                }
+                            }
                         }
                     }
                 }
@@ -521,9 +529,14 @@ impl FullNeighborList {
 
                     if let Some(sample_i) = sample_i {
                         let array = block_data.values.to_array_mut();
-                        array[[sample_i, 0, 0]] = pair.vector[0];
-                        array[[sample_i, 1, 0]] = pair.vector[1];
-                        array[[sample_i, 2, 0]] = pair.vector[2];
+
+                        for (property_i, &[distance]) in block_data.properties.iter_fixed_size().enumerate() {
+                            if distance == 1 {
+                                array[[sample_i, 0, property_i]] = pair.vector[0];
+                                array[[sample_i, 1, property_i]] = pair.vector[1];
+                                array[[sample_i, 2, property_i]] = pair.vector[2];
+                            }
+                        }
 
                         if let Some(mut gradient) = block.gradient_mut("positions") {
                             let gradient = gradient.data_mut();
@@ -537,13 +550,17 @@ impl FullNeighborList {
 
                             let array = gradient.values.to_array_mut();
 
-                            array[[first_grad_sample_i, 0, 0, 0]] = -1.0;
-                            array[[first_grad_sample_i, 1, 1, 0]] = -1.0;
-                            array[[first_grad_sample_i, 2, 2, 0]] = -1.0;
+                            for (property_i, &[distance]) in gradient.properties.iter_fixed_size().enumerate() {
+                                if distance == 1 {
+                                    array[[first_grad_sample_i, 0, 0, property_i]] = -1.0;
+                                    array[[first_grad_sample_i, 1, 1, property_i]] = -1.0;
+                                    array[[first_grad_sample_i, 2, 2, property_i]] = -1.0;
 
-                            array[[second_grad_sample_i, 0, 0, 0]] = 1.0;
-                            array[[second_grad_sample_i, 1, 1, 0]] = 1.0;
-                            array[[second_grad_sample_i, 2, 2, 0]] = 1.0;
+                                    array[[second_grad_sample_i, 0, 0, property_i]] = 1.0;
+                                    array[[second_grad_sample_i, 1, 1, property_i]] = 1.0;
+                                    array[[second_grad_sample_i, 2, 2, property_i]] = 1.0;
+                                }
+                            }
                         }
                     }
                 }
@@ -569,9 +586,13 @@ impl FullNeighborList {
 
                     if let Some(sample_i) = sample_i {
                         let array = block_data.values.to_array_mut();
-                        array[[sample_i, 0, 0]] = -pair.vector[0];
-                        array[[sample_i, 1, 0]] = -pair.vector[1];
-                        array[[sample_i, 2, 0]] = -pair.vector[2];
+                        for (property_i, &[distance]) in block_data.properties.iter_fixed_size().enumerate() {
+                            if distance == 1 {
+                                array[[sample_i, 0, property_i]] = -pair.vector[0];
+                                array[[sample_i, 1, property_i]] = -pair.vector[1];
+                                array[[sample_i, 2, property_i]] = -pair.vector[2];
+                            }
+                        }
 
                         if let Some(mut gradient) = block.gradient_mut("positions") {
                             let gradient = gradient.data_mut();
@@ -585,13 +606,17 @@ impl FullNeighborList {
 
                             let array = gradient.values.to_array_mut();
 
-                            array[[first_grad_sample_i, 0, 0, 0]] = -1.0;
-                            array[[first_grad_sample_i, 1, 1, 0]] = -1.0;
-                            array[[first_grad_sample_i, 2, 2, 0]] = -1.0;
+                            for (property_i, &[distance]) in gradient.properties.iter_fixed_size().enumerate() {
+                                if distance == 1 {
+                                    array[[first_grad_sample_i, 0, 0, property_i]] = -1.0;
+                                    array[[first_grad_sample_i, 1, 1, property_i]] = -1.0;
+                                    array[[first_grad_sample_i, 2, 2, property_i]] = -1.0;
 
-                            array[[second_grad_sample_i, 0, 0, 0]] = 1.0;
-                            array[[second_grad_sample_i, 1, 1, 0]] = 1.0;
-                            array[[second_grad_sample_i, 2, 2, 0]] = 1.0;
+                                    array[[second_grad_sample_i, 0, 0, property_i]] = 1.0;
+                                    array[[second_grad_sample_i, 1, 1, property_i]] = 1.0;
+                                    array[[second_grad_sample_i, 2, 2, property_i]] = 1.0;
+                                }
+                            }
                         }
                     }
                 }
@@ -633,7 +658,7 @@ mod tests {
 
         // O-H block
         let block = descriptor.block_by_id(0);
-        assert_eq!(block.properties(), Labels::new(["distance"], &[[0]]));
+        assert_eq!(block.properties(), Labels::new(["distance"], &[[1]]));
 
         assert_eq!(block.components().len(), 1);
         assert_eq!(block.components()[0], Labels::new(["pair_direction"], &[[0], [1], [2]]));
@@ -685,7 +710,7 @@ mod tests {
 
         // O-H block
         let block = descriptor.block_by_id(0);
-        assert_eq!(block.properties(), Labels::new(["distance"], &[[0]]));
+        assert_eq!(block.properties(), Labels::new(["distance"], &[[1]]));
 
         assert_eq!(block.components().len(), 1);
         assert_eq!(block.components()[0], Labels::new(["pair_direction"], &[[0], [1], [2]]));
@@ -705,7 +730,7 @@ mod tests {
 
         // H-O block
         let block = descriptor.block_by_id(1);
-        assert_eq!(block.properties(), Labels::new(["distance"], &[[0]]));
+        assert_eq!(block.properties(), Labels::new(["distance"], &[[1]]));
 
         assert_eq!(block.components().len(), 1);
         assert_eq!(block.components()[0], Labels::new(["pair_direction"], &[[0], [1], [2]]));
@@ -782,7 +807,7 @@ mod tests {
 
         let properties = Labels::new(
             ["distance"],
-            &[[0]],
+            &[[1]],
         );
 
         let keys = Labels::new(
