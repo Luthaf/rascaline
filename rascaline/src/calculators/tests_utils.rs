@@ -37,7 +37,15 @@ pub fn compute_partial(
     check_compute_partial_keys(&mut calculator, &mut *systems, &full, &subset_keys.finish());
 
     check_compute_partial_properties(&mut calculator, &mut *systems, &full, properties);
+    // check we can remove all properties
+    let empty_properties = Labels::empty(properties.names());
+    check_compute_partial_properties(&mut calculator, &mut *systems, &full, &empty_properties);
+
     check_compute_partial_samples(&mut calculator, &mut *systems, &full, samples);
+    // check we can remove all samples
+    let empty_samples = Labels::empty(samples.names());
+    check_compute_partial_samples(&mut calculator, &mut *systems, &full, &empty_samples);
+
     check_compute_partial_both(&mut calculator, &mut *systems, &full, samples, properties);
 }
 
