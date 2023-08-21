@@ -22,7 +22,11 @@ pub fn compute_partial(
 ) {
     let full = calculator.compute(systems, Default::default()).unwrap();
 
-    assert!(full.keys().count() < keys.count(), "selected keys should be a superset of the keys");
+    assert_eq!(
+        full.keys().intersection(keys, None, None).unwrap().count(),
+        full.keys().count(),
+        "selected keys should be a superset of the keys, a subset will be created manually"
+    );
     check_compute_partial_keys(&mut calculator, &mut *systems, &full, keys);
 
     assert!(keys.count() > 3, "selected keys should have more than 3 keys");

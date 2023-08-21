@@ -302,47 +302,49 @@ impl HalfNeighborList {
                     (pair.first, pair.second)
                 };
 
-                let block_id = descriptor.keys().position(&[
+                let block_i = descriptor.keys().position(&[
                     species_i.into(), species_j.into()
-                ]).expect("missing block");
-
-                let mut block = descriptor.block_mut_by_id(block_id);
-                let block_data = block.data_mut();
-
-                let sample_i = block_data.samples.position(&[
-                    LabelValue::from(system_i),
-                    LabelValue::from(atom_i),
-                    LabelValue::from(atom_j),
-                    LabelValue::from(cell_a),
-                    LabelValue::from(cell_b),
-                    LabelValue::from(cell_c),
                 ]);
 
-                if let Some(sample_i) = sample_i {
-                    let array = block_data.values.to_array_mut();
-                    array[[sample_i, 0, 0]] = pair_vector[0];
-                    array[[sample_i, 1, 0]] = pair_vector[1];
-                    array[[sample_i, 2, 0]] = pair_vector[2];
+                if let Some(block_i) = block_i {
+                    let mut block = descriptor.block_mut_by_id(block_i);
+                    let block_data = block.data_mut();
 
-                    if let Some(mut gradient) = block.gradient_mut("positions") {
-                        let gradient = gradient.data_mut();
+                    let sample_i = block_data.samples.position(&[
+                        LabelValue::from(system_i),
+                        LabelValue::from(atom_i),
+                        LabelValue::from(atom_j),
+                        LabelValue::from(cell_a),
+                        LabelValue::from(cell_b),
+                        LabelValue::from(cell_c),
+                    ]);
 
-                        let first_grad_sample_i = gradient.samples.position(&[
-                            sample_i.into(), system_i.into(), atom_i.into()
-                        ]).expect("missing gradient sample");
-                        let second_grad_sample_i = gradient.samples.position(&[
-                            sample_i.into(), system_i.into(), atom_j.into()
-                        ]).expect("missing gradient sample");
+                    if let Some(sample_i) = sample_i {
+                        let array = block_data.values.to_array_mut();
+                        array[[sample_i, 0, 0]] = pair_vector[0];
+                        array[[sample_i, 1, 0]] = pair_vector[1];
+                        array[[sample_i, 2, 0]] = pair_vector[2];
 
-                        let array = gradient.values.to_array_mut();
+                        if let Some(mut gradient) = block.gradient_mut("positions") {
+                            let gradient = gradient.data_mut();
 
-                        array[[first_grad_sample_i, 0, 0, 0]] = -1.0;
-                        array[[first_grad_sample_i, 1, 1, 0]] = -1.0;
-                        array[[first_grad_sample_i, 2, 2, 0]] = -1.0;
+                            let first_grad_sample_i = gradient.samples.position(&[
+                                sample_i.into(), system_i.into(), atom_i.into()
+                            ]).expect("missing gradient sample");
+                            let second_grad_sample_i = gradient.samples.position(&[
+                                sample_i.into(), system_i.into(), atom_j.into()
+                            ]).expect("missing gradient sample");
 
-                        array[[second_grad_sample_i, 0, 0, 0]] = 1.0;
-                        array[[second_grad_sample_i, 1, 1, 0]] = 1.0;
-                        array[[second_grad_sample_i, 2, 2, 0]] = 1.0;
+                            let array = gradient.values.to_array_mut();
+
+                            array[[first_grad_sample_i, 0, 0, 0]] = -1.0;
+                            array[[first_grad_sample_i, 1, 1, 0]] = -1.0;
+                            array[[first_grad_sample_i, 2, 2, 0]] = -1.0;
+
+                            array[[second_grad_sample_i, 0, 0, 0]] = 1.0;
+                            array[[second_grad_sample_i, 1, 1, 0]] = 1.0;
+                            array[[second_grad_sample_i, 2, 2, 0]] = 1.0;
+                        }
                     }
                 }
             }
@@ -491,110 +493,106 @@ impl FullNeighborList {
             let species = system.species()?;
 
             for pair in system.pairs()?.iter() {
-                let first_block_id = descriptor.keys().position(&[
+                let first_block_i = descriptor.keys().position(&[
                     species[pair.first].into(), species[pair.second].into()
-                ]).expect("missing block");
+                ]);
 
-                let second_block_id = if species[pair.first] == species[pair.second] {
-                    None
-                } else {
-                    Some(descriptor.keys().position(&[
-                        species[pair.second].into(), species[pair.first].into()
-                    ]).expect("missing block"))
-                };
-
-                // first, the pair first -> second
-                let mut block = descriptor.block_mut_by_id(first_block_id);
-                let block_data = block.data_mut();
+                let second_block_i = descriptor.keys().position(&[
+                    species[pair.second].into(), species[pair.first].into()
+                ]);
 
                 let cell_a = pair.cell_shift_indices[0];
                 let cell_b = pair.cell_shift_indices[1];
                 let cell_c = pair.cell_shift_indices[2];
 
-                let sample_i = block_data.samples.position(&[
-                    LabelValue::from(system_i),
-                    LabelValue::from(pair.first),
-                    LabelValue::from(pair.second),
-                    LabelValue::from(cell_a),
-                    LabelValue::from(cell_b),
-                    LabelValue::from(cell_c),
-                ]);
+                // first, the pair first -> second
+                if let Some(first_block_i) = first_block_i {
+                    let mut block = descriptor.block_mut_by_id(first_block_i);
+                    let block_data = block.data_mut();
 
-                if let Some(sample_i) = sample_i {
-                    let array = block_data.values.to_array_mut();
-                    array[[sample_i, 0, 0]] = pair.vector[0];
-                    array[[sample_i, 1, 0]] = pair.vector[1];
-                    array[[sample_i, 2, 0]] = pair.vector[2];
+                    let sample_i = block_data.samples.position(&[
+                        LabelValue::from(system_i),
+                        LabelValue::from(pair.first),
+                        LabelValue::from(pair.second),
+                        LabelValue::from(cell_a),
+                        LabelValue::from(cell_b),
+                        LabelValue::from(cell_c),
+                    ]);
 
-                    if let Some(mut gradient) = block.gradient_mut("positions") {
-                        let gradient = gradient.data_mut();
+                    if let Some(sample_i) = sample_i {
+                        let array = block_data.values.to_array_mut();
+                        array[[sample_i, 0, 0]] = pair.vector[0];
+                        array[[sample_i, 1, 0]] = pair.vector[1];
+                        array[[sample_i, 2, 0]] = pair.vector[2];
 
-                        let first_grad_sample_i = gradient.samples.position(&[
-                            sample_i.into(), system_i.into(), pair.first.into()
-                        ]).expect("missing gradient sample");
-                        let second_grad_sample_i = gradient.samples.position(&[
-                            sample_i.into(), system_i.into(), pair.second.into()
-                        ]).expect("missing gradient sample");
+                        if let Some(mut gradient) = block.gradient_mut("positions") {
+                            let gradient = gradient.data_mut();
 
-                        let array = gradient.values.to_array_mut();
+                            let first_grad_sample_i = gradient.samples.position(&[
+                                sample_i.into(), system_i.into(), pair.first.into()
+                            ]).expect("missing gradient sample");
+                            let second_grad_sample_i = gradient.samples.position(&[
+                                sample_i.into(), system_i.into(), pair.second.into()
+                            ]).expect("missing gradient sample");
 
-                        array[[first_grad_sample_i, 0, 0, 0]] = -1.0;
-                        array[[first_grad_sample_i, 1, 1, 0]] = -1.0;
-                        array[[first_grad_sample_i, 2, 2, 0]] = -1.0;
+                            let array = gradient.values.to_array_mut();
 
-                        array[[second_grad_sample_i, 0, 0, 0]] = 1.0;
-                        array[[second_grad_sample_i, 1, 1, 0]] = 1.0;
-                        array[[second_grad_sample_i, 2, 2, 0]] = 1.0;
+                            array[[first_grad_sample_i, 0, 0, 0]] = -1.0;
+                            array[[first_grad_sample_i, 1, 1, 0]] = -1.0;
+                            array[[first_grad_sample_i, 2, 2, 0]] = -1.0;
+
+                            array[[second_grad_sample_i, 0, 0, 0]] = 1.0;
+                            array[[second_grad_sample_i, 1, 1, 0]] = 1.0;
+                            array[[second_grad_sample_i, 2, 2, 0]] = 1.0;
+                        }
                     }
                 }
 
+                if pair.first == pair.second {
+                    // do not duplicate self pairs
+                    continue;
+                }
+
                 // then the pair second -> first
-                let mut block = if let Some(second_block_id) = second_block_id {
-                    descriptor.block_mut_by_id(second_block_id)
-                } else {
-                    if pair.first == pair.second {
-                        // do not duplicate self pairs
-                        continue
-                    }
-                    // same species for both atoms in the pair, keep the same block
-                    block
-                };
+                if let Some(second_block_i) = second_block_i {
+                    let mut block = descriptor.block_mut_by_id(second_block_i);
 
-                let block_data = block.data_mut();
-                let sample_i = block_data.samples.position(&[
-                    LabelValue::from(system_i),
-                    LabelValue::from(pair.second),
-                    LabelValue::from(pair.first),
-                    LabelValue::from(-cell_a),
-                    LabelValue::from(-cell_b),
-                    LabelValue::from(-cell_c),
-                ]);
+                    let block_data = block.data_mut();
+                    let sample_i = block_data.samples.position(&[
+                        LabelValue::from(system_i),
+                        LabelValue::from(pair.second),
+                        LabelValue::from(pair.first),
+                        LabelValue::from(-cell_a),
+                        LabelValue::from(-cell_b),
+                        LabelValue::from(-cell_c),
+                    ]);
 
-                if let Some(sample_i) = sample_i {
-                    let array = block_data.values.to_array_mut();
-                    array[[sample_i, 0, 0]] = -pair.vector[0];
-                    array[[sample_i, 1, 0]] = -pair.vector[1];
-                    array[[sample_i, 2, 0]] = -pair.vector[2];
+                    if let Some(sample_i) = sample_i {
+                        let array = block_data.values.to_array_mut();
+                        array[[sample_i, 0, 0]] = -pair.vector[0];
+                        array[[sample_i, 1, 0]] = -pair.vector[1];
+                        array[[sample_i, 2, 0]] = -pair.vector[2];
 
-                    if let Some(mut gradient) = block.gradient_mut("positions") {
-                        let gradient = gradient.data_mut();
+                        if let Some(mut gradient) = block.gradient_mut("positions") {
+                            let gradient = gradient.data_mut();
 
-                        let first_grad_sample_i = gradient.samples.position(&[
-                            sample_i.into(), system_i.into(), pair.second.into()
-                        ]).expect("missing gradient sample");
-                        let second_grad_sample_i = gradient.samples.position(&[
-                            sample_i.into(), system_i.into(), pair.first.into()
-                        ]).expect("missing gradient sample");
+                            let first_grad_sample_i = gradient.samples.position(&[
+                                sample_i.into(), system_i.into(), pair.second.into()
+                            ]).expect("missing gradient sample");
+                            let second_grad_sample_i = gradient.samples.position(&[
+                                sample_i.into(), system_i.into(), pair.first.into()
+                            ]).expect("missing gradient sample");
 
-                        let array = gradient.values.to_array_mut();
+                            let array = gradient.values.to_array_mut();
 
-                        array[[first_grad_sample_i, 0, 0, 0]] = -1.0;
-                        array[[first_grad_sample_i, 1, 1, 0]] = -1.0;
-                        array[[first_grad_sample_i, 2, 2, 0]] = -1.0;
+                            array[[first_grad_sample_i, 0, 0, 0]] = -1.0;
+                            array[[first_grad_sample_i, 1, 1, 0]] = -1.0;
+                            array[[first_grad_sample_i, 2, 2, 0]] = -1.0;
 
-                        array[[second_grad_sample_i, 0, 0, 0]] = 1.0;
-                        array[[second_grad_sample_i, 1, 1, 0]] = 1.0;
-                        array[[second_grad_sample_i, 2, 2, 0]] = 1.0;
+                            array[[second_grad_sample_i, 0, 0, 0]] = 1.0;
+                            array[[second_grad_sample_i, 1, 1, 0]] = 1.0;
+                            array[[second_grad_sample_i, 2, 2, 0]] = 1.0;
+                        }
                     }
                 }
             }
@@ -771,7 +769,7 @@ mod tests {
     fn compute_partial() {
         // half neighbor list
         let calculator = Calculator::from(Box::new(NeighborList {
-            cutoff: 1.0,
+            cutoff: 3.0,
             full_neighbor_list: false,
             self_pairs: false,
         }) as Box<dyn CalculatorBase>);
@@ -789,7 +787,7 @@ mod tests {
 
         let keys = Labels::new(
             ["species_first_atom", "species_second_atom"],
-            &[[-42, 1], [1, -42], [1, 1], [6, 6]]
+            &[[-42, 1], [1, -42], [1, 1], [1, 6], [6, 1], [6, 6]]
         );
 
         crate::calculators::tests_utils::compute_partial(
@@ -798,7 +796,7 @@ mod tests {
 
         // full neighbor list
         let calculator = Calculator::from(Box::new(NeighborList {
-            cutoff: 1.0,
+            cutoff: 3.0,
             full_neighbor_list: true,
             self_pairs: false,
         }) as Box<dyn CalculatorBase>);
