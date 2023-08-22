@@ -33,7 +33,7 @@ jobs:
             extra-name: / release valgrind
           # check the build on a stock Ubuntu 20.04, including cmake 3.16
           - os: ubuntu-20.04
-            rust-version: "1.63"
+            rust-version: "1.64"
             container: ubuntu:20.04
             rust-target: x86_64-unknown-linux-gnu
             build-type: debug
