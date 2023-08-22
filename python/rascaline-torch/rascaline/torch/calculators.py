@@ -50,15 +50,3 @@ sys.modules[spec.name] = module
 module.__dict__["CalculatorBase"] = CalculatorModule
 
 spec.loader.exec_module(module)
-
-# don't forget to also update `rascaline/__init__.py` and `rascaline/torch/__init__.py`
-# when modifying this file
-AtomicComposition = module.AtomicComposition
-DummyCalculator = module.DummyCalculator
-LodeSphericalExpansion = module.LodeSphericalExpansion
-NeighborList = module.NeighborList
-SoapPowerSpectrum = module.SoapPowerSpectrum
-SoapRadialSpectrum = module.SoapRadialSpectrum
-SortedDistances = module.SortedDistances
-SphericalExpansion = module.SphericalExpansion
-SphericalExpansionByPair = module.SphericalExpansionByPair
