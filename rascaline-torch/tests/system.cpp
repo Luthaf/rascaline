@@ -26,7 +26,7 @@ TEST_CASE("Systems") {
             Catch::Matchers::StartsWith(
                 "trying to get neighbor list with a cutoff (3.3) for which no "
                 "pre-computed neighbor lists has been registered (we have lists "
-                "for cutoff=[4.5, 3.2])"
+                "for cutoff=[3.2, 4.5])"
             )
         );
 
