@@ -3,7 +3,7 @@ name = "rascaline-c-api"
 version = "0.1.0"
 authors = ["Luthaf <luthaf@luthaf.fr>"]
 edition = "2021"
-rust-version = "1.63"
+rust-version = "1.64"
 
 [lib]
 # when https://github.com/rust-lang/cargo/pull/8789 lands, use it here!
