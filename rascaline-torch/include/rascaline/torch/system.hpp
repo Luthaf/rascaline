@@ -2,7 +2,7 @@
 #define RASCALINE_TORCH_SYSTEM_HPP
 
 #include <vector>
-#include <unordered_map>
+#include <map>
 
 #include <torch/script.h>
 
@@ -138,7 +138,7 @@ private:
     };
 
     // all precomputed pairs we know about
-    std::unordered_map<double, PrecomputedPairs> precomputed_pairs_;
+    std::map<double, PrecomputedPairs> precomputed_pairs_;
     // last custom requested by `compute_neighbors`
     double last_cutoff_ = -1.0;
 };

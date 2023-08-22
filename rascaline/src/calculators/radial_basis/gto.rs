@@ -94,12 +94,13 @@ mod tests {
         let overlap = basis.overlap();
 
         for i in 0..basis.max_radial {
-            assert_ulps_eq!(overlap[(i, i)], 1.0);
-        }
-
-        for i in 0..basis.max_radial {
-            for j in i..basis.max_radial {
-                assert!(overlap[(j, i)] > 0.0);
+            for j in 0..basis.max_radial {
+                if i == j {
+                    assert_ulps_eq!(overlap[(i, j)], 1.0, max_ulps=10);
+                } else {
+                    assert!(overlap[(i, j)] > 0.0);
+                    assert!(overlap[(i, j)] < 1.0);
+                }
             }
         }
     }

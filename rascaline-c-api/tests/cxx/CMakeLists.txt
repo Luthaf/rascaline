@@ -10,6 +10,10 @@ foreach(_file_ ${ALL_TESTS})
         COMMAND ${TEST_COMMAND} $<TARGET_FILE:${_name_}>
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
+
+    if(WIN32)
+        set_tests_properties(${_name_} PROPERTIES ENVIRONMENT "PATH=${WINDOWS_TEST_PATH}")
+    endif()
 endforeach()
 
 file(GLOB EXAMPLES ../../examples/*.cpp)
@@ -18,14 +22,13 @@ foreach(_file_ ${EXAMPLES})
     set(_name_ example-cxx-${_name_})
     add_executable(${_name_} ${_file_})
     target_link_libraries(${_name_} rascaline::shared)
+
+    add_test(
+        NAME ${_name_}
+        COMMAND ${TEST_COMMAND} $<TARGET_FILE:${_name_}> ${XYZ_EXAMPLE_FILE}
+    )
+
+    if(WIN32)
+        set_tests_properties(${_name_} PROPERTIES ENVIRONMENT "PATH=${WINDOWS_TEST_PATH}")
+    endif()
 endforeach()
-
-add_test(
-    NAME example-cxx-compute-soap
-    COMMAND ${TEST_COMMAND} $<TARGET_FILE:example-cxx-compute-soap> ${XYZ_EXAMPLE_FILE}
-)
-
-add_test(
-    NAME example-cxx-profiling
-    COMMAND ${TEST_COMMAND} $<TARGET_FILE:example-cxx-profiling> ${XYZ_EXAMPLE_FILE}
-)

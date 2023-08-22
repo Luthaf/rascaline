@@ -33,6 +33,11 @@ jobs:
             python-version: "3.11"
             cargo-test-flags: --release
 
+          - os: windows-2019
+            torch-version: 2.0.*
+            python-version: "3.11"
+            cargo-test-flags: --release
+
     steps:
       - uses: actions/checkout@v3
 

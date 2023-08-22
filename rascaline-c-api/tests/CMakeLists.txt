@@ -83,6 +83,11 @@ endif()
 file(GLOB ALL_TESTS *.cpp)
 list(REMOVE_ITEM ALL_TESTS "${CMAKE_CURRENT_SOURCE_DIR}/helpers.cpp")
 
+# on windows, shared libraries are found in the PATH. This plays a similar role
+# to `CMAKE_BUILD_RPATH` above
+string(REPLACE ";" "\\;" PATH_STRING "$ENV{PATH}")
+set(WINDOWS_TEST_PATH "${PATH_STRING}\;${METATENSOR_DIRECTORY}\;${RASCALINE_DIRECTORY}")
+
 enable_testing()
 foreach(_file_ ${ALL_TESTS})
     get_filename_component(_name_ ${_file_} NAME_WE)
@@ -93,26 +98,30 @@ foreach(_file_ ${ALL_TESTS})
         COMMAND ${TEST_COMMAND} $<TARGET_FILE:${_name_}>
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
+
+    if(WIN32)
+        set_tests_properties(${_name_} PROPERTIES ENVIRONMENT "PATH=${WINDOWS_TEST_PATH}")
+    endif()
 endforeach()
 
 # make sure example compile and run
+set(XYZ_EXAMPLE_FILE ${CMAKE_CURRENT_SOURCE_DIR}/../../rascaline/examples/data/water.xyz)
+
 file(GLOB EXAMPLES ../examples/*.c)
 foreach(_file_ ${EXAMPLES})
     get_filename_component(_name_ ${_file_} NAME_WE)
-    set(_name_ example-${_name_})
+    set(_name_ example-c-${_name_})
     add_executable(${_name_} ${_file_})
     target_link_libraries(${_name_} rascaline::shared)
+
+    add_test(
+        NAME ${_name_}
+        COMMAND ${TEST_COMMAND} $<TARGET_FILE:${_name_}> ${XYZ_EXAMPLE_FILE}
+    )
+
+    if(WIN32)
+        set_tests_properties(${_name_} PROPERTIES ENVIRONMENT "PATH=${WINDOWS_TEST_PATH}")
+    endif()
 endforeach()
-
-set(XYZ_EXAMPLE_FILE ${CMAKE_CURRENT_SOURCE_DIR}/../../rascaline/examples/data/water.xyz)
-add_test(
-    NAME example-c-compute-soap
-    COMMAND ${TEST_COMMAND} $<TARGET_FILE:example-compute-soap> ${XYZ_EXAMPLE_FILE}
-)
-
-add_test(
-    NAME example-c-profiling
-    COMMAND ${TEST_COMMAND} $<TARGET_FILE:example-profiling> ${XYZ_EXAMPLE_FILE}
-)
 
 add_subdirectory(cxx)
