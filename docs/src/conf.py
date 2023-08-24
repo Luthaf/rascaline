@@ -141,6 +141,7 @@ intersphinx_mapping = {
     "matplotlib": ("https://matplotlib.org/stable/", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
     "skmatter": ("https://scikit-matter.readthedocs.io/en/latest/", None),
+    "torch": ("https://pytorch.org/docs/stable/", None),
     "python": ("https://docs.python.org/3", None),
 }
 
