@@ -60,7 +60,7 @@ set(RUST_BUILD_TARGET "" CACHE STRING "Cross-compilation target for rust code. L
 set(EXTRA_RUST_FLAGS "" CACHE STRING "Flags used to build rust code")
 mark_as_advanced(RUST_BUILD_TARGET EXTRA_RUST_FLAGS)
 
-option(RASCALINE_ENABLE_CHEMFILES "Enable the usage of chemfiles for reading structures from files" ON)
+option(RASCALINE_ENABLE_CHEMFILES "Enable the usage of chemfiles for reading structures from files" OFF)
 option(RASCALINE_FETCH_METATENSOR "Download and build the metatensor C API before building rascaline" OFF)
 
 set(CMAKE_MACOSX_RPATH ON)
