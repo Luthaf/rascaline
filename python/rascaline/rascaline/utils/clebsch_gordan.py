@@ -56,11 +56,11 @@ class ClebschGordanReal:
         )
 
     @property
-    def lambda_max(self)
+    def lambda_max(self):
         return self._lambda_max
 
     @property
-    def sprase(self)
+    def sparse(self):
         return self._sparse
 
     @property
