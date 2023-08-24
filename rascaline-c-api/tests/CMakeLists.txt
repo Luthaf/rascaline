@@ -49,6 +49,7 @@ else()
     string(TOLOWER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE)
 endif()
 
+set(RASCALINE_ENABLE_CHEMFILES ON)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_CURRENT_BINARY_DIR}/rascaline)
 
 

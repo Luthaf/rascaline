@@ -73,7 +73,8 @@ pub fn read_from_file(path: impl AsRef<Path>) -> Result<Vec<SimpleSystem>, Error
 #[cfg(not(feature = "chemfiles"))]
 pub fn read_from_file(_: impl AsRef<Path>) -> Result<Vec<SimpleSystem>, Error> {
     Err(Error::Chemfiles(
-        "read_from_file is only available with the chemfiles feature enabled".into()
+        "read_from_file is only available with the chemfiles feature enabled \
+        (RASCALINE_ENABLE_CHEMFILES=ON in CMake)".into()
     ))
 }
 
