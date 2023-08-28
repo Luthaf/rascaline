@@ -637,7 +637,7 @@ impl CalculatorBase for LodeSphericalExpansion {
 
                     let k_vector_to_m_n = &k_vector_to_m_n[spherical_harmonics_l];
 
-                    for (&species_neighbor, sf_per_center) in sf_per_center.iter() {
+                    for (&species_neighbor, sf_per_center) in sf_per_center {
                         for center_i in 0..system.size()? {
                             let block_i = descriptor.keys().position(&[
                                 spherical_harmonics_l.into(),

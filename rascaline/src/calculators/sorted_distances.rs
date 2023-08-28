@@ -122,7 +122,7 @@ impl CalculatorBase for SortedDistances {
             assert_eq!(descriptor.keys().names(), ["species_center"]);
         }
 
-        for (key, mut block) in descriptor.iter_mut() {
+        for (key, mut block) in descriptor {
             let species_neighbor = if self.separate_neighbor_species {
                 Some(key[1].i32())
             } else {

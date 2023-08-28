@@ -50,7 +50,7 @@ impl SphericalExpansion {
 
         let self_contribution = self.by_pair.self_contribution();
 
-        for (key, mut block) in descriptor.iter_mut() {
+        for (key, mut block) in descriptor {
             let spherical_harmonics_l = key[0];
             let species_center = key[1];
             let species_neighbor = key[2];

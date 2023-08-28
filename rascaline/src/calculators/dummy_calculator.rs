@@ -117,7 +117,7 @@ impl CalculatorBase for DummyCalculator {
             warn!("{}", self.name);
         }
 
-        for (key, mut block) in descriptor.iter_mut() {
+        for (key, mut block) in descriptor {
             let species_center = key[0].i32();
 
             let block_data = block.data_mut();
