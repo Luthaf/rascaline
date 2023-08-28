@@ -266,7 +266,7 @@ impl SphericalExpansionByPair {
         debug_assert_eq!(descriptor.keys().names(), ["spherical_harmonics_l", "species_atom_1", "species_atom_2"]);
         let self_contribution = self.self_contribution();
 
-        for (key, mut block) in descriptor.iter_mut() {
+        for (key, mut block) in descriptor {
             let spherical_harmonics_l = key[0];
             let species_atom_1 = key[1];
             let species_atom_2 = key[2];
@@ -373,7 +373,7 @@ impl SphericalExpansionByPair {
             let radial_integral = radial_integral.values.slice(s![spherical_harmonics_l, ..]);
 
             // compute the full spherical expansion coefficients & gradients
-            for sph_value in spherical_harmonics.iter() {
+            for sph_value in spherical_harmonics {
                 for (n, ri_value) in radial_integral.iter().enumerate() {
                     contribution.values[[lm_index, n]] = f_scaling * sph_value * ri_value;
                 }

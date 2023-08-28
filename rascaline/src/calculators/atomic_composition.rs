@@ -115,7 +115,7 @@ impl CalculatorBase for AtomicComposition {
     ) -> Result<(), Error> {
         assert_eq!(descriptor.keys().names(), ["species_center"]);
 
-        for (key, mut block) in descriptor.iter_mut() {
+        for (key, mut block) in descriptor {
             let species_center = key[0].i32();
 
             let block = block.data_mut();

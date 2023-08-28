@@ -2,7 +2,7 @@
 name = "rascaline-json-schema"
 version = "0.1.0"
 authors = ["Luthaf <luthaf@luthaf.fr>"]
-edition = "2018"
+edition = "2021"
 publish = false
 rust-version = "1.64"
 

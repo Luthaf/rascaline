@@ -227,7 +227,7 @@ impl SoapPowerSpectrum {
         spherical_expansion: &TensorMap
     ) -> HashMap<Vec<LabelValue>, SamplesMapping> {
         let mut mapping = HashMap::new();
-        for (key, block) in descriptor.iter() {
+        for (key, block) in descriptor {
             let species_center = key[0];
             let species_neighbor_1 = key[1];
             let species_neighbor_2 = key[2];
@@ -554,7 +554,7 @@ impl CalculatorBase for SoapPowerSpectrum {
             (key, spx_block)
         }).collect();
 
-        for (key, mut block) in descriptor.iter_mut() {
+        for (key, mut block) in descriptor {
             let species_neighbor_1 = key[1];
             let species_neighbor_2 = key[2];
 
