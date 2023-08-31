@@ -1,6 +1,6 @@
 from typing import List, Optional, Union
 
-import equistore.torch
+import metatensor.torch
 import torch
 
 from .system import System
@@ -11,13 +11,13 @@ CalculatorHolder = torch.classes.rascaline.CalculatorHolder
 
 def register_autograd(
     systems: Union[List[System], System],
-    precomputed: equistore.torch.TensorMap,
+    precomputed: metatensor.torch.TensorMap,
     forward_gradients: Optional[List[str]] = None,
-) -> equistore.torch.TensorMap:
+) -> metatensor.torch.TensorMap:
     """
     Register autograd nodes between ``system.positions`` and ``system.cell`` for each of
     the systems and the values in the ``precomputed``
-    :py:class:`equistore.torch.TensorMap`.
+    :py:class:`metatensor.torch.TensorMap`.
 
     This is an advanced function must users should not need to use.
 
@@ -27,7 +27,7 @@ def register_autograd(
     system's cell ``requires_grad``, ``precomputed`` must contain ``"cell"`` gradients.
 
     :param systems: list of system used to compute ``precomputed``
-    :param precomputed: precomputed :py:class:`equistore.torch.TensorMap`
+    :param precomputed: precomputed :py:class:`metatensor.torch.TensorMap`
     :param forward_gradients: which gradients to keep in the output, defaults to None
     """
     if forward_gradients is None:
@@ -87,7 +87,7 @@ class CalculatorModule(torch.nn.Module):
         systems: Union[System, List[System]],
         gradients: Optional[List[str]] = None,
         use_native_system: bool = True,
-    ) -> equistore.torch.TensorMap:
+    ) -> metatensor.torch.TensorMap:
         """Runs a calculation with this calculator on the given ``systems``.
 
         .. seealso::
@@ -127,7 +127,7 @@ class CalculatorModule(torch.nn.Module):
         systems: List[System],
         gradients: Optional[List[str]] = None,
         use_native_system: bool = True,
-    ) -> equistore.torch.TensorMap:
+    ) -> metatensor.torch.TensorMap:
         """forward just calls :py:meth:`CalculatorModule.compute`"""
 
         return self.compute(

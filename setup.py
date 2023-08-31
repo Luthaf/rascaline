@@ -59,7 +59,7 @@ class cmake_ext(build_ext):
             # do not include chemfiles inside rascaline, instead users should
             # use chemfiles python bindings directly
             "-DRASCALINE_ENABLE_CHEMFILES=OFF",
-            "-DRASCALINE_FETCH_EQUISTORE=ON",
+            "-DRASCALINE_FETCH_METATENSOR=ON",
             "-DRASCALINE_INSTALL_BOTH_STATIC_SHARED=OFF",
             "-DBUILD_SHARED_LIBS=ON",
             "-DEXTRA_RUST_FLAGS=-Cstrip=symbols",
@@ -118,17 +118,17 @@ class cmake_ext(build_ext):
             check=True,
         )
 
-        # do not include equistore libraries/headers/cmake config within
+        # do not include metatensor libraries/headers/cmake config within
         # rascaline wheel
-        for file in glob.glob(os.path.join(install_dir, "lib", "libequistore.*")):
+        for file in glob.glob(os.path.join(install_dir, "lib", "libmetatensor.*")):
             os.unlink(file)
 
-        for file in glob.glob(os.path.join(install_dir, "bin", "equistore.dll")):
+        for file in glob.glob(os.path.join(install_dir, "bin", "metatensor.dll")):
             os.unlink(file)
 
-        shutil.rmtree(os.path.join(install_dir, "lib", "cmake", "equistore"))
+        shutil.rmtree(os.path.join(install_dir, "lib", "cmake", "metatensor"))
 
-        for file in glob.glob(os.path.join(install_dir, "include", "equistore*")):
+        for file in glob.glob(os.path.join(install_dir, "include", "metatensor*")):
             os.unlink(file)
 
 
@@ -143,7 +143,7 @@ class bdist_egg_disabled(bdist_egg):
         sys.exit(
             "Aborting implicit building of eggs. "
             + "Use `pip install .` or `python setup.py bdist_wheel && pip "
-            + "uninstall equistore -y && pip install dist/equistore-*.whl` "
+            + "uninstall metatensor -y && pip install dist/metatensor-*.whl` "
             + "to install from source."
         )
 

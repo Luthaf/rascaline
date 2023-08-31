@@ -4,7 +4,7 @@
 #include <ATen/core/ivalue.h>
 #include <torch/autograd.h>
 
-#include <equistore/torch.hpp>
+#include <metatensor/torch.hpp>
 
 #include "rascaline/torch/exports.h"
 #include "rascaline/torch/system.hpp"
@@ -41,7 +41,7 @@ public:
         torch::Tensor all_positions,
         torch::Tensor all_cells,
         torch::IValue structures_start,
-        equistore_torch::TorchTensorBlock block
+        metatensor_torch::TorchTensorBlock block
     );
 
     /// Backward step: get the gradients of some quantity `A` w.r.t. the outputs

@@ -7,7 +7,7 @@ def test_cmake_prefix_path_exists():
     assert hasattr(rascaline.utils, "cmake_prefix_path")
     assert isinstance(rascaline.utils.cmake_prefix_path, str)
 
-    # there is both the path to equistore and rascaline cmake prefix in here
+    # there is both the path to metatensor and rascaline cmake prefix in here
     assert len(rascaline.utils.cmake_prefix_path.split(";")), 2
 
 

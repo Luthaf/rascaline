@@ -1,4 +1,4 @@
-use equistore::Labels;
+use metatensor::Labels;
 use rascaline::{Calculator, System, CalculationOptions};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

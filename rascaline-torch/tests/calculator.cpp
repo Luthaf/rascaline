@@ -29,18 +29,18 @@ TEST_CASE("Calculator") {
         auto system = test_system(false, false);
         auto descriptor = calculator.compute({system});
 
-        CHECK(*descriptor->keys() == equistore::Labels(
+        CHECK(*descriptor->keys() == metatensor::Labels(
             {"species_center"},
             {{1}, {6}}
         ));
 
         // H block
         auto block = descriptor->block_by_id(0);
-        CHECK(*block->samples() == equistore::Labels(
+        CHECK(*block->samples() == metatensor::Labels(
             {"structure", "center"},
             {{0, 1}, {0, 2}, {0, 3}}
         ));
-        CHECK(*block->properties() == equistore::Labels(
+        CHECK(*block->properties() == metatensor::Labels(
             {"index_delta", "x_y_z"},
             {{1, 0}, {0, 1}}
         ));
@@ -57,11 +57,11 @@ TEST_CASE("Calculator") {
 
         // C block
         block = descriptor->block_by_id(1);
-        CHECK(*block->samples() == equistore::Labels(
+        CHECK(*block->samples() == metatensor::Labels(
             {"structure", "center"},
             {{0, 0}}
         ));
-        CHECK(*block->properties() == equistore::Labels(
+        CHECK(*block->properties() == metatensor::Labels(
             {"index_delta", "x_y_z"},
             {{1, 0}, {0, 1}}
         ));
@@ -79,7 +79,7 @@ TEST_CASE("Calculator") {
         auto system = test_system(true, false);
         auto descriptor = calculator.compute({system}, /* forward_gradients */ {"positions"});
 
-        CHECK(*descriptor->keys() == equistore::Labels(
+        CHECK(*descriptor->keys() == metatensor::Labels(
             {"species_center"},
             {{1}, {6}}
         ));
@@ -96,7 +96,7 @@ TEST_CASE("Calculator") {
 
         // forward gradients
         auto gradient = block->gradient("positions");
-        CHECK(*gradient->samples() == equistore::Labels(
+        CHECK(*gradient->samples() == metatensor::Labels(
             {"sample", "structure", "atom"},
             {
                 {0, 0, 0}, {0, 0, 1}, {0, 0, 2},
@@ -128,7 +128,7 @@ TEST_CASE("Calculator") {
 
         // forward gradients
         gradient = block->gradient("positions");
-        CHECK(*gradient->samples() == equistore::Labels(
+        CHECK(*gradient->samples() == metatensor::Labels(
             {"sample", "structure", "atom"},
             {{0, 0, 0}, {0, 0, 1}}
         ));
@@ -143,7 +143,7 @@ TEST_CASE("Calculator") {
         auto system = test_system(true, false);
         auto descriptor = calculator.compute({system}, /* forward_gradients */ {});
 
-        CHECK(*descriptor->keys() == equistore::Labels(
+        CHECK(*descriptor->keys() == metatensor::Labels(
             {"species_center"},
             {{1}, {6}}
         ));
@@ -179,7 +179,7 @@ TEST_CASE("Calculator") {
         auto system = test_system(false, false);
         auto descriptor = calculator.compute({system}, /* forward_gradients */ {"positions"});
 
-        CHECK(*descriptor->keys() == equistore::Labels(
+        CHECK(*descriptor->keys() == metatensor::Labels(
             {"species_center"},
             {{1}, {6}}
         ));

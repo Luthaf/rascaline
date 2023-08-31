@@ -4,7 +4,7 @@
 #include <torch/script.h>
 
 #include <rascaline.hpp>
-#include <equistore/torch.hpp>
+#include <metatensor/torch.hpp>
 
 #include "rascaline/torch/exports.h"
 #include "rascaline/torch/system.hpp"
@@ -43,7 +43,7 @@ public:
     ///
     /// `gradients` controls which gradients will be stored in the
     /// output TensorMap
-    equistore_torch::TorchTensorMap compute(
+    metatensor_torch::TorchTensorMap compute(
         std::vector<TorchSystem> systems,
         std::vector<std::string> gradients = {}
     );
@@ -65,9 +65,9 @@ private:
 /// contain `"cell"` gradients.
 ///
 /// `forward_gradients` controls which gradients are left inside the TensorMap.
-equistore_torch::TorchTensorMap RASCALINE_TORCH_EXPORT register_autograd(
+metatensor_torch::TorchTensorMap RASCALINE_TORCH_EXPORT register_autograd(
     std::vector<TorchSystem> systems,
-    equistore_torch::TorchTensorMap precomputed,
+    metatensor_torch::TorchTensorMap precomputed,
     std::vector<std::string> forward_gradients
 );
 

@@ -3,10 +3,10 @@
 #include <stdio.h>
 
 #include <rascaline.h>
-#include <equistore.h>
+#include <metatensor.h>
 
-static eqs_tensormap_t* move_keys_to_samples(eqs_tensormap_t* descriptor, const char* keys_to_move[], size_t keys_to_move_len);
-static eqs_tensormap_t* move_keys_to_properties(eqs_tensormap_t* descriptor, const char* keys_to_move[], size_t keys_to_move_len);
+static mts_tensormap_t* move_keys_to_samples(mts_tensormap_t* descriptor, const char* keys_to_move[], size_t keys_to_move_len);
+static mts_tensormap_t* move_keys_to_properties(mts_tensormap_t* descriptor, const char* keys_to_move[], size_t keys_to_move_len);
 
 int main(int argc, char* argv[]) {
     int status = RASCAL_SUCCESS;
@@ -26,9 +26,9 @@ int main(int argc, char* argv[]) {
     options.gradients = gradients_list;
     options.gradients_count = 1;
 
-    eqs_tensormap_t* descriptor = NULL;
-    eqs_block_t* block = NULL;
-    eqs_array_t array = {0};
+    mts_tensormap_t* descriptor = NULL;
+    mts_block_t* block = NULL;
+    mts_array_t array = {0};
 
     // hyper-parameters for the calculation as JSON
     const char* parameters = "{\n"
@@ -73,49 +73,49 @@ int main(int argc, char* argv[]) {
         goto cleanup;
     }
 
-    // The descriptor is an equistore `TensorMap`, containing multiple blocks.
+    // The descriptor is a metatensor `TensorMap`, containing multiple blocks.
     // We can transform it to a single block containing a dense representation,
     // with one sample for each atom-centered environment.
     descriptor = move_keys_to_samples(descriptor, keys_to_samples, 1);
     if (descriptor == NULL) {
-        printf("Error: %s\n", eqs_last_error());
+        printf("Error: %s\n", mts_last_error());
         goto cleanup;
     }
 
     descriptor = move_keys_to_properties(descriptor, keys_to_properties, 2);
     if (descriptor == NULL) {
-        printf("Error: %s\n", eqs_last_error());
+        printf("Error: %s\n", mts_last_error());
         goto cleanup;
     }
 
     // extract the unique block and corresponding values from the descriptor
-    status = eqs_tensormap_block_by_id(descriptor, &block, 0);
-    if (status != EQS_SUCCESS) {
-        printf("Error: %s\n", eqs_last_error());
+    status = mts_tensormap_block_by_id(descriptor, &block, 0);
+    if (status != MTS_SUCCESS) {
+        printf("Error: %s\n", mts_last_error());
         goto cleanup;
     }
 
-    status = eqs_block_data(block, &array);
-    if (status != EQS_SUCCESS) {
-        printf("Error: %s\n", eqs_last_error());
+    status = mts_block_data(block, &array);
+    if (status != MTS_SUCCESS) {
+        printf("Error: %s\n", mts_last_error());
         goto cleanup;
     }
 
-    // callback the functions on the eqs_array_t to extract the shape/data pointer
+    // callback the functions on the mts_array_t to extract the shape/data pointer
     status = array.shape(array.ptr, &shape, &shape_count);
-    if (status != EQS_SUCCESS) {
-        printf("Error: %s\n", eqs_last_error());
+    if (status != MTS_SUCCESS) {
+        printf("Error: %s\n", mts_last_error());
         goto cleanup;
     }
 
     status = array.data(array.ptr, &values);
-    if (status != EQS_SUCCESS) {
-        printf("Error: %s\n", eqs_last_error());
+    if (status != MTS_SUCCESS) {
+        printf("Error: %s\n", mts_last_error());
         goto cleanup;
     }
 
-    if (status != EQS_SUCCESS) {
-        printf("Error: %s\n", eqs_last_error());
+    if (status != MTS_SUCCESS) {
+        printf("Error: %s\n", mts_last_error());
         goto cleanup;
     }
     assert(shape_count == 2);
@@ -125,7 +125,7 @@ int main(int argc, char* argv[]) {
 
     got_error = false;
 cleanup:
-    eqs_tensormap_free(descriptor);
+    mts_tensormap_free(descriptor);
     rascal_calculator_free(calculator);
     rascal_basic_systems_free(systems, n_systems);
 
@@ -137,33 +137,33 @@ cleanup:
 }
 
 
-eqs_tensormap_t* move_keys_to_samples(eqs_tensormap_t* descriptor, const char* keys_to_move[], size_t keys_to_move_len) {
-    eqs_labels_t keys = {0};
-    eqs_tensormap_t* moved_descriptor = NULL;
+mts_tensormap_t* move_keys_to_samples(mts_tensormap_t* descriptor, const char* keys_to_move[], size_t keys_to_move_len) {
+    mts_labels_t keys = {0};
+    mts_tensormap_t* moved_descriptor = NULL;
 
     keys.names = keys_to_move;
     keys.size = keys_to_move_len;
     keys.values = NULL;
     keys.count = 0;
 
-    moved_descriptor = eqs_tensormap_keys_to_samples(descriptor, keys, true);
-    eqs_tensormap_free(descriptor);
+    moved_descriptor = mts_tensormap_keys_to_samples(descriptor, keys, true);
+    mts_tensormap_free(descriptor);
 
     return moved_descriptor;
 }
 
 
-eqs_tensormap_t* move_keys_to_properties(eqs_tensormap_t* descriptor, const char* keys_to_move[], size_t keys_to_move_len) {
-    eqs_labels_t keys = {0};
-    eqs_tensormap_t* moved_descriptor = NULL;
+mts_tensormap_t* move_keys_to_properties(mts_tensormap_t* descriptor, const char* keys_to_move[], size_t keys_to_move_len) {
+    mts_labels_t keys = {0};
+    mts_tensormap_t* moved_descriptor = NULL;
 
     keys.names = keys_to_move;
     keys.size = keys_to_move_len;
     keys.values = NULL;
     keys.count = 0;
 
-    moved_descriptor = eqs_tensormap_keys_to_properties(descriptor, keys, true);
-    eqs_tensormap_free(descriptor);
+    moved_descriptor = mts_tensormap_keys_to_properties(descriptor, keys, true);
+    mts_tensormap_free(descriptor);
 
     return moved_descriptor;
 }

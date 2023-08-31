@@ -60,8 +60,8 @@ set(RUST_BUILD_TARGET "" CACHE STRING "Cross-compilation target for rust code. L
 set(EXTRA_RUST_FLAGS "" CACHE STRING "Flags used to build rust code")
 mark_as_advanced(RUST_BUILD_TARGET EXTRA_RUST_FLAGS)
 
-option(RASCALINE_ENABLE_CHEMFILES "Disable the usage of chemfiles for reading structures from files" ON)
-option(RASCALINE_FETCH_EQUISTORE "Download and build the equistore C API before building rascaline" OFF)
+option(RASCALINE_ENABLE_CHEMFILES "Enable the usage of chemfiles for reading structures from files" ON)
+option(RASCALINE_FETCH_METATENSOR "Download and build the metatensor C API before building rascaline" OFF)
 
 set(CMAKE_MACOSX_RPATH ON)
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}")
@@ -200,43 +200,43 @@ if (CARGO_VERSION_CHANGED)
 endif()
 
 # ============================================================================ #
-# Setup equistore
+# Setup metatensor
 
-set(EQUISTORE_GIT_VERSION "ee5ab99")
-set(EQUISTORE_REQUIRED_VERSION "0.1")
-if (RASCALINE_FETCH_EQUISTORE)
-    message(STATUS "Fetching equistore @ ${EQUISTORE_GIT_VERSION} from github")
+set(METATENSOR_GIT_VERSION "32ad5bb")
+set(METATENSOR_REQUIRED_VERSION "0.1")
+if (RASCALINE_FETCH_METATENSOR)
+    message(STATUS "Fetching metatensor @ ${METATENSOR_GIT_VERSION} from github")
 
     include(FetchContent)
     FetchContent_Declare(
-        equistore
-        URL      https://github.com/lab-cosmo/equistore/archive/${EQUISTORE_GIT_VERSION}.zip
-        URL_HASH MD5=c632a7104ef719ac3842e35ee680dcbb
-        SOURCE_SUBDIR equistore-core
+        metatensor
+        URL      https://github.com/lab-cosmo/metatensor/archive/${METATENSOR_GIT_VERSION}.zip
+        URL_HASH MD5=cbc7bd27e9e2307638405d1613fa7f89
+        SOURCE_SUBDIR metatensor-core
         VERBOSE
     )
 
     if (CMAKE_VERSION VERSION_GREATER 3.18)
-        FetchContent_MakeAvailable(equistore)
+        FetchContent_MakeAvailable(metatensor)
     else()
-        if (NOT equistore_POPULATED)
-            FetchContent_Populate(equistore)
+        if (NOT metatensor_POPULATED)
+            FetchContent_Populate(metatensor)
         endif()
 
-        add_subdirectory(${equistore_SOURCE_DIR}/equistore-core ${equistore_BINARY_DIR})
+        add_subdirectory(${metatensor_SOURCE_DIR}/metatensor-core ${metatensor_BINARY_DIR})
     endif()
 
-    # equistore will be installed in the same place as rascaline, so set
+    # metatensor will be installed in the same place as rascaline, so set
     # the RPATH to ${ORIGIN} to load the file from there
-    set(EQUISTORE_RPATH "$$\\{ORIGIN\\}")
+    set(METATENSOR_RPATH "$$\\{ORIGIN\\}")
 else()
-    find_package(equistore ${EQUISTORE_REQUIRED_VERSION} REQUIRED CONFIG)
+    find_package(metatensor ${METATENSOR_REQUIRED_VERSION} REQUIRED CONFIG)
 
-    # in case rascaline gets installed in a different place than equistore,
-    # set the RPATH to the directory where we found equistore
-    get_target_property(EQUISTORE_LOCATION equistore::shared IMPORTED_LOCATION)
-    get_filename_component(EQUISTORE_LOCATION ${EQUISTORE_LOCATION} DIRECTORY)
-    set(EQUISTORE_RPATH "${EQUISTORE_LOCATION}")
+    # in case rascaline gets installed in a different place than metatensor,
+    # set the RPATH to the directory where we found metatensor
+    get_target_property(METATENSOR_LOCATION metatensor::shared IMPORTED_LOCATION)
+    get_filename_component(METATENSOR_LOCATION ${METATENSOR_LOCATION} DIRECTORY)
+    set(METATENSOR_RPATH "${METATENSOR_LOCATION}")
 endif()
 
 # ============================================================================ #
@@ -267,11 +267,11 @@ get_filename_component(RASCALINE_STATIC_LIB_NAME ${RASCALINE_STATIC_LOCATION} NA
 # without using an absolute path.
 if (UNIX)
     if (APPLE)
-        # set the install name to `@rpath/libequistore.dylib`
+        # set the install name to `@rpath/librascaline.dylib`
         set(CARGO_RUSTC_ARGS "-Clink-arg=-Wl,-install_name,@rpath/${RASCALINE_SHARED_LIB_NAME}")
     else() # LINUX
-        # set the SONAME to libequistore.so
-        set(CARGO_RUSTC_ARGS "-Clink-arg=-Wl,-soname,${RASCALINE_SHARED_LIB_NAME},-rpath=${EQUISTORE_RPATH}")
+        # set the SONAME to librascaline.so, and point the RPATH to metatensor
+        set(CARGO_RUSTC_ARGS "-Clink-arg=-Wl,-soname,${RASCALINE_SHARED_LIB_NAME},-rpath=${METATENSOR_RPATH}")
     endif()
 else()
     set(CARGO_RUSTC_ARGS "")
@@ -325,18 +325,16 @@ set_target_properties(rascaline::static PROPERTIES
     # since it might contains chemfiles
     IMPORTED_LINK_INTERFACE_LANGUAGES CXX
 )
-target_compile_features(equistore::static INTERFACE cxx_std_17)
-
 
 if (BUILD_SHARED_LIBS)
-    add_library(equistore ALIAS equistore::shared)
+    add_library(rascaline ALIAS rascaline::shared)
 else()
-    add_library(equistore ALIAS equistore::static)
+    add_library(rascaline ALIAS rascaline::static)
 endif()
 
-add_dependencies(cargo-build-rascaline equistore)
-target_link_libraries(rascaline::shared INTERFACE equistore::shared)
-target_link_libraries(rascaline::static INTERFACE equistore::shared)
+add_dependencies(cargo-build-rascaline metatensor)
+target_link_libraries(rascaline::shared INTERFACE metatensor::shared)
+target_link_libraries(rascaline::static INTERFACE metatensor::shared)
 
 #------------------------------------------------------------------------------#
 # Installation configuration

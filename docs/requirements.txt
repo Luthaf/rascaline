@@ -10,7 +10,7 @@ myst-parser     # markdown => rst translation, used in extensions/rascaline_json
 
 # dependencies for the tutorials
 --extra-index-url https://download.pytorch.org/whl/cpu
-equistore[torch] @ https://github.com/lab-cosmo/equistore/archive/ee5ab99.zip
+metatensor[torch] @ https://github.com/lab-cosmo/metatensor/archive/32ad5bb.zip
 torch
 chemfiles
 matplotlib

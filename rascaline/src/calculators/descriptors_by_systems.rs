@@ -4,11 +4,11 @@ use rayon::prelude::*;
 
 use ndarray::ArrayViewMutD;
 
-use equistore::{TensorMap, TensorBlock};
-use equistore::{LabelsBuilder, LabelValue};
+use metatensor::{TensorMap, TensorBlock};
+use metatensor::{LabelsBuilder, LabelValue};
 
 
-/// Implementation of `equistore::Array` storing a view inside another array
+/// Implementation of `metatensor::Array` storing a view inside another array
 ///
 /// This is relatively unsafe, and only viable for use inside this module.
 struct UnsafeArrayViewMut {
@@ -17,7 +17,7 @@ struct UnsafeArrayViewMut {
     /// Pointer to the first element of the data. This point inside another
     /// array that is ASSUMED to stay alive for as long as this one does.
     ///
-    /// We can not use lifetimes to track this assumption, since equistore
+    /// We can not use lifetimes to track this assumption, since metatensor
     /// requires `'static` lifetimes
     data: *mut f64,
 }
@@ -28,7 +28,7 @@ unsafe impl Send for UnsafeArrayViewMut {}
 // (each array being a separate mutable view in the initial array)
 unsafe impl Sync for UnsafeArrayViewMut {}
 
-impl equistore::Array for UnsafeArrayViewMut {
+impl metatensor::Array for UnsafeArrayViewMut {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -37,11 +37,11 @@ impl equistore::Array for UnsafeArrayViewMut {
         self
     }
 
-    fn create(&self, _: &[usize]) -> Box<dyn equistore::Array> {
+    fn create(&self, _: &[usize]) -> Box<dyn metatensor::Array> {
         unimplemented!("invalid operation on UnsafeArrayViewMut");
     }
 
-    fn copy(&self) -> Box<dyn equistore::Array> {
+    fn copy(&self) -> Box<dyn metatensor::Array> {
         unimplemented!("invalid operation on UnsafeArrayViewMut");
     }
 
@@ -63,8 +63,8 @@ impl equistore::Array for UnsafeArrayViewMut {
 
     fn move_samples_from(
         &mut self,
-        _: &dyn equistore::Array,
-        _: &[equistore::c_api::eqs_sample_mapping_t],
+        _: &dyn metatensor::Array,
+        _: &[metatensor::c_api::mts_sample_mapping_t],
         _: std::ops::Range<usize>,
     ) {
         unimplemented!("invalid operation on UnsafeArrayViewMut");
@@ -72,7 +72,7 @@ impl equistore::Array for UnsafeArrayViewMut {
 }
 
 /// Extract an array stored in the `TensorBlock` returned by `split_tensor_map_by_system`
-pub fn array_mut_for_system(array: equistore::ArrayRefMut<'_>) -> ArrayViewMutD<'_, f64> {
+pub fn array_mut_for_system(array: metatensor::ArrayRefMut<'_>) -> ArrayViewMutD<'_, f64> {
     let array = array.to_any_mut().downcast_mut::<UnsafeArrayViewMut>().expect("invalid array type");
 
     // SAFETY: we checked that the arrays do not overlap when creating

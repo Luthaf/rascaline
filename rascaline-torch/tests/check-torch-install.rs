@@ -39,7 +39,7 @@ fn check_torch_install() {
     ));
 
     cmake_config.arg(format!("-DCMAKE_INSTALL_PREFIX={}", install_prefix.display()));
-    cmake_config.arg("-DRASCALINE_TORCH_FETCH_EQUISTORE_TORCH=ON");
+    cmake_config.arg("-DRASCALINE_TORCH_FETCH_METATENSOR_TORCH=ON");
 
     // The two properties below handle the RPATH for rascaline_torch, setting it
     // in such a way that we can always load librascaline.so and libtorch.so

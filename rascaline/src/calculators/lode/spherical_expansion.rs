@@ -5,8 +5,8 @@ use rayon::prelude::*;
 use thread_local::ThreadLocal;
 use ndarray::{Array1, Array2, Array3, s};
 
-use equistore::TensorMap;
-use equistore::{LabelsBuilder, Labels, LabelValue};
+use metatensor::TensorMap;
+use metatensor::{LabelsBuilder, Labels, LabelValue};
 
 use crate::{Error, System, Vector3D};
 use crate::systems::UnitCell;

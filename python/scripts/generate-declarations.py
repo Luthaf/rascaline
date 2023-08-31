@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 import os
 
-import equistore.core
+import metatensor.core
 from pycparser import c_ast, parse_file
 
 
 ROOT = os.path.dirname(__file__)
 FAKE_INCLUDES = os.path.join(ROOT, "include")
-EQUISTORE_INCLUDE = os.path.join(
-    equistore.core.utils.cmake_prefix_path, "..", "..", "include"
+METATENSOR_INCLUDE = os.path.join(
+    metatensor.core.utils.cmake_prefix_path, "..", "..", "include"
 )
 RASCALINE_HEADER = os.path.relpath(
     os.path.join(ROOT, "..", "..", "rascaline-c-api", "include", "rascaline.h")
@@ -83,7 +83,7 @@ class AstVisitor(c_ast.NodeVisitor):
 
 
 def parse(file):
-    cpp_args = ["-E", "-I", FAKE_INCLUDES, "-I", EQUISTORE_INCLUDE]
+    cpp_args = ["-E", "-I", FAKE_INCLUDES, "-I", METATENSOR_INCLUDE]
     ast = parse_file(file, use_cpp=True, cpp_path="gcc", cpp_args=cpp_args)
 
     visitor = AstVisitor()
@@ -109,8 +109,8 @@ def c_type_name(name):
             return "ctypes.c_int"
         else:
             return name
-    if name.startswith("eqs_"):
-        # equistore types
+    if name.startswith("mts_"):
+        # metatensor types
         return name
     elif name == "uintptr_t":
         return "c_uintptr_t"
@@ -238,15 +238,17 @@ def generate_declarations():
     outpath = os.path.join(ROOT, "..", "rascaline", "rascaline", "_c_api.py")
     with open(outpath, "w") as file:
         file.write(
-            """'''Automatically-generated file, do not edit!!!'''
+            """\
+# fmt: off
 # flake8: noqa
+'''Automatically-generated file, do not edit!!!'''
 
 import ctypes
 import enum
 import platform
 from ctypes import CFUNCTYPE, POINTER
 
-from equistore.core._c_api import eqs_labels_t, eqs_tensormap_t
+from metatensor.core._c_api import mts_labels_t, mts_tensormap_t
 from numpy.ctypeslib import ndpointer
 
 

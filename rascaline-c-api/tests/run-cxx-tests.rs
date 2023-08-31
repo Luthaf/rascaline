@@ -14,7 +14,7 @@ fn run_cxx_tests() {
 
     let mut cmake_config = utils::cmake_config(&source_dir, &build_dir);
     cmake_config.arg("-DCMAKE_EXPORT_COMPILE_COMMANDS=ON");
-    cmake_config.arg("-DRASCALINE_FETCH_EQUISTORE=ON");
+    cmake_config.arg("-DRASCALINE_FETCH_METATENSOR=ON");
     let mut shared_lib = "ON";
     if let Ok(value) = std::env::var("RASCALINE_TEST_WITH_STATIC_LIB") {
         if value != "0" {

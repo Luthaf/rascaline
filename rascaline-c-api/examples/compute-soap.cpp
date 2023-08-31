@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) {
     // run the calculation
     auto descriptor = calculator.compute(systems);
 
-    // The descriptor is an equistore `TensorMap`, containing multiple blocks.
+    // The descriptor is a metatensor `TensorMap`, containing multiple blocks.
     // We can transform it to a single block containing a dense representation,
     // with one sample for each atom-centered environment.
     descriptor.keys_to_samples("species_center");

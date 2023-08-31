@@ -7,7 +7,7 @@ Sample Selection
 
 import chemfiles
 import numpy as np
-from equistore import Labels
+from metatensor import Labels
 
 from rascaline import SoapPowerSpectrum
 

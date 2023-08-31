@@ -1,6 +1,6 @@
 """Helper functions to dispatch methods between numpy and torch.
 
-The functions are similar to those in equistore-operations. Missing functions may
+The functions are similar to those in metatensor-operations. Missing functions may
 already exist there. Functions are ordered alphabetically.
 """
 

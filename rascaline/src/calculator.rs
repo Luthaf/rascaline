@@ -3,8 +3,8 @@ use std::convert::TryFrom;
 
 use once_cell::sync::Lazy;
 
-use equistore::{Labels, LabelsBuilder};
-use equistore::{TensorBlockRef, TensorBlock, TensorMap};
+use metatensor::{Labels, LabelsBuilder};
+use metatensor::{TensorBlockRef, TensorBlock, TensorMap};
 use ndarray::ArrayD;
 
 use crate::{SimpleSystem, System, Error};

@@ -1,4 +1,4 @@
-use equistore::{Labels, LabelsBuilder, TensorMap};
+use metatensor::{Labels, LabelsBuilder, TensorMap};
 
 use crate::{Error, System};
 
@@ -149,7 +149,7 @@ impl CalculatorBase for AtomicComposition {
 
 #[cfg(test)]
 mod tests {
-    use equistore::Labels;
+    use metatensor::Labels;
     use ndarray::array;
 
     use crate::systems::test_utils::{test_system, test_systems};

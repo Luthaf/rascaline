@@ -34,7 +34,7 @@ fn run_torch_tests() {
     // configure cmake for the tests
     let mut cmake_config = utils::cmake_config(&source_dir, &build_dir);
     cmake_config.arg("-DRASCALINE_TORCH_TESTS=ON");
-    cmake_config.arg("-DRASCALINE_TORCH_FETCH_EQUISTORE_TORCH=ON");
+    cmake_config.arg("-DRASCALINE_TORCH_FETCH_METATENSOR_TORCH=ON");
     cmake_config.arg(format!(
         "-DCMAKE_PREFIX_PATH={};{}",
         rascaline_cmake_prefix.display(),

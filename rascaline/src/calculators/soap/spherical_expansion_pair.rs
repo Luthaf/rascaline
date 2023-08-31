@@ -5,7 +5,7 @@ use std::cell::RefCell;
 use ndarray::s;
 use thread_local::ThreadLocal;
 
-use equistore::{Labels, LabelsBuilder, LabelValue, TensorMap, TensorBlockRefMut};
+use metatensor::{Labels, LabelsBuilder, LabelValue, TensorMap, TensorBlockRefMut};
 
 use crate::{Error, System, Vector3D, Matrix3};
 use crate::systems::CellShape;
@@ -816,7 +816,7 @@ impl CalculatorBase for SphericalExpansionByPair {
 
 #[cfg(test)]
 mod tests {
-    use equistore::Labels;
+    use metatensor::Labels;
     use ndarray::{s, Axis};
     use approx::assert_ulps_eq;
 

@@ -125,7 +125,7 @@ public:
     std::string __str__() const;
 
     // TODO: convert from a Dict[str, TorchTensorMap] for the interface with LAMMPS
-    // static TorchSystem from_equistore_dict();
+    // static TorchSystem from_metatensor_dict();
 
 private:
     torch::Tensor species_;

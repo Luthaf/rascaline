@@ -26,7 +26,7 @@ project(rascaline_torch
 )
 
 option(RASCALINE_TORCH_TESTS "Build rascaline-torch C++ tests" OFF)
-option(RASCALINE_TORCH_FETCH_EQUISTORE_TORCH "Download and build the equistore_torch library before building rascaline_torch" OFF)
+option(RASCALINE_TORCH_FETCH_METATENSOR_TORCH "Download and build the metatensor_torch library before building rascaline_torch" OFF)
 
 set(BIN_INSTALL_DIR "bin" CACHE PATH "Path relative to CMAKE_INSTALL_PREFIX where to install binaries/DLL")
 set(LIB_INSTALL_DIR "lib" CACHE PATH "Path relative to CMAKE_INSTALL_PREFIX where to install libraries")
@@ -56,33 +56,33 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
 find_package(Torch 1.11 REQUIRED)
 
 # ============================================================================ #
-# Setup equistore_torch
+# Setup metatensor_torch
 
-set(EQUISTORE_GIT_VERSION "ee5ab99")
-set(REQUIRED_EQUISTORE_TORCH_VERSION "0.1")
-if (RASCALINE_TORCH_FETCH_EQUISTORE_TORCH)
-    message(STATUS "Fetching equistore_torch @ ${EQUISTORE_GIT_VERSION} from github")
+set(METATENSOR_GIT_VERSION "32ad5bb")
+set(REQUIRED_METATENSOR_TORCH_VERSION "0.1")
+if (RASCALINE_TORCH_FETCH_METATENSOR_TORCH)
+    message(STATUS "Fetching metatensor_torch @ ${METATENSOR_GIT_VERSION} from github")
 
     include(FetchContent)
     FetchContent_Declare(
-        equistore_torch
-        URL      https://github.com/lab-cosmo/equistore/archive/${EQUISTORE_GIT_VERSION}.zip
-        URL_HASH MD5=c632a7104ef719ac3842e35ee680dcbb
-        SOURCE_SUBDIR equistore-torch
+        metatensor_torch
+        URL      https://github.com/lab-cosmo/metatensor/archive/${METATENSOR_GIT_VERSION}.zip
+        URL_HASH MD5=cbc7bd27e9e2307638405d1613fa7f89
+        SOURCE_SUBDIR metatensor-torch
         VERBOSE
     )
 
     if (CMAKE_VERSION VERSION_GREATER 3.18)
-        FetchContent_MakeAvailable(equistore_torch)
+        FetchContent_MakeAvailable(metatensor_torch)
     else()
-        if (NOT equistore_POPULATED)
-            FetchContent_Populate(equistore_torch)
+        if (NOT metatensor_POPULATED)
+            FetchContent_Populate(metatensor_torch)
         endif()
 
-        add_subdirectory(${equistore_torch_SOURCE_DIR}/equistore-torch ${equistore_torch_BINARY_DIR})
+        add_subdirectory(${metatensor_torch_SOURCE_DIR}/metatensor-torch ${metatensor_torch_BINARY_DIR})
     endif()
 else()
-    find_package(equistore_torch ${REQUIRED_EQUISTORE_TORCH_VERSION} REQUIRED CONFIG)
+    find_package(metatensor_torch ${REQUIRED_METATENSOR_TORCH_VERSION} REQUIRED CONFIG)
 endif()
 
 
@@ -105,7 +105,7 @@ add_library(rascaline_torch SHARED
     ${RASCALINE_TORCH_SOURCE}
 )
 
-target_link_libraries(rascaline_torch PUBLIC torch equistore_torch rascaline)
+target_link_libraries(rascaline_torch PUBLIC torch metatensor_torch rascaline)
 target_compile_features(rascaline_torch PUBLIC cxx_std_14)
 target_include_directories(rascaline_torch PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -120,10 +120,10 @@ set_target_properties(rascaline_torch PROPERTIES
     CXX_VISIBILITY_PRESET hidden
 )
 
-if (RASCALINE_TORCH_FETCH_EQUISTORE_TORCH)
-    # If we install equistore_torch together with rascaline_torch, we need to
+if (RASCALINE_TORCH_FETCH_METATENSOR_TORCH)
+    # If we install metatensor_torch together with rascaline_torch, we need to
     # set the RPATH to $ORIGIN to make sure rascaline_torch can find
-    # equistore_torch.
+    # metatensor_torch.
     set_target_properties(rascaline_torch PROPERTIES INSTALL_RPATH "$ORIGIN")
 endif()
 

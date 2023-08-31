@@ -96,7 +96,7 @@ class PowerSpectrum:
         >>> calculator = rascaline.utils.PowerSpectrum(sr_calculator, lr_calculator)
         >>> power_spectrum = calculator.compute(atoms)
 
-        The resulting invariants are stored as :py:class:`equistore.TensorMap` as for any other calculator
+        The resulting invariants are stored as :py:class:`metatensor.TensorMap` as for any other calculator
 
         >>> power_spectrum.keys
         Labels(
@@ -176,8 +176,8 @@ class PowerSpectrum:
             "species_neighbor",
         ]
 
-        # TODO: re-enable once we update equistore with
-        # https://github.com/lab-cosmo/equistore/pull/322
+        # TODO: re-enable once we update metatensor with
+        # https://github.com/lab-cosmo/metatensor/pull/322
         # assert spherical_expansion_1.keys.names == expected_key_names
         # assert spherical_expansion_1.property_names == ["n"]
 

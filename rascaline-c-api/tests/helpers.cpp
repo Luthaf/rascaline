@@ -103,28 +103,28 @@ rascal_system_t simple_system() {
     return system;
 }
 
-eqs_array_t empty_array(std::vector<size_t> array_shape) {
-    eqs_array_t array = {0};
+mts_array_t empty_array(std::vector<size_t> array_shape) {
+    mts_array_t array = {0};
 
     array.ptr = new std::vector<size_t>(array_shape);
-    array.origin = [](const void *array, eqs_data_origin_t *origin){
-        eqs_register_data_origin("c-tests-empty-array", origin);
-        return EQS_SUCCESS;
+    array.origin = [](const void *array, mts_data_origin_t *origin){
+        mts_register_data_origin("c-tests-empty-array", origin);
+        return MTS_SUCCESS;
     };
     array.shape = [](const void *array, const uintptr_t** shape, uintptr_t* shape_count){
         auto array_shape = static_cast<const std::vector<size_t>*>(array);
         *shape = array_shape->data();
         *shape_count = array_shape->size();
-        return EQS_SUCCESS;
+        return MTS_SUCCESS;
     };
     array.destroy = [](void *array){
         auto array_shape = static_cast<std::vector<size_t>*>(array);
         delete array_shape;
     };
-    array.copy = [](const void *array, eqs_array_t* new_array){
+    array.copy = [](const void *array, mts_array_t* new_array){
         auto array_shape = static_cast<const std::vector<size_t>*>(array);
         *new_array = empty_array(*array_shape);
-        return EQS_SUCCESS;
+        return MTS_SUCCESS;
     };
 
     return array;

@@ -1,6 +1,6 @@
 import os
 
-import equistore.torch
+import metatensor.torch
 
 import rascaline
 
@@ -13,7 +13,7 @@ cmake_prefix_path = ";".join(
     [
         _rascaline_torch_cmake_prefix,
         rascaline.utils.cmake_prefix_path,
-        equistore.torch.utils.cmake_prefix_path,
+        metatensor.torch.utils.cmake_prefix_path,
     ]
 )
 """

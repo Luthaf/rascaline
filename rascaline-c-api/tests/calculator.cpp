@@ -7,7 +7,7 @@
 #include "helpers.hpp"
 
 static void check_block(
-    eqs_tensormap_t* descriptor,
+    mts_tensormap_t* descriptor,
     size_t block_id,
     std::vector<int32_t> samples,
     std::vector<int32_t> properties,
@@ -145,14 +145,14 @@ TEST_CASE("Compute descriptor") {
         auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);
         REQUIRE(calculator != nullptr);
 
-        eqs_tensormap_t* descriptor = nullptr;
+        mts_tensormap_t* descriptor = nullptr;
         auto status = rascal_calculator_compute(
             calculator, &descriptor, &system, 1, options
         );
         CHECK_SUCCESS(status);
 
-        eqs_labels_t keys = {0};
-        status = eqs_tensormap_keys(descriptor, &keys);
+        mts_labels_t keys = {0};
+        status = mts_tensormap_keys(descriptor, &keys);
         CHECK_SUCCESS(status);
 
         CHECK(keys.size == 1);
@@ -160,7 +160,7 @@ TEST_CASE("Compute descriptor") {
         CHECK(keys.count == 2);
         CHECK(keys.values[0] == 1);
         CHECK(keys.values[1] == 6);
-        eqs_labels_free(&keys);
+        mts_labels_free(&keys);
 
         auto samples = std::vector<int32_t>{
             0, 1, /**/ 0, 2, /**/ 0, 3,
@@ -207,7 +207,7 @@ TEST_CASE("Compute descriptor") {
         // C block
         check_block(descriptor, 1, samples, properties, values, gradient_samples, gradients);
 
-        eqs_tensormap_free(descriptor);
+        mts_tensormap_free(descriptor);
         rascal_calculator_free(calculator);
     }
 
@@ -219,7 +219,7 @@ TEST_CASE("Compute descriptor") {
             "structure", "center"
         };
 
-        eqs_labels_t selected_samples = {0};
+        mts_labels_t selected_samples = {0};
         selected_samples.names = selected_samples_names.data();
         selected_samples.values = selected_samples_values.data();
         selected_samples.count = 2;
@@ -235,15 +235,15 @@ TEST_CASE("Compute descriptor") {
         auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);
         REQUIRE(calculator != nullptr);
 
-        eqs_tensormap_t* descriptor = nullptr;
+        mts_tensormap_t* descriptor = nullptr;
         auto status = rascal_calculator_compute(
             calculator, &descriptor, &system, 1, options
         );
 
         CHECK_SUCCESS(status);
 
-        eqs_labels_t keys = {0};
-        status = eqs_tensormap_keys(descriptor, &keys);
+        mts_labels_t keys = {0};
+        status = mts_tensormap_keys(descriptor, &keys);
         CHECK_SUCCESS(status);
 
         CHECK(keys.size == 1);
@@ -251,7 +251,7 @@ TEST_CASE("Compute descriptor") {
         CHECK(keys.count == 2);
         CHECK(keys.values[0] == 1);
         CHECK(keys.values[1] == 6);
-        eqs_labels_free(&keys);
+        mts_labels_free(&keys);
 
         auto samples = std::vector<int32_t>{
             0, 1, /**/ 0, 3,
@@ -285,7 +285,7 @@ TEST_CASE("Compute descriptor") {
         // C block
         check_block(descriptor, 1, samples, properties, values, gradient_samples, gradients);
 
-        eqs_tensormap_free(descriptor);
+        mts_tensormap_free(descriptor);
         rascal_calculator_free(calculator);
     }
 
@@ -297,7 +297,7 @@ TEST_CASE("Compute descriptor") {
             "index_delta", "x_y_z"
         };
 
-        eqs_labels_t selected_properties = {0};
+        mts_labels_t selected_properties = {0};
         selected_properties.names = selected_properties_names.data();
         selected_properties.values = selected_properties_values.data();
         selected_properties.count = 1;
@@ -313,14 +313,14 @@ TEST_CASE("Compute descriptor") {
         auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);
         REQUIRE(calculator != nullptr);
 
-        eqs_tensormap_t* descriptor = nullptr;
+        mts_tensormap_t* descriptor = nullptr;
         auto status = rascal_calculator_compute(
             calculator, &descriptor, &system, 1, options
         );
         CHECK_SUCCESS(status);
 
-        eqs_labels_t keys = {0};
-        status = eqs_tensormap_keys(descriptor, &keys);
+        mts_labels_t keys = {0};
+        status = mts_tensormap_keys(descriptor, &keys);
         CHECK_SUCCESS(status);
 
         CHECK(keys.size == 1);
@@ -328,7 +328,7 @@ TEST_CASE("Compute descriptor") {
         CHECK(keys.count == 2);
         CHECK(keys.values[0] == 1);
         CHECK(keys.values[1] == 6);
-        eqs_labels_free(&keys);
+        mts_labels_free(&keys);
 
         auto samples = std::vector<int32_t>{
             0, 1, /**/ 0, 2, /**/ 0, 3,
@@ -375,7 +375,7 @@ TEST_CASE("Compute descriptor") {
         // C block
         check_block(descriptor, 1, samples, properties, values, gradient_samples, gradients);
 
-        eqs_tensormap_free(descriptor);
+        mts_tensormap_free(descriptor);
         rascal_calculator_free(calculator);
     }
 
@@ -394,20 +394,20 @@ TEST_CASE("Compute descriptor") {
             0, 1,
         };
 
-        eqs_block_t* blocks[2] = {nullptr, nullptr};
+        mts_block_t* blocks[2] = {nullptr, nullptr};
 
-        eqs_labels_t h_samples = {0};
+        mts_labels_t h_samples = {0};
         h_samples.size = 2;
         h_samples.names = samples_names.data();
         h_samples.count = 1;
         h_samples.values = h_samples_values.data();
 
-        eqs_labels_t h_properties = {0};
+        mts_labels_t h_properties = {0};
         h_properties.size = 2;
         h_properties.names = properties_names.data();
         h_properties.count = 1;
         h_properties.values = h_properties_values.data();
-        blocks[0] = eqs_block(empty_array({1, 1}), h_samples, nullptr, 0, h_properties);
+        blocks[0] = mts_block(empty_array({1, 1}), h_samples, nullptr, 0, h_properties);
         REQUIRE(blocks[0] != nullptr);
 
 
@@ -418,30 +418,30 @@ TEST_CASE("Compute descriptor") {
             1, 0,
         };
 
-        eqs_labels_t c_samples = {0};
+        mts_labels_t c_samples = {0};
         c_samples.size = 2;
         c_samples.names = samples_names.data();
         c_samples.count = 1;
         c_samples.values = c_samples_values.data();
 
-        eqs_labels_t c_properties = {0};
+        mts_labels_t c_properties = {0};
         c_properties.size = 2;
         c_properties.names = properties_names.data();
         c_properties.count = 1;
         c_properties.values = c_properties_values.data();
-        blocks[1] = eqs_block(empty_array({1, 1}), c_samples, nullptr, 0, c_properties);
+        blocks[1] = mts_block(empty_array({1, 1}), c_samples, nullptr, 0, c_properties);
         REQUIRE(blocks[1] != nullptr);
 
         auto keys_names = std::vector<const char*>{"species_center"};
         auto keys_values = std::vector<int32_t>{1, 6};
 
-        eqs_labels_t keys = {0};
+        mts_labels_t keys = {0};
         keys.size = 1;
         keys.names = keys_names.data();
         keys.count = 2;
         keys.values = keys_values.data();
 
-        auto predefined = eqs_tensormap(keys, blocks, 2);
+        auto predefined = mts_tensormap(keys, blocks, 2);
         REQUIRE(predefined != nullptr);
 
         auto system = simple_system();
@@ -454,13 +454,13 @@ TEST_CASE("Compute descriptor") {
         auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);
         REQUIRE(calculator != nullptr);
 
-        eqs_tensormap_t* descriptor = nullptr;
+        mts_tensormap_t* descriptor = nullptr;
         auto status = rascal_calculator_compute(
             calculator, &descriptor, &system, 1, options
         );
         CHECK_SUCCESS(status);
 
-        status = eqs_tensormap_keys(descriptor, &keys);
+        status = mts_tensormap_keys(descriptor, &keys);
         CHECK_SUCCESS(status);
 
         CHECK(keys.size == 1);
@@ -468,7 +468,7 @@ TEST_CASE("Compute descriptor") {
         CHECK(keys.count == 2);
         CHECK(keys.values[0] == 1);
         CHECK(keys.values[1] == 6);
-        eqs_labels_free(&keys);
+        mts_labels_free(&keys);
 
         auto samples = std::vector<int32_t>{
             0, 3,
@@ -510,8 +510,8 @@ TEST_CASE("Compute descriptor") {
         // C block
         check_block(descriptor, 1, samples, properties, values, gradient_samples, gradients);
 
-        eqs_tensormap_free(predefined);
-        eqs_tensormap_free(descriptor);
+        mts_tensormap_free(predefined);
+        mts_tensormap_free(descriptor);
         rascal_calculator_free(calculator);
     }
 
@@ -520,7 +520,7 @@ TEST_CASE("Compute descriptor") {
         // existing one (1) from the default set of keys. We also put the keys
         // in a different order than what would be the default (6, 12).
 
-        eqs_labels_t selected_keys = {0};
+        mts_labels_t selected_keys = {0};
         const char* samples_names[] = {"species_center"};
         selected_keys.names = samples_names;
         selected_keys.size = 1;
@@ -540,14 +540,14 @@ TEST_CASE("Compute descriptor") {
         auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);
         REQUIRE(calculator != nullptr);
 
-        eqs_tensormap_t* descriptor = nullptr;
+        mts_tensormap_t* descriptor = nullptr;
         auto status = rascal_calculator_compute(
             calculator, &descriptor, &system, 1, options
         );
         CHECK_SUCCESS(status);
 
-        eqs_labels_t keys = {0};
-        status = eqs_tensormap_keys(descriptor, &keys);
+        mts_labels_t keys = {0};
+        status = mts_tensormap_keys(descriptor, &keys);
         CHECK_SUCCESS(status);
 
         CHECK(keys.size == 1);
@@ -555,7 +555,7 @@ TEST_CASE("Compute descriptor") {
         CHECK(keys.count == 2);
         CHECK(keys.values[0] == 12);
         CHECK(keys.values[1] == 6);
-        eqs_labels_free(&keys);
+        mts_labels_free(&keys);
 
         auto samples = std::vector<int32_t>{};
         auto properties = std::vector<int32_t>{
@@ -588,13 +588,13 @@ TEST_CASE("Compute descriptor") {
         // C block
         check_block(descriptor, 1, samples, properties, values, gradient_samples, gradients);
 
-        eqs_tensormap_free(descriptor);
+        mts_tensormap_free(descriptor);
         rascal_calculator_free(calculator);
     }
 }
 
 void check_block(
-    eqs_tensormap_t* descriptor,
+    mts_tensormap_t* descriptor,
     size_t block_id,
     std::vector<int32_t> samples,
     std::vector<int32_t> properties,
@@ -602,14 +602,14 @@ void check_block(
     std::vector<int32_t> gradient_samples,
     std::vector<double> gradients
 ) {
-    eqs_block_t* block = nullptr;
+    mts_block_t* block = nullptr;
 
-    auto status = eqs_tensormap_block_by_id(descriptor, &block, block_id);
+    auto status = mts_tensormap_block_by_id(descriptor, &block, block_id);
     CHECK_SUCCESS(status);
 
     /**************************************************************************/
-    eqs_labels_t labels = {0};
-    status = eqs_block_labels(block, 0, &labels);
+    mts_labels_t labels = {0};
+    status = mts_block_labels(block, 0, &labels);
     CHECK_SUCCESS(status);
 
     CHECK(labels.size == 2);
@@ -621,10 +621,10 @@ void check_block(
         labels.values, labels.values + labels.count * labels.size
     );
     CHECK(label_values == samples);
-    eqs_labels_free(&labels);
+    mts_labels_free(&labels);
 
     /**************************************************************************/
-    status = eqs_block_labels(block, 1, &labels);
+    status = mts_block_labels(block, 1, &labels);
     CHECK_SUCCESS(status);
 
     CHECK(labels.size == 2);
@@ -636,11 +636,11 @@ void check_block(
         labels.values, labels.values + labels.count * labels.size
     );
     CHECK(label_values == properties);
-    eqs_labels_free(&labels);
+    mts_labels_free(&labels);
 
     /**************************************************************************/
-    eqs_array_t array = {0};
-    status = eqs_block_data(block, &array);
+    mts_array_t array = {0};
+    status = mts_block_data(block, &array);
     CHECK_SUCCESS(status);
 
 
@@ -663,11 +663,11 @@ void check_block(
     CHECK(actual_values == values);
 
     /**************************************************************************/
-    eqs_block_t* gradients_block = nullptr;
-    status = eqs_block_gradient(block, "positions", &gradients_block);
+    mts_block_t* gradients_block = nullptr;
+    status = mts_block_gradient(block, "positions", &gradients_block);
     CHECK_SUCCESS(status);
 
-    status = eqs_block_labels(gradients_block, 0, &labels);
+    status = mts_block_labels(gradients_block, 0, &labels);
     CHECK_SUCCESS(status);
 
     CHECK(labels.size == 3);
@@ -680,10 +680,10 @@ void check_block(
         labels.values, labels.values + labels.count * labels.size
     );
     CHECK(label_values == gradient_samples);
-    eqs_labels_free(&labels);
+    mts_labels_free(&labels);
 
     /**************************************************************************/
-    status = eqs_block_data(gradients_block, &array);
+    status = mts_block_data(gradients_block, &array);
     CHECK_SUCCESS(status);
 
     status = array.shape(array.ptr, &shape, &shape_count);

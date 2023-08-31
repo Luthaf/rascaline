@@ -1,7 +1,7 @@
 use ndarray::Axis;
 use approx::{assert_relative_eq, assert_ulps_eq};
 
-use equistore::{Labels, TensorMap, LabelsBuilder};
+use metatensor::{Labels, TensorMap, LabelsBuilder};
 
 use crate::calculator::LabelsSelection;
 use crate::{CalculationOptions, Calculator};
