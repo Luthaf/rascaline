@@ -33,9 +33,9 @@ option(CUDNN_STATIC "Look for static CUDNN" OFF)
 if (CUDNN_STATIC)
   set(CUDNN_LIBNAME "libcudnn_static.a")
 else()
-  # CHANGE FOR EQUISTORE: add libcudnn.so.8 to the list of possible lib name
+  # CHANGE FOR METATENSOR: add libcudnn.so.8 to the list of possible lib name
   set(CUDNN_LIBNAME "cudnn;libcudnn.so.8")
-  # END OF CHANGE FOR EQUISTORE
+  # END OF CHANGE FOR METATENSOR
 endif()
 
 set(CUDNN_LIBRARY $ENV{CUDNN_LIBRARY} CACHE PATH "Path to the cudnn library file (e.g., libcudnn.so)")

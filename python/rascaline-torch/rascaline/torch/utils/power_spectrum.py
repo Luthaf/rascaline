@@ -3,7 +3,7 @@ import sys
 from typing import List, Optional, Union
 
 import torch
-from equistore.torch import Labels, TensorBlock, TensorMap
+from metatensor.torch import Labels, TensorBlock, TensorMap
 
 import rascaline.utils.power_spectrum
 
@@ -20,7 +20,7 @@ spec = importlib.util.spec_from_loader(
 )
 module = importlib.util.module_from_spec(spec)
 # This module only exposes a handful of things, defined here. Any changes here MUST also
-# be made to the `equistore/operations/_classes.py` file, which is used in non
+# be made to the `metatensor/operations/_classes.py` file, which is used in non
 # TorchScript mode.
 module.__dict__["Labels"] = Labels
 module.__dict__["TensorBlock"] = TensorBlock

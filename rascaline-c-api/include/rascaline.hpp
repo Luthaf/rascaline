@@ -16,8 +16,8 @@
 #include <exception>
 #include <unordered_map>
 
-#include "equistore.h"
-#include "equistore.hpp"
+#include "metatensor.h"
+#include "metatensor.hpp"
 #include "rascaline.h"
 
 /// This file contains the C++ API to rascaline, manually built on top of the C
@@ -359,7 +359,7 @@ public:
     /// If the `selection` contains a subset of the variables of the full set of
     /// labels, then only entries from the full set which match one of the entry
     /// in this selection for all of the selection variable will be used.
-    static LabelsSelection subset(equistore::Labels selection) {
+    static LabelsSelection subset(metatensor::Labels selection) {
         return LabelsSelection(std::move(selection), nullptr);
     }
 
@@ -369,7 +369,7 @@ public:
     /// For each key, the corresponding labels are fetched out of the
     /// `selection`, which must have the same set of keys as the full
     /// calculation.
-    static LabelsSelection predefined(std::shared_ptr<equistore::TensorMap> selection) {
+    static LabelsSelection predefined(std::shared_ptr<metatensor::TensorMap> selection) {
         return LabelsSelection(std::nullopt, std::move(selection));
     }
 
@@ -385,7 +385,7 @@ public:
         this->subset_ = other.subset_;
         this->predefined_ = other.predefined_;
         if (this->subset_) {
-            this->raw_subset_ = subset_->as_eqs_labels_t();
+            this->raw_subset_ = subset_->as_mts_labels_t();
         }
 
         return *this;
@@ -401,12 +401,12 @@ public:
         this->subset_ = std::move(other.subset_);
         this->predefined_ = std::move(other.predefined_);
         if (this->subset_) {
-            this->raw_subset_ = subset_->as_eqs_labels_t();
+            this->raw_subset_ = subset_->as_mts_labels_t();
         }
 
         other.subset_ = std::nullopt;
         other.predefined_ = nullptr;
-        std::memset(&other.raw_subset_, 0, sizeof(eqs_labels_t));
+        std::memset(&other.raw_subset_, 0, sizeof(mts_labels_t));
 
         return *this;
     }
@@ -421,25 +421,25 @@ public:
         }
 
         if (predefined_ != nullptr) {
-            selection.predefined = predefined_->as_eqs_tensormap_t();
+            selection.predefined = predefined_->as_mts_tensormap_t();
         }
 
         return selection;
     }
 
 private:
-    LabelsSelection(std::optional<equistore::Labels> subset, std::shared_ptr<equistore::TensorMap> predefined):
+    LabelsSelection(std::optional<metatensor::Labels> subset, std::shared_ptr<metatensor::TensorMap> predefined):
         subset_(std::move(subset)), raw_subset_(), predefined_(std::move(predefined))
     {
-        std::memset(&raw_subset_, 0, sizeof(eqs_labels_t));
+        std::memset(&raw_subset_, 0, sizeof(mts_labels_t));
         if (subset_) {
-            raw_subset_ = subset_->as_eqs_labels_t();
+            raw_subset_ = subset_->as_mts_labels_t();
         }
     }
 
-    std::optional<equistore::Labels> subset_;
-    eqs_labels_t raw_subset_;
-    std::shared_ptr<equistore::TensorMap> predefined_;
+    std::optional<metatensor::Labels> subset_;
+    mts_labels_t raw_subset_;
+    std::shared_ptr<metatensor::TensorMap> predefined_;
 };
 
 
@@ -459,7 +459,7 @@ public:
     /// `std::nullopt` to use the default set of keys, as determined by the
     /// calculator. Note that this default set of keys can depend on which
     /// systems we are running the calculation on.
-    std::optional<equistore::Labels> selected_keys = std::nullopt;
+    std::optional<metatensor::Labels> selected_keys = std::nullopt;
 
     /// @verbatim embed:rst:leading-slashes
     /// List of gradients that should be computed. If this list is empty no
@@ -523,9 +523,9 @@ public:
         options.selected_properties = this->selected_properties.as_rascal_labels_selection_t();
 
         if (this->selected_keys) {
-            // store the raw eqs_labels_t in a class variable to make sure
+            // store the raw mts_labels_t in a class variable to make sure
             // it lives longer than this function
-            this->raw_selected_keys_ = this->selected_keys->as_eqs_labels_t();
+            this->raw_selected_keys_ = this->selected_keys->as_mts_labels_t();
             options.selected_keys = &this->raw_selected_keys_;
         }
 
@@ -533,7 +533,7 @@ public:
     }
 
 private:
-    eqs_labels_t raw_selected_keys_;
+    mts_labels_t raw_selected_keys_;
 };
 
 
@@ -635,11 +635,11 @@ public:
     }
 
     /// Runs a calculation with this calculator on the given ``systems``
-    equistore::TensorMap compute(
+    metatensor::TensorMap compute(
         std::vector<rascal_system_t>& systems,
         CalculationOptions options = CalculationOptions()
     ) const {
-        eqs_tensormap_t* descriptor = nullptr;
+        mts_tensormap_t* descriptor = nullptr;
 
         details::check_status(rascal_calculator_compute(
             calculator_,
@@ -649,12 +649,12 @@ public:
             options.as_rascal_calculation_options_t()
         ));
 
-        return equistore::TensorMap(descriptor);
+        return metatensor::TensorMap(descriptor);
     }
 
     /// Runs a calculation for multiple `systems`
     template<typename SystemImpl, typename std::enable_if<std::is_base_of<System, SystemImpl>::value, bool>::type = true>
-    equistore::TensorMap compute(
+    metatensor::TensorMap compute(
         std::vector<SystemImpl>& systems,
         CalculationOptions options = CalculationOptions()
     ) const {
@@ -668,11 +668,11 @@ public:
 
     /// Runs a calculation for a single `system`
     template<typename SystemImpl, typename std::enable_if<std::is_base_of<System, SystemImpl>::value, bool>::type = true>
-    equistore::TensorMap compute(
+    metatensor::TensorMap compute(
         SystemImpl& system,
         CalculationOptions options = CalculationOptions()
     ) const {
-        eqs_tensormap_t* descriptor = nullptr;
+        mts_tensormap_t* descriptor = nullptr;
 
         auto rascal_system = system.as_rascal_system_t();
         details::check_status(rascal_calculator_compute(
@@ -683,16 +683,16 @@ public:
             options.as_rascal_calculation_options_t()
         ));
 
-        return equistore::TensorMap(descriptor);
+        return metatensor::TensorMap(descriptor);
     }
 
     /// Runs a calculation for all the `systems` that where read from a file
     /// using the `BasicSystems(std::string path)` constructor
-    equistore::TensorMap compute(
+    metatensor::TensorMap compute(
         BasicSystems& systems,
         CalculationOptions options = CalculationOptions()
     ) const {
-        eqs_tensormap_t* descriptor = nullptr;
+        mts_tensormap_t* descriptor = nullptr;
 
         details::check_status(rascal_calculator_compute(
             calculator_,
@@ -702,7 +702,7 @@ public:
             options.as_rascal_calculation_options_t()
         ));
 
-        return equistore::TensorMap(descriptor);
+        return metatensor::TensorMap(descriptor);
     }
 
     /// Get the underlying pointer to a `rascal_calculator_t`.

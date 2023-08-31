@@ -3,7 +3,7 @@
 
 #include "rascaline/torch/autograd.hpp"
 
-using namespace equistore_torch;
+using namespace metatensor_torch;
 using namespace rascaline_torch;
 
 // # NOTATION
@@ -96,7 +96,7 @@ std::vector<torch::Tensor> RascalineAutograd::forward(
     torch::Tensor all_positions,
     torch::Tensor all_cells,
     torch::IValue structures_start,
-    equistore_torch::TorchTensorBlock block
+    metatensor_torch::TorchTensorBlock block
 ) {
     ctx->save_for_backward({all_positions, all_cells});
 

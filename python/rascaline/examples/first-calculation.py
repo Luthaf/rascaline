@@ -111,21 +111,21 @@ print(type(descriptor0))
 
 # %%
 #
-# The descriptor format is a :class:`equistore.TensorMap` object. Equistore is
+# The descriptor format is a :class:`metatensor.TensorMap` object. Metatensor is
 # like numpy for storing representations of atomistic ML data. Extensive details
-# on the equistore are covered in the `corresponding documentation
-# <https://lab-cosmo.github.io/equistore/>`_.
+# on the metatensor are covered in the `corresponding documentation
+# <https://lab-cosmo.github.io/metatensor/>`_.
 #
 # We will now have a look at how the data is stored inside
-# :class:`equistore.TensorMap` objects.
+# :class:`metatensor.TensorMap` objects.
 
 
 print(descriptor0)
 
 # %%
 #
-# The :class:`equistore.TensorMap` is structured in several instances of an
-# :class:`equistore.TensorBlock`. To distinguish the block each block is
+# The :class:`metatensor.TensorMap` is structured in several instances of an
+# :class:`metatensor.TensorBlock`. To distinguish the block each block is
 # associated with a unique key. For the current example, we have one block for
 # each angular channel labeled by ``spherical_harmonics_l``, the central atom
 # species ``species_center`` and neighbor atom species labeled by
@@ -164,14 +164,14 @@ print(block.values.shape)
 # `components`, and the last dimension by `properties`. The "sample dimension"
 # has a length of eight because we have eight hydrogen atoms in the first frame.
 # We can reveal more detailed metadata information about the sample-dimension
-# printing of the :py:attr:`equistore.TensorBlock.samples` attribute of the
+# printing of the :py:attr:`metatensor.TensorBlock.samples` attribute of the
 # block
 
 print(block.samples)
 
 # %%
 #
-# The result is an :class:`equistore.TensorMap` instance. It contains in total
+# The result is an :class:`metatensor.TensorMap` instance. It contains in total
 # eight tuples each with two values. The tuple values are named as follows
 
 print(block.samples.names)
@@ -183,7 +183,7 @@ print(block.samples.names)
 # second entry of each tuple refers to the index of the _center_ atom.
 #
 # We can do a similar investigation for the second dimension: the
-# :py:attr:`equistore.TensorBlock.components`.
+# :py:attr:`metatensor.TensorBlock.components`.
 
 print(block.components)
 
@@ -194,12 +194,12 @@ print(block.components)
 # :math:`l` is the current ``spherical_harmonics_l`` of the block. Here, its
 # dimension is three because we are looking at the ``spherical_harmonics_l=1``
 # block. You may have noticed that the return value of the last call is a
-# :class:`list` of :class:`equistore.Labels` and not a single ``Labels``
+# :class:`list` of :class:`metatensor.Labels` and not a single ``Labels``
 # instance. The reason is that a block can have several component dimensions as
 # we will see below for the gradients.
 #
 # The last value represents the number of radial channels. For the
-# :py:attr:`equistore.TensorBlock.properties` dimension we find an object
+# :py:attr:`metatensor.TensorBlock.properties` dimension we find an object
 
 print(block.properties)
 
@@ -236,7 +236,7 @@ print(block_full.values.shape)
 
 # %%
 #
-# Now, the 0th block of the :class:`equistore.TensorMap` contains not eight but
+# Now, the 0th block of the :class:`metatensor.TensorMap` contains not eight but
 # 420 entries in the first dimensions. This reflects the fact that in total we
 # have 420 hydrogen atoms in the whole dataset.
 #
@@ -264,7 +264,7 @@ print(gradient_position.values.shape)
 # %%
 #
 # The calculated descriptor contains the values and in each block the associated
-# position gradients as an :class:`equistore.block.Gradient` instance. The
+# position gradients as an :class:`metatensor.block.Gradient` instance. The
 # actual values are stored in the ``data`` attribute. Similar to the features
 # the gradient data also has associated metadata. But, compared to the values
 # were we found three dimensions, and gradients have four. Again the first is
@@ -277,7 +277,7 @@ print(gradient_position.values.shape)
 # structure. For our selected block these are all hydrogen-hydrogen pairs.
 # Naively one would come up with ``8 * 8 = 64`` samples, but rascaline already
 # ignores pairs that are outside of the cutoff radius. Their position gradient
-# is always zero. The :attr:`equistore.block.Gradient.samples` attribute shows
+# is always zero. The :attr:`metatensor.block.Gradient.samples` attribute shows
 # this in detail.
 
 print(gradient_position.samples)
@@ -293,7 +293,7 @@ print(gradient_position.samples.names)
 # In the above output of the Labels instance for example the `(2, 0, 17)` entry
 # is missing indicating that this pair is outside of the cutoff.
 #
-# Now looking at the :attr:`equistore.block.Gradient.components`
+# Now looking at the :attr:`metatensor.block.Gradient.components`
 
 print(gradient_position.components)
 
@@ -303,7 +303,7 @@ print(gradient_position.components)
 # also present in the features position gradients also have a component
 # indicating the direction of the gradient vector.
 #
-# Finally, the :attr:`equistore.block.Gradient.properties` dimension is the same
+# Finally, the :attr:`metatensor.block.Gradient.properties` dimension is the same
 # as for the values
 
 print(gradient_position.properties)

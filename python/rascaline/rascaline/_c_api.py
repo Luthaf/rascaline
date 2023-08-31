@@ -1,12 +1,13 @@
-'''Automatically-generated file, do not edit!!!'''
+# fmt: off
 # flake8: noqa
+'''Automatically-generated file, do not edit!!!'''
 
 import ctypes
 import enum
 import platform
 from ctypes import CFUNCTYPE, POINTER
 
-from equistore.core._c_api import eqs_labels_t, eqs_tensormap_t
+from metatensor.core._c_api import mts_labels_t, mts_tensormap_t
 from numpy.ctypeslib import ndpointer
 
 
@@ -63,8 +64,8 @@ class rascal_system_t(ctypes.Structure):
 
 class rascal_labels_selection_t(ctypes.Structure):
     _fields_ = [
-        ("subset", POINTER(eqs_labels_t)),
-        ("predefined", POINTER(eqs_tensormap_t)),
+        ("subset", POINTER(mts_labels_t)),
+        ("predefined", POINTER(mts_tensormap_t)),
     ]
 
 
@@ -75,7 +76,7 @@ class rascal_calculation_options_t(ctypes.Structure):
         ("use_native_system", ctypes.c_bool),
         ("selected_samples", rascal_labels_selection_t),
         ("selected_properties", rascal_labels_selection_t),
-        ("selected_keys", POINTER(eqs_labels_t)),
+        ("selected_keys", POINTER(mts_labels_t)),
     ]
 
 
@@ -139,7 +140,7 @@ def setup_functions(lib):
 
     lib.rascal_calculator_compute.argtypes = [
         POINTER(rascal_calculator_t),
-        POINTER(POINTER(eqs_tensormap_t)),
+        POINTER(POINTER(mts_tensormap_t)),
         POINTER(rascal_system_t),
         c_uintptr_t,
         rascal_calculation_options_t

@@ -4,7 +4,7 @@
 #include "catch.hpp"
 #include "helpers.hpp"
 
-#include "equistore.h"
+#include "metatensor.h"
 #include "rascaline.h"
 
 static std::vector<std::tuple<int, std::string>> RECORDED_LOG_EVENTS;
@@ -15,13 +15,13 @@ static void run_calculation(const char* hypers) {
     auto system = simple_system();
     rascal_calculation_options_t options = {0};
 
-    eqs_tensormap_t* descriptor = nullptr;
+    mts_tensormap_t* descriptor = nullptr;
     CHECK_SUCCESS(rascal_calculator_compute(
         calculator, &descriptor, &system, 1, options
     ));
 
     rascal_calculator_free(calculator);
-    eqs_tensormap_free(descriptor);
+    mts_tensormap_free(descriptor);
 }
 
 TEST_CASE("Logging") {

@@ -13,7 +13,7 @@ if os.path.exists(os.path.join(RASCALINE, "rascaline-c-api")):
     # we are building from a git checkout
 
     # add a random uuid to the file url to prevent pip from using a cached
-    # wheel for equistore-core, and force it to re-build from scratch
+    # wheel for metatensor-core, and force it to re-build from scratch
     uuid = uuid.uuid4()
     RASCALINE_DEP = f"rascaline @ file://{RASCALINE}?{uuid}"
 else:

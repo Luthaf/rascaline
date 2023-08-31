@@ -3,7 +3,7 @@ import re
 import sys
 from collections import namedtuple
 
-import equistore.torch
+import metatensor.torch
 import torch
 
 import rascaline
@@ -107,9 +107,9 @@ def _check_dll(path):
 
 
 def _load_library():
-    # Load rascaline & equistore-torch shared library in the process first, to ensure
+    # Load rascaline & metatensor-torch shared library in the process first, to ensure
     # the rascaline_torch shared library can find them
-    equistore.torch._c_lib._load_library()
+    metatensor.torch._c_lib._load_library()
 
     rascaline._c_lib._get_library()
 

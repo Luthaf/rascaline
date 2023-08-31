@@ -1,12 +1,12 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include <equistore.h>
+#include <metatensor.h>
 #include <rascaline.h>
 
 /// Compute SOAP power spectrum, this is the same code as the 'compute-soap'
 /// example
-static eqs_tensormap_t* compute_soap(const char* path);
+static mts_tensormap_t* compute_soap(const char* path);
 
 int main(int argc, char* argv[]) {
     rascal_status_t status = RASCAL_SUCCESS;
@@ -33,7 +33,7 @@ int main(int argc, char* argv[]) {
         goto cleanup;
     }
 
-    eqs_tensormap_t* descriptor = compute_soap(argv[1]);
+    mts_tensormap_t* descriptor = compute_soap(argv[1]);
     if (descriptor == NULL) {
         goto cleanup;
     }
@@ -63,7 +63,7 @@ int main(int argc, char* argv[]) {
     got_error = false;
 cleanup:
     free(buffer);
-    eqs_tensormap_free(descriptor);
+    mts_tensormap_free(descriptor);
 
     if (got_error) {
         return 1;
@@ -72,11 +72,11 @@ cleanup:
     }
 }
 
-static eqs_tensormap_t* move_keys_to_samples(eqs_tensormap_t* descriptor, const char* keys_to_move[], size_t keys_to_move_len);
-static eqs_tensormap_t* move_keys_to_properties(eqs_tensormap_t* descriptor, const char* keys_to_move[], size_t keys_to_move_len);
+static mts_tensormap_t* move_keys_to_samples(mts_tensormap_t* descriptor, const char* keys_to_move[], size_t keys_to_move_len);
+static mts_tensormap_t* move_keys_to_properties(mts_tensormap_t* descriptor, const char* keys_to_move[], size_t keys_to_move_len);
 
 // this is the same function as in the compute-soap.c example
-eqs_tensormap_t* compute_soap(const char* path) {
+mts_tensormap_t* compute_soap(const char* path) {
     int status = RASCAL_SUCCESS;
     rascal_calculator_t* calculator = NULL;
     rascal_system_t* systems = NULL;
@@ -94,10 +94,10 @@ eqs_tensormap_t* compute_soap(const char* path) {
     options.gradients = gradients_list;
     options.gradients_count = 1;
 
-    eqs_tensormap_t* descriptor = NULL;
-    const eqs_block_t* block = NULL;
-    eqs_array_t data = {0};
-    eqs_labels_t keys_to_move = {0};
+    mts_tensormap_t* descriptor = NULL;
+    const mts_block_t* block = NULL;
+    mts_array_t data = {0};
+    mts_labels_t keys_to_move = {0};
 
     const char* parameters = "{\n"
         "\"cutoff\": 5.0,\n"
@@ -137,13 +137,13 @@ eqs_tensormap_t* compute_soap(const char* path) {
 
     descriptor = move_keys_to_samples(descriptor, keys_to_samples, 1);
     if (descriptor == NULL) {
-        printf("Error: %s\n", eqs_last_error());
+        printf("Error: %s\n", mts_last_error());
         goto cleanup;
     }
 
     descriptor = move_keys_to_properties(descriptor, keys_to_properties, 2);
     if (descriptor == NULL) {
-        printf("Error: %s\n", eqs_last_error());
+        printf("Error: %s\n", mts_last_error());
         goto cleanup;
     }
 
@@ -155,33 +155,33 @@ cleanup:
 }
 
 
-eqs_tensormap_t* move_keys_to_samples(eqs_tensormap_t* descriptor, const char* keys_to_move[], size_t keys_to_move_len) {
-    eqs_labels_t keys = {0};
-    eqs_tensormap_t* moved_descriptor = NULL;
+mts_tensormap_t* move_keys_to_samples(mts_tensormap_t* descriptor, const char* keys_to_move[], size_t keys_to_move_len) {
+    mts_labels_t keys = {0};
+    mts_tensormap_t* moved_descriptor = NULL;
 
     keys.names = keys_to_move;
     keys.size = keys_to_move_len;
     keys.values = NULL;
     keys.count = 0;
 
-    moved_descriptor = eqs_tensormap_keys_to_samples(descriptor, keys, true);
-    eqs_tensormap_free(descriptor);
+    moved_descriptor = mts_tensormap_keys_to_samples(descriptor, keys, true);
+    mts_tensormap_free(descriptor);
 
     return moved_descriptor;
 }
 
 
-eqs_tensormap_t* move_keys_to_properties(eqs_tensormap_t* descriptor, const char* keys_to_move[], size_t keys_to_move_len) {
-    eqs_labels_t keys = {0};
-    eqs_tensormap_t* moved_descriptor = NULL;
+mts_tensormap_t* move_keys_to_properties(mts_tensormap_t* descriptor, const char* keys_to_move[], size_t keys_to_move_len) {
+    mts_labels_t keys = {0};
+    mts_tensormap_t* moved_descriptor = NULL;
 
     keys.names = keys_to_move;
     keys.size = keys_to_move_len;
     keys.values = NULL;
     keys.count = 0;
 
-    moved_descriptor = eqs_tensormap_keys_to_properties(descriptor, keys, true);
-    eqs_tensormap_free(descriptor);
+    moved_descriptor = mts_tensormap_keys_to_properties(descriptor, keys, true);
+    mts_tensormap_free(descriptor);
 
     return moved_descriptor;
 }

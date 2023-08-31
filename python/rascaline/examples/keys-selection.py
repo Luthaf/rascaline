@@ -6,7 +6,7 @@ Keys Selection
 """
 import chemfiles
 import numpy as np
-from equistore import Labels, TensorBlock, TensorMap
+from metatensor import Labels, TensorBlock, TensorMap
 
 from rascaline import SoapPowerSpectrum
 

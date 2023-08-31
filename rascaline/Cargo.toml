@@ -9,11 +9,11 @@ rust-version = "1.64"
 bench = false
 
 [features]
-# We use a static version of equistore by default since otherwise doctests can
-# not find libequistore.so
-default = ["chemfiles", "static-equistore"]
+# We use a static version of metatensor by default since otherwise doctests can
+# not find libmetatensor.so
+default = ["chemfiles", "static-metatensor"]
 
-static-equistore = ["equistore/static"]
+static-metatensor = ["metatensor/static"]
 
 [[bench]]
 name = "spherical-harmonics"
@@ -36,7 +36,7 @@ name = "soap-power-spectrum"
 harness = false
 
 [dependencies]
-equistore = {git = "https://github.com/lab-cosmo/equistore", rev = "ee5ab99", features = ["rayon"]}
+metatensor = {git = "https://github.com/lab-cosmo/metatensor", rev = "32ad5bb", features = ["rayon"]}
 
 ndarray = {version = "0.15", features = ["approx-0_5", "rayon", "serde"]}
 num-traits = "0.2"

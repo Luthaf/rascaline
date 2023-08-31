@@ -1,4 +1,4 @@
-use equistore::{Labels, TensorMap, LabelsBuilder};
+use metatensor::{Labels, TensorMap, LabelsBuilder};
 
 use crate::{System, Error};
 use crate::labels::{CenterSingleNeighborsSpeciesKeys, KeysBuilder};

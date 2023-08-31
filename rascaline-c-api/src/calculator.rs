@@ -2,8 +2,8 @@ use std::os::raw::c_char;
 use std::ffi::CStr;
 use std::ops::{Deref, DerefMut};
 
-use equistore::{Labels, TensorMap};
-use equistore::c_api::{eqs_tensormap_t, eqs_labels_t};
+use metatensor::{Labels, TensorMap};
+use metatensor::c_api::{mts_tensormap_t, mts_labels_t};
 use rascaline::{Calculator, System, CalculationOptions, LabelsSelection};
 
 use super::utils::copy_str_to_c;
@@ -193,39 +193,39 @@ pub unsafe extern fn rascal_calculator_cutoffs(
 #[allow(non_camel_case_types)]
 pub struct rascal_labels_selection_t {
     /// Select a subset of labels, using the same selection criterion for all
-    /// keys in the final `eqs_tensormap_t`.
+    /// keys in the final `mts_tensormap_t`.
     ///
-    /// If the `eqs_labels_t` instance contains the same variables as the full
+    /// If the `mts_labels_t` instance contains the same variables as the full
     /// set of labels, then only entries from the full set that also appear in
     /// this selection will be used.
     ///
-    /// If the `eqs_labels_t` instance contains a subset of the variables of the
+    /// If the `mts_labels_t` instance contains a subset of the variables of the
     /// full set of labels, then only entries from the full set which match one
     /// of the entry in this selection for all of the selection variable will be
     /// used.
-    subset: *const eqs_labels_t,
+    subset: *const mts_labels_t,
     /// Use a predefined subset of labels, with different entries for different
-    /// keys of the final `eqs_tensormap_t`.
+    /// keys of the final `mts_tensormap_t`.
     ///
     /// For each key, the corresponding labels are fetched out of the
-    /// `eqs_tensormap_t` instance, which must have the same set of keys as the
+    /// `mts_tensormap_t` instance, which must have the same set of keys as the
     /// full calculation.
-    predefined: *const eqs_tensormap_t,
+    predefined: *const mts_tensormap_t,
 }
 
-fn c_labels_to_rust(mut labels: eqs_labels_t) -> Result<eqs_labels_t, rascaline::Error> {
+fn c_labels_to_rust(mut labels: mts_labels_t) -> Result<mts_labels_t, rascaline::Error> {
     if labels.internal_ptr_.is_null() {
-        // create new equistore-core labels
+        // create new metatensor-core labels
         unsafe {
-            equistore::errors::check_status(
-                equistore::c_api::eqs_labels_create(&mut labels)
+            metatensor::errors::check_status(
+                metatensor::c_api::mts_labels_create(&mut labels)
             )?;
         }
 
         return Ok(labels);
     } else {
         // increment reference count
-        let mut clone = eqs_labels_t {
+        let mut clone = mts_labels_t {
             internal_ptr_: std::ptr::null_mut(),
             names: std::ptr::null(),
             values: std::ptr::null(),
@@ -233,8 +233,8 @@ fn c_labels_to_rust(mut labels: eqs_labels_t) -> Result<eqs_labels_t, rascaline:
             count: 0
         };
         unsafe {
-            equistore::errors::check_status(
-                equistore::c_api::eqs_labels_clone(labels, &mut clone)
+            metatensor::errors::check_status(
+                metatensor::c_api::mts_labels_clone(labels, &mut clone)
             )?;
         }
         return Ok(clone);
@@ -258,7 +258,7 @@ fn convert_labels_selection<'a>(
         }
         (true, false) => {
             let tensor = unsafe {
-                TensorMap::from_raw(selection.predefined as *mut eqs_tensormap_t)
+                TensorMap::from_raw(selection.predefined as *mut mts_tensormap_t)
             };
 
             match tensor.try_clone() {
@@ -284,7 +284,7 @@ fn convert_labels_selection<'a>(
     }
 }
 
-fn key_selection(value: *const eqs_labels_t, labels: &'_ mut Option<Labels>) -> Result<Option<&'_ Labels>, rascaline::Error> {
+fn key_selection(value: *const mts_labels_t, labels: &'_ mut Option<Labels>) -> Result<Option<&'_ Labels>, rascaline::Error> {
     if value.is_null() {
         return Ok(None);
     }
@@ -359,18 +359,18 @@ pub struct rascal_calculation_options_t {
     /// `NULL` to use the default set of keys, as determined by the calculator.
     /// Note that this default set of keys can depend on which systems we are
     /// running the calculation on.
-    selected_keys: *const eqs_labels_t,
+    selected_keys: *const mts_labels_t,
 }
 
 #[allow(clippy::doc_markdown)]
 /// Compute the representation of the given list of `systems` with a
 /// `calculator`
 ///
-/// This function allocates a new `eqs_tensormap_t` in `*descriptor`, which
-/// memory needs to be released by the user with `eqs_tensormap_free`.
+/// This function allocates a new `mts_tensormap_t` in `*descriptor`, which
+/// memory needs to be released by the user with `mts_tensormap_free`.
 ///
 /// @param calculator pointer to an existing calculator
-/// @param descriptor pointer to an `eqs_tensormap_t *` that will be allocated
+/// @param descriptor pointer to an `mts_tensormap_t *` that will be allocated
 ///                   by this function
 /// @param systems pointer to an array of systems implementation
 /// @param systems_count number of systems in `systems`
@@ -382,7 +382,7 @@ pub struct rascal_calculation_options_t {
 #[no_mangle]
 pub unsafe extern fn rascal_calculator_compute(
     calculator: *mut rascal_calculator_t,
-    descriptor: *mut *mut eqs_tensormap_t,
+    descriptor: *mut *mut mts_tensormap_t,
     systems: *mut rascal_system_t,
     systems_count: usize,
     options: rascal_calculation_options_t,

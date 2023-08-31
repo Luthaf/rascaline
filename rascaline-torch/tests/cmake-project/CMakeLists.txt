@@ -11,9 +11,9 @@ enable_testing()
 add_test(NAME torch-main COMMAND torch-main)
 
 if(WIN32)
-    # We need to set the path to allow access to equistore.dll
+    # We need to set the path to allow access to metatensor.dll
     STRING(REPLACE ";" "\\;" PATH_STRING "$ENV{PATH}")
     set_tests_properties(torch-main PROPERTIES
-        ENVIRONMENT "PATH=${PATH_STRING}\;$<TARGET_FILE_DIR:torch>\;$<TARGET_FILE_DIR:equistore::shared>\;$<TARGET_FILE_DIR:equistore_torch>"
+        ENVIRONMENT "PATH=${PATH_STRING}\;$<TARGET_FILE_DIR:torch>\;$<TARGET_FILE_DIR:metatensor::shared>\;$<TARGET_FILE_DIR:metatensor_torch>"
     )
 endif()

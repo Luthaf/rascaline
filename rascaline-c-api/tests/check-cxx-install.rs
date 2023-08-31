@@ -27,7 +27,7 @@ fn check_cxx_install() {
     let mut install_dir = build_dir.clone();
     install_dir.push("usr");
     cmake_config.arg(format!("-DCMAKE_INSTALL_PREFIX={}", install_dir.display()));
-    cmake_config.arg("-DRASCALINE_FETCH_EQUISTORE=ON");
+    cmake_config.arg("-DRASCALINE_FETCH_METATENSOR=ON");
 
     let status = cmake_config.status().expect("cmake configuration failed");
     assert!(status.success());

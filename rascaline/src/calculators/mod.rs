@@ -1,4 +1,4 @@
-use equistore::{TensorMap, Labels};
+use metatensor::{TensorMap, Labels};
 
 use crate::{Error, System};
 

@@ -1,5 +1,5 @@
-use equistore::{EmptyArray, TensorBlock, TensorMap};
-use equistore::{LabelValue, Labels, LabelsBuilder};
+use metatensor::{EmptyArray, TensorBlock, TensorMap};
+use metatensor::{LabelValue, Labels, LabelsBuilder};
 
 use crate::calculators::CalculatorBase;
 use crate::{CalculationOptions, Calculator, LabelsSelection};
@@ -129,7 +129,7 @@ impl CalculatorBase for SoapRadialSpectrum {
         self.spherical_expansion.cutoffs()
     }
 
-    fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<equistore::Labels, Error> {
+    fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<metatensor::Labels, Error> {
         let builder = CenterSingleNeighborsSpeciesKeys {
             cutoff: self.parameters.cutoff,
             self_pairs: true,
@@ -143,7 +143,7 @@ impl CalculatorBase for SoapRadialSpectrum {
 
     fn samples(
         &self,
-        keys: &equistore::Labels,
+        keys: &metatensor::Labels,
         systems: &mut [Box<dyn System>],
     ) -> Result<Vec<Labels>, Error> {
         assert_eq!(keys.names(), ["species_center", "species_neighbor"]);
@@ -188,7 +188,7 @@ impl CalculatorBase for SoapRadialSpectrum {
         return Ok(gradient_samples);
     }
 
-    fn components(&self, keys: &equistore::Labels) -> Vec<Vec<Labels>> {
+    fn components(&self, keys: &metatensor::Labels) -> Vec<Vec<Labels>> {
         return vec![vec![]; keys.count()];
     }
 
@@ -196,7 +196,7 @@ impl CalculatorBase for SoapRadialSpectrum {
         vec!["n"]
     }
 
-    fn properties(&self, keys: &equistore::Labels) -> Vec<Labels> {
+    fn properties(&self, keys: &metatensor::Labels) -> Vec<Labels> {
         let mut properties = LabelsBuilder::new(self.properties_names());
         for n in 0..self.parameters.max_radial {
             properties.add(&[n]);
@@ -283,7 +283,7 @@ impl CalculatorBase for SoapRadialSpectrum {
 
 #[cfg(test)]
 mod tests {
-    use equistore::LabelValue;
+    use metatensor::LabelValue;
 
     use crate::systems::test_utils::{test_system, test_systems};
     use crate::Calculator;

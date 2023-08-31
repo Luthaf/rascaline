@@ -55,12 +55,12 @@ system, already implemented or not.
 In this tutorial, our goal is to write a new struct implementing
 `CalculatorBase`_. This implementation will take as input a slice of boxed
 `System`_ trait objects, and using data from those fill up a `TensorMap`_
-(defined in the equistore crate).
+(defined in the metatensor crate).
 
 .. _System: ../reference/rust/rascaline/systems/trait.System.html
 .. _CalculatorBase: ../reference/rust/rascaline/calculators/trait.CalculatorBase.html
 .. _Calculator: ../reference/rust/rascaline/struct.Calculator.html
-.. _TensorMap: ../reference/rust/equistore/tensor/struct.TensorMap.html
+.. _TensorMap: ../reference/rust/metatensor/tensor/struct.TensorMap.html
 
 Implementation
 --------------
@@ -181,8 +181,8 @@ center species and one neighbor species. This key builder requires a ``cutoff``
 (to determine which neighbors it should use) and ``self_pairs`` indicated
 whether atoms should be considered to be their own neighbor or not.
 
-.. _Labels: ../reference/rust/equistore/labels/struct.Labels.html
-.. _LabelsBuilder: ../reference/rust/equistore/labels/struct.LabelsBuilder.html
+.. _Labels: ../reference/rust/metatensor/labels/struct.Labels.html
+.. _LabelsBuilder: ../reference/rust/metatensor/labels/struct.LabelsBuilder.html
 
 .. literalinclude:: ../../../../rascaline/src/tutorials/moments/s2_metadata.rs
    :language: rust
@@ -378,7 +378,7 @@ requested, then we can skip the calculation for this pair. We also use
    :dedent: 4
 
 
-.. _Labels::position: ../reference/rust/equistore/labels/struct.Labels.html#method.position
+.. _Labels::position: ../reference/rust/metatensor/labels/struct.Labels.html#method.position
 
 Now, we can check if the samples are present, and if they are, iterate over the
 requested features, compute the moments for the current pair distance, and

@@ -10,7 +10,7 @@ There exist several libraries able to compute such structural representations,
 such as `DScribe`_, `QUIP`_, and many more. Rascaline tries to distinguish
 itself by focussing on speed and memory efficiency of the calculations, with the
 explicit goal of running molecular simulations with ML potentials. In
-particular, memory efficiency is achieved by using the `equistore`_ to store the
+particular, memory efficiency is achieved by using the `metatensor`_ to store the
 structural representation. Additionally, rascaline is not limited to a single
 representation but supports several:
 
@@ -21,4 +21,4 @@ representation but supports several:
 
 .. _DScribe: https://singroup.github.io/dscribe/
 .. _QUIP: https://www.libatoms.org
-.. _equistore: https://lab-cosmo.github.io/equistore/
+.. _metatensor: https://lab-cosmo.github.io/metatensor/

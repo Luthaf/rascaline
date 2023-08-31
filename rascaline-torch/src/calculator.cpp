@@ -1,15 +1,15 @@
 #include "rascaline/torch/calculator.hpp"
-#include "equistore/torch/tensor.hpp"
+#include "metatensor/torch/tensor.hpp"
 #include "rascaline/torch/autograd.hpp"
 #include <c10/util/Exception.h>
 
-using namespace equistore_torch;
+using namespace metatensor_torch;
 using namespace rascaline_torch;
 
 // move a block created by rascaline to torch
-static equistore::TensorBlock block_to_torch(
-    std::shared_ptr<equistore::TensorMap> tensor,
-    equistore::TensorBlock block
+static metatensor::TensorBlock block_to_torch(
+    std::shared_ptr<metatensor::TensorMap> tensor,
+    metatensor::TensorBlock block
 ) {
     auto values = block.values();
     auto sizes = std::vector<int64_t>();
@@ -31,8 +31,8 @@ static equistore::TensorBlock block_to_torch(
         torch::TensorOptions().dtype(torch::kF64).device(torch::kCPU)
     );
 
-    auto new_block = equistore::TensorBlock(
-        std::unique_ptr<equistore::DataArrayBase>(new equistore_torch::TorchDataArray(std::move(torch_values))),
+    auto new_block = metatensor::TensorBlock(
+        std::unique_ptr<metatensor::DataArrayBase>(new metatensor_torch::TorchDataArray(std::move(torch_values))),
         block.samples(),
         block.components(),
         block.properties()
@@ -113,7 +113,7 @@ static bool contains(const std::vector<std::string>& haystack, const std::string
 }
 
 
-equistore_torch::TorchTensorMap CalculatorHolder::compute(
+metatensor_torch::TorchTensorMap CalculatorHolder::compute(
     std::vector<TorchSystem> systems,
     std::vector<std::string> gradients
 ) {
@@ -169,18 +169,18 @@ equistore_torch::TorchTensorMap CalculatorHolder::compute(
     }
 
     // ============ run the calculation and move data to torch ============== //
-    auto raw_descriptor = std::make_shared<equistore::TensorMap>(
+    auto raw_descriptor = std::make_shared<metatensor::TensorMap>(
         calculator_.compute(base_systems, options)
     );
 
     // move all data to torch
-    auto blocks = std::vector<equistore::TensorBlock>();
+    auto blocks = std::vector<metatensor::TensorBlock>();
     for (size_t block_i=0; block_i<raw_descriptor->keys().count(); block_i++) {
         blocks.push_back(block_to_torch(raw_descriptor, raw_descriptor->block_by_id(block_i)));
     }
 
-    auto torch_descriptor = torch::make_intrusive<equistore_torch::TensorMapHolder>(
-        equistore::TensorMap(raw_descriptor->keys(), std::move(blocks))
+    auto torch_descriptor = torch::make_intrusive<metatensor_torch::TensorMapHolder>(
+        metatensor::TensorMap(raw_descriptor->keys(), std::move(blocks))
     );
 
     // ============ register the autograd nodes for each block ============== //
@@ -215,9 +215,9 @@ equistore_torch::TorchTensorMap CalculatorHolder::compute(
 }
 
 
-equistore_torch::TorchTensorMap rascaline_torch::register_autograd(
+metatensor_torch::TorchTensorMap rascaline_torch::register_autograd(
     std::vector<TorchSystem> systems,
-    equistore_torch::TorchTensorMap precomputed,
+    metatensor_torch::TorchTensorMap precomputed,
     std::vector<std::string> forward_gradients
 ) {
     if (precomputed->keys()->count() == 0) {

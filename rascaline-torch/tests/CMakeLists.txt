@@ -8,7 +8,7 @@ target_link_libraries(catch torch)
 
 find_program(VALGRIND valgrind)
 if (VALGRIND)
-    if (NOT "$ENV{EQUISTORE_DISABLE_VALGRIND}" EQUAL "1")
+    if (NOT "$ENV{METATENSOR_DISABLE_VALGRIND}" EQUAL "1")
         message(STATUS "Running tests using valgrind")
         set(TEST_COMMAND
             "${VALGRIND}" "--tool=memcheck" "--dsymutil=yes" "--error-exitcode=125"
@@ -47,7 +47,7 @@ foreach(_file_ ${ALL_TESTS})
         # (and any other DLL)
         STRING(REPLACE ";" "\\;" PATH_STRING "$ENV{PATH}")
         set_tests_properties(torch-${_name_} PROPERTIES
-            ENVIRONMENT "PATH=${PATH_STRING}\;$<TARGET_FILE_DIR:torch>\;$<TARGET_FILE_DIR:equistore_torch>\;$<TARGET_FILE_DIR:equistore::shared>\;$<TARGET_FILE_DIR:rascaline_torch>\;$<TARGET_FILE_DIR:rascaline::shared>"
+            ENVIRONMENT "PATH=${PATH_STRING}\;$<TARGET_FILE_DIR:torch>\;$<TARGET_FILE_DIR:metatensor_torch>\;$<TARGET_FILE_DIR:metatensor::shared>\;$<TARGET_FILE_DIR:rascaline_torch>\;$<TARGET_FILE_DIR:rascaline::shared>"
         )
     endif()
 endforeach()

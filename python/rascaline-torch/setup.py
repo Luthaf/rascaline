@@ -15,7 +15,7 @@ RASCALINE_C_API = os.path.join(ROOT, "..", "..", "rascaline-c-api")
 
 RASCALINE_TORCH = os.path.join(ROOT, "..", "..", "rascaline-torch")
 if not os.path.exists(RASCALINE_TORCH):
-    # we are building from a sdist, which should include equistore-torch
+    # we are building from a sdist, which should include metatensor-torch
     # sources as a tarball
     cxx_sources = os.path.join(ROOT, "rascaline-torch.tar.gz")
 
@@ -38,7 +38,7 @@ class cmake_ext(build_ext):
     """Build the native library using cmake"""
 
     def run(self):
-        import equistore.torch
+        import metatensor.torch
         import torch
 
         import rascaline
@@ -52,7 +52,7 @@ class cmake_ext(build_ext):
         # Tell CMake where to find rascaline & torch
         cmake_prefix_path = [
             rascaline.utils.cmake_prefix_path,
-            equistore.torch.utils.cmake_prefix_path,
+            metatensor.torch.utils.cmake_prefix_path,
             torch.utils.cmake_prefix_path,
         ]
 
@@ -140,7 +140,7 @@ class bdist_egg_disabled(bdist_egg):
         sys.exit(
             "Aborting implicit building of eggs. "
             + "Use `pip install .` or `python setup.py bdist_wheel && pip "
-            + "install dist/equistore-*.whl` to install from source."
+            + "install dist/metatensor-*.whl` to install from source."
         )
 
 

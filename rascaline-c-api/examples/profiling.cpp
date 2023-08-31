@@ -3,7 +3,7 @@
 
 /// Compute SOAP power spectrum, this is the same code as the 'compute-soap'
 /// example
-static equistore::TensorMap compute_soap(const std::string& path);
+static metatensor::TensorMap compute_soap(const std::string& path);
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
@@ -27,7 +27,7 @@ int main(int argc, char* argv[]) {
 }
 
 
-equistore::TensorMap compute_soap(const std::string& path) {
+metatensor::TensorMap compute_soap(const std::string& path) {
     auto systems = rascaline::BasicSystems(path);
 
     const char* parameters = R"({

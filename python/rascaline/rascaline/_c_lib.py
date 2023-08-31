@@ -2,7 +2,7 @@ import os
 import sys
 from ctypes import cdll
 
-import equistore.core
+import metatensor.core
 
 from ._c_api import setup_functions
 from .log import _set_logging_callback_impl, default_logging_callback
@@ -17,9 +17,9 @@ class RascalFinder(object):
 
     def __call__(self):
         if self._cached_dll is None:
-            # Load equistore shared library in the process first, to ensure
+            # Load metatensor shared library in the process first, to ensure
             # the rascaline shared library can find it
-            equistore.core._c_lib._get_library()
+            metatensor.core._c_lib._get_library()
 
             path = _lib_path()
 

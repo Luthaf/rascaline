@@ -1,8 +1,8 @@
 import ctypes
 from typing import List, Optional, Union
 
-from equistore.core import Labels, TensorMap
-from equistore.core._c_api import c_uintptr_t, eqs_tensormap_t
+from metatensor.core import Labels, TensorMap
+from metatensor.core._c_api import c_uintptr_t, mts_tensormap_t
 
 from ._c_api import (
     RASCAL_BUFFER_SIZE_ERROR,
@@ -78,15 +78,15 @@ def _options_to_c(
         # nothing to do, all pointers are already NULL
         pass
     elif isinstance(selected_samples, Labels):
-        selected_samples = selected_samples._as_eqs_labels_t()
+        selected_samples = selected_samples._as_mts_labels_t()
         c_options.selected_samples.subset = ctypes.pointer(selected_samples)
         c_options.__keepalive["selected_samples"] = selected_samples
     elif isinstance(selected_samples, TensorMap):
         c_options.selected_samples.predefined = selected_samples._ptr
     else:
         raise ValueError(
-            "expected selected samples to be either an `equistore.Labels` "
-            "instance, or an got `equistore.TensorMap` instance, got "
+            "expected selected samples to be either an `metatensor.Labels` "
+            "instance, or an got `metatensor.TensorMap` instance, got "
             f"{type(selected_samples)} instead"
         )
 
@@ -94,15 +94,15 @@ def _options_to_c(
         # nothing to do, all pointers are already NULL
         pass
     elif isinstance(selected_properties, Labels):
-        selected_properties = selected_properties._as_eqs_labels_t()
+        selected_properties = selected_properties._as_mts_labels_t()
         c_options.selected_properties.subset = ctypes.pointer(selected_properties)
         c_options.__keepalive["selected_properties"] = selected_properties
     elif isinstance(selected_properties, TensorMap):
         c_options.selected_properties.predefined = selected_properties._ptr
     else:
         raise ValueError(
-            "expected selected properties to be either an `equistore.Labels` "
-            "instance, or an got `equistore.TensorMap` instance, got "
+            "expected selected properties to be either an `metatensor.Labels` "
+            "instance, or an got `metatensor.TensorMap` instance, got "
             f"{type(selected_properties)} instead"
         )
 
@@ -110,7 +110,7 @@ def _options_to_c(
         # nothing to do, all pointers are already NULL
         pass
     elif isinstance(selected_keys, Labels):
-        selected_keys = selected_keys._as_eqs_labels_t()
+        selected_keys = selected_keys._as_mts_labels_t()
         c_options.selected_keys = ctypes.pointer(selected_keys)
         c_options.__keepalive["selected_keys"] = selected_keys
     return c_options
@@ -254,16 +254,16 @@ class CalculatorBase:
             Use ``None`` to run the calculation on all samples in the
             ``systems`` (this is the default).
 
-            If ``selected_samples`` is an :py:class:`equistore.TensorMap`, then
+            If ``selected_samples`` is an :py:class:`metatensor.TensorMap`, then
             the samples for each key will be used as-is when computing the
             representation.
 
-            If ``selected_samples`` is a set of :py:class:`equistore.Labels`
+            If ``selected_samples`` is a set of :py:class:`metatensor.Labels`
             containing the same variables as the default set of samples for this
             calculator, then only entries from the full set that also appear in
             ``selected_samples`` will be used.
 
-            If ``selected_samples`` is a set of :py:class:`equistore.Labels`
+            If ``selected_samples`` is a set of :py:class:`metatensor.Labels`
             containing a subset of the variables of the default set of samples,
             then only samples from the default set with the same values for
             these variables as one of the entries in ``selected_samples`` will
@@ -272,16 +272,16 @@ class CalculatorBase:
         :param selected_properties: Set of properties to compute. Use ``None``
             to run the calculation on all properties (this is the default).
 
-            If ``selected_properties`` is an :py:class:`equistore.TensorMap`,
+            If ``selected_properties`` is an :py:class:`metatensor.TensorMap`,
             then the properties for each key will be used as-is when computing
             the representation.
 
-            If ``selected_properties`` is a set of :py:class:`equistore.Labels`
+            If ``selected_properties`` is a set of :py:class:`metatensor.Labels`
             containing the same variables as the default set of properties for
             this calculator, then only entries from the full set that also
             appear in ``selected_properties`` will be used.
 
-            If ``selected_properties`` is a set of :py:class:`equistore.Labels`
+            If ``selected_properties`` is a set of :py:class:`metatensor.Labels`
             containing a subset of the variables of the default set of
             properties, then only properties from the default set with the same
             values for these variables as one of the entries in
@@ -294,7 +294,7 @@ class CalculatorBase:
         """
 
         c_systems = _convert_systems(systems)
-        tensor_map_ptr = ctypes.POINTER(eqs_tensormap_t)()
+        tensor_map_ptr = ctypes.POINTER(mts_tensormap_t)()
 
         c_options = _options_to_c(
             gradients=gradients,
