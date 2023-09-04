@@ -1,4 +1,5 @@
 #include "rascaline/torch/calculator.hpp"
+#include "metatensor/torch/block.hpp"
 #include "metatensor/torch/tensor.hpp"
 #include "rascaline/torch/autograd.hpp"
 #include <c10/util/Exception.h>
@@ -86,7 +87,7 @@ static TorchTensorMap remove_other_gradients(
 ) {
     auto new_blocks = std::vector<TorchTensorBlock>();
     for (int64_t i=0; i<tensor->keys()->count(); i++) {
-        auto block = tensor->block_by_id(i);
+        auto block = TensorMapHolder::block_by_id(tensor, i);
         auto new_block = torch::make_intrusive<TensorBlockHolder>(
             block->values(),
             block->samples(),
@@ -95,7 +96,7 @@ static TorchTensorMap remove_other_gradients(
         );
 
         for (const auto& parameter: gradients_to_keep) {
-            auto gradient = block->gradient(parameter);
+            auto gradient = TensorBlockHolder::gradient(block, parameter);
             new_block->add_gradient(parameter, gradient);
         }
 
@@ -196,7 +197,7 @@ metatensor_torch::TorchTensorMap CalculatorHolder::compute(
     }
 
     for (int64_t block_i=0; block_i<torch_descriptor->keys()->count(); block_i++) {
-        auto block = torch_descriptor->block_by_id(block_i);
+        auto block = TensorMapHolder::block_by_id(torch_descriptor, block_i);
         // see `RascalineAutograd::forward` for an explanation of what's happening
         auto _ = RascalineAutograd::apply(
             all_positions,
@@ -228,7 +229,7 @@ metatensor_torch::TorchTensorMap rascaline_torch::register_autograd(
     auto all_cells = stack_all_cells(systems);
     auto structures_start_ivalue = torch::IValue();
 
-    auto precomputed_gradients = precomputed->block_by_id(0)->gradients_list();
+    auto precomputed_gradients = TensorMapHolder::block_by_id(precomputed, 0)->gradients_list();
 
     if (all_positions.requires_grad()) {
         if (!contains(precomputed_gradients, "positions")) {
@@ -271,7 +272,7 @@ metatensor_torch::TorchTensorMap rascaline_torch::register_autograd(
     }
 
     for (int64_t block_i=0; block_i<precomputed->keys()->count(); block_i++) {
-        auto block = precomputed->block_by_id(block_i);
+        auto block = TensorMapHolder::block_by_id(precomputed, block_i);
         auto _ = RascalineAutograd::apply(
             all_positions,
             all_cells,

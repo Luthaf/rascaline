@@ -217,7 +217,7 @@ endif()
 # ============================================================================ #
 # Setup metatensor
 
-set(METATENSOR_GIT_VERSION "32ad5bb")
+set(METATENSOR_GIT_VERSION "d97ea65")
 set(METATENSOR_REQUIRED_VERSION "0.1")
 if (RASCALINE_FETCH_METATENSOR)
     message(STATUS "Fetching metatensor @ ${METATENSOR_GIT_VERSION} from github")
@@ -226,7 +226,7 @@ if (RASCALINE_FETCH_METATENSOR)
     FetchContent_Declare(
         metatensor
         URL      https://github.com/lab-cosmo/metatensor/archive/${METATENSOR_GIT_VERSION}.zip
-        URL_HASH MD5=cbc7bd27e9e2307638405d1613fa7f89
+        URL_HASH MD5=6a6899779591ae15861bb3547c7c354b
         SOURCE_SUBDIR metatensor-core
         VERBOSE
     )

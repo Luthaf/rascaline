@@ -1,4 +1,5 @@
 
+#include "metatensor/torch/block.hpp"
 #include <torch/torch.h>
 
 #include <rascaline.hpp>
@@ -7,6 +8,7 @@
 #include <catch.hpp>
 
 using namespace rascaline_torch;
+using namespace metatensor_torch;
 
 static TorchSystem test_system(bool positions_grad, bool cell_grad);
 
@@ -35,7 +37,7 @@ TEST_CASE("Calculator") {
         ));
 
         // H block
-        auto block = descriptor->block_by_id(0);
+        auto block = TensorMapHolder::block_by_id(descriptor, 0);
         CHECK(*block->samples() == metatensor::Labels(
             {"structure", "center"},
             {{0, 1}, {0, 2}, {0, 3}}
@@ -56,7 +58,7 @@ TEST_CASE("Calculator") {
         CHECK(block->gradients_list().empty());
 
         // C block
-        block = descriptor->block_by_id(1);
+        block = TensorMapHolder::block_by_id(descriptor, 1);
         CHECK(*block->samples() == metatensor::Labels(
             {"structure", "center"},
             {{0, 0}}
@@ -85,7 +87,7 @@ TEST_CASE("Calculator") {
         ));
 
         // H block
-        auto block = descriptor->block_by_id(0);
+        auto block = TensorMapHolder::block_by_id(descriptor, 0);
 
         auto values = block->values();
         CHECK(values.requires_grad() == true);
@@ -95,7 +97,7 @@ TEST_CASE("Calculator") {
         CHECK_THAT(grad_fn->name(), Catch::Matchers::Contains("rascaline_torch::RascalineAutograd"));
 
         // forward gradients
-        auto gradient = block->gradient("positions");
+        auto gradient = TensorBlockHolder::gradient(block, "positions");
         CHECK(*gradient->samples() == metatensor::Labels(
             {"sample", "structure", "atom"},
             {
@@ -117,7 +119,7 @@ TEST_CASE("Calculator") {
         CHECK(torch::all(gradient->values() == expected).item<bool>());
 
         // C block
-        block = descriptor->block_by_id(1);
+        block = TensorMapHolder::block_by_id(descriptor, 1);
 
         values = block->values();
         CHECK(values.requires_grad() == true);
@@ -127,7 +129,7 @@ TEST_CASE("Calculator") {
         CHECK_THAT(grad_fn->name(), Catch::Matchers::Contains("rascaline_torch::RascalineAutograd"));
 
         // forward gradients
-        gradient = block->gradient("positions");
+        gradient = TensorBlockHolder::gradient(block, "positions");
         CHECK(*gradient->samples() == metatensor::Labels(
             {"sample", "structure", "atom"},
             {{0, 0, 0}, {0, 0, 1}}
@@ -149,7 +151,7 @@ TEST_CASE("Calculator") {
         ));
 
         // H block
-        auto block = descriptor->block_by_id(0);
+        auto block = TensorMapHolder::block_by_id(descriptor, 0);
 
         auto values = block->values();
         CHECK(values.requires_grad() == true);
@@ -162,7 +164,7 @@ TEST_CASE("Calculator") {
         CHECK(block->gradients_list().empty());
 
         // C block
-        block = descriptor->block_by_id(1);
+        block = TensorMapHolder::block_by_id(descriptor, 1);
 
         values = block->values();
         CHECK(values.requires_grad() == true);
@@ -185,25 +187,25 @@ TEST_CASE("Calculator") {
         ));
 
         // H block
-        auto block = descriptor->block_by_id(0);
+        auto block = TensorMapHolder::block_by_id(descriptor, 0);
 
         auto values = block->values();
         CHECK(values.requires_grad() == false);
         CHECK(values.grad_fn() == nullptr);
 
         // forward gradients
-        auto gradient = block->gradient("positions");
+        auto gradient = TensorBlockHolder::gradient(block, "positions");
         CHECK(gradient->samples()->count() == 8);
 
         // C block
-        block = descriptor->block_by_id(1);
+        block = TensorMapHolder::block_by_id(descriptor, 1);
 
         values = block->values();
         CHECK(values.requires_grad() == false);
         CHECK(values.grad_fn() == nullptr);
 
         // forward gradients
-        gradient = block->gradient("positions");
+        gradient = TensorBlockHolder::gradient(block, "positions");
         CHECK(gradient->samples()->count() == 2);
     }
 }

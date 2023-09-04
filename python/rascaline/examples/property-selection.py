@@ -47,7 +47,7 @@ descriptor = calculator.compute(frames)
 # of the labels must be a subset of the names of the properties produced by the
 # calculator. You can see the default set of names with:
 
-print("properties names:", descriptor.property_names)
+print("properties names:", descriptor.properties_names)
 
 # %%
 #
