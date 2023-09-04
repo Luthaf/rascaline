@@ -1,6 +1,7 @@
 #include <atomic>
 #include <algorithm>
 
+#include "metatensor/torch/tensor.hpp"
 #include "rascaline/torch/autograd.hpp"
 
 using namespace metatensor_torch;
@@ -73,8 +74,8 @@ static std::vector<TorchTensorBlock> extract_gradient_blocks(
 ) {
     auto gradients = std::vector<TorchTensorBlock>();
     for (int64_t i=0; i<tensor->keys()->count(); i++) {
-        auto block = tensor->block_by_id(i);
-        auto gradient = block->gradient(parameter);
+        auto block = TensorMapHolder::block_by_id(tensor, i);
+        auto gradient = TensorBlockHolder::gradient(block, parameter);
 
         gradients.push_back(torch::make_intrusive<TensorBlockHolder>(
             gradient->values(),
@@ -103,7 +104,7 @@ std::vector<torch::Tensor> RascalineAutograd::forward(
     if (all_positions.requires_grad()) {
         ctx->saved_data.emplace("structures_start", structures_start);
 
-        auto gradient = block->gradient("positions");
+        auto gradient = TensorBlockHolder::gradient(block, "positions");
         ctx->saved_data["positions_gradients"] = torch::make_intrusive<TensorBlockHolder>(
             gradient->values(),
             gradient->samples(),
@@ -115,7 +116,7 @@ std::vector<torch::Tensor> RascalineAutograd::forward(
     if (all_cells.requires_grad()) {
         ctx->saved_data["samples"] = block->samples();
 
-        auto gradient = block->gradient("cell");
+        auto gradient = TensorBlockHolder::gradient(block, "cell");
         ctx->saved_data["cell_gradients"] = torch::make_intrusive<TensorBlockHolder>(
             gradient->values(),
             gradient->samples(),

@@ -176,10 +176,8 @@ class PowerSpectrum:
             "species_neighbor",
         ]
 
-        # TODO: re-enable once we update metatensor with
-        # https://github.com/lab-cosmo/metatensor/pull/322
-        # assert spherical_expansion_1.keys.names == expected_key_names
-        # assert spherical_expansion_1.property_names == ["n"]
+        assert spherical_expansion_1.keys.names == expected_key_names
+        assert spherical_expansion_1.properties_names == ["n"]
 
         # Fill blocks with `species_neighbor` from ALL blocks. If we don't do this
         # merging blocks along the ``sample`` direction might be not possible.
@@ -200,7 +198,7 @@ class PowerSpectrum:
                 use_native_system=use_native_system,
             )
             assert spherical_expansion_2.keys.names == expected_key_names
-            assert spherical_expansion_2.property_names == ["n"]
+            assert spherical_expansion_2.properties_names == ["n"]
 
             array = spherical_expansion_2.keys.column("species_neighbor")
             keys_to_move = Labels(
