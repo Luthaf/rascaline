@@ -100,7 +100,7 @@ def systems_to_torch(
     except TypeError:
         # try iterating over the systems
         return [
-            _system_to_torch(systems, positions_requires_grad, cell_requires_grad)
+            _system_to_torch(system, positions_requires_grad, cell_requires_grad)
             for system in systems
         ]
 
