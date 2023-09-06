@@ -215,7 +215,7 @@ std::vector<torch::Tensor> PositionsGrad::forward(
 
     auto samples = dX_dr->samples();
     auto samples_values = samples->values();
-    auto samples_values_ptr = samples_values.data_ptr<int32_t>();
+    auto* samples_values_ptr = samples_values.data_ptr<int32_t>();
     always_assert(samples->names().size() == 3);
     always_assert(samples->names()[0] == "sample");
     always_assert(samples->names()[1] == "structure");
@@ -224,15 +224,15 @@ std::vector<torch::Tensor> PositionsGrad::forward(
     // ========================= extract pointers =========================== //
     auto dA_dr = torch::zeros_like(all_positions);
     always_assert(dA_dr.is_contiguous() && dA_dr.is_cpu());
-    auto dA_dr_ptr = dA_dr.data_ptr<double>();
+    auto* dA_dr_ptr = dA_dr.data_ptr<double>();
 
     auto dX_dr_values = dX_dr->values();
     always_assert(dX_dr_values.is_contiguous() && dX_dr_values.is_cpu());
-    auto dX_dr_ptr = dX_dr_values.data_ptr<double>();
+    auto* dX_dr_ptr = dX_dr_values.data_ptr<double>();
 
     const auto& dA_dX_sizes = dA_dX.sizes();
     always_assert(dA_dX.is_contiguous() && dA_dX.is_cpu());
-    auto dA_dX_ptr = dA_dX.data_ptr<double>();
+    auto* dA_dX_ptr = dA_dX.data_ptr<double>();
 
     // total size of component + property dimension
     int64_t n_features = 1;
@@ -284,7 +284,7 @@ std::vector<torch::Tensor> PositionsGrad::backward(
 
     auto samples = dX_dr->samples();
     auto samples_values = samples->values();
-    auto samples_values_ptr = samples_values.data_ptr<int32_t>();
+    auto* samples_values_ptr = samples_values.data_ptr<int32_t>();
     always_assert(samples->names().size() == 3);
     always_assert(samples->names()[0] == "sample");
     always_assert(samples->names()[1] == "structure");
@@ -293,14 +293,14 @@ std::vector<torch::Tensor> PositionsGrad::backward(
     // ========================= extract pointers =========================== //
     auto dX_dr_values = dX_dr->values();
     always_assert(dX_dr_values.is_contiguous() && dX_dr_values.is_cpu());
-    auto dX_dr_ptr = dX_dr_values.data_ptr<double>();
+    auto* dX_dr_ptr = dX_dr_values.data_ptr<double>();
 
     always_assert(dB_d_dA_dr.is_contiguous() && dB_d_dA_dr.is_cpu());
-    auto dB_d_dA_dr_ptr = dB_d_dA_dr.data_ptr<double>();
+    auto* dB_d_dA_dr_ptr = dB_d_dA_dr.data_ptr<double>();
 
     const auto& dA_dX_sizes = dA_dX.sizes();
     always_assert(dA_dX.is_contiguous() && dA_dX.is_cpu());
-    auto dA_dX_ptr = dA_dX.data_ptr<double>();
+    auto* dA_dX_ptr = dA_dX.data_ptr<double>();
 
     // total size of component + property dimension
     int64_t n_features = 1;
@@ -323,7 +323,7 @@ std::vector<torch::Tensor> PositionsGrad::backward(
     if (dA_dX.requires_grad()) {
         dB_d_dA_dX = torch::zeros_like(dA_dX);
         always_assert(dB_d_dA_dX.is_contiguous() && dB_d_dA_dX.is_cpu());
-        auto dB_d_dA_dX_ptr = dB_d_dA_dX.data_ptr<double>();
+        auto* dB_d_dA_dX_ptr = dB_d_dA_dX.data_ptr<double>();
 
         // dX_dr.shape      == [positions gradient samples, 3, features...]
         // dB_d_dA_dr.shape == [n_atoms, 3]
@@ -372,22 +372,22 @@ std::vector<torch::Tensor> CellGrad::forward(
     always_assert(all_cells.requires_grad());
     auto cell_grad = torch::zeros_like(all_cells);
     always_assert(cell_grad.is_contiguous() && cell_grad.is_cpu());
-    auto cell_grad_ptr = cell_grad.data_ptr<double>();
+    auto* cell_grad_ptr = cell_grad.data_ptr<double>();
 
     auto samples = dX_dH->samples();
     auto samples_values = samples->values();
-    auto samples_values_ptr = samples_values.data_ptr<int32_t>();
+    auto* samples_values_ptr = samples_values.data_ptr<int32_t>();
     always_assert(samples->names().size() == 1);
     always_assert(samples->names()[0] == "sample");
 
     // ========================= extract pointers =========================== //
     auto dX_dH_values = dX_dH->values();
     always_assert(dX_dH_values.is_contiguous() && dX_dH_values.is_cpu());
-    auto dX_dH_ptr = dX_dH_values.data_ptr<double>();
+    auto* dX_dH_ptr = dX_dH_values.data_ptr<double>();
 
     const auto& dA_dX_sizes = dA_dX.sizes();
     always_assert(dA_dX.is_contiguous() && dA_dX.is_cpu());
-    auto dA_dX_ptr = dA_dX.data_ptr<double>();
+    auto* dA_dX_ptr = dA_dX.data_ptr<double>();
 
     // total size of component + property dimension
     int64_t n_features = 1;
@@ -399,16 +399,16 @@ std::vector<torch::Tensor> CellGrad::forward(
     for (int64_t grad_sample_i=0; grad_sample_i<samples->count(); grad_sample_i++) {
         auto sample_i = samples_values_ptr[grad_sample_i];
         // we get the structure from the samples of the values
-        auto structure_i = structures[sample_i].item<int32_t>();
+        auto structure_i = static_cast<int64_t>(structures[sample_i].item<int32_t>());
 
         for (int64_t direction_1=0; direction_1<3; direction_1++) {
             for (int64_t direction_2=0; direction_2<3; direction_2++) {
                 auto dot = 0.0;
                 for (int64_t i=0; i<n_features; i++) {
-                    auto id = (grad_sample_i * 3 + direction_2) * 3 + direction_1;
+                    auto sample_component_row = (grad_sample_i * 3 + direction_2) * 3 + direction_1;
                     dot += (
                         dA_dX_ptr[sample_i * n_features + i]
-                        * dX_dH_ptr[id * n_features + i]
+                        * dX_dH_ptr[sample_component_row * n_features + i]
                     );
                 }
                 cell_grad_ptr[(structure_i * 3 + direction_1) * 3 + direction_2] += dot;
@@ -440,21 +440,21 @@ std::vector<torch::Tensor> CellGrad::backward(
 
     auto samples = dX_dH->samples();
     auto samples_values = samples->values();
-    auto samples_values_ptr = samples_values.data_ptr<int32_t>();
+    auto* samples_values_ptr = samples_values.data_ptr<int32_t>();
     always_assert(samples->names().size() == 1);
     always_assert(samples->names()[0] == "sample");
 
     // ========================= extract pointers =========================== //
     auto dX_dH_values = dX_dH->values();
     always_assert(dX_dH_values.is_contiguous() && dX_dH_values.is_cpu());
-    auto dX_dH_ptr = dX_dH_values.data_ptr<double>();
+    auto* dX_dH_ptr = dX_dH_values.data_ptr<double>();
 
     always_assert(dB_d_dA_dH.is_contiguous() && dB_d_dA_dH.is_cpu());
-    auto dB_d_dA_dH_ptr = dB_d_dA_dH.data_ptr<double>();
+    auto* dB_d_dA_dH_ptr = dB_d_dA_dH.data_ptr<double>();
 
     const auto& dA_dX_sizes = dA_dX.sizes();
     always_assert(dA_dX.is_contiguous() && dA_dX.is_cpu());
-    auto dA_dX_ptr = dA_dX.data_ptr<double>();
+    auto* dA_dX_ptr = dA_dX.data_ptr<double>();
 
     // total size of component + property dimension
     int64_t n_features = 1;
@@ -477,14 +477,14 @@ std::vector<torch::Tensor> CellGrad::backward(
     if (dA_dX.requires_grad()) {
         dB_d_dA_dX = torch::zeros_like(dA_dX);
         always_assert(dB_d_dA_dX.is_contiguous() && dB_d_dA_dX.is_cpu());
-        auto dB_d_dA_dX_ptr = dB_d_dA_dX.data_ptr<double>();
+        auto* dB_d_dA_dX_ptr = dB_d_dA_dX.data_ptr<double>();
 
         // dX_dH.shape      == [cell gradient samples, 3, 3, features...]
         // dB_d_dA_dH.shape == [structures, 3, 3]
         // dB_d_dA_dX.shape == [samples, features...]
         for (int64_t grad_sample_i=0; grad_sample_i<samples->count(); grad_sample_i++) {
             auto sample_i = samples_values_ptr[grad_sample_i];
-            auto structure_i = structures[sample_i].item<int32_t>();
+            auto structure_i = static_cast<int64_t>(structures[sample_i].item<int32_t>());
 
             for (int64_t i=0; i<n_features; i++) {
                 auto dot = 0.0;

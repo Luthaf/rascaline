@@ -1,15 +1,14 @@
 #include <torch/script.h>
 
-#include "rascaline/torch/system.hpp"
-#include "rascaline/torch/calculator.hpp"
+#include "rascaline/torch.hpp"
 using namespace rascaline_torch;
 
-TORCH_LIBRARY(rascaline, m) {
+TORCH_LIBRARY(rascaline, module) {
     // There is no way to access the docstrings from Python, so we don't bother
     // setting them to something useful here.
-    const std::string DOCSTRING = "";
+    const std::string DOCSTRING;
 
-    m.class_<SystemHolder>("System")
+    module.class_<SystemHolder>("System")
         .def(torch::init<torch::Tensor, torch::Tensor, torch::Tensor>(),
             DOCSTRING,
             {torch::arg("species"), torch::arg("positions"), torch::arg("cell")}
@@ -22,7 +21,7 @@ TORCH_LIBRARY(rascaline, m) {
         .def_property("cell", &SystemHolder::get_cell)
         ;
 
-    m.class_<CalculatorOptionsHolder>("CalculatorOptions")
+    module.class_<CalculatorOptionsHolder>("CalculatorOptions")
         .def(torch::init())
         .def_readwrite("gradients", &CalculatorOptionsHolder::gradients)
         .def_property("selected_keys",
@@ -39,7 +38,7 @@ TORCH_LIBRARY(rascaline, m) {
         )
         ;
 
-    m.class_<CalculatorHolder>("CalculatorHolder")
+    module.class_<CalculatorHolder>("CalculatorHolder")
         .def(torch::init<std::string, std::string>(),
             DOCSTRING,
             {torch::arg("name"), torch::arg("parameters")}
@@ -64,7 +63,7 @@ TORCH_LIBRARY(rascaline, m) {
             })
         ;
 
-    m.def(
+    module.def(
         "register_autograd("
             "__torch__.torch.classes.rascaline.System[] systems,"
             "__torch__.torch.classes.metatensor.TensorMap precomputed,"
