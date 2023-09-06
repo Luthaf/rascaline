@@ -29,13 +29,13 @@ impl SoapRadialIntegralGtoParameters {
             ));
         }
 
-        if self.cutoff < 0.0 || !self.cutoff.is_finite() {
+        if self.cutoff <= 1e-16 || !self.cutoff.is_finite() {
             return Err(Error::InvalidParameter(
                 "cutoff must be a positive number for GTO radial integral".into()
             ));
         }
 
-        if self.atomic_gaussian_width < 0.0 || !self.atomic_gaussian_width.is_finite() {
+        if self.atomic_gaussian_width <= 1e-16 || !self.atomic_gaussian_width.is_finite() {
             return Err(Error::InvalidParameter(
                 "atomic_gaussian_width must be a positive number for GTO radial integral".into()
             ));
