@@ -83,6 +83,7 @@ def test_system_conversion_from_ase():
     systems = systems_to_torch([atoms, atoms])
     assert isinstance(systems[0], torch.ScriptObject)
 
+
 # define a wrapper class to make sure the types TorchScript uses for of all
 # C-defined functions matches what we expect
 class SystemWrap:
