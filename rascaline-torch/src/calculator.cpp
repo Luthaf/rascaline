@@ -1,8 +1,10 @@
+#include <metatensor/torch.hpp>
+#include <rascaline.hpp>
+
 #include "rascaline/torch/calculator.hpp"
-#include "metatensor/torch/block.hpp"
-#include "metatensor/torch/tensor.hpp"
 #include "rascaline/torch/autograd.hpp"
-#include <c10/util/Exception.h>
+
+#include <exception>
 
 using namespace metatensor_torch;
 using namespace rascaline_torch;
@@ -116,25 +118,28 @@ static bool contains(const std::vector<std::string>& haystack, const std::string
 
 metatensor_torch::TorchTensorMap CalculatorHolder::compute(
     std::vector<TorchSystem> systems,
-    std::vector<std::string> gradients
+    TorchCalculatorOptions torch_options
 ) {
     auto all_positions = stack_all_positions(systems);
     auto all_cells = stack_all_cells(systems);
     auto structures_start_ivalue = torch::IValue();
 
     // =============== Handle all options for the calculation =============== //
+    if (torch_options.get() == nullptr) {
+        torch_options = torch::make_intrusive<CalculatorOptionsHolder>();
+    }
     auto options = rascaline::CalculationOptions();
 
     // which gradients should we compute? We have to compute some gradient
     // either if positions/cell has `requires_grad` set to `true`, or if the
     // user requested specific gradients in `forward_gradients`
-    for (const auto& parameter: gradients) {
+    for (const auto& parameter: torch_options->gradients) {
         if (parameter != "positions" && parameter != "cell") {
             C10_THROW_ERROR(ValueError, "invalid gradients requested: " + parameter);
         }
     }
 
-    if (contains(gradients, "positions") || all_positions.requires_grad()) {
+    if (contains(torch_options->gradients, "positions") || all_positions.requires_grad()) {
         options.gradients.push_back("positions");
 
         auto structures_start = c10::List<int64_t>();
@@ -146,21 +151,24 @@ metatensor_torch::TorchTensorMap CalculatorHolder::compute(
         structures_start_ivalue = torch::IValue(std::move(structures_start));
     }
 
-    if (contains(gradients, "cell") || all_cells.requires_grad()) {
+    if (contains(torch_options->gradients, "cell") || all_cells.requires_grad()) {
         options.gradients.push_back("cell");
     }
 
     // where all computed gradients explicitly requested in forward_gradients?
     bool all_forward_gradients = true;
     for (const auto& parameter: options.gradients) {
-        if (!contains(gradients, parameter)) {
+        if (!contains(torch_options->gradients, parameter)) {
             all_forward_gradients = false;
         }
     }
 
     options.use_native_system = all_systems_use_native(systems);
-    // TODO: selected_properties
-    // TODO: selected_samples
+    if (torch_options->selected_keys().isCustomClass()) {
+        options.selected_keys = torch_options->selected_keys().toCustomClass<LabelsHolder>()->as_metatensor();
+    }
+    options.selected_samples = torch_options->selected_samples_rascaline();
+    options.selected_properties = torch_options->selected_properties_rascaline();
 
     // convert the systems
     auto base_systems = std::vector<rascal_system_t>();
@@ -211,7 +219,7 @@ metatensor_torch::TorchTensorMap CalculatorHolder::compute(
     if (all_forward_gradients) {
         return torch_descriptor;
     } else {
-        return remove_other_gradients(torch_descriptor, gradients);
+        return remove_other_gradients(torch_descriptor, torch_options->gradients);
     }
 }
 
@@ -287,4 +295,104 @@ metatensor_torch::TorchTensorMap rascaline_torch::register_autograd(
     } else {
         return remove_other_gradients(precomputed, forward_gradients);
     }
+}
+
+
+// ========================================================================== //
+
+/// Selected keys/samples/properties are passed as `torch::IValue`, this
+/// function checks that the `torch::IValue` contains data of the right type.
+/// None and Labels are always allowed, and if `tensormap_ok` is true,
+/// `TensorMap` is also accepted (key selection does not accept `TensorMap`).
+static void check_selection_type(
+    const torch::IValue& selection,
+    std::string option,
+    bool tensormap_ok
+) {
+    if (selection.isNone()) {
+        // all good
+    } else if (selection.isCustomClass()) {
+        // check if we have either a Labels or TensorMap
+        try {
+            selection.toCustomClass<metatensor_torch::LabelsHolder>();
+        } catch (const c10::Error&) {
+            if (tensormap_ok) {
+                try {
+                    selection.toCustomClass<metatensor_torch::TensorMapHolder>();
+                } catch (const c10::Error&) {
+                    C10_THROW_ERROR(TypeError,
+                        "invalid type for `" + option + "`, expected None, Labels or TensorMap, got "
+                        + selection.type()->str()
+                    );
+                }
+            } else {
+                C10_THROW_ERROR(TypeError,
+                    "invalid type for `" + option + "`, expected None or Labels, got "
+                    + selection.type()->str()
+                );
+            }
+        }
+        // all good
+    } else {
+        if (tensormap_ok) {
+            C10_THROW_ERROR(TypeError,
+                "invalid type for `" + option + "`, expected None, Labels or TensorMap, got "
+                + selection.type()->str()
+            );
+        } else {
+            C10_THROW_ERROR(TypeError,
+                "invalid type for `" + option + "`, expected None or Labels, got "
+                + selection.type()->str()
+            );
+        }
+    }
+}
+
+static rascaline::LabelsSelection selection_to_rascaline(const torch::IValue& selection, std::string field) {
+    if (selection.isNone()) {
+        return rascaline::LabelsSelection::all();
+    } else if (selection.isCustomClass()) {
+        try {
+            auto subset = selection.toCustomClass<metatensor_torch::LabelsHolder>();
+            return rascaline::LabelsSelection::subset(subset->as_metatensor());
+        } catch (const c10::Error&) {
+            try {
+                auto predefined = selection.toCustomClass<metatensor_torch::TensorMapHolder>();
+                return rascaline::LabelsSelection::predefined(predefined->as_metatensor());
+            } catch (const c10::Error&) {
+                C10_THROW_ERROR(TypeError,
+                    "internal error: invalid type for `" + field + "`, got "
+                    + selection.type()->str()
+                );
+            }
+        }
+    } else {
+        C10_THROW_ERROR(TypeError,
+            "internal error: invalid type for `" + field + "`, got "
+            + selection.type()->str()
+        );
+    }
+}
+
+void CalculatorOptionsHolder::set_selected_samples(torch::IValue selection) {
+    check_selection_type(selection, "selected_samples", true);
+    selected_samples_ = std::move(selection);
+}
+
+rascaline::LabelsSelection CalculatorOptionsHolder::selected_samples_rascaline() const {
+    return selection_to_rascaline(selected_samples_, "selected_samples");
+}
+
+void CalculatorOptionsHolder::set_selected_properties(torch::IValue selection) {
+    check_selection_type(selection, "selected_properties", true);
+    selected_properties_ = std::move(selection);
+}
+
+rascaline::LabelsSelection CalculatorOptionsHolder::selected_properties_rascaline() const {
+    return selection_to_rascaline(selected_properties_, "selected_properties");
+}
+
+void CalculatorOptionsHolder::set_selected_keys(torch::IValue selection) {
+    check_selection_type(selection, "selected_keys", false);
+    selected_keys_ = std::move(selection);
 }

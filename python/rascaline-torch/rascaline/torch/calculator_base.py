@@ -1,7 +1,7 @@
 from typing import List, Optional, Union
 
-import metatensor.torch
 import torch
+from metatensor.torch import Labels, TensorMap
 
 from .system import System
 
@@ -11,9 +11,9 @@ CalculatorHolder = torch.classes.rascaline.CalculatorHolder
 
 def register_autograd(
     systems: Union[List[System], System],
-    precomputed: metatensor.torch.TensorMap,
+    precomputed: TensorMap,
     forward_gradients: Optional[List[str]] = None,
-) -> metatensor.torch.TensorMap:
+) -> TensorMap:
     """
     Register autograd nodes between ``system.positions`` and ``system.cell`` for each of
     the systems and the values in the ``precomputed``
@@ -44,11 +44,11 @@ def register_autograd(
 class CalculatorModule(torch.nn.Module):
     """
     This is the base class for calculators in rascaline-torch, providing the
-    :py:meth:`CalculatorBase.compute` function and integration with
+    :py:meth:`CalculatorModule.compute` function and integration with
     :py:class:`torch.nn.Module`.
 
-    One can initialize a ``Calculator`` in two ways: either directly with the registered
-    name and JSON parameter string (which are documented in the
+    One can initialize a py:class:`CalculatorModule` in two ways: either directly with
+    the registered name and JSON parameter string (which are documented in the
     :ref:`userdoc-calculators`); or through one of the child class documented below.
 
     :param name: name used to register this calculator
@@ -87,13 +87,16 @@ class CalculatorModule(torch.nn.Module):
         systems: Union[System, List[System]],
         gradients: Optional[List[str]] = None,
         use_native_system: bool = True,
-    ) -> metatensor.torch.TensorMap:
+        selected_samples: Optional[Union[Labels, TensorMap]] = None,
+        selected_properties: Optional[Union[Labels, TensorMap]] = None,
+        selected_keys: Optional[Labels] = None,
+    ) -> TensorMap:
         """Runs a calculation with this calculator on the given ``systems``.
 
         .. seealso::
 
-            :py:func:`rascaline.CalculatorBase.compute` for more information on the
-            different parameters of this function.
+            :py:func:`rascaline.calculators.CalculatorBase.compute` for more information
+            on the different parameters of this function.
 
         :param systems: single system or list of systems on which to run the
             calculation. If any of the systems' ``positions`` or ``cell`` has
@@ -109,6 +112,16 @@ class CalculatorModule(torch.nn.Module):
         :param use_native_system: This can only be :py:obj:`True`, and is here for
             compatibility with the same parameter on
             :py:meth:`rascaline.calculators.CalculatorBase.compute`.
+
+        :param selected_samples: Set of samples on which to run the calculation, with
+            the same meaning as in
+            :py:func:`rascaline.calculators.CalculatorBase.compute`.
+
+        :param selected_properties: Set of properties to compute, with the same meaning
+            as in :py:func:`rascaline.calculators.CalculatorBase.compute`.
+
+        :param selected_keys: Selection for the keys to include in the output, with the
+            same meaning as in :py:func:`rascaline.calculators.CalculatorBase.compute`.
         """
         if gradients is None:
             gradients = []
@@ -120,16 +133,30 @@ class CalculatorModule(torch.nn.Module):
         if not use_native_system:
             raise ValueError("only `use_native_system=True` is supported")
 
-        return self._c.compute(systems=systems, gradients=gradients)
+        options = torch.classes.rascaline.CalculatorOptions()
+        options.gradients = gradients
+        options.selected_samples = selected_samples
+        options.selected_properties = selected_properties
+        options.selected_keys = selected_keys
+
+        return self._c.compute(systems=systems, options=options)
 
     def forward(
         self,
         systems: List[System],
         gradients: Optional[List[str]] = None,
         use_native_system: bool = True,
-    ) -> metatensor.torch.TensorMap:
+        selected_samples: Optional[Union[Labels, TensorMap]] = None,
+        selected_properties: Optional[Union[Labels, TensorMap]] = None,
+        selected_keys: Optional[Labels] = None,
+    ) -> TensorMap:
         """forward just calls :py:meth:`CalculatorModule.compute`"""
 
         return self.compute(
-            systems=systems, gradients=gradients, use_native_system=use_native_system
+            systems=systems,
+            gradients=gradients,
+            use_native_system=use_native_system,
+            selected_samples=selected_samples,
+            selected_properties=selected_properties,
+            selected_keys=selected_keys,
         )

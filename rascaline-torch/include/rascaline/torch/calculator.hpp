@@ -15,6 +15,60 @@ class RascalineAutograd;
 class CalculatorHolder;
 using TorchCalculator = torch::intrusive_ptr<CalculatorHolder>;
 
+class CalculatorOptionsHolder;
+using TorchCalculatorOptions = torch::intrusive_ptr<CalculatorOptionsHolder>;
+
+/// Options for a single calculation
+class RASCALINE_TORCH_EXPORT CalculatorOptionsHolder: public torch::CustomClassHolder {
+public:
+    /// get the current selected samples
+    torch::IValue selected_samples() const {
+        return selected_samples_;
+    }
+    /// Set the selected samples to `selection`.
+    ///
+    /// The `IValue` can be `None` (no selection), an instance of
+    /// `metatensor_torch::TorchLabels`, or an instance of
+    /// `metatensor_torch::TorchTensorMap`.
+    void set_selected_samples(torch::IValue selection);
+
+    /// Get the selected samples in the format used by rascaline
+    rascaline::LabelsSelection selected_samples_rascaline() const;
+
+    /// get the current selected properties
+    torch::IValue selected_properties() const {
+        return selected_properties_;
+    }
+    /// Set the selected properties to `selection`.
+    ///
+    /// The `IValue` can be `None` (no selection), an instance of
+    /// `metatensor_torch::TorchLabels`, or an instance of
+    /// `metatensor_torch::TorchTensorMap`.
+    void set_selected_properties(torch::IValue selection);
+
+    /// Get the selected properties in the format used by rascaline
+    rascaline::LabelsSelection selected_properties_rascaline() const;
+
+    /// get the current selected keys
+    torch::IValue selected_keys() const {
+        return selected_keys_;
+    }
+
+    /// Set the selected properties to `selection`.
+    ///
+    /// The `IValue` can be `None` (no selection), or an instance of
+    /// `metatensor_torch::TorchLabels`.
+    void set_selected_keys(torch::IValue selection);
+
+    /// which gradients to keep in the output of a calculation
+    std::vector<std::string> gradients = {};
+
+private:
+    torch::IValue selected_samples_ = torch::IValue();
+    torch::IValue selected_properties_ = torch::IValue();
+    torch::IValue selected_keys_ = torch::IValue();
+};
+
 /// Custom class holder to store, serialize and load rascaline calculators
 /// inside Torch(Script) modules.
 class RASCALINE_TORCH_EXPORT CalculatorHolder: public torch::CustomClassHolder {
@@ -39,13 +93,10 @@ public:
         return calculator_.cutoffs();
     }
 
-    /// Run a calculation for the given `systems`.
-    ///
-    /// `gradients` controls which gradients will be stored in the
-    /// output TensorMap
+    /// Run a calculation for the given `systems` using the given options
     metatensor_torch::TorchTensorMap compute(
         std::vector<TorchSystem> systems,
-        std::vector<std::string> gradients = {}
+        TorchCalculatorOptions options = {}
     );
 
 private:

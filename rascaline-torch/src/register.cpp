@@ -1,7 +1,6 @@
 #include <torch/script.h>
 
 #include "rascaline/torch/system.hpp"
-#include "rascaline/torch/autograd.hpp"
 #include "rascaline/torch/calculator.hpp"
 using namespace rascaline_torch;
 
@@ -23,6 +22,23 @@ TORCH_LIBRARY(rascaline, m) {
         .def_property("cell", &SystemHolder::get_cell)
         ;
 
+    m.class_<CalculatorOptionsHolder>("CalculatorOptions")
+        .def(torch::init())
+        .def_readwrite("gradients", &CalculatorOptionsHolder::gradients)
+        .def_property("selected_keys",
+            &CalculatorOptionsHolder::selected_keys,
+            &CalculatorOptionsHolder::set_selected_keys
+        )
+        .def_property("selected_samples",
+            &CalculatorOptionsHolder::selected_samples,
+            &CalculatorOptionsHolder::set_selected_samples
+        )
+        .def_property("selected_properties",
+            &CalculatorOptionsHolder::selected_properties,
+            &CalculatorOptionsHolder::set_selected_properties
+        )
+        ;
+
     m.class_<CalculatorHolder>("CalculatorHolder")
         .def(torch::init<std::string, std::string>(),
             DOCSTRING,
@@ -33,7 +49,7 @@ TORCH_LIBRARY(rascaline, m) {
         .def_property("cutoffs", &CalculatorHolder::cutoffs)
         .def("compute", &CalculatorHolder::compute, DOCSTRING, {
             torch::arg("systems"),
-            torch::arg("gradients") = std::vector<std::string>()
+            torch::arg("options") = {}
         })
         .def_pickle(
             // __getstate__
