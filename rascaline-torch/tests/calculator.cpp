@@ -1,9 +1,11 @@
-
-#include "metatensor/torch/block.hpp"
+#include <c10/util/intrusive_ptr.h>
 #include <torch/torch.h>
 
 #include <rascaline.hpp>
-#include <rascaline/torch.hpp>
+#include <metatensor/torch.hpp>
+
+#include "metatensor/torch/labels.hpp"
+#include "rascaline/torch.hpp"
 
 #include <catch.hpp>
 
@@ -77,9 +79,81 @@ TEST_CASE("Calculator") {
         CHECK(block->gradients_list().empty());
     }
 
+    SECTION("keys selection") {
+        auto system = test_system(false, false);
+
+        auto options = torch::make_intrusive<CalculatorOptionsHolder>();
+        options->set_selected_keys(LabelsHolder::create({"species_center"}, {{12}, {1}}));
+        auto descriptor = calculator.compute({system}, options);
+
+        CHECK(*descriptor->keys() == metatensor::Labels(
+            {"species_center"},
+            {{12}, {1}}
+        ));
+
+        // empty block
+        auto block = TensorMapHolder::block_by_id(descriptor, 0);
+        auto values = block->values();
+        CHECK(values.sizes() == std::vector<int64_t>{0, 2});
+
+        // H block
+        block = TensorMapHolder::block_by_id(descriptor, 1);
+        auto expected = torch::tensor({5.0, 9.0, 6.0, 18.0, 7.0, 15.0}).reshape({3, 2});
+        values = block->values();
+        CHECK(torch::all(values == expected).item<bool>());
+    }
+
+    SECTION("sample selection") {
+        auto system = test_system(false, false);
+
+        auto options = torch::make_intrusive<CalculatorOptionsHolder>();
+        options->set_selected_samples(LabelsHolder::create({"center"}, {{0}, {2}}));
+        auto descriptor = calculator.compute({system}, options);
+
+        // H block
+        auto block = TensorMapHolder::block_by_id(descriptor, 0);
+        CHECK(*block->samples() == metatensor::Labels(
+            {"structure", "center"},
+            {{0, 2}}
+        ));
+
+        // C block
+        block = TensorMapHolder::block_by_id(descriptor, 1);
+        CHECK(*block->samples() == metatensor::Labels(
+            {"structure", "center"},
+            {{0, 0}}
+        ));
+    }
+
+    SECTION("properties selection") {
+        auto system = test_system(false, false);
+
+        auto options = torch::make_intrusive<CalculatorOptionsHolder>();
+        options->set_selected_properties(LabelsHolder::create({"index_delta"}, {{1}, {12}}));
+        auto descriptor = calculator.compute({system}, options);
+
+        // H block
+        auto block = TensorMapHolder::block_by_id(descriptor, 0);
+        CHECK(*block->properties() == metatensor::Labels(
+            {"index_delta", "x_y_z"},
+            {{1, 0}}
+        ));
+
+        // C block
+        block = TensorMapHolder::block_by_id(descriptor, 1);
+        CHECK(*block->properties() == metatensor::Labels(
+            {"index_delta", "x_y_z"},
+            {{1, 0}}
+        ));
+    }
+
+
     SECTION("Compute -- all gradients") {
         auto system = test_system(true, false);
-        auto descriptor = calculator.compute({system}, /* forward_gradients */ {"positions"});
+
+        auto options = torch::make_intrusive<CalculatorOptionsHolder>();
+        options->gradients.push_back("positions");
+        auto descriptor = calculator.compute({system}, options);
 
         CHECK(*descriptor->keys() == metatensor::Labels(
             {"species_center"},
@@ -179,7 +253,10 @@ TEST_CASE("Calculator") {
 
     SECTION("Compute -- no backward gradients") {
         auto system = test_system(false, false);
-        auto descriptor = calculator.compute({system}, /* forward_gradients */ {"positions"});
+
+        auto options = torch::make_intrusive<CalculatorOptionsHolder>();
+        options->gradients.push_back("positions");
+        auto descriptor = calculator.compute({system}, options);
 
         CHECK(*descriptor->keys() == metatensor::Labels(
             {"species_center"},

@@ -1,5 +1,8 @@
+from typing import List, Optional, Union
+
 import pytest
 import torch
+from metatensor.torch import Labels, TensorMap
 
 from rascaline.torch import CalculatorModule, System
 from rascaline.torch.calculators import DummyCalculator
@@ -109,6 +112,49 @@ def test_compute_multiple_systems(system):
     assert O_block.values.shape == (6, 2)
 
 
+def test_key_selection(system):
+    calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
+    descriptor = calculator.compute(
+        system,
+        selected_keys=Labels("species_center", torch.IntTensor([[12], [1]])),
+    )
+    assert torch.all(descriptor.keys.values == torch.tensor([[12], [1]]))
+
+    H_block = descriptor.block({"species_center": 1})
+    assert H_block.values.shape == (2, 2)
+
+    missing_block = descriptor.block({"species_center": 12})
+    assert missing_block.values.shape == (0, 2)
+
+
+def test_samples_selection(system):
+    calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
+    descriptor = calculator.compute(
+        system,
+        selected_samples=Labels("center", torch.IntTensor([[0], [2]])),
+    )
+
+    H_block = descriptor.block({"species_center": 1})
+    assert torch.all(H_block.samples.values == torch.tensor([(0, 0)]))
+
+    O_block = descriptor.block({"species_center": 8})
+    assert torch.all(O_block.samples.values == torch.tensor([(0, 2)]))
+
+
+def test_properties_selection(system):
+    calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
+    descriptor = calculator.compute(
+        system,
+        selected_properties=Labels("index_delta", torch.IntTensor([[0]])),
+    )
+
+    H_block = descriptor.block({"species_center": 1})
+    assert torch.all(H_block.properties.values == torch.tensor([(0, 1)]))
+
+    O_block = descriptor.block({"species_center": 8})
+    assert torch.all(O_block.properties.values == torch.tensor([(0, 1)]))
+
+
 def test_base_classes():
     assert DummyCalculator.__module__ == "rascaline.torch.calculators"
 
@@ -122,8 +168,23 @@ def test_script(tmpdir):
             super().__init__()
             self.calculator = DummyCalculator(cutoff=3.2, delta=6, name="foo")
 
-        def forward(self, system: System):
-            self.calculator.compute([system])
+        def forward(
+            self,
+            systems: List[System],
+            gradients: Optional[List[str]] = None,
+            use_native_system: bool = True,
+            selected_samples: Optional[Union[Labels, TensorMap]] = None,
+            selected_properties: Optional[Union[Labels, TensorMap]] = None,
+            selected_keys: Optional[Labels] = None,
+        ) -> TensorMap:
+            return self.calculator(
+                systems=systems,
+                gradients=gradients,
+                use_native_system=use_native_system,
+                selected_samples=selected_samples,
+                selected_properties=selected_properties,
+                selected_keys=selected_keys,
+            )
 
     module = TestModule()
     module = torch.jit.script(module)

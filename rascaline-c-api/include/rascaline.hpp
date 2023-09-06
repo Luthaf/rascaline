@@ -346,7 +346,7 @@ class LabelsSelection {
 public:
     /// Use all possible labels for this calculation
     static LabelsSelection all() {
-        return LabelsSelection(std::nullopt, nullptr);
+        return LabelsSelection(std::nullopt, std::nullopt);
     }
 
     /// Select a subset of labels, using the same selection criterion for all
@@ -360,7 +360,7 @@ public:
     /// labels, then only entries from the full set which match one of the entry
     /// in this selection for all of the selection variable will be used.
     static LabelsSelection subset(metatensor::Labels selection) {
-        return LabelsSelection(std::move(selection), nullptr);
+        return LabelsSelection(std::move(selection), std::nullopt);
     }
 
     /// Use a predefined subset of labels, with different entries for different
@@ -369,21 +369,27 @@ public:
     /// For each key, the corresponding labels are fetched out of the
     /// `selection`, which must have the same set of keys as the full
     /// calculation.
-    static LabelsSelection predefined(std::shared_ptr<metatensor::TensorMap> selection) {
-        return LabelsSelection(std::nullopt, std::move(selection));
+    static LabelsSelection predefined(const metatensor::TensorMap& selection) {
+        return LabelsSelection(std::nullopt, selection.clone_metadata_only());
     }
 
     ~LabelsSelection() = default;
 
     /// LabelsSelection can be copy-constructed
-    LabelsSelection(const LabelsSelection& other): LabelsSelection(std::nullopt, nullptr) {
+    LabelsSelection(const LabelsSelection& other): LabelsSelection(std::nullopt, std::nullopt) {
         *this = other;
     }
 
     /// LabelsSelection can be copy-assigned
     LabelsSelection& operator=(const LabelsSelection& other) {
         this->subset_ = other.subset_;
-        this->predefined_ = other.predefined_;
+
+        if (other.predefined_) {
+            this->predefined_ = other.predefined_->clone_metadata_only();
+        } else {
+            this->predefined_ = std::nullopt;
+        }
+
         if (this->subset_) {
             this->raw_subset_ = subset_->as_mts_labels_t();
         }
@@ -392,7 +398,7 @@ public:
     }
 
     /// LabelsSelection can be move-constructed
-    LabelsSelection(LabelsSelection&& other): LabelsSelection(std::nullopt, nullptr) {
+    LabelsSelection(LabelsSelection&& other): LabelsSelection(std::nullopt, std::nullopt) {
         *this = std::move(other);
     }
 
@@ -405,7 +411,7 @@ public:
         }
 
         other.subset_ = std::nullopt;
-        other.predefined_ = nullptr;
+        other.predefined_ = std::nullopt;
         std::memset(&other.raw_subset_, 0, sizeof(mts_labels_t));
 
         return *this;
@@ -420,15 +426,15 @@ public:
             selection.subset = &raw_subset_;
         }
 
-        if (predefined_ != nullptr) {
-            selection.predefined = predefined_->as_mts_tensormap_t();
+        if (predefined_) {
+            selection.predefined = predefined_.value().as_mts_tensormap_t();
         }
 
         return selection;
     }
 
 private:
-    LabelsSelection(std::optional<metatensor::Labels> subset, std::shared_ptr<metatensor::TensorMap> predefined):
+    LabelsSelection(std::optional<metatensor::Labels> subset, std::optional<metatensor::TensorMap> predefined):
         subset_(std::move(subset)), raw_subset_(), predefined_(std::move(predefined))
     {
         std::memset(&raw_subset_, 0, sizeof(mts_labels_t));
@@ -439,7 +445,7 @@ private:
 
     std::optional<metatensor::Labels> subset_;
     mts_labels_t raw_subset_;
-    std::shared_ptr<metatensor::TensorMap> predefined_;
+    std::optional<metatensor::TensorMap> predefined_;
 };
 
 

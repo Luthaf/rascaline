@@ -1,3 +1,5 @@
+// IWYU pragma: private; include "rascaline/torch.hpp"
+
 #ifndef RASCALINE_TORCH_AUTOGRAD_HPP
 #define RASCALINE_TORCH_AUTOGRAD_HPP
 
@@ -7,8 +9,6 @@
 #include <metatensor/torch.hpp>
 
 #include "rascaline/torch/exports.h"
-#include "rascaline/torch/system.hpp"
-#include "rascaline/torch/calculator.hpp"
 
 namespace rascaline_torch {
 

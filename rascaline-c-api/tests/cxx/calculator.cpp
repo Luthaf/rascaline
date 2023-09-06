@@ -344,7 +344,7 @@ TEST_CASE("Compute descriptor") {
             )
         );
 
-        auto predefined = std::make_shared<metatensor::TensorMap>(
+        auto predefined = metatensor::TensorMap(
             metatensor::Labels({"species_center"}, {{1}, {6}}),
             std::move(blocks)
         );
