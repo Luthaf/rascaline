@@ -18,7 +18,7 @@ if os.path.exists(os.path.join(RASCALINE, "rascaline-c-api")):
     RASCALINE_DEP = f"rascaline @ file://{RASCALINE}?{uuid}"
 else:
     # we are building from a sdist
-    RASCALINE_DEP = "rascaline == 0.1.0"
+    RASCALINE_DEP = "rascaline >=0.1.0.dev0,<0.2.0"
 
 
 prepare_metadata_for_build_wheel = build_meta.prepare_metadata_for_build_wheel
