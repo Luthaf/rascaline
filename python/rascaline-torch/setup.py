@@ -238,10 +238,13 @@ if __name__ == "__main__":
         with open(os.path.join(ROOT, authors[0])) as fd:
             authors = fd.read().splitlines()
 
-    install_requires = ["torch >= 1.11"]
+    install_requires = [
+        "torch >= 1.11",
+        "metatensor-torch",
+    ]
     if os.path.exists(RASCALINE_C_API):
         # we are building from a git checkout
-        rascaline_path = os.path.join(ROOT, "..", "..")
+        rascaline_path = os.path.realpath(os.path.join(ROOT, "..", ".."))
 
         # add a random uuid to the file url to prevent pip from using a cached
         # wheel for rascaline, and force it to re-build from scratch
