@@ -3,6 +3,7 @@ import os
 import shutil
 import subprocess
 import sys
+import uuid
 
 from setuptools import Extension, setup
 from setuptools.command.bdist_egg import bdist_egg
@@ -12,6 +13,7 @@ from wheel.bdist_wheel import bdist_wheel
 
 
 ROOT = os.path.realpath(os.path.dirname(__file__))
+RASCALINE_TORCH = os.path.join(ROOT, "python", "rascaline-torch")
 
 RASCALINE_BUILD_TYPE = os.environ.get("RASCALINE_BUILD_TYPE", "release")
 if RASCALINE_BUILD_TYPE not in ["debug", "release"]:
@@ -250,9 +252,22 @@ if __name__ == "__main__":
     with open(os.path.join(ROOT, "AUTHORS")) as fd:
         authors = fd.read().splitlines()
 
+    extras_require = {}
+    if os.path.exists(RASCALINE_TORCH):
+        # we are building from a git checkout
+
+        # add a random uuid to the file url to prevent pip from using a cached
+        # wheel for rascaline-torch, and force it to re-build from scratch
+        uuid = uuid.uuid4()
+        extras_require["torch"] = f"rascaline-torch @ file://{RASCALINE_TORCH}?{uuid}"
+    else:
+        # we are building from a sdist/installing from a wheel
+        extras_require["torch"] = "rascaline-torch >=0.1.0.dev0,<0.2.0"
+
     setup(
         version=version,
         author=", ".join(authors),
+        extras_require=extras_require,
         ext_modules=[
             # only declare the extension, it is built & copied as required by cmake
             # in the build_ext command
