@@ -15,6 +15,9 @@ jobs:
   build-and-publish:
     runs-on: ubuntu-20.04
     steps:
+      - name: free disk space
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android || true
+
       - uses: actions/checkout@v3
 
       - name: setup rust
@@ -34,6 +37,9 @@ jobs:
 
       - name: build documentation
         run: tox -e docs
+        env:
+          # Use the CPU only version of torch when building/running the code
+          PIP_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
 
       - name: put documentation in the website
         run: |

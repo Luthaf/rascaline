@@ -1,7 +1,7 @@
 use approx::assert_relative_eq;
 use ndarray::{ArrayD, Axis, s};
 
-use equistore::{Labels, TensorBlockRef};
+use metatensor::{Labels, TensorBlockRef};
 
 use rascaline::{Calculator, CalculationOptions};
 

@@ -1,5 +1,5 @@
 # sphinx dependencies
-sphinx
+sphinx < 7.2    # breathe is not compatible with sphinx 7.2 yet
 furo            # sphinx theme
 breathe >=4.33  # C and C++ => sphinx through doxygen
 sphinx-gallery  # convert python files into nice documentation
@@ -9,7 +9,9 @@ toml            # to extract version number out of Cargo.toml
 myst-parser     # markdown => rst translation, used in extensions/rascaline_json_schema
 
 # dependencies for the tutorials
-equistore @ https://github.com/lab-cosmo/equistore/archive/c022fde.zip
+--extra-index-url https://download.pytorch.org/whl/cpu
+metatensor[torch] @ https://github.com/lab-cosmo/metatensor/archive/d97ea65.zip
+torch
 chemfiles
 matplotlib
 skmatter

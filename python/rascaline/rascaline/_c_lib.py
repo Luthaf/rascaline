@@ -2,7 +2,7 @@ import os
 import sys
 from ctypes import cdll
 
-import equistore.core
+import metatensor.core
 
 from ._c_api import setup_functions
 from .log import _set_logging_callback_impl, default_logging_callback
@@ -17,9 +17,9 @@ class RascalFinder(object):
 
     def __call__(self):
         if self._cached_dll is None:
-            # Load equistore shared library in the process first, to ensure
+            # Load metatensor shared library in the process first, to ensure
             # the rascaline shared library can find it
-            equistore.core._c_lib._get_library()
+            metatensor.core._c_lib._get_library()
 
             path = _lib_path()
 
@@ -32,17 +32,16 @@ class RascalFinder(object):
 def _lib_path():
     if sys.platform.startswith("darwin"):
         windows = False
-        name = "librascaline.dylib"
+        path = os.path.join(_HERE, "lib", "librascaline.dylib")
     elif sys.platform.startswith("linux"):
         windows = False
-        name = "librascaline.so"
+        path = os.path.join(_HERE, "lib", "librascaline.so")
     elif sys.platform.startswith("win"):
         windows = True
-        name = "rascaline.dll"
+        path = os.path.join(_HERE, "bin", "rascaline.dll")
     else:
         raise ImportError("Unknown platform. Please edit this file")
 
-    path = os.path.join(os.path.join(_HERE, "lib"), name)
     if os.path.isfile(path):
         if windows:
             _check_dll(path)
@@ -52,12 +51,13 @@ def _lib_path():
 
 
 def _check_dll(path):
-    """Check if the DLL pointer size matches Python (32-bit or 64-bit)."""
+    """Check if the DLL at ``path`` matches the architecture of Python"""
     import platform
     import struct
 
     IMAGE_FILE_MACHINE_I386 = 332
     IMAGE_FILE_MACHINE_AMD64 = 34404
+    IMAGE_FILE_MACHINE_ARM64 = 43620
 
     machine = None
     with open(path, "rb") as fd:
@@ -72,15 +72,21 @@ def _check_dll(path):
             header = fd.read(2)
             machine = struct.unpack("<H", header)[0]
 
-    arch = platform.architecture()[0]
-    if arch == "32bit":
+    python_machine = platform.machine()
+    if python_machine == "x86":
         if machine != IMAGE_FILE_MACHINE_I386:
-            raise ImportError("Python is 32-bit, but rascaline.dll is not")
-    elif arch == "64bit":
+            raise ImportError("Python is 32-bit x86, but rascaline.dll is not")
+    elif python_machine == "AMD64":
         if machine != IMAGE_FILE_MACHINE_AMD64:
-            raise ImportError("Python is 64-bit, but rascaline.dll is not")
+            raise ImportError("Python is 64-bit x86_64, but rascaline.dll is not")
+    elif python_machine == "ARM64":
+        if machine != IMAGE_FILE_MACHINE_ARM64:
+            raise ImportError("Python is 64-bit ARM, but rascaline.dll is not")
     else:
-        raise ImportError("Could not determine pointer size of Python")
+        raise ImportError(
+            f"Rascaline doesn't provide a version for {python_machine} CPU. "
+            "If you are compiling from source on a new architecture, edit this file"
+        )
 
 
 _get_library = RascalFinder()

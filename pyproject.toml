@@ -26,7 +26,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "equistore-core @ https://github.com/lab-cosmo/equistore/archive/c022fde.zip#subdirectory=python/equistore-core",
+    "metatensor-core @ https://github.com/lab-cosmo/metatensor/archive/d97ea65.zip#subdirectory=python/metatensor-core",
 ]
 
 [project.urls]

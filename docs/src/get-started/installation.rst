@@ -57,8 +57,8 @@ The build and installation can be configures with a few cmake options, using
 | RASCALINE_ENABLE_CHEMFILES           | Enable the usage of chemfiles for reading     | ON             |
 |                                      | structures from files                         |                |
 +--------------------------------------+-----------------------------------------------+----------------+
-| RASCALINE_FETCH_EQUISTORE            | Automatically fetch, build and install        | OFF            |
-|                                      | equistore (a dependency of rascaline)         |                |
+| RASCALINE_FETCH_METATENSOR           | Automatically fetch, build and install        | OFF            |
+|                                      | metatensor (a dependency of rascaline)        |                |
 +--------------------------------------+-----------------------------------------------+----------------+
 
 Using the Rust library
@@ -78,3 +78,75 @@ If you want to disable it, you can use:
 
     [dependencies]
     rascaline = {git = "https://github.com/Luthaf/rascaline", default-features = false}
+
+
+.. _install-torch-script:
+
+Installing the TorchScript bindings
+-----------------------------------
+
+For usage from Python
+^^^^^^^^^^^^^^^^^^^^^
+
+Building from source:
+
+.. code-block:: bash
+
+    git clone https://github.com/luthaf/rascaline
+    cd rascaline/python/rascaline-torch
+    pip install .
+
+    # alternatively, the same thing in a single command
+    pip install git+https://github.com/luthaf/rascaline#subdirectory=python/rascaline-torch
+
+
+For usage from C++
+^^^^^^^^^^^^^^^^^^
+
+.. code-block:: bash
+
+    git clone https://github.com/lab-cosmo/rascaline
+    cd rascaline/rascaline-torch
+    mkdir build && cd build
+    cmake ..
+    # configure cmake if needed
+    cmake --build . --target install
+
+Compiling the TorchScript bindings requires you to manually install some of the
+dependencies:
+
+- the C++ part of PyTorch, which you can install `on it's own
+  <https://pytorch.org/get-started/locally/>`_. You can also use the
+  installation that comes with a Python installation by adding the output of the
+  command below to ``CMAKE_PREFIX_PATH``:
+
+  .. code-block:: bash
+
+    python -c "import torch; print(torch.utils.cmake_prefix_path)"
+
+- :ref:`the C++ interface of rascaline <install-c-lib>`, which itself requires
+  the `C++ interface of metatensor`_;
+- the `TorchScript interface of metatensor`_. We can download and build an
+  appropriate version of it automatically by setting the cmake option
+  ``-DRASCALINE_TORCH_FETCH_METATENSOR_TORCH=ON``
+
+If any of these dependencies is not in a standard location, you should specify
+the installation directory when configuring cmake with ``CMAKE_PREFIX_PATH``.
+Other useful configuration options are:
+
++----------------------------------------+-----------------------------------------------+----------------+
+| Option                                 | Description                                   | Default        |
++========================================+===============================================+================+
+| CMAKE_BUILD_TYPE                       | Type of build: debug or release               | release        |
++----------------------------------------+-----------------------------------------------+----------------+
+| CMAKE_INSTALL_PREFIX                   | Prefix in which the library will be installed | ``/usr/local`` |
++----------------------------------------+-----------------------------------------------+----------------+
+| CMAKE_PREFIX_PATH                      | ``;``-separated list of path where CMake will |                |
+|                                        | search for dependencies.                      |                |
++----------------------------------------+-----------------------------------------------+----------------+
+| RASCALINE_TORCH_FETCH_METATENSOR_TORCH | Should CMake automatically download and       | OFF            |
+|                                        | install metatensor-torch?                     |                |
++----------------------------------------+-----------------------------------------------+----------------+
+
+.. _C++ interface of metatensor: https://lab-cosmo.github.io/metatensor/latest/get-started/installation.html#installing-the-c-and-c-library
+.. _TorchScript interface of metatensor: https://lab-cosmo.github.io/metatensor/latest/get-started/installation.html#for-usage-from-c

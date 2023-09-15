@@ -39,7 +39,7 @@ impl From<Matrix3> for UnitCell {
             return UnitCell::infinite()
         }
 
-        assert!(matrix.determinant() > 1e-6, "matrix is not invertible");
+        assert!(matrix.determinant().abs() > 1e-6, "matrix is not invertible");
 
         let is_close_0 = |value| f64::abs(value) < 1e-6;
         let is_diagonal = |matrix: Matrix3| {
@@ -211,9 +211,7 @@ impl UnitCell {
 
     /// Get the volume of the cell
     pub fn volume(&self) -> f64 {
-        let volume = self.matrix.determinant();
-        assert!(volume >= 0.0, "Volume is not positive!");
-        return volume;
+        return self.matrix.determinant().abs();
     }
 
     /// Get the matricial representation of the unit cell
@@ -371,5 +369,24 @@ mod tests {
             let transformed = cell.cartesian(cell.fractional(test));
             assert_ulps_eq!(test, transformed, epsilon = 1e-15);
         }
+    }
+
+    #[test]
+    fn negative_determinant_cell() {
+        // https://github.com/Luthaf/rascaline/issues/215
+        let cell = UnitCell::from(Matrix3::new([
+            [3.83835964, 0.01566142, 0.0],
+            [-0.04761064, 5.55603676, 0.0],
+            [0.0, 0.0, -15.38664356]
+        ]));
+
+        assert_relative_eq!(cell.volume(), 328.1481, max_relative=1e-6);
+        // checked against ASE
+        assert_relative_eq!(cell.a(), 3.83839159, max_relative=1e-6);
+        assert_relative_eq!(cell.b(), 5.55624075, max_relative=1e-6);
+        assert_relative_eq!(cell.c(), 15.38664356, max_relative=1e-6);
+        assert_relative_eq!(cell.alpha(), 90.0, max_relative=1e-6);
+        assert_relative_eq!(cell.beta(), 90.0, max_relative=1e-6);
+        assert_relative_eq!(cell.gamma(), 90.25718632, max_relative=1e-6);
     }
 }

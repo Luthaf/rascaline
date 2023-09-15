@@ -6,7 +6,7 @@ Property Selection
 """
 import chemfiles
 import numpy as np
-from equistore.core import EquistoreError, Labels, TensorBlock, TensorMap
+from metatensor.core import Labels, MetatensorError, TensorBlock, TensorMap
 from skmatter.feature_selection import FPS
 
 from rascaline import SoapPowerSpectrum
@@ -47,7 +47,7 @@ descriptor = calculator.compute(frames)
 # of the labels must be a subset of the names of the properties produced by the
 # calculator. You can see the default set of names with:
 
-print("properties names:", descriptor.property_names)
+print("properties names:", descriptor.properties_names)
 
 # %%
 #
@@ -157,7 +157,7 @@ selected_descriptor = calculator.compute(frames, selected_properties=selection)
 
 try:
     selected_descriptor.keys_to_samples("species_center")
-except EquistoreError as err:
+except MetatensorError as err:
     print(err)
 
 # %%

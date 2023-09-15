@@ -1,0 +1,13 @@
+[package]
+name = "rascaline-torch"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[lib]
+path = "lib.rs"
+test = false
+doctest = false
+
+[dev-dependencies]
+which = "4"

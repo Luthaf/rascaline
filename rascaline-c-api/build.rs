@@ -16,7 +16,7 @@ fn main() {
         .with_config(cbindgen::Config {
             language: cbindgen::Language::C,
             cpp_compat: true,
-            includes: vec!["equistore.h".into()],
+            includes: vec!["metatensor.h".into()],
             include_guard: Some("RASCALINE_H".into()),
             include_version: false,
             documentation: true,

@@ -11,6 +11,9 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 sys.path.append(os.path.join(ROOT, "docs", "extensions"))
 
+os.environ["RASCALINE_IMPORT_FOR_SPHINX"] = "1"
+os.environ["METATENSOR_IMPORT_FOR_SPHINX"] = "1"
+
 # -- Project information -----------------------------------------------------
 
 project = "Rascaline"
@@ -42,7 +45,7 @@ def build_cargo_docs():
             "--package",
             "rascaline",
             "--package",
-            "equistore",
+            "metatensor",
             "--no-deps",
         ],
         env=environment,
@@ -134,10 +137,11 @@ breathe_domain_by_extension = {
 intersphinx_mapping = {
     "ase": ("https://wiki.fysik.dtu.dk/ase/", None),
     "chemfiles": ("https://chemfiles.org/chemfiles.py/latest/", None),
-    "equistore": ("https://lab-cosmo.github.io/equistore/latest/", None),
+    "metatensor": ("https://lab-cosmo.github.io/metatensor/latest/", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
     "skmatter": ("https://scikit-matter.readthedocs.io/en/latest/", None),
+    "torch": ("https://pytorch.org/docs/stable/", None),
     "python": ("https://docs.python.org/3", None),
 }
 

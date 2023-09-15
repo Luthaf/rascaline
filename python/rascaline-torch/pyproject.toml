@@ -1,0 +1,58 @@
+[project]
+name = "rascaline-torch"
+dynamic = ["version", "authors", "dependencies"]
+requires-python = ">=3.7"
+
+readme = "README.rst"
+license = {text = "BSD-3-Clause"}
+description = "TorchScript bindings to rascaline"
+
+keywords = ["computational science", "machine learning", "molecular modeling", "atomistic representations", "torch"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: POSIX",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[project.urls]
+homepage = "https://luthaf.fr/rascaline/latest/"
+documentation = "https://luthaf.fr/rascaline/latest/"
+repository = "https://github.com/Luthaf/rascaline"
+# changelog = "TODO"
+
+### ======================================================================== ###
+[build-system]
+requires = [
+    "setuptools >=61",
+    "wheel >=0.38",
+    "cmake",
+    "torch >= 1.11",
+    "metatensor-torch @ https://github.com/lab-cosmo/metatensor/archive/d97ea65.zip#subdirectory=python/metatensor-torch",
+]
+
+# use a custom build backend to add a dependency on the right version of rascaline
+build-backend = "backend"
+backend-path = ["build-backend"]
+
+[tool.setuptools]
+zip-safe = false
+
+[tool.setuptools.packages.find]
+include = ["rascaline*"]
+namespaces = true
+
+### ======================================================================== ###
+[tool.pytest.ini_options]
+python_files = ["*.py"]
+testpaths = ["tests"]

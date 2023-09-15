@@ -2,8 +2,8 @@ use std::collections::{BTreeSet, HashMap};
 
 use ndarray::parallel::prelude::*;
 
-use equistore::{TensorMap, TensorBlock, EmptyArray};
-use equistore::{LabelsBuilder, Labels, LabelValue};
+use metatensor::{TensorMap, TensorBlock, EmptyArray};
+use metatensor::{LabelsBuilder, Labels, LabelValue};
 
 use crate::calculators::CalculatorBase;
 use crate::{CalculationOptions, Calculator, LabelsSelection};
@@ -227,7 +227,7 @@ impl SoapPowerSpectrum {
         spherical_expansion: &TensorMap
     ) -> HashMap<Vec<LabelValue>, SamplesMapping> {
         let mut mapping = HashMap::new();
-        for (key, block) in descriptor.iter() {
+        for (key, block) in descriptor {
             let species_center = key[0];
             let species_neighbor_1 = key[1];
             let species_neighbor_2 = key[2];
@@ -426,7 +426,7 @@ impl CalculatorBase for SoapPowerSpectrum {
         self.spherical_expansion.cutoffs()
     }
 
-    fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<equistore::Labels, Error> {
+    fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<metatensor::Labels, Error> {
         let builder = CenterTwoNeighborsSpeciesKeys {
             cutoff: self.parameters.cutoff,
             self_pairs: true,
@@ -439,7 +439,7 @@ impl CalculatorBase for SoapPowerSpectrum {
         AtomCenteredSamples::samples_names()
     }
 
-    fn samples(&self, keys: &equistore::Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
+    fn samples(&self, keys: &metatensor::Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         assert_eq!(keys.names(), ["species_center", "species_neighbor_1", "species_neighbor_2"]);
         let mut result = Vec::new();
         for [species_center, species_neighbor_1, species_neighbor_2] in keys.iter_fixed_size() {
@@ -494,7 +494,7 @@ impl CalculatorBase for SoapPowerSpectrum {
         }
     }
 
-    fn components(&self, keys: &equistore::Labels) -> Vec<Vec<Labels>> {
+    fn components(&self, keys: &metatensor::Labels) -> Vec<Vec<Labels>> {
         return vec![vec![]; keys.count()];
     }
 
@@ -502,7 +502,7 @@ impl CalculatorBase for SoapPowerSpectrum {
         vec!["l", "n1", "n2"]
     }
 
-    fn properties(&self, keys: &equistore::Labels) -> Vec<Labels> {
+    fn properties(&self, keys: &metatensor::Labels) -> Vec<Labels> {
         let mut properties = LabelsBuilder::new(self.properties_names());
         for l in 0..=self.parameters.max_angular {
             for n1 in 0..self.parameters.max_radial {
@@ -554,7 +554,7 @@ impl CalculatorBase for SoapPowerSpectrum {
             (key, spx_block)
         }).collect();
 
-        for (key, mut block) in descriptor.iter_mut() {
+        for (key, mut block) in descriptor {
             let species_neighbor_1 = key[1];
             let species_neighbor_2 = key[2];
 
@@ -745,7 +745,7 @@ impl CalculatorBase for SoapPowerSpectrum {
 
 #[cfg(test)]
 mod tests {
-    use equistore::LabelValue;
+    use metatensor::LabelValue;
 
     use crate::systems::test_utils::{test_systems, test_system};
     use crate::Calculator;
@@ -878,7 +878,7 @@ mod tests {
             [6, 6, 6],
         ]);
 
-        let empty_block = equistore::TensorBlock::new(
+        let empty_block = metatensor::TensorBlock::new(
             EmptyArray::new(vec![1, 0]),
             &Labels::single(),
             &[],
@@ -887,7 +887,7 @@ mod tests {
 
         let blocks = vec![
             // H, H-H
-            equistore::TensorBlock::new(
+            metatensor::TensorBlock::new(
                 EmptyArray::new(vec![1, 1]),
                 &Labels::single(),
                 &[],
@@ -900,7 +900,7 @@ mod tests {
             // C, H-H
             empty_block.as_ref().try_clone().unwrap(),
             // C, C-H
-            equistore::TensorBlock::new(
+            metatensor::TensorBlock::new(
                 EmptyArray::new(vec![1, 1]),
                 &Labels::single(),
                 &[],
@@ -909,7 +909,7 @@ mod tests {
             // C, C-C
             empty_block,
         ];
-        let selection = equistore::TensorMap::new(keys, blocks).unwrap();
+        let selection = metatensor::TensorMap::new(keys, blocks).unwrap();
 
         let options = CalculationOptions {
             selected_properties: LabelsSelection::Predefined(&selection),

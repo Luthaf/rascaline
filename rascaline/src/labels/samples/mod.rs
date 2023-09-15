@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use equistore::Labels;
+use metatensor::Labels;
 
 use crate::{Error, System};
 

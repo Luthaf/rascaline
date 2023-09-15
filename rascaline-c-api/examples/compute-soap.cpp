@@ -30,14 +30,15 @@ int main(int argc, char* argv[]) {
     // run the calculation
     auto descriptor = calculator.compute(systems);
 
-    // The descriptor is an equistore `TensorMap`, containing multiple blocks.
+    // The descriptor is a metatensor `TensorMap`, containing multiple blocks.
     // We can transform it to a single block containing a dense representation,
     // with one sample for each atom-centered environment.
     descriptor.keys_to_samples("species_center");
     descriptor.keys_to_properties(std::vector<std::string>{"species_neighbor_1", "species_neighbor_2"});
 
     // extract values from the descriptor in the only remaining block
-    auto values = descriptor.block_by_id(0).values();
+    auto block = descriptor.block_by_id(0);
+    auto values = block.values();
 
     // you can now use values as the input of a machine learning algorithm
 

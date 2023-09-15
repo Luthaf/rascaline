@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
-use equistore::TensorMap;
-use equistore::{Labels, LabelsBuilder, LabelValue};
+use metatensor::TensorMap;
+use metatensor::{Labels, LabelsBuilder, LabelValue};
 
 use super::CalculatorBase;
 
@@ -504,7 +504,7 @@ impl FullNeighborList {
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
-    use equistore::Labels;
+    use metatensor::Labels;
 
     use crate::systems::test_utils::{test_systems, test_system};
     use crate::Calculator;

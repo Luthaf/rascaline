@@ -1,7 +1,7 @@
 use log::{info, warn};
 
-use equistore::TensorMap;
-use equistore::{Labels, LabelsBuilder};
+use metatensor::TensorMap;
+use metatensor::{Labels, LabelsBuilder};
 
 use super::CalculatorBase;
 use crate::labels::{SpeciesFilter, SamplesBuilder};
@@ -117,7 +117,7 @@ impl CalculatorBase for DummyCalculator {
             warn!("{}", self.name);
         }
 
-        for (key, mut block) in descriptor.iter_mut() {
+        for (key, mut block) in descriptor {
             let species_center = key[0].i32();
 
             let block_data = block.data_mut();
@@ -181,7 +181,7 @@ impl CalculatorBase for DummyCalculator {
 #[cfg(test)]
 mod tests {
     use ndarray::{s, aview1};
-    use equistore::Labels;
+    use metatensor::Labels;
 
     use crate::systems::test_utils::test_systems;
     use crate::Calculator;

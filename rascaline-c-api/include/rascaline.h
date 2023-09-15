@@ -12,7 +12,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include "equistore.h"
+#include "metatensor.h"
 
 /**
  * Status code used when a function succeeded
@@ -235,27 +235,27 @@ typedef struct rascal_system_t {
 typedef struct rascal_labels_selection_t {
   /**
    * Select a subset of labels, using the same selection criterion for all
-   * keys in the final `eqs_tensormap_t`.
+   * keys in the final `mts_tensormap_t`.
    *
-   * If the `eqs_labels_t` instance contains the same variables as the full
+   * If the `mts_labels_t` instance contains the same variables as the full
    * set of labels, then only entries from the full set that also appear in
    * this selection will be used.
    *
-   * If the `eqs_labels_t` instance contains a subset of the variables of the
+   * If the `mts_labels_t` instance contains a subset of the variables of the
    * full set of labels, then only entries from the full set which match one
    * of the entry in this selection for all of the selection variable will be
    * used.
    */
-  const eqs_labels_t *subset;
+  const mts_labels_t *subset;
   /**
    * Use a predefined subset of labels, with different entries for different
-   * keys of the final `eqs_tensormap_t`.
+   * keys of the final `mts_tensormap_t`.
    *
    * For each key, the corresponding labels are fetched out of the
-   * `eqs_tensormap_t` instance, which must have the same set of keys as the
+   * `mts_tensormap_t` instance, which must have the same set of keys as the
    * full calculation.
    */
-  const eqs_tensormap_t *predefined;
+  const mts_tensormap_t *predefined;
 } rascal_labels_selection_t;
 
 /**
@@ -331,7 +331,7 @@ typedef struct rascal_calculation_options_t {
    * Note that this default set of keys can depend on which systems we are
    * running the calculation on.
    */
-  const eqs_labels_t *selected_keys;
+  const mts_labels_t *selected_keys;
 } rascal_calculation_options_t;
 
 #ifdef __cplusplus
@@ -499,11 +499,11 @@ rascal_status_t rascal_calculator_cutoffs(const struct rascal_calculator_t *calc
  * Compute the representation of the given list of `systems` with a
  * `calculator`
  *
- * This function allocates a new `eqs_tensormap_t` in `*descriptor`, which
- * memory needs to be released by the user with `eqs_tensormap_free`.
+ * This function allocates a new `mts_tensormap_t` in `*descriptor`, which
+ * memory needs to be released by the user with `mts_tensormap_free`.
  *
  * @param calculator pointer to an existing calculator
- * @param descriptor pointer to an `eqs_tensormap_t *` that will be allocated
+ * @param descriptor pointer to an `mts_tensormap_t *` that will be allocated
  *                   by this function
  * @param systems pointer to an array of systems implementation
  * @param systems_count number of systems in `systems`
@@ -514,7 +514,7 @@ rascal_status_t rascal_calculator_cutoffs(const struct rascal_calculator_t *calc
  *          error message.
  */
 rascal_status_t rascal_calculator_compute(struct rascal_calculator_t *calculator,
-                                          eqs_tensormap_t **descriptor,
+                                          mts_tensormap_t **descriptor,
                                           struct rascal_system_t *systems,
                                           uintptr_t systems_count,
                                           struct rascal_calculation_options_t options);

@@ -7,7 +7,7 @@ Sample Selection
 
 import chemfiles
 import numpy as np
-from equistore import Labels
+from metatensor import Labels
 
 from rascaline import SoapPowerSpectrum
 
@@ -47,7 +47,7 @@ descriptor = calculator.compute(frames)
 # of the labels must be a subset of the names of the samples produced by the
 # calculator. You can see the default set of names with:
 
-print("samples names:", descriptor.sample_names)
+print("samples names:", descriptor.samples_names)
 
 # %%
 #

@@ -7,8 +7,11 @@ recursive-include rascaline *
 recursive-include rascaline-c-api *
 recursive-include docs/rascaline-json-schema *
 
+# include the minimal crates from the Cargo workspace
 include python/Cargo.toml
 include python/lib.rs
+include rascaline-torch/Cargo.toml
+include rascaline-torch/lib.rs
 
 include Cargo.*
 include pyproject.toml

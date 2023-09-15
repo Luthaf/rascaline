@@ -22,7 +22,7 @@ if (NOT EXISTS ${RASCALINE_INCLUDE}/rascaline.h OR NOT EXISTS ${RASCALINE_INCLUD
     message(FATAL_ERROR "could not find rascaline headers in '${RASCALINE_INCLUDE}', please re-install rascaline")
 endif()
 
-find_package(equistore @EQUISTORE_REQUIRED_VERSION@ REQUIRED CONFIG)
+find_package(metatensor @METATENSOR_REQUIRED_VERSION@ REQUIRED CONFIG)
 
 # Shared library target
 if (@RASCALINE_INSTALL_BOTH_STATIC_SHARED@ OR @BUILD_SHARED_LIBS@)
@@ -36,7 +36,7 @@ if (@RASCALINE_INSTALL_BOTH_STATIC_SHARED@ OR @BUILD_SHARED_LIBS@)
         INTERFACE_INCLUDE_DIRECTORIES ${RASCALINE_INCLUDE}
         IMPORTED_LINK_INTERFACE_LANGUAGES CXX
     )
-    target_link_libraries(rascaline::shared INTERFACE equistore::shared)
+    target_link_libraries(rascaline::shared INTERFACE metatensor::shared)
 
     target_compile_features(rascaline::shared INTERFACE cxx_std_17)
 
@@ -65,7 +65,7 @@ if (@RASCALINE_INSTALL_BOTH_STATIC_SHARED@ OR NOT @BUILD_SHARED_LIBS@)
         INTERFACE_LINK_LIBRARIES "@CARGO_DEFAULT_LIBRARIES@"
         IMPORTED_LINK_INTERFACE_LANGUAGES CXX
     )
-    target_link_libraries(rascaline::static INTERFACE equistore::shared)
+    target_link_libraries(rascaline::static INTERFACE metatensor::shared)
 
     target_compile_features(rascaline::static INTERFACE cxx_std_17)
 endif()

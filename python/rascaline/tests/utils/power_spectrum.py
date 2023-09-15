@@ -151,3 +151,21 @@ def test_power_spectrum_unknown_gradient() -> None:
     msg = "PowerSpectrum currently only supports gradients w.r.t. to positions"
     with pytest.raises(NotImplementedError, match=msg):
         PowerSpectrum(calculator).compute(SystemForTests(), gradients=["cell"])
+
+
+def test_fill_species_neighbor() -> None:
+    """Test that ``species_center`` keys can be merged for different blocks."""
+
+    frames = [
+        ase.Atoms("H", positions=np.zeros([1, 3])),
+        ase.Atoms("O", positions=np.zeros([1, 3])),
+    ]
+
+    calculator = PowerSpectrum(
+        calculator_1=rascaline.SphericalExpansion(**HYPERS),
+        calculator_2=rascaline.SphericalExpansion(**HYPERS),
+    )
+
+    descriptor = calculator.compute(frames)
+
+    descriptor.keys_to_samples("species_center")

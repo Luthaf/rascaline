@@ -19,13 +19,12 @@ jobs:
       matrix:
         include:
           - os: ubuntu-20.04
-            rust-target: x86_64-unknown-linux-gnu
             python-version: "3.7"
           - os: ubuntu-20.04
-            rust-target: x86_64-unknown-linux-gnu
             python-version: "3.11"
           - os: macos-11
-            rust-target: x86_64-apple-darwin
+            python-version: "3.11"
+          - os: windows-2019
             python-version: "3.11"
     steps:
       - uses: actions/checkout@v3
@@ -39,13 +38,12 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
-          target: ${{ matrix.rust-target }}
 
       - name: install python dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install tox
-          echo "tox_version=$(tox --version | awk '{split($0, s," "); print s[1]}')" >> $GITHUB_ENV
+          echo "tox_version=$(python -c 'import tox; print(tox.__version__)')" >> $GITHUB_ENV
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.3
@@ -65,6 +63,9 @@ jobs:
 
       - name: run tox
         run: tox
+        env:
+          # Use the CPU only version of torch when building/running the code
+          PIP_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
 
   # second set of jobs checking that (non-test) code still compiles/run as expected
   prevent-bitrot:
@@ -92,7 +93,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install tox
-          echo "tox_version=$(tox --version | awk '{split($0, s," "); print s[1]}')" >> $GITHUB_ENV
+          echo "tox_version=$(python -c 'import tox; print(tox.__version__)')" >> $GITHUB_ENV
 
       - name: cache tox environments
         uses: actions/cache@v3
@@ -102,3 +103,6 @@ jobs:
 
       - name: python build tests
         run: tox -e build-python
+        env:
+          # Use the CPU only version of torch when building/running the code
+          PIP_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu

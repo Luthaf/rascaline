@@ -5,7 +5,7 @@ use std::cell::RefCell;
 use ndarray::s;
 use thread_local::ThreadLocal;
 
-use equistore::{Labels, LabelsBuilder, LabelValue, TensorMap, TensorBlockRefMut};
+use metatensor::{Labels, LabelsBuilder, LabelValue, TensorMap, TensorBlockRefMut};
 
 use crate::{Error, System, Vector3D, Matrix3};
 use crate::systems::CellShape;
@@ -266,7 +266,7 @@ impl SphericalExpansionByPair {
         debug_assert_eq!(descriptor.keys().names(), ["spherical_harmonics_l", "species_atom_1", "species_atom_2"]);
         let self_contribution = self.self_contribution();
 
-        for (key, mut block) in descriptor.iter_mut() {
+        for (key, mut block) in descriptor {
             let spherical_harmonics_l = key[0];
             let species_atom_1 = key[1];
             let species_atom_2 = key[2];
@@ -373,7 +373,7 @@ impl SphericalExpansionByPair {
             let radial_integral = radial_integral.values.slice(s![spherical_harmonics_l, ..]);
 
             // compute the full spherical expansion coefficients & gradients
-            for sph_value in spherical_harmonics.iter() {
+            for sph_value in spherical_harmonics {
                 for (n, ri_value) in radial_integral.iter().enumerate() {
                     contribution.values[[lm_index, n]] = f_scaling * sph_value * ri_value;
                 }
@@ -816,7 +816,7 @@ impl CalculatorBase for SphericalExpansionByPair {
 
 #[cfg(test)]
 mod tests {
-    use equistore::Labels;
+    use metatensor::Labels;
     use ndarray::{s, Axis};
     use approx::assert_ulps_eq;
 

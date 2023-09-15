@@ -3,8 +3,8 @@ use std::convert::TryFrom;
 
 use once_cell::sync::Lazy;
 
-use equistore::{Labels, LabelsBuilder};
-use equistore::{TensorBlockRef, TensorBlock, TensorMap};
+use metatensor::{Labels, LabelsBuilder};
+use metatensor::{TensorBlockRef, TensorBlock, TensorMap};
 use ndarray::ArrayD;
 
 use crate::{SimpleSystem, System, Error};
@@ -57,7 +57,7 @@ impl<'a> LabelsSelection<'a> {
     {
         assert_ne!(keys.count(), 0);
 
-        match self {
+        match *self {
             LabelsSelection::All => {
                 return get_default_labels(keys);
             },
@@ -69,7 +69,7 @@ impl<'a> LabelsSelection<'a> {
                 if selection.names() == default_names {
                     for labels in default_labels {
                         let mut builder = LabelsBuilder::new(default_names.clone());
-                        for entry in selection.iter() {
+                        for entry in selection {
                             if labels.contains(entry) {
                                 builder.add(entry);
                             }
@@ -93,8 +93,8 @@ impl<'a> LabelsSelection<'a> {
 
                     for labels in default_labels {
                         let mut builder = LabelsBuilder::new(default_names.clone());
-                        for entry in labels.iter() {
-                            for selected in selection.iter() {
+                        for entry in &labels {
+                            for selected in selection {
                                 let mut matches = true;
                                 for (i, &v) in variables_to_match.iter().enumerate() {
                                     if selected[i] != entry[v] {
@@ -124,7 +124,7 @@ impl<'a> LabelsSelection<'a> {
                         tensor.keys().names().join(", ")
                     )));
                 }
-                for key in keys.iter() {
+                for key in keys {
                     if !tensor.keys().contains(key) {
                         let key_print = keys.names().iter()
                             .zip(key)

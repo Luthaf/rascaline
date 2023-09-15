@@ -65,9 +65,9 @@ Descriptors: data storage for atomistic machine learning
 
 After using a calculator on one or multiple systems, users will get the
 numerical representation of their atomic systems in a ``descriptor`` object.
-Rascaline uses `equistore`_ ``TensorMap`` type when returning descriptors.
+Rascaline uses `metatensor`_ ``TensorMap`` type when returning descriptors.
 
-.. _equistore: https://lab-cosmo.github.io/equistore/latest/
+.. _metatensor: https://lab-cosmo.github.io/metatensor/latest/
 
 A ``TensorMap`` can be seen as a dictionary mapping some keys to a set of data
 blocks. Each block contains both data (and gradients) arrays — i.e.
@@ -80,4 +80,4 @@ representations will have keys for the different equivariance classes
 (``spherical_harmonics_l`` for SO(3) equivariants, *etc.*).
 
 For more information on ``TensorMap`` and what can be done with one, please see
-the `equistore`_ documentation.
+the `metatensor`_ documentation.

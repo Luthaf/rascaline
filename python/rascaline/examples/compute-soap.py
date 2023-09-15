@@ -50,7 +50,7 @@ descriptor = calculator.compute(frames, gradients=["positions"])
 
 # %%
 #
-# The descriptor is an equistore ``TensorMap``, containing multiple blocks. We
+# The descriptor is a metatensor ``TensorMap``, containing multiple blocks. We
 # can transform it to a single block containing a dense representation, with one
 # sample for each atom-centered environment by using ``keys_to_samples`` and
 # ``keys_to_properties``

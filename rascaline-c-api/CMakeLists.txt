@@ -60,8 +60,8 @@ set(RUST_BUILD_TARGET "" CACHE STRING "Cross-compilation target for rust code. L
 set(EXTRA_RUST_FLAGS "" CACHE STRING "Flags used to build rust code")
 mark_as_advanced(RUST_BUILD_TARGET EXTRA_RUST_FLAGS)
 
-option(RASCALINE_ENABLE_CHEMFILES "Disable the usage of chemfiles for reading structures from files" ON)
-option(RASCALINE_FETCH_EQUISTORE "Download and build the equistore C API before building rascaline" OFF)
+option(RASCALINE_ENABLE_CHEMFILES "Enable the usage of chemfiles for reading structures from files" OFF)
+option(RASCALINE_FETCH_METATENSOR "Download and build the metatensor C API before building rascaline" OFF)
 
 set(CMAKE_MACOSX_RPATH ON)
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}")
@@ -134,17 +134,29 @@ endif()
 
 set(CARGO_TARGET_DIR ${CMAKE_CURRENT_BINARY_DIR}/target)
 set(CARGO_BUILD_ARG "${CARGO_BUILD_ARG};--target-dir=${CARGO_TARGET_DIR}")
+
 # Handle cross compilation with RUST_BUILD_TARGET
 if ("${RUST_BUILD_TARGET}" STREQUAL "")
-    if (CARGO_VERSION_RAW MATCHES "host: ([a-zA-Z0-9_\\-]*)\n")
-        set(RUST_BUILD_TARGET "${CMAKE_MATCH_1}")
+        if (CARGO_VERSION_RAW MATCHES "host: ([a-zA-Z0-9_\\-]*)\n")
+        set(RUST_HOST_TARGET "${CMAKE_MATCH_1}")
     else()
         message(FATAL_ERROR "failed to determine host target, output was: ${CARGO_VERSION_RAW}")
     endif()
-endif()
 
-set(CARGO_BUILD_ARG "${CARGO_BUILD_ARG};--target=${RUST_BUILD_TARGET}")
-set(CARGO_OUTPUT_DIR "${CARGO_TARGET_DIR}/${RUST_BUILD_TARGET}/${CARGO_BUILD_TYPE}")
+    if (${RASCALINE_MAIN_PROJECT})
+        message(STATUS "Compiling to host (${RUST_HOST_TARGET})")
+    endif()
+
+    set(CARGO_OUTPUT_DIR "${CARGO_TARGET_DIR}/${CARGO_BUILD_TYPE}")
+    set(RUST_BUILD_TARGET ${RUST_HOST_TARGET})
+else()
+    if (${RASCALINE_MAIN_PROJECT})
+        message(STATUS "Cross-compiling to ${RUST_BUILD_TARGET}")
+    endif()
+
+    set(CARGO_BUILD_ARG "${CARGO_BUILD_ARG};--target=${RUST_BUILD_TARGET}")
+    set(CARGO_OUTPUT_DIR "${CARGO_TARGET_DIR}/${RUST_BUILD_TARGET}/${CARGO_BUILD_TYPE}")
+endif()
 
 if (NOT ${RASCALINE_ENABLE_CHEMFILES})
     set(CARGO_BUILD_ARG "${CARGO_BUILD_ARG};--no-default-features")
@@ -191,42 +203,55 @@ if (CARGO_VERSION_CHANGED)
         endforeach()
         # Special case `msvcrt` to link with the debug version in Debug mode.
         list(TRANSFORM stripped_lib_list REPLACE "^msvcrt$" "\$<\$<CONFIG:Debug>:msvcrtd>")
+        list(REMOVE_DUPLICATES stripped_lib_list)
 
         set(CARGO_DEFAULT_LIBRARIES "${stripped_lib_list}" CACHE INTERNAL "list of implicitly linked libraries")
-        message(STATUS "Cargo default link libraries are: ${CARGO_DEFAULT_LIBRARIES}")
+        if (${RASCALINE_MAIN_PROJECT})
+            message(STATUS "Cargo default link libraries are: ${CARGO_DEFAULT_LIBRARIES}")
+        endif()
     else()
         message(FATAL_ERROR "could not find default static libs: `native-static-libs` not found in: `${cargo_build_error_message}`")
     endif()
 endif()
 
 # ============================================================================ #
-# Setup equistore
+# Setup metatensor
 
-set(EQUISTORE_GIT_VERSION "c022fde")
-set(EQUISTORE_REQUIRED_VERSION "0.1")
-if (RASCALINE_FETCH_EQUISTORE)
-    message(STATUS "Fetching equistore @ ${EQUISTORE_GIT_VERSION} from github")
+set(METATENSOR_GIT_VERSION "d97ea65")
+set(METATENSOR_REQUIRED_VERSION "0.1")
+if (RASCALINE_FETCH_METATENSOR)
+    message(STATUS "Fetching metatensor @ ${METATENSOR_GIT_VERSION} from github")
 
     include(FetchContent)
     FetchContent_Declare(
-        equistore
-        URL      https://github.com/lab-cosmo/equistore/archive/${EQUISTORE_GIT_VERSION}.zip
-        URL_HASH MD5=ff9f924ee7c24f2b237a60bec08e7270
-        SOURCE_SUBDIR equistore-core
+        metatensor
+        URL      https://github.com/lab-cosmo/metatensor/archive/${METATENSOR_GIT_VERSION}.zip
+        URL_HASH MD5=6a6899779591ae15861bb3547c7c354b
+        SOURCE_SUBDIR metatensor-core
         VERBOSE
     )
 
     if (CMAKE_VERSION VERSION_GREATER 3.18)
-        FetchContent_MakeAvailable(equistore)
+        FetchContent_MakeAvailable(metatensor)
     else()
-        if (NOT equistore_POPULATED)
-            FetchContent_Populate(equistore)
+        if (NOT metatensor_POPULATED)
+            FetchContent_Populate(metatensor)
         endif()
 
-        add_subdirectory(${equistore_SOURCE_DIR}/equistore-core ${equistore_BINARY_DIR})
+        add_subdirectory(${metatensor_SOURCE_DIR}/metatensor-core ${metatensor_BINARY_DIR})
     endif()
+
+    # metatensor will be installed in the same place as rascaline, so set
+    # the RPATH to ${ORIGIN} to load the file from there
+    set(METATENSOR_RPATH "$$\\{ORIGIN\\}")
 else()
-    find_package(equistore ${EQUISTORE_REQUIRED_VERSION} REQUIRED CONFIG)
+    find_package(metatensor ${METATENSOR_REQUIRED_VERSION} REQUIRED CONFIG)
+
+    # in case rascaline gets installed in a different place than metatensor,
+    # set the RPATH to the directory where we found metatensor
+    get_target_property(METATENSOR_LOCATION metatensor::shared IMPORTED_LOCATION)
+    get_filename_component(METATENSOR_LOCATION ${METATENSOR_LOCATION} DIRECTORY)
+    set(METATENSOR_RPATH "${METATENSOR_LOCATION}")
 endif()
 
 # ============================================================================ #
@@ -257,11 +282,11 @@ get_filename_component(RASCALINE_STATIC_LIB_NAME ${RASCALINE_STATIC_LOCATION} NA
 # without using an absolute path.
 if (UNIX)
     if (APPLE)
-        # set the install name to `@rpath/libequistore.dylib`
+        # set the install name to `@rpath/librascaline.dylib`
         set(CARGO_RUSTC_ARGS "-Clink-arg=-Wl,-install_name,@rpath/${RASCALINE_SHARED_LIB_NAME}")
     else() # LINUX
-        # set the SONAME to libequistore.so
-        set(CARGO_RUSTC_ARGS "-Clink-arg=-Wl,-soname,${RASCALINE_SHARED_LIB_NAME}")
+        # set the SONAME to librascaline.so, and point the RPATH to metatensor
+        set(CARGO_RUSTC_ARGS "-Clink-arg=-Wl,-soname,${RASCALINE_SHARED_LIB_NAME},-rpath=${METATENSOR_RPATH}")
     endif()
 else()
     set(CARGO_RUSTC_ARGS "")
@@ -315,18 +340,16 @@ set_target_properties(rascaline::static PROPERTIES
     # since it might contains chemfiles
     IMPORTED_LINK_INTERFACE_LANGUAGES CXX
 )
-target_compile_features(equistore::static INTERFACE cxx_std_17)
-
 
 if (BUILD_SHARED_LIBS)
-    add_library(equistore ALIAS equistore::shared)
+    add_library(rascaline ALIAS rascaline::shared)
 else()
-    add_library(equistore ALIAS equistore::static)
+    add_library(rascaline ALIAS rascaline::static)
 endif()
 
-add_dependencies(cargo-build-rascaline equistore)
-target_link_libraries(rascaline::shared INTERFACE equistore::shared)
-target_link_libraries(rascaline::static INTERFACE equistore::shared)
+add_dependencies(cargo-build-rascaline metatensor)
+target_link_libraries(rascaline::shared INTERFACE metatensor::shared)
+target_link_libraries(rascaline::static INTERFACE metatensor::shared)
 
 #------------------------------------------------------------------------------#
 # Installation configuration

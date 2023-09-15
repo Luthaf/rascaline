@@ -96,28 +96,28 @@ TEST_CASE("Compute descriptor") {
         options.gradients.push_back("positions");
         auto descriptor = calculator.compute(systems, options);
 
-        CHECK(descriptor.keys() == equistore::Labels(
+        CHECK(descriptor.keys() == metatensor::Labels(
             {"species_center"},
             {{1}, {6}}
         ));
 
         // H block
         auto block = descriptor.block_by_id(0);
-        CHECK(block.samples() == equistore::Labels(
+        CHECK(block.samples() == metatensor::Labels(
             {"structure", "center"},
             {{0, 1}, {0, 2}, {0, 3}}
         ));
-        CHECK(block.properties() == equistore::Labels(
+        CHECK(block.properties() == metatensor::Labels(
             {"index_delta", "x_y_z"},
             {{1, 0}, {0, 1}}
         ));
-        CHECK(block.values() == equistore::NDArray<double>(
+        CHECK(block.values() == metatensor::NDArray<double>(
             {5.0, 9.0, 6.0, 18.0, 7.0, 15.0},
             {3, 2}
         ));
 
         auto gradient = block.gradient("positions");
-        CHECK(gradient.samples() == equistore::Labels(
+        CHECK(gradient.samples() == metatensor::Labels(
             {"sample", "structure", "atom"},
             {
                 {0, 0, 0}, {0, 0, 1}, {0, 0, 2},
@@ -125,7 +125,7 @@ TEST_CASE("Compute descriptor") {
                 {2, 0, 2}, {2, 0, 3},
             }
         ));
-        CHECK(gradient.values() == equistore::NDArray<double>(
+        CHECK(gradient.values() == metatensor::NDArray<double>(
             {
                 0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
                 0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
@@ -141,25 +141,25 @@ TEST_CASE("Compute descriptor") {
 
         // C block
         block = descriptor.block_by_id(1);
-        CHECK(block.samples() == equistore::Labels(
+        CHECK(block.samples() == metatensor::Labels(
             {"structure", "center"},
             {{0, 0}}
         ));
-        CHECK(block.properties() == equistore::Labels(
+        CHECK(block.properties() == metatensor::Labels(
             {"index_delta", "x_y_z"},
             {{1, 0}, {0, 1}}
         ));
-        CHECK(block.values() == equistore::NDArray<double>(
+        CHECK(block.values() == metatensor::NDArray<double>(
             {4.0, 3.0},
             {1, 2}
         ));
 
         gradient = block.gradient("positions");
-        CHECK(gradient.samples() == equistore::Labels(
+        CHECK(gradient.samples() == metatensor::Labels(
             {"sample", "structure", "atom"},
             {{0, 0, 0}, {0, 0, 1}}
         ));
-        CHECK(gradient.values() == equistore::NDArray<double>(
+        CHECK(gradient.values() == metatensor::NDArray<double>(
             {
                 0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
                 0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
@@ -172,39 +172,39 @@ TEST_CASE("Compute descriptor") {
         auto options = rascaline::CalculationOptions();
         options.gradients.push_back("positions");
         options.selected_samples = rascaline::LabelsSelection::subset(
-            equistore::Labels({"structure", "center"}, {{0, 1}, {0, 3}})
+            metatensor::Labels({"structure", "center"}, {{0, 1}, {0, 3}})
         );
         auto descriptor = calculator.compute(systems, options);
 
-        CHECK(descriptor.keys() == equistore::Labels(
+        CHECK(descriptor.keys() == metatensor::Labels(
             {"species_center"},
             {{1}, {6}}
         ));
 
         // H block
         auto block = descriptor.block_by_id(0);
-        CHECK(block.samples() == equistore::Labels(
+        CHECK(block.samples() == metatensor::Labels(
             {"structure", "center"},
             {{0, 1}, {0, 3}}
         ));
-        CHECK(block.properties() == equistore::Labels(
+        CHECK(block.properties() == metatensor::Labels(
             {"index_delta", "x_y_z"},
             {{1, 0}, {0, 1}}
         ));
-        CHECK(block.values() == equistore::NDArray<double>(
+        CHECK(block.values() == metatensor::NDArray<double>(
             {5.0, 9.0, 7.0, 15.0},
             {2, 2}
         ));
 
         auto gradient = block.gradient("positions");
-        CHECK(gradient.samples() == equistore::Labels(
+        CHECK(gradient.samples() == metatensor::Labels(
             {"sample", "structure", "atom"},
             {
                 {0, 0, 0}, {0, 0, 1}, {0, 0, 2},
                 {1, 0, 2}, {1, 0, 3},
             }
         ));
-        CHECK(gradient.values() == equistore::NDArray<double>(
+        CHECK(gradient.values() == metatensor::NDArray<double>(
             {
                 0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
                 0.0, 1.0, /**/ 0.0, 1.0, /**/ 0.0, 1.0,
@@ -217,25 +217,25 @@ TEST_CASE("Compute descriptor") {
 
         // C block
         block = descriptor.block_by_id(1);
-        CHECK(block.samples() == equistore::Labels(
+        CHECK(block.samples() == metatensor::Labels(
             {"structure", "center"},
             {}
         ));
-        CHECK(block.properties() == equistore::Labels(
+        CHECK(block.properties() == metatensor::Labels(
             {"index_delta", "x_y_z"},
             {{1, 0}, {0, 1}}
         ));
-        CHECK(block.values() == equistore::NDArray<double>(
+        CHECK(block.values() == metatensor::NDArray<double>(
             std::vector<double>{},
             {0, 2}
         ));
 
         gradient = block.gradient("positions");
-        CHECK(gradient.samples() == equistore::Labels(
+        CHECK(gradient.samples() == metatensor::Labels(
             {"sample", "structure", "atom"},
             {}
         ));
-        CHECK(gradient.values() == equistore::NDArray<double>(
+        CHECK(gradient.values() == metatensor::NDArray<double>(
             std::vector<double>{},
             {0, 3, 2}
         ));
@@ -245,32 +245,32 @@ TEST_CASE("Compute descriptor") {
         auto options = rascaline::CalculationOptions();
         options.gradients.push_back("positions");
         options.selected_properties = rascaline::LabelsSelection::subset(
-            equistore::Labels({"index_delta", "x_y_z"}, {{0, 1}})
+            metatensor::Labels({"index_delta", "x_y_z"}, {{0, 1}})
         );
         auto descriptor = calculator.compute(systems, options);
 
-        CHECK(descriptor.keys() == equistore::Labels(
+        CHECK(descriptor.keys() == metatensor::Labels(
             {"species_center"},
             {{1}, {6}}
         ));
 
         // H block
         auto block = descriptor.block_by_id(0);
-        CHECK(block.samples() == equistore::Labels(
+        CHECK(block.samples() == metatensor::Labels(
             {"structure", "center"},
             {{0, 1}, {0, 2}, {0, 3}}
         ));
-        CHECK(block.properties() == equistore::Labels(
+        CHECK(block.properties() == metatensor::Labels(
             {"index_delta", "x_y_z"},
             {{0, 1}}
         ));
-        CHECK(block.values() == equistore::NDArray<double>(
+        CHECK(block.values() == metatensor::NDArray<double>(
             {9.0, 18.0, 15.0},
             {3, 1}
         ));
 
         auto gradient = block.gradient("positions");
-        CHECK(gradient.samples() == equistore::Labels(
+        CHECK(gradient.samples() == metatensor::Labels(
             {"sample", "structure", "atom"},
             {
                 {0, 0, 0}, {0, 0, 1}, {0, 0, 2},
@@ -278,7 +278,7 @@ TEST_CASE("Compute descriptor") {
                 {2, 0, 2}, {2, 0, 3},
             }
         ));
-        CHECK(gradient.values() == equistore::NDArray<double>(
+        CHECK(gradient.values() == metatensor::NDArray<double>(
             {
                 1.0, /**/ 1.0, /**/ 1.0,
                 1.0, /**/ 1.0, /**/ 1.0,
@@ -294,25 +294,25 @@ TEST_CASE("Compute descriptor") {
 
         // C block
         block = descriptor.block_by_id(1);
-        CHECK(block.samples() == equistore::Labels(
+        CHECK(block.samples() == metatensor::Labels(
             {"structure", "center"},
             {{0, 0}}
         ));
-        CHECK(block.properties() == equistore::Labels(
+        CHECK(block.properties() == metatensor::Labels(
             {"index_delta", "x_y_z"},
             {{0, 1}}
         ));
-        CHECK(block.values() == equistore::NDArray<double>(
+        CHECK(block.values() == metatensor::NDArray<double>(
             {3.0},
             {1, 1}
         ));
 
         gradient = block.gradient("positions");
-        CHECK(gradient.samples() == equistore::Labels(
+        CHECK(gradient.samples() == metatensor::Labels(
             {"sample", "structure", "atom"},
             {{0, 0, 0}, {0, 0, 1}}
         ));
-        CHECK(gradient.values() == equistore::NDArray<double>(
+        CHECK(gradient.values() == metatensor::NDArray<double>(
             {
                 1.0, /**/ 1.0, /**/ 1.0,
                 1.0, /**/ 1.0, /**/ 1.0,
@@ -324,28 +324,28 @@ TEST_CASE("Compute descriptor") {
     SECTION("Partial compute -- preselected") {
         auto options = rascaline::CalculationOptions();
         options.gradients.push_back("positions");
-        auto blocks = std::vector<equistore::TensorBlock>();
+        auto blocks = std::vector<metatensor::TensorBlock>();
 
         blocks.emplace_back(
-            equistore::TensorBlock(
-                std::unique_ptr<equistore::SimpleDataArray>(new equistore::SimpleDataArray({1, 1})),
-                equistore::Labels({"structure", "center"}, {{0, 3}}),
+            metatensor::TensorBlock(
+                std::unique_ptr<metatensor::SimpleDataArray>(new metatensor::SimpleDataArray({1, 1})),
+                metatensor::Labels({"structure", "center"}, {{0, 3}}),
                 {},
-                equistore::Labels({"index_delta", "x_y_z"}, {{0, 1}})
+                metatensor::Labels({"index_delta", "x_y_z"}, {{0, 1}})
             )
         );
 
         blocks.emplace_back(
-            equistore::TensorBlock(
-                std::unique_ptr<equistore::SimpleDataArray>(new equistore::SimpleDataArray({1, 1})),
-                equistore::Labels({"structure", "center"}, {{0, 0}}),
+            metatensor::TensorBlock(
+                std::unique_ptr<metatensor::SimpleDataArray>(new metatensor::SimpleDataArray({1, 1})),
+                metatensor::Labels({"structure", "center"}, {{0, 0}}),
                 {},
-                equistore::Labels({"index_delta", "x_y_z"}, {{1, 0}})
+                metatensor::Labels({"index_delta", "x_y_z"}, {{1, 0}})
             )
         );
 
-        auto predefined = std::make_shared<equistore::TensorMap>(
-            equistore::Labels({"species_center"}, {{1}, {6}}),
+        auto predefined = metatensor::TensorMap(
+            metatensor::Labels({"species_center"}, {{1}, {6}}),
             std::move(blocks)
         );
         options.selected_samples = rascaline::LabelsSelection::predefined(predefined);
@@ -353,34 +353,34 @@ TEST_CASE("Compute descriptor") {
 
         auto descriptor = calculator.compute(systems, options);
 
-        CHECK(descriptor.keys() == equistore::Labels(
+        CHECK(descriptor.keys() == metatensor::Labels(
             {"species_center"},
             {{1}, {6}}
         ));
 
         // H block
         auto block = descriptor.block_by_id(0);
-        CHECK(block.samples() == equistore::Labels(
+        CHECK(block.samples() == metatensor::Labels(
             {"structure", "center"},
             {{0, 3}}
         ));
-        CHECK(block.properties() == equistore::Labels(
+        CHECK(block.properties() == metatensor::Labels(
             {"index_delta", "x_y_z"},
             {{0, 1}}
         ));
-        CHECK(block.values() == equistore::NDArray<double>(
+        CHECK(block.values() == metatensor::NDArray<double>(
             {15.0},
             {1, 1}
         ));
 
         auto gradient = block.gradient("positions");
-        CHECK(gradient.samples() == equistore::Labels(
+        CHECK(gradient.samples() == metatensor::Labels(
             {"sample", "structure", "atom"},
             {
                 {0, 0, 2}, {0, 0, 3},
             }
         ));
-        CHECK(gradient.values() == equistore::NDArray<double>(
+        CHECK(gradient.values() == metatensor::NDArray<double>(
             {
                 1.0, /**/ 1.0, /**/ 1.0,
                 1.0, /**/ 1.0, /**/ 1.0,
@@ -390,25 +390,25 @@ TEST_CASE("Compute descriptor") {
 
         // C block
         block = descriptor.block_by_id(1);
-        CHECK(block.samples() == equistore::Labels(
+        CHECK(block.samples() == metatensor::Labels(
             {"structure", "center"},
             {{0, 0}}
         ));
-        CHECK(block.properties() == equistore::Labels(
+        CHECK(block.properties() == metatensor::Labels(
             {"index_delta", "x_y_z"},
             {{1, 0}}
         ));
-        CHECK(block.values() == equistore::NDArray<double>(
+        CHECK(block.values() == metatensor::NDArray<double>(
             {4.0},
             {1, 1}
         ));
 
         gradient = block.gradient("positions");
-        CHECK(gradient.samples() == equistore::Labels(
+        CHECK(gradient.samples() == metatensor::Labels(
             {"sample", "structure", "atom"},
             {{0, 0, 0}, {0, 0, 1}}
         ));
-        CHECK(gradient.values() == equistore::NDArray<double>(
+        CHECK(gradient.values() == metatensor::NDArray<double>(
             {
                 0.0, /**/ 0.0, /**/ 0.0,
                 0.0, /**/ 0.0, /**/ 0.0,
@@ -423,43 +423,43 @@ TEST_CASE("Compute descriptor") {
         // in a different order than what would be the default (6, 12).
 
         auto options = rascaline::CalculationOptions();
-        options.selected_keys = equistore::Labels(
+        options.selected_keys = metatensor::Labels(
             {"species_center"},
             {{12}, {6}}
         );
         auto descriptor = calculator.compute(systems, options);
 
-        CHECK(descriptor.keys() == equistore::Labels(
+        CHECK(descriptor.keys() == metatensor::Labels(
             {"species_center"},
             {{12}, {6}}
         ));
 
         // empty block
         auto block = descriptor.block_by_id(0);
-        CHECK(block.samples() == equistore::Labels(
+        CHECK(block.samples() == metatensor::Labels(
             {"structure", "center"},
             {}
         ));
-        CHECK(block.properties() == equistore::Labels(
+        CHECK(block.properties() == metatensor::Labels(
             {"index_delta", "x_y_z"},
             {{1, 0}, {0, 1}}
         ));
-        CHECK(block.values() == equistore::NDArray<double>(
+        CHECK(block.values() == metatensor::NDArray<double>(
             std::vector<double>{},
             {0, 2}
         ));
 
         // C block
         block = descriptor.block_by_id(1);
-        CHECK(block.samples() == equistore::Labels(
+        CHECK(block.samples() == metatensor::Labels(
             {"structure", "center"},
             {{0, 0}}
         ));
-        CHECK(block.properties() == equistore::Labels(
+        CHECK(block.properties() == metatensor::Labels(
             {"index_delta", "x_y_z"},
             {{1, 0}, {0, 1}}
         ));
-        CHECK(block.values() == equistore::NDArray<double>(
+        CHECK(block.values() == metatensor::NDArray<double>(
             {4.0, 3.0},
             {1, 2}
         ));

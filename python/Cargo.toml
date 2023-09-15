@@ -6,6 +6,8 @@ publish = false
 
 [lib]
 path = "lib.rs"
+test = false
+doctest = false
 
 [dev-dependencies]
 which = "4"

@@ -15,6 +15,9 @@ jobs:
     runs-on: ubuntu-22.04
     name: collect code coverage
     steps:
+      - name: free disk space
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android || true
+
       - uses: actions/checkout@v3
 
       - name: setup Python
@@ -66,7 +69,7 @@ jobs:
           lcov --remove coverage.info '/usr/*' "$(pwd)/rascaline-c-api/tests/*" "$(pwd)/rascaline-c-api/examples/*" --output-file coverage.info
 
       - name: collect Python coverage
-        run: tox
+        run: tox -e all-deps
 
       - name: upload to codecov.io
         uses: codecov/codecov-action@v3

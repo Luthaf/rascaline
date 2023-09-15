@@ -3,8 +3,8 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use ndarray::s;
 use rayon::prelude::*;
 
-use equistore::{LabelsBuilder, Labels, LabelValue, TensorBlockRefMut};
-use equistore::TensorMap;
+use metatensor::{LabelsBuilder, Labels, LabelValue, TensorBlockRefMut};
+use metatensor::TensorMap;
 
 use crate::{Error, System, Vector3D, Matrix3};
 use crate::systems::CellShape;
@@ -50,7 +50,7 @@ impl SphericalExpansion {
 
         let self_contribution = self.by_pair.self_contribution();
 
-        for (key, mut block) in descriptor.iter_mut() {
+        for (key, mut block) in descriptor {
             let spherical_harmonics_l = key[0];
             let species_center = key[1];
             let species_neighbor = key[2];
@@ -266,7 +266,7 @@ impl SphericalExpansion {
 
                 if let Some(ref contribution_gradients) = contribution.gradients {
                     // we don't add second->first pair to positions_gradient_by_pair,
-                    // instead handling this in position_gradients_to_equistore
+                    // instead handling this in position_gradients_to_metatensor
 
                     if let Some(ref mut positions_gradients) = result.positions_gradients_self {
                         let mut gradients = positions_gradients.slice_mut(s![species_neighbor_i, mapped_center, .., .., ..]);
@@ -307,10 +307,10 @@ impl SphericalExpansion {
         return Ok(result);
     }
 
-    /// Move the pre-computed spherical expansion data to a single equistore
+    /// Move the pre-computed spherical expansion data to a single metatensor
     /// block
     #[allow(clippy::unused_self)]
-    fn values_to_equistore(
+    fn values_to_metatensor(
         &self,
         key: &[LabelValue],
         block: &mut TensorBlockRefMut,
@@ -362,7 +362,7 @@ impl SphericalExpansion {
     }
 
     /// Finalize the spherical expansion gradients w.r.t. positions from the
-    /// gradients associated with each pair, filling a single equistore block
+    /// gradients associated with each pair, filling a single metatensor block
     ///
     /// A single pair between atoms `i-j` will contribute to four gradients
     /// entries. Two "cross" gradients:
@@ -374,7 +374,7 @@ impl SphericalExpansion {
     ///
     /// The self gradients are pre-summed in `accumulate_all_pairs`, while cross
     /// gradients are directly summed in this function.
-    fn position_gradients_to_equistore(
+    fn position_gradients_to_metatensor(
         &self,
         key: &[LabelValue],
         block: &mut TensorBlockRefMut,
@@ -478,9 +478,9 @@ impl SphericalExpansion {
     }
 
     /// Move the pre-computed spherical expansion gradients w.r.t. cell to
-    /// a single equistore block
+    /// a single metatensor block
     #[allow(clippy::unused_self)]
-    fn cell_gradients_to_equistore(
+    fn cell_gradients_to_metatensor(
         &self,
         key: &[LabelValue],
         block: &mut TensorBlockRefMut,
@@ -746,12 +746,12 @@ impl CalculatorBase for SphericalExpansion {
                     &requested_centers,
                 )?;
 
-                // all pairs are done, copy the data into equistore, handling
+                // all pairs are done, copy the data into metatensor, handling
                 // any property selection made by the user
                 for (key, mut block) in descriptor.iter_mut() {
-                    self.values_to_equistore(key, &mut block, system, &accumulated)?;
-                    self.position_gradients_to_equistore(key, &mut block, system, &accumulated)?;
-                    self.cell_gradients_to_equistore(key, &mut block, system, &accumulated)?;
+                    self.values_to_metatensor(key, &mut block, system, &accumulated)?;
+                    self.position_gradients_to_metatensor(key, &mut block, system, &accumulated)?;
+                    self.cell_gradients_to_metatensor(key, &mut block, system, &accumulated)?;
                 }
 
                 Ok::<_, Error>(())
@@ -765,7 +765,7 @@ impl CalculatorBase for SphericalExpansion {
 #[cfg(test)]
 mod tests {
     use ndarray::ArrayD;
-    use equistore::{Labels, TensorBlock, EmptyArray, LabelsBuilder, TensorMap};
+    use metatensor::{Labels, TensorBlock, EmptyArray, LabelsBuilder, TensorMap};
 
     use crate::systems::test_utils::{test_systems, test_system};
     use crate::{Calculator, CalculationOptions, LabelsSelection};

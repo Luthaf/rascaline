@@ -1,4 +1,4 @@
-use equistore::{Labels, LabelsBuilder};
+use metatensor::{Labels, LabelsBuilder};
 
 use crate::{Error, System};
 use super::{SamplesBuilder, SpeciesFilter};

@@ -1,11 +1,11 @@
 use std::collections::BTreeSet;
 
-use equistore::{Labels, LabelsBuilder};
+use metatensor::{Labels, LabelsBuilder};
 
 use crate::{System, Error};
 
 
-/// Common interface to create a set of equistore's `TensorMap` keys from systems
+/// Common interface to create a set of metatensor's `TensorMap` keys from systems
 pub trait KeysBuilder {
     /// Compute the keys corresponding to these systems
     fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error>;
