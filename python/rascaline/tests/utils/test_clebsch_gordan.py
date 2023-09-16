@@ -5,9 +5,9 @@ import ase.io
 import numpy as np
 
 import rascaline
-import equistore
-from equistore import Labels, TensorBlock, TensorMap
-import equistore.operations
+import metatensor
+from metatensor import Labels, TensorBlock, TensorMap
+import metatensor.operations
 
 from rascaline.utils.clebsch_gordan import ClebschGordanReal, _clebsch_gordan_combine_dense, _clebsch_gordan_combine_sparse, n_body_iteration_single_center, _combine_single_center
 
@@ -108,7 +108,7 @@ class TestClebschGordan:
             use_sparse=False
         )
 
-        assert equistore.operations.allclose(n_body_sparse, n_body_dense, atol=1e-8, rtol=1e-8)
+        assert metatensor.operations.allclose(n_body_sparse, n_body_dense, atol=1e-8, rtol=1e-8)
 
 
     @pytest.mark.parametrize("l", [1])
@@ -135,10 +135,10 @@ class TestClebschGordan:
         keys_to_move = "species_neighbor"
         nu1_tensor = nu1_tensor.keys_to_properties(keys_to_move=keys_to_move)
         # Add "order_nu" and "inversion_sigma" key dimensions, both with values 1
-        nu1_tensor = equistore.insert_dimension(
+        nu1_tensor = metatensor.insert_dimension(
             nu1_tensor, axis="keys", name="order_nu", values=np.array([1]), index=0
         )
-        nu1_tensor = equistore.insert_dimension(
+        nu1_tensor = metatensor.insert_dimension(
             nu1_tensor, axis="keys", name="inversion_sigma", values=np.array([1]), index=1
         )
         combined_tensor = nu1_tensor.copy()
@@ -255,7 +255,7 @@ class TestClebschGordan:
     #    sliced_blocks = []
     #    for key, block in soap_cg.items():
     #        idx = block.properties.values[:, block.properties.names.index("l1")] != block.properties.values[:, block.properties.names.index("l2")]
-    #        sliced_block = equistore.slice_block(block, "properties", Labels(names=block.properties.names, values=block.properties.values[idx]))
+    #        sliced_block = metatensor.slice_block(block, "properties", Labels(names=block.properties.names, values=block.properties.values[idx]))
     #        sliced_blocks.append(sliced_block)
     #
     #        assert np.allclose(sliced_block.values, np.zeros(sliced_block.values.shape))

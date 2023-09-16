@@ -9,8 +9,8 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 import torch
 
-import equistore
-from equistore import Labels, TensorBlock, TensorMap
+import metatensor
+from metatensor import Labels, TensorBlock, TensorMap
 import wigners
 
 

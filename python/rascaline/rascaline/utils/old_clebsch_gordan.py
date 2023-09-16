@@ -6,13 +6,13 @@ Note: this is legacy code and only used as reference.
 """
 
 import re
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Union
 
 import numpy as np
 import wigners
 
-import equistore
-from equistore import Labels, TensorBlock, TensorMap
+import metatensor
+from metatensor import Labels, TensorBlock, TensorMap
 import rascaline
 
 
@@ -627,11 +627,11 @@ def _remove_suffix(names, new_suffix=""):
 def lambda_soap_vector(
     frames: list,
     rascal_hypers: dict,
-    lambdas: Sequence[int],
+    lambda_filter: Optional[Union[None, Sequence[int]]] = None,
+    sigma_filter: Optional[Union[None, Sequence[int]]] = None,
     lambda_cut: Optional[int] = None,
     selected_samples: Optional[Labels] = None,
     neighbor_species: Optional[Sequence[int]] = None,
-    even_parity_only: bool = False,
 ) -> TensorMap:
     """
     Takes a list of frames of ASE loaded frames and a dict of Rascaline
@@ -713,26 +713,43 @@ def lambda_soap_vector(
 
     # Clean the lambda-SOAP TensorMap. Drop the order_nu key name as this is by
     # definition 2 for all keys.
-    lsoap = equistore.remove_dimension(lsoap, axis="keys", name="order_nu")
+    lsoap = metatensor.remove_dimension(lsoap, axis="keys", name="order_nu")
 
-    # Drop all odd parity keys/blocks
-    if even_parity_only:
-        keys_to_drop = Labels(
-            names=lsoap.keys.names,
-            values=lsoap.keys.values[lsoap.keys.column("inversion_sigma") == -1],
-        )
-        lsoap = equistore.drop_blocks(lsoap, keys=keys_to_drop)
+    # # Drop all odd parity keys/blocks
+    # if even_parity_only:
+    #     keys_to_drop = Labels(
+    #         names=lsoap.keys.names,
+    #         values=lsoap.keys.values[lsoap.keys.column("inversion_sigma") == -1],
+    #     )
+    #     lsoap = metatensor.drop_blocks(lsoap, keys=keys_to_drop)
 
-        # Drop the inversion_sigma key name as this is now +1 for all blocks
-        lsoap = equistore.remove_dimension(lsoap, axis="keys", name="inversion_sigma")
+    #     # Drop the inversion_sigma key name as this is now +1 for all blocks
+    #     lsoap = metatensor.remove_dimension(lsoap, axis="keys", name="inversion_sigma")
 
     # Drop all blocks that don't correspond to the target lambdas
-    keys_to_drop = Labels(
-        names=lsoap.keys.names,
-        values=lsoap.keys.values[
-            [v not in lambdas for v in lsoap.keys.column("spherical_harmonics_l")]
-        ],
-    )
-    lsoap = equistore.drop_blocks(lsoap, keys=keys_to_drop)
+    if lambda_filter is not None:
+        keys_to_drop = Labels(
+            names=lsoap.keys.names,
+            values=lsoap.keys.values[
+                [lam not in lambda_filter for lam in lsoap.keys.column("spherical_harmonics_l")]
+            ],
+        )
+        lsoap = metatensor.drop_blocks(lsoap, keys=keys_to_drop)
+
+    if sigma_filter is not None:
+        if len(sigma_filter) < 2:
+            keys_to_drop = Labels(
+                names=lsoap.keys.names,
+                values=lsoap.keys.values[
+                    [s not in sigma_filter for s in lsoap.keys.column("inversion_sigma")]
+                ],
+            )
+            lsoap = metatensor.drop_blocks(lsoap, keys=keys_to_drop)
+
+            if len(np.unique(lsoap.keys.column("inversion_sigma"))) == 1:
+                lsoap = metatensor.remove_dimension(lsoap, axis="keys", name="inversion_sigma")
+
+
+
 
     return lsoap
