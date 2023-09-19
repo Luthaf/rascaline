@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 import os
 
-import metatensor.core
+import metatensor
 from pycparser import c_ast, parse_file
 
 
 ROOT = os.path.dirname(__file__)
 FAKE_INCLUDES = os.path.join(ROOT, "include")
 METATENSOR_INCLUDE = os.path.join(
-    metatensor.core.utils.cmake_prefix_path, "..", "..", "include"
+    metatensor.utils.cmake_prefix_path, "..", "..", "include"
 )
 RASCALINE_HEADER = os.path.relpath(
     os.path.join(ROOT, "..", "..", "rascaline-c-api", "include", "rascaline.h")
@@ -248,7 +248,7 @@ import enum
 import platform
 from ctypes import CFUNCTYPE, POINTER
 
-from metatensor.core._c_api import mts_labels_t, mts_tensormap_t
+from metatensor._c_api import mts_labels_t, mts_tensormap_t
 from numpy.ctypeslib import ndpointer
 
 

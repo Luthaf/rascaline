@@ -7,7 +7,7 @@ import enum
 import platform
 from ctypes import CFUNCTYPE, POINTER
 
-from metatensor.core._c_api import mts_labels_t, mts_tensormap_t
+from metatensor._c_api import mts_labels_t, mts_tensormap_t
 from numpy.ctypeslib import ndpointer
 
 
@@ -85,7 +85,7 @@ def setup_functions(lib):
     from .status import _check_rascal_status_t
 
     lib.rascal_last_error.argtypes = [
-        
+
     ]
     lib.rascal_last_error.restype = ctypes.c_char_p
 
@@ -149,7 +149,7 @@ def setup_functions(lib):
     lib.rascal_calculator_compute.restype = _check_rascal_status_t
 
     lib.rascal_profiling_clear.argtypes = [
-        
+
     ]
     lib.rascal_profiling_clear.restype = _check_rascal_status_t
 

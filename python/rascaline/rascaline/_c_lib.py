@@ -2,7 +2,7 @@ import os
 import sys
 from ctypes import cdll
 
-import metatensor.core
+import metatensor
 
 from ._c_api import setup_functions
 from .log import _set_logging_callback_impl, default_logging_callback
@@ -19,7 +19,7 @@ class RascalFinder(object):
         if self._cached_dll is None:
             # Load metatensor shared library in the process first, to ensure
             # the rascaline shared library can find it
-            metatensor.core._c_lib._get_library()
+            metatensor._c_lib._get_library()
 
             path = _lib_path()
 

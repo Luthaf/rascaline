@@ -58,7 +58,7 @@ find_package(Torch 1.11 REQUIRED)
 # ============================================================================ #
 # Setup metatensor_torch
 
-set(METATENSOR_GIT_VERSION "d97ea65")
+set(METATENSOR_GIT_VERSION "2248a3c")
 set(REQUIRED_METATENSOR_TORCH_VERSION "0.1")
 if (RASCALINE_TORCH_FETCH_METATENSOR_TORCH)
     message(STATUS "Fetching metatensor_torch @ ${METATENSOR_GIT_VERSION} from github")
@@ -67,7 +67,7 @@ if (RASCALINE_TORCH_FETCH_METATENSOR_TORCH)
     FetchContent_Declare(
         metatensor_torch
         URL      https://github.com/lab-cosmo/metatensor/archive/${METATENSOR_GIT_VERSION}.zip
-        URL_HASH MD5=6a6899779591ae15861bb3547c7c354b
+        URL_HASH MD5=50e70a2e74246a985e1520260a74205c
         SOURCE_SUBDIR metatensor-torch
         VERBOSE
     )

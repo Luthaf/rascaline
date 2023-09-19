@@ -6,7 +6,7 @@ Property Selection
 """
 import chemfiles
 import numpy as np
-from metatensor.core import Labels, MetatensorError, TensorBlock, TensorMap
+from metatensor import Labels, MetatensorError, TensorBlock, TensorMap
 from skmatter.feature_selection import FPS
 
 from rascaline import SoapPowerSpectrum

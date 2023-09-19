@@ -1,8 +1,8 @@
 import ctypes
 from typing import List, Optional, Union
 
-from metatensor.core import Labels, TensorMap
-from metatensor.core._c_api import c_uintptr_t, mts_tensormap_t
+from metatensor import Labels, TensorMap
+from metatensor._c_api import c_uintptr_t, mts_tensormap_t
 
 from ._c_api import (
     RASCAL_BUFFER_SIZE_ERROR,

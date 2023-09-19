@@ -1,6 +1,6 @@
 import os
 
-import metatensor.core
+import metatensor
 
 from .power_spectrum import PowerSpectrum
 
@@ -12,9 +12,7 @@ __all__ = ["PowerSpectrum"]
 _HERE = os.path.realpath(os.path.dirname(__file__))
 
 _rascaline_cmake_prefix = os.path.realpath(os.path.join(_HERE, "..", "lib", "cmake"))
-cmake_prefix_path = (
-    f"{_rascaline_cmake_prefix};{metatensor.core.utils.cmake_prefix_path}"
-)
+cmake_prefix_path = f"{_rascaline_cmake_prefix};{metatensor.utils.cmake_prefix_path}"
 """
 Path containing the CMake configuration files for the underlying C library
 """
