@@ -1,4 +1,4 @@
-from metatensor.core import Labels, TensorBlock, TensorMap
+from metatensor import Labels, TensorBlock, TensorMap
 
 from ...calculator_base import CalculatorBase
 from ...systems import IntoSystem
