@@ -37,7 +37,6 @@ from .system import System, systems_to_torch  # noqa
 
 __all__ = [
     "AtomicComposition",
-    "CalculatorBase",
     "LodeSphericalExpansion",
     "NeighborList",
     "SoapPowerSpectrum",
