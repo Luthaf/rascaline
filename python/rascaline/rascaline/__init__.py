@@ -19,3 +19,16 @@ from .splines import generate_splines  # noqa
 from .status import RascalError  # noqa
 from .systems import IntoSystem, SystemBase  # noqa
 from .version import __version__  # noqa
+
+
+__all__ = [
+    "AtomicComposition",
+    "CalculatorBase",
+    "LodeSphericalExpansion",
+    "NeighborList",
+    "SoapPowerSpectrum",
+    "SoapRadialSpectrum",
+    "SortedDistances",
+    "SphericalExpansion",
+    "SphericalExpansionByPair",
+]

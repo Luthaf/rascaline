@@ -19,16 +19,30 @@ _load_library()
 
 from . import utils  # noqa
 from .calculator_base import CalculatorModule, register_autograd  # noqa
-from .system import System, systems_to_torch  # noqa
-
 
 # don't forget to also update `rascaline/__init__.py` and
 # `rascaline/torch/calculators.py` when modifying this file
-from .calculators import AtomicComposition  # noqa  isort: skip
-from .calculators import SortedDistances  # noqa  isort: skip
-from .calculators import NeighborList  # noqa  isort: skip
-from .calculators import LodeSphericalExpansion  # noqa isort: skip
-from .calculators import SphericalExpansion  # noqa  isort: skip
-from .calculators import SphericalExpansionByPair  # noqa  isort: skip
-from .calculators import SoapRadialSpectrum  # noqa  isort: skip
-from .calculators import SoapPowerSpectrum  # noqa  isort: skip
+from .calculators import (  # noqa
+    AtomicComposition,
+    LodeSphericalExpansion,
+    NeighborList,
+    SoapPowerSpectrum,
+    SoapRadialSpectrum,
+    SortedDistances,
+    SphericalExpansion,
+    SphericalExpansionByPair,
+)
+from .system import System, systems_to_torch  # noqa
+
+
+__all__ = [
+    "AtomicComposition",
+    "CalculatorBase",
+    "LodeSphericalExpansion",
+    "NeighborList",
+    "SoapPowerSpectrum",
+    "SoapRadialSpectrum",
+    "SortedDistances",
+    "SphericalExpansion",
+    "SphericalExpansionByPair",
+]
