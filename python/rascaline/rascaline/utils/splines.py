@@ -2,9 +2,9 @@
 Splined radial integrals
 ========================
 
-Classes for generating spline points which can be used as input for the for the radial
-integral hyper paramater option. For an complete example for the LE how to use the
-classes see :ref:`example-splines`.
+Classes for generating splines which can be used as tabulated radial integrals in the
+various SOAP and LODE calculators. For an complete example of how to use these classes
+see :ref:`example-splines`.
 
 .. autoclass:: rascaline.utils.RadialIntegralSplinerBase
     :members:
@@ -322,7 +322,7 @@ class RadialIntegralFromFunction(RadialIntegralSplinerBase):
 
         where :math:`g(r)` is the radially symmetric density function, `R_n(r)` the
         radial basis function and :math:`n` the current radial channel. This should be
-        implemented in the child classes.
+        pre-computed and provided as a separate parameter.
 
     Example
     -------
