@@ -16,14 +16,18 @@ from cg_coefficients import ClebschGordanReal
 # - [ ] `combine_single_center_to_body_order`: feedback on API design
 # - [ ] Unit tests - metadata and maths
 # - [ ] Thorough documentation
-# - [ ] Implement `combine_single_center_one_iteration`
 
 # TODO: later PRs, in roughly chronological order
+# - [ ] Implement `combine_single_center_one_iteration`
 # - [ ] Use dispatch for numpy/torch CG combination
 # - [ ] Add support for gradients
 # - [ ] Integrate with `sparse_accumulation`
 # - [ ] Extend to multi-center desciptors
 # - [ ] Customizable and arbitrary (non)linear transformations at each iteration
+
+
+# 29/09/23 Meeting notes
+# - `angular_cutoff` appropriate arg name?
 
 
 # ======================================================================
@@ -89,7 +93,6 @@ def combine_single_center_to_body_order(
     angular_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
     parity_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
     use_sparse: bool = True,
-    return_metadata_only: bool = False,
 ) -> TensorMap:
     """
     Takes a nu = 1 (i.e. 2-body) single-center descriptor and combines it
@@ -134,10 +137,6 @@ def combine_single_center_to_body_order(
         angular_selection=angular_selection,
         parity_selection=parity_selection,
     )
-
-    # For debugging it might be useful just to return the keys of the final TensorMap
-    if return_metadata_only:
-        return combination_metadata
 
     # Define the cached CG coefficients, either as sparse dicts or dense arrays.
     # TODO: we pre-computed the combination metadata, so a more cleverly
@@ -186,6 +185,96 @@ def combine_single_center_to_body_order(
         )
 
     return nu_x_tensor
+
+
+def combine_single_center_to_body_order_metadata_only(
+    nu_1_tensor: TensorMap,
+    target_body_order: int,
+    angular_cutoff: Optional[int] = None,
+    angular_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
+    parity_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
+) -> List[TensorMap]:
+    """
+    Performs a pseudo-CG combination of a nu = 1 (i.e. 2-body) single-center
+    descriptor with itself to generate a descriptor of order
+    ``target_body_order``. 
+    
+    A list of TensorMaps is returned, where each has the complete * metadata *
+    of the TensorMap that would be created by a full CG combination. No actual
+    CG combinations of block values arrays are performed, instead arrays of
+    zeros are returned in the output TensorMaps.
+
+    This function is useful for producing pseudo-outputs of a CG iteration
+    calculation with all the correct metadata, but far cheaper than if CG
+    combinations were actually performed. This can help to quantify the size of
+    descriptors produced, and observe the effect of selection filters on the
+    expansion of features at each iteration.
+    """
+    if target_body_order <= 1:
+        raise ValueError("`target_body_order` must be > 1")
+
+    if np.any([len(list(block.gradients())) > 0 for block in nu_1_tensor]):
+        raise NotImplementedError(
+            "CG combinations of gradients not currently supported. Check back soon."
+        )
+
+    # Standardize the metadata of the input tensor
+    nu_1_tensor = _standardize_tensor_metadata(nu_1_tensor)
+
+    # Pre-compute the metadata needed to perform each CG iteration
+    # Current design choice: only combine a nu = 1 tensor iteratively with
+    # itself, i.e. nu=1 + nu=1 --> nu=2. nu=2 + nu=1 --> nu=3, etc.
+    parity_selection = _parse_selection_filters(
+        n_iterations=target_body_order - 1,
+        selection_type="parity",
+        selection=parity_selection,
+    )
+    angular_selection = _parse_selection_filters(
+        n_iterations=target_body_order - 1,
+        selection_type="angular",
+        selection=angular_selection,
+        angular_cutoff=angular_cutoff,
+    )
+    combination_metadata = _precompute_metadata(
+        nu_1_tensor.keys,
+        nu_1_tensor.keys,
+        n_iterations=target_body_order - 1,
+        angular_cutoff=angular_cutoff,
+        angular_selection=angular_selection,
+        parity_selection=parity_selection,
+    )
+
+    # Create a copy of the nu = 1 tensor to combine with itself
+    nu_x_tensor = nu_1_tensor.copy()
+
+    # Iteratively combine block values
+    nu_x_tensors = []
+    for iteration in range(target_body_order - 1):
+        # Combine blocks
+        nu_x_blocks = []
+        # TODO: is there a faster way of iterating over keys/blocks here?
+        for nu_x_key, key_1, key_2, _ in zip(*combination_metadata[iteration]):
+            # Combine the pair of block values, accounting for multiplicity
+            nu_x_block = _combine_single_center_blocks(
+                nu_x_tensor[key_1],
+                nu_1_tensor[key_2],
+                nu_x_key["spherical_harmonics_l"],
+                cg_cache=None,
+                correction_factor=1.0,
+                return_metadata_only=True,
+            )
+            nu_x_blocks.append(nu_x_block)
+        nu_x_keys = combination_metadata[iteration][0]
+        nu_x_tensor = TensorMap(keys=nu_x_keys, blocks=nu_x_blocks)
+        nu_x_tensors.append(nu_x_tensor)
+
+    return [
+        tensor.keys_to_properties(
+            [f"l{i}" for i in range(1, tmp_bo + 1)]
+            + [f"k{i}" for i in range(2, tmp_bo)]
+        )
+        for tmp_bo, tensor in enumerate(nu_x_tensors, start=2)
+    ]
 
 
 def combine_single_center_one_iteration(
@@ -598,6 +687,7 @@ def _combine_single_center_blocks(
     lam: int,
     cg_cache,
     correction_factor: float = 1.0,
+    return_metadata_only: bool = False,
 ) -> TensorBlock:
     """
     For a given pair of TensorBlocks and desired angular channel, combines the
@@ -605,7 +695,14 @@ def _combine_single_center_blocks(
     """
 
     # Do the CG combination - single center so no shape pre-processing required
-    combined_values = _combine_arrays(block_1.values, block_2.values, lam, cg_cache)
+    if return_metadata_only:
+        combined_values = _combine_arrays_sparse(
+            block_1.values, block_2.values, lam, cg_cache, return_empty_array=True
+        )
+    else:
+        combined_values = _combine_arrays(
+            block_1.values, block_2.values, lam, cg_cache, return_empty_array=False
+        )
 
     # Infer the new nu value: block 1's properties are nu pairs of
     # "species_neighbor_x" and "nx".
@@ -646,6 +743,7 @@ def _combine_arrays(
     arr_2: np.ndarray,
     lam: int,
     cg_cache,
+    return_empty_array: bool = False,
 ) -> np.ndarray:
     """
     Couples arrays corresponding to the irreducible spherical components of 2
@@ -666,10 +764,19 @@ def _combine_arrays(
 
     Either performs the operation in a dense or sparse manner, depending on the
     value of `sparse`.
+
+    `return_empty_array` can be used to return an empty array of the correct
+    shape, without performing the CG combination step. This can be useful for
+    probing the outputs of CG iterations in terms of metadata without the
+    computational cost of performing the CG combinations - i.e. using the
+    function :py:func:`combine_single_center_to_body_order_metadata_only`.
     """
+    if return_empty_array:
+        return _combine_arrays_sparse(arr_1, arr_2, lam, cg_cache, True)
+
     # Check the first dimension of the arrays are the same (i.e. same samples)
     if cg_cache.sparse:
-        return _combine_arrays_sparse(arr_1, arr_2, lam, cg_cache)
+        return _combine_arrays_sparse(arr_1, arr_2, lam, cg_cache, False)
     return _combine_arrays_dense(arr_1, arr_2, lam, cg_cache)
 
 
@@ -678,6 +785,7 @@ def _combine_arrays_sparse(
     arr_2: np.ndarray,
     lam: int,
     cg_cache,
+    return_empty_array: bool = False,
 ) -> np.ndarray:
     """
     TODO: finish docstring.
@@ -707,11 +815,14 @@ def _combine_arrays_sparse(
     l1 = (arr_1.shape[1] - 1) // 2
     l2 = (arr_2.shape[1] - 1) // 2
 
-    # Get the corresponding Clebsch-Gordan coefficients
-    cg_coeffs = cg_cache.coeffs[(l1, l2, lam)]
-
     # Initialise output array
     arr_out = np.zeros((n_i, 2 * lam + 1, n_p * n_q))
+
+    if return_empty_array:
+        return arr_out
+
+    # Get the corresponding Clebsch-Gordan coefficients
+    cg_coeffs = cg_cache.coeffs[(l1, l2, lam)]
 
     # Fill in each mu component of the output array in turn
     for m1, m2, mu in cg_coeffs.keys():
