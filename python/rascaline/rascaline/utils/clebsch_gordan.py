@@ -2,272 +2,71 @@
 Module for computing Clebsch-gordan iterations with metatensor TensorMaps.
 """
 import itertools
-from typing import Optional, Sequence, Tuple, Union
+from typing import Optional, List, Tuple, Union
 
-import ase
 import numpy as np
 
 import metatensor
 from metatensor import Labels, TensorBlock, TensorMap
-import rascaline
 
-import wigners
-
-
-# TODO:
-# - [ ] Add support for dense operation
-# - [ ] Account for body-order multiplicity
-# - [ ] Gradients?
-# - [ ] Unit tests
-# - [ ] Check the combined keys - potential bug (!)
+from cg_coefficients import ClebschGordanReal
 
 
-# ===== Class for calculating Clebsch-Gordan coefficients =====
+# TODO: this PR
+# - [ ] `combine_single_center_to_body_order`: feedback on API design
+# - [ ] Unit tests - metadata and maths
+# - [ ] Thorough documentation
+# - [ ] Implement `combine_single_center_one_iteration`
+
+# TODO: later PRs, in roughly chronological order
+# - [ ] Use dispatch for numpy/torch CG combination
+# - [ ] Add support for gradients
+# - [ ] Integrate with `sparse_accumulation`
+# - [ ] Extend to multi-center desciptors
+# - [ ] Customizable and arbitrary (non)linear transformations at each iteration
 
 
-class ClebschGordanReal:
-    """
-    Class for computing Clebsch-Gordan coefficients for real spherical
-    harmonics.
-
-    Stores the coefficients in a dictionary in the `self.coeffs` attribute,
-    which is built at initialization. This dictionary has the form:
-
-    {
-        (l1, l2, lambda): [
-            np.ndarray([m1, m2, cg]),
-            ...
-            for m1 in range(-l1, l1 + 1),
-            for m2 in range(-l2, l2 + 1),
-        ],
-        ...
-        for lambda in range(0, l)
-    }
-
-    where `cg`, i.e. the third value in each array, is the Clebsch-Gordan
-    coefficient that describes the combination of the `m1` irreducible
-    component of the `l1` angular channel and the `m2` irreducible component of
-    the `l2` angular channel into the irreducible tensor of order `lambda`.
-    """
-
-    def __init__(self, lambda_max: int, sparse: bool = True):
-        self._lambda_max = lambda_max
-        self._sparse = sparse
-        self._coeffs = ClebschGordanReal.build_coeff_dict(
-            self._lambda_max, self._sparse
-        )
-
-    @property
-    def lambda_max(self):
-        return self._lambda_max
-
-    @property
-    def sparse(self):
-        return self._sparse
-
-    @property
-    def coeffs(self):
-        return self._coeffs
-
-    @staticmethod
-    def build_coeff_dict(lambda_max: int, sparse: bool):
-        """
-        Builds a dictionary of Clebsch-Gordan coefficients for all possible
-        combination of l1 and l2, up to lambda_max.
-        """
-        # real-to-complex and complex-to-real transformations as matrices
-        r2c = {}
-        c2r = {}
-        coeff_dict = {}
-        for lam in range(0, lambda_max + 1):
-            r2c[lam] = _real2complex(lam)
-            c2r[lam] = np.conjugate(r2c[lam]).T
-
-        for l1 in range(lambda_max + 1):
-            for l2 in range(lambda_max + 1):
-                for lam in range(
-                    max(l1, l2) - min(l1, l2), min(lambda_max, (l1 + l2)) + 1
-                ):
-                    complex_cg = _complex_clebsch_gordan_matrix(l1, l2, lam)
-
-                    real_cg = (r2c[l1].T @ complex_cg.reshape(2 * l1 + 1, -1)).reshape(
-                        complex_cg.shape
-                    )
-
-                    real_cg = real_cg.swapaxes(0, 1)
-                    real_cg = (r2c[l2].T @ real_cg.reshape(2 * l2 + 1, -1)).reshape(
-                        real_cg.shape
-                    )
-                    real_cg = real_cg.swapaxes(0, 1)
-
-                    real_cg = real_cg @ c2r[lam].T
-
-                    if (l1 + l2 + lam) % 2 == 0:
-                        cg_l1l2lam = np.real(real_cg)
-                    else:
-                        cg_l1l2lam = np.imag(real_cg)
-
-                    if sparse:
-                        # if sparse we make a dictionary out of the matrix
-                        nonzeros_cg_coeffs_idx = np.where(np.abs(cg_l1l2lam) > 1e-15)
-                        cg_l1l2lam = {
-                            (m1, m2, mu): cg_l1l2lam[m1, m2, mu]
-                            for m1, m2, mu in zip(*nonzeros_cg_coeffs_idx)
-                        }
-                    coeff_dict[(l1, l2, lam)] = cg_l1l2lam
-
-        return coeff_dict
-
-
-def _real2complex(lam: int) -> np.ndarray:
-    """
-    Computes a matrix that can be used to convert from real to complex-valued
-    spherical harmonics(coefficients) of order ``lam``.
-
-    It's meant to be applied to the left, ``real2complex @ [-lam, ..., +lam]``.
-    """
-    result = np.zeros((2 * lam + 1, 2 * lam + 1), dtype=np.complex128)
-
-    I_SQRT_2 = 1.0 / np.sqrt(2)
-
-    for m in range(-lam, lam + 1):
-        if m < 0:
-            result[lam - m, lam + m] = I_SQRT_2 * 1j * (-1) ** m
-            result[lam + m, lam + m] = -I_SQRT_2 * 1j
-
-        if m == 0:
-            result[lam, lam] = 1.0
-
-        if m > 0:
-            result[lam + m, lam + m] = I_SQRT_2 * (-1) ** m
-            result[lam - m, lam + m] = I_SQRT_2
-
-    return result
-
-
-def _complex_clebsch_gordan_matrix(l1, l2, lam):
-    r"""clebsch-gordan matrix
-    Computes the Clebsch-Gordan (CG) matrix for
-    transforming complex-valued spherical harmonics.
-    The CG matrix is computed as a 3D array of elements
-        < l1 m1 l2 m2 | lam mu >
-    where the first axis loops over m1, the second loops over m2,
-    and the third one loops over mu. The matrix is real.
-    For example, using the relation:
-        | l1 l2 lam mu > = \sum_{m1, m2} <l1 m1 l2 m2 | lam mu > | l1 m1 > | l2 m2 >
-    (https://en.wikipedia.org/wiki/Clebsch–Gordan_coefficients, section
-    "Formal definition of Clebsch-Gordan coefficients", eq 2)
-    one can obtain the spherical harmonics lam from two sets of
-    spherical harmonics with l1 and l2 (up to a normalization factor).
-    E.g.:
-    Args:
-        l1: l number for the first set of spherical harmonics
-        l2: l number for the second set of spherical harmonics
-        lam: l number For the third set of spherical harmonics
-    Returns:
-        cg: CG matrix for transforming complex-valued spherical harmonics
-    >>> from scipy.special import sph_harm
-    >>> import numpy as np
-    >>> import wigners
-    ...
-    >>> C_112 = _complex_clebsch_gordan_matrix(1, 1, 2)
-    >>> comp_sph_1 = np.array([
-    ... sph_harm(m, 1, 0.2, 0.2) for m in range(-1, 1+1)
-    ... ])
-    >>> comp_sph_2 = np.array([sph_harm(m, 1, 0.2, 0.2) for m in range(-1, 1+1)])
-    >>> # obtain the (unnormalized) spherical harmonics
-    >>> # with l = 2 by contraction over m1 and m2
-    >>> comp_sph_2_u = np.einsum("ijk,i,j->k", C_112, comp_sph_1, comp_sph_2)
-    >>> # we can check that they differ from the spherical harmonics
-    >>> # by a constant factor
-    >>> comp_sph_2 = np.array([sph_harm(m, 2, 0.2, 0.2) for m in range(-2, 2+1)])
-    >>> ratio = comp_sph_2 / comp_sph_2_u
-    >>> np.allclose(ratio[0], ratio)
-    True
-    """
-    if np.abs(l1 - l2) > lam or np.abs(l1 + l2) < lam:
-        return np.zeros((2 * l1 + 1, 2 * l2 + 1, 2 * lam + 1), dtype=np.double)
-    else:
-        return wigners.clebsch_gordan_array(l1, l2, lam)
-
-
-# ===== Methods for performing CG combinations =====
-
-
-# ===== Fxns for combining multi center descriptors =====
-
-
-def _combine_multi_centers(
-    tensor_1: TensorMap,
-    tensor_2: TensorMap,
-    lambdas: Sequence[int],
-    cg_cache,
-    use_sparse: bool = True,
-) -> TensorMap:
-    """ """
-    raise NotImplementedError
-
-
-def _combine_multi_centers_block_pair(
-    block_1: TensorBlock,
-    block_2: TensorBlock,
-    lam: int,
-    cg_cache,
-    use_sparse: bool = True,
-) -> TensorMap:
-    """ """
-    raise NotImplementedError
-
-
-# ===== Fxns for combining single center descriptors =====
+# ======================================================================
+# ===== Functions to do CG combinations on single-center descriptors
+# ======================================================================
 
 
 def lambda_soap_vector(
-    frames: Sequence[ase.Atoms],
-    rascal_hypers: dict,
-    lambda_filter: Optional[Union[None, int, Sequence[int]]] = None,
-    sigma_filter: Optional[Union[None, int, Sequence[int]]] = None,
-    lambda_cut: Optional[int] = None,
-    selected_samples: Optional[Labels] = None,
-    species_neighbors: Optional[Sequence[int]] = None,
+    nu_1_tensor: TensorMap,
+    angular_cutoff: Optional[int] = None,
+    angular_selection: Optional[Union[None, int, List[int]]] = None,
+    parity_selection: Optional[Union[None, int, List[int]]] = None,
 ) -> TensorMap:
     """
     A higher-level wrapper for the :py:func:`n_body_iteration_single_center`
-    function specifically for generating lambda-SOAP vectors in the metatensor
-    format, with some added metadata manipulation.
+    function specifically for generating a lambda-SOAP vector in the metatensor
+    format.
 
-    The hyperparameters `rascal_hypers` are used to generate a nu=1
-    SphericalExpansion object with rascaline, and these are then combined with a
-    single Clebsch-Gordan iteration step to form the nu=2 lambda-SOAP
-    descriptor. Only the target spherical channels given in `lambdas` are
-    calculated and returned.
+    A nu = 1 (i.e. 2-body) single-center descriptor is taken as input and
+    conbined with itself in a single CG combination step to form a nu = 2
+    (3-body) single-center descriptor, i.e. lambda-SOAP. Only the target angular
+    channels given in `angular_selection` and target parities given in
+    `parity_selection` are returned.
 
-    `lambda_cut` can be set to reduce the memory overhead of the calculation, at
-    the cost of loss of information. The theoretical maximum (and default) value
-    is nu_target * rascal_hypers["max_angular"], though a lower value can be
-    set. `nu_target` is the target body-order of the descriptor (by definition
-    nu=2 for lambda-SOAP). Using the default (and theoretical maximum) value can
-    lead to memory blow-up for large systems and hgih body-orders, so this value
-    needs to be tailored for the computation and system. Note that truncating
-    this value to less than the default will lead to some information loss.
+    The input `nu_1_tensor` may be, for instance, a rascaline.SphericalExpansion
+    or rascaline.LodeSphericalExpansion.
 
-    If `sigmas` is passed, then only the specified sigmas are
-    returned in the output TensorMap. For instance, passing as an int +1 means
-    only blocks with even sigmas will be returned. If a dict, the sigmas kept
-    for each target lambda can be specified. Any lambdasIf false, all blocks of both odd
-    and even sigmas are returned. In the latter case, the output TensorMap will
-    have a key dimension "inversion_sigma" that tracks the sigmas.
+    This function differs from :py:func`combine_single_center_to_body_order` in
+    that the returned TensorMap has the redundant "order_nu" key dimension
+    removed (which is by definition 2 for lambda-SOAP), and if a single parity
+    is selected, the redundant "inversion_sigma" key dimension too.
     """
-    # Generate lambda-SOAP using rascaline.utils
-    lsoap = n_body_iteration_single_center(
-        frames,
-        rascal_hypers=rascal_hypers,
-        nu_target=2,
-        lambda_filter=lambda_filter,
-        sigma_filter=sigma_filter,
-        lambda_cut=lambda_cut,
-        selected_samples=selected_samples,
-        species_neighbors=species_neighbors,
+    if np.any([len(list(block.gradients())) > 0 for block in nu_1_tensor]):
+        raise NotImplementedError(
+            "CG combinations of gradients not currently supported. Check back soon."
+        )
+    # Generate lambda-SOAP
+    lsoap = combine_single_center_to_body_order(
+        nu_1_tensor=nu_1_tensor,
+        target_body_order=2,
+        angular_cutoff=angular_cutoff,
+        angular_selection=angular_selection,
+        parity_selection=parity_selection,
         use_sparse=True,
     )
 
@@ -275,7 +74,7 @@ def lambda_soap_vector(
     # lambda-SOAP blocks.
     lsoap = metatensor.remove_dimension(lsoap, axis="keys", name="order_nu")
 
-    # If a single sigmas is requested, drop the now redundant "inversion_sigma"
+    # If a single parity is requested, drop the now redundant "inversion_sigma"
     # key name
     if len(np.unique(lsoap.keys.column("inversion_sigma"))) == 1:
         lsoap = metatensor.remove_dimension(lsoap, axis="keys", name="inversion_sigma")
@@ -283,426 +82,517 @@ def lambda_soap_vector(
     return lsoap
 
 
-def _parse_sigma_filter(
-    nu_target: int,
-    sigma_filter: Union[None, int, Sequence[int], Sequence[Sequence[int]]],
-) -> Sequence[Sequence[int]]:
-    """
-    Returns parity filters for each CG combination step of a nu=1 tensor with
-    itself up to the target body order.
-
-    If a filter isn't specified by the user with `sigma_filter=None`, then no
-    filter is applied, i.e. [-1, +1] is used at every iteration.
-
-    If a single sequence of int is specified, then this is used for the last
-    iteration only, and [-1, +1] is used for all intermediate iterations. For
-    example, if `nu_target=4` and `sigma_filter=[+1]`, then the filter [[-1,
-    +1], [-1, +1], [+1]] is returned.
-
-    If a sequence of sequences of int is specified, then this is assumed to be
-    the desired filter for each iteration and is only checked for validity
-    without modification.
-    """
-    if nu_target < 2:
-        raise ValueError("`nu_target` must be > 1")
-
-    # No filter specified: use [-1, +1] for all iterations
-    if sigma_filter is None:
-        sigma_filter = [[-1, +1] for _ in range(nu_target - 1)]
-
-    # Parse user-defined filter: assume passed as Sequence[int] or
-    # Sequence[Sequence[int]]
-    else:
-        if isinstance(sigma_filter, int):
-            sigma_filter = [sigma_filter]
-        if not isinstance(sigma_filter, Sequence):
-            raise TypeError(
-                "`sigma_filter` must be an int, Sequence[int], or Sequence[Sequence[int]]"
-            )
-        # Single filter: apply on last iteration only, use both sigmas for
-        # intermediate iterations
-        if np.all([isinstance(sigma, int) for sigma in sigma_filter]):
-            sigma_filter = [[-1, +1] for _ in range(nu_target - 2)] + [sigma_filter]
-
-        else:
-            # Assume filter explicitly defined for each iteration (checked below)
-            pass
-
-    # Check sigma_filter
-    assert isinstance(sigma_filter, Sequence)
-    assert len(sigma_filter) == nu_target - 1
-    assert np.all([isinstance(filt, Sequence) for filt in sigma_filter])
-    assert np.all([np.all([s in [-1, +1] for s in filt]) for filt in sigma_filter])
-
-    return sigma_filter
-
-
-def _parse_lambda_filter(
-    nu_target: int,
-    rascal_max_l: int,
-    lambda_filter: Union[None, int, Sequence[int], Sequence[Sequence[int]]],
-    lambda_cut: Union[None, int],
-) -> Sequence[Sequence[int]]:
-    """
-    Returns parity filters for each CG combination step of a nu=1 tensor with
-    itself up to the target body order.
-
-    If a filter isn't specified by the user with `lambda_filter=None`, then no
-    filter is applied. In this case all possible lambda channels are retained at
-    each iteration. For example, if `nu_target=4`, `rascal_max_l=5`, and
-    `lambda_cut=None`, then the returned filter is [[0, ..., 10], [0, ..., 15],
-    [0, ..., 20]]. If `nu_target=4`, `rascal_max_l=5`, and `lambda_cut=10`, then
-    the returned filter is [[0, ..., 10], [0, ..., 10], [0, ..., 10]].
-
-    If `lambda_filter` is passed a single sequence of int, then this is used for
-    the last iteration only, and all possible combinations of lambda are used in
-    intermediate iterations. For instance, if `lambda_filter=[0, 1, 2]`, the
-    returned filters for the 2 examples above, respectively, would be [[0, ...,
-    10], [0, ..., 15], [0, 1, 2]] and [[0, ..., 10], [0, ..., 10], [0, 1, 2]].
-
-    If a sequence of sequences of int is specified, then this is assumed to be
-    the desired filter for each iteration and is only checked for validity
-    without modification.
-    """
-    if nu_target < 2:
-        raise ValueError("`nu_target` must be > 1")
-
-    # Check value of lambda_cut
-    if lambda_cut is not None:
-        if not (rascal_max_l <= lambda_cut <= nu_target * rascal_max_l):
-            raise ValueError(
-                "`lambda_cut` must be >= `rascal_hypers['max_angular']` and <= `nu_target`"
-                " * `rascal_hypers['max_angular']`"
-            )
-
-    # No filter specified: retain all possible lambda channels for every
-    # iteration, up to lambda_cut (if specified)
-    if lambda_filter is None:
-        if lambda_cut is None:
-            # Use the full range of possible lambda channels for each iteration.
-            # This is dependent on the itermediate body order.
-            lambda_filter = [
-                [lam for lam in range(0, (nu * rascal_max_l) + 1)]
-                for nu in range(2, nu_target + 1)
-            ]
-        else:
-            # Use the full range of possible lambda channels for each iteration,
-            # but only up to lambda_cut, independent of the intermediate body
-            # order.
-            lambda_filter = [
-                [lam for lam in range(0, lambda_cut + 1)]
-                for nu in range(2, nu_target + 1)
-            ]
-
-    # Parse user-defined filter: assume passed as Sequence[int] or
-    # Sequence[Sequence[int]]
-    else:
-        if isinstance(lambda_filter, int):
-            lambda_filter = [lambda_filter]
-        if not isinstance(lambda_filter, Sequence):
-            raise TypeError(
-                "`lambda_filter` must be an int, Sequence[int], or Sequence[Sequence[int]]"
-            )
-        # Single filter: apply on last iteration only, use all possible lambdas for
-        # intermediate iterations (up to lambda_cut, if specified)
-        if np.all([isinstance(filt, int) for filt in lambda_filter]):
-            if lambda_cut is None:
-                # Use the full range of possible lambda channels for each iteration.
-                # This is dependent on the itermediate body order.
-                lambda_filter = [
-                    [lam for lam in range(0, (nu * rascal_max_l) + 1)]
-                    for nu in range(2, nu_target)
-                ] + [lambda_filter]
-
-            else:
-                # Use the full range of possible lambda channels for each iteration,
-                # but only up to lambda_cut, independent of the intermediate body
-                # order.
-                lambda_filter = [
-                    [lam for lam in range(0, lambda_cut + 1)]
-                    for nu in range(2, nu_target)
-                ] + [lambda_filter]
-
-        else:
-            # Assume filter explicitly defined for each iteration (checked below)
-            pass
-
-    # Check lambda_filter
-    if not isinstance(lambda_filter, Sequence):
-        raise TypeError(
-            "`lambda_filter` must be an int, Sequence[int], or Sequence[Sequence[int]]"
-        )
-    if len(lambda_filter) != nu_target - 1:
-        raise ValueError(
-            "`lambda_filter` must have length `nu_target` - 1, i.e. the number of CG"
-            " iterations required to reach `nu_target`"
-        )
-    if not np.all([isinstance(filt, Sequence) for filt in lambda_filter]):
-        raise TypeError(
-            "`lambda_filter` must be an int, Sequence[int], or Sequence[Sequence[int]]"
-        )
-    # Check the lambda values are within the possible range, based on each
-    # intermediate body order
-    if not np.all(
-        [
-            np.all([0 <= lam <= nu * rascal_max_l for lam in filt])
-            for nu, filt in enumerate(lambda_filter, start=2)
-        ]
-    ):
-        raise ValueError(
-            "All lambda values in `lambda_filter` must be >= 0 and <= `nu` *"
-            " `rascal_hypers['max_angular']`, where `nu` is the body"
-            " order created in the intermediate CG combination step"
-        )
-    # Now check that at each iteration the lambda values can actually be created
-    # from combination at the previous iteration
-    for filt_i, filt in enumerate(lambda_filter):
-        if filt_i == 0:
-            # Assume that the original nu=1 tensors to be combined have all l up
-            # to and including `rascal_max_l`
-            allowed_lams = np.arange(0, (2 * rascal_max_l) + 1)
-        else:
-            allowed_lams = []
-            for l1, l2 in itertools.product(lambda_filter[filt_i - 1], repeat=2):
-                for lam in range(abs(l1 - l2), abs(l1 + l2) + 1):
-                    allowed_lams.append(lam)
-
-            allowed_lams = np.unique(allowed_lams)
-
-        if not np.all([lam in allowed_lams for lam in filt]):
-            raise ValueError(
-                f"invalid lambda values in `lambda_filter` for iteration {filt_i + 1}."
-                f" {filt} cannot be created by combination of previous lambda values"
-                f" {lambda_filter[filt_i - 1]}"
-            )
-
-    return lambda_filter
-
-
-def n_body_iteration_single_center(
-    frames: Sequence[ase.Atoms],
-    rascal_hypers: dict,
-    nu_target: int,
-    lambda_filter: Optional[
-        Union[None, int, Sequence[int], Sequence[Sequence[int]]]
-    ] = None,
-    sigma_filter: Optional[
-        Union[None, int, Sequence[int], Sequence[Sequence[int]]]
-    ] = None,
-    lambda_cut: Optional[int] = None,
-    selected_samples: Optional[Labels] = None,
-    species_neighbors: Optional[Sequence[int]] = None,
+def combine_single_center_to_body_order(
+    nu_1_tensor: TensorMap,
+    target_body_order: int,
+    angular_cutoff: Optional[int] = None,
+    angular_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
+    parity_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
     use_sparse: bool = True,
-    debug: bool = False,
+    return_metadata_only: bool = False,
 ) -> TensorMap:
     """
-    Based on the passed ``rascal_hypers``, generates a rascaline
-    SphericalExpansion (i.e. nu = 1 body order descriptor) and combines it
-    iteratively to generate a descriptor of order ``nu_target``.
+    Takes a nu = 1 (i.e. 2-body) single-center descriptor and combines it
+    iteratively with itself to generate a descriptor of order
+    ``target_body_order``.
     """
-    # Generate a rascaline SphericalExpansion, for only the selected samples if
-    # applicable
-    calculator = rascaline.SphericalExpansion(**rascal_hypers)
-    nu1_tensor = calculator.compute(frames, selected_samples=selected_samples)
+    if target_body_order < 1:
+        raise ValueError("`target_body_order` must be > 0")
 
-    # Move the "species_neighbor" key to the properties. If species_neighbors is
-    # passed as a list of int, sparsity can be created in the properties for
-    # these species.
-    if species_neighbors is None:
-        keys_to_move = "species_neighbor"
-    else:
-        keys_to_move = Labels(
-            names=["species_neighbor"],
-            values=np.array(species_neighbors).reshape(-1, 1),
-        )
-    nu1_tensor = nu1_tensor.keys_to_properties(keys_to_move=keys_to_move)
-
-    # Add "order_nu" and "inversion_sigma" key dimensions, both with values 1
-    nu1_tensor = metatensor.insert_dimension(
-        nu1_tensor, axis="keys", name="order_nu", values=np.array([1]), index=0
-    )
-    nu1_tensor = metatensor.insert_dimension(
-        nu1_tensor, axis="keys", name="inversion_sigma", values=np.array([1]), index=1
-    )
-
-    # If the desired body order is 1, return the spherical expansion with
-    # standardized metadata
-    if nu_target == 1:
-        return nu1_tensor
-
-    # Otherwise, perform CG iterations. First, construct explicit sigma and
-    # lambda filters for each iteration. Basic checks are performed here and
-    # errors raised if invalid filters are passed.
-    sigma_filter = _parse_sigma_filter(nu_target, sigma_filter)
-    lambda_filter = _parse_lambda_filter(
-        nu_target, rascal_hypers["max_angular"], lambda_filter, lambda_cut
-    )
-    if debug:
-        print("sigma_filter: ", sigma_filter)
-        print("lambda_filter: ", lambda_filter)
-
-    # Create a copy of the nu = 1 tensor to combine with itself and store its
-    # keys.
-    nux_tensor = nu1_tensor.copy()
-    nux_keys = nux_tensor.keys
-    nu1_keys = nu1_tensor.keys
-
-    # Pre-compute all the information needed to combined tensors at every
-    # iteration. This includes the keys of the TensorMaps produced at each
-    # iteration, the keys of the blocks combined to make them, and block
-    # multiplicities.
-    combine_info = []
-    for iteration in range(1, nu_target):
-        info = _create_combined_keys(
-            nux_keys,
-            nu1_keys,
-            lambda_filter[iteration - 1],
-            sigma_filter[iteration - 1],
-        )
-        combine_info.append(info)
-        nux_keys = info[0]
-
-    if debug:
-        print("Num. keys at each step: ", [len(c[0]) for c in combine_info])
-        print([nu1_keys] + [c[0] for c in combine_info])
-
-    if np.any([len(c[0]) == 0 for c in combine_info]):
-        raise ValueError(
-            "invalid filters: one or more iterations produce no valid combinations."
-            f" Number of keys at each iteration: {[len(c[0]) for c in combine_info]}."
-            " Check the `lambda_filter` and `sigma_filter` arguments."
+    if np.any([len(list(block.gradients())) > 0 for block in nu_1_tensor]):
+        raise NotImplementedError(
+            "CG combinations of gradients not currently supported. Check back soon."
         )
 
-    # Define the cached CG coefficients, either as sparse dicts or dense arrays
-    lambda_max = max(
-        rascal_hypers["max_angular"],
-        np.max(np.concatenate(lambda_filter).flatten()),
+    # Standardize the metadata of the input tensor
+    nu_1_tensor = _standardize_tensor_metadata(nu_1_tensor)
+
+    # If the desired body order is 1, return the input tensor with standardized
+    # metadata.
+    if target_body_order == 1:
+        return nu_1_tensor
+
+    # Pre-compute the metadata needed to perform each CG iteration
+    # Current design choice: only combine a nu = 1 tensor iteratively with
+    # itself, i.e. nu=1 + nu=1 --> nu=2. nu=2 + nu=1 --> nu=3, etc.
+    parity_selection = _parse_selection_filters(
+        n_iterations=target_body_order - 1,
+        selection_type="parity",
+        selection=parity_selection,
     )
-    # TODO: we know the lambda combinations in advance, so a more cleverly
-    # constructed CG cache could be used to reduce memory overhead
-    cg_cache = ClebschGordanReal(lambda_max, use_sparse)
+    angular_selection = _parse_selection_filters(
+        n_iterations=target_body_order - 1,
+        selection_type="angular",
+        selection=angular_selection,
+        angular_cutoff=angular_cutoff,
+    )
+    combination_metadata = _precompute_metadata(
+        nu_1_tensor.keys,
+        nu_1_tensor.keys,
+        n_iterations=target_body_order - 1,
+        angular_cutoff=angular_cutoff,
+        angular_selection=angular_selection,
+        parity_selection=parity_selection,
+    )
 
-    # Now combine block values until the target body order is reached
-    for iteration in range(1, nu_target):
-        if debug:
-            print(f"CG iteration {iteration}")
+    # For debugging it might be useful just to return the keys of the final TensorMap
+    if return_metadata_only:
+        return combination_metadata
 
-        # Combine pairs of blocks into new TensorBlocks of the correct lambda.
-        # Pass the correction factor accounting for the redundancy of "lx"
-        # combinations.
-        nux_keys = combine_info[iteration - 1][0]
-        nux_blocks = []
-        for nux_key, key_1, key_2, multi in zip(*combine_info[iteration - 1]):
-            nux_blocks.append(
-                _combine_single_center_block_pair(
-                    nux_tensor[key_1],
-                    nu1_tensor[key_2],
-                    nux_key["spherical_harmonics_l"],
-                    cg_cache,
-                    correction_factor=np.sqrt(multi),
-                )
+    # Define the cached CG coefficients, either as sparse dicts or dense arrays.
+    # TODO: we pre-computed the combination metadata, so a more cleverly
+    # constructed CG cache could be used to reduce memory overhead - i.e. we
+    # don't necessarily need *all* CG coeffs up to `angular_max`, just the ones
+    # that are actually used.
+    angular_max = np.max(
+        np.concatenate(
+            [nu_1_tensor.keys.column("spherical_harmonics_l")]
+            + [
+                metadata[0].column("spherical_harmonics_l")
+                for metadata in combination_metadata
+            ]
+        )
+    )
+    cg_cache = ClebschGordanReal(angular_max, use_sparse)
+
+    # Create a copy of the nu = 1 tensor to combine with itself
+    nu_x_tensor = nu_1_tensor.copy()
+
+    # Iteratively combine block values
+    for iteration in range(target_body_order - 1):
+        # Combine blocks
+        nu_x_blocks = []
+        # TODO: is there a faster way of iterating over keys/blocks here?
+        for nu_x_key, key_1, key_2, multi in zip(*combination_metadata[iteration]):
+            # Combine the pair of block values, accounting for multiplicity
+            nu_x_block = _combine_single_center_blocks(
+                nu_x_tensor[key_1],
+                nu_1_tensor[key_2],
+                nu_x_key["spherical_harmonics_l"],
+                cg_cache,
+                correction_factor=np.sqrt(multi),
             )
+            nu_x_blocks.append(nu_x_block)
+        nu_x_keys = combination_metadata[iteration][0]
+        nu_x_tensor = TensorMap(keys=nu_x_keys, blocks=nu_x_blocks)
 
-        nux_tensor = TensorMap(nux_keys, nux_blocks)
-
-    # TODO: Account for body-order multiplicity and normalize block values
-    # nux_tensor = _apply_body_order_corrections(nux_tensor)
-    # nux_tensor = _normalize_blocks(nux_tensor)
+    # TODO: multiplicity and/or normalization here?
 
     # Move the [l1, l2, ...] keys to the properties
-    if nu_target > 1:
-        nux_tensor = nux_tensor.keys_to_properties(
-            [f"l{i}" for i in range(1, nu_target + 1)]
-            + [f"k{i}" for i in range(2, nu_target)]
+    if target_body_order > 1:
+        nu_x_tensor = nu_x_tensor.keys_to_properties(
+            [f"l{i}" for i in range(1, target_body_order + 1)]
+            + [f"k{i}" for i in range(2, target_body_order)]
         )
 
-    return nux_tensor
+    return nu_x_tensor
 
 
-# def _combine_single_center(
-#     tensor_1: TensorMap,
-#     tensor_2: TensorMap,
-#     lambdas: Sequence[int],
-#     sigmas: Sequence[int],
-#     cg_cache,
-# ) -> TensorMap:
-#     """
-#     For 2 TensorMaps, ``tensor_1`` and ``tensor_2``, with body orders nu and 1
-#     respectively, combines their blocks to form a new TensorMap with body order
-#     (nu + 1).
-
-#     Returns blocks only indexed by keys .
-
-#     Assumes the metadata of the two TensorMaps are standardized as follows.
-
-#     The keys of `tensor_1`  must follow the key name convention:
-
-#     ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center",
-#     "l1", "l2", ..., f"l{`nu`}", "k2", ..., f"k{`nu`-1}"]. The "lx" columns
-#     track the l values of the nu=1 blocks that were previously combined. The
-#     "kx" columns tracks the intermediate lambda values of nu > 1 blocks that
-#     haev been combined.
-
-#     For instance, a TensorMap of body order nu=4 will have key names
-#     ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center",
-#     "l1", "l2", "l3", "l4", "k2", "k3"]. Two nu=1 TensorMaps with blocks of
-#     order "l1" and "l2" were combined to form a nu=2 TensorMap with blocks of
-#     order "k2". This was combined with a nu=1 TensorMap with blocks of order
-#     "l3" to form a nu=3 TensorMap with blocks of order "k3". Finally, this was
-#     combined with a nu=1 TensorMap with blocks of order "l4" to form a nu=4.
-
-#     .. math ::
-
-#         \bra{ n_1 l_1 ; n_2 l_2 k_2 ; ... ; n{\nu-1} l_{\nu-1} k_{\nu-1} ;
-#         n{\nu} l_{\nu} k_{\nu}; \lambda } \ket{ \rho^{\otimes \nu}; \lambda M }
-
-#     The keys of `tensor_2` must follow the key name convention:
-
-#     ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center"]
-
-#     Samples of pairs of blocks corresponding to the same chemical species are
-#     equivalent in the two TensorMaps. Samples names are ["structure", "center"]
-
-#     Components names are [["spherical_harmonics_m"],] for each block.
-
-#     Property names are ["n1", "n2", ..., "species_neighbor_1",
-#     "species_neighbor_2", ...] for each block.
-#     """
-
-#     # Get the correct keys for the combined output TensorMap
-#     (
-#         nux_keys,
-#         keys_1_entries,
-#         keys_2_entries,
-#         multiplicity_list,
-#     ) = _create_combined_keys(tensor_1.keys, tensor_2.keys, lambdas, sigmas)
-
-#     # Iterate over pairs of blocks and combine
-#     nux_blocks = []
-#     for nux_key, key_1, key_2, multi in zip(
-#         nux_keys, keys_1_entries, keys_2_entries, multiplicity_list
-#     ):
-#         # Retrieve the blocks
-#         block_1 = tensor_1[key_1]
-#         block_2 = tensor_2[key_2]
-
-#         # Combine the blocks into a new TensorBlock of the correct lambda order.
-#         # Pass the correction factor accounting for the redundancy of "lx"
-#         # combinations.
-#         nux_blocks.append(
-#             _combine_single_center_block_pair(
-#                 block_1,
-#                 block_2,
-#                 nux_key["spherical_harmonics_l"],
-#                 cg_cache,
-#                 correction_factor=np.sqrt(multi),
-#             )
-#         )
-
-#     return TensorMap(nux_keys, nux_blocks)
+def combine_single_center_one_iteration(
+    tensor_1: TensorMap,
+    tensor_2: TensorMap,
+    angular_cutoff: Optional[int] = None,
+    angular_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
+    parity_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
+    use_sparse: bool = True,
+) -> TensorMap:
+    """
+    Takes two single-center descriptors of arbitrary body order and combines
+    them in a single CG combination step.
+    """
+    # TODO: implement!
+    raise NotImplementedError
 
 
-def _combine_single_center_block_pair(
+# ==================================================================
+# ===== Functions to handle metadata
+# ==================================================================
+
+
+def _standardize_tensor_metadata(tensor: TensorMap) -> TensorMap:
+    """
+    Takes a nu=1 tensor and standardizes its metadata. This involves: 1) moving
+    the "species_neighbor" key to properties, if present as a dimension in the
+    keys, and 2) adding dimensions in the keys for tracking the body order
+    ("order_nu") and parity ("inversion_sigma") of the blocks.
+
+    Checking for the presence of the "species_neighbor" key in the keys allows
+    the option of the user pre-moving this key to the properties before calling
+    `n_body_iteration_single_center`, allowing sparsity in a set of global
+    neighbors to be created if desired.
+
+    Assumes that the input `tensor` is nu=1, and has only even parity blocks.
+    """
+    if "species_neighbor" in tensor.keys.names:
+        tensor = tensor.keys_to_properties(keys_to_move="species_neighbor")
+    tensor = metatensor.insert_dimension(
+        tensor, axis="keys", name="order_nu", values=np.array([1]), index=0
+    )
+    tensor = metatensor.insert_dimension(
+        tensor, axis="keys", name="inversion_sigma", values=np.array([1]), index=1
+    )
+    return tensor
+
+
+def _parse_selection_filters(
+    n_iterations: int,
+    selection_type: str = "parity",
+    selection: Union[None, int, List[int], List[List[int]]] = None,
+    angular_cutoff: Optional[int] = None,
+) -> List[Union[None, List[int]]]:
+    """
+    Returns a list of length `n_iterations` with selection filters for each CG
+    combination step, for either `selection_type` "parity" or `selection_type`
+    "angular". For a given iteration, if no selection is to be applied, the
+    element of the returned list will be None.
+
+    The input argument `selection` will be parsed in the following ways.
+
+    If `selection=None` is passed, then no filter is applied at any iteration. A
+    list of [None, None, ...] is returned.
+
+    If an `int` or single List[int] is specified, then this is used for the last
+    iteration only. For example, if `n_iterations=3` and `selection=[+1]`, then
+    the filter [None, None, [+1]] is returned.
+
+    If a List[List[int]] is passed, then this is assumed to be the desired
+    filter for each iteration, and is not modified.
+
+    Basic checks are performed. ValueError is raised if specified parity
+    selections are not in [-1, +1], or if specified angular selections are not
+    >= 0.
+    """
+    if angular_cutoff is not None:
+        if selection_type != "angular":
+            raise ValueError(
+                "`selection_type` must be 'angular' if specifying `angular_cutoff`"
+            )
+        if angular_cutoff < 1:
+            raise ValueError("`angular_cutoff` must be >= 1")
+    if selection is None:
+        selection = [None] * n_iterations
+    else:
+        # If passed as int, use this for the last iteration only
+        if isinstance(selection, int):
+            selection = [None] * (n_iterations - 1) + [[selection]]
+        else:
+            if not isinstance(selection, List):
+                raise TypeError(
+                    "`selection` must be an int, List[int], or List[List[int]]"
+                )
+            if isinstance(selection[0], int):
+                selection = [None] * (n_iterations - 1) + [selection]
+
+    # Basic checks
+    if not isinstance(selection, List):
+        raise TypeError("`selection` must be an int, List[int], or List[List[int]]")
+    for slct in selection:
+        if slct is not None:
+            if not np.all([isinstance(val, int) for val in slct]):
+                raise TypeError(
+                    "`selection` must be an int, List[int], or List[List[int]]"
+                )
+            if selection_type == "parity":
+                if not np.all([val in [-1, +1] for val in slct]):
+                    raise ValueError(
+                        "specified layers in `selection` must only contain valid"
+                        " parity values of -1 or +1"
+                    )
+                if not np.all([0 < len(slct) <= 2]):
+                    raise ValueError(
+                        "each parity filter must be a list of length 1 or 2,"
+                        " with vals +1 and/or -1"
+                    )
+            elif selection_type == "angular":
+                if not np.all([val >= 0 for val in slct]):
+                    raise ValueError(
+                        "specified layers in `selection` must only contain valid"
+                        " angular channels >= 0"
+                    )
+                if angular_cutoff is not None:
+                    if not np.all([val <= angular_cutoff for val in slct]):
+                        raise ValueError(
+                            "specified layers in `selection` must only contain valid"
+                            " angular channels <= the specified `angular_cutoff`"
+                        )
+            else:
+                raise ValueError(
+                    "`selection_type` must be either 'parity' or 'angular'"
+                )
+
+    return selection
+
+
+def _precompute_metadata(
+    keys_1: Labels,
+    keys_2: Labels,
+    n_iterations: int,
+    angular_cutoff: Optional[int] = None,
+    angular_selection: Optional[List[Union[None, List[int]]]] = None,
+    parity_selection: Optional[List[Union[None, List[int]]]] = None,
+) -> List[Tuple[Labels, List[List[int]]]]:
+    """
+    Computes all the metadata needed to perform `n_iterations` of CG combination
+    steps, based on the keys of the 2 tensors being combined (`keys_1` and
+    `keys_2`), the maximum angular channel cutoff (`angular_cutoff`), and the
+    angular (`angular_selection`) and parity (`parity_selection`) selections to
+    be applied at each iteration.
+    """
+    comb_metadata = []
+    new_keys = keys_1
+    for iteration in range(n_iterations):
+        # Get the metadata for the combination of the 2 tensors
+        i_comb_metadata = _precompute_metadata_one_iteration(
+            keys_1=new_keys,
+            keys_2=keys_2,
+            angular_cutoff=angular_cutoff,
+            angular_selection=angular_selection[iteration],
+            parity_selection=parity_selection[iteration],
+        )
+        new_keys = i_comb_metadata[0]
+
+        # Check that some keys are produced as a result of the combination
+        if len(new_keys) == 0:
+            raise ValueError(
+                f"invalid selections: iteration {iteration + 1} produces no valid combinations."
+                " Check the `angular_selection` and `parity_selection` arguments."
+            )
+
+        # Now check the angular and parity selections are present in the new keys
+        if angular_selection is not None:
+            if angular_selection[iteration] is not None:
+                for lam in angular_selection[iteration]:
+                    if lam not in new_keys.column("spherical_harmonics_l"):
+                        raise ValueError(
+                            f"lambda = {lam} specified in `angular_selection` for iteration"
+                            f" {iteration + 1}, but this is not a valid angular channel based on"
+                            " the combination of lower body-order tensors. Check the passed"
+                            " `angular_selection` and try again."
+                        )
+        if parity_selection is not None:
+            if parity_selection[iteration] is not None:
+                for sig in parity_selection[iteration]:
+                    if sig not in new_keys.column("inversion_sigma"):
+                        raise ValueError(
+                            f"sigma = {sig} specified in `parity_selection` for iteration"
+                            f" {iteration + 1}, but this is not a valid parity based on the"
+                            " combination of lower body-order tensors. Check the passed"
+                            " `parity_selection` and try again."
+                        )
+
+        comb_metadata.append(i_comb_metadata)
+
+    return comb_metadata
+
+
+def _precompute_metadata_one_iteration(
+    keys_1: Labels,
+    keys_2: Labels,
+    angular_cutoff: Optional[int] = None,
+    angular_selection: Optional[Union[None, List[int]]] = None,
+    parity_selection: Optional[Union[None, List[int]]] = None,
+) -> Tuple[Labels, List[List[int]]]:
+    """
+    Given the keys of 2 TensorMaps, returns the keys that would be present after
+    a CG combination of these TensorMaps.
+
+    Any angular or parity channel selections passed in `angular_selection` and
+    `parity_selection` are applied such that only specified channels are present
+    in the returned combined keys.
+
+    Assumes that `keys_1` corresponds to a TensorMap with arbitrary body order,
+    while `keys_2` corresponds to a TensorMap with body order 1.
+
+    `keys_1`  must follow the key name convention:
+
+    ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center",
+    "l1", "l2", ..., f"l{`nu`}", "k2", ..., f"k{`nu`-1}"]. The "lx" columns
+    track the l values of the nu=1 blocks that were previously combined. The
+    "kx" columns tracks the intermediate lambda values of nu > 1 blocks that
+    have been combined.
+
+    For instance, a TensorMap of body order nu=4 will have key names
+    ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center",
+    "l1", "l2", "l3", "l4", "k2", "k3"]. Two nu=1 TensorMaps with blocks of
+    order "l1" and "l2" were combined to form a nu=2 TensorMap with blocks of
+    order "k2". This was combined with a nu=1 TensorMap with blocks of order
+    "l3" to form a nu=3 TensorMap with blocks of order "k3". Finally, this was
+    combined with a nu=1 TensorMap with blocks of order "l4" to form a nu=4.
+
+    .. math ::
+
+        \bra{ n_1 l_1 ; n_2 l_2 k_2 ; ... ; n_{\nu-1} l_{\nu-1} k_{\nu-1} ;
+        n_{\nu} l_{\nu} k_{\nu}; \lambda } \ket{ \rho^{\otimes \nu}; \lambda M }
+
+    `keys_2` must follow the key name convention:
+
+    ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center"]
+
+    Returned is a tuple.
+
+    The first element in the tuple is a Labels object corresponding to the keys
+    created by a CG combination step.
+
+    The second element is a list of list of ints. Each sublist corresponds to
+    [lam1, lam2, correction_factor] terms. lam1 and lam2 tracks the lambda
+    values of the blocks that combine to form the block indexed by the
+    corresponding key. The correction_factor terms are the prefactors that
+    account for the redundancy in the CG combination.
+
+    The `parity_selection` argument can be used to return only keys with certain
+    parities. This must be passed as a list with elements +1 and/or -1.
+    """
+    # Get the body order of the first TensorMap.
+    unique_nu = np.unique(keys_1.column("order_nu"))
+    if len(unique_nu) > 1:
+        raise ValueError(
+            "keys_1 must correspond to a tensor of a single body order."
+            f" Found {len(unique_nu)} body orders: {unique_nu}"
+        )
+    nu1 = unique_nu[0]
+
+    # Define nu value of output TensorMap
+    nu = nu1 + 1
+
+    # The body order of the second TensorMap should be nu = 1.
+    assert np.all(keys_2.column("order_nu") == 1)
+
+    # If nu1 = 1, the key names don't yet have any "lx" columns
+    if nu1 == 1:
+        l_list_names = []
+        new_l_list_names = ["l1", "l2"]
+    else:
+        l_list_names = [f"l{l}" for l in range(1, nu1 + 1)]
+        new_l_list_names = l_list_names + [f"l{nu}"]
+
+    # Check key names
+    assert np.all(
+        keys_1.names
+        == ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center"]
+        + l_list_names
+        + [f"k{k}" for k in range(2, nu1)]
+    )
+    assert np.all(
+        keys_2.names
+        == ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center"]
+    )
+
+    # Define key names of output Labels (i.e. for combined TensorMap)
+    new_names = (
+        ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center"]
+        + new_l_list_names
+        + [f"k{k}" for k in range(2, nu)]
+    )
+
+    new_key_values = []
+    keys_1_entries = []
+    keys_2_entries = []
+    for key_1, key_2 in itertools.product(keys_1, keys_2):
+        # Unpack relevant key values
+        sig1, lam1, a = key_1.values[1:4]
+        sig2, lam2, a2 = key_2.values[1:4]
+
+        # Only combine blocks of the same chemical species
+        if a != a2:
+            continue
+
+        # First calculate the possible non-zero angular channels that can be
+        # formed from combination of blocks of order `lam1` and `lam2`. This
+        # corresponds to values in the inclusive range { |lam1 - lam2|, ...,
+        # |lam1 + lam2| }
+        nonzero_lams = np.arange(abs(lam1 - lam2), abs(lam1 + lam2) + 1)
+
+        # Now iterate over the non-zero angular channels and apply the custom
+        # selections
+        for lam in nonzero_lams:
+            # Skip combination if it forms an angular channel of order greater
+            # than the specified maximum cutoff `angular_cutoff`.
+            if angular_cutoff is not None:
+                if lam > angular_cutoff:
+                    continue
+
+            # Skip combination if it creates an angular channel that has not
+            # been explicitly selected
+            if angular_selection is not None:
+                if lam not in angular_selection:
+                    continue
+
+            # Calculate new sigma
+            sig = sig1 * sig2 * (-1) ** (lam1 + lam2 + lam)
+
+            # Skip combination if it creates a parity that has not been
+            # explicitly selected
+            if parity_selection is not None:
+                if sig not in parity_selection:
+                    continue
+
+            # Extract the l and k lists from keys_1
+            l_list = key_1.values[4 : 4 + nu1].tolist()
+            k_list = key_1.values[4 + nu1 :].tolist()
+
+            # Build the new keys values. l{nu} is `lam2`` (i.e.
+            # "spherical_harmonics_l" of the key from `keys_2`. k{nu-1} is
+            # `lam1` (i.e. "spherical_harmonics_l" of the key from `keys_1`).
+            new_vals = [nu, sig, lam, a] + l_list + [lam2] + k_list + [lam1]
+            new_key_values.append(new_vals)
+            keys_1_entries.append(key_1)
+            keys_2_entries.append(key_2)
+
+    # Define new keys as the full product of keys_1 and keys_2
+    nu_x_keys = Labels(names=new_names, values=np.array(new_key_values))
+
+    # Now account for multiplicty
+    key_idxs_to_keep = []
+    mult_dict = {}
+    for key_idx, key in enumerate(nu_x_keys):
+        # Get the important key values. This is all of the keys, excpet the k
+        # list
+        key_vals_slice = key.values[: 4 + (nu + 1)].tolist()
+        first_part, l_list = key_vals_slice[:4], key_vals_slice[4:]
+
+        # Sort the l list
+        l_list_sorted = sorted(l_list)
+
+        # Compare the sliced key with the one recreated when the l list is
+        # sorted. If they are identical, this is the key of the block that we
+        # want to compute a CG combination for.
+        key_slice_tuple = tuple(first_part + l_list)
+        key_slice_sorted_tuple = tuple(first_part + l_list_sorted)
+        if np.all(key_slice_tuple == key_slice_sorted_tuple):
+            key_idxs_to_keep.append(key_idx)
+
+        # Now count the multiplicity of each sorted l_list
+        if mult_dict.get(key_slice_sorted_tuple) is None:
+            mult_dict[key_slice_sorted_tuple] = 1
+        else:
+            mult_dict[key_slice_sorted_tuple] += 1
+
+    # Build a reduced Labels object for the combined keys, with redundancies removed
+    combined_keys_red = Labels(
+        names=new_names,
+        values=np.array([nu_x_keys[idx].values for idx in key_idxs_to_keep]),
+    )
+
+    # Create a of LabelsEntry objects that correspond to the original keys in
+    # `keys_1` and `keys_2` that combined to form the combined key
+    keys_1_entries_red = [keys_1_entries[idx] for idx in key_idxs_to_keep]
+    keys_2_entries_red = [keys_2_entries[idx] for idx in key_idxs_to_keep]
+
+    # Define the multiplicity of each key
+    mult_list = [
+        mult_dict[tuple(nu_x_keys[idx].values[: 4 + (nu + 1)].tolist())]
+        for idx in key_idxs_to_keep
+    ]
+
+    return combined_keys_red, keys_1_entries_red, keys_2_entries_red, mult_list
+
+
+# ==================================================================
+# ===== Functions to perform the CG combinations of blocks
+# ==================================================================
+
+
+def _combine_single_center_blocks(
     block_1: TensorBlock,
     block_2: TensorBlock,
     lam: int,
@@ -710,14 +600,12 @@ def _combine_single_center_block_pair(
     correction_factor: float = 1.0,
 ) -> TensorBlock:
     """
-    For a given pair of TensorBlocks and desired lambda value, combines the
-    values arrays and returns in a new TensorBlock.
+    For a given pair of TensorBlocks and desired angular channel, combines the
+    values arrays and returns a new TensorBlock.
     """
 
     # Do the CG combination - single center so no shape pre-processing required
-    combined_values = _clebsch_gordan_combine(
-        block_1.values, block_2.values, lam, cg_cache
-    )
+    combined_values = _combine_arrays(block_1.values, block_2.values, lam, cg_cache)
 
     # Infer the new nu value: block 1's properties are nu pairs of
     # "species_neighbor_x" and "nx".
@@ -753,10 +641,7 @@ def _combine_single_center_block_pair(
     return combined_block
 
 
-# ===== Mathematical manipulation fxns
-
-
-def _clebsch_gordan_combine(
+def _combine_arrays(
     arr_1: np.ndarray,
     arr_2: np.ndarray,
     lam: int,
@@ -784,11 +669,11 @@ def _clebsch_gordan_combine(
     """
     # Check the first dimension of the arrays are the same (i.e. same samples)
     if cg_cache.sparse:
-        return _clebsch_gordan_combine_sparse(arr_1, arr_2, lam, cg_cache)
-    return _clebsch_gordan_combine_dense(arr_1, arr_2, lam, cg_cache)
+        return _combine_arrays_sparse(arr_1, arr_2, lam, cg_cache)
+    return _combine_arrays_dense(arr_1, arr_2, lam, cg_cache)
 
 
-def _clebsch_gordan_combine_sparse(
+def _combine_arrays_sparse(
     arr_1: np.ndarray,
     arr_2: np.ndarray,
     lam: int,
@@ -838,7 +723,7 @@ def _clebsch_gordan_combine_sparse(
     return arr_out
 
 
-def _clebsch_gordan_combine_dense(
+def _combine_arrays_dense(
     arr_1: np.ndarray,
     arr_2: np.ndarray,
     lam: int,
@@ -905,203 +790,3 @@ def _clebsch_gordan_combine_dense(
 
     # (samples (q p) lam_mu) -> (samples lam_mu (q p))
     return arr_out.swapaxes(1, 2)
-
-
-def _apply_body_order_corrections(tensor: TensorMap) -> TensorMap:
-    """
-    Applies the appropriate prefactors to the block values of the output
-    TensorMap (i.e. post-CG combination) according to its body order.
-    """
-    return tensor
-
-
-def _normalize_blocks(tensor: TensorMap) -> TensorMap:
-    """
-    Applies corrections to the block values based on their 'leaf' l-values, such
-    that the norm is preserved.
-    """
-    return tensor
-
-
-# ===== Fxns to manipulate metadata of TensorMaps =====
-
-
-def _create_combined_keys(
-    keys_1: Labels,
-    keys_2: Labels,
-    lambdas: Sequence[int],
-    sigmas: Sequence[int],
-) -> Tuple[Labels, Sequence[Sequence[int]]]:
-    """
-    Given the keys of 2 TensorMaps and a list of desired lambda values, creates
-    the correct keys for the TensorMap returned after one CG combination step.
-
-    Assumes that `keys_1` corresponds to a TensorMap with arbitrary body order,
-    while `keys_2` corresponds to a TensorMap with body order 1.
-
-    `keys_1`  must follow the key name convention:
-
-    ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center",
-    "l1", "l2", ..., f"l{`nu`}", "k2", ..., f"k{`nu`-1}"]. The "lx" columns
-    track the l values of the nu=1 blocks that were previously combined. The
-    "kx" columns tracks the intermediate lambda values of nu > 1 blocks that
-    have been combined.
-
-    For instance, a TensorMap of body order nu=4 will have key names
-    ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center",
-    "l1", "l2", "l3", "l4", "k2", "k3"]. Two nu=1 TensorMaps with blocks of
-    order "l1" and "l2" were combined to form a nu=2 TensorMap with blocks of
-    order "k2". This was combined with a nu=1 TensorMap with blocks of order
-    "l3" to form a nu=3 TensorMap with blocks of order "k3". Finally, this was
-    combined with a nu=1 TensorMap with blocks of order "l4" to form a nu=4.
-
-    .. math ::
-
-        \bra{ n_1 l_1 ; n_2 l_2 k_2 ; ... ; n_{\nu-1} l_{\nu-1} k_{\nu-1} ;
-        n_{\nu} l_{\nu} k_{\nu}; \lambda } \ket{ \rho^{\otimes \nu}; \lambda M }
-
-    `keys_2` must follow the key name convention:
-
-    ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center"]
-
-    Returned is a tuple.
-
-    The first element is to the Labels object for the keys of the output
-    TensorMap created by a CG combination step.
-
-    The second element is a list of list of ints. Each sublist corresponds to
-    [lam1, lam2, correction_factor terms]. lam1 and lam2 tracks the lambda
-    values of the blocks that combine to form the block indexed by the
-    corresponding key. The correction_factor terms are the prefactors that
-    account for the redundancy in the CG combination.
-
-    The `sigmas` argument can be used to return only keys with certain
-    sigmas. This must be passed as a list with elements +1 and/or -1.
-    """
-    # Get the body order of the first TensorMap.
-    nu1 = np.unique(keys_1.column("order_nu"))[0]
-
-    # Define nu value of output TensorMap
-    nu = nu1 + 1
-
-    # Check the body order of the first TensorMap.
-    assert np.all(keys_1.column("order_nu") == nu1)
-
-    # The second by convention should be nu = 1.
-    assert np.all(keys_2.column("order_nu") == 1)
-
-    # If nu = 1, the key names don't yet have any "lx" columns
-    if nu1 == 1:
-        l_list_names = []
-        new_l_list_names = ["l1", "l2"]
-    else:
-        l_list_names = [f"l{l}" for l in range(1, nu1 + 1)]
-        new_l_list_names = l_list_names + [f"l{nu}"]
-
-    # Check key names
-    assert np.all(
-        keys_1.names
-        == ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center"]
-        + l_list_names
-        + [f"k{k}" for k in range(2, nu1)]
-    )
-    assert np.all(
-        keys_2.names
-        == ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center"]
-    )
-
-    # Check `sigmas` argument
-    assert isinstance(sigmas, Sequence)
-    assert np.all([s in [-1, +1] for s in sigmas])
-
-    # Define key names of output Labels (i.e. for combined TensorMap)
-    new_names = (
-        ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center"]
-        + new_l_list_names
-        + [f"k{k}" for k in range(2, nu)]
-    )
-
-    new_key_values = []
-    keys_1_entries = []
-    keys_2_entries = []
-    for key_1, key_2 in itertools.product(keys_1, keys_2):
-        # Unpack relevant key values
-        sig1, lam1, a = key_1.values[1:4]
-        sig2, lam2, a2 = key_2.values[1:4]
-
-        # Only combine blocks of the same chemical species
-        if a != a2:
-            continue
-
-        # Only combine to create blocks of desired lambda values
-        nonzero_lams = np.arange(abs(lam1 - lam2), abs(lam1 + lam2) + 1)
-        for lam in nonzero_lams:
-            if lam not in lambdas:
-                continue
-
-            # Calculate new sigma
-            sig = sig1 * sig2 * (-1) ** (lam1 + lam2 + lam)
-
-            # Skip keys that don't give the desired sigmas
-            if sig not in sigmas:
-                continue
-
-            # Extract the l and k lists from keys_1
-            l_list = key_1.values[4 : 4 + nu1].tolist()
-            k_list = key_1.values[4 + nu1 :].tolist()
-
-            # Build the new keys values. l{nu} is `lam2`` (i.e.
-            # "spherical_harmonics_l" of the key from `keys_2`. k{nu-1} is
-            # `lam1` (i.e. "spherical_harmonics_l" of the key from `keys_1`).
-            new_vals = [nu, sig, lam, a] + l_list + [lam2] + k_list + [lam1]
-            new_key_values.append(new_vals)
-            keys_1_entries.append(key_1)
-            keys_2_entries.append(key_2)
-
-    # Define new keys as the full product of keys_1 and keys_2
-    nux_keys = Labels(names=new_names, values=np.array(new_key_values))
-
-    # Now account for multiplicty
-    key_idxs_to_keep = []
-    mult_dict = {}
-    for key_idx, key in enumerate(nux_keys):
-        # Get the important key values. This is all of the keys, excpet the k
-        # list
-        key_vals_slice = key.values[: 4 + (nu + 1)].tolist()
-        first_part, l_list = key_vals_slice[:4], key_vals_slice[4:]
-
-        # Sort the l list
-        l_list_sorted = sorted(l_list)
-
-        # Compare the sliced key with the one recreated when the l list is
-        # sorted. If they are identical, this is the key of the block that we
-        # want to compute a CG combination for.
-        key_slice_tuple = tuple(first_part + l_list)
-        key_slice_sorted_tuple = tuple(first_part + l_list_sorted)
-        if np.all(key_slice_tuple == key_slice_sorted_tuple):
-            key_idxs_to_keep.append(key_idx)
-
-        # Now count the multiplicity of each sorted l_list
-        if mult_dict.get(key_slice_sorted_tuple) is None:
-            mult_dict[key_slice_sorted_tuple] = 1
-        else:
-            mult_dict[key_slice_sorted_tuple] += 1
-
-    # Build a reduced Labels object for the combined keys, with redundancies removed
-    combined_keys_red = Labels(
-        names=new_names,
-        values=np.array([nux_keys[idx].values for idx in key_idxs_to_keep]),
-    )
-
-    # Create a of LabelsEntry objects that correspond to the original keys in
-    # `keys_1` and `keys_2` that combined to form the combined key
-    keys_1_entries_red = [keys_1_entries[idx] for idx in key_idxs_to_keep]
-    keys_2_entries_red = [keys_2_entries[idx] for idx in key_idxs_to_keep]
-
-    # Define the multiplicity of each key
-    mult_list = [
-        mult_dict[tuple(nux_keys[idx].values[: 4 + (nu + 1)].tolist())]
-        for idx in key_idxs_to_keep
-    ]
-
-    return combined_keys_red, keys_1_entries_red, keys_2_entries_red, mult_list
