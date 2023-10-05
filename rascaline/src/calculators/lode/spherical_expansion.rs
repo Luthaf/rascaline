@@ -126,15 +126,32 @@ fn compute_structure_factors(positions: &[Vector3D], species: &[i32], k_vectors:
         .map(|s| (s, Array2::from_elem((n_atoms, n_k_vectors), 0.0)))
         .collect::<BTreeMap<_, _>>();
 
+    // Precompute species-dependent sum over neighbours j of sines and cosines 
+    let mut sumjcos = all_species.iter().copied()
+        .map(|s| (s, Array1::from_elem(n_k_vectors, 0.0)))
+        .collect::<BTreeMap<_, _>>();
+    let mut sumjsin = all_species.iter().copied()
+        .map(|s| (s, Array1::from_elem(n_k_vectors, 0.0)))
+        .collect::<BTreeMap<_, _>>();
+    for j in 0..n_atoms {
+        let sumjcos = sumjcos.get_mut(&species[j]).unwrap();
+        let sumjsin = sumjsin.get_mut(&species[j]).unwrap();
+        for k in 0..n_k_vectors {
+            sumjcos[k] += cosines[[j, k]];
+            sumjsin[k] += sines[[j, k]];
+        }
+    }
+ 
+    // Compute Sum_j cos(k*r_ij) and Sum_j sin(k*r_ij) using the subtraction theorem
     for i in 0..n_atoms {
-        for j in 0..n_atoms {
+        for (species, structfactreal) in &mut real_per_center {
+            let sumjcos = sumjcos.get_mut(&species).unwrap();
+            let sumjsin = sumjsin.get_mut(&species).unwrap();
+            let imag_per_center = imag_per_center.get_mut(&species).unwrap();
             for k in 0..n_k_vectors {
-                let real = cosines[[i, k]] * cosines[[j, k]] + sines[[i, k]] * sines[[j, k]];
-                let imag = sines[[i, k]] * cosines[[j, k]] - cosines[[i, k]] * sines[[j, k]];
-
-                let real_per_center = real_per_center.get_mut(&species[j]).unwrap();
-                let imag_per_center = imag_per_center.get_mut(&species[j]).unwrap();
-                real_per_center[[i, k]] += 2.0 * real;
+                let real = cosines[[i, k]] * sumjcos[k] + sines[[i, k]] * sumjsin[k]; 
+                let imag = sines[[i, k]] * sumjcos[k] - cosines[[i, k]] * sumjsin[k];
+                structfactreal[[i, k]] += 2.0 * real;
                 imag_per_center[[i, k]] += 2.0 * imag;
             }
         }
