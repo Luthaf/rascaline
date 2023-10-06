@@ -38,7 +38,7 @@ requires = [
     "wheel >=0.38",
     "cmake",
     "torch >= 1.11",
-    "metatensor-torch @ https://github.com/lab-cosmo/metatensor/archive/ae10944.zip#subdirectory=python/metatensor-torch",
+    "metatensor-torch @git+https://github.com/lab-cosmo/metatensor@ae10944#subdirectory=python/metatensor-torch",
 ]
 
 # use a custom build backend to add a dependency on the right version of rascaline

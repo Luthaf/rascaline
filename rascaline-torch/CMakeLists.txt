@@ -106,7 +106,7 @@ add_library(rascaline_torch SHARED
 )
 
 target_link_libraries(rascaline_torch PUBLIC torch metatensor_torch rascaline)
-target_compile_features(rascaline_torch PUBLIC cxx_std_14)
+target_compile_features(rascaline_torch PUBLIC cxx_std_17)
 target_include_directories(rascaline_torch PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
