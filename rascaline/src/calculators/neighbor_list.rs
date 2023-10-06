@@ -500,7 +500,7 @@ impl FullNeighborList {
             system.compute_neighbors(self.cutoff)?;
             let species = system.species()?;
 
-            for pair in system.pairs()?.iter() {
+            for pair in system.pairs()? {
                 let first_block_i = descriptor.keys().position(&[
                     species[pair.first].into(), species[pair.second].into()
                 ]);
