@@ -54,14 +54,13 @@ pub unsafe extern fn rascal_calculator(name: *const c_char, parameters: *const c
     let mut raw = std::ptr::null_mut();
     let unwind_wrapper = std::panic::AssertUnwindSafe(&mut raw);
     let status = catch_unwind(move || {
-        let unwind_wrapper = unwind_wrapper;
-
         check_pointers!(name, parameters);
         let name = CStr::from_ptr(name).to_str()?;
         let parameters = CStr::from_ptr(parameters).to_str()?;
         let calculator = Calculator::new(name, parameters.to_owned())?;
         let boxed = Box::new(rascal_calculator_t(calculator));
 
+        let _ = &unwind_wrapper;
         *unwind_wrapper.0 = Box::into_raw(boxed);
         Ok(())
     });
