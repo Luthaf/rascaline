@@ -12,3 +12,4 @@ to give you more clarity and understanding of what rascaline is all about.
 
     architecture
     interfaces
+    radial-integral

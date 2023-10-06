@@ -3,7 +3,12 @@ import os
 import metatensor
 
 from .power_spectrum import PowerSpectrum  # noqa
-from .splines import RadialIntegralFromFunction, RadialIntegralSplinerBase  # noqa
+from .splines import (  # noqa
+    LodeSpliner,
+    RadialIntegralFromFunction,
+    RadialIntegralSplinerBase,
+    SoapSpliner,
+)
 
 
 # path that can be used with cmake to access the rascaline library and headers
