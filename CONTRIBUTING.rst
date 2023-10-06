@@ -123,9 +123,29 @@ Github CI workflows.
 You can also run only a subset of tests with one of these commands:
 
 - ``cargo test`` runs everything
-- ``cargo test --test=<test-name>`` to run only the tests in ``tests/<test-name>.rs``;
-    - ``cargo test --test=python-api`` (or ``tox`` directly) to run Python tests only;
-    - ``cargo test --test=c-api`` to run the C API tests only;
+- ``cargo test --package=rascaline`` to run the calculators tests;
+- ``cargo test --package=rascaline-c-api`` to run the C/C++ tests only;
+
+  - ``cargo test --test=run-cxx-tests`` will run the unit tests for the C/C++
+    API. If `valgrind`_ is installed, it will be used to check for memory
+    errors. You can disable this by setting the `RASCALINE_DISABLE_VALGRIND`
+    environment variable to 1 (`export RASCALINE_DISABLE_VALGRIND=1` for most
+    Linux/macOS shells);
+  - ``cargo test --test=check-cxx-install`` will build the C/C++ interfaces,
+    install them and the associated CMake files and then try to build a basic
+    project depending on this interface with CMake;
+
+- ``cargo test --package=rascaline-torch`` to run the C++ TorchScript extension
+  tests only;
+
+  - ``cargo test --test=run-torch-tests`` will run the unit tests for the
+    TorchScript C++ extension;
+  - ``cargo test --test=check-cxx-install`` will build the C++ TorchScript
+    extension, install it and then try to build a basic project depending on
+    this extension with CMake;
+
+- ``cargo test --package=rascaline-python`` (or ``tox`` directly, see below) to
+  run Python tests only;
 - ``cargo test --lib`` to run unit tests;
 - ``cargo test --doc`` to run documentation tests;
 - ``cargo bench --test`` compiles and run the benchmarks once, to quickly ensure
@@ -135,10 +155,8 @@ You can add some flags to any of above commands to further refine which tests
 should run:
 
 - ``--release`` to run tests in release mode (default is to run tests in debug mode)
-- ``-- <filter>`` to only run tests whose name contains filter, for example ``cargo test -- spherical_harmonics``
-- ``--package rascaline`` to run tests defined in the rascaline crate (the core implementation)
-- ``--package rascaline-c-api`` to run tests defined in the rascaline-c-api
-  crate (the C API implementation)
+- ``-- <filter>`` to only run tests whose name contains filter, for example
+  ``cargo test -- spherical_harmonics``
 
 Also, you can run individual python tests using `tox`_
 if you wish to test only specific functionalities, for example:
@@ -156,6 +174,7 @@ The latter command ``tox -e format`` will use tox to do actual formatting instea
 of just testing it.
 
 .. _`cargo` : https://doc.rust-lang.org/cargo/
+.. _valgrind: https://valgrind.org/
 
 Writing your own calculator
 ---------------------------
