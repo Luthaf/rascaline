@@ -47,8 +47,8 @@ impl CalculatorBase for DummyCalculator {
         return CenterSpeciesKeys.keys(systems);
     }
 
-    fn samples_names(&self) -> Vec<&str> {
-        AtomCenteredSamples::samples_names()
+    fn sample_names(&self) -> Vec<&str> {
+        AtomCenteredSamples::sample_names()
     }
 
     fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
@@ -96,12 +96,12 @@ impl CalculatorBase for DummyCalculator {
         return vec![Vec::new(); keys.count()];
     }
 
-    fn properties_names(&self) -> Vec<&str> {
+    fn property_names(&self) -> Vec<&str> {
         vec!["index_delta", "x_y_z"]
     }
 
     fn properties(&self, keys: &Labels) -> Vec<Labels> {
-        let mut properties = LabelsBuilder::new(self.properties_names());
+        let mut properties = LabelsBuilder::new(self.property_names());
         properties.add(&[1, 0]);
         properties.add(&[0, 1]);
         let properties = properties.finish();

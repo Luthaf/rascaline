@@ -137,8 +137,8 @@ impl CalculatorBase for SoapRadialSpectrum {
         return builder.keys(systems);
     }
 
-    fn samples_names(&self) -> Vec<&str> {
-        AtomCenteredSamples::samples_names()
+    fn sample_names(&self) -> Vec<&str> {
+        AtomCenteredSamples::sample_names()
     }
 
     fn samples(
@@ -192,12 +192,12 @@ impl CalculatorBase for SoapRadialSpectrum {
         return vec![vec![]; keys.count()];
     }
 
-    fn properties_names(&self) -> Vec<&str> {
+    fn property_names(&self) -> Vec<&str> {
         vec!["n"]
     }
 
     fn properties(&self, keys: &metatensor::Labels) -> Vec<Labels> {
-        let mut properties = LabelsBuilder::new(self.properties_names());
+        let mut properties = LabelsBuilder::new(self.property_names());
         for n in 0..self.parameters.max_radial {
             properties.add(&[n]);
         }

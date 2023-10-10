@@ -8,7 +8,7 @@ use super::{SamplesBuilder, SpeciesFilter};
 
 /// `SampleBuilder` for atom-centered representation. This will create one
 /// sample for each atom, optionally filtering on the central atom species. The
-/// samples names are ("structure", "center").
+/// sample names are ("structure", "center").
 ///
 /// Positions gradient samples include all atoms within a spherical cutoff,
 /// optionally filtering on the neighbor atom species.
@@ -24,13 +24,13 @@ pub struct AtomCenteredSamples {
 }
 
 impl SamplesBuilder for AtomCenteredSamples {
-    fn samples_names() -> Vec<&'static str> {
+    fn sample_names() -> Vec<&'static str> {
         vec!["structure", "center"]
     }
 
     fn samples(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
         assert!(self.cutoff > 0.0 && self.cutoff.is_finite(), "cutoff must be positive for AtomCenteredSamples");
-        let mut builder = LabelsBuilder::new(Self::samples_names());
+        let mut builder = LabelsBuilder::new(Self::sample_names());
         for (system_i, system) in systems.iter_mut().enumerate() {
             system.compute_neighbors(self.cutoff)?;
             let species = system.species()?;

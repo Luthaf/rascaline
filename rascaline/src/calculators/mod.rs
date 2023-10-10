@@ -25,7 +25,7 @@ pub trait CalculatorBase: std::panic::RefUnwindSafe {
     fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error>;
 
     /// Get the names used for sample labels by this calculator
-    fn samples_names(&self) -> Vec<&str>;
+    fn sample_names(&self) -> Vec<&str>;
 
     /// Get the full list of samples this calculator would create for the given
     /// systems. This function should return one set of samples for each key.
@@ -48,7 +48,7 @@ pub trait CalculatorBase: std::panic::RefUnwindSafe {
     fn components(&self, keys: &Labels) -> Vec<Vec<Labels>>;
 
     /// Get the names used for property labels by this calculator
-    fn properties_names(&self) -> Vec<&str>;
+    fn property_names(&self) -> Vec<&str>;
 
     /// Get the properties this calculator computes for each key.
     fn properties(&self, keys: &Labels) -> Vec<Labels>;

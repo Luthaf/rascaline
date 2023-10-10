@@ -26,7 +26,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "metatensor-core @ git+https://github.com/lab-cosmo/metatensor@ae10944#subdirectory=python/metatensor-core",
+    "metatensor-core @ git+https://github.com/lab-cosmo/metatensor@ad3eda5#subdirectory=python/metatensor-core",
 ]
 
 [project.urls]
