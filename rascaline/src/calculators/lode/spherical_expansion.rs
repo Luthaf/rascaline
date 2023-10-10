@@ -126,7 +126,7 @@ fn compute_structure_factors(positions: &[Vector3D], species: &[i32], k_vectors:
         .map(|s| (s, Array2::from_elem((n_atoms, n_k_vectors), 0.0)))
         .collect::<BTreeMap<_, _>>();
 
-    // Precompute species-dependent sum over neighbours j of sines and cosines 
+    // Precompute species-dependent sum over neighbours j of sines and cosines
     let mut sumjcos = all_species.iter().copied()
         .map(|s| (s, Array1::from_elem(n_k_vectors, 0.0)))
         .collect::<BTreeMap<_, _>>();
@@ -141,7 +141,7 @@ fn compute_structure_factors(positions: &[Vector3D], species: &[i32], k_vectors:
             sumjsin[k] += sines[[j, k]];
         }
     }
- 
+
     // Compute Sum_j cos(k*r_ij) and Sum_j sin(k*r_ij) using the subtraction theorem
     for i in 0..n_atoms {
         for (species, real_per_center) in &mut real_per_center {
@@ -149,7 +149,7 @@ fn compute_structure_factors(positions: &[Vector3D], species: &[i32], k_vectors:
             let sumjsin = sumjsin.get_mut(&species).unwrap();
             let imag_per_center = imag_per_center.get_mut(&species).unwrap();
             for k in 0..n_k_vectors {
-                let real = cosines[[i, k]] * sumjcos[k] + sines[[i, k]] * sumjsin[k]; 
+                let real = cosines[[i, k]] * sumjcos[k] + sines[[i, k]] * sumjsin[k];
                 let imag = sines[[i, k]] * sumjcos[k] - cosines[[i, k]] * sumjsin[k];
                 real_per_center[[i, k]] += 2.0 * real;
                 imag_per_center[[i, k]] += 2.0 * imag;
@@ -467,8 +467,8 @@ impl CalculatorBase for LodeSphericalExpansion {
         return Ok(builder.finish());
     }
 
-    fn samples_names(&self) -> Vec<&str> {
-        LongRangeSamplesPerAtom::samples_names()
+    fn sample_names(&self) -> Vec<&str> {
+        LongRangeSamplesPerAtom::sample_names()
     }
 
     fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
@@ -556,12 +556,12 @@ impl CalculatorBase for LodeSphericalExpansion {
         return result;
     }
 
-    fn properties_names(&self) -> Vec<&str> {
+    fn property_names(&self) -> Vec<&str> {
         vec!["n"]
     }
 
     fn properties(&self, keys: &Labels) -> Vec<Labels> {
-        let mut properties = LabelsBuilder::new(self.properties_names());
+        let mut properties = LabelsBuilder::new(self.property_names());
         for n in 0..self.parameters.max_radial {
             properties.add(&[n]);
         }

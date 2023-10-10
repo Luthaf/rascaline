@@ -212,16 +212,16 @@ TEST_CASE("Compute descriptor") {
     }
 
     SECTION("Partial compute -- samples") {
-        auto selected_samples_values = std::vector<int32_t>{
+        auto selected_sample_values = std::vector<int32_t>{
             0, 1, /**/ 0, 3,
         };
-        auto selected_samples_names = std::vector<const char*>{
+        auto selected_sample_names = std::vector<const char*>{
             "structure", "center"
         };
 
         mts_labels_t selected_samples = {0};
-        selected_samples.names = selected_samples_names.data();
-        selected_samples.values = selected_samples_values.data();
+        selected_samples.names = selected_sample_names.data();
+        selected_samples.values = selected_sample_values.data();
         selected_samples.count = 2;
         selected_samples.size = 2;
 
@@ -290,16 +290,16 @@ TEST_CASE("Compute descriptor") {
     }
 
     SECTION("Partial compute -- features") {
-        auto selected_properties_values = std::vector<int32_t>{
+        auto selected_property_values = std::vector<int32_t>{
             0, 1,
         };
-        auto selected_properties_names = std::vector<const char*>{
+        auto selected_property_names = std::vector<const char*>{
             "index_delta", "x_y_z"
         };
 
         mts_labels_t selected_properties = {0};
-        selected_properties.names = selected_properties_names.data();
-        selected_properties.values = selected_properties_values.data();
+        selected_properties.names = selected_property_names.data();
+        selected_properties.values = selected_property_values.data();
         selected_properties.count = 1;
         selected_properties.size = 2;
 
@@ -380,17 +380,17 @@ TEST_CASE("Compute descriptor") {
     }
 
     SECTION("Partial compute -- preselected") {
-        auto samples_names = std::vector<const char*>{
+        auto sample_names = std::vector<const char*>{
             "structure", "center"
         };
-        auto properties_names = std::vector<const char*>{
+        auto property_names = std::vector<const char*>{
             "index_delta", "x_y_z"
         };
 
-        auto h_samples_values = std::vector<int32_t>{
+        auto h_sample_values = std::vector<int32_t>{
             0, 3,
         };
-        auto h_properties_values = std::vector<int32_t>{
+        auto h_property_values = std::vector<int32_t>{
             0, 1,
         };
 
@@ -398,37 +398,37 @@ TEST_CASE("Compute descriptor") {
 
         mts_labels_t h_samples = {0};
         h_samples.size = 2;
-        h_samples.names = samples_names.data();
+        h_samples.names = sample_names.data();
         h_samples.count = 1;
-        h_samples.values = h_samples_values.data();
+        h_samples.values = h_sample_values.data();
 
         mts_labels_t h_properties = {0};
         h_properties.size = 2;
-        h_properties.names = properties_names.data();
+        h_properties.names = property_names.data();
         h_properties.count = 1;
-        h_properties.values = h_properties_values.data();
+        h_properties.values = h_property_values.data();
         blocks[0] = mts_block(empty_array({1, 1}), h_samples, nullptr, 0, h_properties);
         REQUIRE(blocks[0] != nullptr);
 
 
-        auto c_samples_values = std::vector<int32_t>{
+        auto c_sample_values = std::vector<int32_t>{
             0, 0,
         };
-        auto c_properties_values = std::vector<int32_t>{
+        auto c_property_values = std::vector<int32_t>{
             1, 0,
         };
 
         mts_labels_t c_samples = {0};
         c_samples.size = 2;
-        c_samples.names = samples_names.data();
+        c_samples.names = sample_names.data();
         c_samples.count = 1;
-        c_samples.values = c_samples_values.data();
+        c_samples.values = c_sample_values.data();
 
         mts_labels_t c_properties = {0};
         c_properties.size = 2;
-        c_properties.names = properties_names.data();
+        c_properties.names = property_names.data();
         c_properties.count = 1;
-        c_properties.values = c_properties_values.data();
+        c_properties.values = c_property_values.data();
         blocks[1] = mts_block(empty_array({1, 1}), c_samples, nullptr, 0, c_properties);
         REQUIRE(blocks[1] != nullptr);
 
@@ -521,12 +521,12 @@ TEST_CASE("Compute descriptor") {
         // in a different order than what would be the default (6, 12).
 
         mts_labels_t selected_keys = {0};
-        const char* samples_names[] = {"species_center"};
-        selected_keys.names = samples_names;
+        const char* sample_names[] = {"species_center"};
+        selected_keys.names = sample_names;
         selected_keys.size = 1;
 
-        int32_t samples_values[] = {12, 6};
-        selected_keys.values = samples_values;
+        int32_t sample_values[] = {12, 6};
+        selected_keys.values = sample_values;
         selected_keys.count = 2;
 
         auto system = simple_system();

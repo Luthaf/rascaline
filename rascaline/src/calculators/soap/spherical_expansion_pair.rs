@@ -551,7 +551,7 @@ impl CalculatorBase for SphericalExpansionByPair {
         return Ok(keys.finish());
     }
 
-    fn samples_names(&self) -> Vec<&str> {
+    fn sample_names(&self) -> Vec<&str> {
         return vec!["structure", "first_atom", "second_atom", "cell_shift_a", "cell_shift_b", "cell_shift_c"];
     }
 
@@ -665,12 +665,12 @@ impl CalculatorBase for SphericalExpansionByPair {
         return result;
     }
 
-    fn properties_names(&self) -> Vec<&str> {
+    fn property_names(&self) -> Vec<&str> {
         vec!["n"]
     }
 
     fn properties(&self, keys: &Labels) -> Vec<Labels> {
-        let mut properties = LabelsBuilder::new(self.properties_names());
+        let mut properties = LabelsBuilder::new(self.property_names());
         for n in 0..self.parameters.max_radial {
             properties.add(&[n]);
         }

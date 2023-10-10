@@ -308,7 +308,7 @@ impl Calculator {
         let samples = options.selected_samples.select(
             "samples",
             &keys,
-            || self.implementation.samples_names(),
+            || self.implementation.sample_names(),
             |keys| self.implementation.samples(keys, systems),
             |block| block.samples(),
         )?;
@@ -364,7 +364,7 @@ impl Calculator {
         let properties = options.selected_properties.select(
             "properties",
             &keys,
-            || self.implementation.properties_names(),
+            || self.implementation.property_names(),
             |keys| Ok(self.implementation.properties(keys)),
             |block| block.properties(),
         )?;

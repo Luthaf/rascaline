@@ -36,7 +36,7 @@ name = "soap-power-spectrum"
 harness = false
 
 [dependencies]
-metatensor = {git = "https://github.com/lab-cosmo/metatensor", rev = "ae10944", features = ["rayon"]}
+metatensor = {git = "https://github.com/lab-cosmo/metatensor", rev = "ad3eda5", features = ["rayon"]}
 
 ndarray = {version = "0.15", features = ["approx-0_5", "rayon", "serde"]}
 num-traits = "0.2"

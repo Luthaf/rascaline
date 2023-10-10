@@ -46,8 +46,8 @@ impl CalculatorBase for GeometricMoments {
     // [CalculatorBase::keys]
 
     // [CalculatorBase::samples]
-    fn samples_names(&self) -> Vec<&str> {
-        AtomCenteredSamples::samples_names()
+    fn sample_names(&self) -> Vec<&str> {
+        AtomCenteredSamples::sample_names()
     }
 
     fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
@@ -112,12 +112,12 @@ impl CalculatorBase for GeometricMoments {
     // [CalculatorBase::components]
 
     // [CalculatorBase::properties]
-    fn properties_names(&self) -> Vec<&str> {
+    fn property_names(&self) -> Vec<&str> {
         vec!["k"]
     }
 
     fn properties(&self, keys: &Labels) -> Vec<Labels> {
-        let mut builder = LabelsBuilder::new(self.properties_names());
+        let mut builder = LabelsBuilder::new(self.property_names());
         for k in 0..=self.max_moment {
             builder.add(&[k]);
         }
