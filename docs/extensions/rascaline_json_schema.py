@@ -3,9 +3,8 @@ import os
 
 from docutils import nodes
 from docutils.parsers.rst import Directive
-from markdown_it import MarkdownIt
-
 from html_hidden import html_hidden
+from markdown_it import MarkdownIt
 from myst_parser.config.main import MdParserConfig
 from myst_parser.mdit_to_docutils.base import DocutilsRenderer
 
@@ -121,7 +120,7 @@ class JsonSchemaDirective(Directive):
                         if isinstance(subfields, nodes.literal):
                             subfields = [subfields]
 
-                        for (i, sf) in enumerate(subfields):
+                        for i, sf in enumerate(subfields):
                             field += sf
 
                             if isinstance(sf, nodes.inline):
@@ -152,8 +151,11 @@ class JsonSchemaDirective(Directive):
                     raise Exception(f"unknown integer format: {schema['format']}")
 
             elif schema["type"] == "string":
-                # TODO enums?
-                return nodes.literal(text="string")
+                if "enum" in schema:
+                    values = [f'"{v}"' for v in schema["enum"]]
+                    return nodes.literal(text=" | ".join(values))
+                else:
+                    return nodes.literal(text="string")
 
             elif schema["type"] == "boolean":
                 return nodes.literal(text="boolean")

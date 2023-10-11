@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from metatensor.core import Labels, TensorBlock, TensorMap
+from metatensor import Labels, TensorBlock, TensorMap
 
 from rascaline import RascalError
 from rascaline.calculators import DummyCalculator

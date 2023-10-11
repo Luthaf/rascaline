@@ -19,7 +19,7 @@ pub(crate) mod test_utils;
 // WARNING: any change to this definition MUST be reflected in rascal_pair_t as
 // well
 #[repr(C)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Pair {
     /// index of the first atom in the pair
     pub first: usize,
@@ -27,9 +27,13 @@ pub struct Pair {
     pub second: usize,
     /// distance between the two atoms
     pub distance: f64,
-    /// vector from the first atom to the second atom, wrapped inside the unit
-    /// cell as required
+    /// vector from the first atom to the second atom, accounting for periodic
+    /// boundary conditions. This should be `position\[second\] -
+    /// position\[first\] + H * cell_shift` where `H` is the cell matrix.
     pub vector: Vector3D,
+    /// How many cell shift where applied to the `second` atom to create this
+    /// pair.
+    pub cell_shift_indices: [i32; 3],
 }
 
 /// A `System` deals with the storage of atoms and related information, as well

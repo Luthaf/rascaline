@@ -10,9 +10,33 @@ install using `rustup <https://rustup.rs/>`_ or your OS package manager.
 Installing the Python module
 ----------------------------
 
+For building and using the Python package, clone the repository using `git
+<https://git-scm.com>`_ and install rascaline using `pip
+<https://pip.pypa.io>`_.
+
+From source:
+
 .. code-block:: bash
 
-    pip install git+https://github.com/Luthaf/rascaline.git
+    # Make sure you are using the latest version of pip
+    pip install --upgrade pip
+
+    git clone https://github.com/Luthaf/rascaline
+    cd rascaline
+    pip install .
+
+    # alternatively, the same thing in a single command
+    pip install git+https://github.com/Luthaf/rascaline
+
+
+Rascaline is also provided as prebuilt wheel which avoids the intermediate step
+of building the package with a Rust compiler from the source code.
+
+.. code-block:: bash
+
+    pip install --upgrade pip
+    pip install --extra-index-url https://luthaf.fr/temporary-wheels/ rascaline
+
 
 .. _install-c-lib:
 
@@ -95,6 +119,9 @@ Building from source:
     git clone https://github.com/luthaf/rascaline
     cd rascaline/python/rascaline-torch
     pip install .
+
+    # Make sure you are using the latest version of pip
+    pip install --upgrade pip
 
     # alternatively, the same thing in a single command
     pip install git+https://github.com/luthaf/rascaline#subdirectory=python/rascaline-torch

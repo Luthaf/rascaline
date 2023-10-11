@@ -3,7 +3,7 @@ name = "rascaline"
 version = "0.1.0"
 authors = ["Luthaf <luthaf@luthaf.fr>"]
 edition = "2021"
-rust-version = "1.64"
+rust-version = "1.65"
 
 [lib]
 bench = false
@@ -36,7 +36,7 @@ name = "soap-power-spectrum"
 harness = false
 
 [dependencies]
-metatensor = {git = "https://github.com/lab-cosmo/metatensor", rev = "d97ea65", features = ["rayon"]}
+metatensor = {git = "https://github.com/lab-cosmo/metatensor", rev = "ae10944", features = ["rayon"]}
 
 ndarray = {version = "0.15", features = ["approx-0_5", "rayon", "serde"]}
 num-traits = "0.2"

@@ -8,7 +8,7 @@ target_link_libraries(catch torch)
 
 find_program(VALGRIND valgrind)
 if (VALGRIND)
-    if (NOT "$ENV{METATENSOR_DISABLE_VALGRIND}" EQUAL "1")
+    if (NOT "$ENV{RASCALINE_DISABLE_VALGRIND}" EQUAL "1")
         message(STATUS "Running tests using valgrind")
         set(TEST_COMMAND
             "${VALGRIND}" "--tool=memcheck" "--dsymutil=yes" "--error-exitcode=125"

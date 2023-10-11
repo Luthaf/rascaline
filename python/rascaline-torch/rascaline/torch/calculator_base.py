@@ -100,13 +100,13 @@ class CalculatorModule(torch.nn.Module):
 
         :param systems: single system or list of systems on which to run the
             calculation. If any of the systems' ``positions`` or ``cell`` has
-            ``requires_grad`` set to ``True``, then the corresponding gradients are
-            computed and registered as a custom node in the computational graph, to
+            ``requires_grad`` set to :py:obj:`True`, then the corresponding gradients
+            are computed and registered as a custom node in the computational graph, to
             allow backward propagation of the gradients later.
 
         :param gradients: List of forward gradients to keep in the output. If this is
-            ``None`` or an empty list ``[]``, no gradients are kept in the output. Some
-            gradients might still be computed at runtime to allow for backward
+            :py:obj:`None` or an empty list ``[]``, no gradients are kept in the output.
+            Some gradients might still be computed at runtime to allow for backward
             propagation.
 
         :param use_native_system: This can only be :py:obj:`True`, and is here for

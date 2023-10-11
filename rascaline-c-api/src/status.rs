@@ -84,7 +84,7 @@ impl From<Error> for rascal_status_t {
 /// the error into `rascal_status_t`.
 pub fn catch_unwind<F>(function: F) -> rascal_status_t where F: FnOnce() -> Result<(), Error> + UnwindSafe {
     match std::panic::catch_unwind(function) {
-        Ok(Ok(_)) => rascal_status_t(RASCAL_SUCCESS),
+        Ok(Ok(())) => rascal_status_t(RASCAL_SUCCESS),
         Ok(Err(error)) => error.into(),
         Err(error) => Error::from(error).into()
     }

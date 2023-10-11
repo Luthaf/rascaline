@@ -169,7 +169,7 @@ TEST_CASE("Compute descriptor") {
             1, 0, /**/ 0, 1,
         };
         auto values = std::vector<double>{
-            5, 9, /**/ 6, 18, /**/ 7, 15,
+            5, 39, /**/ 6, 18, /**/ 7, 15,
         };
         auto gradient_samples = std::vector<int32_t>{
             0, 0, 0, /**/ 0, 0, 1, /**/ 0, 0, 2,
@@ -194,7 +194,7 @@ TEST_CASE("Compute descriptor") {
             0, 0,
         };
         values = std::vector<double>{
-            4, 3,
+            4, 33,
         };
         gradient_samples = std::vector<int32_t>{
             0, 0, 0, /**/ 0, 0, 1,
@@ -260,7 +260,7 @@ TEST_CASE("Compute descriptor") {
             1, 0, /**/ 0, 1,
         };
         auto values = std::vector<double>{
-            5, 9, /**/ 7, 15,
+            5, 39, /**/ 7, 15,
         };
         auto gradient_samples = std::vector<int32_t>{
             0, 0, 0, /**/ 0, 0, 1, /**/ 0, 0, 2,
@@ -337,7 +337,7 @@ TEST_CASE("Compute descriptor") {
             0, 1,
         };
         auto values = std::vector<double>{
-            9, /**/ 18, /**/ 15,
+            39, /**/ 18, /**/ 15,
         };
         auto gradient_samples = std::vector<int32_t>{
             0, 0, 0, /**/ 0, 0, 1, /**/ 0, 0, 2,
@@ -362,7 +362,7 @@ TEST_CASE("Compute descriptor") {
             0, 0,
         };
         values = std::vector<double>{
-            3,
+            33,
         };
         gradient_samples = std::vector<int32_t>{
             0, 0, 0, /**/ 0, 0, 1,
@@ -575,7 +575,7 @@ TEST_CASE("Compute descriptor") {
             1, 0, 0, 1
         };
         values = std::vector<double>{
-            4, 3
+            4, 33
         };
         gradient_samples = std::vector<int32_t>{
             0, 0, 0, /**/ 0, 0, 1,

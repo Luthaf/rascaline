@@ -70,12 +70,14 @@ target_link_libraries(tests_helpers rascaline::shared)
 
 find_program(VALGRIND valgrind)
 if (VALGRIND)
-    message(STATUS "Running tests using valgrind")
-    set(TEST_COMMAND
-        "${VALGRIND}" "--tool=memcheck" "--dsymutil=yes" "--error-exitcode=125"
-        "--leak-check=full" "--show-leak-kinds=definite,indirect,possible" "--track-origins=yes"
-        "--suppressions=${CMAKE_CURRENT_SOURCE_DIR}/valgrind.supp" "--gen-suppressions=all"
-    )
+    if (NOT "$ENV{RASCALINE_DISABLE_VALGRIND}" EQUAL "1")
+        message(STATUS "Running tests using valgrind")
+        set(TEST_COMMAND
+            "${VALGRIND}" "--tool=memcheck" "--dsymutil=yes" "--error-exitcode=125"
+            "--leak-check=full" "--show-leak-kinds=definite,indirect,possible" "--track-origins=yes"
+            "--suppressions=${CMAKE_CURRENT_SOURCE_DIR}/valgrind.supp" "--gen-suppressions=all"
+        )
+    endif()
 else()
     set(TEST_COMMAND "")
 endif()

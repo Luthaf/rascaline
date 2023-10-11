@@ -1,4 +1,6 @@
 """
+.. _example-splines:
+
 Splined radial integrals
 ========================
 
@@ -20,7 +22,8 @@ import scipy.optimize
 from scipy.special import jv
 from scipy.special import spherical_jn as j_l
 
-from rascaline import SphericalExpansion, generate_splines
+from rascaline import SphericalExpansion
+from rascaline.utils import RadialIntegralFromFunction
 
 
 # %%
@@ -114,16 +117,16 @@ def laplacian_eigenstate_basis_derivative(n, el, r):
 # %%
 #
 # The radial basis functions and their derivatives can be input into a spline
-# generator. This will output the positions of the spline points, the
+# generator class. This will output the positions of the spline points, the
 # values of the basis functions evaluated at the spline points, and the
 # corresponding derivatives.
-spline_points = generate_splines(
-    laplacian_eigenstate_basis,
-    laplacian_eigenstate_basis_derivative,
-    max_radial,
-    max_angular,
-    cutoff,
-    requested_accuracy=1e-5,
+spliner = RadialIntegralFromFunction(
+    radial_integral=laplacian_eigenstate_basis,
+    radial_integral_derivative=laplacian_eigenstate_basis_derivative,
+    spline_cutoff=cutoff,
+    max_radial=max_radial,
+    max_angular=max_angular,
+    accuracy=1e-5,
 )
 
 # %%
@@ -136,11 +139,7 @@ hypers_spherical_expansion = {
     "max_radial": max_radial,
     "max_angular": max_angular,
     "center_atom_weight": 0.0,
-    "radial_basis": {
-        "TabulatedRadialIntegral": {
-            "points": spline_points,
-        }
-    },
+    "radial_basis": spliner.compute(),
     "atomic_gaussian_width": 1.0,  # ignored
     "cutoff_function": {"Step": {}},
 }

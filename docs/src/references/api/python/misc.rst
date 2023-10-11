@@ -13,5 +13,3 @@ Miscelaneous
 .. autoclass:: rascaline.Profiler
     :members:
     :undoc-members:
-
-.. autofunction:: rascaline.generate_splines

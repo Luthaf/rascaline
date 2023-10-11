@@ -1,8 +1,8 @@
 import ctypes
 from typing import List, Optional, Union
 
-from metatensor.core import Labels, TensorMap
-from metatensor.core._c_api import c_uintptr_t, mts_tensormap_t
+from metatensor import Labels, TensorMap
+from metatensor._c_api import c_uintptr_t, mts_tensormap_t
 
 from ._c_api import (
     RASCAL_BUFFER_SIZE_ERROR,
@@ -207,7 +207,7 @@ class CalculatorBase:
             faster than having to cross the FFI boundary often when accessing
             the neighbor list. Otherwise the Python neighbor list is used.
 
-        :param gradients: List of gradients to compute. If this is ``None`` or
+        :param gradients: List of gradients to compute. If this is :py:obj:`None` or
             an empty list ``[]``, no gradients are computed. Gradients are
             stored inside the different blocks, and can be accessed with
             ``descriptor.block(...).gradient(<parameter>)``, where
@@ -251,7 +251,7 @@ class CalculatorBase:
                            {\partial \mathbf{h}} \cdot \mathbf{h}
 
         :param selected_samples: Set of samples on which to run the calculation.
-            Use ``None`` to run the calculation on all samples in the
+            Use :py:obj:`None` to run the calculation on all samples in the
             ``systems`` (this is the default).
 
             If ``selected_samples`` is an :py:class:`metatensor.TensorMap`, then
@@ -269,7 +269,7 @@ class CalculatorBase:
             these variables as one of the entries in ``selected_samples`` will
             be used.
 
-        :param selected_properties: Set of properties to compute. Use ``None``
+        :param selected_properties: Set of properties to compute. Use :py:obj:`None`
             to run the calculation on all properties (this is the default).
 
             If ``selected_properties`` is an :py:class:`metatensor.TensorMap`,
@@ -288,7 +288,7 @@ class CalculatorBase:
             ``selected_properties`` will be used.
 
         :param selected_keys: Selection for the keys to include in the output.
-            If this is ``None``, the default set of keys (as determined by the
+            If this is :py:obj:`None`, the default set of keys (as determined by the
             calculator) will be used. Note that this default set of keys can
             depend on which systems we are running the calculation on.
         """

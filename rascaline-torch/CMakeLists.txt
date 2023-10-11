@@ -58,7 +58,7 @@ find_package(Torch 1.11 REQUIRED)
 # ============================================================================ #
 # Setup metatensor_torch
 
-set(METATENSOR_GIT_VERSION "d97ea65")
+set(METATENSOR_GIT_VERSION "ae10944")
 set(REQUIRED_METATENSOR_TORCH_VERSION "0.1")
 if (RASCALINE_TORCH_FETCH_METATENSOR_TORCH)
     message(STATUS "Fetching metatensor_torch @ ${METATENSOR_GIT_VERSION} from github")
@@ -67,7 +67,7 @@ if (RASCALINE_TORCH_FETCH_METATENSOR_TORCH)
     FetchContent_Declare(
         metatensor_torch
         URL      https://github.com/lab-cosmo/metatensor/archive/${METATENSOR_GIT_VERSION}.zip
-        URL_HASH MD5=6a6899779591ae15861bb3547c7c354b
+        URL_HASH MD5=1de1208bd96fa9acda0b835d1c9e2c5d
         SOURCE_SUBDIR metatensor-torch
         VERBOSE
     )
@@ -106,7 +106,7 @@ add_library(rascaline_torch SHARED
 )
 
 target_link_libraries(rascaline_torch PUBLIC torch metatensor_torch rascaline)
-target_compile_features(rascaline_torch PUBLIC cxx_std_14)
+target_compile_features(rascaline_torch PUBLIC cxx_std_17)
 target_include_directories(rascaline_torch PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>

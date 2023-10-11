@@ -189,7 +189,7 @@ impl SphericalExpansion {
                 let neighbor_i = pair.second;
 
                 result.pair_to_pair_ids.entry((pair.first, pair.second))
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(pair_id);
 
                 let species_neighbor_i = result.species_mapping[&species[neighbor_i]];
@@ -253,7 +253,7 @@ impl SphericalExpansion {
                 let neighbor_i = pair.first;
 
                 result.pair_to_pair_ids.entry((pair.second, pair.first))
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(pair_id);
 
 
