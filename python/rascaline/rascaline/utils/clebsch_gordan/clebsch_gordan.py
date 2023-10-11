@@ -9,7 +9,7 @@ import numpy as np
 import metatensor
 from metatensor import Labels, TensorBlock, TensorMap
 
-from cg_coefficients import ClebschGordanReal
+from .cg_coefficients import ClebschGordanReal
 
 
 # TODO: this PR
