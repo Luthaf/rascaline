@@ -13,7 +13,7 @@ TEST_CASE("Systems") {
         auto system = SystemHolder(species, positions, cell);
 
         CHECK(system.size() == 5);
-        CHECK(system.__len__() == 5);
+        CHECK(system.len() == 5);
 
         CHECK(system.use_native_system() == true);
 
@@ -47,10 +47,10 @@ TEST_CASE("Systems") {
         auto cell = torch::zeros({3, 3});
         auto system = SystemHolder(species, positions, cell);
 
-        CHECK(system.__str__() == "System with 5 atoms, non periodic");
+        CHECK(system.str() == "System with 5 atoms, non periodic");
 
         cell = torch::eye(3);
         system = SystemHolder(species, positions, cell);
-        CHECK(system.__str__() == "System with 5 atoms, periodic cell: [1, 0, 0, 0, 1, 0, 0, 0, 1]");
+        CHECK(system.str() == "System with 5 atoms, periodic cell: [1, 0, 0, 0, 1, 0, 0, 0, 1]");
     }
 }

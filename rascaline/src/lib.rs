@@ -6,7 +6,7 @@
 #![allow(clippy::unreadable_literal, clippy::option_if_let_else, clippy::range_plus_one)]
 #![allow(clippy::missing_errors_doc, clippy::missing_panics_doc, clippy::module_name_repetitions)]
 #![allow(clippy::manual_assert, clippy::return_self_not_must_use, clippy::match_like_matches_macro)]
-#![allow(clippy::needless_range_loop, clippy::uninlined_format_args)]
+#![allow(clippy::needless_range_loop, clippy::uninlined_format_args, clippy::manual_let_else)]
 
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 #![allow(clippy::cast_possible_wrap, clippy::cast_lossless, clippy::cast_sign_loss)]

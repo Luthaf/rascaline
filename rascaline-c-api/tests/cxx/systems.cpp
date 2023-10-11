@@ -9,7 +9,7 @@ TEST_CASE("basic systems") {
 
     CHECK(systems.count() == 30);
 
-    auto system = systems.systems();
+    auto* system = systems.systems();
     uintptr_t size = 0;
     system->size(system->user_data, &size);
     CHECK(size == 54);

@@ -43,7 +43,7 @@ public:
     /// SystemHolder can be move assigned
     SystemHolder& operator=(SystemHolder&&) = default;
 
-    virtual ~SystemHolder() override = default;
+    ~SystemHolder() override = default;
 
     /*========================================================================*/
     /*            Functions to implement rascaline::System                    */
@@ -66,7 +66,7 @@ public:
 
     /// @private
     CellMatrix cell() const override {
-        auto data = cell_.data_ptr<double>();
+        auto* data = cell_.data_ptr<double>();
         return CellMatrix{{
             {{data[0], data[1], data[2]}},
             {{data[3], data[4], data[5]}},
@@ -117,12 +117,12 @@ public:
     }
 
     /// @private implementation of __len__ for TorchScript
-    int64_t __len__() const {
+    int64_t len() const {
         return species_.size(0);
     }
 
     /// @private implementation of __str__ for TorchScript
-    std::string __str__() const;
+    std::string str() const;
 
     // TODO: convert from a Dict[str, TorchTensorMap] for the interface with LAMMPS
     // static TorchSystem from_metatensor_dict();
