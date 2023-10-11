@@ -16,7 +16,7 @@ static TorchSystem test_system(bool positions_grad, bool cell_grad);
 
 
 TEST_CASE("Calculator") {
-    auto HYPERS_JSON = R"({
+    const auto* HYPERS_JSON = R"({
         "cutoff": 3.0,
         "delta": 4,
         "name": "bar"
@@ -152,7 +152,7 @@ TEST_CASE("Calculator") {
         auto system = test_system(true, false);
 
         auto options = torch::make_intrusive<CalculatorOptionsHolder>();
-        options->gradients.push_back("positions");
+        options->gradients.emplace_back("positions");
         auto descriptor = calculator.compute({system}, options);
 
         CHECK(*descriptor->keys() == metatensor::Labels(
@@ -255,7 +255,7 @@ TEST_CASE("Calculator") {
         auto system = test_system(false, false);
 
         auto options = torch::make_intrusive<CalculatorOptionsHolder>();
-        options->gradients.push_back("positions");
+        options->gradients.emplace_back("positions");
         auto descriptor = calculator.compute({system}, options);
 
         CHECK(*descriptor->keys() == metatensor::Labels(

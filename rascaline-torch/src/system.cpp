@@ -125,7 +125,7 @@ const std::vector<rascal_pair_t>& SystemHolder::pairs_containing(uintptr_t cente
 }
 
 
-std::string SystemHolder::__str__() const {
+std::string SystemHolder::str() const {
     auto result = std::ostringstream();
     result << "System with " << this->size() << " atoms, ";
     if (torch::all(cell_ == torch::zeros({3, 3})).item<bool>()) {

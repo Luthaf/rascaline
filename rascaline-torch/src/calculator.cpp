@@ -22,8 +22,8 @@ static metatensor::TensorBlock block_to_torch(
 
     auto torch_values = torch::from_blob(
         values.data(),
-        std::move(sizes),
-        [tensor](void*){
+        sizes,
+        [tensor](void*) mutable {
             // this function holds a copy of `tensor`, which will make sure that
             // (a) the TensorMap is kept alive for as long as the values
             // returned by `torch::from_blob` is; and (b) the TensorMap will be
@@ -41,9 +41,9 @@ static metatensor::TensorBlock block_to_torch(
         block.properties()
     );
 
-    for (auto parameter: block.gradients_list()) {
+    for (const auto& parameter: block.gradients_list()) {
         auto gradient = block_to_torch(tensor, block.gradient(parameter));
-        new_block.add_gradient(std::move(parameter), std::move(gradient));
+        new_block.add_gradient(parameter, std::move(gradient));
     }
 
     return new_block;
@@ -146,7 +146,7 @@ metatensor_torch::TorchTensorMap CalculatorHolder::compute(
         int64_t current_start = 0;
         for (auto& system: systems) {
             structures_start.push_back(current_start);
-            current_start += system->size();
+            current_start += static_cast<int64_t>(system->size());
         }
         structures_start_ivalue = torch::IValue(std::move(structures_start));
     }
@@ -252,7 +252,7 @@ metatensor_torch::TorchTensorMap rascaline_torch::register_autograd(
         int64_t current_start = 0;
         for (auto& system: systems) {
             structures_start.push_back(current_start);
-            current_start += system->size();
+            current_start += static_cast<int64_t>(system->size());
         }
         structures_start_ivalue = torch::IValue(std::move(structures_start));
     }

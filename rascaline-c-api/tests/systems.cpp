@@ -57,8 +57,8 @@ TEST_CASE("systems errors") {
     auto* calculator = rascal_calculator("dummy_calculator", HYPERS_JSON);
     REQUIRE(calculator != nullptr);
 
-    rascal_system_t system = {0};
-    rascal_calculation_options_t options = {0};
+    rascal_system_t system = {};
+    rascal_calculation_options_t options = {};
 
     mts_tensormap_t* descriptor = nullptr;
     auto status = rascal_calculator_compute(

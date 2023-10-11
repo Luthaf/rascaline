@@ -13,7 +13,7 @@ static void run_calculation(const char* hypers) {
     auto* calculator = rascal_calculator("dummy_calculator", hypers);
     REQUIRE(calculator != nullptr);
     auto system = simple_system();
-    rascal_calculation_options_t options = {0};
+    rascal_calculation_options_t options = {};
 
     mts_tensormap_t* descriptor = nullptr;
     CHECK_SUCCESS(rascal_calculator_compute(
@@ -26,7 +26,7 @@ static void run_calculation(const char* hypers) {
 
 TEST_CASE("Logging") {
     auto record_log_events = [](int level, const char* message) {
-        RECORDED_LOG_EVENTS.push_back(std::make_tuple(level, std::string(message)));
+        RECORDED_LOG_EVENTS.emplace_back(level, std::string(message));
     };
     CHECK_SUCCESS(rascal_set_logging_callback(record_log_events));
 

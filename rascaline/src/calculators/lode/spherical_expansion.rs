@@ -145,9 +145,9 @@ fn compute_structure_factors(positions: &[Vector3D], species: &[i32], k_vectors:
     // Compute Sum_j cos(k*r_ij) and Sum_j sin(k*r_ij) using the subtraction theorem
     for i in 0..n_atoms {
         for (species, real_per_center) in &mut real_per_center {
-            let sumjcos = sumjcos.get_mut(&species).unwrap();
-            let sumjsin = sumjsin.get_mut(&species).unwrap();
-            let imag_per_center = imag_per_center.get_mut(&species).unwrap();
+            let sumjcos = sumjcos.get_mut(species).unwrap();
+            let sumjsin = sumjsin.get_mut(species).unwrap();
+            let imag_per_center = imag_per_center.get_mut(species).unwrap();
             for k in 0..n_k_vectors {
                 let real = cosines[[i, k]] * sumjcos[k] + sines[[i, k]] * sumjsin[k];
                 let imag = sines[[i, k]] * sumjcos[k] - cosines[[i, k]] * sumjsin[k];

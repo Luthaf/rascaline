@@ -257,7 +257,7 @@ fn convert_labels_selection<'a>(
         }
         (true, false) => {
             let tensor = unsafe {
-                TensorMap::from_raw(selection.predefined as *mut mts_tensormap_t)
+                TensorMap::from_raw(selection.predefined.cast_mut())
             };
 
             match tensor.try_clone() {

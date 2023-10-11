@@ -4,10 +4,10 @@
 # rascaline-torch, and copy it to be included in the rascaline-torch python
 # package sdist.
 
-ROOT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
+ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 set -eux
 
-cd $ROOT_DIR
+cd "$ROOT_DIR"
 tar cf rascaline-torch.tar rascaline-torch
 gzip -9 rascaline-torch.tar
 
