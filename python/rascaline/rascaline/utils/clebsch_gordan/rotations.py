@@ -2,16 +2,13 @@
 Class for generating real Wigner-D matrices, and using them to rotate ASE frames
 and TensorMaps of density coefficients in the spherical basis.
 """
-from typing import Optional, Sequence
+from typing import Sequence
 
 import ase
 import numpy as np
-from scipy.spatial.transform import Rotation
 import torch
-
-import metatensor
-from metatensor import Labels, TensorBlock, TensorMap
-import wigners
+from metatensor import TensorBlock, TensorMap
+from scipy.spatial.transform import Rotation
 
 
 # ===== Functions for transformations in the Cartesian basis =====
@@ -66,6 +63,8 @@ def transform_frame_o3(frame: ase.Atoms, angles: Sequence[float]) -> ase.Atoms:
 
     return new_frame
 
+
+# ===== WignerDReal for transformations in the spherical basis =====
 
 class WignerDReal:
     """

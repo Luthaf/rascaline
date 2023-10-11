@@ -1,25 +1,31 @@
-import pytest
-import numpy as np
-
 import ase.io
+import metatensor
+import metatensor.operations
 import numpy as np
+import pytest
+from metatensor import Labels, TensorBlock, TensorMap
 
 import rascaline
-import metatensor
-from metatensor import Labels, TensorBlock, TensorMap
-import metatensor.operations
+from rascaline.utils.clebsch_gordan import (
+    ClebschGordanReal,
+    _clebsch_gordan_combine_dense,
+    _clebsch_gordan_combine_sparse,
+    _combine_single_center,
+    n_body_iteration_single_center,
+)
 
-from rascaline.utils.clebsch_gordan import ClebschGordanReal, _clebsch_gordan_combine_dense, _clebsch_gordan_combine_sparse, n_body_iteration_single_center, _combine_single_center
 
-def random_equivariant_array(n_samples=10, n_q_properties=4, n_p_properties=8, l=1, seed=None):
+def random_equivariant_array(
+    n_samples=10, n_q_properties=4, n_p_properties=8, l=1, seed=None
+):
     if seed is not None:
         np.random.seed(seed)
 
-    equi_l_array = np.random.rand(n_samples, 2*l+1, n_q_properties)
+    equi_l_array = np.random.rand(n_samples, 2 * l + 1, n_q_properties)
     return equi_l_array
 
-class TestClebschGordan:
 
+class TestClebschGordan:
     lam_max = 3
     cg_cache_sparse = ClebschGordanReal(lambda_max=lam_max, sparse=True)
     cg_cache_dense = ClebschGordanReal(lambda_max=lam_max, sparse=False)
@@ -28,8 +34,12 @@ class TestClebschGordan:
         for l1, l2, lam in self.cg_cache_dense.coeffs.keys():
             equi_l1_array = random_equivariant_array(l=l1, seed=51)
             equi_l2_array = random_equivariant_array(l=l2, seed=53)
-            out_sparse = _clebsch_gordan_combine_sparse(equi_l1_array, equi_l2_array, lam, self.cg_cache_sparse)
-            out_dense = _clebsch_gordan_combine_dense(equi_l1_array, equi_l2_array, lam, self.cg_cache_dense)
+            out_sparse = _clebsch_gordan_combine_sparse(
+                equi_l1_array, equi_l2_array, lam, self.cg_cache_sparse
+            )
+            out_dense = _clebsch_gordan_combine_dense(
+                equi_l1_array, equi_l2_array, lam, self.cg_cache_dense
+            )
             assert np.allclose(out_sparse, out_dense)
 
     @pytest.mark.parametrize("l1, l2", [(1, 2)])
@@ -42,41 +52,54 @@ class TestClebschGordan:
 
         https://en.wikipedia.org/wiki/Clebsch%E2%80%93Gordan_coefficients#Orthogonality_relations
         """
-        assert self.lam_max >= l1+l2, "Did not precompute CG coeff with high enough lambda_max"
-        lam_min = abs(l1-l2)
-        lam_max = l1+l2
+        assert (
+            self.lam_max >= l1 + l2
+        ), "Did not precompute CG coeff with high enough lambda_max"
+        lam_min = abs(l1 - l2)
+        lam_max = l1 + l2
 
         # We test lam dimension
-        # \sum_{-m1 \leq l1 \leq m1, -m2 \leq l2 \leq m2} 
+        # \sum_{-m1 \leq l1 \leq m1, -m2 \leq l2 \leq m2}
         #           <λμ|l1m1,l2m2> <l1m1',l2m2'|λμ'> = δ_μμ'
         for lam in range(lam_min, lam_max):
-            cg_mat = self.cg_cache_dense.coeffs[(l1, l2, lam)].reshape(-1, 2*lam+1)
-            dot_product = cg_mat.T@ cg_mat
+            cg_mat = self.cg_cache_dense.coeffs[(l1, l2, lam)].reshape(-1, 2 * lam + 1)
+            dot_product = cg_mat.T @ cg_mat
             diag_mask = np.zeros(dot_product.shape, dtype=np.bool_)
             diag_mask[np.diag_indices(len(dot_product))] = True
-            assert np.allclose(dot_product[~diag_mask], np.zeros(dot_product.shape)[~diag_mask])
+            assert np.allclose(
+                dot_product[~diag_mask], np.zeros(dot_product.shape)[~diag_mask]
+            )
             assert np.allclose(dot_product[diag_mask], dot_product[diag_mask][0])
 
         # We test l1 l2 dimension
         # \sum_{|l1-l2| \leq λ \leq l1+l2} \sum_{-μ \leq λ \leq μ}
         #            <l1m1,l2m2|λμ> <λμ|l1m1,l2m2> = δ_m1m1' δ_m2m2'
-        l1l2_dim = (2*l1+1) * (2*l2+1)
+        l1l2_dim = (2 * l1 + 1) * (2 * l2 + 1)
         dot_product = np.zeros((l1l2_dim, l1l2_dim))
-        for lam in range(lam_min, lam_max+1):
-            cg_mat = self.cg_cache_dense.coeffs[(l1, l2, lam)].reshape(-1, 2*lam+1)
+        for lam in range(lam_min, lam_max + 1):
+            cg_mat = self.cg_cache_dense.coeffs[(l1, l2, lam)].reshape(-1, 2 * lam + 1)
             dot_product += cg_mat @ cg_mat.T
         diag_mask = np.zeros(dot_product.shape, dtype=np.bool_)
         diag_mask[np.diag_indices(len(dot_product))] = True
-        assert np.allclose(dot_product[~diag_mask], np.zeros(dot_product.shape)[~diag_mask])
+        assert np.allclose(
+            dot_product[~diag_mask], np.zeros(dot_product.shape)[~diag_mask]
+        )
         assert np.allclose(dot_product[diag_mask], dot_product[diag_mask][0])
 
-    h2o_frame = ase.Atoms('H2O', positions=[[-0.526383, -0.769327, -0.029366],
-                                           [-0.526383,  0.769327, -0.029366],
-                                           [ 0.066334,  0.000000,  0.003701]])
+    h2o_frame = ase.Atoms(
+        "H2O",
+        positions=[
+            [-0.526383, -0.769327, -0.029366],
+            [-0.526383, 0.769327, -0.029366],
+            [0.066334, 0.000000, 0.003701],
+        ],
+    )
 
     @pytest.mark.parametrize("lam_max", [2])
     def test_n_body_iteration_single_center_dense_sparse_agree(self, lam_max):
-        assert self.lam_max >= lam_max, "Did not precompute CG coeff with high enough lambda_max"
+        assert (
+            self.lam_max >= lam_max
+        ), "Did not precompute CG coeff with high enough lambda_max"
         lambdas = np.array([0, 2])
         rascal_hypers = {
             "cutoff": 3.0,  # Angstrom
@@ -95,7 +118,7 @@ class TestClebschGordan:
             lambdas=lambdas,
             lambda_cut=lam_max * 2,
             species_neighbors=[1, 8, 6],
-            use_sparse=True
+            use_sparse=True,
         )
 
         n_body_dense = n_body_iteration_single_center(
@@ -105,16 +128,17 @@ class TestClebschGordan:
             lambdas=lambdas,
             lambda_cut=lam_max * 2,
             species_neighbors=[1, 8, 6],
-            use_sparse=False
+            use_sparse=False,
         )
 
-        assert metatensor.operations.allclose(n_body_sparse, n_body_dense, atol=1e-8, rtol=1e-8)
-
+        assert metatensor.operations.allclose(
+            n_body_sparse, n_body_dense, atol=1e-8, rtol=1e-8
+        )
 
     @pytest.mark.parametrize("l", [1])
     def test_combine_single_center_orthogonality(self, l):
         lam_min = 0
-        lam_max = 2*l
+        lam_max = 2 * l
         rascal_hypers = {
             "cutoff": 3.0,  # Angstrom
             "max_radial": 6,  # Exclusive
@@ -139,7 +163,11 @@ class TestClebschGordan:
             nu1_tensor, axis="keys", name="order_nu", values=np.array([1]), index=0
         )
         nu1_tensor = metatensor.insert_dimension(
-            nu1_tensor, axis="keys", name="inversion_sigma", values=np.array([1]), index=1
+            nu1_tensor,
+            axis="keys",
+            name="inversion_sigma",
+            values=np.array([1]),
+            index=1,
         )
         combined_tensor = nu1_tensor.copy()
 
@@ -154,28 +182,38 @@ class TestClebschGordan:
         )
         nu_target = 1
 
-        #order_nu  inversion_sigma  spherical_harmonics_l  species_center
-        #"spherical_harmonics_l",
-        combined_tensor = combined_tensor.keys_to_properties(["l1", "l2", "inversion_sigma", "order_nu"])
+        # order_nu  inversion_sigma  spherical_harmonics_l  species_center
+        # "spherical_harmonics_l",
+        combined_tensor = combined_tensor.keys_to_properties(
+            ["l1", "l2", "inversion_sigma", "order_nu"]
+        )
         combined_tensor = combined_tensor.keys_to_samples(["species_center"])
         n_samples = combined_tensor[0].values.shape[0]
         combined_tensor_values = np.hstack(
-                                [combined_tensor.block(Labels("spherical_harmonics_l", np.array([[l]]))).values.reshape(n_samples, -1)
-                                    for l in combined_tensor.keys["spherical_harmonics_l"]])
+            [
+                combined_tensor.block(
+                    Labels("spherical_harmonics_l", np.array([[l]]))
+                ).values.reshape(n_samples, -1)
+                for l in combined_tensor.keys["spherical_harmonics_l"]
+            ]
+        )
         combined_tensor_norm = np.linalg.norm(combined_tensor_values, axis=1)
 
         nu1_tensor = nu1_tensor.keys_to_properties(["inversion_sigma", "order_nu"])
         nu1_tensor = nu1_tensor.keys_to_samples(["species_center"])
         nu1_tensor_values = np.hstack(
-                                [nu1_tensor.block(Labels("spherical_harmonics_l", np.array([[l]]))).values.reshape(n_samples, -1)
-                                    for l in nu1_tensor.keys["spherical_harmonics_l"]])
+            [
+                nu1_tensor.block(
+                    Labels("spherical_harmonics_l", np.array([[l]]))
+                ).values.reshape(n_samples, -1)
+                for l in nu1_tensor.keys["spherical_harmonics_l"]
+            ]
+        )
         nu1_tensor_norm = np.linalg.norm(nu1_tensor_values, axis=1)
         assert np.allclose(combined_tensor_norm, nu1_tensor_norm)
 
-
-
     # old test that become decprecated through prototyping on API
-    #def test_soap_kernel():
+    # def test_soap_kernel():
     #    """
     #    Tests if we get the same result computing SOAP from spherical expansion coefficients using GC utils
     #    as when using SoapPowerSpectrum.
@@ -222,7 +260,7 @@ class TestClebschGordan:
     #    # worries me a bit that the rtol is shit, might be missing multiplicity?
     #    assert np.allclose(kernel_cg, kernel_rascaline, atol=1e-9, rtol=1e-1)
     #
-    #def test_soap_zeros():
+    # def test_soap_zeros():
     #    """
     #    Tests if the l1!=l2 values are zero when computing the 3-body invariant (SOAP)
     #    """

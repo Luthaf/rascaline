@@ -147,18 +147,15 @@ def _complex_clebsch_gordan_matrix(l1, l2, lam):
     >>> from scipy.special import sph_harm
     >>> import numpy as np
     >>> import wigners
-    ...
     >>> C_112 = _complex_clebsch_gordan_matrix(1, 1, 2)
-    >>> comp_sph_1 = np.array([
-    ... sph_harm(m, 1, 0.2, 0.2) for m in range(-1, 1+1)
-    ... ])
-    >>> comp_sph_2 = np.array([sph_harm(m, 1, 0.2, 0.2) for m in range(-1, 1+1)])
+    >>> comp_sph_1 = np.array([sph_harm(m, 1, 0.2, 0.2) for m in range(-1, 1 + 1)])
+    >>> comp_sph_2 = np.array([sph_harm(m, 1, 0.2, 0.2) for m in range(-1, 1 + 1)])
     >>> # obtain the (unnormalized) spherical harmonics
     >>> # with l = 2 by contraction over m1 and m2
     >>> comp_sph_2_u = np.einsum("ijk,i,j->k", C_112, comp_sph_1, comp_sph_2)
     >>> # we can check that they differ from the spherical harmonics
     >>> # by a constant factor
-    >>> comp_sph_2 = np.array([sph_harm(m, 2, 0.2, 0.2) for m in range(-2, 2+1)])
+    >>> comp_sph_2 = np.array([sph_harm(m, 2, 0.2, 0.2) for m in range(-2, 2 + 1)])
     >>> ratio = comp_sph_2 / comp_sph_2_u
     >>> np.allclose(ratio[0], ratio)
     True

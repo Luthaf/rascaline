@@ -2,32 +2,13 @@
 Module for computing Clebsch-gordan iterations with metatensor TensorMaps.
 """
 import itertools
-from typing import Optional, List, Tuple, Union
-
-import numpy as np
+from typing import List, Optional, Tuple, Union
 
 import metatensor
+import numpy as np
 from metatensor import Labels, TensorBlock, TensorMap
 
 from .cg_coefficients import ClebschGordanReal
-
-
-# TODO: this PR
-# - [ ] `combine_single_center_to_body_order`: feedback on API design
-# - [ ] Unit tests - metadata and maths
-# - [ ] Thorough documentation
-
-# TODO: later PRs, in roughly chronological order
-# - [ ] Implement `combine_single_center_one_iteration`
-# - [ ] Use dispatch for numpy/torch CG combination
-# - [ ] Add support for gradients
-# - [ ] Integrate with `sparse_accumulation`
-# - [ ] Extend to multi-center desciptors
-# - [ ] Customizable and arbitrary (non)linear transformations at each iteration
-
-
-# 29/09/23 Meeting notes
-# - `angular_cutoff` appropriate arg name?
 
 
 # ======================================================================
@@ -197,8 +178,8 @@ def combine_single_center_to_body_order_metadata_only(
     """
     Performs a pseudo-CG combination of a nu = 1 (i.e. 2-body) single-center
     descriptor with itself to generate a descriptor of order
-    ``target_body_order``. 
-    
+    ``target_body_order``.
+
     A list of TensorMaps is returned, where each has the complete * metadata *
     of the TensorMap that would be created by a full CG combination. No actual
     CG combinations of block values arrays are performed, instead arrays of
@@ -443,8 +424,9 @@ def _precompute_metadata(
         # Check that some keys are produced as a result of the combination
         if len(new_keys) == 0:
             raise ValueError(
-                f"invalid selections: iteration {iteration + 1} produces no valid combinations."
-                " Check the `angular_selection` and `parity_selection` arguments."
+                f"invalid selections: iteration {iteration + 1} produces no"
+                " valid combinations. Check the `angular_selection` and"
+                " `parity_selection` arguments."
             )
 
         # Now check the angular and parity selections are present in the new keys
@@ -453,9 +435,10 @@ def _precompute_metadata(
                 for lam in angular_selection[iteration]:
                     if lam not in new_keys.column("spherical_harmonics_l"):
                         raise ValueError(
-                            f"lambda = {lam} specified in `angular_selection` for iteration"
-                            f" {iteration + 1}, but this is not a valid angular channel based on"
-                            " the combination of lower body-order tensors. Check the passed"
+                            f"lambda = {lam} specified in `angular_selection`"
+                            f" for iteration {iteration + 1}, but this is not a"
+                            " valid angular channel based on the combination of"
+                            " lower body-order tensors. Check the passed"
                             " `angular_selection` and try again."
                         )
         if parity_selection is not None:
@@ -463,9 +446,10 @@ def _precompute_metadata(
                 for sig in parity_selection[iteration]:
                     if sig not in new_keys.column("inversion_sigma"):
                         raise ValueError(
-                            f"sigma = {sig} specified in `parity_selection` for iteration"
-                            f" {iteration + 1}, but this is not a valid parity based on the"
-                            " combination of lower body-order tensors. Check the passed"
+                            f"sigma = {sig} specified in `parity_selection`"
+                            f" for iteration {iteration + 1}, but this is not"
+                            " a valid parity based on the combination of lower"
+                            " body-order tensors. Check the passed"
                             " `parity_selection` and try again."
                         )
 
@@ -862,9 +846,9 @@ def _combine_arrays_dense(
     >>> L1 = 2
     >>> L2 = 3
     >>> LAM = 2
-    >>> arr_1 = np.random.rand(N_SAMPLES, 2*L1+1, N_Q_PROPERTIES)
-    >>> arr_2 = np.random.rand(N_SAMPLES, 2*L2+1, N_P_PROPERTIES)
-    >>> cg_cache = {(L1, L2, LAM): np.random.rand(2*L1+1, 2*L2+1, 2*LAM+1)}
+    >>> arr_1 = np.random.rand(N_SAMPLES, 2 * L1 + 1, N_Q_PROPERTIES)
+    >>> arr_2 = np.random.rand(N_SAMPLES, 2 * L2 + 1, N_P_PROPERTIES)
+    >>> cg_cache = {(L1, L2, LAM): np.random.rand(2 * L1 + 1, 2 * L2 + 1, 2 * LAM + 1)}
     >>> out1 = _clebsch_gordan_dense(arr_1, arr_2, LAM, cg_cache)
     >>> # (samples l1_m  q_features) (samples l2_m p_features),
     >>> #   (l1_m  l2_m  lambda_mu)
@@ -872,7 +856,7 @@ def _combine_arrays_dense(
     >>> # in einsum l1_m is l, l2_m is k, lambda_mu is L
     >>> out2 = np.einsum("slq, skp, lkL -> sLqp", arr_1, arr_2, cg_cache[(L1, L2, LAM)])
     >>> # --> (samples lambda_mu (q_features p_features))
-    >>> out2 = out2.reshape(arr_1.shape[0], 2*LAM+1, -1)
+    >>> out2 = out2.reshape(arr_1.shape[0], 2 * LAM + 1, -1)
     >>> print(np.allclose(out1, out2))
     True
     """

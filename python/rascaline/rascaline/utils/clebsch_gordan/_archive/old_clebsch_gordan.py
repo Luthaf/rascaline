@@ -8,11 +8,11 @@ Note: this is legacy code and only used as reference.
 import re
 from typing import Optional, Sequence, Union
 
+import metatensor
 import numpy as np
 import wigners
-
-import metatensor
 from metatensor import Labels, TensorBlock, TensorMap
+
 import rascaline
 
 
@@ -731,7 +731,10 @@ def lambda_soap_vector(
         keys_to_drop = Labels(
             names=lsoap.keys.names,
             values=lsoap.keys.values[
-                [lam not in lambda_filter for lam in lsoap.keys.column("spherical_harmonics_l")]
+                [
+                    lam not in lambda_filter
+                    for lam in lsoap.keys.column("spherical_harmonics_l")
+                ]
             ],
         )
         lsoap = metatensor.drop_blocks(lsoap, keys=keys_to_drop)
@@ -741,15 +744,17 @@ def lambda_soap_vector(
             keys_to_drop = Labels(
                 names=lsoap.keys.names,
                 values=lsoap.keys.values[
-                    [s not in sigma_filter for s in lsoap.keys.column("inversion_sigma")]
+                    [
+                        s not in sigma_filter
+                        for s in lsoap.keys.column("inversion_sigma")
+                    ]
                 ],
             )
             lsoap = metatensor.drop_blocks(lsoap, keys=keys_to_drop)
 
             if len(np.unique(lsoap.keys.column("inversion_sigma"))) == 1:
-                lsoap = metatensor.remove_dimension(lsoap, axis="keys", name="inversion_sigma")
-
-
-
+                lsoap = metatensor.remove_dimension(
+                    lsoap, axis="keys", name="inversion_sigma"
+                )
 
     return lsoap

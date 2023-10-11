@@ -79,7 +79,7 @@
 #     lambda_cut: Union[None, int],
 # ) -> List[List[int]]:
 #     """
-#     Parses the user-defined angular selection filters, returning 
+#     Parses the user-defined angular selection filters, returning
 
 #     If a filter isn't specified by the user with `angular_selection=None`, then
 #     no filter is applied. In this case all possible lambda channels are retained
@@ -303,40 +303,38 @@
 #     return TensorMap(nux_keys, nux_blocks)
 
 
-
-
 # # Parse the angular and parity selections. Basic checks are performed here
-    # # and errors raised if invalid selections are passed.
-    # parity_selection = _parse_parity_selection(target_body_order, parity_selection)
-    # angular_selection = _parse_angular_selection(
-    #     target_body_order, rascal_hypers["max_angular"], angular_selection, angular_cutoff
-    # )
-    # if debug:
-    #     print("parity_selection: ", parity_selection)
-    #     print("angular_selection: ", angular_selection)
+# # and errors raised if invalid selections are passed.
+# parity_selection = _parse_parity_selection(target_body_order, parity_selection)
+# angular_selection = _parse_angular_selection(
+#     target_body_order, rascal_hypers["max_angular"], angular_selection, angular_cutoff
+# )
+# if debug:
+#     print("parity_selection: ", parity_selection)
+#     print("angular_selection: ", angular_selection)
 # # Pre-compute all the information needed to combined tensors at every
-    # # iteration. This includes the keys of the TensorMaps produced at each
-    # # iteration, the keys of the blocks combined to make them, and block
-    # # multiplicities.
-    # combine_info = []
-    # for iteration in range(1, target_body_order):
-    #     info = _create_combined_keys(
-    #         nux_keys,
-    #         nu1_keys,
-    #         angular_selection[iteration - 1],
-    #         parity_selection[iteration - 1],
-    #     )
-    #     combine_info.append(info)
-    #     nux_keys = info[0]
+# # iteration. This includes the keys of the TensorMaps produced at each
+# # iteration, the keys of the blocks combined to make them, and block
+# # multiplicities.
+# combine_info = []
+# for iteration in range(1, target_body_order):
+#     info = _create_combined_keys(
+#         nux_keys,
+#         nu1_keys,
+#         angular_selection[iteration - 1],
+#         parity_selection[iteration - 1],
+#     )
+#     combine_info.append(info)
+#     nux_keys = info[0]
 
-    # if debug:
-    #     print("Num. keys at each step: ", [len(c[0]) for c in combine_info])
-    #     print([nu1_keys] + [c[0] for c in combine_info])
-    #     return
+# if debug:
+#     print("Num. keys at each step: ", [len(c[0]) for c in combine_info])
+#     print([nu1_keys] + [c[0] for c in combine_info])
+#     return
 
-    # if np.any([len(c[0]) == 0 for c in combine_info]):
-    #     raise ValueError(
-    #         "invalid filters: one or more iterations produce no valid combinations."
-    #         f" Number of keys at each iteration: {[len(c[0]) for c in combine_info]}."
-    #         " Check the `angular_selection` and `parity_selection` arguments."
-    #     )
+# if np.any([len(c[0]) == 0 for c in combine_info]):
+#     raise ValueError(
+#         "invalid filters: one or more iterations produce no valid combinations."
+#         f" Number of keys at each iteration: {[len(c[0]) for c in combine_info]}."
+#         " Check the `angular_selection` and `parity_selection` arguments."
+#     )
