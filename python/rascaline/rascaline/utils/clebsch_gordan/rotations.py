@@ -6,9 +6,16 @@ from typing import Sequence
 
 import ase
 import numpy as np
-import torch
 from metatensor import TensorBlock, TensorMap
 from scipy.spatial.transform import Rotation
+
+try:
+    import torch
+    from torch import Tensor as TorchTensor
+except ImportError:
+
+    class TorchTensor:
+        pass
 
 
 # ===== Functions for transformations in the Cartesian basis =====
@@ -196,7 +203,7 @@ class WignerDReal:
         # Perform the rotation, either with numpy or torch, by taking the
         # tensordot product of the irreducible spherical components. Modify
         # in-place the values of the copied TensorBlock.
-        if isinstance(vals, torch.Tensor):
+        if isinstance(vals, TorchTensor):
             wig = torch.tensor(wig)
             block_rotated.values[:] = torch.tensordot(
                 vals.swapaxes(1, 2), wig, dims=1
