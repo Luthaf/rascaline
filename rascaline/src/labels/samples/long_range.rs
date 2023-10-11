@@ -18,14 +18,14 @@ pub struct LongRangeSamplesPerAtom {
 }
 
 impl SamplesBuilder for LongRangeSamplesPerAtom {
-    fn samples_names() -> Vec<&'static str> {
+    fn sample_names() -> Vec<&'static str> {
         vec!["structure", "center"]
     }
 
     fn samples(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
         assert!(self.self_pairs, "self.self_pairs = false is not implemented");
 
-        let mut builder = LabelsBuilder::new(Self::samples_names());
+        let mut builder = LabelsBuilder::new(Self::sample_names());
         for (system_i, system) in systems.iter_mut().enumerate() {
             let species = system.species()?;
 

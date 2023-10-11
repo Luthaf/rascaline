@@ -214,8 +214,8 @@ std::vector<torch::Tensor> PositionsGrad::forward(
     auto structures_start = structures_start_ivalue.toIntList();
 
     auto samples = dX_dr->samples();
-    auto samples_values = samples->values();
-    auto* samples_values_ptr = samples_values.data_ptr<int32_t>();
+    auto sample_values = samples->values();
+    auto* sample_values_ptr = sample_values.data_ptr<int32_t>();
     always_assert(samples->names().size() == 3);
     always_assert(samples->names()[0] == "sample");
     always_assert(samples->names()[1] == "structure");
@@ -242,9 +242,9 @@ std::vector<torch::Tensor> PositionsGrad::forward(
 
     // =========================== compute dA_dr ============================ //
     for (int64_t grad_sample_i=0; grad_sample_i<samples->count(); grad_sample_i++) {
-        auto sample_i = samples_values_ptr[grad_sample_i * 3 + 0];
-        auto structure_i = samples_values_ptr[grad_sample_i * 3 + 1];
-        auto atom_i = samples_values_ptr[grad_sample_i* 3 + 2];
+        auto sample_i = sample_values_ptr[grad_sample_i * 3 + 0];
+        auto structure_i = sample_values_ptr[grad_sample_i * 3 + 1];
+        auto atom_i = sample_values_ptr[grad_sample_i* 3 + 2];
 
         auto global_atom_i = structures_start[structure_i] + atom_i;
 
@@ -283,8 +283,8 @@ std::vector<torch::Tensor> PositionsGrad::backward(
     auto dB_d_dA_dr = grad_outputs[0]; // gradient of B w.r.t. dA/dr (output of forward)
 
     auto samples = dX_dr->samples();
-    auto samples_values = samples->values();
-    auto* samples_values_ptr = samples_values.data_ptr<int32_t>();
+    auto sample_values = samples->values();
+    auto* sample_values_ptr = sample_values.data_ptr<int32_t>();
     always_assert(samples->names().size() == 3);
     always_assert(samples->names()[0] == "sample");
     always_assert(samples->names()[1] == "structure");
@@ -329,9 +329,9 @@ std::vector<torch::Tensor> PositionsGrad::backward(
         // dB_d_dA_dr.shape == [n_atoms, 3]
         // dB_d_dA_dX.shape == [samples, features...]
         for (int64_t grad_sample_i=0; grad_sample_i<samples->count(); grad_sample_i++) {
-            auto sample_i = samples_values_ptr[grad_sample_i * 3 + 0];
-            auto structure_i = samples_values_ptr[grad_sample_i * 3 + 1];
-            auto atom_i = samples_values_ptr[grad_sample_i* 3 + 2];
+            auto sample_i = sample_values_ptr[grad_sample_i * 3 + 0];
+            auto structure_i = sample_values_ptr[grad_sample_i * 3 + 1];
+            auto atom_i = sample_values_ptr[grad_sample_i* 3 + 2];
 
             auto global_atom_i = structures_start[structure_i] + atom_i;
 
@@ -375,8 +375,8 @@ std::vector<torch::Tensor> CellGrad::forward(
     auto* cell_grad_ptr = cell_grad.data_ptr<double>();
 
     auto samples = dX_dH->samples();
-    auto samples_values = samples->values();
-    auto* samples_values_ptr = samples_values.data_ptr<int32_t>();
+    auto sample_values = samples->values();
+    auto* sample_values_ptr = sample_values.data_ptr<int32_t>();
     always_assert(samples->names().size() == 1);
     always_assert(samples->names()[0] == "sample");
 
@@ -397,7 +397,7 @@ std::vector<torch::Tensor> CellGrad::forward(
 
     // =========================== compute dA_dH ============================ //
     for (int64_t grad_sample_i=0; grad_sample_i<samples->count(); grad_sample_i++) {
-        auto sample_i = samples_values_ptr[grad_sample_i];
+        auto sample_i = sample_values_ptr[grad_sample_i];
         // we get the structure from the samples of the values
         auto structure_i = static_cast<int64_t>(structures[sample_i].item<int32_t>());
 
@@ -439,8 +439,8 @@ std::vector<torch::Tensor> CellGrad::backward(
     auto dB_d_dA_dH = grad_outputs[0]; // gradient of B w.r.t. dA/dH (output of forward)
 
     auto samples = dX_dH->samples();
-    auto samples_values = samples->values();
-    auto* samples_values_ptr = samples_values.data_ptr<int32_t>();
+    auto sample_values = samples->values();
+    auto* sample_values_ptr = sample_values.data_ptr<int32_t>();
     always_assert(samples->names().size() == 1);
     always_assert(samples->names()[0] == "sample");
 
@@ -483,7 +483,7 @@ std::vector<torch::Tensor> CellGrad::backward(
         // dB_d_dA_dH.shape == [structures, 3, 3]
         // dB_d_dA_dX.shape == [samples, features...]
         for (int64_t grad_sample_i=0; grad_sample_i<samples->count(); grad_sample_i++) {
-            auto sample_i = samples_values_ptr[grad_sample_i];
+            auto sample_i = sample_values_ptr[grad_sample_i];
             auto structure_i = static_cast<int64_t>(structures[sample_i].item<int32_t>());
 
             for (int64_t i=0; i<n_features; i++) {

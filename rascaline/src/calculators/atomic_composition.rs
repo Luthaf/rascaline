@@ -39,7 +39,7 @@ impl CalculatorBase for AtomicComposition {
         return CenterSpeciesKeys.keys(systems);
     }
 
-    fn samples_names(&self) -> Vec<&str> {
+    fn sample_names(&self) -> Vec<&str> {
         if self.per_structure {
             return vec!["structure"];
         }
@@ -51,7 +51,7 @@ impl CalculatorBase for AtomicComposition {
         assert_eq!(keys.names(), ["species_center"]);
         let mut samples = Vec::new();
         for [species_center_key] in keys.iter_fixed_size() {
-            let mut builder = LabelsBuilder::new(self.samples_names());
+            let mut builder = LabelsBuilder::new(self.sample_names());
 
             for (system_i, system) in systems.iter_mut().enumerate() {
                 if self.per_structure {
@@ -96,12 +96,12 @@ impl CalculatorBase for AtomicComposition {
         return vec![Vec::new(); keys.count()];
     }
 
-    fn properties_names(&self) -> Vec<&str> {
+    fn property_names(&self) -> Vec<&str> {
         return vec!["count"];
     }
 
     fn properties(&self, keys: &Labels) -> Vec<Labels> {
-        let mut properties = LabelsBuilder::new(self.properties_names());
+        let mut properties = LabelsBuilder::new(self.property_names());
         properties.add(&[0]);
         let properties = properties.finish();
 

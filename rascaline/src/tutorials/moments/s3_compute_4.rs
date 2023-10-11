@@ -36,7 +36,7 @@ impl CalculatorBase for GeometricMoments {
         todo!()
     }
 
-    fn samples_names(&self) -> Vec<&str> {
+    fn sample_names(&self) -> Vec<&str> {
         todo!()
     }
 
@@ -56,7 +56,7 @@ impl CalculatorBase for GeometricMoments {
         todo!()
     }
 
-    fn properties_names(&self) -> Vec<&str> {
+    fn property_names(&self) -> Vec<&str> {
         todo!()
     }
 

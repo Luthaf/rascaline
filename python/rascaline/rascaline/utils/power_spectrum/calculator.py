@@ -177,7 +177,7 @@ class PowerSpectrum:
         ]
 
         assert spherical_expansion_1.keys.names == expected_key_names
-        assert spherical_expansion_1.properties_names == ["n"]
+        assert spherical_expansion_1.property_names == ["n"]
 
         # Fill blocks with `species_neighbor` from ALL blocks. If we don't do this
         # merging blocks along the ``sample`` direction might be not possible.
@@ -198,7 +198,7 @@ class PowerSpectrum:
                 use_native_system=use_native_system,
             )
             assert spherical_expansion_2.keys.names == expected_key_names
-            assert spherical_expansion_2.properties_names == ["n"]
+            assert spherical_expansion_2.property_names == ["n"]
 
             array = spherical_expansion_2.keys.column("species_neighbor")
             keys_to_move = Labels(
@@ -239,7 +239,7 @@ class PowerSpectrum:
                     properties_1.values.shape[1] + properties_2.values.shape[1]
                 )
 
-                new_properties_values = _dispatch.empty_like(
+                new_property_values = _dispatch.empty_like(
                     array=properties_1.values,
                     shape=[
                         properties_1.values.shape[0],
@@ -250,12 +250,12 @@ class PowerSpectrum:
 
                 for i, values_1 in enumerate(properties_1.values):
                     for j, values_2 in enumerate(properties_2.values):
-                        new_properties_values[i, j, : len(values_1)] = values_1
-                        new_properties_values[i, j, len(values_1) :] = values_2
+                        new_property_values[i, j, : len(values_1)] = values_1
+                        new_property_values[i, j, len(values_1) :] = values_2
 
                 properties = Labels(
                     names=["species_neighbor_1", "n1", "species_neighbor_2", "n2"],
-                    values=new_properties_values.reshape(-1, n_keys_dimensions),
+                    values=new_property_values.reshape(-1, n_keys_dimensions),
                 )
 
                 # Compute the invariants by summation and store the results this is

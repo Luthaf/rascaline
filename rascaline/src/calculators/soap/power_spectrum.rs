@@ -435,8 +435,8 @@ impl CalculatorBase for SoapPowerSpectrum {
         return builder.keys(systems);
     }
 
-    fn samples_names(&self) -> Vec<&str> {
-        AtomCenteredSamples::samples_names()
+    fn sample_names(&self) -> Vec<&str> {
+        AtomCenteredSamples::sample_names()
     }
 
     fn samples(&self, keys: &metatensor::Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
@@ -498,12 +498,12 @@ impl CalculatorBase for SoapPowerSpectrum {
         return vec![vec![]; keys.count()];
     }
 
-    fn properties_names(&self) -> Vec<&str> {
+    fn property_names(&self) -> Vec<&str> {
         vec!["l", "n1", "n2"]
     }
 
     fn properties(&self, keys: &metatensor::Labels) -> Vec<Labels> {
-        let mut properties = LabelsBuilder::new(self.properties_names());
+        let mut properties = LabelsBuilder::new(self.property_names());
         for l in 0..=self.parameters.max_angular {
             for n1 in 0..self.parameters.max_radial {
                 for n2 in 0..self.parameters.max_radial {

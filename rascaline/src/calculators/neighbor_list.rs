@@ -81,7 +81,7 @@ impl CalculatorBase for NeighborList {
         }
     }
 
-    fn samples_names(&self) -> Vec<&str> {
+    fn sample_names(&self) -> Vec<&str> {
         return vec!["structure", "first_atom", "second_atom", "cell_shift_a", "cell_shift_b", "cell_shift_c"];
     }
 
@@ -134,12 +134,12 @@ impl CalculatorBase for NeighborList {
         return vec![components; keys.count()];
     }
 
-    fn properties_names(&self) -> Vec<&str> {
+    fn property_names(&self) -> Vec<&str> {
         vec!["distance"]
     }
 
     fn properties(&self, keys: &Labels) -> Vec<Labels> {
-        let mut properties = LabelsBuilder::new(self.properties_names());
+        let mut properties = LabelsBuilder::new(self.property_names());
         properties.add(&[LabelValue::new(1)]);
         let properties = properties.finish();
 

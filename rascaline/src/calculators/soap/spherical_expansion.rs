@@ -609,8 +609,8 @@ impl CalculatorBase for SphericalExpansion {
         return Ok(builder.finish());
     }
 
-    fn samples_names(&self) -> Vec<&str> {
-        AtomCenteredSamples::samples_names()
+    fn sample_names(&self) -> Vec<&str> {
+        AtomCenteredSamples::sample_names()
     }
 
     fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
@@ -703,12 +703,12 @@ impl CalculatorBase for SphericalExpansion {
         return result;
     }
 
-    fn properties_names(&self) -> Vec<&str> {
+    fn property_names(&self) -> Vec<&str> {
         vec!["n"]
     }
 
     fn properties(&self, keys: &Labels) -> Vec<Labels> {
-        let mut properties = LabelsBuilder::new(self.properties_names());
+        let mut properties = LabelsBuilder::new(self.property_names());
         for n in 0..self.by_pair.parameters().max_radial {
             properties.add(&[n]);
         }

@@ -1,5 +1,3 @@
-#include <stdio.h>
-
 #include <rascaline.hpp>
 
 
@@ -7,7 +5,7 @@ int main() {
     try {
         auto calculator = rascaline::Calculator(
             "dummy_calculator",
-            "{\"cutoff\": 3.4, \"delta\": -3, \"name\": \"testing\", \"gradients\": true}"
+            R"({"cutoff": 3.4, "delta": -3, "name": "testing", "gradients": true})"
         );
         return 0;
     } catch (const rascaline::RascalineError& e) {

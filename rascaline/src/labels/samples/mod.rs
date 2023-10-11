@@ -39,7 +39,7 @@ impl SpeciesFilter {
 /// and can optionally implement samples for gradients calculation.
 pub trait SamplesBuilder {
     /// Get the names used by the samples
-    fn samples_names() -> Vec<&'static str>;
+    fn sample_names() -> Vec<&'static str>;
 
     /// Create `Labels` containing all the samples corresponding to the given
     /// list of systems.
