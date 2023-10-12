@@ -99,7 +99,11 @@ class TestClebschGordan:
     )
 
     @pytest.mark.parametrize("lam_max", [2])
-    def test_n_body_iteration_single_center_dense_sparse_agree(self, lam_max):
+    def test_combine_single_center_to_body_order_dense_sparse_agree(self, lam_max):
+        """
+        tests if combine_single_center_to_body_order agrees for dense and sparse cg
+        coeffs
+        """
         assert (
             self.lam_max >= lam_max
         ), "Did not precompute CG coeff with high enough lambda_max"
@@ -151,60 +155,36 @@ class TestClebschGordan:
             "center_atom_weight": 1.0,
         }
 
-        # Generate a rascaline SphericalExpansion, for only the selected samples if
-        # applicable
         calculator = rascaline.SphericalExpansion(**rascal_hypers)
         nu1_tensor = calculator.compute([self.h2o_frame])
-        # Move the "species_neighbor" key to the properties. If species_neighbors is
-        # passed as a list of int, sparsity can be created in the properties for
-        # these species.
-        keys_to_move = "species_neighbor"
-        nu1_tensor = nu1_tensor.keys_to_properties(keys_to_move=keys_to_move)
-        # Add "order_nu" and "inversion_sigma" key dimensions, both with values 1
-        nu1_tensor = metatensor.insert_dimension(
-            nu1_tensor, axis="keys", name="order_nu", values=np.array([1]), index=0
-        )
-        nu1_tensor = metatensor.insert_dimension(
+
+        # compute norm of the body order 2 tensor
+        nu2_tensor = combine_single_center_to_body_order(
             nu1_tensor,
-            axis="keys",
-            name="inversion_sigma",
-            values=np.array([1]),
-            index=1,
+            2,  # target_body_order
+            angular_cutoff=None,
+            angular_selection=None,
+            parity_selection=None,
+            use_sparse=True,
         )
-        combined_tensor = nu1_tensor.copy()
 
-        lambdas = list(range(lam_max))
-
-        with pytest.raises(NotImplementedError):
-            combined_tensor = combine_single_center_one_iteration(
-                tensor_1=combined_tensor,
-                tensor_2=nu1_tensor,
-                angular_cutoff=None,
-                angular_selection=lambdas,
-                parity_selection=None,
-            )
-        # test needs first implementation of combine_single_center_one_iteration to work
-        return
-
-        # order_nu  inversion_sigma  spherical_harmonics_l  species_center
-        # "spherical_harmonics_l",
-        combined_tensor = combined_tensor.keys_to_properties(
-            ["l1", "l2", "inversion_sigma", "order_nu"]
+        nu2_tensor = nu2_tensor.keys_to_properties(
+            ["inversion_sigma", "order_nu"]
         )
-        combined_tensor = combined_tensor.keys_to_samples(["species_center"])
-        n_samples = combined_tensor[0].values.shape[0]
-        combined_tensor_values = np.hstack(
+        nu2_tensor = nu2_tensor.keys_to_samples(["species_center"])
+        n_samples = nu2_tensor[0].values.shape[0]
+        nu2_tensor_values = np.hstack(
             [
-                combined_tensor.block(
+                nu2_tensor.block(
                     Labels("spherical_harmonics_l", np.array([[l]]))
                 ).values.reshape(n_samples, -1)
-                for l in combined_tensor.keys["spherical_harmonics_l"]
+                for l in nu2_tensor.keys["spherical_harmonics_l"]
             ]
         )
-        combined_tensor_norm = np.linalg.norm(combined_tensor_values, axis=1)
+        nu2_tensor_norm = np.linalg.norm(nu2_tensor_values, axis=1)
 
-        nu1_tensor = nu1_tensor.keys_to_properties(["inversion_sigma", "order_nu"])
-        nu1_tensor = nu1_tensor.keys_to_samples(["species_center"])
+        #  compute norm of the body order 1 tensor
+        nu1_tensor = nu1_tensor.keys_to_samples(["species_center", "species_neighbor"])
         nu1_tensor_values = np.hstack(
             [
                 nu1_tensor.block(
@@ -214,7 +194,9 @@ class TestClebschGordan:
             ]
         )
         nu1_tensor_norm = np.linalg.norm(nu1_tensor_values, axis=1)
-        assert np.allclose(combined_tensor_norm, nu1_tensor_norm)
+
+        # check if the norm is equal
+        assert np.allclose(nu2_tensor_norm, nu1_tensor_norm)
 
     # old test that become decprecated through prototyping on API
     # def test_soap_kernel():
