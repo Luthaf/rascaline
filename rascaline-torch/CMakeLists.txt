@@ -58,18 +58,17 @@ find_package(Torch 1.11 REQUIRED)
 # ============================================================================ #
 # Setup metatensor_torch
 
-set(METATENSOR_GIT_VERSION "ad3eda5")
+set(METATENSOR_FETCH_VERSION "0.1.0")
 set(REQUIRED_METATENSOR_TORCH_VERSION "0.1")
 if (RASCALINE_TORCH_FETCH_METATENSOR_TORCH)
-    message(STATUS "Fetching metatensor_torch @ ${METATENSOR_GIT_VERSION} from github")
+    message(STATUS "Fetching metatensor_torch @ ${METATENSOR_FETCH_VERSION} from github")
 
+    set(URL_ROOT "https://github.com/lab-cosmo/metatensor/releases/download")
     include(FetchContent)
     FetchContent_Declare(
         metatensor_torch
-        URL      https://github.com/lab-cosmo/metatensor/archive/${METATENSOR_GIT_VERSION}.zip
-        URL_HASH MD5=0ca550a82d587c4426eddf82ca8deae2
-        SOURCE_SUBDIR metatensor-torch
-        VERBOSE
+        URL      ${URL_ROOT}/metatensor-torch-v${METATENSOR_FETCH_VERSION}/metatensor-torch-cxx-${METATENSOR_FETCH_VERSION}.tar.gz
+        URL_HASH MD5=f4355be47f849fedcaf9bb2abd66d10c
     )
 
     if (CMAKE_VERSION VERSION_GREATER 3.18)
@@ -79,7 +78,7 @@ if (RASCALINE_TORCH_FETCH_METATENSOR_TORCH)
             FetchContent_Populate(metatensor_torch)
         endif()
 
-        add_subdirectory(${metatensor_torch_SOURCE_DIR}/metatensor-torch ${metatensor_torch_BINARY_DIR})
+        add_subdirectory(${metatensor_torch_SOURCE_DIR} ${metatensor_torch_BINARY_DIR})
     endif()
 else()
     find_package(metatensor_torch ${REQUIRED_METATENSOR_TORCH_VERSION} REQUIRED CONFIG)
