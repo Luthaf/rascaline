@@ -167,7 +167,6 @@ class TestClebschGordan:
             parity_selection=None,
             use_sparse=True,
         )
-
         nu2_tensor = nu2_tensor.keys_to_properties(["inversion_sigma", "order_nu"])
         nu2_tensor = nu2_tensor.keys_to_samples(["species_center"])
         n_samples = nu2_tensor[0].values.shape[0]
@@ -182,7 +181,8 @@ class TestClebschGordan:
         nu2_tensor_norm = np.linalg.norm(nu2_tensor_values, axis=1)
 
         #  compute norm of the body order 1 tensor
-        nu1_tensor = nu1_tensor.keys_to_samples(["species_center", "species_neighbor"])
+        nu1_tensor = nu1_tensor.keys_to_properties(["species_neighbor"])
+        nu1_tensor = nu1_tensor.keys_to_samples(["species_center"])
         nu1_tensor_values = np.hstack(
             [
                 nu1_tensor.block(
