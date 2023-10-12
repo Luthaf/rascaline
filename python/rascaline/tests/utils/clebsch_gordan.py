@@ -168,9 +168,7 @@ class TestClebschGordan:
             use_sparse=True,
         )
 
-        nu2_tensor = nu2_tensor.keys_to_properties(
-            ["inversion_sigma", "order_nu"]
-        )
+        nu2_tensor = nu2_tensor.keys_to_properties(["inversion_sigma", "order_nu"])
         nu2_tensor = nu2_tensor.keys_to_samples(["species_center"])
         n_samples = nu2_tensor[0].values.shape[0]
         nu2_tensor_values = np.hstack(
