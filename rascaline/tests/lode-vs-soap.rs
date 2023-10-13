@@ -13,7 +13,7 @@ fn lode_vs_soap() {
     system.add_atom(8, Vector3D::new(2.0, 2.2, 1.0));
     system.add_atom(8, Vector3D::new(2.3, 2.0, 1.5));
 
-    let mut systems = vec![Box::new(system) as Box<dyn System>];
+    let mut systems = vec![System::new(system)];
 
     // reduce max_radial/max_angular for debug builds to make this test faster
     let (max_radial, max_angular) = if cfg!(debug_assertions) {

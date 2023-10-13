@@ -22,14 +22,14 @@ pub trait CalculatorBase: std::panic::RefUnwindSafe {
     fn cutoffs(&self) -> &[f64];
 
     /// Get the set of keys for this calculator and the given systems
-    fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error>;
+    fn keys(&self, systems: &mut [System]) -> Result<Labels, Error>;
 
     /// Get the names used for sample labels by this calculator
     fn sample_names(&self) -> Vec<&str>;
 
     /// Get the full list of samples this calculator would create for the given
     /// systems. This function should return one set of samples for each key.
-    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error>;
+    fn samples(&self, keys: &Labels, systems: &mut [System]) -> Result<Vec<Labels>, Error>;
 
     /// Can this calculator compute gradients with respect to the `parameter`?
     /// Right now, `parameter` can be either `"positions"`, `"strain"` or
@@ -43,7 +43,7 @@ pub trait CalculatorBase: std::panic::RefUnwindSafe {
     ///
     /// If the gradients with respect to positions are not available, this
     /// function should return an error.
-    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Labels], systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error>;
+    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Labels], systems: &mut [System]) -> Result<Vec<Labels>, Error>;
 
     /// Get the components this calculator computes for each key.
     fn components(&self, keys: &Labels) -> Vec<Vec<Labels>>;
@@ -66,7 +66,7 @@ pub trait CalculatorBase: std::panic::RefUnwindSafe {
     /// block if they are supported according to
     /// [`CalculatorBase::supports_gradient`], and the users requested them as
     /// part of the calculation options.
-    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error>;
+    fn compute(&mut self, systems: &mut [System], descriptor: &mut TensorMap) -> Result<(), Error>;
 }
 
 

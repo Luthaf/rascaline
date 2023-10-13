@@ -24,7 +24,7 @@ mod errors;
 pub use self::errors::Error;
 
 pub mod systems;
-pub use self::systems::{System, SimpleSystem};
+pub use self::systems::{System, SystemBase, SimpleSystem};
 
 pub mod labels;
 

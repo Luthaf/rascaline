@@ -3,7 +3,7 @@ use std::ffi::CStr;
 
 use rascaline::types::{Vector3D, Matrix3};
 use rascaline::systems::{SimpleSystem, Pair, UnitCell};
-use rascaline::{Error, System};
+use rascaline::{Error, SystemBase};
 
 use crate::RASCAL_SYSTEM_ERROR;
 
@@ -111,7 +111,7 @@ pub struct rascal_system_t {
 unsafe impl Send for rascal_system_t {}
 unsafe impl Sync for rascal_system_t {}
 
-impl<'a> System for &'a mut rascal_system_t {
+impl<'a> SystemBase for &'a mut rascal_system_t {
     fn size(&self) -> Result<usize, Error> {
         let function = self.size.ok_or_else(|| Error::External {
             status: RASCAL_SYSTEM_ERROR,
@@ -442,7 +442,7 @@ pub unsafe extern fn rascal_basic_systems_read(
     catch_unwind(move || {
         check_pointers!(path, systems, count);
         let path = CStr::from_ptr(path).to_str()?;
-        let simple_systems = rascaline::systems::read_from_file(path)?;
+        let simple_systems = rascaline::systems::read_simple_systems_from_file(path)?;
 
         let mut c_systems = Vec::with_capacity(simple_systems.len());
         for system in simple_systems {

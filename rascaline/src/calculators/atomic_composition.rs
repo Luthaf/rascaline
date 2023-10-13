@@ -36,7 +36,7 @@ impl CalculatorBase for AtomicComposition {
         &[]
     }
 
-    fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
+    fn keys(&self, systems: &mut [System]) -> Result<Labels, Error> {
         return CenterTypesKeys.keys(systems);
     }
 
@@ -48,7 +48,7 @@ impl CalculatorBase for AtomicComposition {
         return vec!["system", "atom"];
     }
 
-    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
+    fn samples(&self, keys: &Labels, systems: &mut [System]) -> Result<Vec<Labels>, Error> {
         assert_eq!(keys.names(), ["center_type"]);
         let mut samples = Vec::new();
         for [center_type_key] in keys.iter_fixed_size() {
@@ -84,7 +84,7 @@ impl CalculatorBase for AtomicComposition {
         &self,
         keys: &Labels,
         _samples: &[Labels],
-        _systems: &mut [Box<dyn System>],
+        _systems: &mut [System],
     ) -> Result<Vec<Labels>, Error> {
         // Positions/cell gradients of the composition are zero everywhere.
         // Therefore, we only return a vector of empty labels (one for each key).
@@ -110,7 +110,7 @@ impl CalculatorBase for AtomicComposition {
 
     fn compute(
         &mut self,
-        systems: &mut [Box<dyn System>],
+        systems: &mut [System],
         descriptor: &mut TensorMap,
     ) -> Result<(), Error> {
         assert_eq!(descriptor.keys().names(), ["center_type"]);

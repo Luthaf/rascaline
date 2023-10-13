@@ -400,7 +400,7 @@ impl LodeSphericalExpansion {
     /// By symmetry, this only affects the (l, m) = (0, 0) components of the
     /// projection coefficients and only the neighbor type blocks that agrees
     /// with the center atom.
-    fn do_center_contribution(&mut self, systems: &mut[Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
+    fn do_center_contribution(&mut self, systems: &mut[System], descriptor: &mut TensorMap) -> Result<(), Error> {
         let mut radial_integral = self.radial_integral.get_or(|| {
             let radial_integral = LodeRadialIntegralCache::new(
                 self.parameters.radial_basis.clone(),
@@ -470,7 +470,7 @@ impl CalculatorBase for LodeSphericalExpansion {
         &[]
     }
 
-    fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
+    fn keys(&self, systems: &mut [System]) -> Result<Labels, Error> {
         let builder = AllTypesPairsKeys {};
         let keys = builder.keys(systems)?;
 
@@ -488,7 +488,7 @@ impl CalculatorBase for LodeSphericalExpansion {
         LongRangeSamplesPerAtom::sample_names()
     }
 
-    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
+    fn samples(&self, keys: &Labels, systems: &mut [System]) -> Result<Vec<Labels>, Error> {
         assert_eq!(keys.names(), ["o3_lambda", "o3_sigma", "center_type", "neighbor_type"]);
 
         // only compute the samples once for each `center_type, neighbor_type`,
@@ -527,7 +527,7 @@ impl CalculatorBase for LodeSphericalExpansion {
         }
     }
 
-    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Labels], systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
+    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Labels], systems: &mut [System]) -> Result<Vec<Labels>, Error> {
         assert_eq!(keys.names(), ["o3_lambda", "o3_sigma", "center_type", "neighbor_type"]);
         assert_eq!(keys.count(), samples.len());
 
@@ -588,7 +588,7 @@ impl CalculatorBase for LodeSphericalExpansion {
     }
 
     #[time_graph::instrument(name = "LodeSphericalExpansion::compute")]
-    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
+    fn compute(&mut self, systems: &mut [System], descriptor: &mut TensorMap) -> Result<(), Error> {
         assert_eq!(descriptor.keys().names(), ["o3_lambda", "o3_sigma", "center_type", "neighbor_type"]);
 
         self.do_center_contribution(systems, descriptor)?;
@@ -949,7 +949,7 @@ mod tests {
         ]);
 
         crate::calculators::tests_utils::compute_partial(
-            calculator, &mut [Box::new(system)], &keys, &samples, &properties
+            calculator, &mut [System::new(system)], &keys, &samples, &properties
         );
     }
 

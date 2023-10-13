@@ -34,7 +34,7 @@ impl CalculatorBase for GeometricMoments {
     // [CalculatorBase::cutoffs]
 
     // [CalculatorBase::keys]
-    fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
+    fn keys(&self, systems: &mut [System]) -> Result<Labels, Error> {
         let builder = CenterSingleNeighborsTypesKeys {
             cutoff: self.cutoff,
             // self pairs would have a distance of 0 and would not contribute
@@ -50,7 +50,7 @@ impl CalculatorBase for GeometricMoments {
         AtomCenteredSamples::sample_names()
     }
 
-    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
+    fn samples(&self, keys: &Labels, systems: &mut [System]) -> Result<Vec<Labels>, Error> {
         assert_eq!(keys.names(), ["center_type", "neighbor_type"]);
 
         let mut samples = Vec::new();
@@ -82,7 +82,7 @@ impl CalculatorBase for GeometricMoments {
     // [CalculatorBase::supports_gradient]
 
     // [CalculatorBase::positions_gradient_samples]
-    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Labels], systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
+    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Labels], systems: &mut [System]) -> Result<Vec<Labels>, Error> {
         assert_eq!(keys.names(), ["center_type", "neighbor_type"]);
         debug_assert_eq!(keys.count(), samples.len());
 
@@ -127,7 +127,7 @@ impl CalculatorBase for GeometricMoments {
     }
     // [CalculatorBase::properties]
 
-    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
+    fn compute(&mut self, systems: &mut [System], descriptor: &mut TensorMap) -> Result<(), Error> {
         todo!()
     }
 

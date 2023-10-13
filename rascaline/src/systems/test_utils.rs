@@ -1,9 +1,9 @@
 use crate::{System, Vector3D};
 use super::{UnitCell, SimpleSystem};
 
-pub fn test_systems(names: &[&str]) -> Vec<Box<dyn System>> {
+pub fn test_systems(names: &[&str]) -> Vec<System> {
     return names.iter()
-        .map(|&name| Box::new(test_system(name)) as Box<dyn System>)
+        .map(|&name| System::new(test_system(name)))
         .collect();
 }
 

@@ -13,7 +13,7 @@ use rascaline::systems::{System, SimpleSystem, UnitCell};
 use rascaline::{Calculator, Matrix3, Vector3D, CalculationOptions};
 
 struct CrystalParameters {
-    systems: Vec<Box<dyn System>>,
+    systems: Vec<System>,
     charges: Vec<f64>,
     madelung: f64,
 }
@@ -22,42 +22,42 @@ struct CrystalParameters {
 /// Using a primitive unit cell, the distance between the
 /// closest Na-Cl pair is exactly 1. The cubic unit cell
 /// in these units would have a length of 2.
-fn get_nacl() -> Vec<Box<dyn System>> {
+fn get_nacl() -> Vec<System> {
     let cell = Matrix3::new([[0.0, 1.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 0.0]]);
     let mut system = SimpleSystem::new(UnitCell::from(cell));
     system.add_atom(11, Vector3D::new(0.0, 0.0, 0.0));
     system.add_atom(17, Vector3D::new(1.0, 0.0, 0.0));
 
-    vec![Box::new(system) as Box<dyn System>]
+    vec![System::new(system)]
 }
 
 /// CsCl structure
 /// This structure is simple since the primitive unit cell
 /// is just the usual cubic cell with side length set to one.
-fn get_cscl() -> Vec<Box<dyn System>> {
+fn get_cscl() -> Vec<System> {
     let mut system = SimpleSystem::new(UnitCell::cubic(1.0));
     system.add_atom(17, Vector3D::new(0.0, 0.0, 0.0));
     system.add_atom(55, Vector3D::new(0.5, 0.5, 0.5));
 
-    vec![Box::new(system) as Box<dyn System>]
+    vec![System::new(system)]
 }
 
 /// ZnS (zincblende) structure
 /// As for NaCl, a primitive unit cell is used which makes
 /// the lattice parameter of the cubic cell equal to 2.
 /// In these units, the closest Zn-S distance is sqrt(3)/2.
-fn get_zns() -> Vec<Box<dyn System>> {
+fn get_zns() -> Vec<System> {
     let cell = Matrix3::new([[0.0, 1.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 0.0]]);
     let mut system = SimpleSystem::new(UnitCell::from(cell));
     system.add_atom(16, Vector3D::new(0.0, 0.0, 0.0));
     system.add_atom(30, Vector3D::new(0.5, 0.5, 0.5));
 
-    vec![Box::new(system) as Box<dyn System>]
+    vec![System::new(system)]
 }
 
 
 /// ZnS (O4) in wurtzite structure (triclinic cell)
-fn get_znso4() -> Vec<Box<dyn System>> {
+fn get_znso4() -> Vec<System> {
     let u = 3. / 8.;
     let c = f64::sqrt(1. / u);
     let cell = Matrix3::new([[0.5, -0.5 * f64::sqrt(3.0), 0.0], [0.5, 0.5 * f64::sqrt(3.0), 0.0], [0.0, 0.0, c]]);
@@ -67,7 +67,7 @@ fn get_znso4() -> Vec<Box<dyn System>> {
     system.add_atom(16, Vector3D::new(0.5, -0.5 / f64::sqrt(3.0), 0.5 * c));
     system.add_atom(30, Vector3D::new(0.5, -0.5 / f64::sqrt(3.0), (0.5 + u) * c));
 
-    vec![Box::new(system) as Box<dyn System>]
+    vec![System::new(system)]
 }
 
 /// Test the agreement with Madelung constant for a variety of

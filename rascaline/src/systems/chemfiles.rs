@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use super::SimpleSystem;
+use super::{SimpleSystem, System};
 use crate::Error;
 
 #[cfg(feature = "chemfiles")]
@@ -16,8 +16,7 @@ impl From<chemfiles::Error> for Error {
 /// This function can read all [formats supported by
 /// chemfiles](https://chemfiles.org/chemfiles/latest/formats.html).
 #[cfg(feature = "chemfiles")]
-#[allow(clippy::needless_range_loop)]
-pub fn read_from_file(path: impl AsRef<Path>) -> Result<Vec<SimpleSystem>, Error> {
+pub fn read_simple_systems_from_file(path: impl AsRef<Path>) -> Result<Vec<SimpleSystem>, Error> {
     use std::collections::HashMap;
     use crate::Matrix3;
     use crate::systems::UnitCell;
@@ -66,7 +65,33 @@ pub fn read_from_file(path: impl AsRef<Path>) -> Result<Vec<SimpleSystem>, Error
 }
 
 /// Read all structures in the file at the given `path` using
+/// [chemfiles](https://chemfiles.org/), and convert them to `System`s.
+///
+/// This function can read all [formats supported by
+/// chemfiles](https://chemfiles.org/chemfiles/latest/formats.html).
+#[cfg(feature = "chemfiles")]
+pub fn read_from_file(path: impl AsRef<Path>) -> Result<Vec<System>, Error> {
+    return Ok(read_simple_systems_from_file(path)?
+        .into_iter()
+        .map(System::new)
+        .collect());
+}
+
+/// Read all structures in the file at the given `path` using
 /// [chemfiles](https://chemfiles.org/), and convert them to `SimpleSystem`s.
+///
+/// This function can read all [formats supported by
+/// chemfiles](https://chemfiles.org/chemfiles/latest/formats.html).
+#[cfg(not(feature = "chemfiles"))]
+pub fn read_simple_systems_from_file(_: impl AsRef<Path>) -> Result<Vec<SimpleSystem>, Error> {
+    Err(Error::Chemfiles(
+        "read_simple_systems_from_file is only available with the chemfiles \
+        feature enabled (RASCALINE_ENABLE_CHEMFILES=ON in CMake)".into()
+    ))
+}
+
+/// Read all structures in the file at the given `path` using
+/// [chemfiles](https://chemfiles.org/), and convert them to `System`s.
 ///
 /// This function can read all [formats supported by
 /// chemfiles](https://chemfiles.org/chemfiles/latest/formats.html).
@@ -83,7 +108,7 @@ mod tests {
     use std::path::PathBuf;
     use approx::assert_relative_eq;
 
-    use crate::{System, Vector3D};
+    use crate::Vector3D;
     use super::*;
 
     #[test]

@@ -43,7 +43,7 @@ impl CalculatorBase for DummyCalculator {
         std::slice::from_ref(&self.cutoff)
     }
 
-    fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
+    fn keys(&self, systems: &mut [System]) -> Result<Labels, Error> {
         return CenterTypesKeys.keys(systems);
     }
 
@@ -51,7 +51,7 @@ impl CalculatorBase for DummyCalculator {
         AtomCenteredSamples::sample_names()
     }
 
-    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
+    fn samples(&self, keys: &Labels, systems: &mut [System]) -> Result<Vec<Labels>, Error> {
         assert_eq!(keys.names(), ["center_type"]);
         let mut samples = Vec::new();
         for [center_type] in keys.iter_fixed_size() {
@@ -75,7 +75,7 @@ impl CalculatorBase for DummyCalculator {
         }
     }
 
-    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Labels], systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
+    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Labels], systems: &mut [System]) -> Result<Vec<Labels>, Error> {
         debug_assert_eq!(keys.count(), samples.len());
         let mut gradient_samples = Vec::new();
         for ([center_type], samples) in keys.iter_fixed_size().zip(samples) {
@@ -110,7 +110,7 @@ impl CalculatorBase for DummyCalculator {
     }
 
     #[time_graph::instrument(name = "DummyCalculator::compute")]
-    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
+    fn compute(&mut self, systems: &mut [System], descriptor: &mut TensorMap) -> Result<(), Error> {
         if self.name.contains("log-test-info:") {
             info!("{}", self.name);
         } else if self.name.contains("log-test-warn:") {

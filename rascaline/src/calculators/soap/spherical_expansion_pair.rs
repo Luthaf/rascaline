@@ -262,7 +262,7 @@ impl SphericalExpansionByPair {
     ///
     /// For the pair-by-pair spherical expansion, we use a special `pair_id`
     /// (-1) to store the data associated with self-pairs.
-    fn do_self_contributions(&self, systems: &[Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
+    fn do_self_contributions(&self, systems: &[System], descriptor: &mut TensorMap) -> Result<(), Error> {
         debug_assert_eq!(descriptor.keys().names(), ["o3_lambda", "o3_sigma", "first_atom_type", "second_atom_type"]);
         let self_contribution = self.self_contribution();
 
@@ -552,7 +552,7 @@ impl CalculatorBase for SphericalExpansionByPair {
         std::slice::from_ref(&self.parameters.cutoff)
     }
 
-    fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
+    fn keys(&self, systems: &mut [System]) -> Result<Labels, Error> {
         // the atomic type part of the keys is the same for all l, and the same
         // as what a FullNeighborList with `self_pairs=True` produces.
         let full_neighbors_list_keys = FullNeighborList {
@@ -580,7 +580,7 @@ impl CalculatorBase for SphericalExpansionByPair {
         return vec!["system", "first_atom", "second_atom", "cell_shift_a", "cell_shift_b", "cell_shift_c"];
     }
 
-    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
+    fn samples(&self, keys: &Labels, systems: &mut [System]) -> Result<Vec<Labels>, Error> {
         // get all atomic types pairs in keys as a new set of Labels
         let mut types_keys = BTreeSet::new();
         for &[_, _, first_type, second_type] in keys.iter_fixed_size() {
@@ -642,7 +642,7 @@ impl CalculatorBase for SphericalExpansionByPair {
         }
     }
 
-    fn positions_gradient_samples(&self, _: &Labels, samples: &[Labels], _: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
+    fn positions_gradient_samples(&self, _: &Labels, samples: &[Labels], _: &mut [System]) -> Result<Vec<Labels>, Error> {
         let mut results = Vec::new();
 
         for block_samples in samples {
@@ -706,7 +706,7 @@ impl CalculatorBase for SphericalExpansionByPair {
     }
 
     #[time_graph::instrument(name = "SphericalExpansionByPair::compute")]
-    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
+    fn compute(&mut self, systems: &mut [System], descriptor: &mut TensorMap) -> Result<(), Error> {
         assert_eq!(descriptor.keys().names(), ["o3_lambda", "o3_sigma", "first_atom_type", "second_atom_type"]);
         assert!(descriptor.keys().count() > 0);
 

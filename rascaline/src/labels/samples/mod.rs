@@ -43,12 +43,12 @@ pub trait SamplesBuilder {
 
     /// Create `Labels` containing all the samples corresponding to the given
     /// list of systems.
-    fn samples(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error>;
+    fn samples(&self, systems: &mut [System]) -> Result<Labels, Error>;
 
     /// Create a set of `Labels` containing the gradient samples corresponding
     /// to the given `samples` in the given `systems`; and only these.
     #[allow(unused_variables)]
-    fn gradients_for(&self, systems: &mut [Box<dyn System>], samples: &Labels) -> Result<Labels, Error>;
+    fn gradients_for(&self, systems: &mut [System], samples: &Labels) -> Result<Labels, Error>;
 }
 
 

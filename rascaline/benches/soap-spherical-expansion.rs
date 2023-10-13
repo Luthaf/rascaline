@@ -1,24 +1,16 @@
 #![allow(clippy::needless_return)]
-use rascaline::{Calculator, System, CalculationOptions};
+use rascaline::{Calculator, CalculationOptions};
 
 use criterion::{BenchmarkGroup, Criterion, measurement::WallTime, SamplingMode};
 use criterion::{criterion_group, criterion_main};
-
-fn load_systems(path: &str) -> Vec<Box<dyn System>> {
-    let systems = rascaline::systems::read_from_file(format!("benches/data/{}", path))
-        .expect("failed to read file");
-
-    return systems.into_iter()
-        .map(|s| Box::new(s) as Box<dyn System>)
-        .collect()
-}
 
 fn run_spherical_expansion(mut group: BenchmarkGroup<WallTime>,
     path: &str,
     gradients: bool,
     test_mode: bool,
 ) {
-    let mut systems = load_systems(path);
+    let mut systems = rascaline::systems::read_from_file(format!("benches/data/{}", path))
+        .expect("failed to read file");
 
     if test_mode {
         // Reduce the time/RAM required to test the benchmarks code.

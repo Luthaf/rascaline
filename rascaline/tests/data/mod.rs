@@ -11,7 +11,7 @@ use rascaline::systems::UnitCell;
 
 type HyperParameters = String;
 
-pub fn load_calculator_input(path: impl AsRef<Path>) -> (Vec<Box<dyn System>>, HyperParameters) {
+pub fn load_calculator_input(path: impl AsRef<Path>) -> (Vec<System>, HyperParameters) {
     let json = std::fs::read_to_string(format!("tests/data/generated/{}", path.as_ref().display()))
         .expect("failed to read input file");
 
@@ -38,7 +38,7 @@ pub fn load_calculator_input(path: impl AsRef<Path>) -> (Vec<Box<dyn System>>, H
             simple_system.add_atom(atomic_type, position);
         }
 
-        systems.push(Box::new(simple_system) as Box<dyn System>);
+        systems.push(System::new(simple_system));
     }
 
     (systems, parameters)

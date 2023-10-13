@@ -44,7 +44,7 @@ impl SphericalExpansion {
     /// Accumulate the self contribution to the spherical expansion
     /// coefficients, i.e. the contribution arising from the density of the
     /// center atom around itself.
-    fn do_self_contributions(&mut self, systems: &[Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
+    fn do_self_contributions(&mut self, systems: &[System], descriptor: &mut TensorMap) -> Result<(), Error> {
         debug_assert_eq!(descriptor.keys().names(), ["o3_lambda", "o3_sigma", "center_type", "neighbor_type"]);
 
         let self_contribution = self.by_pair.self_contribution();
@@ -95,7 +95,7 @@ impl SphericalExpansion {
     #[allow(clippy::too_many_lines)]
     fn accumulate_all_pairs(
         &self,
-        system: &dyn System,
+        system: &System,
         do_gradients: GradientsOptions,
         requested_atoms: &BTreeSet<usize>,
     ) -> Result<PairAccumulationResult, Error> {
@@ -344,7 +344,7 @@ impl SphericalExpansion {
         &self,
         key: &[LabelValue],
         block: &mut TensorBlockRefMut,
-        system: &dyn System,
+        system: &System,
         result: &PairAccumulationResult,
     ) -> Result<(), Error> {
         let types = system.types()?;
@@ -407,7 +407,7 @@ impl SphericalExpansion {
         &self,
         key: &[LabelValue],
         block: &mut TensorBlockRefMut,
-        system: &dyn System,
+        system: &System,
         result: &PairAccumulationResult,
     ) -> Result<(), Error> {
         let positions_gradients = if let Some(ref data) = result.positions_gradient_by_pair {
@@ -511,7 +511,7 @@ impl SphericalExpansion {
         key: &[LabelValue],
         parameter: &str,
         block: &mut TensorBlockRefMut,
-        system: &dyn System,
+        system: &System,
         result: &PairAccumulationResult,
     ) -> Result<(), Error> {
         let contributions = if parameter == "strain" {
@@ -637,7 +637,7 @@ impl CalculatorBase for SphericalExpansion {
         self.by_pair.cutoffs()
     }
 
-    fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
+    fn keys(&self, systems: &mut [System]) -> Result<Labels, Error> {
         let builder = CenterSingleNeighborsTypesKeys {
             cutoff: self.by_pair.parameters().cutoff,
             self_pairs: true,
@@ -658,7 +658,7 @@ impl CalculatorBase for SphericalExpansion {
         AtomCenteredSamples::sample_names()
     }
 
-    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
+    fn samples(&self, keys: &Labels, systems: &mut [System]) -> Result<Vec<Labels>, Error> {
         assert_eq!(keys.names(), ["o3_lambda", "o3_sigma", "center_type", "neighbor_type"]);
 
         // only compute the samples once for each `center_type, neighbor_type`,
@@ -698,7 +698,7 @@ impl CalculatorBase for SphericalExpansion {
         }
     }
 
-    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Labels], systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
+    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Labels], systems: &mut [System]) -> Result<Vec<Labels>, Error> {
         assert_eq!(keys.names(), ["o3_lambda", "o3_sigma", "center_type", "neighbor_type"]);
         assert_eq!(keys.count(), samples.len());
 
@@ -762,7 +762,7 @@ impl CalculatorBase for SphericalExpansion {
     }
 
     #[time_graph::instrument(name = "SphericalExpansion::compute")]
-    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
+    fn compute(&mut self, systems: &mut [System], descriptor: &mut TensorMap) -> Result<(), Error> {
         assert_eq!(descriptor.keys().names(), ["o3_lambda", "o3_sigma", "center_type", "neighbor_type"]);
         assert!(descriptor.keys().count() > 0);
 
@@ -778,7 +778,7 @@ impl CalculatorBase for SphericalExpansion {
             .zip_eq(&mut descriptors_by_system)
             .try_for_each(|(system, descriptor)| {
                 system.compute_neighbors(self.by_pair.parameters().cutoff)?;
-                let system = &**system;
+                let system = &*system;
 
                 // we will only run the calculation on pairs where one of the
                 // atom is part of the requested samples
