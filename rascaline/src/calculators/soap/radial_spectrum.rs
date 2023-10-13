@@ -130,7 +130,7 @@ impl CalculatorBase for SoapRadialSpectrum {
         self.spherical_expansion.cutoffs()
     }
 
-    fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<metatensor::Labels, Error> {
+    fn keys(&self, systems: &mut [System]) -> Result<metatensor::Labels, Error> {
         let builder = CenterSingleNeighborsTypesKeys {
             cutoff: self.parameters.cutoff,
             self_pairs: true,
@@ -145,7 +145,7 @@ impl CalculatorBase for SoapRadialSpectrum {
     fn samples(
         &self,
         keys: &metatensor::Labels,
-        systems: &mut [Box<dyn System>],
+        systems: &mut [System],
     ) -> Result<Vec<Labels>, Error> {
         assert_eq!(keys.names(), ["center_type", "neighbor_type"]);
         let mut result = Vec::new();
@@ -170,7 +170,7 @@ impl CalculatorBase for SoapRadialSpectrum {
         }
     }
 
-    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Labels], systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
+    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Labels], systems: &mut [System]) -> Result<Vec<Labels>, Error> {
         assert_eq!(keys.names(), ["center_type", "neighbor_type"]);
         assert_eq!(keys.count(), samples.len());
 
@@ -208,7 +208,7 @@ impl CalculatorBase for SoapRadialSpectrum {
     }
 
     #[time_graph::instrument(name = "SoapRadialSpectrum::compute")]
-    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
+    fn compute(&mut self, systems: &mut [System], descriptor: &mut TensorMap) -> Result<(), Error> {
         assert_eq!(descriptor.keys().names(), ["center_type", "neighbor_type"]);
         assert!(descriptor.keys().count() > 0);
 

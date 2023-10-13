@@ -32,7 +32,7 @@ impl CalculatorBase for GeometricMoments {
         todo!()
     }
 
-    fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
+    fn keys(&self, systems: &mut [System]) -> Result<Labels, Error> {
         todo!()
     }
 
@@ -40,7 +40,7 @@ impl CalculatorBase for GeometricMoments {
         todo!()
     }
 
-    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
+    fn samples(&self, keys: &Labels, systems: &mut [System]) -> Result<Vec<Labels>, Error> {
         todo!()
     }
 
@@ -48,7 +48,7 @@ impl CalculatorBase for GeometricMoments {
         todo!()
     }
 
-    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Labels], systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
+    fn positions_gradient_samples(&self, keys: &Labels, samples: &[Labels], systems: &mut [System]) -> Result<Vec<Labels>, Error> {
         todo!()
     }
 
@@ -65,7 +65,7 @@ impl CalculatorBase for GeometricMoments {
     }
 
     // [compute]
-    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
+    fn compute(&mut self, systems: &mut [System], descriptor: &mut TensorMap) -> Result<(), Error> {
         // ...
         for (system_i, system) in systems.iter_mut().enumerate() {
             // ...

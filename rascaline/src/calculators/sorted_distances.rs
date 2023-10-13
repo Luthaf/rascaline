@@ -41,7 +41,7 @@ impl CalculatorBase for SortedDistances {
         std::slice::from_ref(&self.cutoff)
     }
 
-    fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
+    fn keys(&self, systems: &mut [System]) -> Result<Labels, Error> {
         if self.separate_neighbor_types {
             let builder = CenterSingleNeighborsTypesKeys {
                 cutoff: self.cutoff,
@@ -57,7 +57,7 @@ impl CalculatorBase for SortedDistances {
         AtomCenteredSamples::sample_names()
     }
 
-    fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
+    fn samples(&self, keys: &Labels, systems: &mut [System]) -> Result<Vec<Labels>, Error> {
         let mut samples = Vec::new();
         if self.separate_neighbor_types {
             assert_eq!(keys.names(), ["center_type", "neighbor_type"]);
@@ -92,7 +92,7 @@ impl CalculatorBase for SortedDistances {
         return false;
     }
 
-    fn positions_gradient_samples(&self, _: &Labels, _: &[Labels], _: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
+    fn positions_gradient_samples(&self, _: &Labels, _: &[Labels], _: &mut [System]) -> Result<Vec<Labels>, Error> {
         unimplemented!()
     }
 
@@ -115,7 +115,7 @@ impl CalculatorBase for SortedDistances {
     }
 
     #[time_graph::instrument(name = "SortedDistances::compute")]
-    fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
+    fn compute(&mut self, systems: &mut [System], descriptor: &mut TensorMap) -> Result<(), Error> {
         if self.separate_neighbor_types {
             assert_eq!(descriptor.keys().names(), ["center_type", "neighbor_type"]);
         } else {

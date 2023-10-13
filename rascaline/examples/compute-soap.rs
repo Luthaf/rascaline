@@ -1,14 +1,10 @@
 use metatensor::Labels;
-use rascaline::{Calculator, System, CalculationOptions};
+use rascaline::{Calculator, CalculationOptions};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // load the systems from command line argument
     let path = std::env::args().nth(1).expect("expected a command line argument");
-    let systems = rascaline::systems::read_from_file(path)?;
-    // transform systems into a vector of trait objects (`Vec<Box<dyn System>>`)
-    let mut systems = systems.into_iter()
-        .map(|s| Box::new(s) as Box<dyn System>)
-        .collect::<Vec<_>>();
+    let mut systems = rascaline::systems::read_from_file(path)?;
 
     // pass hyper-parameters as JSON
     let parameters = r#"{

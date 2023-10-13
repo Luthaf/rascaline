@@ -285,7 +285,7 @@ impl Calculator {
     }
 
     #[time_graph::instrument(name="Calculator::prepare")]
-    fn prepare(&mut self, systems: &mut [Box<dyn System>], options: CalculationOptions) -> Result<TensorMap, Error> {
+    fn prepare(&mut self, systems: &mut [System], options: CalculationOptions) -> Result<TensorMap, Error> {
         let default_keys = self.implementation.keys(systems)?;
 
         let keys = match options.selected_keys {
@@ -503,14 +503,14 @@ impl Calculator {
     /// features.
     pub fn compute(
         &mut self,
-        systems: &mut [Box<dyn System>],
+        systems: &mut [System],
         options: CalculationOptions,
     ) -> Result<TensorMap, Error> {
         let mut native_systems;
         let systems = if options.use_native_system {
             native_systems = Vec::with_capacity(systems.len());
             for system in systems {
-                native_systems.push(Box::new(SimpleSystem::try_from(&**system)?) as Box<dyn System>);
+                native_systems.push(System::new(SimpleSystem::try_from(&**system)?) as System);
             }
             &mut native_systems
         } else {

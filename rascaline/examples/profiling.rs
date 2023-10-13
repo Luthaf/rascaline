@@ -1,5 +1,5 @@
 use metatensor::{TensorMap, Labels};
-use rascaline::{Calculator, System, CalculationOptions};
+use rascaline::{Calculator, CalculationOptions};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let path = std::env::args().nth(1).expect("expected a command line argument");
@@ -28,10 +28,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// Compute SOAP power spectrum, this is the same code as the 'compute-soap'
 /// example
 fn compute_soap(path: &str) -> Result<TensorMap, Box<dyn std::error::Error>> {
-    let systems = rascaline::systems::read_from_file(path)?;
-    let mut systems = systems.into_iter()
-        .map(|s| Box::new(s) as Box<dyn System>)
-        .collect::<Vec<_>>();
+    let mut systems = rascaline::systems::read_from_file(path)?;
 
     let parameters = r#"{
         "cutoff": 5.0,

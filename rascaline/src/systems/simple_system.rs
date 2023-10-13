@@ -1,6 +1,6 @@
 use crate::Error;
 
-use super::{UnitCell, System, Vector3D, Pair};
+use super::{UnitCell, SystemBase, Vector3D, Pair};
 
 use super::neighbors::NeighborsList;
 
@@ -45,7 +45,7 @@ impl SimpleSystem {
     }
 }
 
-impl System for SimpleSystem {
+impl SystemBase for SimpleSystem {
     fn size(&self) -> Result<usize, Error> {
         Ok(self.types.len())
     }
@@ -90,10 +90,10 @@ impl System for SimpleSystem {
     }
 }
 
-impl std::convert::TryFrom<&dyn System> for SimpleSystem {
+impl std::convert::TryFrom<&dyn SystemBase> for SimpleSystem {
     type Error = Error;
 
-    fn try_from(system: &dyn System) -> Result<SimpleSystem, Error> {
+    fn try_from(system: &dyn SystemBase) -> Result<SimpleSystem, Error> {
         let mut new = SimpleSystem::new(system.cell()?);
         for (&atomic_type, &position) in system.types()?.iter().zip(system.positions()?) {
             new.add_atom(atomic_type, position);

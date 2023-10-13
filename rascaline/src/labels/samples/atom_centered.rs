@@ -28,7 +28,7 @@ impl SamplesBuilder for AtomCenteredSamples {
         vec!["system", "atom"]
     }
 
-    fn samples(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
+    fn samples(&self, systems: &mut [System]) -> Result<Labels, Error> {
         assert!(self.cutoff > 0.0 && self.cutoff.is_finite(), "cutoff must be positive for AtomCenteredSamples");
         let mut builder = LabelsBuilder::new(Self::sample_names());
         for (system_i, system) in systems.iter_mut().enumerate() {
@@ -100,7 +100,7 @@ impl SamplesBuilder for AtomCenteredSamples {
         return Ok(builder.finish());
     }
 
-    fn gradients_for(&self, systems: &mut [Box<dyn System>], samples: &Labels) -> Result<Labels, Error> {
+    fn gradients_for(&self, systems: &mut [System], samples: &Labels) -> Result<Labels, Error> {
         assert!(self.cutoff > 0.0 && self.cutoff.is_finite(), "cutoff must be positive for AtomCenteredSamples");
         assert_eq!(samples.names(), ["system", "atom"]);
         let mut builder = LabelsBuilder::new(vec!["sample", "system", "atom"]);
