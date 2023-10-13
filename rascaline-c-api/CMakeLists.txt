@@ -217,18 +217,17 @@ endif()
 # ============================================================================ #
 # Setup metatensor
 
-set(METATENSOR_GIT_VERSION "ad3eda5")
+set(METATENSOR_FETCH_VERSION "0.1.0")
 set(METATENSOR_REQUIRED_VERSION "0.1")
 if (RASCALINE_FETCH_METATENSOR)
-    message(STATUS "Fetching metatensor @ ${METATENSOR_GIT_VERSION} from github")
+    message(STATUS "Fetching metatensor @ ${METATENSOR_FETCH_VERSION} from github")
 
     include(FetchContent)
+    set(URL_ROOT "https://github.com/lab-cosmo/metatensor/releases/download")
     FetchContent_Declare(
         metatensor
-        URL      https://github.com/lab-cosmo/metatensor/archive/${METATENSOR_GIT_VERSION}.zip
-        URL_HASH MD5=0ca550a82d587c4426eddf82ca8deae2
-        SOURCE_SUBDIR metatensor-core
-        VERBOSE
+        URL      ${URL_ROOT}/metatensor-core-v${METATENSOR_FETCH_VERSION}/metatensor-core-cxx-${METATENSOR_FETCH_VERSION}.tar.gz
+        URL_HASH MD5=3b48fdd8b6ca72e92a7785326dd74f6a
     )
 
     if (CMAKE_VERSION VERSION_GREATER 3.18)
@@ -238,7 +237,7 @@ if (RASCALINE_FETCH_METATENSOR)
             FetchContent_Populate(metatensor)
         endif()
 
-        add_subdirectory(${metatensor_SOURCE_DIR}/metatensor-core ${metatensor_BINARY_DIR})
+        add_subdirectory(${metatensor_SOURCE_DIR} ${metatensor_BINARY_DIR})
     endif()
 
     # metatensor will be installed in the same place as rascaline, so set
