@@ -10,23 +10,24 @@ function, that defined the type of density under consideration. For a given cent
 around is then defined as :math:`\rho_i(\boldsymbol{r}) = \sum_{j} g(\boldsymbol{r} -
 \boldsymbol{r}_{ij})`.
 
-All atomic densities are based on
+Atomic densities are represented as different child class of
+:py:class:`rascaline.utils.AtomicDensityBase`: :py:class:`rascaline.utils.DeltaDensity`,
+:py:class:`rascaline.utils.GaussianDensity`, and :py:class:`rascaline.utils.LodeDensity`
+are provided, and you can implement your own by defining a new class.
 
-.. autoclass:: rascaline.utils.atomic_density.AtomicDensityBase
+.. autoclass:: rascaline.utils.AtomicDensityBase
     :members:
     :show-inheritance:
 
-In addition, we provide the following explicit implementations
-
-.. autoclass:: rascaline.utils.atomic_density.DeltaDensity
+.. autoclass:: rascaline.utils.DeltaDensity
     :members:
     :show-inheritance:
 
-.. autoclass:: rascaline.utils.atomic_density.GaussianDensity
+.. autoclass:: rascaline.utils.GaussianDensity
     :members:
     :show-inheritance:
 
-.. autoclass:: rascaline.utils.atomic_density.LodeDensity
+.. autoclass:: rascaline.utils.LodeDensity
     :members:
     :show-inheritance:
 
@@ -46,16 +47,15 @@ except ImportError:
 
 
 class AtomicDensityBase(ABC):
-    """Base class implemententing atomic densities."""
+    """Base class representing atomic densities."""
 
     @abstractmethod
     def compute(self, positions: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
-        """Method calculating the atomic density.
+        """Compute the atomic density arising from atoms at ``positions``
 
         :param positions: positions to evaluate the atomic densities
         :returns: evaluated atomic density
         """
-        ...
 
 
 class DeltaDensity(AtomicDensityBase):
@@ -97,7 +97,7 @@ class GaussianDensity(AtomicDensityBase):
 
 
 class LodeDensity(AtomicDensityBase):
-    r"""Smeared Power Law Densities/
+    r"""Smeared power law density, as used in LODE.
 
     It is defined as
 

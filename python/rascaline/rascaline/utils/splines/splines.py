@@ -11,7 +11,7 @@ All classes are based on :py:class:`rascaline.utils.RadialIntegralSplinerBase`. 
 provides several ways to compute a radial integral: you may chose and initialize a pre
 defined atomic density and radial basis and provide them to
 :py:class:`rascaline.utils.SoapSpliner` or :py:class:`rascaline.utils.LodeSpliner`. Both
-classes require `scipy`_ to be installed in order to perform the numercial integrals.
+classes require `scipy`_ to be installed in order to perform the numerical integrals.
 
 Alternatively, you can also explicitly provide functions for the radial integral and its
 derivative and passing them to :py:class:`rascaline.utils.RadialIntegralFromFunction`.
@@ -57,14 +57,14 @@ from .radial_basis import RadialBasisBase
 class RadialIntegralSplinerBase(ABC):
     """Base class for splining arbitrary radial integrals.
 
-    If ``_radial_integral_derivative`` is not implemented in a child class it will
-    computed based on finite differences.
+    If :py:meth:`RadialIntegralSplinerBase.radial_integral_derivative` is not
+    implemented in a child class it will computed based on finite differences.
 
     :parameter max_angular: number of radial components
     :parameter max_radial: number of angular components
     :parameter spline_cutoff: cutoff radius for the spline interpolation. This is also
         the maximal value that can be interpolated.
-    :parameter basis: Provide a :class:`RadialBasisBase` instance to orthornomalize the
+    :parameter basis: Provide a :class:`RadialBasisBase` instance to orthonormalize the
         radial integral.
     :parameter accuracy: accuracy of the numerical integration and the splining.
         Accuracy is reached when either the mean absolute error or the mean relative
@@ -84,71 +84,6 @@ class RadialIntegralSplinerBase(ABC):
         self.spline_cutoff = spline_cutoff
         self.basis = basis
         self.accuracy = accuracy
-
-    @abstractmethod
-    def _radial_integral(self, n: int, ell: int, positions: np.ndarray) -> np.ndarray:
-        """Method calculating the radial integral."""
-        ...
-
-    @property
-    def _center_contribution(self) -> Union[None, np.ndarray]:
-        r"""Contribution of the central atom.
-
-        Required for LODE calculations. The central atom contribution will be
-        orthornomalized in the same way as radial integral.
-        """
-
-        return None
-
-    def _radial_integral_derivative(
-        self, n: int, ell: int, positions: np.ndarray
-    ) -> np.ndarray:
-        """Method calculating the derivatice of the radial integral."""
-        displacement = 1e-6
-        mean_abs_positions = np.mean(np.abs(positions))
-
-        if mean_abs_positions < 1.0:
-            raise ValueError(
-                "Numerically derivative of the radial integral can not be performed "
-                "since positions are too small. Mean of the absolute positions is "
-                f"{mean_abs_positions:.1e} but should be at least 1."
-            )
-
-        radial_integral_pos = self._radial_integral(
-            n, ell, positions + displacement / 2
-        )
-        radial_integral_neg = self._radial_integral(
-            n, ell, positions - displacement / 2
-        )
-
-        return (radial_integral_pos - radial_integral_neg) / displacement
-
-    def _value_evaluator_3D(
-        self,
-        positions: np.ndarray,
-        orthonormalization_matrix: Optional[np.ndarray],
-        derivative: bool,
-    ):
-        values = np.zeros([len(positions), self.max_angular + 1, self.max_radial])
-        for ell in range(self.max_angular + 1):
-            for n in range(self.max_radial):
-                if derivative:
-                    values[:, ell, n] = self._radial_integral_derivative(
-                        n, ell, positions
-                    )
-                else:
-                    values[:, ell, n] = self._radial_integral(n, ell, positions)
-
-        if orthonormalization_matrix is not None:
-            # For each l channel we do a dot product of the orthonormalization_matrix of
-            # shape (n, n) with the values which should have the shape (n, n_positions).
-            # To achieve the correct broadcasting we have to transpose twice.
-            for ell in range(self.max_angular + 1):
-                values[:, ell, :] = (
-                    orthonormalization_matrix[ell] @ values[:, ell, :].T
-                ).T
-
-        return values
 
     def compute(
         self,
@@ -214,7 +149,7 @@ class RadialIntegralSplinerBase(ABC):
 
         parameters = {"points": spline_points}
 
-        center_contribution = self._center_contribution
+        center_contribution = self.center_contribution
         if center_contribution is not None:
             if self.basis is not None:
                 # consider only `l=0` component of the `orthonormalization_matrix`
@@ -225,6 +160,67 @@ class RadialIntegralSplinerBase(ABC):
                 parameters["center_contribution"] = center_contribution
 
         return {"TabulatedRadialIntegral": parameters}
+
+    @abstractmethod
+    def radial_integral(self, n: int, ell: int, positions: np.ndarray) -> np.ndarray:
+        """evaluate the radial integral"""
+        ...
+
+    @property
+    def center_contribution(self) -> Union[None, np.ndarray]:
+        r"""Pre-computed value for the contribution of the central atom.
+
+        Required for LODE calculations. The central atom contribution will be
+        orthonormalized in the same way as the radial integral.
+        """
+
+        return None
+
+    def radial_integral_derivative(
+        self, n: int, ell: int, positions: np.ndarray
+    ) -> np.ndarray:
+        """evaluate the derivative of the radial integral"""
+        displacement = 1e-6
+        mean_abs_positions = np.mean(np.abs(positions))
+
+        if mean_abs_positions < 1.0:
+            raise ValueError(
+                "Numerically derivative of the radial integral can not be performed "
+                "since positions are too small. Mean of the absolute positions is "
+                f"{mean_abs_positions:.1e} but should be at least 1."
+            )
+
+        radial_integral_pos = self.radial_integral(n, ell, positions + displacement / 2)
+        radial_integral_neg = self.radial_integral(n, ell, positions - displacement / 2)
+
+        return (radial_integral_pos - radial_integral_neg) / displacement
+
+    def _value_evaluator_3D(
+        self,
+        positions: np.ndarray,
+        orthonormalization_matrix: Optional[np.ndarray],
+        derivative: bool,
+    ):
+        values = np.zeros([len(positions), self.max_angular + 1, self.max_radial])
+        for ell in range(self.max_angular + 1):
+            for n in range(self.max_radial):
+                if derivative:
+                    values[:, ell, n] = self.radial_integral_derivative(
+                        n, ell, positions
+                    )
+                else:
+                    values[:, ell, n] = self.radial_integral(n, ell, positions)
+
+        if orthonormalization_matrix is not None:
+            # For each l channel we do a dot product of the orthonormalization_matrix of
+            # shape (n, n) with the values which should have the shape (n, n_positions).
+            # To achieve the correct broadcasting we have to transpose twice.
+            for ell in range(self.max_angular + 1):
+                values[:, ell, :] = (
+                    orthonormalization_matrix[ell] @ values[:, ell, :].T
+                ).T
+
+        return values
 
 
 class DynamicSpliner:
@@ -268,8 +264,10 @@ class DynamicSpliner:
     def spline(self):
         """Calculates and outputs the splines.
 
-        The outputs of this function are, respectively: - A numpy 1D array containing
-        the spline positions. These are equally spaced in the start-stop interval.
+        The outputs of this function are, respectively:
+
+        - A numpy 1D array containing the spline positions. These are equally spaced in
+          the start-stop interval.
         - A numpy ndarray containing the values of the splined functions at the spline
           positions. The first dimension corresponds to the spline positions, while all
           subsequent dimensions are consistent with the values_fn and
@@ -370,10 +368,10 @@ class RadialIntegralFromFunction(RadialIntegralSplinerBase):
         1-D array containing the values of the radial integral.
     :parameter spline_cutoff: cutoff radius for the spline interpolation. This is also
         the maximal value that can be interpolated.
-    :parameter max_radial: number of angular componentss
+    :parameter max_radial: number of angular components
     :parameter max_angular: number of radial components
     :parameter radial_integral_derivative: The derivative of the radial integral taking
-        the same paramaters as ``radial_integral``. If it is :py:obj:`None` (default),
+        the same parameters as ``radial_integral``. If it is :py:obj:`None` (default),
         finite differences are used to calculate the derivative of the radial integral.
         It is recommended to provide this parameter if possible. Derivatives from finite
         differences can cause problems when evaluating at the edges of the domain (i.e.,
@@ -423,7 +421,7 @@ class RadialIntegralFromFunction(RadialIntegralSplinerBase):
     ...     cutoff_function={"Step": {}},
     ... )
 
-    The ``atomic_gaussian_width`` paramater is required by the calculator but will be
+    The ``atomic_gaussian_width`` parameter is required by the calculator but will be
     will be ignored during the feature computation.
 
     A more in depth example using a "rectangular" Laplacian eigenstate basis is provided
@@ -443,7 +441,7 @@ class RadialIntegralFromFunction(RadialIntegralSplinerBase):
         accuracy: float = 1e-8,
     ):
         self.radial_integral_function = radial_integral
-        self.radial_integral_derivative_funcion = radial_integral_derivative
+        self.radial_integral_derivative_function = radial_integral_derivative
 
         if center_contribution is not None and len(center_contribution) != max_radial:
             raise ValueError(
@@ -451,30 +449,30 @@ class RadialIntegralFromFunction(RadialIntegralSplinerBase):
                 f"should be the same as max_radial ({max_radial})"
             )
 
-        self.center_contribution = center_contribution
+        self._center_contribution = center_contribution
 
         super().__init__(
             max_radial=max_radial,
             max_angular=max_angular,
             spline_cutoff=spline_cutoff,
-            basis=None,  # do no orthornormlize the radial integral
+            basis=None,  # do no orthonormalize the radial integral
             accuracy=accuracy,
         )
 
-    def _radial_integral(self, n: int, ell: int, positions: np.ndarray) -> np.ndarray:
+    def radial_integral(self, n: int, ell: int, positions: np.ndarray) -> np.ndarray:
         return self.radial_integral_function(n, ell, positions)
 
     @property
-    def _center_contribution(self) -> Union[None, np.ndarray]:
-        return self.center_contribution
+    def center_contribution(self) -> Union[None, np.ndarray]:
+        return self._center_contribution
 
-    def _radial_integral_derivative(
+    def radial_integral_derivative(
         self, n: int, ell: int, positions: np.ndarray
     ) -> np.ndarray:
-        if self.radial_integral_derivative_funcion is None:
-            return super()._radial_integral_derivative(n, ell, positions)
+        if self.radial_integral_derivative_function is None:
+            return super().radial_integral_derivative(n, ell, positions)
         else:
-            return self.radial_integral_derivative_funcion(n, ell, positions)
+            return self.radial_integral_derivative_function(n, ell, positions)
 
 
 class SoapSpliner(RadialIntegralSplinerBase):
@@ -484,16 +482,15 @@ class SoapSpliner(RadialIntegralSplinerBase):
     :class:`rascaline.SphericalExpansion` or :class:`rascaline.SoapPowerSpectrum`. For
     k-space spherical expansions use :class:`LodeSpliner`.
 
-    If ``density`` is either :class:`rascaline.utils.atomic_density.DeltaDensity` or
-    :class:`rascaline.utils.atomic_density.GaussianDensity` the radial integral will be
-    partly solved analytical. These simpler expressions result in a faster and more
-    stable evaluation.
+    If ``density`` is either :class:`rascaline.utils.DeltaDensity` or
+    :class:`rascaline.utils.GaussianDensity` the radial integral will be partly solved
+    analytical. These simpler expressions result in a faster and more stable evaluation.
 
     :parameter cutoff: spherical cutoff for the radial basis
     :parameter max_radial: number of angular components
     :parameter max_angular: number of radial components
-    :parameter basis: instance defining the radial basis
-    :parameter density: instancel defining the atomic density
+    :parameter basis: definition of the radial basis
+    :parameter density: definition of the atomic density
     :parameter accuracy: accuracy of the numerical integration and the splining.
         Accuracy is reached when either the mean absolute error or the mean relative
         error gets below the ``accuracy`` threshold.
@@ -506,15 +503,14 @@ class SoapSpliner(RadialIntegralSplinerBase):
     expansions.
 
     >>> from rascaline import SphericalExpansion
-    >>> from rascaline.utils.atomic_density import GaussianDensity
-    >>> from rascaline.utils.radial_basis import GtoBasis
+    >>> from rascaline.utils import GaussianDensity, GtoBasis
 
     >>> cutoff = 2
     >>> max_radial = 6
     >>> max_angular = 4
     >>> atomic_gaussian_width = 1.0
 
-    Next we initlize our radial basis and the density
+    Next we initialize our radial basis and the density
 
     >>> basis = GtoBasis(cutoff=cutoff, max_radial=max_radial)
     >>> density = GaussianDensity(atomic_gaussian_width=atomic_gaussian_width)
@@ -534,8 +530,8 @@ class SoapSpliner(RadialIntegralSplinerBase):
     speed up calculations.
 
     As for all spliner classes you can use the output
-    :meth:`RadialIntegralSplinerBase.compute` method directly as the
-    ``radial_basis`` parameter.
+    :meth:`RadialIntegralSplinerBase.compute` method directly as the ``radial_basis``
+    parameter.
 
     >>> calculator = SphericalExpansion(
     ...     cutoff=cutoff,
@@ -547,9 +543,9 @@ class SoapSpliner(RadialIntegralSplinerBase):
     ...     cutoff_function={"Step": {}},
     ... )
 
-    You can now use ``calculator`` to obtain the spherical expansion coefficents of your
-    systems. Note that the the spliner based used here will produce the same coefficents
-    as if ``radial_basis={"Gto": {}}`` would be used.
+    You can now use ``calculator`` to obtain the spherical expansion coefficients of
+    your systems. Note that the the spliner based used here will produce the same
+    coefficients as if ``radial_basis={"Gto": {}}`` would be used.
 
     .. seealso::
         :class:`LodeSpliner` for a spliner class that works with
@@ -578,7 +574,7 @@ class SoapSpliner(RadialIntegralSplinerBase):
             accuracy=accuracy,
         )
 
-    def _radial_integral(self, n: int, ell: int, positions: np.ndarray) -> np.ndarray:
+    def radial_integral(self, n: int, ell: int, positions: np.ndarray) -> np.ndarray:
         if type(self.density) is DeltaDensity:
             return self._radial_integral_delta(n, ell, positions)
         elif type(self.density) is GaussianDensity:
@@ -586,7 +582,7 @@ class SoapSpliner(RadialIntegralSplinerBase):
         else:
             return self._radial_integral_custom(n, ell, positions)
 
-    def _radial_integral_derivative(
+    def radial_integral_derivative(
         self, n: int, ell: int, positions: np.ndarray
     ) -> np.ndarray:
         if type(self.density) is DeltaDensity:
@@ -611,7 +607,7 @@ class SoapSpliner(RadialIntegralSplinerBase):
     ) -> np.ndarray:
         atomic_gaussian_width_sq = self.density.atomic_gaussian_width**2
 
-        prefac = (
+        prefactor = (
             (4 * np.pi)
             / (np.pi * atomic_gaussian_width_sq) ** (3 / 4)
             * np.exp(-0.5 * positions**2 / atomic_gaussian_width_sq)
@@ -631,11 +627,11 @@ class SoapSpliner(RadialIntegralSplinerBase):
             )
 
         return (
-            prefac
+            prefactor
             * quad_vec(
                 f=lambda x: integrand(x, n, ell, positions),
                 a=0,
-                b=self.basis.integeration_radius,
+                b=self.basis.integration_radius,
             )[0]
         )
 
@@ -644,7 +640,7 @@ class SoapSpliner(RadialIntegralSplinerBase):
     ) -> np.ndarray:
         atomic_gaussian_width_sq = self.density.atomic_gaussian_width**2
 
-        prefac = (
+        prefactor = (
             (4 * np.pi)
             / (np.pi * atomic_gaussian_width_sq) ** (3 / 4)
             * np.exp(-0.5 * positions**2 / atomic_gaussian_width_sq)
@@ -665,11 +661,11 @@ class SoapSpliner(RadialIntegralSplinerBase):
             )
 
         return atomic_gaussian_width_sq**-1 * (
-            prefac
+            prefactor
             * quad_vec(
                 f=lambda x: integrand(x, n, ell, positions),
                 a=0,
-                b=self.basis.integeration_radius,
+                b=self.basis.integration_radius,
             )[0]
             - positions * self._radial_integral_gaussian(n, ell, positions)
         )
@@ -692,15 +688,15 @@ class SoapSpliner(RadialIntegralSplinerBase):
 class LodeSpliner(RadialIntegralSplinerBase):
     r"""Compute radial integral spline points for k-space calculators.
 
-    Use only in combination with a k/fourier space calculators like
+    Use only in combination with a k-space/Fourier-space calculators like
     :class:`rascaline.LodeSphericalExpansion`. For real space spherical expansions use
     :class:`SoapSpliner`.
 
     :parameter k_cutoff: spherical reciprocal cutoff
     :parameter max_radial: number of angular components
     :parameter max_angular: number of radial components
-    :parameter basis: instance defining the radial basis
-    :parameter density: instancel defining the atomic density
+    :parameter basis: definition of the radial basis
+    :parameter density: definition of the atomic density
     :parameter accuracy: accuracy of the numerical integration and the splining.
         Accuracy is reached when either the mean absolute error or the mean relative
         error gets below the ``accuracy`` threshold.
@@ -713,8 +709,7 @@ class LodeSpliner(RadialIntegralSplinerBase):
     expansions.
 
     >>> from rascaline import LodeSphericalExpansion
-    >>> from rascaline.utils.atomic_density import GaussianDensity
-    >>> from rascaline.utils.radial_basis import GtoBasis
+    >>> from rascaline.utils import GaussianDensity, GtoBasis
 
     Note that ``cutoff`` defined below denotes the maximal distance for the projection
     of the density. In contrast to SOAP, LODE also takes atoms outside of this
@@ -730,7 +725,7 @@ class LodeSpliner(RadialIntegralSplinerBase):
 
     >>> k_cutoff = 1.2 * np.pi / atomic_gaussian_width
 
-    Next we initlize our radial basis and the density
+    Next we initialize our radial basis and the density
 
     >>> basis = GtoBasis(cutoff=cutoff, max_radial=max_radial)
     >>> density = GaussianDensity(atomic_gaussian_width=atomic_gaussian_width)
@@ -746,8 +741,8 @@ class LodeSpliner(RadialIntegralSplinerBase):
     ... )
 
     As for all spliner classes you can use the output
-    :meth:`RadialIntegralSplinerBase.compute` method directly as the
-    ``radial_basis`` parameter.
+    :meth:`RadialIntegralSplinerBase.compute` method directly as the ``radial_basis``
+    parameter.
 
     >>> calculator = LodeSphericalExpansion(
     ...     cutoff=cutoff,
@@ -759,9 +754,9 @@ class LodeSpliner(RadialIntegralSplinerBase):
     ...     radial_basis=spliner.compute(),
     ... )
 
-    You can now use ``calculator`` to obtain the spherical expansion coefficents of your
-    systems. Note that the the spliner based used here will produce the same coefficents
-    as if ``radial_basis={"Gto": {}}`` would be used.
+    You can now use ``calculator`` to obtain the spherical expansion coefficients of
+    your systems. Note that the the spliner based used here will produce the same
+    coefficients as if ``radial_basis={"Gto": {}}`` would be used.
 
     .. seealso::
         :class:`SoapSpliner` for a spliner class that works with
@@ -790,7 +785,7 @@ class LodeSpliner(RadialIntegralSplinerBase):
             accuracy=accuracy,
         )
 
-    def _radial_integral(self, n: int, ell: int, positions: np.ndarray) -> np.ndarray:
+    def radial_integral(self, n: int, ell: int, positions: np.ndarray) -> np.ndarray:
         def integrand(
             integrand_position: float, n: int, ell: int, positions: np.ndarray
         ) -> np.ndarray:
@@ -803,10 +798,10 @@ class LodeSpliner(RadialIntegralSplinerBase):
         return quad_vec(
             f=lambda x: integrand(x, n, ell, positions),
             a=0,
-            b=self.basis.integeration_radius,
+            b=self.basis.integration_radius,
         )[0]
 
-    def _radial_integral_derivative(
+    def radial_integral_derivative(
         self, n: int, ell: int, positions: np.ndarray
     ) -> np.ndarray:
         def integrand(
@@ -821,11 +816,11 @@ class LodeSpliner(RadialIntegralSplinerBase):
         return quad_vec(
             f=lambda x: integrand(x, n, ell, positions),
             a=0,
-            b=self.basis.integeration_radius,
+            b=self.basis.integration_radius,
         )[0]
 
     @property
-    def _center_contribution(self) -> np.ndarray:
+    def center_contribution(self) -> np.ndarray:
         if type(self.density) is DeltaDensity:
             center_contrib = self._center_contribution_delta
         else:
@@ -835,7 +830,7 @@ class LodeSpliner(RadialIntegralSplinerBase):
 
     def _center_contribution_delta(self, n: int):
         raise NotImplementedError(
-            "center contribution for delta disributions is not implemented yet."
+            "center contribution for delta distributions is not implemented yet."
         )
 
     def _center_contribution_custom(self, n: int):
@@ -849,6 +844,6 @@ class LodeSpliner(RadialIntegralSplinerBase):
         return quad(
             func=integrand,
             a=0,
-            b=self.basis.integeration_radius,
+            b=self.basis.integration_radius,
             args=(n),
         )[0]

@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
-from rascaline.utils.radial_basis import (
+from rascaline.utils import (
     GtoBasis,
     MonomialBasis,
     RadialBasisBase,
@@ -15,7 +15,7 @@ from rascaline.utils.radial_basis import (
 pytest.importorskip("scipy")
 
 
-class RtonRadialBasis(RadialBasisBase):
+class RtoNRadialBasis(RadialBasisBase):
     def compute(
         self, n: float, ell: float, integrand_positions: Union[float, np.ndarray]
     ) -> Union[float, np.ndarray]:
@@ -25,11 +25,11 @@ class RtonRadialBasis(RadialBasisBase):
 def test_radial_basis_gram():
     """Test that quad integration of the gram matrix is the same as an analytical."""
 
-    integeration_radius = 1
+    integration_radius = 1
     max_radial = 4
     max_angular = 2
 
-    test_basis = RtonRadialBasis(integeration_radius=integeration_radius)
+    test_basis = RtoNRadialBasis(integration_radius=integration_radius)
 
     numerical_gram = test_basis.compute_gram_matrix(max_radial, max_angular)
     analytical_gram = np.zeros_like(numerical_gram)
@@ -38,17 +38,17 @@ def test_radial_basis_gram():
         for n1 in range(max_radial):
             for n2 in range(max_radial):
                 exp = 3 + n1 + n2
-                analytical_gram[ell, n1, n2] = integeration_radius**exp / exp
+                analytical_gram[ell, n1, n2] = integration_radius**exp / exp
 
     assert_allclose(numerical_gram, analytical_gram)
 
 
 def test_radial_basis_orthornormalization():
-    integeration_radius = 1
+    integration_radius = 1
     max_radial = 4
     max_angular = 2
 
-    test_basis = RtonRadialBasis(integeration_radius=integeration_radius)
+    test_basis = RtoNRadialBasis(integration_radius=integration_radius)
 
     gram = test_basis.compute_gram_matrix(max_radial, max_angular)
     ortho = test_basis.compute_orthonormalization_matrix(max_radial, max_angular)
@@ -67,7 +67,7 @@ def test_radial_basis_orthornormalization():
     ],
 )
 def test_derivative(analytical_basis: RadialBasisBase):
-    """Finite difference test for testing the derivatice of a raidal basis"""
+    """Finite difference test for testing the derivative of a radial basis"""
 
     class NumericalRadialBasis(RadialBasisBase):
         def compute(
@@ -75,7 +75,7 @@ def test_derivative(analytical_basis: RadialBasisBase):
         ) -> Union[float, np.ndarray]:
             return analytical_basis.compute(n, ell, integrand_positions)
 
-    numerical_basis = NumericalRadialBasis(integeration_radius=np.inf)
+    numerical_basis = NumericalRadialBasis(integration_radius=np.inf)
 
     cutoff = 4
     max_radial = 6

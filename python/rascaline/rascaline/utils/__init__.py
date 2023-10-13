@@ -4,10 +4,18 @@ import metatensor
 
 from .power_spectrum import PowerSpectrum  # noqa
 from .splines import (  # noqa
+    AtomicDensityBase,
+    DeltaDensity,
+    GaussianDensity,
+    GtoBasis,
+    LodeDensity,
     LodeSpliner,
+    MonomialBasis,
+    RadialBasisBase,
     RadialIntegralFromFunction,
     RadialIntegralSplinerBase,
     SoapSpliner,
+    SphericalBesselBasis,
 )
 
 

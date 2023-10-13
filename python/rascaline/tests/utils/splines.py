@@ -3,9 +3,15 @@ import pytest
 from numpy.testing import assert_allclose, assert_equal
 
 from rascaline import LodeSphericalExpansion, SphericalExpansion
-from rascaline.utils import LodeSpliner, RadialIntegralFromFunction, SoapSpliner
-from rascaline.utils.atomic_density import DeltaDensity, GaussianDensity, LodeDensity
-from rascaline.utils.radial_basis import GtoBasis
+from rascaline.utils import (
+    DeltaDensity,
+    GaussianDensity,
+    GtoBasis,
+    LodeDensity,
+    LodeSpliner,
+    RadialIntegralFromFunction,
+    SoapSpliner,
+)
 
 from ..test_systems import SystemForTests
 
@@ -114,7 +120,7 @@ def test_splines_numerical_derivative_error():
 
 
 def test_kspace_radial_integral():
-    """Test against anayliycal integral with Gaussian densities and GTOs"""
+    """Test against analytical integral with Gaussian densities and GTOs"""
 
     cutoff = 2
     max_radial = 6
@@ -162,7 +168,7 @@ def test_kspace_radial_integral():
                 * hyp1f1(i1, i2, -0.5 * (kk * sigma[n]) ** 2)
             )
 
-            coeffs_num[n, ell] = spliner._radial_integral(n, ell, kk)
+            coeffs_num[n, ell] = spliner.radial_integral(n, ell, kk)
 
     assert_allclose(coeffs_num, coeffs_exact)
 
@@ -189,11 +195,11 @@ def test_rspace_delta():
     for ell in range(max_angular + 1):
         for n in range(max_radial):
             assert_equal(
-                spliner._radial_integral(n, ell, positions),
+                spliner.radial_integral(n, ell, positions),
                 basis.compute(n, ell, positions),
             )
             assert_equal(
-                spliner._radial_integral_derivative(n, ell, positions),
+                spliner.radial_integral_derivative(n, ell, positions),
                 basis.compute_derivative(n, ell, positions),
             )
 
@@ -321,4 +327,4 @@ def test_center_contribution_gto_gaussian():
 
     center_contr_analytical *= normalization * 2 * np.pi / np.sqrt(4 * np.pi)
 
-    assert_allclose(spliner._center_contribution, center_contr_analytical, rtol=1e-14)
+    assert_allclose(spliner.center_contribution, center_contr_analytical, rtol=1e-14)

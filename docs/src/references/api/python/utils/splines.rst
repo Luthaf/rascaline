@@ -1,1 +1,1 @@
-.. automodule:: rascaline.utils.splines
+.. automodule:: rascaline.utils.splines.splines

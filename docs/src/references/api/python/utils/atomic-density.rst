@@ -1,1 +1,1 @@
-.. automodule:: rascaline.utils.atomic_density
+.. automodule:: rascaline.utils.splines.atomic_density

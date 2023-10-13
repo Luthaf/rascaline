@@ -5,7 +5,7 @@ Radial Basis
 ============
 
 Radial basis functions :math:`R_{nl}(\boldsymbol{r})` are besides :ref:`atomic densities
-<python-atomic-density>` :math:`\rho_i` the central ingredents to compute spherical
+<python-atomic-density>` :math:`\rho_i` the central ingredients to compute spherical
 expansion coefficients :math:`\langle anlm\vert\rho_i\rangle`. Radial basis functions,
 define how which the atomic density is projected. To be more precise, the actual basis
 functions are of
@@ -18,19 +18,25 @@ where :math:`Y_{lm}(\hat{r})` are the real spherical harmonics evaluated at the 
 :math:`\hat{r}`, i.e. at the spherical angles :math:`(\theta, \phi)` that determine the
 orientation of the unit vector :math:`\hat{r} = \boldsymbol{r}/r`.
 
-All radial basis function are based on
+Radial basis are represented as different child class of
+:py:class:`rascaline.utils.RadialBasisBase`: :py:class:`rascaline.utils.GtoBasis`,
+:py:class:`rascaline.utils.MonomialBasis`, and
+:py:class:`rascaline.utils.SphericalBesselBasis` are provided, and you can implement
+your own by defining a new class.
 
-.. autoclass:: rascaline.utils.radial_basis.RadialBasisBase
+.. autoclass:: rascaline.utils.RadialBasisBase
     :members:
     :show-inheritance:
 
-In addition, we provide the following explicit implementations
-
-.. autoclass:: rascaline.utils.radial_basis.GtoBasis
+.. autoclass:: rascaline.utils.GtoBasis
     :members:
     :show-inheritance:
 
-.. autoclass:: rascaline.utils.radial_basis.MonomialBasis
+.. autoclass:: rascaline.utils.MonomialBasis
+    :members:
+    :show-inheritance:
+
+.. autoclass:: rascaline.utils.SphericalBesselBasis
     :members:
     :show-inheritance:
 """
@@ -42,9 +48,9 @@ import numpy as np
 
 
 try:
-    from scipy.integrate import quad
-    from scipy.optimize import fsolve
-    from scipy.special import spherical_jn
+    import scipy.integrate
+    import scipy.optimize
+    import scipy.special
 
     HAS_SCIPY = True
 except ImportError:
@@ -53,39 +59,39 @@ except ImportError:
 
 class RadialBasisBase(ABC):
     r"""
-    Base class for evaluating the radial basis.
+    Base class to define radial basis and their evaluation.
 
     The class provides methods to evaluate the radial basis :math:`R_{nl}(r)` as well as
     its (numerical) derivative with respect to positions :math:`r`.
 
-    :parameter integeration_radius: Value up to which the radial integral should be
+    :parameter integration_radius: Value up to which the radial integral should be
         performed. The usual value is :math:`\infty`.
     """
 
-    def __init__(self, integeration_radius: float):
-        self.integeration_radius = integeration_radius
+    def __init__(self, integration_radius: float):
+        self.integration_radius = integration_radius
 
     @abstractmethod
     def compute(
         self, n: float, ell: float, integrand_positions: Union[float, np.ndarray]
     ) -> Union[float, np.ndarray]:
-        """Method calculating the radial basis.
+        """Compute the ``n``/``l`` radial basis at all given ``integrand_positions``
 
         :param n: radial channel
         :param ell: angular channel
         :param integrand_positions: positions to evaluate the radial basis
         :returns: evaluated radial basis
         """
-        ...
 
     def compute_derivative(
         self, n: float, ell: float, integrand_positions: np.ndarray
     ) -> np.ndarray:
-        """Derivative of the radial basis.
+        """Compute the derivative of the ``n``/``l`` radial basis at all given
+        ``integrand_positions``
 
-        Used for radial integrals with delta like atomic densities. If not defined in a
-        child class a numerical derivatice based on finite differences of
-        ``integrand_positions``.
+        This is used for radial integrals with delta-like atomic densities. If not
+        defined in a child class, a numerical derivative based on finite differences of
+        ``integrand_positions`` will be used instead.
 
         :param n: radial channel
         :param ell: angular channel
@@ -116,12 +122,12 @@ class RadialBasisBase(ABC):
 
         :parameter max_radial: number of angular components
         :parameter max_angular: number of radial components
-        :returns: orthornomalization matrix of shape
+        :returns: orthonormalization matrix of shape
             ``(max_angular + 1, max_radial, max_radial)``
         """
 
         if not HAS_SCIPY:
-            raise ValueError("Orthornomalization requires scipy!")
+            raise ValueError("Orthonormalization requires scipy!")
 
         # Gram matrix (also called overlap matrix or inner product matrix)
         gram_matrix = np.zeros((max_angular + 1, max_radial, max_radial))
@@ -141,10 +147,10 @@ class RadialBasisBase(ABC):
         for ell in range(max_angular + 1):
             for n1 in range(max_radial):
                 for n2 in range(max_radial):
-                    gram_matrix[ell, n1, n2] = quad(
+                    gram_matrix[ell, n1, n2] = scipy.integrate.quad(
                         func=integrand,
                         a=0,
-                        b=self.integeration_radius,
+                        b=self.integration_radius,
                         args=(n1, n2, ell),
                     )[0]
 
@@ -159,7 +165,7 @@ class RadialBasisBase(ABC):
 
         :parameter max_radial: number of angular components
         :parameter max_angular: number of radial components
-        :returns: orthornomalization matrix of shape (max_angular + 1, max_radial,
+        :returns: orthonormalization matrix of shape (max_angular + 1, max_radial,
             max_radial)
         """
 
@@ -196,7 +202,7 @@ class RadialBasisBase(ABC):
 
 
 class GtoBasis(RadialBasisBase):
-    r"""Primitive (not normalized nor orthonormlized) GTO radial basis.
+    r"""Primitive (not normalized nor orthonormalized) GTO radial basis.
 
     It is defined as
 
@@ -215,7 +221,7 @@ class GtoBasis(RadialBasisBase):
     def __init__(self, cutoff, max_radial):
         # choosing infinity leads to problems when calculating the radial integral with
         # `quad`!
-        super().__init__(integeration_radius=5 * cutoff)
+        super().__init__(integration_radius=5 * cutoff)
         self.max_radial = max_radial
         self.cutoff = cutoff
         self.sigmas = np.ones(self.max_radial, dtype=float)
@@ -250,14 +256,14 @@ class MonomialBasis(RadialBasisBase):
         R_{nl}(r) = r^{l+2n},
 
     where :math:`n` runs from :math:`0,1,...,n_\mathrm{max}-1`. These capture precisely
-    the radial dependence if we compute the Taylor expansion of a generic funct m-lgion
+    the radial dependence if we compute the Taylor expansion of a generic function
     defined in 3D space.
 
     :parameter cutoff: spherical cutoff for the radial basis
     """
 
     def __init__(self, cutoff):
-        super().__init__(integeration_radius=cutoff)
+        super().__init__(integration_radius=cutoff)
 
     def compute(
         self, n: float, ell: float, integrand_positions: Union[float, np.ndarray]
@@ -272,7 +278,7 @@ class MonomialBasis(RadialBasisBase):
 
 def _spherical_jn_swapped(z, n):
     """spherical_jn with swapped arguments for usage in `fsolve`."""
-    return spherical_jn(n=n, z=z)
+    return scipy.special.spherical_jn(n=n, z=z)
 
 
 class SphericalBesselBasis(RadialBasisBase):
@@ -287,7 +293,7 @@ class SphericalBesselBasis(RadialBasisBase):
         if not HAS_SCIPY:
             raise ValueError("SphericalBesselBasis requires scipy!")
 
-        super().__init__(integeration_radius=cutoff)
+        super().__init__(integration_radius=cutoff)
 
         self.max_radial = max_radial
         self.max_angular = max_angular
@@ -299,16 +305,16 @@ class SphericalBesselBasis(RadialBasisBase):
             roots_guesses = np.pi * (np.arange(1, self.max_radial + 1) + ell / 2)
             # Compute roots from initial guess using Newton method
             for n, root_guess in enumerate(roots_guesses):
-                self.roots[ell, n] = fsolve(
+                self.roots[ell, n] = scipy.optimize.fsolve(
                     func=_spherical_jn_swapped, x0=root_guess, args=(ell,)
                 )[0]
 
     def compute(
         self, n: float, ell: float, integrand_positions: Union[float, np.ndarray]
     ) -> Union[float, np.ndarray]:
-        return spherical_jn(
+        return scipy.special.spherical_jn(
             ell,
-            integrand_positions * self.roots[ell, n] / self.integeration_radius,
+            integrand_positions * self.roots[ell, n] / self.integration_radius,
         )
 
     def compute_derivative(
@@ -316,10 +322,10 @@ class SphericalBesselBasis(RadialBasisBase):
     ) -> Union[float, np.ndarray]:
         return (
             self.roots[ell, n]
-            / self.integeration_radius
-            * spherical_jn(
+            / self.integration_radius
+            * scipy.special.spherical_jn(
                 ell,
-                integrand_positions * self.roots[ell, n] / self.integeration_radius,
+                integrand_positions * self.roots[ell, n] / self.integration_radius,
                 derivative=True,
             )
         )

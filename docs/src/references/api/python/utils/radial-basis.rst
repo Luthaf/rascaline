@@ -1,1 +1,1 @@
-.. automodule:: rascaline.utils.radial_basis
+.. automodule:: rascaline.utils.splines.radial_basis
