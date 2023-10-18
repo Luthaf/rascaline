@@ -38,6 +38,17 @@ RASCAL_HYPERS_SMALL = {
 
 # ============ Pytest fixtures ============
 
+
+@pytest.fixture(scope="module")
+def cg_cache_sparse():
+    return clebsch_gordan.ClebschGordanReal(lambda_max=5, sparse=True)
+
+
+@pytest.fixture(scope="module")
+def cg_cache_dense():
+    return clebsch_gordan.ClebschGordanReal(lambda_max=5, sparse=False)
+
+
 # ============ Helper functions ============
 
 
@@ -90,10 +101,10 @@ def powspec_small_features(frames: List[ase.Atoms]):
     "frames, nu_target, angular_cutoff, angular_selection, parity_selection",
     [
         (
-            h2o_isolated(),
-            2,
-            5,
-            [0],  # [0, 4, 5],
+            h2_isolated(),
+            3,
+            None,
+            [0, 4, 5],
             [+1],  # [+1, -1],
         ),
         (
@@ -152,11 +163,11 @@ def test_so3_equivariance(
     "frames, nu_target, angular_cutoff, angular_selection, parity_selection",
     [
         (
-            h2o_isolated(),
-            2,
-            5,
-            [0],  # [0, 4, 5],
-            [+1],  # [+1, -1],
+            h2_isolated(),
+            3,
+            None,
+            [0, 4, 5],
+            None,
         ),
         (
             h2o_isolated(),
@@ -266,8 +277,6 @@ def test_lambda_soap_vs_powerspectrum(frames):
 def test_combine_single_center_orthogonality(frames, nu):
     """
     Checks \|ρ^\\nu\| =  \|ρ\|^\\nu
-    For \\nu = 2 the tests passes but for \\nu = 3 it fails because we do not add the
-    multiplicity when iterating multiple body-orders
     """
     # Build nu=1 SphericalExpansion
     nu_1_tensor = sphex_small_features(frames)
@@ -310,3 +319,159 @@ def test_combine_single_center_orthogonality(frames, nu):
 
     # check if the norm is equal
     assert np.allclose(nu_tensor_norm, nu1_tensor_norm**nu)
+
+
+# ============ Test CG cache  ============
+
+
+@pytest.mark.parametrize("l1, l2", [(1, 2), (2, 3), (0, 5)])
+def test_clebsch_gordan_orthogonality(cg_cache_dense, l1, l2):
+    """
+    Test orthogonality relationships of cached dense CG coefficients.
+
+    See
+    https://en.wikipedia.org/wiki/Clebsch%E2%80%93Gordan_coefficients#Orthogonality_relations
+    for details.
+    """
+    lam_min = abs(l1 - l2)
+    lam_max = l1 + l2
+
+    # We test lam dimension
+    # \sum_{-m1 \leq l1 \leq m1, -m2 \leq l2 \leq m2}
+    #           <λμ|l1m1,l2m2> <l1m1',l2m2'|λμ'> = δ_μμ'
+    for lam in range(lam_min, lam_max):
+        cg_mat = cg_cache_dense.coeffs[(l1, l2, lam)].reshape(-1, 2 * lam + 1)
+        dot_product = cg_mat.T @ cg_mat
+        diag_mask = np.zeros(dot_product.shape, dtype=np.bool_)
+        diag_mask[np.diag_indices(len(dot_product))] = True
+        assert np.allclose(
+            dot_product[~diag_mask], np.zeros(dot_product.shape)[~diag_mask]
+        )
+        assert np.allclose(dot_product[diag_mask], dot_product[diag_mask][0])
+
+    # We test l1 l2 dimension
+    # \sum_{|l1-l2| \leq λ \leq l1+l2} \sum_{-μ \leq λ \leq μ}
+    #            <l1m1,l2m2|λμ> <λμ|l1m1,l2m2> = δ_m1m1' δ_m2m2'
+    l1l2_dim = (2 * l1 + 1) * (2 * l2 + 1)
+    dot_product = np.zeros((l1l2_dim, l1l2_dim))
+    for lam in range(lam_min, lam_max + 1):
+        cg_mat = cg_cache_dense.coeffs[(l1, l2, lam)].reshape(-1, 2 * lam + 1)
+        dot_product += cg_mat @ cg_mat.T
+    diag_mask = np.zeros(dot_product.shape, dtype=np.bool_)
+    diag_mask[np.diag_indices(len(dot_product))] = True
+
+    assert np.allclose(dot_product[~diag_mask], np.zeros(dot_product.shape)[~diag_mask])
+    assert np.allclose(dot_product[diag_mask], dot_product[diag_mask][0])
+
+
+@pytest.mark.parametrize("frames", [h2_isolated(), h2o_isolated()])
+def test_combine_single_center_to_body_order_dense_sparse_agree(frames):
+    """
+    Tests for agreement between nu=3 tensors built using both sparse and dense
+    CG coefficient caches.
+    """
+    nu_1_tensor = sphex_small_features(frames)
+    n_body_sparse = clebsch_gordan.combine_single_center_to_body_order(
+        nu_1_tensor,
+        target_body_order=3,
+        use_sparse=True,
+    )
+    n_body_dense = clebsch_gordan.combine_single_center_to_body_order(
+        nu_1_tensor,
+        target_body_order=3,
+        use_sparse=False,
+    )
+
+    assert metatensor.operations.allclose(
+        n_body_sparse, n_body_dense, atol=1e-8, rtol=1e-8
+    )
+
+
+# ============ Test kernel construction  ============
+
+# TODO: if we want this test, the below code will need updating
+
+# def test_soap_kernel():
+#    """
+#    Tests if we get the same result computing SOAP from spherical expansion coefficients using GC utils
+#    as when using SoapPowerSpectrum.
+#
+#    """
+#    frames = ase.Atoms('HO',
+#            positions=[[0., 0., 0.], [1., 1., 1.]],
+#            pbc=[False, False, False])
+#
+#
+#    rascal_hypers = {
+#        "cutoff": 3.0,  # Angstrom
+#        "max_radial": 2,  # Exclusive
+#        "max_angular": 3,  # Inclusive
+#        "atomic_gaussian_width": 0.2,
+#        "radial_basis": {"Gto": {}},
+#        "cutoff_function": {"ShiftedCosine": {"width": 0.5}},
+#        "center_atom_weight": 1.0,
+#    }
+#
+#    calculator = rascaline.SphericalExpansion(**rascal_hypers)
+#    nu1 = calculator.compute(frames)
+#    nu1 = nu1.keys_to_properties("species_neighbor")
+#
+#    lmax = 1
+#    lambdas = np.arange(lmax)
+#
+#    clebsch_gordan._create_combined_keys(nu1.keys, nu1.keys, lambdas)
+#    cg_cache = clebsch_gordan.ClebschGordanReal(l_max=rascal_hypers['max_angular'])
+#    soap_cg = clebsch_gordan._combine_single_center(nu1, nu1, lambdas, cg_cache) # ->  needs
+#    soap_cg = soap_cg.keys_to_properties(["spherical_harmonics_l"]).keys_to_samples(["species_center"])
+#    n_samples = len(soap_cg[0].samples)
+#    kernel_cg = np.zeros((n_samples, n_samples))
+#    for key, block in soap_cg.items():
+#        kernel_cg += block.values.squeeze() @ block.values.squeeze().T
+#
+#    calculator = rascaline.SoapPowerSpectrum(**rascal_hypers)
+#    nu2 = calculator.compute(frames)
+#    soap_rascaline = nu2.keys_to_properties(["species_neighbor_1", "species_neighbor_2"]).keys_to_samples(["species_center"])
+#    kernel_rascaline = np.zeros((n_samples, n_samples))
+#    for key, block in soap_rascaline.items():
+#        kernel_rascaline += block.values.squeeze() @ block.values.squeeze().T
+#
+#    # worries me a bit that the rtol is shit, might be missing multiplicity?
+#    assert np.allclose(kernel_cg, kernel_rascaline, atol=1e-9, rtol=1e-1)
+#
+# def test_soap_zeros():
+#    """
+#    Tests if the l1!=l2 values are zero when computing the 3-body invariant (SOAP)
+#    """
+#    frames = ase.Atoms('HO',
+#            positions=[[0., 0., 0.], [1., 1., 1.]],
+#            pbc=[False, False, False])
+#
+#
+#    rascal_hypers = {
+#        "cutoff": 3.0,  # Angstrom
+#        "max_radial": 2,  # Exclusive
+#        "max_angular": 3,  # Inclusive
+#        "atomic_gaussian_width": 0.2,
+#        "radial_basis": {"Gto": {}},
+#        "cutoff_function": {"ShiftedCosine": {"width": 0.5}},
+#        "center_atom_weight": 1.0,
+#    }
+#
+#    calculator = rascaline.SphericalExpansion(**rascal_hypers)
+#    nu1 = calculator.compute(frames)
+#    nu1 = nu1.keys_to_properties("species_neighbor")
+#
+#    lmax = 1
+#    lambdas = np.arange(lmax)
+#
+#    clebsch_gordan._create_combined_keys(nu1.keys, nu1.keys, lambdas)
+#    cg_cache = clebsch_gordan.ClebschGordanReal(l_max=rascal_hypers['max_angular'])
+#    soap_cg = clebsch_gordan._combine_single_center(nu1, nu1, lambdas, cg_cache)
+#    soap_cg.keys_to_properties("spherical_harmonics_l")
+#    sliced_blocks = []
+#    for key, block in soap_cg.items():
+#        idx = block.properties.values[:, block.properties.names.index("l1")] != block.properties.values[:, block.properties.names.index("l2")]
+#        sliced_block = metatensor.slice_block(block, "properties", Labels(names=block.properties.names, values=block.properties.values[idx]))
+#        sliced_blocks.append(sliced_block)
+#
+#        assert np.allclose(sliced_block.values, np.zeros(sliced_block.values.shape))
