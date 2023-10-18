@@ -176,6 +176,24 @@ of just testing it.
 .. _`cargo` : https://doc.rust-lang.org/cargo/
 .. _valgrind: https://valgrind.org/
 
+Inspecting Python code coverage
+-------------------------------
+
+The code coverage is reported at `codecov`_. You can also inspect the coverage locally.
+To get the full coverage first combine all reports and open produced html file in a
+browser
+
+.. code-block:: bash
+
+    tox
+    coverage combine --append \
+        ./.coverage \
+        ./python/rascaline-torch/.coverage
+    coverage html
+    firefox htmlcov/index.html
+
+.. _codecov: https://codecov.io/gh/lab-cosmo/metatensor
+
 Writing your own calculator
 ---------------------------
 

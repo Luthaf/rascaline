@@ -1,15 +1,11 @@
 coverage:
-  ignore:
-    - tests/.*
   status:
     project:
       default:
         target: 80%
     patch: off
+  ignore:
+    - "tests/.*"
+    - "examples/.*"
 
-comment: off
-
-fixes:
-  # map coverage collected inside tox virtual environments
-  # to the source dir in git
-  - ".tox/all-deps/lib/*/site-packages/::python/"
+comment: false
