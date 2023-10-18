@@ -38,7 +38,7 @@ jobs:
       - name: install python dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install tox
+          python -m pip install tox coverage
 
       - name: install lcov
         run: sudo apt install -y lcov
@@ -47,7 +47,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: .tox
-          key: tox-${{ matrix.os }}-${{ hashFiles('pyproject.toml', 'setup.cfg', 'tox.ini') }}
+          key: tox-${{ hashFiles('pyproject.toml', 'setup.cfg', 'tox.ini') }}
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.3
@@ -69,10 +69,22 @@ jobs:
           lcov --remove coverage.info '/usr/*' "$(pwd)/rascaline-c-api/tests/*" "$(pwd)/rascaline-c-api/examples/*" --output-file coverage.info
 
       - name: collect Python coverage
-        run: tox -e all-deps
+        run: |
+          tox -e all-deps
+          tox -e torch-tests
+        env:
+          # Use the CPU only version of torch when building/running the code
+          PIP_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
+
+      - name: combine Python coverage files
+        run: |
+            coverage combine --append \
+              ./.coverage \
+              ./python/rascaline-torch/.coverage
+            coverage xml
 
       - name: upload to codecov.io
         uses: codecov/codecov-action@v3
         with:
           fail_ci_if_error: true
-          files: target/tarpaulin/cobertura.xml,.tox/coverage.xml,coverage.info
+          files: target/tarpaulin/cobertura.xml,coverage.xml,coverage.info

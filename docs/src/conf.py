@@ -140,6 +140,7 @@ intersphinx_mapping = {
     "metatensor": ("https://lab-cosmo.github.io/metatensor/latest/", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
     "skmatter": ("https://scikit-matter.readthedocs.io/en/latest/", None),
     "torch": ("https://pytorch.org/docs/stable/", None),
     "python": ("https://docs.python.org/3", None),

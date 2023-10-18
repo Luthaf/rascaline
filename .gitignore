@@ -3,10 +3,12 @@ target/
 Cargo.lock
 
 .tox/
-.coverage
 build/
 dist/
 *.egg-info
 __pycache__/
 .vscode
 *.DS_Store
+htmlcov/
+.coverage
+coverage.xml

@@ -4,7 +4,20 @@ import metatensor
 
 from .clebsch_gordan import *  # noqa
 from .power_spectrum import PowerSpectrum  # noqa
-from .splines import RadialIntegralFromFunction, RadialIntegralSplinerBase  # noqa
+from .splines import (  # noqa
+    AtomicDensityBase,
+    DeltaDensity,
+    GaussianDensity,
+    GtoBasis,
+    LodeDensity,
+    LodeSpliner,
+    MonomialBasis,
+    RadialBasisBase,
+    RadialIntegralFromFunction,
+    RadialIntegralSplinerBase,
+    SoapSpliner,
+    SphericalBesselBasis,
+)
 
 
 # path that can be used with cmake to access the rascaline library and headers
