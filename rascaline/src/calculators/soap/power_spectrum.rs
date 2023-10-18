@@ -358,8 +358,19 @@ impl SoapPowerSpectrum {
             let property_1 = block_1.properties.position(&[n1]).expect("missing n1");
             let property_2 = block_2.properties.position(&[n2]).expect("missing n2");
 
+            let spherical_harmonics_l = l.usize();
+
+            // For consistency with a full Clebsch-Gordan product we need to add
+            // a `-1^l / sqrt(2 l + 1)` factor to the power spectrum invariants
+            let normalization = if spherical_harmonics_l % 2 == 0 {
+                f64::sqrt((2 * spherical_harmonics_l + 1) as f64)
+            } else {
+                -f64::sqrt((2 * spherical_harmonics_l + 1) as f64)
+            };
+
             SpxPropertiesToCombine {
-                spherical_harmonics_l: l.usize(),
+                spherical_harmonics_l,
+                normalization,
                 property_1,
                 property_2,
                 spx_1: block_1.clone(),
@@ -375,6 +386,8 @@ impl SoapPowerSpectrum {
 struct SpxPropertiesToCombine<'a> {
     /// value of l
     spherical_harmonics_l: usize,
+    /// normalization factor $-1^l * \sqrt{2 l + 1}$
+    normalization: f64,
     /// position of n1 in the first spherical expansion properties
     property_1: usize,
     /// position of n2 in the second spherical expansion properties
@@ -599,7 +612,7 @@ impl CalculatorBase for SoapPowerSpectrum {
                         }
 
                         unsafe {
-                            *values.uget_mut(property_i) = sum / f64::sqrt((2 * spx.spherical_harmonics_l + 1) as f64);
+                            *values.uget_mut(property_i) = sum / spx.normalization;
                         }
                     }
                 });
@@ -655,10 +668,9 @@ impl CalculatorBase for SoapPowerSpectrum {
                                 }
                             }
 
-                            let normalization = f64::sqrt((2 * spx.spherical_harmonics_l + 1) as f64);
                             for d in 0..3 {
                                 unsafe {
-                                    *values.uget_mut([d, property_i]) = sum[d] / normalization;
+                                    *values.uget_mut([d, property_i]) = sum[d] / spx.normalization;
                                 }
                             }
                         }
@@ -694,7 +706,6 @@ impl CalculatorBase for SoapPowerSpectrum {
                                     let value_2 = spx_2.values.uget([spx_sample_2, m, spx.property_2]);
                                     for d1 in 0..3 {
                                         for d2 in 0..3 {
-                                            // TODO: ensure that gradient samples are 0..nsamples
                                             sum[d1][d2] += value_2 * spx_1_gradient.uget([spx_sample_1, d1, d2, m, spx.property_1]);
                                         }
                                     }
@@ -707,7 +718,6 @@ impl CalculatorBase for SoapPowerSpectrum {
                                     let value_1 = spx_1.values.uget([spx_sample_1, m, spx.property_1]);
                                     for d1 in 0..3 {
                                         for d2 in 0..3 {
-                                            // TODO: ensure that gradient samples are 0..nsamples
                                             sum[d1][d2] += value_1 * spx_2_gradient.uget([spx_sample_2, d1, d2, m, spx.property_2]);
                                         }
                                     }
@@ -723,12 +733,10 @@ impl CalculatorBase for SoapPowerSpectrum {
                                 }
                             }
 
-                            let normalization = f64::sqrt((2 * spx.spherical_harmonics_l + 1) as f64);
-
                             for d1 in 0..3 {
                                 for d2 in 0..3 {
                                     unsafe {
-                                        *values.uget_mut([d1, d2, property_i]) = sum[d1][d2] / normalization;
+                                        *values.uget_mut([d1, d2, property_i]) = sum[d1][d2] / spx.normalization;
                                     }
                                 }
                             }
