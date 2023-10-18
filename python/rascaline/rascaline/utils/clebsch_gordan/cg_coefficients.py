@@ -60,8 +60,8 @@ class ClebschGordanReal:
         c2r = {}
         coeff_dict = {}
         for lam in range(0, lambda_max + 1):
+            c2r[lam] = _complex2real(lam)
             r2c[lam] = _real2complex(lam)
-            c2r[lam] = np.conjugate(r2c[lam]).T
 
         for l1 in range(lambda_max + 1):
             for l2 in range(lambda_max + 1):
@@ -104,23 +104,40 @@ def _real2complex(lam: int) -> np.ndarray:
     Computes a matrix that can be used to convert from real to complex-valued
     spherical harmonics(coefficients) of order ``lam``.
 
-    It's meant to be applied to the left, ``real2complex @ [-lam, ..., +lam]``.
+    This is meant to be applied to the left: ``real2complex @ [-lam, ...,
+    +lam]``.
+
+    See https://en.wikipedia.org/wiki/Spherical_harmonics#Real_form for details
+    on the convention for how these tranformations are defined.
     """
     result = np.zeros((2 * lam + 1, 2 * lam + 1), dtype=np.complex128)
-    i_sqrt_2 = 1.0 / np.sqrt(2)
+    inv_sqrt_2 = 1.0 / np.sqrt(2)
+    i_sqrt_2 = 1j / np.sqrt(2)
     for m in range(-lam, lam + 1):
         if m < 0:
-            result[lam - m, lam + m] = i_sqrt_2 * 1j * (-1) ** m
-            result[lam + m, lam + m] = -i_sqrt_2 * 1j
+            # Positve part
+            result[lam + m, lam + m] = +i_sqrt_2
+            # Negative part
+            result[lam - m, lam + m] = -i_sqrt_2 * ((-1) ** m)
 
         if m == 0:
-            result[lam, lam] = 1.0
+            result[lam, lam] = +1.0
 
         if m > 0:
-            result[lam + m, lam + m] = i_sqrt_2 * (-1) ** m
-            result[lam - m, lam + m] = i_sqrt_2
+            # Negative part
+            result[lam - m, lam + m] = +inv_sqrt_2
+            # Positive part
+            result[lam + m, lam + m] = +inv_sqrt_2 * ((-1) ** m)
 
     return result
+
+
+def _complex2real(lam: int) -> np.ndarray:
+    """
+    Converts from complex to real spherical harmonics. This is just given by the
+    conjugate tranpose of the real->complex transformation matrices.
+    """
+    return np.conjugate(_real2complex(lam)).T
 
 
 def _complex_clebsch_gordan_matrix(l1, l2, lam):

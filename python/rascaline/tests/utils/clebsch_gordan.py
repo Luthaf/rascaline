@@ -1,283 +1,258 @@
+# -*- coding: utf-8 -*-
+import os
+from typing import List
+
 import ase.io
-import metatensor
-import metatensor.operations
-import numpy as np
 import pytest
-from metatensor import Labels, TensorBlock, TensorMap
+from numpy.testing import assert_allclose
 
+import metatensor
 import rascaline
-from rascaline.utils.clebsch_gordan import (
-    ClebschGordanReal,
-    combine_single_center_to_body_order,
-)
-from rascaline.utils.clebsch_gordan.clebsch_gordan import (
-    _combine_arrays_dense,
-    _combine_arrays_sparse,
-    _combine_single_center_blocks,
-    combine_single_center_one_iteration,
-)
+from metatensor import Labels, TensorBlock, TensorMap
+from rascaline.utils import clebsch_gordan, PowerSpectrum
 
 
-def random_equivariant_array(
-    n_samples=10, n_q_properties=4, n_p_properties=8, l=1, seed=None
+DATA_ROOT = os.path.join(os.path.dirname(__file__), "data")
+
+RASCAL_HYPERS = {
+    "cutoff": 3.0,  # Angstrom
+    "max_radial": 6,  # Exclusive
+    "max_angular": 5,  # Inclusive
+    "atomic_gaussian_width": 0.2,
+    "radial_basis": {"Gto": {}},
+    "cutoff_function": {"ShiftedCosine": {"width": 0.5}},
+    "center_atom_weight": 1.0,
+}
+
+RASCAL_HYPERS_SMALL = {
+    "cutoff": 3.0,  # Angstrom
+    "max_radial": 1,  # Exclusive
+    "max_angular": 2,  # Inclusive
+    "atomic_gaussian_width": 0.2,
+    "radial_basis": {"Gto": {}},
+    "cutoff_function": {"ShiftedCosine": {"width": 0.5}},
+    "center_atom_weight": 1.0,
+}
+
+
+# ============ Pytest fixtures ============
+
+# ============ Helper functions ============
+
+
+def h2_isolated():
+    return ase.io.read(os.path.join(DATA_ROOT, "h2_isolated.xyz"), ":")
+
+
+def h2o_isolated():
+    return ase.io.read(os.path.join(DATA_ROOT, "h2o_isolated.xyz"), ":")
+
+
+def h2o_periodic():
+    return ase.io.read(os.path.join(DATA_ROOT, "h2o_periodic.xyz"), ":")
+
+
+def wigners(lmax: int):
+    return clebsch_gordan.WignerDReal(lmax=lmax)
+
+
+def sphex(frames: List[ase.Atoms]):
+    """Returns a rascaline SphericalExpansion"""
+    calculator = rascaline.SphericalExpansion(**RASCAL_HYPERS)
+    return calculator.compute(frames)
+
+
+def sphex_small_features(frames: List[ase.Atoms]):
+    """Returns a rascaline SphericalExpansion"""
+    calculator = rascaline.SphericalExpansion(**RASCAL_HYPERS_SMALL)
+    return calculator.compute(frames)
+
+
+def powspec(frames: List[ase.Atoms]):
+    """Returns a rascaline PowerSpectrum constructed from a
+    SphericalExpansion"""
+    return PowerSpectrum(rascaline.SphericalExpansion(**RASCAL_HYPERS)).compute(frames)
+
+
+def powspec_small_features(frames: List[ase.Atoms]):
+    """Returns a rascaline PowerSpectrum constructed from a
+    SphericalExpansion"""
+    return PowerSpectrum(rascaline.SphericalExpansion(**RASCAL_HYPERS_SMALL)).compute(frames)
+
+
+# ============ Test equivariance ============
+
+
+@pytest.mark.parametrize(
+    "frames, nu_target, angular_cutoff, angular_selection, parity_selection",
+    [
+        (
+            h2o_isolated(),
+            2,
+            5,
+            [0],  # [0, 4, 5],
+            [+1],  # [+1, -1],
+        ),
+        (
+            h2o_isolated(),
+            2,
+            5,
+            None,  # [0, 4, 5],
+            None,  # [+1, -1],
+        ),
+        (
+            h2o_periodic(),
+            2,
+            5,
+            None,  # [0, 1, 2, 3, 4, 5],
+            None,  # [-1],
+        ),
+    ],
+)
+def test_so3_equivariance(
+    frames: List[ase.Atoms],
+    nu_target: int,
+    angular_cutoff: int,
+    angular_selection: List[List[int]],
+    parity_selection: List[List[int]],
 ):
-    if seed is not None:
-        np.random.seed(seed)
+    wig = wigners(nu_target * RASCAL_HYPERS["max_angular"])
+    frames_so3 = [
+        clebsch_gordan.transform_frame_so3(frame, wig.angles) for frame in frames
+    ]
 
-    equi_l_array = np.random.rand(n_samples, 2 * l + 1, n_q_properties)
-    return equi_l_array
+    nu_1 = sphex(frames)
+    nu_1_so3 = sphex(frames_so3)
 
-
-class TestClebschGordan:
-    lam_max = 3
-    cg_cache_sparse = ClebschGordanReal(lambda_max=lam_max, sparse=True)
-    cg_cache_dense = ClebschGordanReal(lambda_max=lam_max, sparse=False)
-
-    def test_clebsch_gordan_combine_dense_sparse_agree(self):
-        for l1, l2, lam in self.cg_cache_dense.coeffs.keys():
-            equi_l1_array = random_equivariant_array(l=l1, seed=51)
-            equi_l2_array = random_equivariant_array(l=l2, seed=53)
-            out_sparse = _combine_arrays_sparse(
-                equi_l1_array, equi_l2_array, lam, self.cg_cache_sparse
-            )
-            out_dense = _combine_arrays_dense(
-                equi_l1_array, equi_l2_array, lam, self.cg_cache_dense
-            )
-            assert np.allclose(out_sparse, out_dense)
-
-    @pytest.mark.parametrize("l1, l2", [(1, 2)])
-    def test_clebsch_gordan_orthogonality(self, l1, l2):
-        """
-        Test orthogonality relationships
-
-        References
-        ----------
-
-        https://en.wikipedia.org/wiki/Clebsch%E2%80%93Gordan_coefficients#Orthogonality_relations
-        """
-        assert (
-            self.lam_max >= l1 + l2
-        ), "Did not precompute CG coeff with high enough lambda_max"
-        lam_min = abs(l1 - l2)
-        lam_max = l1 + l2
-
-        # We test lam dimension
-        # \sum_{-m1 \leq l1 \leq m1, -m2 \leq l2 \leq m2}
-        #           <λμ|l1m1,l2m2> <l1m1',l2m2'|λμ'> = δ_μμ'
-        for lam in range(lam_min, lam_max):
-            cg_mat = self.cg_cache_dense.coeffs[(l1, l2, lam)].reshape(-1, 2 * lam + 1)
-            dot_product = cg_mat.T @ cg_mat
-            diag_mask = np.zeros(dot_product.shape, dtype=np.bool_)
-            diag_mask[np.diag_indices(len(dot_product))] = True
-            assert np.allclose(
-                dot_product[~diag_mask], np.zeros(dot_product.shape)[~diag_mask]
-            )
-            assert np.allclose(dot_product[diag_mask], dot_product[diag_mask][0])
-
-        # We test l1 l2 dimension
-        # \sum_{|l1-l2| \leq λ \leq l1+l2} \sum_{-μ \leq λ \leq μ}
-        #            <l1m1,l2m2|λμ> <λμ|l1m1,l2m2> = δ_m1m1' δ_m2m2'
-        l1l2_dim = (2 * l1 + 1) * (2 * l2 + 1)
-        dot_product = np.zeros((l1l2_dim, l1l2_dim))
-        for lam in range(lam_min, lam_max + 1):
-            cg_mat = self.cg_cache_dense.coeffs[(l1, l2, lam)].reshape(-1, 2 * lam + 1)
-            dot_product += cg_mat @ cg_mat.T
-        diag_mask = np.zeros(dot_product.shape, dtype=np.bool_)
-        diag_mask[np.diag_indices(len(dot_product))] = True
-        assert np.allclose(
-            dot_product[~diag_mask], np.zeros(dot_product.shape)[~diag_mask]
-        )
-        assert np.allclose(dot_product[diag_mask], dot_product[diag_mask][0])
-
-    h2o_frame = ase.Atoms(
-        "H2O",
-        positions=[
-            [-0.526383, -0.769327, -0.029366],
-            [-0.526383, 0.769327, -0.029366],
-            [0.066334, 0.000000, 0.003701],
-        ],
+    nu_3 = clebsch_gordan.combine_single_center_to_body_order(
+        nu_1_tensor=nu_1,
+        target_body_order=nu_target,
+        angular_cutoff=angular_cutoff,
+        angular_selection=angular_selection,
+        parity_selection=parity_selection,
+    )
+    nu_3_so3 = clebsch_gordan.combine_single_center_to_body_order(
+        nu_1_tensor=nu_1_so3,
+        target_body_order=nu_target,
+        angular_cutoff=angular_cutoff,
+        angular_selection=angular_selection,
+        parity_selection=parity_selection,
     )
 
-    @pytest.mark.parametrize("lam_max", [2])
-    def test_combine_single_center_to_body_order_dense_sparse_agree(self, lam_max):
-        """
-        tests if combine_single_center_to_body_order agrees for dense and sparse cg
-        coeffs
-        """
-        assert (
-            self.lam_max >= lam_max
-        ), "Did not precompute CG coeff with high enough lambda_max"
-        lambdas = [0, 2]
-        rascal_hypers = {
-            "cutoff": 3.0,  # Angstrom
-            "max_radial": 2,  # Exclusive
-            "max_angular": lam_max,  # Inclusive
-            "atomic_gaussian_width": 0.2,
-            "radial_basis": {"Gto": {}},
-            "cutoff_function": {"ShiftedCosine": {"width": 0.5}},
-            "center_atom_weight": 1.0,
-        }
-        calculator = rascaline.SphericalExpansion(**rascal_hypers)
-        nu1_tensor = calculator.compute([self.h2o_frame])
-        n_body_sparse = combine_single_center_to_body_order(
-            nu1_tensor,
-            3,  # target_body_order
-            angular_cutoff=lam_max * 2,
-            angular_selection=lambdas,
-            parity_selection=None,
-            use_sparse=True,
+    nu_3_transf = wig.transform_tensormap_so3(nu_3)
+
+    # assert metatensor.equal_metadata(nu_3_transf, nu_3_rot)
+    assert metatensor.allclose(nu_3_transf, nu_3_so3)
+
+
+@pytest.mark.parametrize(
+    "frames, nu_target, angular_cutoff, angular_selection, parity_selection",
+    [
+        (
+            h2o_isolated(),
+            2,
+            5,
+            [0],  # [0, 4, 5],
+            [+1],  # [+1, -1],
+        ),
+        (
+            h2o_isolated(),
+            2,
+            5,
+            None,  # [0, 4, 5],
+            None,  # [+1, -1],
+        ),
+        (
+            h2o_periodic(),
+            2,
+            5,
+            None,  # [0, 1, 2, 3, 4, 5],
+            None,  # [-1],
+        ),
+    ],
+)
+def test_o3_equivariance(
+    frames: List[ase.Atoms],
+    nu_target: int,
+    angular_cutoff: int,
+    angular_selection: List[List[int]],
+    parity_selection: List[List[int]],
+):
+    wig = wigners(nu_target * RASCAL_HYPERS["max_angular"])
+    frames_o3 = [
+        clebsch_gordan.transform_frame_o3(frame, wig.angles) for frame in frames
+    ]
+
+    nu_1 = sphex(frames)
+    nu_1_o3 = sphex(frames_o3)
+
+    nu_3 = clebsch_gordan.combine_single_center_to_body_order(
+        nu_1_tensor=nu_1,
+        target_body_order=nu_target,
+        angular_cutoff=angular_cutoff,
+        angular_selection=angular_selection,
+        parity_selection=parity_selection,
+    )
+    nu_3_o3 = clebsch_gordan.combine_single_center_to_body_order(
+        nu_1_tensor=nu_1_o3,
+        target_body_order=nu_target,
+        angular_cutoff=angular_cutoff,
+        angular_selection=angular_selection,
+        parity_selection=parity_selection,
+    )
+
+    nu_3_transf = wig.transform_tensormap_o3(nu_3)
+
+    # assert metatensor.equal_metadata(nu_3_transf, nu_3_rot)
+    assert metatensor.allclose(nu_3_transf, nu_3_o3)
+
+
+# ============ Test lambda-SOAP vs PowerSpectrum ============
+
+
+@pytest.mark.parametrize("frames", [h2_isolated()])
+def test_lambda_soap_vs_powerspectrum(frames):
+    """
+    Tests for exact equivalence between the invariant block of a generated
+    lambda-SOAP equivariant and the Python implementation of PowerSpectrum in
+    rascaline utils.
+    """
+    # Build a PowerSpectrum
+    ps = powspec_small_features(frames)
+
+    # Build a lambda-SOAP
+    nu_1_tensor = sphex_small_features(frames)
+    lsoap = clebsch_gordan.lambda_soap_vector(
+        nu_1_tensor=nu_1_tensor,
+        angular_selection=[0],
+    )
+    keys = lsoap.keys.remove(name="spherical_harmonics_l")
+    lsoap = TensorMap(keys=keys, blocks=[b.copy() for b in lsoap.blocks()])
+
+    # Manipulate metadata to match that of PowerSpectrum:
+    # 1) remove components axis
+    # 2) change "l1" and "l2" properties dimensions to just "l" (as l1 == l2)
+    blocks = []
+    for block in lsoap.blocks():
+        n_samples, n_props = block.values.shape[0], block.values.shape[2]
+        new_props = block.properties
+        new_props = new_props.remove(name="l1")
+        new_props = new_props.rename(old="l2", new="l")
+        blocks.append(
+            TensorBlock(
+                values=block.values.reshape((n_samples, n_props)),
+                samples=block.samples,
+                components=[],
+                properties=new_props,
+            )
         )
+    lsoap = TensorMap(keys=lsoap.keys, blocks=blocks)
 
-        n_body_dense = combine_single_center_to_body_order(
-            nu1_tensor,
-            3,  # target_body_order
-            angular_cutoff=lam_max * 2,
-            angular_selection=lambdas,
-            parity_selection=None,
-            use_sparse=False,
-        )
+    # Compare metadata
+    assert metatensor.equal_metadata(lsoap, ps)
 
-        assert metatensor.operations.allclose(
-            n_body_sparse, n_body_dense, atol=1e-8, rtol=1e-8
-        )
+    # allclose on values
+    assert metatensor.allclose(lsoap, ps)
 
-    @pytest.mark.parametrize("l", [1])
-    def test_combine_single_center_orthogonality(self, l):
-        lam_min = 0
-        lam_max = 2 * l
-        rascal_hypers = {
-            "cutoff": 3.0,  # Angstrom
-            "max_radial": 6,  # Exclusive
-            "max_angular": l,  # Inclusive
-            "atomic_gaussian_width": 0.2,
-            "radial_basis": {"Gto": {}},
-            "cutoff_function": {"ShiftedCosine": {"width": 0.5}},
-            "center_atom_weight": 1.0,
-        }
 
-        calculator = rascaline.SphericalExpansion(**rascal_hypers)
-        nu1_tensor = calculator.compute([self.h2o_frame])
-
-        # compute norm of the body order 2 tensor
-        nu2_tensor = combine_single_center_to_body_order(
-            nu1_tensor,
-            2,  # target_body_order
-            angular_cutoff=None,
-            angular_selection=None,
-            parity_selection=None,
-            use_sparse=True,
-        )
-        nu2_tensor = nu2_tensor.keys_to_properties(["inversion_sigma", "order_nu"])
-        nu2_tensor = nu2_tensor.keys_to_samples(["species_center"])
-        n_samples = nu2_tensor[0].values.shape[0]
-        nu2_tensor_values = np.hstack(
-            [
-                nu2_tensor.block(
-                    Labels("spherical_harmonics_l", np.array([[l]]))
-                ).values.reshape(n_samples, -1)
-                for l in nu2_tensor.keys["spherical_harmonics_l"]
-            ]
-        )
-        nu2_tensor_norm = np.linalg.norm(nu2_tensor_values, axis=1)
-
-        #  compute norm of the body order 1 tensor
-        nu1_tensor = nu1_tensor.keys_to_properties(["species_neighbor"])
-        nu1_tensor = nu1_tensor.keys_to_samples(["species_center"])
-        nu1_tensor_values = np.hstack(
-            [
-                nu1_tensor.block(
-                    Labels("spherical_harmonics_l", np.array([[l]]))
-                ).values.reshape(n_samples, -1)
-                for l in nu1_tensor.keys["spherical_harmonics_l"]
-            ]
-        )
-        nu1_tensor_norm = np.linalg.norm(nu1_tensor_values, axis=1)
-
-        # check if the norm is equal
-        assert np.allclose(nu2_tensor_norm, nu1_tensor_norm)
-
-    # old test that become decprecated through prototyping on API
-    # def test_soap_kernel():
-    #    """
-    #    Tests if we get the same result computing SOAP from spherical expansion coefficients using GC utils
-    #    as when using SoapPowerSpectrum.
-    #
-    #    """
-    #    frames = ase.Atoms('HO',
-    #            positions=[[0., 0., 0.], [1., 1., 1.]],
-    #            pbc=[False, False, False])
-    #
-    #
-    #    rascal_hypers = {
-    #        "cutoff": 3.0,  # Angstrom
-    #        "max_radial": 2,  # Exclusive
-    #        "max_angular": 3,  # Inclusive
-    #        "atomic_gaussian_width": 0.2,
-    #        "radial_basis": {"Gto": {}},
-    #        "cutoff_function": {"ShiftedCosine": {"width": 0.5}},
-    #        "center_atom_weight": 1.0,
-    #    }
-    #
-    #    calculator = rascaline.SphericalExpansion(**rascal_hypers)
-    #    nu1 = calculator.compute(frames)
-    #    nu1 = nu1.keys_to_properties("species_neighbor")
-    #
-    #    lmax = 1
-    #    lambdas = np.arange(lmax)
-    #
-    #    clebsch_gordan._create_combined_keys(nu1.keys, nu1.keys, lambdas)
-    #    cg_cache = clebsch_gordan.ClebschGordanReal(l_max=rascal_hypers['max_angular'])
-    #    soap_cg = clebsch_gordan._combine_single_center(nu1, nu1, lambdas, cg_cache) # ->  needs
-    #    soap_cg = soap_cg.keys_to_properties(["spherical_harmonics_l"]).keys_to_samples(["species_center"])
-    #    n_samples = len(soap_cg[0].samples)
-    #    kernel_cg = np.zeros((n_samples, n_samples))
-    #    for key, block in soap_cg.items():
-    #        kernel_cg += block.values.squeeze() @ block.values.squeeze().T
-    #
-    #    calculator = rascaline.SoapPowerSpectrum(**rascal_hypers)
-    #    nu2 = calculator.compute(frames)
-    #    soap_rascaline = nu2.keys_to_properties(["species_neighbor_1", "species_neighbor_2"]).keys_to_samples(["species_center"])
-    #    kernel_rascaline = np.zeros((n_samples, n_samples))
-    #    for key, block in soap_rascaline.items():
-    #        kernel_rascaline += block.values.squeeze() @ block.values.squeeze().T
-    #
-    #    # worries me a bit that the rtol is shit, might be missing multiplicity?
-    #    assert np.allclose(kernel_cg, kernel_rascaline, atol=1e-9, rtol=1e-1)
-    #
-    # def test_soap_zeros():
-    #    """
-    #    Tests if the l1!=l2 values are zero when computing the 3-body invariant (SOAP)
-    #    """
-    #    frames = ase.Atoms('HO',
-    #            positions=[[0., 0., 0.], [1., 1., 1.]],
-    #            pbc=[False, False, False])
-    #
-    #
-    #    rascal_hypers = {
-    #        "cutoff": 3.0,  # Angstrom
-    #        "max_radial": 2,  # Exclusive
-    #        "max_angular": 3,  # Inclusive
-    #        "atomic_gaussian_width": 0.2,
-    #        "radial_basis": {"Gto": {}},
-    #        "cutoff_function": {"ShiftedCosine": {"width": 0.5}},
-    #        "center_atom_weight": 1.0,
-    #    }
-    #
-    #    calculator = rascaline.SphericalExpansion(**rascal_hypers)
-    #    nu1 = calculator.compute(frames)
-    #    nu1 = nu1.keys_to_properties("species_neighbor")
-    #
-    #    lmax = 1
-    #    lambdas = np.arange(lmax)
-    #
-    #    clebsch_gordan._create_combined_keys(nu1.keys, nu1.keys, lambdas)
-    #    cg_cache = clebsch_gordan.ClebschGordanReal(l_max=rascal_hypers['max_angular'])
-    #    soap_cg = clebsch_gordan._combine_single_center(nu1, nu1, lambdas, cg_cache)
-    #    soap_cg.keys_to_properties("spherical_harmonics_l")
-    #    sliced_blocks = []
-    #    for key, block in soap_cg.items():
-    #        idx = block.properties.values[:, block.properties.names.index("l1")] != block.properties.values[:, block.properties.names.index("l2")]
-    #        sliced_block = metatensor.slice_block(block, "properties", Labels(names=block.properties.names, values=block.properties.values[idx]))
-    #        sliced_blocks.append(sliced_block)
-    #
-    #        assert np.allclose(sliced_block.values, np.zeros(sliced_block.values.shape))
+# ============ Test Norm preservation of  ============

@@ -57,12 +57,14 @@ def lambda_soap_vector(
 
     # Drop the redundant key name "order_nu". This is by definition 2 for all
     # lambda-SOAP blocks.
-    lsoap = metatensor.remove_dimension(lsoap, axis="keys", name="order_nu")
+    keys = lsoap.keys.remove(name="order_nu")
+    lsoap = TensorMap(keys=keys, blocks=[b.copy() for b in lsoap.blocks()])
 
     # If a single parity is requested, drop the now redundant "inversion_sigma"
     # key name
     if len(np.unique(lsoap.keys.column("inversion_sigma"))) == 1:
-        lsoap = metatensor.remove_dimension(lsoap, axis="keys", name="inversion_sigma")
+        keys = lsoap.keys.remove(name="inversion_sigma")
+        lsoap = TensorMap(keys=keys, blocks=[b.copy() for b in lsoap.blocks()])
 
     return lsoap
 
@@ -226,7 +228,7 @@ def combine_single_center_to_body_order_metadata_only(
     )
 
     # Create a copy of the nu = 1 tensor to combine with itself
-    nu_x_tensor = nu_1_tensor.copy()
+    nu_x_tensor = nu_1_tensor
 
     # Iteratively combine block values
     nu_x_tensors = []
@@ -234,14 +236,14 @@ def combine_single_center_to_body_order_metadata_only(
         # Combine blocks
         nu_x_blocks = []
         # TODO: is there a faster way of iterating over keys/blocks here?
-        for nu_x_key, key_1, key_2, _ in zip(*combination_metadata[iteration]):
-            # Combine the pair of block values, accounting for multiplicity
+        # TODO: only account for multiplicity at the end
+        for nu_x_key, key_1, key_2, mult in zip(*combination_metadata[iteration]):
             nu_x_block = _combine_single_center_blocks(
                 nu_x_tensor[key_1],
                 nu_1_tensor[key_2],
                 nu_x_key["spherical_harmonics_l"],
                 cg_cache=None,
-                correction_factor=1.0,
+                correction_factor=mult,
                 return_metadata_only=True,
             )
             nu_x_blocks.append(nu_x_block)
@@ -295,13 +297,9 @@ def _standardize_tensor_metadata(tensor: TensorMap) -> TensorMap:
     """
     if "species_neighbor" in tensor.keys.names:
         tensor = tensor.keys_to_properties(keys_to_move="species_neighbor")
-    tensor = metatensor.insert_dimension(
-        tensor, axis="keys", name="order_nu", values=np.array([1]), index=0
-    )
-    tensor = metatensor.insert_dimension(
-        tensor, axis="keys", name="inversion_sigma", values=np.array([1]), index=1
-    )
-    return tensor
+    keys = tensor.keys.insert(name="order_nu", values=np.array([1]), index=0)
+    keys = keys.insert(name="inversion_sigma", values=np.array([1]), index=1)
+    return TensorMap(keys=keys, blocks=[b.copy() for b in tensor.blocks()])
 
 
 def _parse_selection_filters(
