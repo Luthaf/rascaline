@@ -10,6 +10,7 @@ cd "$ROOT_DIR"
 
 rm -rf dist
 rm -rf build
+rm -rf .coverage
 
 rm -rf python/rascaline-torch/dist
 rm -rf python/rascaline-torch/build

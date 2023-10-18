@@ -217,7 +217,8 @@ class PowerSpectrum:
             ell = key[0]
             species_center = key[1]
 
-            factor = 1 / sqrt(2 * ell + 1)
+            factor = (-1) ** ell / sqrt(2 * ell + 1)
+
             # Find that block indices that have the same spherical_harmonics_l and
             # species_center
             selection = Labels(
