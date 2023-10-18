@@ -260,32 +260,22 @@ def test_lambda_soap_vs_powerspectrum(frames):
 
 # ============ Test norm preservation  ============
 
-@pytest.mark.parametrize("frames", [h2o_isolated()])
-@pytest.mark.parametrize("max_angular", [1])
+
+@pytest.mark.parametrize("frames", [h2_isolated()])
 @pytest.mark.parametrize("nu", [2, 3])
-def test_combine_single_center_orthogonality(frames, max_angular, nu):
+def test_combine_single_center_orthogonality(frames, nu):
     """
     Checks \|ρ^\\nu\| =  \|ρ\|^\\nu
     For \\nu = 2 the tests passes but for \\nu = 3 it fails because we do not add the
     multiplicity when iterating multiple body-orders
     """
-    rascal_hypers = {
-        "cutoff": 3.0,  # Angstrom
-        "max_radial": 6,  # Exclusive
-        "max_angular": max_angular,  # Inclusive
-        "atomic_gaussian_width": 0.2,
-        "radial_basis": {"Gto": {}},
-        "cutoff_function": {"ShiftedCosine": {"width": 0.5}},
-        "center_atom_weight": 1.0,
-    }
+    # Build nu=1 SphericalExpansion
+    nu_1_tensor = sphex_small_features(frames)
 
-    calculator = rascaline.SphericalExpansion(**rascal_hypers)
-    nu1_tensor = calculator.compute(frames)
-
-    # compute norm of the body order 2 tensor
+    # Build higher body order tensor
     nu_tensor = clebsch_gordan.combine_single_center_to_body_order(
-        nu1_tensor,
-        nu,  # target_body_order
+        nu_1_tensor,
+        target_body_order=nu,
         angular_cutoff=None,
         angular_selection=None,
         parity_selection=None,
@@ -295,9 +285,9 @@ def test_combine_single_center_orthogonality(frames, max_angular, nu):
     nu_tensor = nu_tensor.keys_to_samples(["species_center"])
     n_samples = nu_tensor[0].values.shape[0]
 
-    #  compute norm of the body order 1 tensor
-    nu1_tensor = nu1_tensor.keys_to_properties(["species_neighbor"])
-    nu1_tensor = nu1_tensor.keys_to_samples(["species_center"])
+    # Compute norm of the body order 1 tensor
+    nu_1_tensor = nu_1_tensor.keys_to_properties(["species_neighbor"])
+    nu_1_tensor = nu_1_tensor.keys_to_samples(["species_center"])
 
     nu_tensor_values = np.hstack(
         [
@@ -310,10 +300,10 @@ def test_combine_single_center_orthogonality(frames, max_angular, nu):
     nu_tensor_norm = np.linalg.norm(nu_tensor_values, axis=1)
     nu1_tensor_values = np.hstack(
         [
-            nu1_tensor.block(
+            nu_1_tensor.block(
                 Labels("spherical_harmonics_l", np.array([[l]]))
             ).values.reshape(n_samples, -1)
-            for l in nu1_tensor.keys["spherical_harmonics_l"]
+            for l in nu_1_tensor.keys["spherical_harmonics_l"]
         ]
     )
     nu1_tensor_norm = np.linalg.norm(nu1_tensor_values, axis=1)

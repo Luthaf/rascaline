@@ -158,7 +158,9 @@ def combine_single_center_to_body_order(
         nu_x_keys = combination_metadata[iteration][0]
         nu_x_tensor = TensorMap(keys=nu_x_keys, blocks=nu_x_blocks)
 
-    # TODO: multiplicity and/or normalization here?
+    # Apply normalization factor to each block based on their permutational
+    # multiplicity (i.e. how many ways in which they could have been formed)
+    nu_x_tensor = _normalize_blocks(nu_x_tensor, target_body_order)
 
     # Move the [l1, l2, ...] keys to the properties
     if target_body_order > 1:
@@ -168,6 +170,30 @@ def combine_single_center_to_body_order(
         )
 
     return nu_x_tensor
+
+
+def _normalize_blocks(tensor: TensorMap, target_body_order: int) -> TensorMap:
+    """
+    For each block in `tensor`, uses values of the keys "l1", "l2", ..., "lx" to
+    calculate the permutations P that correspond to the ways in which the block
+    could have been formed from CG combinations. The normalization factor is
+    then defined as (1 / sqrt(P)).
+
+    This function assumes that the "lx" keys have *not* yet been moved to the
+    properties, and is intended to be performed after all CG iterations have
+    been performed.
+    """
+    l_names = [f"l{i}" for i in range(1, target_body_order + 1)]
+    for key, block in tensor.items():
+        l_vals = [key[l_name] for l_name in l_names]
+        perm_set = set()
+        for perm in itertools.permutations(l_vals):
+            perm_set.add(perm)
+
+        norm_factor = np.sqrt(len(perm_set))
+        block.values[:] *= norm_factor
+
+    return tensor
 
 
 def combine_single_center_to_body_order_metadata_only(
@@ -237,13 +263,13 @@ def combine_single_center_to_body_order_metadata_only(
         nu_x_blocks = []
         # TODO: is there a faster way of iterating over keys/blocks here?
         # TODO: only account for multiplicity at the end
-        for nu_x_key, key_1, key_2, mult in zip(*combination_metadata[iteration]):
+        for nu_x_key, key_1, key_2, _ in zip(*combination_metadata[iteration]):
             nu_x_block = _combine_single_center_blocks(
                 nu_x_tensor[key_1],
                 nu_1_tensor[key_2],
                 nu_x_key["spherical_harmonics_l"],
                 cg_cache=None,
-                correction_factor=mult,
+                correction_factor=1.0,
                 return_metadata_only=True,
             )
             nu_x_blocks.append(nu_x_block)
