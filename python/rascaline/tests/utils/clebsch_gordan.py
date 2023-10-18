@@ -256,3 +256,63 @@ def test_lambda_soap_vs_powerspectrum(frames):
 
 
 # ============ Test Norm preservation of  ============
+
+@pytest.mark.parametrize("max_angular", [1])
+@pytest.mark.parametrize("nu", [2, 3])
+def test_combine_single_center_orthogonality(self, max_angular, nu):
+    """
+    Checks \|ρ^\\nu\| =  \|ρ\|^\\nu
+    For \\nu = 2 the tests passes but for \\nu = 3 it fails because we do not add the
+    multiplicity when iterating multiple body-orders
+    """
+    rascal_hypers = {
+        "cutoff": 3.0,  # Angstrom
+        "max_radial": 6,  # Exclusive
+        "max_angular": max_angular,  # Inclusive
+        "atomic_gaussian_width": 0.2,
+        "radial_basis": {"Gto": {}},
+        "cutoff_function": {"ShiftedCosine": {"width": 0.5}},
+        "center_atom_weight": 1.0,
+    }
+
+    calculator = rascaline.SphericalExpansion(**rascal_hypers)
+    nu1_tensor = calculator.compute([self.h2o_frame])
+
+    # compute norm of the body order 2 tensor
+    nu_tensor = combine_single_center_to_body_order(
+        nu1_tensor,
+        nu,  # target_body_order
+        angular_cutoff=None,
+        angular_selection=None,
+        parity_selection=None,
+        use_sparse=True,
+    )
+    nu_tensor = nu_tensor.keys_to_properties(["inversion_sigma", "order_nu"])
+    nu_tensor = nu_tensor.keys_to_samples(["species_center"])
+    n_samples = nu_tensor[0].values.shape[0]
+
+    #  compute norm of the body order 1 tensor
+    nu1_tensor = nu1_tensor.keys_to_properties(["species_neighbor"])
+    nu1_tensor = nu1_tensor.keys_to_samples(["species_center"])
+
+    nu_tensor_values = np.hstack(
+        [
+            nu_tensor.block(
+                Labels("spherical_harmonics_l", np.array([[l]]))
+            ).values.reshape(n_samples, -1)
+            for l in nu_tensor.keys["spherical_harmonics_l"]
+        ]
+    )
+    nu_tensor_norm = np.linalg.norm(nu_tensor_values, axis=1)
+    nu1_tensor_values = np.hstack(
+        [
+            nu1_tensor.block(
+                Labels("spherical_harmonics_l", np.array([[l]]))
+            ).values.reshape(n_samples, -1)
+            for l in nu1_tensor.keys["spherical_harmonics_l"]
+        ]
+    )
+    nu1_tensor_norm = np.linalg.norm(nu1_tensor_values, axis=1)
+
+    # check if the norm is equal
+    assert np.allclose(nu_tensor_norm, nu1_tensor_norm**nu)
