@@ -3,6 +3,7 @@ import os
 from typing import List
 
 import ase.io
+import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
@@ -77,7 +78,9 @@ def powspec(frames: List[ase.Atoms]):
 def powspec_small_features(frames: List[ase.Atoms]):
     """Returns a rascaline PowerSpectrum constructed from a
     SphericalExpansion"""
-    return PowerSpectrum(rascaline.SphericalExpansion(**RASCAL_HYPERS_SMALL)).compute(frames)
+    return PowerSpectrum(rascaline.SphericalExpansion(**RASCAL_HYPERS_SMALL)).compute(
+        frames
+    )
 
 
 # ============ Test equivariance ============
@@ -255,11 +258,12 @@ def test_lambda_soap_vs_powerspectrum(frames):
     assert metatensor.allclose(lsoap, ps)
 
 
-# ============ Test Norm preservation of  ============
+# ============ Test norm preservation  ============
 
+@pytest.mark.parametrize("frames", [h2o_isolated()])
 @pytest.mark.parametrize("max_angular", [1])
 @pytest.mark.parametrize("nu", [2, 3])
-def test_combine_single_center_orthogonality(self, max_angular, nu):
+def test_combine_single_center_orthogonality(frames, max_angular, nu):
     """
     Checks \|ρ^\\nu\| =  \|ρ\|^\\nu
     For \\nu = 2 the tests passes but for \\nu = 3 it fails because we do not add the
@@ -276,10 +280,10 @@ def test_combine_single_center_orthogonality(self, max_angular, nu):
     }
 
     calculator = rascaline.SphericalExpansion(**rascal_hypers)
-    nu1_tensor = calculator.compute([self.h2o_frame])
+    nu1_tensor = calculator.compute(frames)
 
     # compute norm of the body order 2 tensor
-    nu_tensor = combine_single_center_to_body_order(
+    nu_tensor = clebsch_gordan.combine_single_center_to_body_order(
         nu1_tensor,
         nu,  # target_body_order
         angular_cutoff=None,
