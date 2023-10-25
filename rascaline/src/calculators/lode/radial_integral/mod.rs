@@ -81,7 +81,7 @@ impl LodeRadialIntegralCache {
                         // the largest value the spline should interpolate is
                         // the k-space cutoff, not the real-space cutoff
                         // associated with the GTO basis
-                        cutoff: parameters.k_cutoff,
+                        k_cutoff: parameters.k_cutoff,
                     };
 
                     Box::new(LodeRadialIntegralSpline::with_accuracy(
@@ -95,7 +95,7 @@ impl LodeRadialIntegralCache {
                 let parameters = LodeRadialIntegralSplineParameters {
                     max_radial: parameters.max_radial,
                     max_angular: parameters.max_angular,
-                    cutoff: parameters.cutoff,
+                    k_cutoff: parameters.k_cutoff,
                 };
 
                 let center_contribution = center_contribution.ok_or(Error::InvalidParameter(

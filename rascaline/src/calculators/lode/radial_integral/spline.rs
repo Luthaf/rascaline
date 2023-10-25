@@ -24,8 +24,8 @@ pub struct LodeRadialIntegralSplineParameters {
     pub max_radial: usize,
     /// Number of angular components
     pub max_angular: usize,
-    /// cutoff radius, this is also the maximal value that can be interpolated
-    pub cutoff: f64,
+    /// k-space cutoff radius, this is also the maximal value that can be interpolated
+    pub k_cutoff: f64,
 }
 
 impl LodeRadialIntegralSpline {
@@ -44,7 +44,7 @@ impl LodeRadialIntegralSpline {
 
         let parameters = SplineParameters {
             start: 0.0,
-            stop: parameters.cutoff,
+            stop: parameters.k_cutoff,
             shape: vec![parameters.max_angular + 1, parameters.max_radial],
         };
 
@@ -74,7 +74,7 @@ impl LodeRadialIntegralSpline {
 
         let spline_parameters = SplineParameters {
             start: 0.0,
-            stop: parameters.cutoff,
+            stop: parameters.k_cutoff,
             shape: vec![parameters.max_angular + 1, parameters.max_radial],
         };
 
@@ -123,18 +123,17 @@ mod tests {
 
     #[test]
     fn high_accuracy() {
-        // Check that even with high accuracy and large domain MAX_SPLINE_SIZE
-        // is enough
+        // Check that even with high accuracy and large domain MAX_SPLINE_SIZE is enough
         let parameters = LodeRadialIntegralSplineParameters {
             max_radial: 15,
             max_angular: 10,
-            cutoff: 12.0,
+            k_cutoff: 10.0,
         };
 
         let gto = LodeRadialIntegralGto::new(LodeRadialIntegralGtoParameters {
             max_radial: parameters.max_radial,
             max_angular: parameters.max_angular,
-            cutoff: parameters.cutoff,
+            cutoff: 5.0,
             atomic_gaussian_width: 0.5,
             potential_exponent: 1,
         }).unwrap();
@@ -150,20 +149,19 @@ mod tests {
         let parameters = LodeRadialIntegralSplineParameters {
             max_radial: max_radial,
             max_angular: max_angular,
-            cutoff: 5.0,
+            k_cutoff: 10.0,
         };
 
         let gto = LodeRadialIntegralGto::new(LodeRadialIntegralGtoParameters {
             max_radial: parameters.max_radial,
             max_angular: parameters.max_angular,
-            cutoff: parameters.cutoff,
+            cutoff: 5.0,
             atomic_gaussian_width: 0.5,
             potential_exponent: 1,
         }).unwrap();
 
-        // even with very bad accuracy, we want the gradients of the spline to
-        // match the values produces by the spline, and not necessarily the
-        // actual GTO gradients.
+        // even with very bad accuracy, we want the gradients of the spline to match the
+        // values produces by the spline, and not necessarily the actual GTO gradients.
         let spline = LodeRadialIntegralSpline::with_accuracy(parameters, 1e-2, gto).unwrap();
 
         let rij = 3.4;
@@ -204,13 +202,13 @@ mod tests {
         let parameters = LodeRadialIntegralSplineParameters {
             max_radial: max_radial,
             max_angular: max_angular,
-            cutoff: 5.0,
+            k_cutoff: 10.0,
         };
 
         let gto = LodeRadialIntegralGto::new(LodeRadialIntegralGtoParameters {
             max_radial: parameters.max_radial,
             max_angular: parameters.max_angular,
-            cutoff: parameters.cutoff,
+            cutoff: 5.0,
             atomic_gaussian_width: 0.5,
             potential_exponent: 1,
         }).unwrap();
