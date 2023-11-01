@@ -190,3 +190,4 @@ def test_script(tmpdir):
 
     with tmpdir.as_cwd():
         torch.jit.save(module, "test-save.torch")
+        module = torch.jit.load("test-save.torch")

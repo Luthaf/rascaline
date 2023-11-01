@@ -52,13 +52,13 @@ TORCH_LIBRARY(rascaline, module) {
         })
         .def_pickle(
             // __getstate__
-            [](const TorchCalculator& self) -> std::vector<std::string> {
-                return {self->name(), self->parameters()};
+            [](const TorchCalculator& self) -> std::tuple<std::string, std::string> {
+                return {self->c_name(), self->parameters()};
             },
             // __setstate__
-            [](std::vector<std::string> state) -> TorchCalculator {
+            [](std::tuple<std::string, std::string> state) -> TorchCalculator {
                 return c10::make_intrusive<CalculatorHolder>(
-                    state[0], state[1]
+                    std::get<0>(state), std::get<1>(state)
                 );
             })
         ;
