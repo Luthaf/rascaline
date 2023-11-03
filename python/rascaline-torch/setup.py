@@ -38,6 +38,7 @@ class cmake_ext(build_ext):
     """Build the native library using cmake"""
 
     def run(self):
+        import metatensor
         import metatensor.torch
         import torch
 
@@ -52,6 +53,7 @@ class cmake_ext(build_ext):
         # Tell CMake where to find rascaline & torch
         cmake_prefix_path = [
             rascaline.utils.cmake_prefix_path,
+            metatensor.utils.cmake_prefix_path,
             metatensor.torch.utils.cmake_prefix_path,
             torch.utils.cmake_prefix_path,
         ]
