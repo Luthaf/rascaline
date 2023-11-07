@@ -301,6 +301,7 @@ class SphericalBesselBasis(RadialBasisBase):
         # Spherical Bessel zeros from the scipy cookbook
         def Jn(r, n):
             return np.sqrt(np.pi / (2 * r)) * scipy.special.jv(n + 0.5, r)
+
         def Jn_zeros(n, nt):
             zeros_j = np.zeros((n + 1, nt), dtype=np.float64)
             zeros_j[0] = np.arange(1, nt + 1) * np.pi
@@ -312,8 +313,8 @@ class SphericalBesselBasis(RadialBasisBase):
                 points = roots
                 zeros_j[i][:nt] = roots[:nt]
             return zeros_j
-        
-        self.roots = Jn_zeros(max_angular+1, max_radial)
+
+        self.roots = Jn_zeros(max_angular + 1, max_radial)
 
     def compute(
         self, n: float, ell: float, integrand_positions: Union[float, np.ndarray]
