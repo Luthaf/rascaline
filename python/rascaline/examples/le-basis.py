@@ -4,13 +4,13 @@ LE basis
 
 .. start-body
 """
+This script illustrates how to generate a spherical expansion using
+the Laplacian eigenstate basis (https://doi.org/10.1063/5.0124363),
+both using truncation with l_max, n_max hyper-parameters and with an
+eigenvalue threshold.
+"""
 
 # %%
-#
-# This script illustrates how to generate a spherical expansion using
-# the Laplacian eigenstate basis (https://doi.org/10.1063/5.0124363),
-# both using truncation with l_max, n_max hyper-parameters and with an
-# eigenvalue threshold.
 
 import ase.io
 import matplotlib.pyplot as plt
