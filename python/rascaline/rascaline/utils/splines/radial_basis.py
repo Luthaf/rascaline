@@ -336,4 +336,4 @@ class SphericalBesselBasis(RadialBasisBase):
                 zeros_j[i][:nt] = roots[:nt]
             return zeros_j
         
-        return Jn_zeros(max_angular+1, max_radial)
+        return Jn_zeros(max_angular, max_radial)
