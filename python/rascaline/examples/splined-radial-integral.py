@@ -12,7 +12,8 @@ Splined radial integrals
 # This script illustrates how to generate splined radial basis
 # functions/integrals, using a "rectangular" Laplacian eigenstate (LE,
 # https://doi.org/10.1063/5.0124363) basis as the example, i.e, a LE basis
-# truncated with l_max, n_max hyper-parameters.
+# truncated with l_max, n_max hyper-parameters. Note that the same basis is
+# available through the rascaline.utils.SphericalBesselBasis class.
 
 
 import ase

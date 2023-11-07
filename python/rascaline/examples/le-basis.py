@@ -34,8 +34,8 @@ except ImportError:
 #
 # First using a truncation with l_max, n_max hyper-parameters (easy):
 cutoff = 4.4
-l_max = 4
-n_max = 6
+l_max = 6
+n_max = 8
 
 structures = ase.io.read("dataset.xyz", ":10")
 
@@ -66,7 +66,7 @@ spherical_expansion = calculator.compute(structures)
 # (more involved), which affords a better accuracy/cost ratio, using
 # property selection.
 
-E_max = 60  # eigenvalue threshold
+E_max = 400  # eigenvalue threshold
 
 # %%
 #
@@ -112,6 +112,21 @@ for l in range(l_max_large+1):
         break
 
 n_max = n_max_l[0]
+
+# %%
+#
+# Comparing this l-dependent threshold with the one based on l_max
+# and n_max, we see that the eigenvalue thresholding leads to a gradual
+# decrease of n_max for high l values:
+
+import matplotlib.pyplot as plt
+plt.plot(list(range(15+1)), [4 if l<11 else 0 for l in range(15+1)], ".", label="l_max, n_max threshold")
+plt.plot(list(range(l_max+1)), n_max_l, ".", label="Eigenvalue threshold")
+plt.xlabel("l")
+plt.ylabel("n_max")
+plt.ylim(-0.5, n_max_l[0]+0.5)
+plt.legend()
+plt.show()
 
 # %%
 #
@@ -165,39 +180,10 @@ calculator = rascaline.SphericalExpansion(
     center_atom_weight=1.0,
     radial_basis=spliner.compute(),
     atomic_gaussian_width=-1.0,  # will not be used due to the delta density above
-    cutoff_function={"Step": {}},
+    cutoff_function={"ShiftedCosine": {"width": 0.5}},
 )
 
 spherical_expansion = calculator.compute(
     structures,
     selected_properties=selected_properties  # we tell the calculator to only compute the selected properties
 )
-
-if HAS_TORCH_SPEX:
-    # check that the results are the same as those from torch_spex
-    from torch_spex.spherical_expansions import SphericalExpansion
-    from torch_spex.structures import InMemoryDataset, TransformerNeighborList, collate_nl
-    hypers = {
-        "cutoff radius": cutoff,
-        "radial basis": {
-            "type": "le",
-            "mlp": False,
-            "r_cut": cutoff,
-            "E_max": E_max,
-            "normalize": False
-        }
-    }
-
-    transformers = [TransformerNeighborList(cutoff=cutoff, device="cpu")]
-    dataset = InMemoryDataset(structures, transformers)
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=10, shuffle=False, collate_fn=collate_nl)
-    structures = next(iter(dataloader))
-
-    torch_spex_calculator = SphericalExpansion(hypers, all_species, device="cpu")
-    torch_spex_spherical_expansion = torch_spex_calculator(**structures)
-    spherical_expansion = spherical_expansion.keys_to_properties(["species_neighbor"])
-
-    block = spherical_expansion.block(spherical_harmonics_l=1, species_center=1)
-    torch_spex_block = torch_spex_spherical_expansion.block({"lam":1, "a_i":1, "sigma":1})
-
-    assert np.allclose(block.values[:, :, 1], torch_spex_block.values.numpy()[:, :, 1])

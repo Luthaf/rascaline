@@ -297,17 +297,23 @@ class SphericalBesselBasis(RadialBasisBase):
 
         self.max_radial = max_radial
         self.max_angular = max_angular
-        self.roots = np.zeros([max_angular + 1, self.max_radial])
 
-        # Define target function and the estimated location of roots obtained from the
-        # asymptotic expansion of the spherical Bessel functions for large arguments x
-        for ell in range(self.max_angular + 1):
-            roots_guesses = np.pi * (np.arange(1, self.max_radial + 1) + ell / 2)
-            # Compute roots from initial guess using Newton method
-            for n, root_guess in enumerate(roots_guesses):
-                self.roots[ell, n] = scipy.optimize.fsolve(
-                    func=_spherical_jn_swapped, x0=root_guess, args=(ell,)
-                )[0]
+        # Spherical Bessel zeros from the scipy cookbook
+        def Jn(r, n):
+            return np.sqrt(np.pi / (2 * r)) * scipy.special.jv(n + 0.5, r)
+        def Jn_zeros(n, nt):
+            zeros_j = np.zeros((n + 1, nt), dtype=np.float64)
+            zeros_j[0] = np.arange(1, nt + 1) * np.pi
+            points = np.arange(1, nt + n + 1) * np.pi
+            roots = np.zeros(nt + n, dtype=np.float64)
+            for i in range(1, n + 1):
+                for j in range(nt + n - i):
+                    roots[j] = scipy.optimize.brentq(Jn, points[j], points[j + 1], (i,))
+                points = roots
+                zeros_j[i][:nt] = roots[:nt]
+            return zeros_j
+        
+        self.roots = Jn_zeros(max_angular+1, max_radial)
 
     def compute(
         self, n: float, ell: float, integrand_positions: Union[float, np.ndarray]
