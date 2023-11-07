@@ -1,8 +1,6 @@
 """
-.. _example-le-basis:
-
-Laplacian eigenstate basis
-==========================
+LE basis
+========
 
 .. start-body
 """
@@ -66,30 +64,13 @@ E_max = 400  # eigenvalue threshold
 
 # %%
 #
-# Spherical Bessel zeros (from the scipy cookbook) and
-# Laplacian eigenvalues
-
-
-def Jn(r, n):
-    return np.sqrt(np.pi / (2 * r)) * jv(n + 0.5, r)
-
-
-def Jn_zeros(n, nt):
-    zeros_j = np.zeros((n + 1, nt), dtype=np.float64)
-    zeros_j[0] = np.arange(1, nt + 1) * np.pi
-    points = np.arange(1, nt + n + 1) * np.pi
-    roots = np.zeros(nt + n, dtype=np.float64)
-    for i in range(1, n + 1):
-        for j in range(nt + n - i):
-            roots[j] = scipy.optimize.brentq(Jn, points[j], points[j + 1], (i,))
-        points = roots
-        zeros_j[i][:nt] = roots[:nt]
-    return zeros_j
-
+# Spherical Bessel zeros and Laplacian eigenvalues
 
 l_max_large = 50  # just used to get the eigenvalues
 n_max_large = 50  # just used to get the eigenvalues
-z_ln = Jn_zeros(l_max_large, n_max_large)
+
+# spherical Bessel zeros:
+z_ln = rascaline.utils.SphericalBesselBasis.compute_zeros(l_max_large, n_max_large)
 
 E_ln = (
     z_ln**2

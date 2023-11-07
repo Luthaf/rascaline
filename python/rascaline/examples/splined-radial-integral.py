@@ -24,7 +24,7 @@ from scipy.special import jv
 from scipy.special import spherical_jn as j_l
 
 from rascaline import SphericalExpansion
-from rascaline.utils import RadialIntegralFromFunction
+from rascaline.utils import RadialIntegralFromFunction, SphericalBesselBasis
 
 
 # %%
@@ -36,29 +36,10 @@ cutoff = 5.0  # This is also the radius of the LE sphere
 
 # %%
 #
-# Spherical Bessel zeros (from the scipy cookbook)
+# Spherical Bessel zeros:
 
-
-def Jn(r, n):
-    return np.sqrt(np.pi / (2 * r)) * jv(n + 0.5, r)
-
-
-def Jn_zeros(n, nt):
-    zeros_j = np.zeros((n + 1, nt), dtype=np.float64)
-    zeros_j[0] = np.arange(1, nt + 1) * np.pi
-    points = np.arange(1, nt + n + 1) * np.pi
-    roots = np.zeros(nt + n, dtype=np.float64)
-    for i in range(1, n + 1):
-        for j in range(nt + n - i):
-            roots[j] = scipy.optimize.brentq(Jn, points[j], points[j + 1], (i,))
-        points = roots
-        zeros_j[i][:nt] = roots[:nt]
-    return zeros_j
-
-
-z_ln = Jn_zeros(max_angular, max_radial)
+z_ln = SphericalBesselBasis.compute_zeros(max_angular, max_radial)
 z_nl = z_ln.T
-
 
 # %%
 #

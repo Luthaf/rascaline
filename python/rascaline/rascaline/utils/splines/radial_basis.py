@@ -73,7 +73,7 @@ class RadialBasisBase(ABC):
 
     @abstractmethod
     def compute(
-        self, n: float, ell: float, integrand_positions: Union[float, np.ndarray]
+        self, n: int, ell: int, integrand_positions: Union[float, np.ndarray]
     ) -> Union[float, np.ndarray]:
         """Compute the ``n``/``l`` radial basis at all given ``integrand_positions``
 
@@ -84,7 +84,7 @@ class RadialBasisBase(ABC):
         """
 
     def compute_derivative(
-        self, n: float, ell: float, integrand_positions: np.ndarray
+        self, n: int, ell: int, integrand_positions: np.ndarray
     ) -> np.ndarray:
         """Compute the derivative of the ``n``/``l`` radial basis at all given
         ``integrand_positions``
@@ -231,14 +231,14 @@ class GtoBasis(RadialBasisBase):
         self.sigmas *= self.cutoff / self.max_radial
 
     def compute(
-        self, n: float, ell: float, integrand_positions: Union[float, np.ndarray]
+        self, n: int, ell: int, integrand_positions: Union[float, np.ndarray]
     ) -> Union[float, np.ndarray]:
         return integrand_positions**n * np.exp(
             -0.5 * (integrand_positions / self.sigmas[n]) ** 2
         )
 
     def compute_derivative(
-        self, n: float, ell: float, integrand_positions: Union[float, np.ndarray]
+        self, n: int, ell: int, integrand_positions: Union[float, np.ndarray]
     ) -> Union[float, np.ndarray]:
         return n / integrand_positions * self.compute(
             n, ell, integrand_positions
@@ -266,19 +266,14 @@ class MonomialBasis(RadialBasisBase):
         super().__init__(integration_radius=cutoff)
 
     def compute(
-        self, n: float, ell: float, integrand_positions: Union[float, np.ndarray]
+        self, n: int, ell: int, integrand_positions: Union[float, np.ndarray]
     ) -> Union[float, np.ndarray]:
         return integrand_positions ** (ell + 2 * n)
 
     def compute_derivative(
-        self, n: float, ell: float, integrand_positions: Union[float, np.ndarray]
+        self, n: int, ell: int, integrand_positions: Union[float, np.ndarray]
     ) -> Union[float, np.ndarray]:
         return (ell + 2 * n) * integrand_positions ** (ell + 2 * n - 1)
-
-
-def _spherical_jn_swapped(z, n):
-    """spherical_jn with swapped arguments for usage in `fsolve`."""
-    return scipy.special.spherical_jn(n=n, z=z)
 
 
 class SphericalBesselBasis(RadialBasisBase):
@@ -297,11 +292,37 @@ class SphericalBesselBasis(RadialBasisBase):
 
         self.max_radial = max_radial
         self.max_angular = max_angular
+        self.roots = SphericalBesselBasis.compute_zeros(max_angular, max_radial)
 
+    def compute(
+        self, n: int, ell: int, integrand_positions: Union[float, np.ndarray]
+    ) -> Union[float, np.ndarray]:
+        return scipy.special.spherical_jn(
+            ell,
+            integrand_positions * self.roots[ell, n] / self.integration_radius,
+        )
+
+    def compute_derivative(
+        self, n: int, ell: int, integrand_positions: Union[float, np.ndarray]
+    ) -> Union[float, np.ndarray]:
+        return (
+            self.roots[ell, n]
+            / self.integration_radius
+            * scipy.special.spherical_jn(
+                ell,
+                integrand_positions * self.roots[ell, n] / self.integration_radius,
+                derivative=True,
+            )
+        )
+    
+    @staticmethod
+    def compute_zeros(
+        max_radial: int, max_angular: int
+    ):
+        
         # Spherical Bessel zeros from the scipy cookbook
         def Jn(r, n):
             return np.sqrt(np.pi / (2 * r)) * scipy.special.jv(n + 0.5, r)
-
         def Jn_zeros(n, nt):
             zeros_j = np.zeros((n + 1, nt), dtype=np.float64)
             zeros_j[0] = np.arange(1, nt + 1) * np.pi
@@ -313,26 +334,5 @@ class SphericalBesselBasis(RadialBasisBase):
                 points = roots
                 zeros_j[i][:nt] = roots[:nt]
             return zeros_j
-
-        self.roots = Jn_zeros(max_angular + 1, max_radial)
-
-    def compute(
-        self, n: float, ell: float, integrand_positions: Union[float, np.ndarray]
-    ) -> Union[float, np.ndarray]:
-        return scipy.special.spherical_jn(
-            ell,
-            integrand_positions * self.roots[ell, n] / self.integration_radius,
-        )
-
-    def compute_derivative(
-        self, n: float, ell: float, integrand_positions: Union[float, np.ndarray]
-    ) -> Union[float, np.ndarray]:
-        return (
-            self.roots[ell, n]
-            / self.integration_radius
-            * scipy.special.spherical_jn(
-                ell,
-                integrand_positions * self.roots[ell, n] / self.integration_radius,
-                derivative=True,
-            )
-        )
+        
+        return Jn_zeros(max_angular+1, max_radial)
