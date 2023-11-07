@@ -15,12 +15,9 @@ LE basis
 import ase.io
 import matplotlib.pyplot as plt
 import numpy as np
-import scipy.optimize
 from metatensor import Labels, TensorBlock, TensorMap
-from scipy.special import jv
 
 import rascaline
-
 
 # %%
 #

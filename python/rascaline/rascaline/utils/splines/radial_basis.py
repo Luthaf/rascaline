@@ -321,6 +321,7 @@ class SphericalBesselBasis(RadialBasisBase):
     ):
         
         # Spherical Bessel zeros from the scipy cookbook
+        # https://scipy-cookbook.readthedocs.io/items/SphericalBesselZeros.html
         def Jn(r, n):
             return np.sqrt(np.pi / (2 * r)) * scipy.special.jv(n + 0.5, r)
         def Jn_zeros(n, nt):
