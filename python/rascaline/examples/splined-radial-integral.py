@@ -19,8 +19,6 @@ Splined radial integrals
 import ase
 import numpy as np
 import scipy as sp
-import scipy.optimize
-from scipy.special import jv
 from scipy.special import spherical_jn as j_l
 
 from rascaline import SphericalExpansion

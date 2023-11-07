@@ -19,6 +19,7 @@ from metatensor import Labels, TensorBlock, TensorMap
 
 import rascaline
 
+
 # %%
 #
 # First using a truncation with l_max, n_max hyper-parameters (easy):
