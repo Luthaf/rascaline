@@ -173,3 +173,7 @@ spherical_expansion = calculator.compute(
     selected_properties=selected_properties,
     # we tell the calculator to only compute the selected properties
 )
+
+# %%
+#
+# .. end-body

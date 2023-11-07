@@ -317,7 +317,7 @@ class SphericalBesselBasis(RadialBasisBase):
     
     @staticmethod
     def compute_zeros(
-        max_radial: int, max_angular: int
+        max_angular: int, max_radial: int
     ):
         
         # Spherical Bessel zeros from the scipy cookbook
