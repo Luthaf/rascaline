@@ -316,13 +316,21 @@ class SphericalBesselBasis(RadialBasisBase):
         )
 
     @staticmethod
-    def compute_zeros(max_angular: int, max_radial: int):
-        # Spherical Bessel zeros from the scipy cookbook
-        # https://scipy-cookbook.readthedocs.io/items/SphericalBesselZeros.html
-        def Jn(r, n):
+    def compute_zeros(max_angular: int, max_radial: int) -> np.ndarray:
+        """Zeros of spherical bessel functions.
+
+        Code is taken from the
+        `Scipy Cookbook <https://scipy-cookbook.readthedocs.io/items/SphericalBesselZeros.html>`_.
+
+        :parameter max_radial: number of angular components
+        :parameter max_angular: number of radial components
+        :returns: computed zeros of the spherical bessel functions
+        """  # noqa: E501
+
+        def Jn(r: float, n: int) -> float:
             return np.sqrt(np.pi / (2 * r)) * scipy.special.jv(n + 0.5, r)
 
-        def Jn_zeros(n, nt):
+        def Jn_zeros(n: int, nt: int) -> np.ndarray:
             zeros_j = np.zeros((n + 1, nt), dtype=np.float64)
             zeros_j[0] = np.arange(1, nt + 1) * np.pi
             points = np.arange(1, nt + n + 1) * np.pi

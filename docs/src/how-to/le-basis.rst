@@ -1,3 +1,5 @@
+.. _userdoc-how-to-le-basis:
+
 Laplacian eigenstate basis
 ==========================
 

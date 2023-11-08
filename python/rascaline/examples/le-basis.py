@@ -3,14 +3,17 @@ LE basis
 ========
 
 .. start-body
+
+This example illustrates how to generate a spherical expansion using the Laplacian
+eigenstate (LE) basis (https://doi.org/10.1063/5.0124363), both using truncation with
+``l_max``, ``n_max`` hyper-parameters and with an eigenvalue threshold.
+
+Here we use :class:`rascaline.utils.SphericalBesselBasis` class. An detailed how-to
+guide how to construct radial integrals for the LE basis from scratch given is given in
+:ref:`userdoc-how-to-le-basis`.
 """
 
 # %%
-#
-# This script illustrates how to generate a spherical expansion using
-# the Laplacian eigenstate basis (https://doi.org/10.1063/5.0124363),
-# both using truncation with l_max, n_max hyper-parameters and with an
-# eigenvalue threshold.
 
 import ase.io
 import matplotlib.pyplot as plt
@@ -21,8 +24,8 @@ import rascaline
 
 
 # %%
-#
-# First using a truncation with l_max, n_max hyper-parameters (easy):
+# First using a truncation with ``l_max`` amd ``n_max`` hyper-parameters
+
 cutoff = 4.4
 l_max = 6
 n_max = 8
@@ -53,21 +56,19 @@ calculator = rascaline.SphericalExpansion(
 spherical_expansion = calculator.compute(structures)
 
 # %%
-#
-# Now we will calculate the same basis with an eigenvalue threshold
-# (more involved), which affords a better accuracy/cost ratio, using
-# property selection.
+# Now we will calculate the same basis with an eigenvalue threshold (more involved),
+# which affords a better accuracy/cost ratio, using property selection.
 
 E_max = 400  # eigenvalue threshold
 
 # %%
-#
 # Spherical Bessel zeros and Laplacian eigenvalues
 
 l_max_large = 50  # just used to get the eigenvalues
 n_max_large = 50  # just used to get the eigenvalues
 
-# spherical Bessel zeros:
+# %%
+# And compute the zeroth of the spherical Bessel functions
 z_ln = rascaline.utils.SphericalBesselBasis.compute_zeros(l_max_large, n_max_large)
 
 E_ln = (
@@ -75,16 +76,15 @@ E_ln = (
 )  # proportional to the Laplacian eigenvalues, which would be z_ln**2 / cutoff**2
 
 # %%
-#
-# Determine the l_max, n_max parameters that will certainly
-# contain all the desired terms
+# Determine the l_max, n_max parameters that will certainly contain all the desired
+# terms
 
 n_max_l = []
 for ell in range(l_max_large + 1):
     # for each l, calculate how many basis functions
     n_max_l.append(len(np.where(E_ln[ell] < E_max)[0]))
     if n_max_l[-1] == 0:
-        # all eigenvalues for this l are over the threshold
+        # all eigenvalues for this `l` are over the threshold
         n_max_l.pop()
         l_max = ell - 1
         break
@@ -92,10 +92,9 @@ for ell in range(l_max_large + 1):
 n_max = n_max_l[0]
 
 # %%
-#
-# Comparing this l-dependent threshold with the one based on l_max
-# and n_max, we see that the eigenvalue thresholding leads to a gradual
-# decrease of n_max for high l values:
+# Comparing this l-dependent threshold with the one based on ``l_max`` and ``n_max``, we
+# see that the eigenvalue thresholding leads to a gradual decrease of ``n_max`` for high
+# ``l`` values
 
 plt.plot(
     list(range(15 + 1)),
@@ -111,7 +110,6 @@ plt.legend()
 plt.show()
 
 # %%
-#
 # Set up a TensorMap for property selection
 
 all_species = list(
@@ -145,8 +143,7 @@ selected_properties = TensorMap(
 )
 
 # %%
-#
-# Build a calculator and calculate the spherical expansion
+# Build a calculator and calculate the spherical expansion coefficents
 
 spliner = rascaline.utils.SoapSpliner(
     cutoff=cutoff,

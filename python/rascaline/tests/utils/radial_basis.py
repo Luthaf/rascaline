@@ -17,7 +17,7 @@ pytest.importorskip("scipy")
 
 class RtoNRadialBasis(RadialBasisBase):
     def compute(
-        self, n: float, ell: float, integrand_positions: Union[float, np.ndarray]
+        self, n: int, ell: int, integrand_positions: Union[float, np.ndarray]
     ) -> Union[float, np.ndarray]:
         return integrand_positions**n
 
@@ -71,7 +71,7 @@ def test_derivative(analytical_basis: RadialBasisBase):
 
     class NumericalRadialBasis(RadialBasisBase):
         def compute(
-            self, n: float, ell: float, integrand_positions: Union[float, np.ndarray]
+            self, n: int, ell: int, integrand_positions: Union[float, np.ndarray]
         ) -> Union[float, np.ndarray]:
             return analytical_basis.compute(n, ell, integrand_positions)
 

@@ -1,3 +1,5 @@
+.. _userdoc-how-to-splined-radial-integral:
+
 Splined radial integral
 =======================
 
