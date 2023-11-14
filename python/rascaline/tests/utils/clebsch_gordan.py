@@ -288,10 +288,12 @@ def test_lambda_soap_vs_powerspectrum(frames):
 
 
 @pytest.mark.parametrize("frames", [h2_isolated(), h2o_periodic()])
-@pytest.mark.parametrize("target_body_order", [2, 3])
+@pytest.mark.parametrize("target_body_order", [2, 3, 4])
 def test_combine_single_center_norm(frames, target_body_order):
     """
-    Checks \|ρ^\\nu\| =  \|ρ\|^\\nu
+    Checks \|ρ^\\nu\| =  \|ρ\|^\\nu in the case where l lists are not sorted. If
+    l lists are sorted, thus saving computation of redundant block combinations,
+    the norm check will not hold for target body order greater than 2.
     """
 
     # Build nu=1 SphericalExpansion
@@ -524,3 +526,6 @@ def test_combine_single_center_to_body_order_dense_sparse_agree(frames):
 #        sliced_blocks.append(sliced_block)
 #
 #        assert np.allclose(sliced_block.values, np.zeros(sliced_block.values.shape))
+
+
+# ============
