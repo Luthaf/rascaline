@@ -94,6 +94,21 @@ def powspec_small_features(frames: List[ase.Atoms]):
     )
 
 
+def get_norm(tensor: TensorMap):
+    """
+    Calculates the norm used in CG iteration tests. Assumes standardized
+    metadata and that the TensorMap is sliced to a single sample.
+    """
+    norm = 0.0
+    for key, block in tensor.items():  # Sum over lambda and sigma
+        l = key["spherical_harmonics_l"]
+        norm += np.sum(
+            [np.linalg.norm(block.values[0, m, :]) ** 2 for m in range(-l, l + 1)]
+        )
+
+    return norm
+
+
 # ============ Test equivariance ============
 
 
@@ -272,53 +287,88 @@ def test_lambda_soap_vs_powerspectrum(frames):
 # ============ Test norm preservation  ============
 
 
-@pytest.mark.parametrize("frames", [h2_isolated()])
-@pytest.mark.parametrize("nu", [2, 3])
-def test_combine_single_center_orthogonality(frames, nu):
+@pytest.mark.parametrize("frames", [h2_isolated(), h2o_periodic()])
+@pytest.mark.parametrize("target_body_order", [2, 3])
+def test_combine_single_center_norm(frames, target_body_order):
     """
     Checks \|ρ^\\nu\| =  \|ρ\|^\\nu
     """
-    # Build nu=1 SphericalExpansion
-    nu_1_tensor = sphex_small_features(frames)
 
-    # Build higher body order tensor
-    nu_tensor = clebsch_gordan.combine_single_center_to_body_order(
-        nu_1_tensor,
-        target_body_order=nu,
+    # Build nu=1 SphericalExpansion
+    nu1 = sphex_small_features(frames)
+
+    # Build higher body order tensor without sorting the l lists
+    nux = clebsch_gordan.combine_single_center_to_body_order(
+        nu1,
+        target_body_order=target_body_order,
         angular_cutoff=None,
         angular_selection=None,
         parity_selection=None,
+        sort_l_list=False,
         use_sparse=True,
     )
-    nu_tensor = nu_tensor.keys_to_properties(["inversion_sigma", "order_nu"])
-    nu_tensor = nu_tensor.keys_to_samples(["species_center"])
-    n_samples = nu_tensor[0].values.shape[0]
-
-    # Compute norm of the body order 1 tensor
-    nu_1_tensor = nu_1_tensor.keys_to_properties(["species_neighbor"])
-    nu_1_tensor = nu_1_tensor.keys_to_samples(["species_center"])
-
-    nu_tensor_values = np.hstack(
-        [
-            nu_tensor.block(
-                Labels("spherical_harmonics_l", np.array([[l]]))
-            ).values.reshape(n_samples, -1)
-            for l in nu_tensor.keys["spherical_harmonics_l"]
-        ]
+    # Build higher body order tensor *with* sorting the l lists
+    nux_sorted_l = clebsch_gordan.combine_single_center_to_body_order(
+        nu1,
+        target_body_order=target_body_order,
+        angular_cutoff=None,
+        angular_selection=None,
+        parity_selection=None,
+        sort_l_list=True,
+        use_sparse=True,
     )
-    nu_tensor_norm = np.linalg.norm(nu_tensor_values, axis=1)
-    nu1_tensor_values = np.hstack(
-        [
-            nu_1_tensor.block(
-                Labels("spherical_harmonics_l", np.array([[l]]))
-            ).values.reshape(n_samples, -1)
-            for l in nu_1_tensor.keys["spherical_harmonics_l"]
-        ]
-    )
-    nu1_tensor_norm = np.linalg.norm(nu1_tensor_values, axis=1)
 
-    # check if the norm is equal
-    assert np.allclose(nu_tensor_norm, nu1_tensor_norm**nu)
+    # Standardize the features by passing through the CG combination code but with
+    # no iterations (i.e. body order 1 -> 1)
+    nu1 = clebsch_gordan.combine_single_center_to_body_order(
+        nu1,
+        target_body_order=1,
+        angular_cutoff=None,
+        angular_selection=None,
+        parity_selection=None,
+        sort_l_list=False,
+        use_sparse=True,
+    )
+
+    # Make only lambda and sigma part of keys
+    nu1 = nu1.keys_to_samples(["species_center"])
+    nux = nux.keys_to_samples(["species_center"])
+    nux_sorted_l = nux_sorted_l.keys_to_samples(["species_center"])
+
+    # The norm shoudl be calculated for each sample. First find the unqiue
+    # samples
+    uniq_samples = metatensor.unique_metadata(
+        nux, "samples", names=["structure", "center", "species_center"]
+    )
+    grouped_labels = [
+        Labels(names=nux.sample_names, values=uniq_samples.values[i].reshape(1, 3))
+        for i in range(len(uniq_samples))
+    ]
+
+    # Calculate norms
+    norm_nu1 = 0.0
+    norm_nux = 0.0
+    norm_nux_sorted_l = 0.0
+    for sample in grouped_labels:
+        # Slice the TensorMaps
+        nu1_sliced = metatensor.slice(nu1, "samples", labels=sample)
+        nux_sliced = metatensor.slice(nux, "samples", labels=sample)
+        nux_sorted_sliced = metatensor.slice(nux_sorted_l, "samples", labels=sample)
+
+        # Calculate norms
+        norm_nu1 += get_norm(nu1) ** target_body_order
+        norm_nux += get_norm(nux)
+        norm_nux_sorted_l += get_norm(nux_sorted_l)
+
+    # Without sorting the l list we should get the same norm
+    assert np.allclose(norm_nu1, norm_nux)
+
+    # But with sorting the l list we should get a different norm. Doesn't work
+    # for targte_body_order > 2
+    if target_body_order > 2:
+        assert not np.allclose(norm_nu1, norm_nux_sorted_l)
+    else:
+        assert np.allclose(norm_nu1, norm_nux_sorted_l)
 
 
 # ============ Test CG cache  ============
@@ -390,7 +440,6 @@ def test_combine_single_center_to_body_order_dense_sparse_agree(frames):
 # ============ Test kernel construction  ============
 
 # TODO: if we want this test, the below code will need updating
-
 # def test_soap_kernel():
 #    """
 #    Tests if we get the same result computing SOAP from spherical expansion coefficients using GC utils

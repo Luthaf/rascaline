@@ -75,6 +75,7 @@ def combine_single_center_to_body_order(
     angular_cutoff: Optional[int] = None,
     angular_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
     parity_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
+    sort_l_list: Optional[bool] = False,  # TODO: rename arg
     use_sparse: bool = True,
 ) -> TensorMap:
     """
@@ -119,6 +120,7 @@ def combine_single_center_to_body_order(
         angular_cutoff=angular_cutoff,
         angular_selection=angular_selection,
         parity_selection=parity_selection,
+        sort_l_list=sort_l_list,
     )
 
     # Define the cached CG coefficients, either as sparse dicts or dense arrays.
@@ -160,7 +162,7 @@ def combine_single_center_to_body_order(
 
     # Apply normalization factor to each block based on their permutational
     # multiplicity (i.e. how many ways in which they could have been formed)
-    nu_x_tensor = _normalize_blocks(nu_x_tensor, target_body_order)
+    # nu_x_tensor = _normalize_blocks(nu_x_tensor, target_body_order)
 
     # Move the [l1, l2, ...] keys to the properties
     if target_body_order > 1:
@@ -424,6 +426,7 @@ def _precompute_metadata(
     angular_cutoff: Optional[int] = None,
     angular_selection: Optional[List[Union[None, List[int]]]] = None,
     parity_selection: Optional[List[Union[None, List[int]]]] = None,
+    sort_l_list: Optional[bool] = False,
 ) -> List[Tuple[Labels, List[List[int]]]]:
     """
     Computes all the metadata needed to perform `n_iterations` of CG combination
@@ -442,6 +445,7 @@ def _precompute_metadata(
             angular_cutoff=angular_cutoff,
             angular_selection=angular_selection[iteration],
             parity_selection=parity_selection[iteration],
+            sort_l_list=sort_l_list,
         )
         new_keys = i_comb_metadata[0]
 
@@ -488,6 +492,7 @@ def _precompute_metadata_one_iteration(
     angular_cutoff: Optional[int] = None,
     angular_selection: Optional[Union[None, List[int]]] = None,
     parity_selection: Optional[Union[None, List[int]]] = None,
+    sort_l_list: Optional[bool] = False,
 ) -> Tuple[Labels, List[List[int]]]:
     """
     Given the keys of 2 TensorMaps, returns the keys that would be present after
@@ -637,6 +642,11 @@ def _precompute_metadata_one_iteration(
 
     # Define new keys as the full product of keys_1 and keys_2
     nu_x_keys = Labels(names=new_names, values=np.array(new_key_values))
+
+    # If we want to sort the l list to save computations (i.e. not calculate )
+    if not sort_l_list:
+        # TODO: remove multiplicity correction 
+        return nu_x_keys, keys_1_entries, keys_2_entries, [1] * len(nu_x_keys)
 
     # Now account for multiplicty
     key_idxs_to_keep = []
