@@ -76,7 +76,7 @@ def combine_single_center_to_body_order(
     angular_cutoff: Optional[int] = None,
     angular_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
     parity_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
-    sort_l_list: Optional[bool] = False,  # TODO: rename arg
+    sort_l_list: Optional[bool] = False,
     use_sparse: bool = True,
 ) -> TensorMap:
     """
@@ -141,7 +141,7 @@ def combine_single_center_to_body_order(
     cg_cache = ClebschGordanReal(angular_max, use_sparse)
 
     # Create a copy of the nu = 1 tensor to combine with itself
-    nu_x_tensor = nu_1_tensor.copy()
+    nu_x_tensor = nu_1_tensor
 
     # Iteratively combine block values
     for iteration in range(target_body_order - 1):
@@ -176,6 +176,7 @@ def combine_single_center_to_body_order_metadata_only(
     angular_cutoff: Optional[int] = None,
     angular_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
     parity_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
+    sort_l_list: Optional[bool] = False,
 ) -> List[TensorMap]:
     """
     Performs a pseudo-CG combination of a nu = 1 (i.e. 2-body) single-center
@@ -204,6 +205,11 @@ def combine_single_center_to_body_order_metadata_only(
     # Standardize the metadata of the input tensor
     nu_1_tensor = _standardize_tensor_metadata(nu_1_tensor)
 
+    # If the desired body order is 1, return the input tensor with standardized
+    # metadata.
+    if target_body_order == 1:
+        return nu_1_tensor
+
     # Pre-compute the metadata needed to perform each CG iteration
     # Current design choice: only combine a nu = 1 tensor iteratively with
     # itself, i.e. nu=1 + nu=1 --> nu=2. nu=2 + nu=1 --> nu=3, etc.
@@ -225,6 +231,7 @@ def combine_single_center_to_body_order_metadata_only(
         angular_cutoff=angular_cutoff,
         angular_selection=angular_selection,
         parity_selection=parity_selection,
+        sort_l_list=sort_l_list,
     )
 
     # Create a copy of the nu = 1 tensor to combine with itself
@@ -236,7 +243,7 @@ def combine_single_center_to_body_order_metadata_only(
         # Combine blocks
         nu_x_blocks = []
         # TODO: is there a faster way of iterating over keys/blocks here?
-        for nu_x_key, key_1, key_2, _ in zip(*combination_metadata[iteration]):
+        for nu_x_key, key_1, key_2 in zip(*combination_metadata[iteration]):
             nu_x_block = _combine_single_center_blocks(
                 nu_x_tensor[key_1],
                 nu_1_tensor[key_2],
@@ -669,11 +676,11 @@ def _combine_single_center_blocks(
 
     # Do the CG combination - single center so no shape pre-processing required
     if return_metadata_only:
-        combined_values = _combine_arrays_sparse(
+        combined_values = _dispatch._combine_arrays(
             block_1.values, block_2.values, lam, cg_cache, return_empty_array=True
         )
     else:
-        combined_values = _combine_arrays(
+        combined_values = _dispatch._combine_arrays(
             block_1.values, block_2.values, lam, cg_cache, return_empty_array=False
         )
 
@@ -709,63 +716,3 @@ def _combine_single_center_blocks(
     )
 
     return combined_block
-
-
-def _combine_arrays(
-    arr_1: np.ndarray,
-    arr_2: np.ndarray,
-    lam: int,
-    cg_cache,
-    return_empty_array: bool = False,
-) -> np.ndarray:
-    """
-    Couples arrays `arr_1` and `arr_2` corresponding to the irreducible
-    spherical components of 2 angular channels l1 and l2 using the appropriate
-    Clebsch-Gordan coefficients. As l1 and l2 can be combined to form multiple
-    lambda channels, this function returns the coupling to a single specified
-    channel `lambda`. The angular channels l1 and l2 are inferred from the size
-    of the components axis (axis 1) of the input arrays.
-
-    `arr_1` has shape (n_i, 2 * l1 + 1, n_p) and `arr_2` has shape (n_i, 2 * l2
-    + 1, n_q). n_i is the number of samples, n_p and n_q are the number of
-    properties in each array. The number of samples in each array must be the
-    same.
-
-    The ouput array has shape (n_i, 2 * lambda + 1, n_p * n_q), where lambda is
-    the input parameter `lam`.
-
-    The Clebsch-Gordan coefficients are cached in `cg_cache`. Currently, these
-    must be produced by the ClebschGordanReal class in this module. These
-    coefficients can be stored in either sparse dictionaries or dense arrays.
-
-    The combination operation is dispatched such that numpy arrays or torch
-    tensors are automatically handled.
-
-    `return_empty_array` can be used to return an empty array of the correct
-    shape, without performing the CG combination step. This can be useful for
-    probing the outputs of CG iterations in terms of metadata without the
-    computational cost of performing the CG combinations - i.e. using the
-    function :py:func:`combine_single_center_to_body_order_metadata_only`.
-
-    :param arr_1: array with the m values for l1 with shape [n_samples, 2 * l1 +
-        1, n_q_properties]
-    :param arr_2: array with the m values for l2 with shape [n_samples, 2 * l2 +
-        1, n_p_properties]
-    :param lam: int value of the resulting coupled channel
-    :param cg_cache: either a sparse dictionary with keys (m1, m2, mu) and array
-        values being sparse blocks of shape <TODO: fill out>, or a dense array
-        of shape [(2 * l1 +1) * (2 * l2 +1), (2 * lam + 1)].
-
-    :returns: array of shape [n_samples, (2*lam+1), q_properties * p_properties]
-    """
-    # If just precomputing metadata, return an empty array
-    if return_empty_array:
-        return _dispatch._sparse_combine(arr_1, arr_2, lam, cg_cache, True)
-
-    # Otherwise, perform the CG combination
-    # Spare CG cache
-    if cg_cache.sparse:
-        return _dispatch._sparse_combine(arr_1, arr_2, lam, cg_cache, False)
-
-    # Dense CG cache
-    return _dispatch._dense_combine(arr_1, arr_2, lam, cg_cache)

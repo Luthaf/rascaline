@@ -398,6 +398,76 @@ def test_combine_single_center_to_body_order_dense_sparse_agree(frames):
     )
 
 
+# ============ Test metadata precomputation  ============
+
+
+@pytest.mark.parametrize("frames", [h2o_isolated()])
+@pytest.mark.parametrize("target_body_order", [2, 3])
+@pytest.mark.parametrize("sort_l_list", [True, False])
+def test_combine_single_center_to_body_order_metadata_only_metadata_agree(
+    frames, target_body_order, sort_l_list
+):
+    """
+    Tests that the metadata output from
+    combine_single_center_to_body_order_metadata_only agrees with the metadata
+    of the full tensor built using combine_single_center_to_body_order.
+    """
+    for nu1 in [sphex_small_features(frames), sphex(frames)]:
+        # Build higher body order tensor with CG computation
+        nux = clebsch_gordan.combine_single_center_to_body_order(
+            nu1,
+            target_body_order=target_body_order,
+            angular_cutoff=None,
+            angular_selection=None,
+            parity_selection=None,
+            sort_l_list=sort_l_list,
+            use_sparse=True,
+        )
+        # Build higher body order tensor without CG computation - i.e. metadata
+        # only. This returns a list of the TensorMaps formed at each CG
+        # iteration. In this case we only want to compare the metadata of the
+        # putput after the final iteration.
+        nux_metadata_only = (
+            clebsch_gordan.combine_single_center_to_body_order_metadata_only(
+                nu1,
+                target_body_order=target_body_order,
+                angular_cutoff=None,
+                angular_selection=None,
+                parity_selection=None,
+                sort_l_list=sort_l_list,
+            )
+        )
+        assert metatensor.equal_metadata(nux, nux_metadata_only[-1])
+
+
+@pytest.mark.parametrize("frames", [h2o_isolated()])
+@pytest.mark.parametrize("target_body_order", [2, 3])
+@pytest.mark.parametrize("sort_l_list", [True, False])
+def test_combine_single_center_to_body_order_metadata_only(
+    frames, target_body_order, sort_l_list
+):
+    """
+    Performs hard-coded tests on the metadata outputted from
+    combine_single_center_to_body_order_metadata_only.
+
+    TODO: finish!
+    """
+    for nu1 in [sphex_small_features(frames), sphex(frames)]:
+        # Build higher body order tensor without CG computation - i.e. metadata
+        # only. This returns a list of the TensorMaps formed at each CG
+        # iteration.
+        nux_metadata_only = (
+            clebsch_gordan.combine_single_center_to_body_order_metadata_only(
+                nu1,
+                target_body_order=target_body_order,
+                angular_cutoff=None,
+                angular_selection=None,
+                parity_selection=None,
+                sort_l_list=sort_l_list,
+            )
+        )
+
+
 # ============ Test kernel construction  ============
 
 # TODO: if we want this test, the below code will need updating

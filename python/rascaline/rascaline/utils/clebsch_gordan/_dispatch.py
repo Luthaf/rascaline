@@ -18,6 +18,66 @@ UNKNOWN_ARRAY_TYPE = (
 )
 
 
+def _combine_arrays(
+    arr_1: Union[np.ndarray, TorchTensor],
+    arr_2: Union[np.ndarray, TorchTensor],
+    lam: int,
+    cg_cache,
+    return_empty_array: bool = False,
+) -> Union[np.ndarray, TorchTensor]:
+    """
+    Couples arrays `arr_1` and `arr_2` corresponding to the irreducible
+    spherical components of 2 angular channels l1 and l2 using the appropriate
+    Clebsch-Gordan coefficients. As l1 and l2 can be combined to form multiple
+    lambda channels, this function returns the coupling to a single specified
+    channel `lambda`. The angular channels l1 and l2 are inferred from the size
+    of the components axis (axis 1) of the input arrays.
+
+    `arr_1` has shape (n_i, 2 * l1 + 1, n_p) and `arr_2` has shape (n_i, 2 * l2
+    + 1, n_q). n_i is the number of samples, n_p and n_q are the number of
+    properties in each array. The number of samples in each array must be the
+    same.
+
+    The ouput array has shape (n_i, 2 * lambda + 1, n_p * n_q), where lambda is
+    the input parameter `lam`.
+
+    The Clebsch-Gordan coefficients are cached in `cg_cache`. Currently, these
+    must be produced by the ClebschGordanReal class in this module. These
+    coefficients can be stored in either sparse dictionaries or dense arrays.
+
+    The combination operation is dispatched such that numpy arrays or torch
+    tensors are automatically handled.
+
+    `return_empty_array` can be used to return an empty array of the correct
+    shape, without performing the CG combination step. This can be useful for
+    probing the outputs of CG iterations in terms of metadata without the
+    computational cost of performing the CG combinations - i.e. using the
+    function :py:func:`combine_single_center_to_body_order_metadata_only`.
+
+    :param arr_1: array with the m values for l1 with shape [n_samples, 2 * l1 +
+        1, n_q_properties]
+    :param arr_2: array with the m values for l2 with shape [n_samples, 2 * l2 +
+        1, n_p_properties]
+    :param lam: int value of the resulting coupled channel
+    :param cg_cache: either a sparse dictionary with keys (m1, m2, mu) and array
+        values being sparse blocks of shape <TODO: fill out>, or a dense array
+        of shape [(2 * l1 +1) * (2 * l2 +1), (2 * lam + 1)].
+
+    :returns: array of shape [n_samples, (2*lam+1), q_properties * p_properties]
+    """
+    # If just precomputing metadata, return an empty array
+    if return_empty_array:
+        return _sparse_combine(arr_1, arr_2, lam, cg_cache, True)
+
+    # Otherwise, perform the CG combination
+    # Spare CG cache
+    if cg_cache.sparse:
+        return _sparse_combine(arr_1, arr_2, lam, cg_cache, False)
+
+    # Dense CG cache
+    return _dense_combine(arr_1, arr_2, lam, cg_cache)
+
+
 def _sparse_combine(
     arr_1: Union[np.ndarray, TorchTensor],
     arr_2: Union[np.ndarray, TorchTensor],
