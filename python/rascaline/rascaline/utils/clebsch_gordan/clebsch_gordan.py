@@ -5,7 +5,6 @@ import itertools
 from typing import List, Optional, Tuple, Union
 
 import metatensor
-import numpy as np
 from metatensor import Labels, TensorBlock, TensorMap
 
 from .cg_coefficients import ClebschGordanReal
@@ -15,59 +14,6 @@ from . import _dispatch
 # ======================================================================
 # ===== Functions to do CG combinations on single-center descriptors
 # ======================================================================
-
-
-def lambda_soap_vector(
-    nu_1_tensor: TensorMap,
-    angular_cutoff: Optional[int] = None,
-    angular_selection: Optional[Union[None, int, List[int]]] = None,
-    parity_selection: Optional[Union[None, int, List[int]]] = None,
-) -> TensorMap:
-    """
-    A higher-level wrapper for the :py:func:`n_body_iteration_single_center`
-    function specifically for generating a lambda-SOAP vector in the metatensor
-    format.
-
-    A nu = 1 (i.e. 2-body) single-center descriptor is taken as input and
-    conbined with itself in a single CG combination step to form a nu = 2
-    (3-body) single-center descriptor, i.e. lambda-SOAP. Only the target angular
-    channels given in `angular_selection` and target parities given in
-    `parity_selection` are returned.
-
-    The input `nu_1_tensor` may be, for instance, a rascaline.SphericalExpansion
-    or rascaline.LodeSphericalExpansion.
-
-    This function differs from :py:func`combine_single_center_to_body_order` in
-    that the returned TensorMap has the redundant "order_nu" key dimension
-    removed (which is by definition 2 for lambda-SOAP), and if a single parity
-    is selected, the redundant "inversion_sigma" key dimension too.
-    """
-    if np.any([len(list(block.gradients())) > 0 for block in nu_1_tensor]):
-        raise NotImplementedError(
-            "CG combinations of gradients not currently supported. Check back soon."
-        )
-    # Generate lambda-SOAP
-    lsoap = combine_single_center_to_body_order(
-        nu_1_tensor=nu_1_tensor,
-        target_body_order=2,
-        angular_cutoff=angular_cutoff,
-        angular_selection=angular_selection,
-        parity_selection=parity_selection,
-        use_sparse=True,
-    )
-
-    # Drop the redundant key name "order_nu". This is by definition 2 for all
-    # lambda-SOAP blocks.
-    keys = lsoap.keys.remove(name="order_nu")
-    lsoap = TensorMap(keys=keys, blocks=[b.copy() for b in lsoap.blocks()])
-
-    # If a single parity is requested, drop the now redundant "inversion_sigma"
-    # key name
-    if len(np.unique(lsoap.keys.column("inversion_sigma"))) == 1:
-        keys = lsoap.keys.remove(name="inversion_sigma")
-        lsoap = TensorMap(keys=keys, blocks=[b.copy() for b in lsoap.blocks()])
-
-    return lsoap
 
 
 def combine_single_center_to_body_order(
@@ -83,11 +29,41 @@ def combine_single_center_to_body_order(
     Takes a nu = 1 (i.e. 2-body) single-center descriptor and combines it
     iteratively with itself to generate a descriptor of order
     ``target_body_order``.
+
+    ``nu_1_tensor`` may be, for instance, a rascaline.SphericalExpansion or
+    rascaline.LodeSphericalExpansion. In the first iteration, ``nu_1_tensor`` is
+    combined with itself to form a nu = 2 (3-body) descriptor. In each following
+    iterations the nu = x (x+1)-body descriptor is combined with the
+    ``nu_1_tensor`` nu = 1 descriptor until the ``target_body_order`` is
+    reached.
+
+    With no other specification of input args, the full extent of non-zero CG
+    combinations will be taken between blocks at every step. However, there are
+    selections that can be made to reduce the computational cost.
+    ``angular_cutoff`` applies a global cutoff to the maximum angular channel
+    that is computed at each iteration.
+
+    ``angular_selection`` and ``parity_selection`` can be used to explicitly
+    control the angular and parity channels that are output at each step.
+    Passing a list of int in each will apply that selection on the final CG
+    combination step. Passing a list of list of int (of length
+    ``target_body_order`` - 1) will apply the specified selection at each step.
+
+    Cost can also be reduced with the ``sort_l_list`` argument. By default, all
+    combinations of blocks are performed. Some well-defined sets of these
+    combinations are redundant, and can be skipped by setting
+    ``sort_l_list=True`. This is done by sorting the l list (i.e. the angular
+    channels of the original nu = 1 blocks previously combined) of the blocks to
+    be combined, and only operating on blocks where l1 <= l2 <= ... <= ln.
+
+    Finally, the ``use_sparse`` argument can be used to control whether a sparse
+    or dense cache of CG coefficients is used, which depending on the use case
+    can affect the performance.
     """
     if target_body_order < 1:
         raise ValueError("`target_body_order` must be > 0")
 
-    if np.any([len(list(block.gradients())) > 0 for block in nu_1_tensor]):
+    if _dispatch.any([len(list(block.gradients())) > 0 for block in nu_1_tensor]):
         raise NotImplementedError(
             "CG combinations of gradients not currently supported. Check back soon."
         )
@@ -129,8 +105,8 @@ def combine_single_center_to_body_order(
     # constructed CG cache could be used to reduce memory overhead - i.e. we
     # don't necessarily need *all* CG coeffs up to `angular_max`, just the ones
     # that are actually used.
-    angular_max = np.max(
-        np.concatenate(
+    angular_max = max(
+        _dispatch.concatenate(
             [nu_1_tensor.keys.column("spherical_harmonics_l")]
             + [
                 metadata[0].column("spherical_harmonics_l")
@@ -167,7 +143,14 @@ def combine_single_center_to_body_order(
             + [f"k{i}" for i in range(2, target_body_order)]
         )
 
-    return nu_x_tensor
+    # Drop the redundant key name "order_nu", and "inversion_sigma" if also
+    # redundant. TODO: these should be part of the global matadata associated
+    # with the TensorMap. Awaiting this functionality in metatensor.
+    keys = nu_x_tensor.keys.remove(name="order_nu")
+    if len(_dispatch.unique(nu_x_tensor.keys.column("inversion_sigma"))) == 1:
+        keys = keys.remove(name="inversion_sigma")
+
+    return TensorMap(keys=keys, blocks=[b.copy() for b in nu_x_tensor.blocks()])
 
 
 def combine_single_center_to_body_order_metadata_only(
@@ -197,7 +180,7 @@ def combine_single_center_to_body_order_metadata_only(
     if target_body_order <= 1:
         raise ValueError("`target_body_order` must be > 1")
 
-    if np.any([len(list(block.gradients())) > 0 for block in nu_1_tensor]):
+    if _dispatch.any([len(list(block.gradients())) > 0 for block in nu_1_tensor]):
         raise NotImplementedError(
             "CG combinations of gradients not currently supported. Check back soon."
         )
@@ -256,13 +239,24 @@ def combine_single_center_to_body_order_metadata_only(
         nu_x_tensor = TensorMap(keys=nu_x_keys, blocks=nu_x_blocks)
         nu_x_tensors.append(nu_x_tensor)
 
-    return [
+    nu_x_tensors = [
         tensor.keys_to_properties(
             [f"l{i}" for i in range(1, tmp_bo + 1)]
             + [f"k{i}" for i in range(2, tmp_bo)]
         )
         for tmp_bo, tensor in enumerate(nu_x_tensors, start=2)
     ]
+
+    return_tensors = []
+    for tensor in nu_x_tensors:
+        keys = tensor.keys.remove(name="order_nu")
+        if len(_dispatch.unique(tensor.keys.column("inversion_sigma"))) == 1:
+            keys = keys.remove(name="inversion_sigma")
+        return_tensors.append(
+            TensorMap(keys=keys, blocks=[b.copy() for b in tensor.blocks()])
+        )
+
+    return return_tensors
 
 
 def combine_single_center_one_iteration(
@@ -302,8 +296,16 @@ def _standardize_tensor_metadata(tensor: TensorMap) -> TensorMap:
     """
     if "species_neighbor" in tensor.keys.names:
         tensor = tensor.keys_to_properties(keys_to_move="species_neighbor")
-    keys = tensor.keys.insert(name="order_nu", values=np.array([1]), index=0)
-    keys = keys.insert(name="inversion_sigma", values=np.array([1]), index=1)
+    keys = tensor.keys.insert(
+        name="order_nu",
+        values=_dispatch.int_array_like([1], like=tensor.keys.values),
+        index=0,
+    )
+    keys = keys.insert(
+        name="inversion_sigma",
+        values=_dispatch.int_array_like([1], like=tensor.keys.values),
+        index=1,
+    )
     return TensorMap(keys=keys, blocks=[b.copy() for b in tensor.blocks()])
 
 
@@ -361,29 +363,29 @@ def _parse_selection_filters(
         raise TypeError("`selection` must be an int, List[int], or List[List[int]]")
     for slct in selection:
         if slct is not None:
-            if not np.all([isinstance(val, int) for val in slct]):
+            if not _dispatch.all([isinstance(val, int) for val in slct]):
                 raise TypeError(
                     "`selection` must be an int, List[int], or List[List[int]]"
                 )
             if selection_type == "parity":
-                if not np.all([val in [-1, +1] for val in slct]):
+                if not _dispatch.all([val in [-1, +1] for val in slct]):
                     raise ValueError(
                         "specified layers in `selection` must only contain valid"
                         " parity values of -1 or +1"
                     )
-                if not np.all([0 < len(slct) <= 2]):
+                if not _dispatch.all([0 < len(slct) <= 2]):
                     raise ValueError(
                         "each parity filter must be a list of length 1 or 2,"
                         " with vals +1 and/or -1"
                     )
             elif selection_type == "angular":
-                if not np.all([val >= 0 for val in slct]):
+                if not _dispatch.all([val >= 0 for val in slct]):
                     raise ValueError(
                         "specified layers in `selection` must only contain valid"
                         " angular channels >= 0"
                     )
                 if angular_cutoff is not None:
-                    if not np.all([val <= angular_cutoff for val in slct]):
+                    if not _dispatch.all([val <= angular_cutoff for val in slct]):
                         raise ValueError(
                             "specified layers in `selection` must only contain valid"
                             " angular channels <= the specified `angular_cutoff`"
@@ -522,7 +524,7 @@ def _precompute_metadata_one_iteration(
     parities. This must be passed as a list with elements +1 and/or -1.
     """
     # Get the body order of the first TensorMap.
-    unique_nu = np.unique(keys_1.column("order_nu"))
+    unique_nu = _dispatch.unique(keys_1.column("order_nu"))
     if len(unique_nu) > 1:
         raise ValueError(
             "keys_1 must correspond to a tensor of a single body order."
@@ -534,7 +536,7 @@ def _precompute_metadata_one_iteration(
     nu = nu1 + 1
 
     # The body order of the second TensorMap should be nu = 1.
-    assert np.all(keys_2.column("order_nu") == 1)
+    assert _dispatch.all(keys_2.column("order_nu") == 1)
 
     # If nu1 = 1, the key names don't yet have any "lx" columns
     if nu1 == 1:
@@ -545,13 +547,13 @@ def _precompute_metadata_one_iteration(
         new_l_list_names = l_list_names + [f"l{nu}"]
 
     # Check key names
-    assert np.all(
+    assert _dispatch.all(
         keys_1.names
         == ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center"]
         + l_list_names
         + [f"k{k}" for k in range(2, nu1)]
     )
-    assert np.all(
+    assert _dispatch.all(
         keys_2.names
         == ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center"]
     )
@@ -579,7 +581,9 @@ def _precompute_metadata_one_iteration(
         # formed from combination of blocks of order `lam1` and `lam2`. This
         # corresponds to values in the inclusive range { |lam1 - lam2|, ...,
         # |lam1 + lam2| }
-        nonzero_lams = np.arange(abs(lam1 - lam2), abs(lam1 + lam2) + 1)
+        nonzero_lams = _dispatch.int_range_like(
+            abs(lam1 - lam2), abs(lam1 + lam2) + 1, like=key_1.values
+        )
 
         # Now iterate over the non-zero angular channels and apply the custom
         # selections
@@ -618,7 +622,10 @@ def _precompute_metadata_one_iteration(
             keys_2_entries.append(key_2)
 
     # Define new keys as the full product of keys_1 and keys_2
-    nu_x_keys = Labels(names=new_names, values=np.array(new_key_values))
+    nu_x_keys = Labels(
+        names=new_names,
+        values=_dispatch.int_array_like(new_key_values, like=keys_1.values),
+    )
 
     # If we want to sort the l list to save computations (i.e. not calculate )
     if not sort_l_list:
@@ -640,13 +647,15 @@ def _precompute_metadata_one_iteration(
         # want to compute a CG combination for.
         key_slice_tuple = tuple(first_part + l_list)
         key_slice_sorted_tuple = tuple(first_part + l_list_sorted)
-        if np.all(key_slice_tuple == key_slice_sorted_tuple):
+        if _dispatch.all(key_slice_tuple == key_slice_sorted_tuple):
             key_idxs_to_keep.append(key_idx)
 
     # Build a reduced Labels object for the combined keys, with redundancies removed
     combined_keys_red = Labels(
         names=new_names,
-        values=np.array([nu_x_keys[idx].values for idx in key_idxs_to_keep]),
+        values=_dispatch.int_array_like(
+            [nu_x_keys[idx].values for idx in key_idxs_to_keep], like=keys_1.values
+        ),
     )
 
     # Create a of LabelsEntry objects that correspond to the original keys in
@@ -676,11 +685,11 @@ def _combine_single_center_blocks(
 
     # Do the CG combination - single center so no shape pre-processing required
     if return_metadata_only:
-        combined_values = _dispatch._combine_arrays(
+        combined_values = _dispatch.combine_arrays(
             block_1.values, block_2.values, lam, cg_cache, return_empty_array=True
         )
     else:
-        combined_values = _dispatch._combine_arrays(
+        combined_values = _dispatch.combine_arrays(
             block_1.values, block_2.values, lam, cg_cache, return_empty_array=False
         )
 
@@ -700,17 +709,20 @@ def _combine_single_center_blocks(
         components=[
             Labels(
                 names=["spherical_harmonics_m"],
-                values=np.arange(-lam, lam + 1).reshape(-1, 1),
+                values=_dispatch.int_range_like(
+                    min_val=-lam, max_val=lam + 1, like=block_1.values
+                ).reshape(-1, 1),
             ),
         ],
         properties=Labels(
             names=prop_names,
-            values=np.array(
+            values=_dispatch.int_array_like(
                 [
-                    np.concatenate((b2, b1))
+                    _dispatch.concatenate((b2, b1))
                     for b2 in block_2.properties.values
                     for b1 in block_1.properties.values
-                ]
+                ],
+                like=block_1.values,
             ),
         ),
     )
