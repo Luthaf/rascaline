@@ -9,6 +9,7 @@ import numpy as np
 from metatensor import Labels, TensorBlock, TensorMap
 
 from .cg_coefficients import ClebschGordanReal
+from . import _dispatch
 
 
 # ======================================================================
@@ -147,23 +148,17 @@ def combine_single_center_to_body_order(
         # Combine blocks
         nu_x_blocks = []
         # TODO: is there a faster way of iterating over keys/blocks here?
-        for nu_x_key, key_1, key_2, multi in zip(*combination_metadata[iteration]):
-            # Combine the pair of block values, accounting for multiplicity
+        for nu_x_key, key_1, key_2 in zip(*combination_metadata[iteration]):
+            # Combine the pair of block values
             nu_x_block = _combine_single_center_blocks(
                 nu_x_tensor[key_1],
                 nu_1_tensor[key_2],
                 nu_x_key["spherical_harmonics_l"],
                 cg_cache,
-                correction_factor=np.sqrt(multi),
             )
             nu_x_blocks.append(nu_x_block)
         nu_x_keys = combination_metadata[iteration][0]
         nu_x_tensor = TensorMap(keys=nu_x_keys, blocks=nu_x_blocks)
-
-    # TODO: remove this
-    # Apply normalization factor to each block based on their permutational
-    # multiplicity (i.e. how many ways in which they could have been formed)
-    # nu_x_tensor = _normalize_blocks(nu_x_tensor, target_body_order)
 
     # Move the [l1, l2, ...] keys to the properties
     if target_body_order > 1:
@@ -173,31 +168,6 @@ def combine_single_center_to_body_order(
         )
 
     return nu_x_tensor
-
-
-# TODO: remove this
-# def _normalize_blocks(tensor: TensorMap, target_body_order: int) -> TensorMap:
-#     """
-#     For each block in `tensor`, uses values of the keys "l1", "l2", ..., "lx" to
-#     calculate the permutations P that correspond to the ways in which the block
-#     could have been formed from CG combinations. The normalization factor is
-#     then defined as (1 / sqrt(P)).
-
-#     This function assumes that the "lx" keys have *not* yet been moved to the
-#     properties, and is intended to be performed after all CG iterations have
-#     been performed.
-#     """
-#     l_names = [f"l{i}" for i in range(1, target_body_order + 1)]
-#     for key, block in tensor.items():
-#         l_vals = [key[l_name] for l_name in l_names]
-#         perm_set = set()
-#         for perm in itertools.permutations(l_vals):
-#             perm_set.add(perm)
-
-#         norm_factor = np.sqrt(len(perm_set))
-#         block.values[:] *= norm_factor
-
-#     return tensor
 
 
 def combine_single_center_to_body_order_metadata_only(
@@ -266,14 +236,12 @@ def combine_single_center_to_body_order_metadata_only(
         # Combine blocks
         nu_x_blocks = []
         # TODO: is there a faster way of iterating over keys/blocks here?
-        # TODO: only account for multiplicity at the end
         for nu_x_key, key_1, key_2, _ in zip(*combination_metadata[iteration]):
             nu_x_block = _combine_single_center_blocks(
                 nu_x_tensor[key_1],
                 nu_1_tensor[key_2],
                 nu_x_key["spherical_harmonics_l"],
                 cg_cache=None,
-                correction_factor=1.0,
                 return_metadata_only=True,
             )
             nu_x_blocks.append(nu_x_block)
@@ -647,12 +615,10 @@ def _precompute_metadata_one_iteration(
 
     # If we want to sort the l list to save computations (i.e. not calculate )
     if not sort_l_list:
-        # TODO: remove multiplicity correction 
-        return nu_x_keys, keys_1_entries, keys_2_entries, [1] * len(nu_x_keys)
+        return nu_x_keys, keys_1_entries, keys_2_entries
 
     # Now account for multiplicty
     key_idxs_to_keep = []
-    mult_dict = {}
     for key_idx, key in enumerate(nu_x_keys):
         # Get the important key values. This is all of the keys, excpet the k
         # list
@@ -670,12 +636,6 @@ def _precompute_metadata_one_iteration(
         if np.all(key_slice_tuple == key_slice_sorted_tuple):
             key_idxs_to_keep.append(key_idx)
 
-        # Now count the multiplicity of each sorted l_list
-        if mult_dict.get(key_slice_sorted_tuple) is None:
-            mult_dict[key_slice_sorted_tuple] = 1
-        else:
-            mult_dict[key_slice_sorted_tuple] += 1
-
     # Build a reduced Labels object for the combined keys, with redundancies removed
     combined_keys_red = Labels(
         names=new_names,
@@ -687,13 +647,7 @@ def _precompute_metadata_one_iteration(
     keys_1_entries_red = [keys_1_entries[idx] for idx in key_idxs_to_keep]
     keys_2_entries_red = [keys_2_entries[idx] for idx in key_idxs_to_keep]
 
-    # Define the multiplicity of each key
-    mult_list = [
-        mult_dict[tuple(nu_x_keys[idx].values[: 4 + (nu + 1)].tolist())]
-        for idx in key_idxs_to_keep
-    ]
-
-    return combined_keys_red, keys_1_entries_red, keys_2_entries_red, mult_list
+    return combined_keys_red, keys_1_entries_red, keys_2_entries_red
 
 
 # ==================================================================
@@ -706,7 +660,6 @@ def _combine_single_center_blocks(
     block_2: TensorBlock,
     lam: int,
     cg_cache,
-    correction_factor: float = 1.0,
     return_metadata_only: bool = False,
 ) -> TensorBlock:
     """
@@ -735,7 +688,7 @@ def _combine_single_center_blocks(
 
     # Create a TensorBlock
     combined_block = TensorBlock(
-        values=combined_values * correction_factor,
+        values=combined_values,
         samples=block_1.samples,
         components=[
             Labels(
@@ -766,10 +719,12 @@ def _combine_arrays(
     return_empty_array: bool = False,
 ) -> np.ndarray:
     """
-    Couples arrays corresponding to the irreducible spherical components of 2
-    angular channels l1 and l2 using the appropriate Clebsch-Gordan
-    coefficients. As l1 and l2 can be combined to form multiple lambda channels,
-    this function returns the coupling to a single specified channel `lambda`.
+    Couples arrays `arr_1` and `arr_2` corresponding to the irreducible
+    spherical components of 2 angular channels l1 and l2 using the appropriate
+    Clebsch-Gordan coefficients. As l1 and l2 can be combined to form multiple
+    lambda channels, this function returns the coupling to a single specified
+    channel `lambda`. The angular channels l1 and l2 are inferred from the size
+    of the components axis (axis 1) of the input arrays.
 
     `arr_1` has shape (n_i, 2 * l1 + 1, n_p) and `arr_2` has shape (n_i, 2 * l2
     + 1, n_q). n_i is the number of samples, n_p and n_q are the number of
@@ -780,144 +735,37 @@ def _combine_arrays(
     the input parameter `lam`.
 
     The Clebsch-Gordan coefficients are cached in `cg_cache`. Currently, these
-    must be produced by the ClebschGordanReal class in this module.
+    must be produced by the ClebschGordanReal class in this module. These
+    coefficients can be stored in either sparse dictionaries or dense arrays.
 
-    Either performs the operation in a dense or sparse manner, depending on the
-    value of `sparse`.
+    The combination operation is dispatched such that numpy arrays or torch
+    tensors are automatically handled.
 
     `return_empty_array` can be used to return an empty array of the correct
     shape, without performing the CG combination step. This can be useful for
     probing the outputs of CG iterations in terms of metadata without the
     computational cost of performing the CG combinations - i.e. using the
     function :py:func:`combine_single_center_to_body_order_metadata_only`.
-    """
-    if return_empty_array:
-        return _combine_arrays_sparse(arr_1, arr_2, lam, cg_cache, True)
 
-    # Check the first dimension of the arrays are the same (i.e. same samples)
+    :param arr_1: array with the m values for l1 with shape [n_samples, 2 * l1 +
+        1, n_q_properties]
+    :param arr_2: array with the m values for l2 with shape [n_samples, 2 * l2 +
+        1, n_p_properties]
+    :param lam: int value of the resulting coupled channel
+    :param cg_cache: either a sparse dictionary with keys (m1, m2, mu) and array
+        values being sparse blocks of shape <TODO: fill out>, or a dense array
+        of shape [(2 * l1 +1) * (2 * l2 +1), (2 * lam + 1)].
+
+    :returns: array of shape [n_samples, (2*lam+1), q_properties * p_properties]
+    """
+    # If just precomputing metadata, return an empty array
+    if return_empty_array:
+        return _dispatch._sparse_combine(arr_1, arr_2, lam, cg_cache, True)
+
+    # Otherwise, perform the CG combination
+    # Spare CG cache
     if cg_cache.sparse:
-        return _combine_arrays_sparse(arr_1, arr_2, lam, cg_cache, False)
-    return _combine_arrays_dense(arr_1, arr_2, lam, cg_cache)
+        return _dispatch._sparse_combine(arr_1, arr_2, lam, cg_cache, False)
 
-
-def _combine_arrays_sparse(
-    arr_1: np.ndarray,
-    arr_2: np.ndarray,
-    lam: int,
-    cg_cache,
-    return_empty_array: bool = False,
-) -> np.ndarray:
-    """
-    TODO: finish docstring.
-
-    Performs a Clebsch-Gordan combination step on 2 arrays using sparse
-    operations.
-
-    :param arr_1: array with the m values for l1 with shape [n_samples, 2 * l1 +
-        1, n_q_properties]
-    :param arr_2: array with the m values for l2 with shape [n_samples, 2 * l2 +
-        1, n_p_properties]
-    :param lam: int value of the resulting coupled channel
-    :param cg_cache: sparse dictionary with keys (m1, m2, mu) and array values
-        being sparse blocks of shape <TODO: fill out>
-
-    :returns: array of shape [n_samples, (2*lam+1), q_properties * p_properties]
-    """
-    # Samples dimensions must be the same
-    assert arr_1.shape[0] == arr_2.shape[0]
-
-    # Define other useful dimensions
-    n_i = arr_1.shape[0]  # number of samples
-    n_p = arr_1.shape[2]  # number of properties in arr_1
-    n_q = arr_2.shape[2]  # number of properties in arr_2
-
-    # Infer l1 and l2 from the len of the length of axis 1 of each tensor
-    l1 = (arr_1.shape[1] - 1) // 2
-    l2 = (arr_2.shape[1] - 1) // 2
-
-    # Initialise output array
-    arr_out = np.zeros((n_i, 2 * lam + 1, n_p * n_q))
-
-    if return_empty_array:
-        return arr_out
-
-    # Get the corresponding Clebsch-Gordan coefficients
-    cg_coeffs = cg_cache.coeffs[(l1, l2, lam)]
-
-    # Fill in each mu component of the output array in turn
-    for m1, m2, mu in cg_coeffs.keys():
-        # Broadcast arrays, multiply together and with CG coeff
-        arr_out[:, mu, :] += (
-            arr_1[:, m1, :, None] * arr_2[:, m2, None, :] * cg_coeffs[(m1, m2, mu)]
-        ).reshape(n_i, n_p * n_q)
-
-    return arr_out
-
-
-def _combine_arrays_dense(
-    arr_1: np.ndarray,
-    arr_2: np.ndarray,
-    lam: int,
-    cg_cache,
-) -> np.ndarray:
-    """
-    Performs a Clebsch-Gordan combination step on 2 arrays using a dense
-    operation.
-
-    :param arr_1: array with the m values for l1 with shape [n_samples, 2 * l1 +
-        1, n_q_properties]
-    :param arr_2: array with the m values for l2 with shape [n_samples, 2 * l2 +
-        1, n_p_properties]
-    :param lam: int value of the resulting coupled channel
-    :param cg_cache: dense array of shape [(2 * l1 +1) * (2 * l2 +1), (2 * lam +
-        1)]
-
-    :returns: array of shape [n_samples, (2*lam+1), q_properties * p_properties]
-
-    TODO: do we need this example here? Could it be moved to a test?
-
-    >>> N_SAMPLES = 30
-    >>> N_Q_PROPERTIES = 10
-    >>> N_P_PROPERTIES = 8
-    >>> L1 = 2
-    >>> L2 = 3
-    >>> LAM = 2
-    >>> arr_1 = np.random.rand(N_SAMPLES, 2 * L1 + 1, N_Q_PROPERTIES)
-    >>> arr_2 = np.random.rand(N_SAMPLES, 2 * L2 + 1, N_P_PROPERTIES)
-    >>> cg_cache = {(L1, L2, LAM): np.random.rand(2 * L1 + 1, 2 * L2 + 1, 2 * LAM + 1)}
-    >>> out1 = _clebsch_gordan_dense(arr_1, arr_2, LAM, cg_cache)
-    >>> # (samples l1_m  q_features) (samples l2_m p_features),
-    >>> #   (l1_m  l2_m  lambda_mu)
-    >>> # --> (samples, lambda_mu q_features p_features)
-    >>> # in einsum l1_m is l, l2_m is k, lambda_mu is L
-    >>> out2 = np.einsum("slq, skp, lkL -> sLqp", arr_1, arr_2, cg_cache[(L1, L2, LAM)])
-    >>> # --> (samples lambda_mu (q_features p_features))
-    >>> out2 = out2.reshape(arr_1.shape[0], 2 * LAM + 1, -1)
-    >>> print(np.allclose(out1, out2))
-    True
-    """
-    # Infer l1 and l2 from the len of the length of axis 1 of each tensor
-    l1 = (arr_1.shape[1] - 1) // 2
-    l2 = (arr_2.shape[1] - 1) // 2
-    cg_coeffs = cg_cache.coeffs[(l1, l2, lam)]
-
-    # (samples None None l1_mu q) * (samples l2_mu p None None) -> (samples l2_mu p l1_mu q)
-    # we broadcast it in this way so we only need to do one swapaxes in the next step
-    arr_out = arr_1[:, None, None, :, :] * arr_2[:, :, :, None, None]
-
-    # (samples l2_mu p l1_mu q) -> (samples q p l1_mu l2_mu)
-    arr_out = arr_out.swapaxes(1, 4)
-
-    # samples (q p l1_mu l2_mu) -> (samples (q p) (l1_mu l2_mu))
-    arr_out = arr_out.reshape(
-        -1, arr_1.shape[2] * arr_2.shape[2], arr_1.shape[1] * arr_2.shape[1]
-    )
-
-    # (l1_mu l2_mu lam_mu) -> ((l1_mu l2_mu) lam_mu)
-    cg_coeffs = cg_coeffs.reshape(-1, 2 * lam + 1)
-
-    # (samples (q p) (l1_mu l2_mu)) @ ((l1_mu l2_mu) lam_mu) -> samples (q p) lam_mu
-    arr_out = arr_out @ cg_coeffs
-
-    # (samples (q p) lam_mu) -> (samples lam_mu (q p))
-    return arr_out.swapaxes(1, 2)
+    # Dense CG cache
+    return _dispatch._dense_combine(arr_1, arr_2, lam, cg_cache)

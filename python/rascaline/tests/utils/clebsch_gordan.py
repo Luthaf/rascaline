@@ -98,6 +98,9 @@ def get_norm(tensor: TensorMap):
     """
     Calculates the norm used in CG iteration tests. Assumes standardized
     metadata and that the TensorMap is sliced to a single sample.
+
+    For a given atomic sample, the norm is calculated for each feature vector,
+    as a sum over lambda, sigma, and m.
     """
     norm = 0.0
     for key, block in tensor.items():  # Sum over lambda and sigma
@@ -115,27 +118,9 @@ def get_norm(tensor: TensorMap):
 @pytest.mark.parametrize(
     "frames, nu_target, angular_cutoff, angular_selection, parity_selection",
     [
-        (
-            h2_isolated(),
-            3,
-            None,
-            [0, 4, 5],
-            [+1],  # [+1, -1],
-        ),
-        (
-            h2o_isolated(),
-            2,
-            5,
-            None,  # [0, 4, 5],
-            None,  # [+1, -1],
-        ),
-        (
-            h2o_periodic(),
-            2,
-            5,
-            None,  # [0, 1, 2, 3, 4, 5],
-            None,  # [-1],
-        ),
+        (h2_isolated(), 3, None, [0, 4, 5], [+1]),
+        (h2o_isolated(), 2, 5, None, None),
+        (h2o_periodic(), 2, 5, None, None),
     ],
 )
 def test_so3_equivariance(
@@ -169,35 +154,15 @@ def test_so3_equivariance(
     )
 
     nu_3_transf = wig.transform_tensormap_so3(nu_3)
-
-    # assert metatensor.equal_metadata(nu_3_transf, nu_3_rot)
     assert metatensor.allclose(nu_3_transf, nu_3_so3)
 
 
 @pytest.mark.parametrize(
     "frames, nu_target, angular_cutoff, angular_selection, parity_selection",
     [
-        (
-            h2_isolated(),
-            3,
-            None,
-            [0, 4, 5],
-            None,
-        ),
-        (
-            h2o_isolated(),
-            2,
-            5,
-            None,  # [0, 4, 5],
-            None,  # [+1, -1],
-        ),
-        (
-            h2o_periodic(),
-            2,
-            5,
-            None,  # [0, 1, 2, 3, 4, 5],
-            None,  # [-1],
-        ),
+        (h2_isolated(), 3, None, [0, 4, 5], None),
+        (h2o_isolated(), 2, 5, None, None),
+        (h2o_periodic(), 2, 5, None, None),
     ],
 )
 def test_o3_equivariance(
@@ -231,8 +196,6 @@ def test_o3_equivariance(
     )
 
     nu_3_transf = wig.transform_tensormap_o3(nu_3)
-
-    # assert metatensor.equal_metadata(nu_3_transf, nu_3_rot)
     assert metatensor.allclose(nu_3_transf, nu_3_o3)
 
 
@@ -365,12 +328,8 @@ def test_combine_single_center_norm(frames, target_body_order):
     # Without sorting the l list we should get the same norm
     assert np.allclose(norm_nu1, norm_nux)
 
-    # But with sorting the l list we should get a different norm. Doesn't work
-    # for targte_body_order > 2
-    if target_body_order > 2:
-        assert not np.allclose(norm_nu1, norm_nux_sorted_l)
-    else:
-        assert np.allclose(norm_nu1, norm_nux_sorted_l)
+    # But with sorting the l list we should get a different norm
+    assert not np.allclose(norm_nu1, norm_nux_sorted_l)
 
 
 # ============ Test CG cache  ============
@@ -529,3 +488,25 @@ def test_combine_single_center_to_body_order_dense_sparse_agree(frames):
 
 
 # ============
+
+
+# ======= Docstring example from _combine_arrays_sparse. Not sure if we need it.
+# >>> N_SAMPLES = 30
+# >>> N_Q_PROPERTIES = 10
+# >>> N_P_PROPERTIES = 8
+# >>> L1 = 2
+# >>> L2 = 3
+# >>> LAM = 2
+# >>> arr_1 = np.random.rand(N_SAMPLES, 2 * L1 + 1, N_Q_PROPERTIES)
+# >>> arr_2 = np.random.rand(N_SAMPLES, 2 * L2 + 1, N_P_PROPERTIES)
+# >>> cg_cache = {(L1, L2, LAM): np.random.rand(2 * L1 + 1, 2 * L2 + 1, 2 * LAM + 1)}
+# >>> out1 = _clebsch_gordan_dense(arr_1, arr_2, LAM, cg_cache)
+# >>> # (samples l1_m  q_features) (samples l2_m p_features),
+# >>> #   (l1_m  l2_m  lambda_mu)
+# >>> # --> (samples, lambda_mu q_features p_features)
+# >>> # in einsum l1_m is l, l2_m is k, lambda_mu is L
+# >>> out2 = np.einsum("slq, skp, lkL -> sLqp", arr_1, arr_2, cg_cache[(L1, L2, LAM)])
+# >>> # --> (samples lambda_mu (q_features p_features))
+# >>> out2 = out2.reshape(arr_1.shape[0], 2 * LAM + 1, -1)
+# >>> print(np.allclose(out1, out2))
+# True
