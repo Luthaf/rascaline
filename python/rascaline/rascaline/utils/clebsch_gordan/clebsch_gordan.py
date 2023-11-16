@@ -11,30 +11,31 @@ from .cg_coefficients import ClebschGordanReal
 from . import _dispatch
 
 
+
 # ======================================================================
 # ===== Functions to do CG combinations on single-center descriptors
 # ======================================================================
 
 
-def combine_single_center_to_body_order(
-    nu_1_tensor: TensorMap,
-    target_body_order: int,
+def single_center_combine_to_order(
+    nu1_tensor: TensorMap,
+    correlation_order: int,
     angular_cutoff: Optional[int] = None,
     angular_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
     parity_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
-    sort_l_list: Optional[bool] = False,
+    skip_redundant: Optional[Union[bool, List[bool]]] = False,
     use_sparse: bool = True,
 ) -> TensorMap:
     """
-    Takes a nu = 1 (i.e. 2-body) single-center descriptor and combines it
-    iteratively with itself to generate a descriptor of order
-    ``target_body_order``.
+    Takes a correlation order nu = 1 (i.e. 2-body) single-center descriptor and
+    combines it iteratively with itself to generate a descriptor of correlation
+    order ``correlation_order``.
 
-    ``nu_1_tensor`` may be, for instance, a rascaline.SphericalExpansion or
-    rascaline.LodeSphericalExpansion. In the first iteration, ``nu_1_tensor`` is
+    ``nu1_tensor`` may be, for instance, a rascaline.SphericalExpansion or
+    rascaline.LodeSphericalExpansion. In the first iteration, ``nu1_tensor`` is
     combined with itself to form a nu = 2 (3-body) descriptor. In each following
-    iterations the nu = x (x+1)-body descriptor is combined with the
-    ``nu_1_tensor`` nu = 1 descriptor until the ``target_body_order`` is
+    iteration the nu = x (x+1)-body descriptor is combined with the
+    ``nu1_tensor`` nu = 1 descriptor until the target ``correlation_order`` is
     reached.
 
     With no other specification of input args, the full extent of non-zero CG
@@ -47,12 +48,12 @@ def combine_single_center_to_body_order(
     control the angular and parity channels that are output at each step.
     Passing a list of int in each will apply that selection on the final CG
     combination step. Passing a list of list of int (of length
-    ``target_body_order`` - 1) will apply the specified selection at each step.
+    ``correlation_order`` - 1) will apply the specified selection at each step.
 
-    Cost can also be reduced with the ``sort_l_list`` argument. By default, all
-    combinations of blocks are performed. Some well-defined sets of these
+    Cost can also be reduced with the ``skip_redundant`` argument. By default,
+    all combinations of blocks are performed. Some well-defined sets of these
     combinations are redundant, and can be skipped by setting
-    ``sort_l_list=True`. This is done by sorting the l list (i.e. the angular
+    ``skip_redundant=True`. This is done by sorting the l list (i.e. the angular
     channels of the original nu = 1 blocks previously combined) of the blocks to
     be combined, and only operating on blocks where l1 <= l2 <= ... <= ln.
 
@@ -60,44 +61,53 @@ def combine_single_center_to_body_order(
     or dense cache of CG coefficients is used, which depending on the use case
     can affect the performance.
     """
-    if target_body_order < 1:
-        raise ValueError("`target_body_order` must be > 0")
+    if correlation_order < 1:
+        raise ValueError("`correlation_order` must be > 0")
 
-    if _dispatch.any([len(list(block.gradients())) > 0 for block in nu_1_tensor]):
+    if _dispatch.any([len(list(block.gradients())) > 0 for block in nu1_tensor]):
         raise NotImplementedError(
             "CG combinations of gradients not currently supported. Check back soon."
         )
 
     # Standardize the metadata of the input tensor
-    nu_1_tensor = _standardize_tensor_metadata(nu_1_tensor)
+    nu1_tensor = _standardize_tensor_metadata(nu1_tensor)
 
     # If the desired body order is 1, return the input tensor with standardized
     # metadata.
-    if target_body_order == 1:
-        return nu_1_tensor
+    if correlation_order == 1:
+        return nu1_tensor
 
     # Pre-compute the metadata needed to perform each CG iteration
     # Current design choice: only combine a nu = 1 tensor iteratively with
     # itself, i.e. nu=1 + nu=1 --> nu=2. nu=2 + nu=1 --> nu=3, etc.
     parity_selection = _parse_selection_filters(
-        n_iterations=target_body_order - 1,
+        n_iterations=correlation_order - 1,
         selection_type="parity",
         selection=parity_selection,
     )
     angular_selection = _parse_selection_filters(
-        n_iterations=target_body_order - 1,
+        n_iterations=correlation_order - 1,
         selection_type="angular",
         selection=angular_selection,
         angular_cutoff=angular_cutoff,
     )
+    if isinstance(skip_redundant, bool):
+        skip_redundant = [skip_redundant] * (correlation_order - 1)
+    if not _dispatch.all([isinstance(val, bool) for val in skip_redundant]):
+        raise TypeError("`skip_redundant` must be a bool or list of bools")
+    if not len(skip_redundant) == correlation_order - 1:
+        raise ValueError(
+            "`skip_redundant` must be a bool or list of bools of length"
+            " `correlation_order` - 1"
+        )
     combination_metadata = _precompute_metadata(
-        nu_1_tensor.keys,
-        nu_1_tensor.keys,
-        n_iterations=target_body_order - 1,
+        nu1_tensor.keys,
+        nu1_tensor.keys,
+        n_iterations=correlation_order - 1,
         angular_cutoff=angular_cutoff,
         angular_selection=angular_selection,
         parity_selection=parity_selection,
-        sort_l_list=sort_l_list,
+        skip_redundant=skip_redundant,
     )
 
     # Define the cached CG coefficients, either as sparse dicts or dense arrays.
@@ -107,7 +117,7 @@ def combine_single_center_to_body_order(
     # that are actually used.
     angular_max = max(
         _dispatch.concatenate(
-            [nu_1_tensor.keys.column("spherical_harmonics_l")]
+            [nu1_tensor.keys.column("spherical_harmonics_l")]
             + [
                 metadata[0].column("spherical_harmonics_l")
                 for metadata in combination_metadata
@@ -117,10 +127,10 @@ def combine_single_center_to_body_order(
     cg_cache = ClebschGordanReal(angular_max, use_sparse)
 
     # Create a copy of the nu = 1 tensor to combine with itself
-    nu_x_tensor = nu_1_tensor
+    nu_x_tensor = nu1_tensor
 
     # Iteratively combine block values
-    for iteration in range(target_body_order - 1):
+    for iteration in range(correlation_order - 1):
         # Combine blocks
         nu_x_blocks = []
         # TODO: is there a faster way of iterating over keys/blocks here?
@@ -128,7 +138,7 @@ def combine_single_center_to_body_order(
             # Combine the pair of block values
             nu_x_block = _combine_single_center_blocks(
                 nu_x_tensor[key_1],
-                nu_1_tensor[key_2],
+                nu1_tensor[key_2],
                 nu_x_key["spherical_harmonics_l"],
                 cg_cache,
             )
@@ -137,10 +147,10 @@ def combine_single_center_to_body_order(
         nu_x_tensor = TensorMap(keys=nu_x_keys, blocks=nu_x_blocks)
 
     # Move the [l1, l2, ...] keys to the properties
-    if target_body_order > 1:
+    if correlation_order > 1:
         nu_x_tensor = nu_x_tensor.keys_to_properties(
-            [f"l{i}" for i in range(1, target_body_order + 1)]
-            + [f"k{i}" for i in range(2, target_body_order)]
+            [f"l{i}" for i in range(1, correlation_order + 1)]
+            + [f"k{i}" for i in range(2, correlation_order)]
         )
 
     # Drop the redundant key name "order_nu", and "inversion_sigma" if also
@@ -153,83 +163,93 @@ def combine_single_center_to_body_order(
     return TensorMap(keys=keys, blocks=[b.copy() for b in nu_x_tensor.blocks()])
 
 
-def combine_single_center_to_body_order_metadata_only(
-    nu_1_tensor: TensorMap,
-    target_body_order: int,
+def single_center_combine_metadata_to_order(
+    nu1_tensor: TensorMap,
+    correlation_order: int,
     angular_cutoff: Optional[int] = None,
     angular_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
     parity_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
-    sort_l_list: Optional[bool] = False,
+    skip_redundant: Optional[bool] = False,
 ) -> List[TensorMap]:
     """
-    Performs a pseudo-CG combination of a nu = 1 (i.e. 2-body) single-center
-    descriptor with itself to generate a descriptor of order
-    ``target_body_order``.
+    Performs a pseudo-CG combination of a correlation order nu = 1 (i.e. 2-body)
+    single-center descriptor with itself to generate a descriptor of order
+    ``correlation_order``.
 
-    A list of TensorMaps is returned, where each has the complete * metadata *
-    of the TensorMap that would be created by a full CG combination. No actual
-    CG combinations of block values arrays are performed, instead arrays of
-    zeros are returned in the output TensorMaps.
+    A TensorMap with complete metadata is returned, where all block values are
+    zero.
 
     This function is useful for producing pseudo-outputs of a CG iteration
     calculation with all the correct metadata, but far cheaper than if CG
     combinations were actually performed. This can help to quantify the size of
     descriptors produced, and observe the effect of selection filters on the
     expansion of features at each iteration.
-    """
-    if target_body_order <= 1:
-        raise ValueError("`target_body_order` must be > 1")
 
-    if _dispatch.any([len(list(block.gradients())) > 0 for block in nu_1_tensor]):
+    See :py:func:`single_center_combine_to_order` for documentation on args.
+    """
+    if correlation_order <= 1:
+        raise ValueError("`correlation_order` must be > 1")
+
+    if _dispatch.any([len(list(block.gradients())) > 0 for block in nu1_tensor]):
         raise NotImplementedError(
             "CG combinations of gradients not currently supported. Check back soon."
         )
 
     # Standardize the metadata of the input tensor
-    nu_1_tensor = _standardize_tensor_metadata(nu_1_tensor)
+    nu1_tensor = _standardize_tensor_metadata(nu1_tensor)
 
     # If the desired body order is 1, return the input tensor with standardized
     # metadata.
-    if target_body_order == 1:
-        return nu_1_tensor
+    if correlation_order == 1:
+        return nu1_tensor
 
     # Pre-compute the metadata needed to perform each CG iteration
     # Current design choice: only combine a nu = 1 tensor iteratively with
     # itself, i.e. nu=1 + nu=1 --> nu=2. nu=2 + nu=1 --> nu=3, etc.
     parity_selection = _parse_selection_filters(
-        n_iterations=target_body_order - 1,
+        n_iterations=correlation_order - 1,
         selection_type="parity",
         selection=parity_selection,
     )
     angular_selection = _parse_selection_filters(
-        n_iterations=target_body_order - 1,
+        n_iterations=correlation_order - 1,
         selection_type="angular",
         selection=angular_selection,
         angular_cutoff=angular_cutoff,
     )
+    # Parse the skip_redundant selection filter
+    if isinstance(skip_redundant, bool):
+        skip_redundant = [skip_redundant] * (correlation_order - 1)
+    if not _dispatch.all([isinstance(val, bool) for val in skip_redundant]):
+        raise TypeError("`skip_redundant` must be a bool or list of bools")
+    if not len(skip_redundant) == correlation_order - 1:
+        raise ValueError(
+            "`skip_redundant` must be a bool or list of bools of length"
+            " `correlation_order` - 1"
+        )
+
     combination_metadata = _precompute_metadata(
-        nu_1_tensor.keys,
-        nu_1_tensor.keys,
-        n_iterations=target_body_order - 1,
+        nu1_tensor.keys,
+        nu1_tensor.keys,
+        n_iterations=correlation_order - 1,
         angular_cutoff=angular_cutoff,
         angular_selection=angular_selection,
         parity_selection=parity_selection,
-        sort_l_list=sort_l_list,
+        skip_redundant=skip_redundant,
     )
 
     # Create a copy of the nu = 1 tensor to combine with itself
-    nu_x_tensor = nu_1_tensor
+    nu_x_tensor = nu1_tensor
 
     # Iteratively combine block values
-    nu_x_tensors = []
-    for iteration in range(target_body_order - 1):
+    for iteration in range(correlation_order - 1):
         # Combine blocks
         nu_x_blocks = []
         # TODO: is there a faster way of iterating over keys/blocks here?
         for nu_x_key, key_1, key_2 in zip(*combination_metadata[iteration]):
             nu_x_block = _combine_single_center_blocks(
                 nu_x_tensor[key_1],
-                nu_1_tensor[key_2],
+                nu1_tensor[key_2],
                 nu_x_key["spherical_harmonics_l"],
                 cg_cache=None,
                 return_metadata_only=True,
@@ -237,26 +257,19 @@ def combine_single_center_to_body_order_metadata_only(
             nu_x_blocks.append(nu_x_block)
         nu_x_keys = combination_metadata[iteration][0]
         nu_x_tensor = TensorMap(keys=nu_x_keys, blocks=nu_x_blocks)
-        nu_x_tensors.append(nu_x_tensor)
 
-    nu_x_tensors = [
-        tensor.keys_to_properties(
-            [f"l{i}" for i in range(1, tmp_bo + 1)]
-            + [f"k{i}" for i in range(2, tmp_bo)]
-        )
-        for tmp_bo, tensor in enumerate(nu_x_tensors, start=2)
-    ]
+    nu_x_tensor = nu_x_tensor.keys_to_properties(
+        [f"l{i}" for i in range(1, correlation_order + 1)]
+        + [f"k{i}" for i in range(2, correlation_order)]
+    )
 
-    return_tensors = []
-    for tensor in nu_x_tensors:
-        keys = tensor.keys.remove(name="order_nu")
-        if len(_dispatch.unique(tensor.keys.column("inversion_sigma"))) == 1:
-            keys = keys.remove(name="inversion_sigma")
-        return_tensors.append(
-            TensorMap(keys=keys, blocks=[b.copy() for b in tensor.blocks()])
-        )
+    # Remove redundant key names
+    keys = nu_x_tensor.keys.remove(name="order_nu")
+    if len(_dispatch.unique(nu_x_tensor.keys.column("inversion_sigma"))) == 1:
+        keys = keys.remove(name="inversion_sigma")
+    nu_x_tensor = TensorMap(keys=keys, blocks=[b.copy() for b in nu_x_tensor.blocks()])
 
-    return return_tensors
+    return nu_x_tensor
 
 
 def combine_single_center_one_iteration(
@@ -402,10 +415,10 @@ def _precompute_metadata(
     keys_1: Labels,
     keys_2: Labels,
     n_iterations: int,
-    angular_cutoff: Optional[int] = None,
-    angular_selection: Optional[List[Union[None, List[int]]]] = None,
-    parity_selection: Optional[List[Union[None, List[int]]]] = None,
-    sort_l_list: Optional[bool] = False,
+    angular_cutoff: int,
+    angular_selection: List[Union[None, List[int]]],
+    parity_selection: List[Union[None, List[int]]],
+    skip_redundant: List[bool],
 ) -> List[Tuple[Labels, List[List[int]]]]:
     """
     Computes all the metadata needed to perform `n_iterations` of CG combination
@@ -424,7 +437,7 @@ def _precompute_metadata(
             angular_cutoff=angular_cutoff,
             angular_selection=angular_selection[iteration],
             parity_selection=parity_selection[iteration],
-            sort_l_list=sort_l_list,
+            skip_redundant=skip_redundant[iteration],
         )
         new_keys = i_comb_metadata[0]
 
@@ -471,7 +484,7 @@ def _precompute_metadata_one_iteration(
     angular_cutoff: Optional[int] = None,
     angular_selection: Optional[Union[None, List[int]]] = None,
     parity_selection: Optional[Union[None, List[int]]] = None,
-    sort_l_list: Optional[bool] = False,
+    skip_redundant: bool = False,
 ) -> Tuple[Labels, List[List[int]]]:
     """
     Given the keys of 2 TensorMaps, returns the keys that would be present after
@@ -509,10 +522,8 @@ def _precompute_metadata_one_iteration(
 
     ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center"]
 
-    Returned is a tuple.
-
-    The first element in the tuple is a Labels object corresponding to the keys
-    created by a CG combination step.
+    Returned is a tuple. The first element in the tuple is a Labels object
+    corresponding to the keys created by a CG combination step.
 
     The second element is a list of list of ints. Each sublist corresponds to
     [lam1, lam2, correction_factor] terms. lam1 and lam2 tracks the lambda
@@ -522,6 +533,10 @@ def _precompute_metadata_one_iteration(
 
     The `parity_selection` argument can be used to return only keys with certain
     parities. This must be passed as a list with elements +1 and/or -1.
+
+    The `skip_redundant` arg can be used to skip the calculation of redundant
+    block combinations - i.e. those that have equivalent sorted l lists. Only
+    the one for which l1 <= l2 <= ... <= ln is calculated.
     """
     # Get the body order of the first TensorMap.
     unique_nu = _dispatch.unique(keys_1.column("order_nu"))
@@ -627,8 +642,8 @@ def _precompute_metadata_one_iteration(
         values=_dispatch.int_array_like(new_key_values, like=keys_1.values),
     )
 
-    # If we want to sort the l list to save computations (i.e. not calculate )
-    if not sort_l_list:
+    # Don't skip the calculation of redundant blocks
+    if skip_redundant is False:
         return nu_x_keys, keys_1_entries, keys_2_entries
 
     # Now account for multiplicty

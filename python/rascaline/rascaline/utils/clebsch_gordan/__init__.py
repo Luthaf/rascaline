@@ -1,7 +1,7 @@
 from .cg_coefficients import ClebschGordanReal
 from .clebsch_gordan import (  # noqa
-    combine_single_center_to_body_order,
-    combine_single_center_to_body_order_metadata_only,
+    single_center_combine_to_order,
+    single_center_combine_metadata_to_order,
 )
 from .rotations import (  # noqa
     cartesian_rotation,
@@ -14,8 +14,8 @@ from .rotations import (  # noqa
 __all__ = [
     "cartesian_rotation",
     "ClebschGordanReal",
-    "combine_single_center_to_body_order",
-    "combine_single_center_to_body_order_metadata_only",
+    "single_center_combine_metadata_to_order",
+    "single_center_combine_metadata_to_order",
     "transform_frame_so3",
     "transform_frame_o3",
     "WignerDReal",

@@ -146,16 +146,16 @@ def test_so3_equivariance(
     nu_1 = sphex(frames)
     nu_1_so3 = sphex(frames_so3)
 
-    nu_3 = clebsch_gordan.combine_single_center_to_body_order(
-        nu_1_tensor=nu_1,
-        target_body_order=nu_target,
+    nu_3 = clebsch_gordan.single_center_combine_to_order(
+        nu1_tensor=nu_1,
+        correlation_order=nu_target,
         angular_cutoff=angular_cutoff,
         angular_selection=angular_selection,
         parity_selection=parity_selection,
     )
-    nu_3_so3 = clebsch_gordan.combine_single_center_to_body_order(
-        nu_1_tensor=nu_1_so3,
-        target_body_order=nu_target,
+    nu_3_so3 = clebsch_gordan.single_center_combine_to_order(
+        nu1_tensor=nu_1_so3,
+        correlation_order=nu_target,
         angular_cutoff=angular_cutoff,
         angular_selection=angular_selection,
         parity_selection=parity_selection,
@@ -188,16 +188,16 @@ def test_o3_equivariance(
     nu_1 = sphex(frames)
     nu_1_o3 = sphex(frames_o3)
 
-    nu_3 = clebsch_gordan.combine_single_center_to_body_order(
-        nu_1_tensor=nu_1,
-        target_body_order=nu_target,
+    nu_3 = clebsch_gordan.single_center_combine_to_order(
+        nu1_tensor=nu_1,
+        correlation_order=nu_target,
         angular_cutoff=angular_cutoff,
         angular_selection=angular_selection,
         parity_selection=parity_selection,
     )
-    nu_3_o3 = clebsch_gordan.combine_single_center_to_body_order(
-        nu_1_tensor=nu_1_o3,
-        target_body_order=nu_target,
+    nu_3_o3 = clebsch_gordan.single_center_combine_to_order(
+        nu1_tensor=nu_1_o3,
+        correlation_order=nu_target,
         angular_cutoff=angular_cutoff,
         angular_selection=angular_selection,
         parity_selection=parity_selection,
@@ -221,10 +221,10 @@ def test_lambda_soap_vs_powerspectrum(frames):
     ps = powspec_small_features(frames)
 
     # Build a lambda-SOAP
-    nu_1_tensor = sphex_small_features(frames)
-    lsoap = clebsch_gordan.combine_single_center_to_body_order(
-        nu_1_tensor=nu_1_tensor,
-        target_body_order=2,
+    nu1_tensor = sphex_small_features(frames)
+    lsoap = clebsch_gordan.single_center_combine_to_order(
+        nu1_tensor=nu1_tensor,
+        correlation_order=2,
         angular_selection=[0],
     )
     keys = lsoap.keys.remove(name="spherical_harmonics_l")
@@ -260,8 +260,8 @@ def test_lambda_soap_vs_powerspectrum(frames):
 
 
 @pytest.mark.parametrize("frames", [h2_isolated(), h2o_periodic()])
-@pytest.mark.parametrize("target_body_order", [2, 3, 4])
-def test_combine_single_center_norm(frames, target_body_order):
+@pytest.mark.parametrize("correlation_order", [2, 3, 4])
+def test_combine_single_center_norm(frames, correlation_order):
     """
     Checks \|ρ^\\nu\| =  \|ρ\|^\\nu in the case where l lists are not sorted. If
     l lists are sorted, thus saving computation of redundant block combinations,
@@ -272,35 +272,35 @@ def test_combine_single_center_norm(frames, target_body_order):
     nu1 = sphex_small_features(frames)
 
     # Build higher body order tensor without sorting the l lists
-    nux = clebsch_gordan.combine_single_center_to_body_order(
+    nux = clebsch_gordan.single_center_combine_to_order(
         nu1,
-        target_body_order=target_body_order,
+        correlation_order=correlation_order,
         angular_cutoff=None,
         angular_selection=None,
         parity_selection=None,
-        sort_l_list=False,
+        skip_redundant=False,
         use_sparse=True,
     )
     # Build higher body order tensor *with* sorting the l lists
-    nux_sorted_l = clebsch_gordan.combine_single_center_to_body_order(
+    nux_sorted_l = clebsch_gordan.single_center_combine_to_order(
         nu1,
-        target_body_order=target_body_order,
+        correlation_order=correlation_order,
         angular_cutoff=None,
         angular_selection=None,
         parity_selection=None,
-        sort_l_list=True,
+        skip_redundant=True,
         use_sparse=True,
     )
 
     # Standardize the features by passing through the CG combination code but with
     # no iterations (i.e. body order 1 -> 1)
-    nu1 = clebsch_gordan.combine_single_center_to_body_order(
+    nu1 = clebsch_gordan.single_center_combine_to_order(
         nu1,
-        target_body_order=1,
+        correlation_order=1,
         angular_cutoff=None,
         angular_selection=None,
         parity_selection=None,
-        sort_l_list=False,
+        skip_redundant=False,
         use_sparse=True,
     )
 
@@ -330,7 +330,7 @@ def test_combine_single_center_norm(frames, target_body_order):
         nux_sorted_sliced = metatensor.slice(nux_sorted_l, "samples", labels=sample)
 
         # Calculate norms
-        norm_nu1 += get_norm(nu1) ** target_body_order
+        norm_nu1 += get_norm(nu1) ** correlation_order
         norm_nux += get_norm(nux)
         norm_nux_sorted_l += get_norm(nux_sorted_l)
 
@@ -385,20 +385,20 @@ def test_clebsch_gordan_orthogonality(cg_cache_dense, l1, l2):
 
 
 @pytest.mark.parametrize("frames", [h2_isolated(), h2o_isolated()])
-def test_combine_single_center_to_body_order_dense_sparse_agree(frames):
+def test_single_center_combine_to_correlation_order_dense_sparse_agree(frames):
     """
     Tests for agreement between nu=3 tensors built using both sparse and dense
     CG coefficient caches.
     """
-    nu_1_tensor = sphex_small_features(frames)
-    n_body_sparse = clebsch_gordan.combine_single_center_to_body_order(
-        nu_1_tensor,
-        target_body_order=3,
+    nu1_tensor = sphex_small_features(frames)
+    n_body_sparse = clebsch_gordan.single_center_combine_to_order(
+        nu1_tensor,
+        correlation_order=3,
         use_sparse=True,
     )
-    n_body_dense = clebsch_gordan.combine_single_center_to_body_order(
-        nu_1_tensor,
-        target_body_order=3,
+    n_body_dense = clebsch_gordan.single_center_combine_to_order(
+        nu1_tensor,
+        correlation_order=3,
         use_sparse=False,
     )
 
@@ -411,53 +411,51 @@ def test_combine_single_center_to_body_order_dense_sparse_agree(frames):
 
 
 @pytest.mark.parametrize("frames", [h2o_isolated()])
-@pytest.mark.parametrize("target_body_order", [2, 3])
-@pytest.mark.parametrize("sort_l_list", [True, False])
-def test_combine_single_center_to_body_order_metadata_only_metadata_agree(
-    frames, target_body_order, sort_l_list
+@pytest.mark.parametrize("correlation_order", [2, 3])
+@pytest.mark.parametrize("skip_redundant", [True, False])
+def test_single_center_combine_to_correlation_order_metadata_agree(
+    frames, correlation_order, skip_redundant
 ):
     """
     Tests that the metadata output from
-    combine_single_center_to_body_order_metadata_only agrees with the metadata
-    of the full tensor built using combine_single_center_to_body_order.
+    single_center_combine_metadata_to_order agrees with the metadata
+    of the full tensor built using single_center_combine_to_order.
     """
     for nu1 in [sphex_small_features(frames), sphex(frames)]:
         # Build higher body order tensor with CG computation
-        nux = clebsch_gordan.combine_single_center_to_body_order(
+        nux = clebsch_gordan.single_center_combine_to_order(
             nu1,
-            target_body_order=target_body_order,
+            correlation_order=correlation_order,
             angular_cutoff=None,
             angular_selection=None,
             parity_selection=None,
-            sort_l_list=sort_l_list,
+            skip_redundant=skip_redundant,
             use_sparse=True,
         )
         # Build higher body order tensor without CG computation - i.e. metadata
-        # only. This returns a list of the TensorMaps formed at each CG
-        # iteration. In this case we only want to compare the metadata of the
-        # putput after the final iteration.
+        # only
         nux_metadata_only = (
-            clebsch_gordan.combine_single_center_to_body_order_metadata_only(
+            clebsch_gordan.single_center_combine_metadata_to_order(
                 nu1,
-                target_body_order=target_body_order,
+                correlation_order=correlation_order,
                 angular_cutoff=None,
                 angular_selection=None,
                 parity_selection=None,
-                sort_l_list=sort_l_list,
+                skip_redundant=skip_redundant,
             )
         )
-        assert metatensor.equal_metadata(nux, nux_metadata_only[-1])
+        assert metatensor.equal_metadata(nux, nux_metadata_only)
 
 
 @pytest.mark.parametrize("frames", [h2o_isolated()])
-@pytest.mark.parametrize("target_body_order", [2, 3])
-@pytest.mark.parametrize("sort_l_list", [True, False])
-def test_combine_single_center_to_body_order_metadata_only(
-    frames, target_body_order, sort_l_list
+@pytest.mark.parametrize("correlation_order", [2, 3])
+@pytest.mark.parametrize("skip_redundant", [True, False])
+def test_single_center_combine_to_correlation_order_metadata(
+    frames, correlation_order, skip_redundant
 ):
     """
     Performs hard-coded tests on the metadata outputted from
-    combine_single_center_to_body_order_metadata_only.
+    single_center_combine_metadata_to_order.
 
     TODO: finish!
     """
@@ -466,36 +464,36 @@ def test_combine_single_center_to_body_order_metadata_only(
     #     # only. This returns a list of the TensorMaps formed at each CG
     #     # iteration.
     #     nux_metadata_only = (
-    #         clebsch_gordan.combine_single_center_to_body_order_metadata_only(
+    #         clebsch_gordan.single_center_combine_metadata_to_order(
     #             nu1,
-    #             target_body_order=target_body_order,
+    #             correlation_order=correlation_order,
     #             angular_cutoff=None,
     #             angular_selection=None,
     #             parity_selection=None,
-    #             sort_l_list=sort_l_list,
+    #             skip_redundant=skip_redundant,
     #         )
     #     )
 
 
 @pytest.mark.parametrize("frames", [h2o_isolated()])
 @pytest.mark.parametrize("angular_selection", [None, [1, 2, 4]])
-@pytest.mark.parametrize("sort_l_list", [True, False])
+@pytest.mark.parametrize("skip_redundant", [True, False])
 def test_single_center_combine_angular_selection(
     frames: List[ase.Atoms],
     angular_selection: List[List[int]],
-    sort_l_list: bool,
+    skip_redundant: bool,
 ):
     """Tests that the correct angular channels are outputted based on the
     specified ``angular_cutoff`` and ``angular_selection``."""
     nu_1 = sphex(frames)
 
-    nu_2 = clebsch_gordan.combine_single_center_to_body_order(
-        nu_1_tensor=nu_1,
-        target_body_order=2,
+    nu_2 = clebsch_gordan.single_center_combine_to_order(
+        nu1_tensor=nu_1,
+        correlation_order=2,
         angular_cutoff=None,
         angular_selection=angular_selection,
         parity_selection=None,
-        sort_l_list=sort_l_list,
+        skip_redundant=skip_redundant,
     )
 
     if angular_selection is None:
