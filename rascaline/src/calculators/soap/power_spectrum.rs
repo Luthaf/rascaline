@@ -368,16 +368,6 @@ impl SoapPowerSpectrum {
                 -f64::sqrt((2 * spherical_harmonics_l + 1) as f64)
             };
 
-            let spherical_harmonics_l = l.usize();
-
-            // For consistency with a full Clebsch-Gordan product we need to add
-            // a `-1^l / sqrt(2 l + 1)` factor to the power spectrum invariants
-            let normalization = if spherical_harmonics_l % 2 == 0 {
-                f64::sqrt((2 * spherical_harmonics_l + 1) as f64)
-            } else {
-                -f64::sqrt((2 * spherical_harmonics_l + 1) as f64)
-            };
-
             SpxPropertiesToCombine {
                 spherical_harmonics_l,
                 normalization,
@@ -396,6 +386,8 @@ impl SoapPowerSpectrum {
 struct SpxPropertiesToCombine<'a> {
     /// value of l
     spherical_harmonics_l: usize,
+    /// normalization factor $-1^l * \sqrt{2 l + 1}$
+    normalization: f64,
     /// position of n1 in the first spherical expansion properties
     property_1: usize,
     /// position of n2 in the second spherical expansion properties
