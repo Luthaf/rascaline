@@ -12,6 +12,8 @@ import rascaline
 from metatensor import Labels, TensorBlock, TensorMap
 from rascaline.utils import clebsch_gordan, PowerSpectrum
 
+from .rotations import WignerDReal, transform_frame_so3, transform_frame_o3
+
 
 DATA_ROOT = os.path.join(os.path.dirname(__file__), "data")
 
@@ -68,7 +70,7 @@ def h2o_periodic():
 
 
 def wigners(lmax: int):
-    return clebsch_gordan.WignerDReal(lmax=lmax)
+    return WignerDReal(lmax=lmax)
 
 
 def sphex(frames: List[ase.Atoms]):
@@ -140,7 +142,7 @@ def test_so3_equivariance(
 ):
     wig = wigners(nu_target * SPHEX_HYPERS["max_angular"])
     frames_so3 = [
-        clebsch_gordan.transform_frame_so3(frame, wig.angles) for frame in frames
+        transform_frame_so3(frame, wig.angles) for frame in frames
     ]
 
     nu_1 = sphex(frames)
@@ -182,7 +184,7 @@ def test_o3_equivariance(
 ):
     wig = wigners(nu_target * SPHEX_HYPERS["max_angular"])
     frames_o3 = [
-        clebsch_gordan.transform_frame_o3(frame, wig.angles) for frame in frames
+        transform_frame_o3(frame, wig.angles) for frame in frames
     ]
 
     nu_1 = sphex(frames)

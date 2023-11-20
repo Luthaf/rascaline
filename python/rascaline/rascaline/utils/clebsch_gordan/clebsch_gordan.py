@@ -24,8 +24,9 @@ def single_center_combine_to_order(
     angular_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
     parity_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
     skip_redundant: Optional[Union[bool, List[bool]]] = False,
+    output_selection: Optional[Union[bool, List[bool]]] = None,
     use_sparse: bool = True,
-) -> TensorMap:
+) -> Union[TensorMap, List[TensorMap]]:
     """
     Takes a correlation order nu = 1 (i.e. 2-body) single-center descriptor and
     combines it iteratively with itself to generate a descriptor of correlation
@@ -57,6 +58,10 @@ def single_center_combine_to_order(
     channels of the original nu = 1 blocks previously combined) of the blocks to
     be combined, and only operating on blocks where l1 <= l2 <= ... <= ln.
 
+    The ``output_selection`` argument can be used to control which CG iteration
+    steps a TensorMap is output for. By default (i.e. `output_selection=None`),
+    only the TensorMap from the final CG combination will be output.
+
     Finally, the ``use_sparse`` argument can be used to control whether a sparse
     or dense cache of CG coefficients is used, which depending on the use case
     can affect the performance.
@@ -77,33 +82,28 @@ def single_center_combine_to_order(
     if correlation_order == 1:
         return nu1_tensor
 
+    n_iterations = correlation_order - 1
+
+    # Parse the various selection filters
+    angular_selection, parity_selection = _parse_int_selections(
+        n_iterations=n_iterations,
+        angular_cutoff=angular_cutoff,
+        angular_selection=angular_selection,
+        parity_selection=parity_selection,
+    )
+    skip_redundant, output_selection = _parse_bool_selections(
+        n_iterations,
+        skip_redundant=skip_redundant,
+        output_selection=output_selection,
+    )
+
     # Pre-compute the metadata needed to perform each CG iteration
     # Current design choice: only combine a nu = 1 tensor iteratively with
     # itself, i.e. nu=1 + nu=1 --> nu=2. nu=2 + nu=1 --> nu=3, etc.
-    parity_selection = _parse_selection_filters(
-        n_iterations=correlation_order - 1,
-        selection_type="parity",
-        selection=parity_selection,
-    )
-    angular_selection = _parse_selection_filters(
-        n_iterations=correlation_order - 1,
-        selection_type="angular",
-        selection=angular_selection,
-        angular_cutoff=angular_cutoff,
-    )
-    if isinstance(skip_redundant, bool):
-        skip_redundant = [skip_redundant] * (correlation_order - 1)
-    if not _dispatch.all([isinstance(val, bool) for val in skip_redundant]):
-        raise TypeError("`skip_redundant` must be a bool or list of bools")
-    if not len(skip_redundant) == correlation_order - 1:
-        raise ValueError(
-            "`skip_redundant` must be a bool or list of bools of length"
-            " `correlation_order` - 1"
-        )
     combination_metadata = _precompute_metadata(
         nu1_tensor.keys,
         nu1_tensor.keys,
-        n_iterations=correlation_order - 1,
+        n_iterations=n_iterations,
         angular_cutoff=angular_cutoff,
         angular_selection=angular_selection,
         parity_selection=parity_selection,
@@ -130,10 +130,11 @@ def single_center_combine_to_order(
     nu_x_tensor = nu1_tensor
 
     # Iteratively combine block values
-    for iteration in range(correlation_order - 1):
-        # Combine blocks
-        nu_x_blocks = []
+    output_tensors = []
+    for iteration, output_tensor in zip(range(n_iterations), output_selection):
+        tmp_correlation_order = iteration + 2
         # TODO: is there a faster way of iterating over keys/blocks here?
+        nu_x_blocks = []
         for nu_x_key, key_1, key_2 in zip(*combination_metadata[iteration]):
             # Combine the pair of block values
             nu_x_block = _combine_single_center_blocks(
@@ -146,31 +147,42 @@ def single_center_combine_to_order(
         nu_x_keys = combination_metadata[iteration][0]
         nu_x_tensor = TensorMap(keys=nu_x_keys, blocks=nu_x_blocks)
 
-    # Move the [l1, l2, ...] keys to the properties
-    if correlation_order > 1:
-        nu_x_tensor = nu_x_tensor.keys_to_properties(
-            [f"l{i}" for i in range(1, correlation_order + 1)]
-            + [f"k{i}" for i in range(2, correlation_order)]
-        )
+        # If this tensor is to be included in the output, move the keys to
+        # properties and store
+        if output_tensor is True:
+            # Move the [l1, l2, ...] keys to the properties
+            output_tensors.append(
+                nu_x_tensor.keys_to_properties(
+                    [f"l{i}" for i in range(1, tmp_correlation_order + 1)]
+                    + [f"k{i}" for i in range(2, tmp_correlation_order)]
+                )
+            )
 
-    # Drop the redundant key name "order_nu", and "inversion_sigma" if also
-    # redundant. TODO: these should be part of the global matadata associated
-    # with the TensorMap. Awaiting this functionality in metatensor.
-    keys = nu_x_tensor.keys.remove(name="order_nu")
-    if len(_dispatch.unique(nu_x_tensor.keys.column("inversion_sigma"))) == 1:
-        keys = keys.remove(name="inversion_sigma")
+    # Drop redundant key names. TODO: these should be part of the global
+    # matadata associated with the TensorMap. Awaiting this functionality in
+    # metatensor.
+    for i, tensor in enumerate(output_tensors):
+        keys = tensor.keys
+        if len(_dispatch.unique(tensor.keys.column("order_nu"))) == 1:
+            keys = keys.remove(name="order_nu")
+        if len(_dispatch.unique(tensor.keys.column("inversion_sigma"))) == 1:
+            keys = keys.remove(name="inversion_sigma")
+        output_tensors[i] = TensorMap(keys=keys, blocks=[b.copy() for b in tensor.blocks()])
 
-    return TensorMap(keys=keys, blocks=[b.copy() for b in nu_x_tensor.blocks()])
+    if len(output_tensors) == 1:
+        return output_tensors[0]
+    return output_tensors
 
 
 def single_center_combine_metadata_to_order(
     nu1_tensor: TensorMap,
     correlation_order: int,
     angular_cutoff: Optional[int] = None,
-    angular_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
-    parity_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
-    skip_redundant: Optional[bool] = False,
-) -> List[TensorMap]:
+    angular_selection: Optional[Union[int, List[int], List[List[int]]]] = None,
+    parity_selection: Optional[Union[int, List[int], List[List[int]]]] = None,
+    skip_redundant: Optional[Union[bool, List[bool]]] = False,
+    output_selection: Optional[Union[bool, List[bool]]] = None,
+) -> Union[TensorMap, List[TensorMap]]:
     """
     Performs a pseudo-CG combination of a correlation order nu = 1 (i.e. 2-body)
     single-center descriptor with itself to generate a descriptor of order
@@ -203,35 +215,28 @@ def single_center_combine_metadata_to_order(
     if correlation_order == 1:
         return nu1_tensor
 
-    # Pre-compute the metadata needed to perform each CG iteration
-    # Current design choice: only combine a nu = 1 tensor iteratively with
-    # itself, i.e. nu=1 + nu=1 --> nu=2. nu=2 + nu=1 --> nu=3, etc.
-    parity_selection = _parse_selection_filters(
-        n_iterations=correlation_order - 1,
-        selection_type="parity",
-        selection=parity_selection,
-    )
-    angular_selection = _parse_selection_filters(
-        n_iterations=correlation_order - 1,
-        selection_type="angular",
-        selection=angular_selection,
-        angular_cutoff=angular_cutoff,
-    )
-    # Parse the skip_redundant selection filter
-    if isinstance(skip_redundant, bool):
-        skip_redundant = [skip_redundant] * (correlation_order - 1)
-    if not _dispatch.all([isinstance(val, bool) for val in skip_redundant]):
-        raise TypeError("`skip_redundant` must be a bool or list of bools")
-    if not len(skip_redundant) == correlation_order - 1:
-        raise ValueError(
-            "`skip_redundant` must be a bool or list of bools of length"
-            " `correlation_order` - 1"
-        )
+    n_iterations = correlation_order - 1
 
+    # Parse the various selection filters
+    angular_selection, parity_selection = _parse_int_selections(
+        n_iterations=n_iterations,
+        angular_cutoff=angular_cutoff,
+        angular_selection=angular_selection,
+        parity_selection=parity_selection,
+    )
+    skip_redundant, output_selection = _parse_bool_selections(
+        n_iterations,
+        skip_redundant=skip_redundant,
+        output_selection=output_selection,
+    )
+
+    # Pre-compute the metadata needed to perform each CG iteration. Current
+    # design choice: only combine a nu = 1 tensor iteratively with itself, i.e.
+    # nu=1 + nu=1 --> nu=2. nu=2 + nu=1 --> nu=3, etc.
     combination_metadata = _precompute_metadata(
         nu1_tensor.keys,
         nu1_tensor.keys,
-        n_iterations=correlation_order - 1,
+        n_iterations=n_iterations,
         angular_cutoff=angular_cutoff,
         angular_selection=angular_selection,
         parity_selection=parity_selection,
@@ -242,10 +247,11 @@ def single_center_combine_metadata_to_order(
     nu_x_tensor = nu1_tensor
 
     # Iteratively combine block values
-    for iteration in range(correlation_order - 1):
-        # Combine blocks
-        nu_x_blocks = []
+    output_tensors = []
+    for iteration, output_tensor in zip(range(n_iterations), output_selection):
+        tmp_correlation_order = iteration + 2
         # TODO: is there a faster way of iterating over keys/blocks here?
+        nu_x_blocks = []
         for nu_x_key, key_1, key_2 in zip(*combination_metadata[iteration]):
             nu_x_block = _combine_single_center_blocks(
                 nu_x_tensor[key_1],
@@ -258,21 +264,32 @@ def single_center_combine_metadata_to_order(
         nu_x_keys = combination_metadata[iteration][0]
         nu_x_tensor = TensorMap(keys=nu_x_keys, blocks=nu_x_blocks)
 
-    nu_x_tensor = nu_x_tensor.keys_to_properties(
-        [f"l{i}" for i in range(1, correlation_order + 1)]
-        + [f"k{i}" for i in range(2, correlation_order)]
-    )
+        # If this tensor is to be included in the output, move the keys to
+        # properties and store
+        if output_tensor is True:
+            # Move the [l1, l2, ...] keys to the properties
+            output_tensors.append(
+                nu_x_tensor.keys_to_properties(
+                    [f"l{i}" for i in range(1, tmp_correlation_order + 1)]
+                    + [f"k{i}" for i in range(2, tmp_correlation_order)]
+                )
+            )
 
     # Remove redundant key names
-    keys = nu_x_tensor.keys.remove(name="order_nu")
-    if len(_dispatch.unique(nu_x_tensor.keys.column("inversion_sigma"))) == 1:
-        keys = keys.remove(name="inversion_sigma")
-    nu_x_tensor = TensorMap(keys=keys, blocks=[b.copy() for b in nu_x_tensor.blocks()])
+    for i, tensor in enumerate(output_tensors):
+        keys = tensor.keys
+        if len(_dispatch.unique(tensor.keys.column("order_nu"))) == 1:
+            keys = keys.remove(name="order_nu")
+        if len(_dispatch.unique(tensor.keys.column("inversion_sigma"))) == 1:
+            keys = keys.remove(name="inversion_sigma")
+        output_tensors[i] = TensorMap(keys=keys, blocks=[b.copy() for b in tensor.blocks()])
 
-    return nu_x_tensor
+    if len(output_tensors) == 1:
+        return output_tensors[0]
+    return output_tensors
 
 
-def combine_single_center_one_iteration(
+def single_center_combine(
     tensor_1: TensorMap,
     tensor_2: TensorMap,
     angular_cutoff: Optional[int] = None,
@@ -282,7 +299,8 @@ def combine_single_center_one_iteration(
 ) -> TensorMap:
     """
     Takes two single-center descriptors of arbitrary body order and combines
-    them in a single CG combination step.
+    them in a single CG combination step. Tensors could be of different
+    provenance, i.e. a SphericalExpansion and a LodeSphericalExpansion.
     """
     # TODO: implement!
     raise NotImplementedError
@@ -322,12 +340,12 @@ def _standardize_tensor_metadata(tensor: TensorMap) -> TensorMap:
     return TensorMap(keys=keys, blocks=[b.copy() for b in tensor.blocks()])
 
 
-def _parse_selection_filters(
+def _parse_int_selections(
     n_iterations: int,
-    selection_type: str = "parity",
-    selection: Union[None, int, List[int], List[List[int]]] = None,
     angular_cutoff: Optional[int] = None,
-) -> List[Union[None, List[int]]]:
+    angular_selection: Optional[Union[int, List[int], List[List[int]]]] = None,
+    parity_selection: Optional[Union[int, List[int], List[List[int]]]] = None,
+) -> List[List[List[int]]]:
     """
     Returns a list of length `n_iterations` with selection filters for each CG
     combination step, for either `selection_type` "parity" or `selection_type`
@@ -351,64 +369,102 @@ def _parse_selection_filters(
     >= 0.
     """
     if angular_cutoff is not None:
-        if selection_type != "angular":
-            raise ValueError(
-                "`selection_type` must be 'angular' if specifying `angular_cutoff`"
-            )
         if angular_cutoff < 1:
             raise ValueError("`angular_cutoff` must be >= 1")
-    if selection is None:
-        selection = [None] * n_iterations
-    else:
-        # If passed as int, use this for the last iteration only
-        if isinstance(selection, int):
-            selection = [None] * (n_iterations - 1) + [[selection]]
-        else:
-            if not isinstance(selection, List):
-                raise TypeError(
-                    "`selection` must be an int, List[int], or List[List[int]]"
-                )
-            if isinstance(selection[0], int):
-                selection = [None] * (n_iterations - 1) + [selection]
 
-    # Basic checks
-    if not isinstance(selection, List):
-        raise TypeError("`selection` must be an int, List[int], or List[List[int]]")
-    for slct in selection:
-        if slct is not None:
-            if not _dispatch.all([isinstance(val, int) for val in slct]):
-                raise TypeError(
-                    "`selection` must be an int, List[int], or List[List[int]]"
-                )
-            if selection_type == "parity":
-                if not _dispatch.all([val in [-1, +1] for val in slct]):
-                    raise ValueError(
-                        "specified layers in `selection` must only contain valid"
-                        " parity values of -1 or +1"
+    selections = []
+    for selection_type, selection in zip(["angular", "parity"], [angular_selection, parity_selection]):
+        if selection is None:
+            selection = [None] * n_iterations
+        else:
+            # If passed as int, use this for the last iteration only
+            if isinstance(selection, int):
+                selection = [None] * (n_iterations - 1) + [[selection]]
+            else:
+                if not isinstance(selection, List):
+                    raise TypeError(
+                        "`selection` must be an int, List[int], or List[List[int]]"
                     )
-                if not _dispatch.all([0 < len(slct) <= 2]):
-                    raise ValueError(
-                        "each parity filter must be a list of length 1 or 2,"
-                        " with vals +1 and/or -1"
+                if isinstance(selection[0], int):
+                    selection = [None] * (n_iterations - 1) + [selection]
+
+        # Basic checks
+        if not isinstance(selection, List):
+            raise TypeError("`selection` must be an int, List[int], or List[List[int]]")
+        for slct in selection:
+            if slct is not None:
+                if not _dispatch.all([isinstance(val, int) for val in slct]):
+                    raise TypeError(
+                        "`selection` must be an int, List[int], or List[List[int]]"
                     )
-            elif selection_type == "angular":
-                if not _dispatch.all([val >= 0 for val in slct]):
-                    raise ValueError(
-                        "specified layers in `selection` must only contain valid"
-                        " angular channels >= 0"
-                    )
-                if angular_cutoff is not None:
-                    if not _dispatch.all([val <= angular_cutoff for val in slct]):
+                if selection_type == "parity":
+                    if not _dispatch.all([val in [-1, +1] for val in slct]):
                         raise ValueError(
                             "specified layers in `selection` must only contain valid"
-                            " angular channels <= the specified `angular_cutoff`"
+                            " parity values of -1 or +1"
                         )
-            else:
-                raise ValueError(
-                    "`selection_type` must be either 'parity' or 'angular'"
-                )
+                    if not _dispatch.all([0 < len(slct) <= 2]):
+                        raise ValueError(
+                            "each parity filter must be a list of length 1 or 2,"
+                            " with vals +1 and/or -1"
+                        )
+                elif selection_type == "angular":
+                    if not _dispatch.all([val >= 0 for val in slct]):
+                        raise ValueError(
+                            "specified layers in `selection` must only contain valid"
+                            " angular channels >= 0"
+                        )
+                    if angular_cutoff is not None:
+                        if not _dispatch.all([val <= angular_cutoff for val in slct]):
+                            raise ValueError(
+                                "specified layers in `selection` must only contain valid"
+                                " angular channels <= the specified `angular_cutoff`"
+                            )
+                else:
+                    raise ValueError(
+                        "`selection_type` must be either 'parity' or 'angular'"
+                    )
+        selections.append(selection)
 
-    return selection
+    return selections
+
+def _parse_bool_selections(
+    n_iterations: int,
+    skip_redundant: Optional[Union[bool, List[bool]]] = False,
+    output_selection: Optional[Union[bool, List[bool]]] = None,
+) -> List[List[bool]]:
+    """
+    Parses the `skip_redundant` and `output_selection` arguments passed to
+    public functions.
+    """
+    if isinstance(skip_redundant, bool):
+        skip_redundant = [skip_redundant] * n_iterations
+    if not _dispatch.all([isinstance(val, bool) for val in skip_redundant]):
+        raise TypeError("`skip_redundant` must be a bool or list of bools")
+    if not len(skip_redundant) == n_iterations:
+        raise ValueError(
+            "`skip_redundant` must be a bool or list of bools of length"
+            " `correlation_order` - 1"
+        )
+    if output_selection is None:
+        output_selection = [False] * (n_iterations - 1) + [True]
+    else:
+        if isinstance(output_selection, bool):
+            output_selection = [True] * n_iterations
+        if not isinstance(output_selection, List):
+            raise TypeError("`output_selection` must be passed as a list of bools")
+    
+    if not len(output_selection) == n_iterations:
+        raise ValueError(
+            "`output_selection` must be a list of bools of length"
+            " corresponding to the number of CG iterations"
+        )
+    if not _dispatch.all([isinstance(v, bool) for v in output_selection]):
+        raise TypeError("`output_selection` must be passed as a list of bools")
+    if not _dispatch.all([isinstance(v, bool) for v in output_selection]):
+        raise TypeError("`output_selection` must be passed as a list of bools")
+
+    return skip_redundant, output_selection
 
 
 def _precompute_metadata(
