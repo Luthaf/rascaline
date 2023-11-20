@@ -9,13 +9,13 @@ from metatensor import Labels, TensorBlock, TensorMap
 
 from .cg_coefficients import ClebschGordanReal
 from . import _dispatch
-
+# from cg_coefficients import ClebschGordanReal
+# import _dispatch
 
 
 # ======================================================================
 # ===== Functions to do CG combinations on single-center descriptors
 # ======================================================================
-
 
 def single_center_combine_to_order(
     nu1_tensor: TensorMap,
@@ -25,7 +25,7 @@ def single_center_combine_to_order(
     parity_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
     skip_redundant: Optional[Union[bool, List[bool]]] = False,
     output_selection: Optional[Union[bool, List[bool]]] = None,
-    use_sparse: bool = True,
+    use_sparse: bool = True,  # remove
 ) -> Union[TensorMap, List[TensorMap]]:
     """
     Takes a correlation order nu = 1 (i.e. 2-body) single-center descriptor and
@@ -71,7 +71,8 @@ def single_center_combine_to_order(
 
     if _dispatch.any([len(list(block.gradients())) > 0 for block in nu1_tensor]):
         raise NotImplementedError(
-            "CG combinations of gradients not currently supported. Check back soon."
+            "Clebsch Gordan combinations with gradients not yet implemented."
+            " Use metatensor.remove_gradients to remove gradients from the input."
         )
 
     # Standardize the metadata of the input tensor
@@ -186,18 +187,11 @@ def single_center_combine_metadata_to_order(
     """
     Performs a pseudo-CG combination of a correlation order nu = 1 (i.e. 2-body)
     single-center descriptor with itself to generate a descriptor of order
-    ``correlation_order``.
+    ``correlation_order``. Obnly
 
-    A TensorMap with complete metadata is returned, where all block values are
-    zero.
-
-    This function is useful for producing pseudo-outputs of a CG iteration
-    calculation with all the correct metadata, but far cheaper than if CG
-    combinations were actually performed. This can help to quantify the size of
-    descriptors produced, and observe the effect of selection filters on the
-    expansion of features at each iteration.
-
-    See :py:func:`single_center_combine_to_order` for documentation on args.
+    TensorMap(s) with complete metadata is returned, where all block values are
+    zero. See :py:func:`single_center_combine_to_order` for documentation on
+    args.
     """
     if correlation_order <= 1:
         raise ValueError("`correlation_order` must be > 1")
@@ -740,7 +734,6 @@ def _precompute_metadata_one_iteration(
 # ==================================================================
 # ===== Functions to perform the CG combinations of blocks
 # ==================================================================
-
 
 def _combine_single_center_blocks(
     block_1: TensorBlock,

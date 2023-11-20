@@ -4,6 +4,12 @@ Module containing dispatch functions for numpy/torch CG combination operations.
 from typing import List, Optional, Union
 import numpy as np
 
+from cg_coefficients import HAS_MOPS
+
+if HAS_MOPS:
+    from mops import sparse_accumulation_of_products as sap
+
+
 try:
     import torch
     from torch import Tensor as TorchTensor
@@ -20,7 +26,7 @@ UNKNOWN_ARRAY_TYPE = (
 
 # ============ CG combinations  ============
 
-
+@profile
 def combine_arrays(
     arr_1: Union[np.ndarray, TorchTensor],
     arr_2: Union[np.ndarray, TorchTensor],
@@ -81,6 +87,7 @@ def combine_arrays(
     return dense_combine(arr_1, arr_2, lam, cg_cache)
 
 
+# @profile
 def sparse_combine(
     arr_1: Union[np.ndarray, TorchTensor],
     arr_2: Union[np.ndarray, TorchTensor],
@@ -104,24 +111,46 @@ def sparse_combine(
 
     :returns: array of shape [n_samples, (2*lam+1), q_properties * p_properties]
     """
+    # Samples dimensions must be the same
+    assert arr_1.shape[0] == arr_2.shape[0]
+
+    # Infer l1 and l2 from the len of the length of axis 1 of each tensor
+    l1 = (arr_1.shape[1] - 1) // 2
+    l2 = (arr_2.shape[1] - 1) // 2
+
+    # Define other useful dimensions
+    n_i = arr_1.shape[0]  # number of samples
+    n_p = arr_1.shape[2]  # number of properties in arr_1
+    n_q = arr_2.shape[2]  # number of properties in arr_2
+
+    if return_empty_array:
+        return zeros_like((n_i, 2 * lam + 1, n_p * n_q), like=arr_1)
+
+    if HAS_MOPS:
+        # Reshape
+        arr_1 = np.repeat(arr_1[:, :, :, None], n_q, axis=3).reshape(
+            n_i, 2 * l1 + 1, n_p * n_q
+        )
+        arr_2 = np.repeat(arr_2[:, :, None, :], n_p, axis=2).reshape(
+            n_i, 2 * l2 + 1, n_p * n_q
+        )
+
+        arr_1 = swapaxes(arr_1, 1, 2).reshape(n_i * n_p * n_q, 2 * l1 + 1)
+        arr_2 = swapaxes(arr_2, 1, 2).reshape(n_i * n_p * n_q, 2 * l2 + 1)
+
+        # Do SAP
+        arr_out = sap(arr_1, arr_2, *cg_cache._coeffs[(l1, l2, lam)], n_O=2 * lam + 1)
+        assert arr_out.shape == (n_i * n_p * n_q, 2 * lam + 1)
+
+        # Reshape back
+        arr_out = arr_out.reshape(n_i, n_p * n_q, 2 * lam + 1)
+        arr_out = swapaxes(arr_out, 1, 2)
+
+        return arr_out
+
     if isinstance(arr_1, np.ndarray) or isinstance(arr_1, TorchTensor):
-        # Samples dimensions must be the same
-        assert arr_1.shape[0] == arr_2.shape[0]
-
-        # Define other useful dimensions
-        n_i = arr_1.shape[0]  # number of samples
-        n_p = arr_1.shape[2]  # number of properties in arr_1
-        n_q = arr_2.shape[2]  # number of properties in arr_2
-
-        # Infer l1 and l2 from the len of the length of axis 1 of each tensor
-        l1 = (arr_1.shape[1] - 1) // 2
-        l2 = (arr_2.shape[1] - 1) // 2
-
         # Initialise output array
         arr_out = zeros_like((n_i, 2 * lam + 1, n_p * n_q), like=arr_1)
-
-        if return_empty_array:
-            return arr_out
 
         # Get the corresponding Clebsch-Gordan coefficients
         cg_coeffs = cg_cache.coeffs[(l1, l2, lam)]

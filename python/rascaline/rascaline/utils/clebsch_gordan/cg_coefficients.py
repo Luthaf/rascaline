@@ -5,6 +5,21 @@ import numpy as np
 import wigners
 
 
+try:
+    from mops import sparse_accumulation_of_products as sap
+    HAS_MOPS = False
+except ImportError:
+    import warnings
+    warnings.warn(
+        "MOPS not installed. For performance it is recommended to install"
+        " from https://github.com/lab-cosmo/mops . Falling back to numpy."
+    )
+    HAS_MOPS = False
+
+if HAS_MOPS:
+    print("USING MOPS")
+
+
 class ClebschGordanReal:
     """
     Class for computing Clebsch-Gordan coefficients for real spherical
@@ -30,11 +45,19 @@ class ClebschGordanReal:
     the `l2` angular channel into the irreducible tensor of order `lambda`.
     """
 
-    def __init__(self, lambda_max: int, sparse: bool = True):
+    def __init__(self, lambda_max: int, sparse: bool = None, use_mops: bool = HAS_MOPS):
+        if use_mops is True:
+            if sparse is False:
+                raise ValueError(
+                    "use_mops=True requires sparse=True, but sparse=False was passed."
+                )
         self._lambda_max = lambda_max
         self._sparse = sparse
+        self._use_mops = use_mops
         self._coeffs = ClebschGordanReal.build_coeff_dict(
-            self._lambda_max, self._sparse
+            self._lambda_max,
+            self._sparse,
+            self._use_mops,
         )
 
     @property
@@ -46,11 +69,15 @@ class ClebschGordanReal:
         return self._sparse
 
     @property
+    def use_mops(self):
+        return self._use_mops
+
+    @property
     def coeffs(self):
         return self._coeffs
 
     @staticmethod
-    def build_coeff_dict(lambda_max: int, sparse: bool):
+    def build_coeff_dict(lambda_max: int, sparse: bool, use_mops: bool):
         """
         Builds a dictionary of Clebsch-Gordan coefficients for all possible
         combination of l1 and l2, up to lambda_max.
@@ -88,12 +115,37 @@ class ClebschGordanReal:
                         cg_l1l2lam = np.imag(real_cg)
 
                     if sparse:
-                        # if sparse we make a dictionary out of the matrix
-                        nonzeros_cg_coeffs_idx = np.where(np.abs(cg_l1l2lam) > 1e-15)
-                        cg_l1l2lam = {
-                            (m1, m2, mu): cg_l1l2lam[m1, m2, mu]
-                            for m1, m2, mu in zip(*nonzeros_cg_coeffs_idx)
-                        }
+                        # Find the m1, m2, mu idxs of the nonzero CG coeffs
+                        nonzeros_cg_coeffs_idx = np.where(
+                                np.abs(cg_l1l2lam) > 1e-15
+                            )
+                        if use_mops:
+                            # Store CG coeffs in a specific format for use in
+                            # MOPS. Here we need the m1, m2, mu, and CG coeffs
+                            # to be stored as separate 1D arrays.
+                            m1_arr, m2_arr, mu_arr, C_arr = [], [], [], []
+                            for m1, m2, mu in zip(*nonzeros_cg_coeffs_idx):
+                                m1_arr.append(m1)
+                                m2_arr.append(m2)
+                                mu_arr.append(mu)
+                                C_arr.append(cg_l1l2lam[m1, m2, mu])
+
+                            # Reorder the arrays based on sorted mu values
+                            mu_idxs = np.argsort(mu_arr)
+                            m1_arr = np.array(m1_arr)[mu_idxs]
+                            m2_arr = np.array(m2_arr)[mu_idxs]
+                            mu_arr = np.array(mu_arr)[mu_idxs]
+                            C_arr = np.array(C_arr)[mu_idxs]
+                            cg_l1l2lam = (C_arr, m1_arr, m2_arr, mu_arr)
+                        else:
+                            # Otherwise fall back to torch/numpy and store as
+                            # sparse dicts.
+                            cg_l1l2lam = {
+                                (m1, m2, mu): cg_l1l2lam[m1, m2, mu]
+                                for m1, m2, mu in zip(*nonzeros_cg_coeffs_idx)
+                            }
+
+                    # Store
                     coeff_dict[(l1, l2, lam)] = cg_l1l2lam
 
         return coeff_dict
