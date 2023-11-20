@@ -26,7 +26,7 @@ UNKNOWN_ARRAY_TYPE = (
 
 # ============ CG combinations  ============
 
-@profile
+
 def combine_arrays(
     arr_1: Union[np.ndarray, TorchTensor],
     arr_2: Union[np.ndarray, TorchTensor],
@@ -87,7 +87,6 @@ def combine_arrays(
     return dense_combine(arr_1, arr_2, lam, cg_cache)
 
 
-# @profile
 def sparse_combine(
     arr_1: Union[np.ndarray, TorchTensor],
     arr_2: Union[np.ndarray, TorchTensor],

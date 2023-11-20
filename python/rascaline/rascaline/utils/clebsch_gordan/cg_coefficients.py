@@ -7,17 +7,10 @@ import wigners
 
 try:
     from mops import sparse_accumulation_of_products as sap
-    HAS_MOPS = False
-except ImportError:
-    import warnings
-    warnings.warn(
-        "MOPS not installed. For performance it is recommended to install"
-        " from https://github.com/lab-cosmo/mops . Falling back to numpy."
-    )
-    HAS_MOPS = False
 
-if HAS_MOPS:
-    print("USING MOPS")
+    HAS_MOPS = True
+except ImportError:
+    HAS_MOPS = False
 
 
 class ClebschGordanReal:
@@ -46,14 +39,32 @@ class ClebschGordanReal:
     """
 
     def __init__(self, lambda_max: int, sparse: bool = None, use_mops: bool = HAS_MOPS):
-        if use_mops is True:
-            if sparse is False:
-                raise ValueError(
-                    "use_mops=True requires sparse=True, but sparse=False was passed."
-                )
         self._lambda_max = lambda_max
         self._sparse = sparse
-        self._use_mops = use_mops
+
+        if sparse:
+            if not HAS_MOPS:
+                import warnings
+
+                warnings.warn(
+                    "It is recommended to use MOPS for sparse accumulation. "
+                    " This can be installed from https://github.com/lab-cosmo/mops ."
+                    " Falling back to numpy for now."
+                )
+                self._use_mops = False
+            else:
+                print("USING MOPS")
+                self._use_mops = True
+
+        else:
+            if HAS_MOPS:
+                import warnings
+
+                warnings.warn(
+                    "MOPS is installed, but not being used as dense operations chosen."
+                )
+            self._use_mops = False
+
         self._coeffs = ClebschGordanReal.build_coeff_dict(
             self._lambda_max,
             self._sparse,
@@ -116,9 +127,7 @@ class ClebschGordanReal:
 
                     if sparse:
                         # Find the m1, m2, mu idxs of the nonzero CG coeffs
-                        nonzeros_cg_coeffs_idx = np.where(
-                                np.abs(cg_l1l2lam) > 1e-15
-                            )
+                        nonzeros_cg_coeffs_idx = np.where(np.abs(cg_l1l2lam) > 1e-15)
                         if use_mops:
                             # Store CG coeffs in a specific format for use in
                             # MOPS. Here we need the m1, m2, mu, and CG coeffs

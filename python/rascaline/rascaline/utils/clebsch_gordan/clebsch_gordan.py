@@ -9,8 +9,6 @@ from metatensor import Labels, TensorBlock, TensorMap
 
 from .cg_coefficients import ClebschGordanReal
 from . import _dispatch
-# from cg_coefficients import ClebschGordanReal
-# import _dispatch
 
 
 # ======================================================================
