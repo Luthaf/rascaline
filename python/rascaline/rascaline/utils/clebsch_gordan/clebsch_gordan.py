@@ -7,8 +7,8 @@ from typing import List, Optional, Tuple, Union
 import metatensor
 from metatensor import Labels, TensorBlock, TensorMap
 
-from .cg_coefficients import ClebschGordanReal
 from . import _dispatch
+from ._cg_cache import ClebschGordanReal
 
 
 # ======================================================================
@@ -166,7 +166,9 @@ def single_center_combine_to_order(
             keys = keys.remove(name="order_nu")
         if len(_dispatch.unique(tensor.keys.column("inversion_sigma"))) == 1:
             keys = keys.remove(name="inversion_sigma")
-        output_tensors[i] = TensorMap(keys=keys, blocks=[b.copy() for b in tensor.blocks()])
+        output_tensors[i] = TensorMap(
+            keys=keys, blocks=[b.copy() for b in tensor.blocks()]
+        )
 
     if len(output_tensors) == 1:
         return output_tensors[0]
@@ -274,7 +276,9 @@ def single_center_combine_metadata_to_order(
             keys = keys.remove(name="order_nu")
         if len(_dispatch.unique(tensor.keys.column("inversion_sigma"))) == 1:
             keys = keys.remove(name="inversion_sigma")
-        output_tensors[i] = TensorMap(keys=keys, blocks=[b.copy() for b in tensor.blocks()])
+        output_tensors[i] = TensorMap(
+            keys=keys, blocks=[b.copy() for b in tensor.blocks()]
+        )
 
     if len(output_tensors) == 1:
         return output_tensors[0]
@@ -365,7 +369,9 @@ def _parse_int_selections(
             raise ValueError("`angular_cutoff` must be >= 1")
 
     selections = []
-    for selection_type, selection in zip(["angular", "parity"], [angular_selection, parity_selection]):
+    for selection_type, selection in zip(
+        ["angular", "parity"], [angular_selection, parity_selection]
+    ):
         if selection is None:
             selection = [None] * n_iterations
         else:
@@ -420,6 +426,7 @@ def _parse_int_selections(
 
     return selections
 
+
 def _parse_bool_selections(
     n_iterations: int,
     skip_redundant: Optional[Union[bool, List[bool]]] = False,
@@ -442,10 +449,10 @@ def _parse_bool_selections(
         output_selection = [False] * (n_iterations - 1) + [True]
     else:
         if isinstance(output_selection, bool):
-            output_selection = [True] * n_iterations
+            output_selection = [output_selection] * n_iterations
         if not isinstance(output_selection, List):
             raise TypeError("`output_selection` must be passed as a list of bools")
-    
+
     if not len(output_selection) == n_iterations:
         raise ValueError(
             "`output_selection` must be a list of bools of length"
@@ -732,6 +739,7 @@ def _precompute_metadata_one_iteration(
 # ==================================================================
 # ===== Functions to perform the CG combinations of blocks
 # ==================================================================
+
 
 def _combine_single_center_blocks(
     block_1: TensorBlock,

@@ -4,7 +4,7 @@ Module containing dispatch functions for numpy/torch CG combination operations.
 from typing import List, Optional, Union
 import numpy as np
 
-from cg_coefficients import HAS_MOPS
+from _cg_cache import HAS_MOPS
 
 if HAS_MOPS:
     from mops import sparse_accumulation_of_products as sap

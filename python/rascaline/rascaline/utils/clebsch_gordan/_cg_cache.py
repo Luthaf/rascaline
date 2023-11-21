@@ -1,5 +1,6 @@
 """
-Module that stores the ClebschGordanReal class for computing CG coefficients.
+Module that stores the ClebschGordanReal class for computing and caching Clebsch
+Gordan coefficients for use in CG combinations.
 """
 import numpy as np
 import wigners
@@ -11,6 +12,11 @@ try:
     HAS_MOPS = True
 except ImportError:
     HAS_MOPS = False
+
+
+# =================================
+# ===== ClebschGordanReal class
+# =================================
 
 
 class ClebschGordanReal:
@@ -158,6 +164,11 @@ class ClebschGordanReal:
                     coeff_dict[(l1, l2, lam)] = cg_l1l2lam
 
         return coeff_dict
+
+
+# ============================
+# ===== Helper functions
+# ============================
 
 
 def _real2complex(lam: int) -> np.ndarray:
