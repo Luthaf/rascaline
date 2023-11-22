@@ -1,10 +1,10 @@
 from .clebsch_gordan import (  # noqa
-    single_center_combine_to_order,
-    single_center_combine_metadata_to_order,
+    correlate_density,
+    correlate_density_metadata,
 )
 
 
 __all__ = [
-    "single_center_combine_to_order",
-    "single_center_combine_metadata_to_order",
+    "correlate_density",
+    "correlate_density_metadata",
 ]

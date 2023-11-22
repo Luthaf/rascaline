@@ -11,9 +11,10 @@ import metatensor
 import rascaline
 from metatensor import Labels, TensorBlock, TensorMap
 from rascaline.utils import clebsch_gordan, PowerSpectrum
+from rascaline.utils.clebsch_gordan.clebsch_gordan import _correlate_density, _standardize_metadata
 
 from .rotations import WignerDReal, transform_frame_so3, transform_frame_o3
-
+from rascaline.utils.clebsch_gordan._cg_cache import ClebschGordanReal
 
 DATA_ROOT = os.path.join(os.path.dirname(__file__), "data")
 
@@ -46,12 +47,12 @@ LODE_HYPERS_SMALL = {}
 
 @pytest.fixture(scope="module")
 def cg_cache_sparse():
-    return clebsch_gordan.ClebschGordanReal(lambda_max=5, sparse=True)
+    return ClebschGordanReal(lambda_max=5, sparse=True)
 
 
 @pytest.fixture(scope="module")
 def cg_cache_dense():
-    return clebsch_gordan.ClebschGordanReal(lambda_max=5, sparse=False)
+    return ClebschGordanReal(lambda_max=5, sparse=False)
 
 
 # ============ Helper functions ============
@@ -141,27 +142,27 @@ def test_so3_equivariance(
     parity_selection: List[List[int]],
 ):
     wig = wigners(nu_target * SPHEX_HYPERS["max_angular"])
-    frames_so3 = [
-        transform_frame_so3(frame, wig.angles) for frame in frames
-    ]
+    frames_so3 = [transform_frame_so3(frame, wig.angles) for frame in frames]
 
     nu_1 = sphex(frames)
     nu_1_so3 = sphex(frames_so3)
 
-    nu_3 = clebsch_gordan.single_center_combine_to_order(
-        nu1_tensor=nu_1,
+    nu_3 = _correlate_density(
+        density=nu_1,
         correlation_order=nu_target,
         angular_cutoff=angular_cutoff,
         angular_selection=angular_selection,
         parity_selection=parity_selection,
-    )
-    nu_3_so3 = clebsch_gordan.single_center_combine_to_order(
-        nu1_tensor=nu_1_so3,
+        compute_metadata_only=False,
+    )[0]
+    nu_3_so3 = _correlate_density(
+        density=nu_1_so3,
         correlation_order=nu_target,
         angular_cutoff=angular_cutoff,
         angular_selection=angular_selection,
         parity_selection=parity_selection,
-    )
+        compute_metadata_only=False,
+    )[0]
 
     nu_3_transf = wig.transform_tensormap_so3(nu_3)
     assert metatensor.allclose(nu_3_transf, nu_3_so3)
@@ -183,27 +184,27 @@ def test_o3_equivariance(
     parity_selection: List[List[int]],
 ):
     wig = wigners(nu_target * SPHEX_HYPERS["max_angular"])
-    frames_o3 = [
-        transform_frame_o3(frame, wig.angles) for frame in frames
-    ]
+    frames_o3 = [transform_frame_o3(frame, wig.angles) for frame in frames]
 
     nu_1 = sphex(frames)
     nu_1_o3 = sphex(frames_o3)
 
-    nu_3 = clebsch_gordan.single_center_combine_to_order(
-        nu1_tensor=nu_1,
+    nu_3 = _correlate_density(
+        density=nu_1,
         correlation_order=nu_target,
         angular_cutoff=angular_cutoff,
         angular_selection=angular_selection,
         parity_selection=parity_selection,
-    )
-    nu_3_o3 = clebsch_gordan.single_center_combine_to_order(
-        nu1_tensor=nu_1_o3,
+        compute_metadata_only=False,
+    )[0]
+    nu_3_o3 = _correlate_density(
+        density=nu_1_o3,
         correlation_order=nu_target,
         angular_cutoff=angular_cutoff,
         angular_selection=angular_selection,
         parity_selection=parity_selection,
-    )
+        compute_metadata_only=False,
+    )[0]
 
     nu_3_transf = wig.transform_tensormap_o3(nu_3)
     assert metatensor.allclose(nu_3_transf, nu_3_o3)
@@ -223,12 +224,13 @@ def test_lambda_soap_vs_powerspectrum(frames):
     ps = powspec_small_features(frames)
 
     # Build a lambda-SOAP
-    nu1_tensor = sphex_small_features(frames)
-    lsoap = clebsch_gordan.single_center_combine_to_order(
-        nu1_tensor=nu1_tensor,
+    density = sphex_small_features(frames)
+    lsoap = _correlate_density(
+        density=density,
         correlation_order=2,
         angular_selection=[0],
-    )
+        compute_metadata_only=False,
+    )[0]
     keys = lsoap.keys.remove(name="spherical_harmonics_l")
     lsoap = TensorMap(keys=keys, blocks=[b.copy() for b in lsoap.blocks()])
 
@@ -274,37 +276,31 @@ def test_combine_single_center_norm(frames, correlation_order):
     nu1 = sphex_small_features(frames)
 
     # Build higher body order tensor without sorting the l lists
-    nux = clebsch_gordan.single_center_combine_to_order(
+    nux = _correlate_density(
         nu1,
         correlation_order=correlation_order,
         angular_cutoff=None,
         angular_selection=None,
         parity_selection=None,
         skip_redundant=False,
-        use_sparse=True,
-    )
+        compute_metadata_only=False,
+        sparse=True,
+    )[0]
     # Build higher body order tensor *with* sorting the l lists
-    nux_sorted_l = clebsch_gordan.single_center_combine_to_order(
+    nux_sorted_l = _correlate_density(
         nu1,
         correlation_order=correlation_order,
         angular_cutoff=None,
         angular_selection=None,
         parity_selection=None,
         skip_redundant=True,
-        use_sparse=True,
-    )
+        compute_metadata_only=False,
+        sparse=True,
+    )[0]
 
     # Standardize the features by passing through the CG combination code but with
     # no iterations (i.e. body order 1 -> 1)
-    nu1 = clebsch_gordan.single_center_combine_to_order(
-        nu1,
-        correlation_order=1,
-        angular_cutoff=None,
-        angular_selection=None,
-        parity_selection=None,
-        skip_redundant=False,
-        use_sparse=True,
-    )
+    nu1 = _standardize_metadata(nu1)
 
     # Make only lambda and sigma part of keys
     nu1 = nu1.keys_to_samples(["species_center"])
@@ -392,17 +388,19 @@ def test_single_center_combine_to_correlation_order_dense_sparse_agree(frames):
     Tests for agreement between nu=3 tensors built using both sparse and dense
     CG coefficient caches.
     """
-    nu1_tensor = sphex_small_features(frames)
-    n_body_sparse = clebsch_gordan.single_center_combine_to_order(
-        nu1_tensor,
+    density = sphex_small_features(frames)
+    n_body_sparse = _correlate_density(
+        density,
         correlation_order=3,
-        use_sparse=True,
-    )
-    n_body_dense = clebsch_gordan.single_center_combine_to_order(
-        nu1_tensor,
+        sparse=True,
+        compute_metadata_only=False,
+    )[0]
+    n_body_dense = _correlate_density(
+        density,
         correlation_order=3,
-        use_sparse=False,
-    )
+        sparse=False,
+        compute_metadata_only=False,
+    )[0]
 
     assert metatensor.operations.allclose(
         n_body_sparse, n_body_dense, atol=1e-8, rtol=1e-8
@@ -419,33 +417,32 @@ def test_single_center_combine_to_correlation_order_metadata_agree(
     frames, correlation_order, skip_redundant
 ):
     """
-    Tests that the metadata output from
-    single_center_combine_metadata_to_order agrees with the metadata
-    of the full tensor built using single_center_combine_to_order.
+    Tests that the outputs from `_correlate_density` agrees when switching the
+    `compute_metadata_only` flag on and off.
     """
     for nu1 in [sphex_small_features(frames), sphex(frames)]:
         # Build higher body order tensor with CG computation
-        nux = clebsch_gordan.single_center_combine_to_order(
+        nux = _correlate_density(
             nu1,
             correlation_order=correlation_order,
             angular_cutoff=None,
             angular_selection=None,
             parity_selection=None,
             skip_redundant=skip_redundant,
-            use_sparse=True,
-        )
+            compute_metadata_only=False,
+            sparse=True,
+        )[0]
         # Build higher body order tensor without CG computation - i.e. metadata
         # only
-        nux_metadata_only = (
-            clebsch_gordan.single_center_combine_metadata_to_order(
-                nu1,
-                correlation_order=correlation_order,
-                angular_cutoff=None,
-                angular_selection=None,
-                parity_selection=None,
-                skip_redundant=skip_redundant,
-            )
-        )
+        nux_metadata_only = _correlate_density(
+            nu1,
+            correlation_order=correlation_order,
+            angular_cutoff=None,
+            angular_selection=None,
+            parity_selection=None,
+            skip_redundant=skip_redundant,
+            compute_metadata_only=True,
+        )[0]
         assert metatensor.equal_metadata(nux, nux_metadata_only)
 
 
@@ -457,7 +454,7 @@ def test_single_center_combine_to_correlation_order_metadata(
 ):
     """
     Performs hard-coded tests on the metadata outputted from
-    single_center_combine_metadata_to_order.
+    _correlate_density.
 
     TODO: finish!
     """
@@ -466,7 +463,7 @@ def test_single_center_combine_to_correlation_order_metadata(
     #     # only. This returns a list of the TensorMaps formed at each CG
     #     # iteration.
     #     nux_metadata_only = (
-    #         clebsch_gordan.single_center_combine_metadata_to_order(
+    #         clebsch_gordan.correlate_density_metadata(
     #             nu1,
     #             correlation_order=correlation_order,
     #             angular_cutoff=None,
@@ -489,14 +486,15 @@ def test_single_center_combine_angular_selection(
     specified ``angular_cutoff`` and ``angular_selection``."""
     nu_1 = sphex(frames)
 
-    nu_2 = clebsch_gordan.single_center_combine_to_order(
-        nu1_tensor=nu_1,
+    nu_2 = _correlate_density(
+        density=nu_1,
         correlation_order=2,
         angular_cutoff=None,
         angular_selection=angular_selection,
         parity_selection=None,
         skip_redundant=skip_redundant,
-    )
+        compute_metadata_only=False,
+    )[0]
 
     if angular_selection is None:
         assert np.all(

@@ -25,23 +25,89 @@ class ClebschGordanReal:
     harmonics.
 
     Stores the coefficients in a dictionary in the `self.coeffs` attribute,
-    which is built at initialization. This dictionary has the form:
+    which is built at initialization. There are 3 current use cases for the
+    format of these coefficients.
+
+    Case 1: standard sparse format.
+
+    Each dictionary entry is a dictionary with entries for each (m1, m2, mu)
+    combination.
 
     {
-        (l1, l2, lambda): [
-            np.ndarray([m1, m2, cg]),
-            ...
+        (l1, l2, lambda): {
+            (m1, m2, mu) : cg_{m1, m2, mu}^{l1, l2, lambda}
             for m1 in range(-l1, l1 + 1),
             for m2 in range(-l2, l2 + 1),
-        ],
+        },
         ...
-        for lambda in range(0, l)
+        for l1 in range(0, l1_list)
+        for l2 in range(0, l2_list)
+        for lambda in range(0, range(|l1 - l2|, ..., |l1 + l2|))
     }
 
-    where `cg`, i.e. the third value in each array, is the Clebsch-Gordan
-    coefficient that describes the combination of the `m1` irreducible
-    component of the `l1` angular channel and the `m2` irreducible component of
-    the `l2` angular channel into the irreducible tensor of order `lambda`.
+    Case 2: standard dense format.
+
+    Each dictionary entry is a dense array with shape (2 * l1 + 1, 2 * l2 + 1, 2
+    * lambda + 1).
+
+    {
+        (l1, l2, lambda):
+            array(
+                cg_{m1, m2, mu}^{l1, l2, lambda}
+                ...
+                for m1 in range(-l1, l1 + 1),
+                for m2 in range(-l2, l2 + 1),
+                for mu in range(-lambda, lambda + 1),
+
+                shape=(2 * l1 + 1, 2 * l2 + 1, 2 * lambda + 1),
+            )
+        ...
+        for l1 in range(0, l1_list)
+        for l2 in range(0, l2_list)
+        for lambda in range(0, range(|l1 - l2|, ..., |l1 + l2|))
+    }
+
+    Case 3: MOPS sparse format.
+
+    Each dictionary entry contains a tuple with four 1D arrays, corresponding to
+    the CG coeffs and m1, m2, mu indices respectively. All of these arrays are
+    sorted according to the mu index. This format is used for Sparse
+    Accumulation of Products (SAP) as implemented in MOPS.
+
+    {
+        (l1, l2, lambda):
+            (
+                [
+                    cg_{m1, m2, mu}^{l1, l2, lambda}
+                    ...
+                    for m1 in range(-l1, l1 + 1),
+                    for m2 in range(-l2, l2 + 1),
+                    for mu in range(-lambda, lambda + 1)
+                ],
+                [
+                    m1 for m1 in range(-l1, l1 + 1),
+                ],
+                [
+                    m2 for m2 in range(-l2, l2 + 1),
+                ],
+                [
+                    mu for mu in range(-lambda, lambda + 1),
+                ],
+            )
+
+
+    }
+
+    where `cg_{m1, m2, mu}^{l1, l2, lambda}` is the Clebsch-Gordan coefficient
+    that describes the combination of the `m1` irreducible component of the `l1`
+    angular channel and the `m2` irreducible component of the `l2` angular
+    channel into the irreducible tensor of order `lambda`.
+
+    :param lambda_max: maximum lambda value to compute CG coefficients for.
+    :param sparse: whether to store the CG coefficients in sparse format.
+    :param use_mops: whether to store the CG coefficients in MOPS sparse format.
+        This is recommended as the default for sparse accumulation, but can only
+        be used if Mops is installed.
     """
 
     def __init__(self, lambda_max: int, sparse: bool = None, use_mops: bool = HAS_MOPS):
@@ -54,12 +120,15 @@ class ClebschGordanReal:
 
                 warnings.warn(
                     "It is recommended to use MOPS for sparse accumulation. "
-                    " This can be installed from https://github.com/lab-cosmo/mops ."
+                    " This can be installed with ``pip install"
+                    " git+https://github.com/lab-cosmo/mops`."
                     " Falling back to numpy for now."
                 )
                 self._use_mops = False
             else:
-                print("USING MOPS")
+                print(
+                    "Backend Clebsch Gordan tensor products will be performed with Mops."
+                )
                 self._use_mops = True
 
         else:
@@ -67,7 +136,7 @@ class ClebschGordanReal:
                 import warnings
 
                 warnings.warn(
-                    "MOPS is installed, but not being used as dense operations chosen."
+                    "Mops is installed, but not being used as dense operations chosen."
                 )
             self._use_mops = False
 

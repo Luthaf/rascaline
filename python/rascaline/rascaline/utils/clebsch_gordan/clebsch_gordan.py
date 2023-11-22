@@ -12,76 +12,177 @@ from ._cg_cache import ClebschGordanReal
 
 
 # ======================================================================
-# ===== Functions to do CG combinations on single-center descriptors
+# ===== Public API functions
 # ======================================================================
 
-def single_center_combine_to_order(
-    nu1_tensor: TensorMap,
+
+def correlate_density(
+    density: TensorMap,
     correlation_order: int,
     angular_cutoff: Optional[int] = None,
     angular_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
     parity_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
     skip_redundant: Optional[Union[bool, List[bool]]] = False,
     output_selection: Optional[Union[bool, List[bool]]] = None,
-    use_sparse: bool = True,  # remove
-) -> Union[TensorMap, List[TensorMap]]:
+) -> List[TensorMap]:
     """
-    Takes a correlation order nu = 1 (i.e. 2-body) single-center descriptor and
-    combines it iteratively with itself to generate a descriptor of correlation
-    order ``correlation_order``.
+    Takes iterative Clebsch-Gordan (CG) tensor products of a density descriptor
+    with itself to the desired correlation order. Returns a list of TensorMaps
+    corresponding to the density correlations output from the specified
+    iterations.
 
-    ``nu1_tensor`` may be, for instance, a rascaline.SphericalExpansion or
-    rascaline.LodeSphericalExpansion. In the first iteration, ``nu1_tensor`` is
-    combined with itself to form a nu = 2 (3-body) descriptor. In each following
-    iteration the nu = x (x+1)-body descriptor is combined with the
-    ``nu1_tensor`` nu = 1 descriptor until the target ``correlation_order`` is
-    reached.
+    A density descriptor necessarily is body order 2 (i.e. correlation order 1),
+    but can be single- or multi-center. The output is a list of density
+    correlations for each iteration specified in `output_selection`, up to the
+    target order passed in `correlation_order`.
 
-    With no other specification of input args, the full extent of non-zero CG
-    combinations will be taken between blocks at every step. However, there are
-    selections that can be made to reduce the computational cost.
-    ``angular_cutoff`` applies a global cutoff to the maximum angular channel
-    that is computed at each iteration.
+    This function is an iterative special case of the more general
+    :py:func:`correlate_tensors`. As a density is being correlated with itself,
+    some redundant CG tensor products can be skipped with the `skip_redundant`
+    keyword.
 
-    ``angular_selection`` and ``parity_selection`` can be used to explicitly
-    control the angular and parity channels that are output at each step.
-    Passing a list of int in each will apply that selection on the final CG
-    combination step. Passing a list of list of int (of length
-    ``correlation_order`` - 1) will apply the specified selection at each step.
+    Selections on the angular and parity channels at each iteration can also be
+    controlled with arguments `angular_cutoff`, `angular_selection` and
+    `parity_selection`.
 
-    Cost can also be reduced with the ``skip_redundant`` argument. By default,
-    all combinations of blocks are performed. Some well-defined sets of these
-    combinations are redundant, and can be skipped by setting
-    ``skip_redundant=True`. This is done by sorting the l list (i.e. the angular
-    channels of the original nu = 1 blocks previously combined) of the blocks to
-    be combined, and only operating on blocks where l1 <= l2 <= ... <= ln.
+    :param density: A density descriptor of body order 2 (correlation order 1),
+        in metatensor.TensorMap format. This may be, for example, a rascaline
+        :py:class:`SphericalExpansion` or :py:class:`LodeSphericalExpansion`.
+        Alternatively, this could be multi-center descriptor, such as a pair
+        density.
+    :param correlation_order: The desired correlation order of the output
+        descriptor. Must be >= 1.
+    :param angular_cutoff: The maximum angular channel to compute at any given
+        CG iteration, applied globally to all iterations until the target
+        correlation order is reached.
+    :param angular_selection: A list of angular channels to output at each
+        iteration. If a single list is passed, this is applied to the final
+        iteration only. If a list of lists is passed, this is applied to each
+        iteration. If None is passed, all angular channels are output at each
+        iteration.
+    :param parity_selection: A list of parity channels to output at each
+        iteration. If a single list is passed, this is applied to the final
+        iteration only. If a list of lists is passed, this is applied to each
+        iteration. If None is passed, all parity channels are output at each
+        iteration.
+    :param skip_redundant: Whether to skip redundant CG combinations. Defaults
+        to False, which means all combinations are performed. If a list of bool
+        is passed, this is applied to each iteration. If a single bool is
+        passed, this is applied to all iterations.
+    :param output_selection: A list of bools specifying whether to output a
+        TensorMap for each iteration. If a single bool is passed as True,
+        outputs from all iterations will be returned. If a list of bools is
+        passed, this controls the output at each corresponding iteration. If
+        None is passed, only the final iteration is output.
 
-    The ``output_selection`` argument can be used to control which CG iteration
-    steps a TensorMap is output for. By default (i.e. `output_selection=None`),
-    only the TensorMap from the final CG combination will be output.
-
-    Finally, the ``use_sparse`` argument can be used to control whether a sparse
-    or dense cache of CG coefficients is used, which depending on the use case
-    can affect the performance.
+    :return List[TensorMap]: A list of TensorMaps corresponding to the density
+        correlations output from the specified iterations.
     """
-    if correlation_order < 1:
-        raise ValueError("`correlation_order` must be > 0")
+    return _correlate_density(
+        density,
+        correlation_order,
+        angular_cutoff,
+        angular_selection,
+        parity_selection,
+        skip_redundant,
+        output_selection,
+        compute_metadata_only=False,
+        sparse=True,  # sparse CG cache by default
+    )
 
-    if _dispatch.any([len(list(block.gradients())) > 0 for block in nu1_tensor]):
+
+def correlate_density_metadata(
+    density: TensorMap,
+    correlation_order: int,
+    angular_cutoff: Optional[int] = None,
+    angular_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
+    parity_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
+    skip_redundant: Optional[Union[bool, List[bool]]] = False,
+    output_selection: Optional[Union[bool, List[bool]]] = None,
+) -> List[TensorMap]:
+    """
+    Returns the metadata-only TensorMaps that would be output by the function
+    :py:func:`correlate_density` under the same settings, without perfoming the
+    actual Clebsch-Gordan tensor products. See this function for full
+    documentation.
+
+    :param density: A density descriptor of body order 2 (correlation order 1),
+        in metatensor.TensorMap format. This may be, for example, a rascaline
+        :py:class:`SphericalExpansion` or :py:class:`LodeSphericalExpansion`.
+        Alternatively, this could be multi-center descriptor, such as a pair
+        density.
+    :param correlation_order: The desired correlation order of the output
+        descriptor. Must be >= 1.
+    :param angular_cutoff: The maximum angular channel to compute at any given
+        CG iteration, applied globally to all iterations until the target
+        correlation order is reached.
+    :param angular_selection: A list of angular channels to output at each
+        iteration. If a single list is passed, this is applied to the final
+        iteration only. If a list of lists is passed, this is applied to each
+        iteration. If None is passed, all angular channels are output at each
+        iteration.
+    :param parity_selection: A list of parity channels to output at each
+        iteration. If a single list is passed, this is applied to the final
+        iteration only. If a list of lists is passed, this is applied to each
+        iteration. If None is passed, all parity channels are output at each
+        iteration.
+    :param skip_redundant: Whether to skip redundant CG combinations. Defaults
+        to False, which means all combinations are performed. If a list of bool
+        is passed, this is applied to each iteration. If a single bool is
+        passed, this is applied to all iterations.
+    :param output_selection: A list of bools specifying whether to output a
+        TensorMap for each iteration. If a single bool is passed as True,
+        outputs from all iterations will be returned. If a list of bools is
+        passed, this controls the output at each corresponding iteration. If
+        None is passed, only the final iteration is output.
+
+    :return List[TensorMap]: A list of TensorMaps corresponding to the metadata
+        that would be output by :py:func:`correlate_density` under the same
+        settings.
+    """
+
+    return _correlate_density(
+        density,
+        correlation_order,
+        angular_cutoff,
+        angular_selection,
+        parity_selection,
+        skip_redundant,
+        output_selection,
+        compute_metadata_only=True,
+    )
+
+
+# ====================================================================
+# ===== Private functions that do the work on the TensorMap level
+# ====================================================================
+
+
+def _correlate_density(
+    density: TensorMap,
+    correlation_order: int,
+    angular_cutoff: Optional[int] = None,
+    angular_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
+    parity_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
+    skip_redundant: Optional[Union[bool, List[bool]]] = False,
+    output_selection: Optional[Union[bool, List[bool]]] = None,
+    compute_metadata_only: bool = False,
+    sparse: bool = True,
+) -> List[TensorMap]:
+    """
+    Performs the density correlations for public functions
+    :py:func:`correlate_density` and :py:func:`correlate_density_metadata`.
+    """
+    if correlation_order <= 1:
+        raise ValueError("`correlation_order` must be > 1")
+    if _dispatch.any([len(list(block.gradients())) > 0 for block in density]):
         raise NotImplementedError(
             "Clebsch Gordan combinations with gradients not yet implemented."
             " Use metatensor.remove_gradients to remove gradients from the input."
         )
-
-    # Standardize the metadata of the input tensor
-    nu1_tensor = _standardize_tensor_metadata(nu1_tensor)
-
-    # If the desired body order is 1, return the input tensor with standardized
-    # metadata.
-    if correlation_order == 1:
-        return nu1_tensor
-
-    n_iterations = correlation_order - 1
+    n_iterations = correlation_order - 1  # num iterations
+    density = _standardize_metadata(density)  # standardize metadata
+    density_correlation = density  # create a copy to combine with itself
 
     # Parse the various selection filters
     angular_selection, parity_selection = _parse_int_selections(
@@ -97,208 +198,92 @@ def single_center_combine_to_order(
     )
 
     # Pre-compute the metadata needed to perform each CG iteration
-    # Current design choice: only combine a nu = 1 tensor iteratively with
-    # itself, i.e. nu=1 + nu=1 --> nu=2. nu=2 + nu=1 --> nu=3, etc.
-    combination_metadata = _precompute_metadata(
-        nu1_tensor.keys,
-        nu1_tensor.keys,
+    metadata = _precompute_metadata(
+        density.keys,
+        density.keys,
         n_iterations=n_iterations,
         angular_cutoff=angular_cutoff,
         angular_selection=angular_selection,
         parity_selection=parity_selection,
         skip_redundant=skip_redundant,
     )
-
-    # Define the cached CG coefficients, either as sparse dicts or dense arrays.
-    # TODO: we pre-computed the combination metadata, so a more cleverly
-    # constructed CG cache could be used to reduce memory overhead - i.e. we
-    # don't necessarily need *all* CG coeffs up to `angular_max`, just the ones
-    # that are actually used.
-    angular_max = max(
-        _dispatch.concatenate(
-            [nu1_tensor.keys.column("spherical_harmonics_l")]
-            + [
-                metadata[0].column("spherical_harmonics_l")
-                for metadata in combination_metadata
-            ]
-        )
-    )
-    cg_cache = ClebschGordanReal(angular_max, use_sparse)
-
-    # Create a copy of the nu = 1 tensor to combine with itself
-    nu_x_tensor = nu1_tensor
-
-    # Iteratively combine block values
-    output_tensors = []
-    for iteration, output_tensor in zip(range(n_iterations), output_selection):
-        tmp_correlation_order = iteration + 2
-        # TODO: is there a faster way of iterating over keys/blocks here?
-        nu_x_blocks = []
-        for nu_x_key, key_1, key_2 in zip(*combination_metadata[iteration]):
-            # Combine the pair of block values
-            nu_x_block = _combine_single_center_blocks(
-                nu_x_tensor[key_1],
-                nu1_tensor[key_2],
-                nu_x_key["spherical_harmonics_l"],
-                cg_cache,
+    # Compute CG coefficient cache
+    if compute_metadata_only:
+        cg_cache = None
+    else:
+        angular_max = max(
+            _dispatch.concatenate(
+                [density.keys.column("spherical_harmonics_l")]
+                + [mdata[2].column("spherical_harmonics_l") for mdata in metadata]
             )
-            nu_x_blocks.append(nu_x_block)
-        nu_x_keys = combination_metadata[iteration][0]
-        nu_x_tensor = TensorMap(keys=nu_x_keys, blocks=nu_x_blocks)
+        )
+        # TODO: metadata has been precomputed, so perhaps we don't need to
+        # compute all CG coefficients up to angular_max here.
+        # TODO: use sparse cache by default until we understamd under which
+        # circumstances (and if) dense is faster.
+        cg_cache = ClebschGordanReal(angular_max, sparse=sparse)
 
-        # If this tensor is to be included in the output, move the keys to
-        # properties and store
-        if output_tensor is True:
-            # Move the [l1, l2, ...] keys to the properties
-            output_tensors.append(
-                nu_x_tensor.keys_to_properties(
-                    [f"l{i}" for i in range(1, tmp_correlation_order + 1)]
-                    + [f"k{i}" for i in range(2, tmp_correlation_order)]
+    # Perform iterative CG tensor products
+    density_correlations = []
+    for iteration in range(n_iterations):
+        # Define the correlation order of the current iteration
+        correlation_order_it = iteration + 2
+
+        blocks_out = []
+        # TODO: is there a faster way of iterating over keys/blocks here?
+        for key_1, key_2, key_out in zip(*metadata[iteration]):
+            block_out = _combine_single_center_blocks(
+                density_correlation[key_1],
+                density[key_2],
+                key_out["spherical_harmonics_l"],
+                cg_cache,
+                compute_metadata_only=compute_metadata_only,
+            )
+            blocks_out.append(block_out)
+        keys_out = metadata[iteration][2]
+        density_correlation = TensorMap(keys=keys_out, blocks=blocks_out)
+
+        # If this tensor is to be included in the output, move the [l1, l2, ...]
+        # keys to properties and store
+        if output_selection[iteration]:
+            density_correlations.append(
+                density_correlation.keys_to_properties(
+                    [f"l{i}" for i in range(1, correlation_order_it + 1)]
+                    + [f"k{i}" for i in range(2, correlation_order_it)]
                 )
             )
 
     # Drop redundant key names. TODO: these should be part of the global
     # matadata associated with the TensorMap. Awaiting this functionality in
     # metatensor.
-    for i, tensor in enumerate(output_tensors):
+    for i, tensor in enumerate(density_correlations):
         keys = tensor.keys
         if len(_dispatch.unique(tensor.keys.column("order_nu"))) == 1:
             keys = keys.remove(name="order_nu")
         if len(_dispatch.unique(tensor.keys.column("inversion_sigma"))) == 1:
             keys = keys.remove(name="inversion_sigma")
-        output_tensors[i] = TensorMap(
+        density_correlations[i] = TensorMap(
             keys=keys, blocks=[b.copy() for b in tensor.blocks()]
         )
 
-    if len(output_tensors) == 1:
-        return output_tensors[0]
-    return output_tensors
+    return density_correlations
 
 
-def single_center_combine_metadata_to_order(
-    nu1_tensor: TensorMap,
-    correlation_order: int,
-    angular_cutoff: Optional[int] = None,
-    angular_selection: Optional[Union[int, List[int], List[List[int]]]] = None,
-    parity_selection: Optional[Union[int, List[int], List[List[int]]]] = None,
-    skip_redundant: Optional[Union[bool, List[bool]]] = False,
-    output_selection: Optional[Union[bool, List[bool]]] = None,
-) -> Union[TensorMap, List[TensorMap]]:
-    """
-    Performs a pseudo-CG combination of a correlation order nu = 1 (i.e. 2-body)
-    single-center descriptor with itself to generate a descriptor of order
-    ``correlation_order``. Obnly
-
-    TensorMap(s) with complete metadata is returned, where all block values are
-    zero. See :py:func:`single_center_combine_to_order` for documentation on
-    args.
-    """
-    if correlation_order <= 1:
-        raise ValueError("`correlation_order` must be > 1")
-
-    if _dispatch.any([len(list(block.gradients())) > 0 for block in nu1_tensor]):
-        raise NotImplementedError(
-            "CG combinations of gradients not currently supported. Check back soon."
-        )
-
-    # Standardize the metadata of the input tensor
-    nu1_tensor = _standardize_tensor_metadata(nu1_tensor)
-
-    # If the desired body order is 1, return the input tensor with standardized
-    # metadata.
-    if correlation_order == 1:
-        return nu1_tensor
-
-    n_iterations = correlation_order - 1
-
-    # Parse the various selection filters
-    angular_selection, parity_selection = _parse_int_selections(
-        n_iterations=n_iterations,
-        angular_cutoff=angular_cutoff,
-        angular_selection=angular_selection,
-        parity_selection=parity_selection,
-    )
-    skip_redundant, output_selection = _parse_bool_selections(
-        n_iterations,
-        skip_redundant=skip_redundant,
-        output_selection=output_selection,
-    )
-
-    # Pre-compute the metadata needed to perform each CG iteration. Current
-    # design choice: only combine a nu = 1 tensor iteratively with itself, i.e.
-    # nu=1 + nu=1 --> nu=2. nu=2 + nu=1 --> nu=3, etc.
-    combination_metadata = _precompute_metadata(
-        nu1_tensor.keys,
-        nu1_tensor.keys,
-        n_iterations=n_iterations,
-        angular_cutoff=angular_cutoff,
-        angular_selection=angular_selection,
-        parity_selection=parity_selection,
-        skip_redundant=skip_redundant,
-    )
-
-    # Create a copy of the nu = 1 tensor to combine with itself
-    nu_x_tensor = nu1_tensor
-
-    # Iteratively combine block values
-    output_tensors = []
-    for iteration, output_tensor in zip(range(n_iterations), output_selection):
-        tmp_correlation_order = iteration + 2
-        # TODO: is there a faster way of iterating over keys/blocks here?
-        nu_x_blocks = []
-        for nu_x_key, key_1, key_2 in zip(*combination_metadata[iteration]):
-            nu_x_block = _combine_single_center_blocks(
-                nu_x_tensor[key_1],
-                nu1_tensor[key_2],
-                nu_x_key["spherical_harmonics_l"],
-                cg_cache=None,
-                return_metadata_only=True,
-            )
-            nu_x_blocks.append(nu_x_block)
-        nu_x_keys = combination_metadata[iteration][0]
-        nu_x_tensor = TensorMap(keys=nu_x_keys, blocks=nu_x_blocks)
-
-        # If this tensor is to be included in the output, move the keys to
-        # properties and store
-        if output_tensor is True:
-            # Move the [l1, l2, ...] keys to the properties
-            output_tensors.append(
-                nu_x_tensor.keys_to_properties(
-                    [f"l{i}" for i in range(1, tmp_correlation_order + 1)]
-                    + [f"k{i}" for i in range(2, tmp_correlation_order)]
-                )
-            )
-
-    # Remove redundant key names
-    for i, tensor in enumerate(output_tensors):
-        keys = tensor.keys
-        if len(_dispatch.unique(tensor.keys.column("order_nu"))) == 1:
-            keys = keys.remove(name="order_nu")
-        if len(_dispatch.unique(tensor.keys.column("inversion_sigma"))) == 1:
-            keys = keys.remove(name="inversion_sigma")
-        output_tensors[i] = TensorMap(
-            keys=keys, blocks=[b.copy() for b in tensor.blocks()]
-        )
-
-    if len(output_tensors) == 1:
-        return output_tensors[0]
-    return output_tensors
-
-
-def single_center_combine(
+def correlate_tensors(
     tensor_1: TensorMap,
     tensor_2: TensorMap,
     angular_cutoff: Optional[int] = None,
     angular_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
     parity_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
-    use_sparse: bool = True,
 ) -> TensorMap:
     """
-    Takes two single-center descriptors of arbitrary body order and combines
-    them in a single CG combination step. Tensors could be of different
-    provenance, i.e. a SphericalExpansion and a LodeSphericalExpansion.
+    Performs the Clebsch Gordan tensor product of two TensorMaps that correspond
+    to densities or density correlations. Returns a new TensorMap corresponding
+    to a higher correlation-order descriptor.
+
+    The two input tensors can be single- or multi-center, and of arbitrary (and
+    different) correlation order, but must contain the same samples.
     """
-    # TODO: implement!
     raise NotImplementedError
 
 
@@ -307,7 +292,7 @@ def single_center_combine(
 # ==================================================================
 
 
-def _standardize_tensor_metadata(tensor: TensorMap) -> TensorMap:
+def _standardize_metadata(tensor: TensorMap) -> TensorMap:
     """
     Takes a nu=1 tensor and standardizes its metadata. This involves: 1) moving
     the "species_neighbor" key to properties, if present as a dimension in the
@@ -482,22 +467,22 @@ def _precompute_metadata(
     angular (`angular_selection`) and parity (`parity_selection`) selections to
     be applied at each iteration.
     """
-    comb_metadata = []
-    new_keys = keys_1
+    metadata = []
+    keys_out = keys_1
     for iteration in range(n_iterations):
         # Get the metadata for the combination of the 2 tensors
-        i_comb_metadata = _precompute_metadata_one_iteration(
-            keys_1=new_keys,
+        i_metadata = _precompute_metadata_one_iteration(
+            keys_1=keys_out,
             keys_2=keys_2,
             angular_cutoff=angular_cutoff,
             angular_selection=angular_selection[iteration],
             parity_selection=parity_selection[iteration],
             skip_redundant=skip_redundant[iteration],
         )
-        new_keys = i_comb_metadata[0]
+        keys_out = i_metadata[2]
 
         # Check that some keys are produced as a result of the combination
-        if len(new_keys) == 0:
+        if len(keys_out) == 0:
             raise ValueError(
                 f"invalid selections: iteration {iteration + 1} produces no"
                 " valid combinations. Check the `angular_selection` and"
@@ -508,7 +493,7 @@ def _precompute_metadata(
         if angular_selection is not None:
             if angular_selection[iteration] is not None:
                 for lam in angular_selection[iteration]:
-                    if lam not in new_keys.column("spherical_harmonics_l"):
+                    if lam not in keys_out.column("spherical_harmonics_l"):
                         raise ValueError(
                             f"lambda = {lam} specified in `angular_selection`"
                             f" for iteration {iteration + 1}, but this is not a"
@@ -519,7 +504,7 @@ def _precompute_metadata(
         if parity_selection is not None:
             if parity_selection[iteration] is not None:
                 for sig in parity_selection[iteration]:
-                    if sig not in new_keys.column("inversion_sigma"):
+                    if sig not in keys_out.column("inversion_sigma"):
                         raise ValueError(
                             f"sigma = {sig} specified in `parity_selection`"
                             f" for iteration {iteration + 1}, but this is not"
@@ -528,9 +513,9 @@ def _precompute_metadata(
                             " `parity_selection` and try again."
                         )
 
-        comb_metadata.append(i_comb_metadata)
+        metadata.append(i_metadata)
 
-    return comb_metadata
+    return metadata
 
 
 def _precompute_metadata_one_iteration(
@@ -692,18 +677,18 @@ def _precompute_metadata_one_iteration(
             keys_2_entries.append(key_2)
 
     # Define new keys as the full product of keys_1 and keys_2
-    nu_x_keys = Labels(
+    keys_out = Labels(
         names=new_names,
         values=_dispatch.int_array_like(new_key_values, like=keys_1.values),
     )
 
     # Don't skip the calculation of redundant blocks
     if skip_redundant is False:
-        return nu_x_keys, keys_1_entries, keys_2_entries
+        return keys_1_entries, keys_2_entries, keys_out
 
     # Now account for multiplicty
     key_idxs_to_keep = []
-    for key_idx, key in enumerate(nu_x_keys):
+    for key_idx, key in enumerate(keys_out):
         # Get the important key values. This is all of the keys, excpet the k
         # list
         key_vals_slice = key.values[: 4 + (nu + 1)].tolist()
@@ -721,10 +706,10 @@ def _precompute_metadata_one_iteration(
             key_idxs_to_keep.append(key_idx)
 
     # Build a reduced Labels object for the combined keys, with redundancies removed
-    combined_keys_red = Labels(
+    keys_out_red = Labels(
         names=new_names,
         values=_dispatch.int_array_like(
-            [nu_x_keys[idx].values for idx in key_idxs_to_keep], like=keys_1.values
+            [keys_out[idx].values for idx in key_idxs_to_keep], like=keys_1.values
         ),
     )
 
@@ -733,7 +718,7 @@ def _precompute_metadata_one_iteration(
     keys_1_entries_red = [keys_1_entries[idx] for idx in key_idxs_to_keep]
     keys_2_entries_red = [keys_2_entries[idx] for idx in key_idxs_to_keep]
 
-    return combined_keys_red, keys_1_entries_red, keys_2_entries_red
+    return keys_1_entries_red, keys_2_entries_red, keys_out_red
 
 
 # ==================================================================
@@ -746,7 +731,7 @@ def _combine_single_center_blocks(
     block_2: TensorBlock,
     lam: int,
     cg_cache,
-    return_metadata_only: bool = False,
+    compute_metadata_only: bool = False,
 ) -> TensorBlock:
     """
     For a given pair of TensorBlocks and desired angular channel, combines the
@@ -754,7 +739,7 @@ def _combine_single_center_blocks(
     """
 
     # Do the CG combination - single center so no shape pre-processing required
-    if return_metadata_only:
+    if compute_metadata_only:
         combined_values = _dispatch.combine_arrays(
             block_1.values, block_2.values, lam, cg_cache, return_empty_array=True
         )

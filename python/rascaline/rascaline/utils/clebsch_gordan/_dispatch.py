@@ -4,7 +4,7 @@ Module containing dispatch functions for numpy/torch CG combination operations.
 from typing import List, Optional, Union
 import numpy as np
 
-from _cg_cache import HAS_MOPS
+from ._cg_cache import HAS_MOPS
 
 if HAS_MOPS:
     from mops import sparse_accumulation_of_products as sap
@@ -76,12 +76,12 @@ def combine_arrays(
     """
     # If just precomputing metadata, return an empty array
     if return_empty_array:
-        return sparse_combine(arr_1, arr_2, lam, cg_cache, True)
+        return sparse_combine(arr_1, arr_2, lam, cg_cache, return_empty_array=True)
 
     # Otherwise, perform the CG combination
     # Spare CG cache
     if cg_cache.sparse:
-        return sparse_combine(arr_1, arr_2, lam, cg_cache, False)
+        return sparse_combine(arr_1, arr_2, lam, cg_cache, return_empty_array=False)
 
     # Dense CG cache
     return dense_combine(arr_1, arr_2, lam, cg_cache)
@@ -122,10 +122,10 @@ def sparse_combine(
     n_p = arr_1.shape[2]  # number of properties in arr_1
     n_q = arr_2.shape[2]  # number of properties in arr_2
 
-    if return_empty_array:
+    if return_empty_array:  # used when only computing metadata
         return zeros_like((n_i, 2 * lam + 1, n_p * n_q), like=arr_1)
 
-    if HAS_MOPS:
+    if isinstance(arr_1, np.ndarray) and HAS_MOPS:
         # Reshape
         arr_1 = np.repeat(arr_1[:, :, :, None], n_q, axis=3).reshape(
             n_i, 2 * l1 + 1, n_p * n_q
@@ -138,7 +138,9 @@ def sparse_combine(
         arr_2 = swapaxes(arr_2, 1, 2).reshape(n_i * n_p * n_q, 2 * l2 + 1)
 
         # Do SAP
-        arr_out = sap(arr_1, arr_2, *cg_cache._coeffs[(l1, l2, lam)], n_O=2 * lam + 1)
+        arr_out = sap(
+            arr_1, arr_2, *cg_cache._coeffs[(l1, l2, lam)], output_size=2 * lam + 1
+        )
         assert arr_out.shape == (n_i * n_p * n_q, 2 * lam + 1)
 
         # Reshape back
