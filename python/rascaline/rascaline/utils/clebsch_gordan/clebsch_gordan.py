@@ -181,7 +181,7 @@ def _correlate_density(
             " Use metatensor.remove_gradients to remove gradients from the input."
         )
     n_iterations = correlation_order - 1  # num iterations
-    density = _standardize_metadata(density)  # standardize metadata
+    density = _standardize_keys(density)  # standardize metadata
     density_correlation = density  # create a copy to combine with itself
 
     # Parse the various selection filters
@@ -197,8 +197,8 @@ def _correlate_density(
         output_selection=output_selection,
     )
 
-    # Pre-compute the metadata needed to perform each CG iteration
-    metadata = _precompute_metadata(
+    # Pre-compute the keys needed to perform each CG iteration
+    key_metadata = _precompute_keys(
         density.keys,
         density.keys,
         n_iterations=n_iterations,
@@ -214,10 +214,10 @@ def _correlate_density(
         angular_max = max(
             _dispatch.concatenate(
                 [density.keys.column("spherical_harmonics_l")]
-                + [mdata[2].column("spherical_harmonics_l") for mdata in metadata]
+                + [mdata[2].column("spherical_harmonics_l") for mdata in key_metadata]
             )
         )
-        # TODO: metadata has been precomputed, so perhaps we don't need to
+        # TODO: keys have been precomputed, so perhaps we don't need to
         # compute all CG coefficients up to angular_max here.
         # TODO: use sparse cache by default until we understamd under which
         # circumstances (and if) dense is faster.
@@ -231,8 +231,8 @@ def _correlate_density(
 
         blocks_out = []
         # TODO: is there a faster way of iterating over keys/blocks here?
-        for key_1, key_2, key_out in zip(*metadata[iteration]):
-            block_out = _combine_single_center_blocks(
+        for key_1, key_2, key_out in zip(*key_metadata[iteration]):
+            block_out = _combine_blocks_same_samples(
                 density_correlation[key_1],
                 density[key_2],
                 key_out["spherical_harmonics_l"],
@@ -240,7 +240,7 @@ def _correlate_density(
                 compute_metadata_only=compute_metadata_only,
             )
             blocks_out.append(block_out)
-        keys_out = metadata[iteration][2]
+        keys_out = key_metadata[iteration][2]
         density_correlation = TensorMap(keys=keys_out, blocks=blocks_out)
 
         # If this tensor is to be included in the output, move the [l1, l2, ...]
@@ -292,7 +292,7 @@ def correlate_tensors(
 # ==================================================================
 
 
-def _standardize_metadata(tensor: TensorMap) -> TensorMap:
+def _standardize_keys(tensor: TensorMap) -> TensorMap:
     """
     Takes a nu=1 tensor and standardizes its metadata. This involves: 1) moving
     the "species_neighbor" key to properties, if present as a dimension in the
@@ -451,7 +451,7 @@ def _parse_bool_selections(
     return skip_redundant, output_selection
 
 
-def _precompute_metadata(
+def _precompute_keys(
     keys_1: Labels,
     keys_2: Labels,
     n_iterations: int,
@@ -461,25 +461,30 @@ def _precompute_metadata(
     skip_redundant: List[bool],
 ) -> List[Tuple[Labels, List[List[int]]]]:
     """
-    Computes all the metadata needed to perform `n_iterations` of CG combination
-    steps, based on the keys of the 2 tensors being combined (`keys_1` and
-    `keys_2`), the maximum angular channel cutoff (`angular_cutoff`), and the
-    angular (`angular_selection`) and parity (`parity_selection`) selections to
-    be applied at each iteration.
+    Computes all the keys metadata needed to perform `n_iterations` of CG
+    combination steps, based on the keys of the 2 tensors being combined
+    (`keys_1` and `keys_2`), the maximum angular channel cutoff
+    (`angular_cutoff`), and the angular (`angular_selection`) and parity
+    (`parity_selection`) selections to be applied at each iteration.
+
+    If `skip_redundant` is True, then keys that represent redundant CG
+    operations are not included in the output metadata.
     """
-    metadata = []
+    keys_metadata = []
     keys_out = keys_1
     for iteration in range(n_iterations):
-        # Get the metadata for the combination of the 2 tensors
-        i_metadata = _precompute_metadata_one_iteration(
+        # Get the keys metadata for the combination of the 2 tensors
+        keys_1_entries, keys_2_entries, keys_out = _precompute_keys_one_iteration(
             keys_1=keys_out,
             keys_2=keys_2,
             angular_cutoff=angular_cutoff,
             angular_selection=angular_selection[iteration],
             parity_selection=parity_selection[iteration],
-            skip_redundant=skip_redundant[iteration],
         )
-        keys_out = i_metadata[2]
+        if skip_redundant[iteration]:
+            keys_1_entries, keys_2_entries, keys_out = _remove_redundant_keys(
+                keys_1_entries, keys_2_entries, keys_out
+            )
 
         # Check that some keys are produced as a result of the combination
         if len(keys_out) == 0:
@@ -513,22 +518,21 @@ def _precompute_metadata(
                             " `parity_selection` and try again."
                         )
 
-        metadata.append(i_metadata)
+        keys_metadata.append((keys_1_entries, keys_2_entries, keys_out))
 
-    return metadata
+    return keys_metadata
 
 
-def _precompute_metadata_one_iteration(
+def _precompute_keys_one_iteration(
     keys_1: Labels,
     keys_2: Labels,
     angular_cutoff: Optional[int] = None,
     angular_selection: Optional[Union[None, List[int]]] = None,
     parity_selection: Optional[Union[None, List[int]]] = None,
-    skip_redundant: bool = False,
 ) -> Tuple[Labels, List[List[int]]]:
     """
     Given the keys of 2 TensorMaps, returns the keys that would be present after
-    a CG combination of these TensorMaps.
+    a full CG product of these TensorMaps.
 
     Any angular or parity channel selections passed in `angular_selection` and
     `parity_selection` are applied such that only specified channels are present
@@ -562,35 +566,28 @@ def _precompute_metadata_one_iteration(
 
     ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center"]
 
-    Returned is a tuple. The first element in the tuple is a Labels object
-    corresponding to the keys created by a CG combination step.
-
-    The second element is a list of list of ints. Each sublist corresponds to
-    [lam1, lam2, correction_factor] terms. lam1 and lam2 tracks the lambda
-    values of the blocks that combine to form the block indexed by the
-    corresponding key. The correction_factor terms are the prefactors that
-    account for the redundancy in the CG combination.
+    Returned is Tuple[List, List, Labels]. The first two lists correspond to the
+    LabelsEntry objects of the keys being combined. The third element is a
+    Labels object corresponding to the keys of the output TensorMap. Each entry
+    in this Labels object corresponds to the keys is formed by combination of
+    the pair of blocks indexed by correspoding key pairs in the first two lists.
 
     The `parity_selection` argument can be used to return only keys with certain
     parities. This must be passed as a list with elements +1 and/or -1.
-
-    The `skip_redundant` arg can be used to skip the calculation of redundant
-    block combinations - i.e. those that have equivalent sorted l lists. Only
-    the one for which l1 <= l2 <= ... <= ln is calculated.
     """
-    # Get the body order of the first TensorMap.
+    # Get the correlation order of the first TensorMap.
     unique_nu = _dispatch.unique(keys_1.column("order_nu"))
     if len(unique_nu) > 1:
         raise ValueError(
-            "keys_1 must correspond to a tensor of a single body order."
+            "keys_1 must correspond to a tensor of a single correlation order."
             f" Found {len(unique_nu)} body orders: {unique_nu}"
         )
     nu1 = unique_nu[0]
 
-    # Define nu value of output TensorMap
+    # Define new correlation order of output TensorMap
     nu = nu1 + 1
 
-    # The body order of the second TensorMap should be nu = 1.
+    # The correlation order of the second TensorMap should be nu = 1.
     assert _dispatch.all(keys_2.column("order_nu") == 1)
 
     # If nu1 = 1, the key names don't yet have any "lx" columns
@@ -682,11 +679,30 @@ def _precompute_metadata_one_iteration(
         values=_dispatch.int_array_like(new_key_values, like=keys_1.values),
     )
 
-    # Don't skip the calculation of redundant blocks
-    if skip_redundant is False:
-        return keys_1_entries, keys_2_entries, keys_out
+    return keys_1_entries, keys_2_entries, keys_out
 
-    # Now account for multiplicty
+
+def _remove_redundant_keys(
+    keys_1_entries: List, keys_2_entries: List, keys_out: Labels
+) -> Tuple[List, List, Labels]:
+    """
+    For a Labels object `keys_out` that corresponds to the keys of a TensorMap
+    formed by combined of the blocks described by the entries in the lists
+    `keys_1_entries` and `keys_2_entries`, removes redundant keys.
+
+    These are the keys that correspond to blocks that have the same sorted l
+    list. The block where the l values are already sorted (i.e. l1 <= l2 <= ...
+    <= ln) is kept.
+    """
+    # Get and check the correlation order of the input keys
+    nu1 = keys_1_entries[0]["order_nu"]
+    nu2 = keys_2_entries[0]["order_nu"]
+    assert nu2 == 1
+
+    # Get the correlation order of the output TensorMap
+    nu = nu1 + 1
+
+    # Identify keys of redundant blocks and remove them
     key_idxs_to_keep = []
     for key_idx, key in enumerate(keys_out):
         # Get the important key values. This is all of the keys, excpet the k
@@ -707,14 +723,14 @@ def _precompute_metadata_one_iteration(
 
     # Build a reduced Labels object for the combined keys, with redundancies removed
     keys_out_red = Labels(
-        names=new_names,
+        names=keys_out.names,
         values=_dispatch.int_array_like(
-            [keys_out[idx].values for idx in key_idxs_to_keep], like=keys_1.values
+            [keys_out[idx].values for idx in key_idxs_to_keep],
+            like=keys_1_entries[0].values,
         ),
     )
 
-    # Create a of LabelsEntry objects that correspond to the original keys in
-    # `keys_1` and `keys_2` that combined to form the combined key
+    # Store the list of reduced entries that combine to form the reduced output keys
     keys_1_entries_red = [keys_1_entries[idx] for idx in key_idxs_to_keep]
     keys_2_entries_red = [keys_2_entries[idx] for idx in key_idxs_to_keep]
 
@@ -726,7 +742,7 @@ def _precompute_metadata_one_iteration(
 # ==================================================================
 
 
-def _combine_single_center_blocks(
+def _combine_blocks_same_samples(
     block_1: TensorBlock,
     block_2: TensorBlock,
     lam: int,

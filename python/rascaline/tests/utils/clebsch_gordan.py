@@ -11,7 +11,7 @@ import metatensor
 import rascaline
 from metatensor import Labels, TensorBlock, TensorMap
 from rascaline.utils import clebsch_gordan, PowerSpectrum
-from rascaline.utils.clebsch_gordan.clebsch_gordan import _correlate_density, _standardize_metadata
+from rascaline.utils.clebsch_gordan.clebsch_gordan import _correlate_density, _standardize_keys
 
 from .rotations import WignerDReal, transform_frame_so3, transform_frame_o3
 from rascaline.utils.clebsch_gordan._cg_cache import ClebschGordanReal
@@ -300,7 +300,7 @@ def test_combine_single_center_norm(frames, correlation_order):
 
     # Standardize the features by passing through the CG combination code but with
     # no iterations (i.e. body order 1 -> 1)
-    nu1 = _standardize_metadata(nu1)
+    nu1 = _standardize_keys(nu1)
 
     # Make only lambda and sigma part of keys
     nu1 = nu1.keys_to_samples(["species_center"])
