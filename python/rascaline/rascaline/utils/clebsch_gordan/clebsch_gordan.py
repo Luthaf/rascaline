@@ -20,8 +20,7 @@ def correlate_density(
     density: TensorMap,
     correlation_order: int,
     angular_cutoff: Optional[int] = None,
-    angular_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
-    parity_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
+    selection: Optional[Union[Labels, List[Labels]]] = None,
     skip_redundant: Optional[Union[bool, List[bool]]] = False,
     output_selection: Optional[Union[bool, List[bool]]] = None,
 ) -> List[TensorMap]:
@@ -82,8 +81,7 @@ def correlate_density(
         density,
         correlation_order,
         angular_cutoff,
-        angular_selection,
-        parity_selection,
+        selection,
         skip_redundant,
         output_selection,
         compute_metadata_only=False,
@@ -95,8 +93,7 @@ def correlate_density_metadata(
     density: TensorMap,
     correlation_order: int,
     angular_cutoff: Optional[int] = None,
-    angular_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
-    parity_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
+    selection: Optional[Union[Labels, List[Labels]]] = None,
     skip_redundant: Optional[Union[bool, List[bool]]] = False,
     output_selection: Optional[Union[bool, List[bool]]] = None,
 ) -> List[TensorMap]:
@@ -145,8 +142,7 @@ def correlate_density_metadata(
         density,
         correlation_order,
         angular_cutoff,
-        angular_selection,
-        parity_selection,
+        selection,
         skip_redundant,
         output_selection,
         compute_metadata_only=True,
@@ -162,8 +158,7 @@ def _correlate_density(
     density: TensorMap,
     correlation_order: int,
     angular_cutoff: Optional[int] = None,
-    angular_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
-    parity_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
+    selection: Optional[Union[Labels, List[Labels]]] = None,
     skip_redundant: Optional[Union[bool, List[bool]]] = False,
     output_selection: Optional[Union[bool, List[bool]]] = None,
     compute_metadata_only: bool = False,
@@ -188,8 +183,7 @@ def _correlate_density(
     angular_selection, parity_selection = _parse_int_selections(
         n_iterations=n_iterations,
         angular_cutoff=angular_cutoff,
-        angular_selection=angular_selection,
-        parity_selection=parity_selection,
+        selection=selection,
     )
     skip_redundant, output_selection = _parse_bool_selections(
         n_iterations,
@@ -273,8 +267,7 @@ def correlate_tensors(
     tensor_1: TensorMap,
     tensor_2: TensorMap,
     angular_cutoff: Optional[int] = None,
-    angular_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
-    parity_selection: Optional[Union[None, int, List[int], List[List[int]]]] = None,
+    selection: Optional[Labels] = None,
 ) -> TensorMap:
     """
     Performs the Clebsch Gordan tensor product of two TensorMaps that correspond
