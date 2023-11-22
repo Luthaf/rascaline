@@ -116,14 +116,14 @@ class ClebschGordanReal:
 
         if sparse:
             if not HAS_MOPS:
-                import warnings
-
-                warnings.warn(
-                    "It is recommended to use MOPS for sparse accumulation. "
-                    " This can be installed with ``pip install"
-                    " git+https://github.com/lab-cosmo/mops`."
-                    " Falling back to numpy for now."
-                )
+                # TODO: provide a warning once Mops is fully ready
+                # import warnings
+                # warnings.warn(
+                #     "It is recommended to use MOPS for sparse accumulation. "
+                #     " This can be installed with ``pip install"
+                #     " git+https://github.com/lab-cosmo/mops`."
+                #     " Falling back to numpy for now."
+                # )
                 self._use_mops = False
             else:
                 print(
@@ -132,12 +132,12 @@ class ClebschGordanReal:
                 self._use_mops = True
 
         else:
-            if HAS_MOPS:
-                import warnings
-
-                warnings.warn(
-                    "Mops is installed, but not being used as dense operations chosen."
-                )
+            # TODO: provide a warning once Mops is fully ready
+            # if HAS_MOPS:
+            #     import warnings
+            #     warnings.warn(
+            #         "Mops is installed, but not being used as dense operations chosen."
+            #     )
             self._use_mops = False
 
         self._coeffs = ClebschGordanReal.build_coeff_dict(

@@ -302,9 +302,9 @@ def any(array):
     if isinstance(array, list):
         array = np.array(array)
     if isinstance(array, TorchTensor):
-        return torch.all(array)
+        return torch.any(array)
     elif isinstance(array, np.ndarray):
-        return np.all(array)
+        return np.any(array)
     else:
         raise TypeError(UNKNOWN_ARRAY_TYPE)
 

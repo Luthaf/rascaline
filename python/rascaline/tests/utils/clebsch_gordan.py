@@ -11,7 +11,10 @@ import metatensor
 import rascaline
 from metatensor import Labels, TensorBlock, TensorMap
 from rascaline.utils import clebsch_gordan, PowerSpectrum
-from rascaline.utils.clebsch_gordan.clebsch_gordan import _correlate_density, _standardize_keys
+from rascaline.utils.clebsch_gordan.clebsch_gordan import (
+    _correlate_density,
+    _standardize_keys,
+)
 
 from .rotations import WignerDReal, transform_frame_so3, transform_frame_o3
 from rascaline.utils.clebsch_gordan._cg_cache import ClebschGordanReal
@@ -127,19 +130,26 @@ def get_norm(tensor: TensorMap):
 
 
 @pytest.mark.parametrize(
-    "frames, nu_target, angular_cutoff, angular_selection, parity_selection",
+    "frames, nu_target, angular_cutoff, selected_keys",
     [
-        (h2_isolated(), 3, None, [0, 4, 5], [+1]),
-        (h2o_isolated(), 2, 5, None, None),
-        (h2o_periodic(), 2, 5, None, None),
+        (
+            h2_isolated(),
+            3,
+            None,
+            Labels(
+                names=["spherical_harmonics_l", "inversion_sigma"],
+                values=np.array([[0, 1], [4, 1], [5, 1]]),
+            ),
+        ),
+        (h2o_isolated(), 2, 5, None),
+        (h2o_periodic(), 2, 5, None),
     ],
 )
 def test_so3_equivariance(
     frames: List[ase.Atoms],
     nu_target: int,
     angular_cutoff: int,
-    angular_selection: List[List[int]],
-    parity_selection: List[List[int]],
+    selected_keys: Labels,
 ):
     wig = wigners(nu_target * SPHEX_HYPERS["max_angular"])
     frames_so3 = [transform_frame_so3(frame, wig.angles) for frame in frames]
@@ -151,16 +161,14 @@ def test_so3_equivariance(
         density=nu_1,
         correlation_order=nu_target,
         angular_cutoff=angular_cutoff,
-        angular_selection=angular_selection,
-        parity_selection=parity_selection,
+        selected_keys=selected_keys,
         compute_metadata_only=False,
     )[0]
     nu_3_so3 = _correlate_density(
         density=nu_1_so3,
         correlation_order=nu_target,
         angular_cutoff=angular_cutoff,
-        angular_selection=angular_selection,
-        parity_selection=parity_selection,
+        selected_keys=selected_keys,
         compute_metadata_only=False,
     )[0]
 
@@ -169,19 +177,26 @@ def test_so3_equivariance(
 
 
 @pytest.mark.parametrize(
-    "frames, nu_target, angular_cutoff, angular_selection, parity_selection",
+    "frames, nu_target, angular_cutoff, selected_keys",
     [
-        (h2_isolated(), 3, None, [0, 4, 5], None),
-        (h2o_isolated(), 2, 5, None, None),
-        (h2o_periodic(), 2, 5, None, None),
+        (
+            h2_isolated(),
+            3,
+            None,
+            Labels(
+                names=["spherical_harmonics_l"],
+                values=np.array([0, 4, 5]).reshape(-1, 1),
+            ),
+        ),
+        (h2o_isolated(), 2, 5, None),
+        (h2o_periodic(), 2, 5, None),
     ],
 )
 def test_o3_equivariance(
     frames: List[ase.Atoms],
     nu_target: int,
     angular_cutoff: int,
-    angular_selection: List[List[int]],
-    parity_selection: List[List[int]],
+    selected_keys: Labels,
 ):
     wig = wigners(nu_target * SPHEX_HYPERS["max_angular"])
     frames_o3 = [transform_frame_o3(frame, wig.angles) for frame in frames]
@@ -193,16 +208,14 @@ def test_o3_equivariance(
         density=nu_1,
         correlation_order=nu_target,
         angular_cutoff=angular_cutoff,
-        angular_selection=angular_selection,
-        parity_selection=parity_selection,
+        selected_keys=selected_keys,
         compute_metadata_only=False,
     )[0]
     nu_3_o3 = _correlate_density(
         density=nu_1_o3,
         correlation_order=nu_target,
         angular_cutoff=angular_cutoff,
-        angular_selection=angular_selection,
-        parity_selection=parity_selection,
+        selected_keys=selected_keys,
         compute_metadata_only=False,
     )[0]
 
@@ -228,7 +241,9 @@ def test_lambda_soap_vs_powerspectrum(frames):
     lsoap = _correlate_density(
         density=density,
         correlation_order=2,
-        angular_selection=[0],
+        selected_keys=Labels(
+            names=["spherical_harmonics_l"], values=np.array([0]).reshape(-1, 1)
+        ),
         compute_metadata_only=False,
     )[0]
     keys = lsoap.keys.remove(name="spherical_harmonics_l")
@@ -280,8 +295,7 @@ def test_combine_single_center_norm(frames, correlation_order):
         nu1,
         correlation_order=correlation_order,
         angular_cutoff=None,
-        angular_selection=None,
-        parity_selection=None,
+        selected_keys=None,
         skip_redundant=False,
         compute_metadata_only=False,
         sparse=True,
@@ -291,8 +305,7 @@ def test_combine_single_center_norm(frames, correlation_order):
         nu1,
         correlation_order=correlation_order,
         angular_cutoff=None,
-        angular_selection=None,
-        parity_selection=None,
+        selected_keys=None,
         skip_redundant=True,
         compute_metadata_only=False,
         sparse=True,
@@ -426,8 +439,7 @@ def test_single_center_combine_to_correlation_order_metadata_agree(
             nu1,
             correlation_order=correlation_order,
             angular_cutoff=None,
-            angular_selection=None,
-            parity_selection=None,
+            selected_keys=None,
             skip_redundant=skip_redundant,
             compute_metadata_only=False,
             sparse=True,
@@ -438,8 +450,7 @@ def test_single_center_combine_to_correlation_order_metadata_agree(
             nu1,
             correlation_order=correlation_order,
             angular_cutoff=None,
-            angular_selection=None,
-            parity_selection=None,
+            selected_keys=None,
             skip_redundant=skip_redundant,
             compute_metadata_only=True,
         )[0]
@@ -447,56 +458,37 @@ def test_single_center_combine_to_correlation_order_metadata_agree(
 
 
 @pytest.mark.parametrize("frames", [h2o_isolated()])
-@pytest.mark.parametrize("correlation_order", [2, 3])
-@pytest.mark.parametrize("skip_redundant", [True, False])
-def test_single_center_combine_to_correlation_order_metadata(
-    frames, correlation_order, skip_redundant
-):
-    """
-    Performs hard-coded tests on the metadata outputted from
-    _correlate_density.
-
-    TODO: finish!
-    """
-    # for nu1 in [sphex_small_features(frames), sphex(frames)]:
-    #     # Build higher body order tensor without CG computation - i.e. metadata
-    #     # only. This returns a list of the TensorMaps formed at each CG
-    #     # iteration.
-    #     nux_metadata_only = (
-    #         clebsch_gordan.correlate_density_metadata(
-    #             nu1,
-    #             correlation_order=correlation_order,
-    #             angular_cutoff=None,
-    #             angular_selection=None,
-    #             parity_selection=None,
-    #             skip_redundant=skip_redundant,
-    #         )
-    #     )
-
-
-@pytest.mark.parametrize("frames", [h2o_isolated()])
-@pytest.mark.parametrize("angular_selection", [None, [1, 2, 4]])
+@pytest.mark.parametrize(
+    "selected_keys",
+    [
+        None,
+        Labels(
+            names=["spherical_harmonics_l"], values=np.array([1, 2, 4]).reshape(-1, 1)
+        ),
+    ],
+)
 @pytest.mark.parametrize("skip_redundant", [True, False])
 def test_single_center_combine_angular_selection(
     frames: List[ase.Atoms],
-    angular_selection: List[List[int]],
+    selected_keys: Labels,
     skip_redundant: bool,
 ):
-    """Tests that the correct angular channels are outputted based on the
-    specified ``angular_cutoff`` and ``angular_selection``."""
+    """
+    Tests that the correct angular channels are outputted based on the
+    specified ``selected_keys``.
+    """
     nu_1 = sphex(frames)
 
     nu_2 = _correlate_density(
         density=nu_1,
         correlation_order=2,
         angular_cutoff=None,
-        angular_selection=angular_selection,
-        parity_selection=None,
+        selected_keys=selected_keys,
         skip_redundant=skip_redundant,
         compute_metadata_only=False,
     )[0]
 
-    if angular_selection is None:
+    if selected_keys is None:
         assert np.all(
             [
                 l in np.arange(SPHEX_HYPERS["max_angular"] * 2 + 1)
@@ -507,8 +499,5 @@ def test_single_center_combine_angular_selection(
     else:
         assert np.all(
             np.sort(np.unique(nu_2.keys.column("spherical_harmonics_l")))
-            == np.sort(angular_selection)
+            == np.sort(selected_keys.column("spherical_harmonics_l"))
         )
-
-
-# ============ Test dispatch to torch/numpy  ============

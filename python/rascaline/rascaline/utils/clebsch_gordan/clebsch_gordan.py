@@ -20,7 +20,7 @@ def correlate_density(
     density: TensorMap,
     correlation_order: int,
     angular_cutoff: Optional[int] = None,
-    selection: Optional[Union[Labels, List[Labels]]] = None,
+    selected_keys: Optional[Union[Labels, List[Labels]]] = None,
     skip_redundant: Optional[Union[bool, List[bool]]] = False,
     output_selection: Optional[Union[bool, List[bool]]] = None,
 ) -> List[TensorMap]:
@@ -54,16 +54,14 @@ def correlate_density(
     :param angular_cutoff: The maximum angular channel to compute at any given
         CG iteration, applied globally to all iterations until the target
         correlation order is reached.
-    :param angular_selection: A list of angular channels to output at each
-        iteration. If a single list is passed, this is applied to the final
-        iteration only. If a list of lists is passed, this is applied to each
-        iteration. If None is passed, all angular channels are output at each
-        iteration.
-    :param parity_selection: A list of parity channels to output at each
-        iteration. If a single list is passed, this is applied to the final
-        iteration only. If a list of lists is passed, this is applied to each
-        iteration. If None is passed, all parity channels are output at each
-        iteration.
+    :param selected_keys: Labels or List[Labels] specifying the angular and/or
+        parity channels to output at each iteration. All Labels objects passed
+        here must only contain key names "spherical_harmonics_l" and
+        "inversion_sigma". If a single Labels object is passed, this is applied
+        to the final iteration only. If a list of Labels objects is passed,
+        each is applied to its corresponding iteration. If None is passed, all
+        angular and parity channels are output at each iteration, with the
+        global `angular_cutoff` applied if specified.
     :param skip_redundant: Whether to skip redundant CG combinations. Defaults
         to False, which means all combinations are performed. If a list of bool
         is passed, this is applied to each iteration. If a single bool is
@@ -81,7 +79,7 @@ def correlate_density(
         density,
         correlation_order,
         angular_cutoff,
-        selection,
+        selected_keys,
         skip_redundant,
         output_selection,
         compute_metadata_only=False,
@@ -93,7 +91,7 @@ def correlate_density_metadata(
     density: TensorMap,
     correlation_order: int,
     angular_cutoff: Optional[int] = None,
-    selection: Optional[Union[Labels, List[Labels]]] = None,
+    selected_keys: Optional[Union[Labels, List[Labels]]] = None,
     skip_redundant: Optional[Union[bool, List[bool]]] = False,
     output_selection: Optional[Union[bool, List[bool]]] = None,
 ) -> List[TensorMap]:
@@ -113,16 +111,14 @@ def correlate_density_metadata(
     :param angular_cutoff: The maximum angular channel to compute at any given
         CG iteration, applied globally to all iterations until the target
         correlation order is reached.
-    :param angular_selection: A list of angular channels to output at each
-        iteration. If a single list is passed, this is applied to the final
-        iteration only. If a list of lists is passed, this is applied to each
-        iteration. If None is passed, all angular channels are output at each
-        iteration.
-    :param parity_selection: A list of parity channels to output at each
-        iteration. If a single list is passed, this is applied to the final
-        iteration only. If a list of lists is passed, this is applied to each
-        iteration. If None is passed, all parity channels are output at each
-        iteration.
+    :param selected_keys: Labels or List[Labels] specifying the angular and/or
+        parity channels to output at each iteration. All Labels objects passed
+        here must only contain key names "spherical_harmonics_l" and
+        "inversion_sigma". If a single Labels object is passed, this is applied
+        to the final iteration only. If a list of Labels objects is passed,
+        each is applied to its corresponding iteration. If None is passed, all
+        angular and parity channels are output at each iteration, with the
+        global `angular_cutoff` applied if specified.
     :param skip_redundant: Whether to skip redundant CG combinations. Defaults
         to False, which means all combinations are performed. If a list of bool
         is passed, this is applied to each iteration. If a single bool is
@@ -142,7 +138,7 @@ def correlate_density_metadata(
         density,
         correlation_order,
         angular_cutoff,
-        selection,
+        selected_keys,
         skip_redundant,
         output_selection,
         compute_metadata_only=True,
@@ -158,7 +154,7 @@ def _correlate_density(
     density: TensorMap,
     correlation_order: int,
     angular_cutoff: Optional[int] = None,
-    selection: Optional[Union[Labels, List[Labels]]] = None,
+    selected_keys: Optional[Union[Labels, List[Labels]]] = None,
     skip_redundant: Optional[Union[bool, List[bool]]] = False,
     output_selection: Optional[Union[bool, List[bool]]] = None,
     compute_metadata_only: bool = False,
@@ -179,13 +175,16 @@ def _correlate_density(
     density = _standardize_keys(density)  # standardize metadata
     density_correlation = density  # create a copy to combine with itself
 
-    # Parse the various selection filters
-    angular_selection, parity_selection = _parse_int_selections(
+    # Parse the selected keys
+    selected_keys = _parse_selected_keys(
         n_iterations=n_iterations,
         angular_cutoff=angular_cutoff,
-        selection=selection,
+        selected_keys=selected_keys,
+        like=density.keys.values,
     )
-    skip_redundant, output_selection = _parse_bool_selections(
+    # Parse the bool flags that control skipping of redundant CG combinations
+    # and TensorMap output from each iteration
+    skip_redundant, output_selection = _parse_bool_iteration_filters(
         n_iterations,
         skip_redundant=skip_redundant,
         output_selection=output_selection,
@@ -196,9 +195,7 @@ def _correlate_density(
         density.keys,
         density.keys,
         n_iterations=n_iterations,
-        angular_cutoff=angular_cutoff,
-        angular_selection=angular_selection,
-        parity_selection=parity_selection,
+        selected_keys=selected_keys,
         skip_redundant=skip_redundant,
     )
     # Compute CG coefficient cache
@@ -267,7 +264,7 @@ def correlate_tensors(
     tensor_1: TensorMap,
     tensor_2: TensorMap,
     angular_cutoff: Optional[int] = None,
-    selection: Optional[Labels] = None,
+    selected_keys: Optional[Labels] = None,
 ) -> TensorMap:
     """
     Performs the Clebsch Gordan tensor product of two TensorMaps that correspond
@@ -314,98 +311,99 @@ def _standardize_keys(tensor: TensorMap) -> TensorMap:
     return TensorMap(keys=keys, blocks=[b.copy() for b in tensor.blocks()])
 
 
-def _parse_int_selections(
+def _parse_selected_keys(
     n_iterations: int,
     angular_cutoff: Optional[int] = None,
-    angular_selection: Optional[Union[int, List[int], List[List[int]]]] = None,
-    parity_selection: Optional[Union[int, List[int], List[List[int]]]] = None,
-) -> List[List[List[int]]]:
+    selected_keys: Optional[Union[Labels, List[Labels]]] = None,
+    like=None,
+) -> List[Union[None, Labels]]:
     """
-    Returns a list of length `n_iterations` with selection filters for each CG
-    combination step, for either `selection_type` "parity" or `selection_type`
-    "angular". For a given iteration, if no selection is to be applied, the
-    element of the returned list will be None.
+    Parses the `selected_keys` argument passed to public functions. Checks the
+    values and returns a list of Labels objects, one for each iteration of CG
+    combination.
 
-    The input argument `selection` will be parsed in the following ways.
-
-    If `selection=None` is passed, then no filter is applied at any iteration. A
-    list of [None, None, ...] is returned.
-
-    If an `int` or single List[int] is specified, then this is used for the last
-    iteration only. For example, if `n_iterations=3` and `selection=[+1]`, then
-    the filter [None, None, [+1]] is returned.
-
-    If a List[List[int]] is passed, then this is assumed to be the desired
-    filter for each iteration, and is not modified.
-
-    Basic checks are performed. ValueError is raised if specified parity
-    selections are not in [-1, +1], or if specified angular selections are not
-    >= 0.
+    `like` is required if a new Labels object is to be created by
+    :py:mod:`_dispatch`.
     """
+    # Check angular_cutoff arg
     if angular_cutoff is not None:
+        if not isinstance(angular_cutoff, int):
+            raise TypeError("`angular_cutoff` must be passed as an int")
         if angular_cutoff < 1:
             raise ValueError("`angular_cutoff` must be >= 1")
 
-    selections = []
-    for selection_type, selection in zip(
-        ["angular", "parity"], [angular_selection, parity_selection]
-    ):
-        if selection is None:
-            selection = [None] * n_iterations
+    if selected_keys is None:
+        if angular_cutoff is None:  # no selections at all
+            selected_keys = [None] * n_iterations
         else:
-            # If passed as int, use this for the last iteration only
-            if isinstance(selection, int):
-                selection = [None] * (n_iterations - 1) + [[selection]]
-            else:
-                if not isinstance(selection, List):
-                    raise TypeError(
-                        "`selection` must be an int, List[int], or List[List[int]]"
-                    )
-                if isinstance(selection[0], int):
-                    selection = [None] * (n_iterations - 1) + [selection]
+            # Create a key selection with all angular channels <= the specified
+            # angular cutoff
+            selected_keys = [
+                Labels(
+                    names=["spherical_harmonics_l"],
+                    values=_dispatch.int_range_like(0, angular_cutoff, like=like).reshape(-1, 1),
+                )
+            ] * n_iterations
 
-        # Basic checks
-        if not isinstance(selection, List):
-            raise TypeError("`selection` must be an int, List[int], or List[List[int]]")
-        for slct in selection:
-            if slct is not None:
-                if not _dispatch.all([isinstance(val, int) for val in slct]):
-                    raise TypeError(
-                        "`selection` must be an int, List[int], or List[List[int]]"
-                    )
-                if selection_type == "parity":
-                    if not _dispatch.all([val in [-1, +1] for val in slct]):
-                        raise ValueError(
-                            "specified layers in `selection` must only contain valid"
-                            " parity values of -1 or +1"
-                        )
-                    if not _dispatch.all([0 < len(slct) <= 2]):
-                        raise ValueError(
-                            "each parity filter must be a list of length 1 or 2,"
-                            " with vals +1 and/or -1"
-                        )
-                elif selection_type == "angular":
-                    if not _dispatch.all([val >= 0 for val in slct]):
-                        raise ValueError(
-                            "specified layers in `selection` must only contain valid"
-                            " angular channels >= 0"
-                        )
-                    if angular_cutoff is not None:
-                        if not _dispatch.all([val <= angular_cutoff for val in slct]):
-                            raise ValueError(
-                                "specified layers in `selection` must only contain valid"
-                                " angular channels <= the specified `angular_cutoff`"
-                            )
-                else:
+    if isinstance(selected_keys, Labels):
+        # Create a list, but only apply a key selection at the final iteration
+        selected_keys = [None] * (n_iterations - 1) + [selected_keys]
+
+    # Check the selected_keys
+    if not isinstance(selected_keys, List):
+        raise TypeError("`selected_keys` must be a Labels or List[Union[None, Labels]]")
+    if not len(selected_keys) == n_iterations:
+        raise ValueError(
+            "`selected_keys` must be a List[Union[None, Labels]] of length"
+            " `correlation_order` - 1"
+        )
+    if not _dispatch.all(
+        [isinstance(val, (Labels, type(None))) for val in selected_keys]
+    ):
+        raise TypeError("`selected_keys` must be a Labels or List[Union[None, Labels]]")
+
+    # Now iterate over each of the Labels (or None) in the list and check
+    for slct in selected_keys:
+        if slct is None:
+            continue
+        assert isinstance(slct, Labels)
+        if not _dispatch.all(
+            [
+                name in ["spherical_harmonics_l", "inversion_sigma"]
+                for name in slct.names
+            ]
+        ):
+            raise ValueError(
+                "specified key names in `selected_keys` must be either"
+                " 'spherical_harmonics_l' or 'inversion_sigma'"
+            )
+        if "spherical_harmonics_l" in slct.names:
+            if angular_cutoff is not None:
+                if not _dispatch.all(
+                    slct.column("spherical_harmonics_l") <= angular_cutoff
+                ):
                     raise ValueError(
-                        "`selection_type` must be either 'parity' or 'angular'"
+                        "specified angular channels in `selected_keys` must be <= the"
+                        " specified `angular_cutoff`"
                     )
-        selections.append(selection)
+            if not _dispatch.all(
+                [l >= 0 for l in slct.column("spherical_harmonics_l")]
+            ):
+                raise ValueError(
+                    "specified angular channels in `selected_keys` must be >= 0"
+                )
+        if "inversion_sigma" in slct.names:
+            if not _dispatch.all(
+                [s in [-1, +1] for s in slct.column("inversion_sigma")]
+            ):
+                raise ValueError(
+                    "specified parities in `selected_keys` must be -1 or +1"
+                )
 
-    return selections
+    return selected_keys
 
 
-def _parse_bool_selections(
+def _parse_bool_iteration_filters(
     n_iterations: int,
     skip_redundant: Optional[Union[bool, List[bool]]] = False,
     output_selection: Optional[Union[bool, List[bool]]] = None,
@@ -448,9 +446,7 @@ def _precompute_keys(
     keys_1: Labels,
     keys_2: Labels,
     n_iterations: int,
-    angular_cutoff: int,
-    angular_selection: List[Union[None, List[int]]],
-    parity_selection: List[Union[None, List[int]]],
+    selected_keys: List[Union[None, Labels]],
     skip_redundant: List[bool],
 ) -> List[Tuple[Labels, List[List[int]]]]:
     """
@@ -467,74 +463,38 @@ def _precompute_keys(
     keys_out = keys_1
     for iteration in range(n_iterations):
         # Get the keys metadata for the combination of the 2 tensors
-        keys_1_entries, keys_2_entries, keys_out = _precompute_keys_one_iteration(
+        keys_1_entries, keys_2_entries, keys_out = _precompute_keys_full_product(
             keys_1=keys_out,
             keys_2=keys_2,
-            angular_cutoff=angular_cutoff,
-            angular_selection=angular_selection[iteration],
-            parity_selection=parity_selection[iteration],
         )
+        if selected_keys[iteration] is not None:
+            keys_1_entries, keys_2_entries, keys_out = _apply_key_selection(
+                keys_1_entries,
+                keys_2_entries,
+                keys_out,
+                selected_keys=selected_keys[iteration],
+            )
+
         if skip_redundant[iteration]:
             keys_1_entries, keys_2_entries, keys_out = _remove_redundant_keys(
                 keys_1_entries, keys_2_entries, keys_out
             )
-
-        # Check that some keys are produced as a result of the combination
-        if len(keys_out) == 0:
-            raise ValueError(
-                f"invalid selections: iteration {iteration + 1} produces no"
-                " valid combinations. Check the `angular_selection` and"
-                " `parity_selection` arguments."
-            )
-
-        # Now check the angular and parity selections are present in the new keys
-        if angular_selection is not None:
-            if angular_selection[iteration] is not None:
-                for lam in angular_selection[iteration]:
-                    if lam not in keys_out.column("spherical_harmonics_l"):
-                        raise ValueError(
-                            f"lambda = {lam} specified in `angular_selection`"
-                            f" for iteration {iteration + 1}, but this is not a"
-                            " valid angular channel based on the combination of"
-                            " lower body-order tensors. Check the passed"
-                            " `angular_selection` and try again."
-                        )
-        if parity_selection is not None:
-            if parity_selection[iteration] is not None:
-                for sig in parity_selection[iteration]:
-                    if sig not in keys_out.column("inversion_sigma"):
-                        raise ValueError(
-                            f"sigma = {sig} specified in `parity_selection`"
-                            f" for iteration {iteration + 1}, but this is not"
-                            " a valid parity based on the combination of lower"
-                            " body-order tensors. Check the passed"
-                            " `parity_selection` and try again."
-                        )
 
         keys_metadata.append((keys_1_entries, keys_2_entries, keys_out))
 
     return keys_metadata
 
 
-def _precompute_keys_one_iteration(
-    keys_1: Labels,
-    keys_2: Labels,
-    angular_cutoff: Optional[int] = None,
-    angular_selection: Optional[Union[None, List[int]]] = None,
-    parity_selection: Optional[Union[None, List[int]]] = None,
-) -> Tuple[Labels, List[List[int]]]:
+def _precompute_keys_full_product(
+    keys_1: Labels, keys_2: Labels
+) -> Tuple[List, List, Labels]:
     """
     Given the keys of 2 TensorMaps, returns the keys that would be present after
     a full CG product of these TensorMaps.
 
-    Any angular or parity channel selections passed in `angular_selection` and
-    `parity_selection` are applied such that only specified channels are present
-    in the returned combined keys.
-
     Assumes that `keys_1` corresponds to a TensorMap with arbitrary body order,
-    while `keys_2` corresponds to a TensorMap with body order 1.
-
-    `keys_1`  must follow the key name convention:
+    while `keys_2` corresponds to a TensorMap with body order 1. `keys_1`  must
+    follow the key name convention:
 
     ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center",
     "l1", "l2", ..., f"l{`nu`}", "k2", ..., f"k{`nu`-1}"]. The "lx" columns
@@ -555,18 +515,14 @@ def _precompute_keys_one_iteration(
         \bra{ n_1 l_1 ; n_2 l_2 k_2 ; ... ; n_{\nu-1} l_{\nu-1} k_{\nu-1} ;
         n_{\nu} l_{\nu} k_{\nu}; \lambda } \ket{ \rho^{\otimes \nu}; \lambda M }
 
-    `keys_2` must follow the key name convention:
-
-    ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center"]
+    `keys_2` must follow the key name convention: ["order_nu",
+    "inversion_sigma", "spherical_harmonics_l", "species_center"]
 
     Returned is Tuple[List, List, Labels]. The first two lists correspond to the
     LabelsEntry objects of the keys being combined. The third element is a
     Labels object corresponding to the keys of the output TensorMap. Each entry
     in this Labels object corresponds to the keys is formed by combination of
     the pair of blocks indexed by correspoding key pairs in the first two lists.
-
-    The `parity_selection` argument can be used to return only keys with certain
-    parities. This must be passed as a list with elements +1 and/or -1.
     """
     # Get the correlation order of the first TensorMap.
     unique_nu = _dispatch.unique(keys_1.column("order_nu"))
@@ -633,26 +589,8 @@ def _precompute_keys_one_iteration(
         # Now iterate over the non-zero angular channels and apply the custom
         # selections
         for lam in nonzero_lams:
-            # Skip combination if it forms an angular channel of order greater
-            # than the specified maximum cutoff `angular_cutoff`.
-            if angular_cutoff is not None:
-                if lam > angular_cutoff:
-                    continue
-
-            # Skip combination if it creates an angular channel that has not
-            # been explicitly selected
-            if angular_selection is not None:
-                if lam not in angular_selection:
-                    continue
-
             # Calculate new sigma
             sig = sig1 * sig2 * (-1) ** (lam1 + lam2 + lam)
-
-            # Skip combination if it creates a parity that has not been
-            # explicitly selected
-            if parity_selection is not None:
-                if sig not in parity_selection:
-                    continue
 
             # Extract the l and k lists from keys_1
             l_list = key_1.values[4 : 4 + nu1].tolist()
@@ -671,6 +609,54 @@ def _precompute_keys_one_iteration(
         names=new_names,
         values=_dispatch.int_array_like(new_key_values, like=keys_1.values),
     )
+
+    return keys_1_entries, keys_2_entries, keys_out
+
+
+def _apply_key_selection(
+    keys_1_entries: List, keys_2_entries: List, keys_out: Labels, selected_keys: Labels
+) -> Tuple[List, List, Labels]:
+    """
+    Applies a selection according to `selected_keys` to the keys of an output
+    TensorMap `keys_out` produced by combination of blocks indexed by keys
+    entries in `keys_1_entries` and `keys_2_entries` lists.
+
+    After application of the selections, returned is a reduced set of keys and
+    set of corresponding parents key entries.
+
+    If a selection in `selected_keys` is not valid based on the keys in
+    `keys_out`, an error is raised.
+    """
+    # Extract the relevant columns from `selected_keys` that the selection will
+    # be performed on
+    keys_out_vals = [[k[name] for name in selected_keys.names] for k in keys_out]
+
+    # First check that all of the selected keys exist in the output keys
+    for slct in selected_keys.values:
+        if not _dispatch.any([_dispatch.all(slct == k) for k in keys_out_vals]):
+            raise ValueError(
+                f"selected key {selected_keys.names} = {slct} not found"
+                " in the output keys. Check the `selected_keys` argument."
+            )
+
+    # Build a mask of the selected keys
+    mask = [
+        _dispatch.any([_dispatch.all(i == j) for j in selected_keys.values])
+        for i in keys_out_vals
+    ]
+
+    # Apply the mask to key entries and keys and return
+    keys_1_entries = [k for k, isin in zip(keys_1_entries, mask) if isin]
+    keys_2_entries = [k for k, isin in zip(keys_2_entries, mask) if isin]
+    keys_out = Labels(names=keys_out.names, values=keys_out.values[mask])
+
+    # Check that some keys are produced as a result of the combination
+    if len(keys_out) == 0:
+        raise ValueError(
+            f"invalid selections: iteration {iteration + 1} produces no"
+            " valid combinations. Check the `angular_selection` and"
+            " `parity_selection` arguments."
+        )
 
     return keys_1_entries, keys_2_entries, keys_out
 
