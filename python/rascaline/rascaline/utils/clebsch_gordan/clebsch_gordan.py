@@ -260,23 +260,6 @@ def _correlate_density(
     return density_correlations
 
 
-def correlate_tensors(
-    tensor_1: TensorMap,
-    tensor_2: TensorMap,
-    angular_cutoff: Optional[int] = None,
-    selected_keys: Optional[Labels] = None,
-) -> TensorMap:
-    """
-    Performs the Clebsch Gordan tensor product of two TensorMaps that correspond
-    to densities or density correlations. Returns a new TensorMap corresponding
-    to a higher correlation-order descriptor.
-
-    The two input tensors can be single- or multi-center, and of arbitrary (and
-    different) correlation order, but must contain the same samples.
-    """
-    raise NotImplementedError
-
-
 # ==================================================================
 # ===== Functions to handle metadata
 # ==================================================================
