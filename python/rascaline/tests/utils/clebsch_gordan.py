@@ -2,21 +2,43 @@
 import os
 from typing import List
 
-import ase.io
-import metatensor
 import numpy as np
 import pytest
-from metatensor import Labels, TensorBlock, TensorMap
 
-import rascaline
-from rascaline.utils import PowerSpectrum
-from rascaline.utils.clebsch_gordan._cg_cache import ClebschGordanReal
-from rascaline.utils.clebsch_gordan.clebsch_gordan import (
+
+# Try to import some modules
+ase = pytest.importorskip("ase")
+import ase.io  # noqa: E402
+
+
+try:
+    import metatensor.operations
+
+    HAS_METATENSOR_OPERATIONS = True
+except ImportError:
+    HAS_METATENSOR_OPERATIONS = False
+try:
+    import sympy  # noqa F401
+
+    HAS_SYMPY = True
+except ImportError:
+    HAS_SYMPY = False
+
+
+import metatensor  # noqa: E402
+from metatensor import Labels, TensorBlock, TensorMap  # noqa: E402
+
+import rascaline  # noqa: E402
+from rascaline.utils import PowerSpectrum  # noqa: E402
+from rascaline.utils.clebsch_gordan._cg_cache import ClebschGordanReal  # noqa: E402
+from rascaline.utils.clebsch_gordan.clebsch_gordan import (  # noqa: E402
     _correlate_density,
     _standardize_keys,
 )
 
-from .rotations import WignerDReal, transform_frame_o3, transform_frame_so3
+
+if HAS_SYMPY:
+    from .rotations import WignerDReal, transform_frame_o3, transform_frame_so3
 
 
 DATA_ROOT = os.path.join(os.path.dirname(__file__), "data")
@@ -132,6 +154,10 @@ def get_norm(tensor: TensorMap):
 # ============ Test equivariance ============
 
 
+@pytest.mark.skipif(
+    HAS_SYMPY is False and HAS_METATENSOR_OPERATIONS is False,
+    reason="SymPy and metatensor-operations are not installed",
+)
 @pytest.mark.parametrize(
     "frames, nu_target, angular_cutoff, selected_keys",
     [
@@ -179,6 +205,10 @@ def test_so3_equivariance(
     assert metatensor.allclose(nu_3_transf, nu_3_so3)
 
 
+@pytest.mark.skipif(
+    HAS_SYMPY is False and HAS_METATENSOR_OPERATIONS is False,
+    reason="SymPy and metatensor-operations are not installed",
+)
 @pytest.mark.parametrize(
     "frames, nu_target, angular_cutoff, selected_keys",
     [
@@ -229,6 +259,9 @@ def test_o3_equivariance(
 # ============ Test lambda-SOAP vs PowerSpectrum ============
 
 
+@pytest.mark.skipif(
+    HAS_METATENSOR_OPERATIONS is False, reason="metatensor-operations is not installed"
+)
 @pytest.mark.parametrize("frames", [h2_isolated()])
 def test_lambda_soap_vs_powerspectrum(frames):
     """
@@ -281,6 +314,9 @@ def test_lambda_soap_vs_powerspectrum(frames):
 # ============ Test norm preservation  ============
 
 
+@pytest.mark.skipif(
+    HAS_METATENSOR_OPERATIONS is False, reason="metatensor-operations is not installed"
+)
 @pytest.mark.parametrize("frames", [h2_isolated(), h2o_periodic()])
 @pytest.mark.parametrize("correlation_order", [2, 3, 4])
 def test_combine_single_center_norm(frames, correlation_order):
@@ -399,6 +435,9 @@ def test_clebsch_gordan_orthogonality(cg_cache_dense, l1, l2):
     assert np.allclose(dot_product[diag_mask], dot_product[diag_mask][0])
 
 
+@pytest.mark.skipif(
+    HAS_METATENSOR_OPERATIONS is False, reason="metatensor-operations is not installed"
+)
 @pytest.mark.parametrize("frames", [h2_isolated(), h2o_isolated()])
 def test_single_center_combine_to_correlation_order_dense_sparse_agree(frames):
     """
@@ -419,14 +458,15 @@ def test_single_center_combine_to_correlation_order_dense_sparse_agree(frames):
         compute_metadata_only=False,
     )[0]
 
-    assert metatensor.operations.allclose(
-        n_body_sparse, n_body_dense, atol=1e-8, rtol=1e-8
-    )
+    assert metatensor.allclose(n_body_sparse, n_body_dense, atol=1e-8, rtol=1e-8)
 
 
 # ============ Test metadata  ============
 
 
+@pytest.mark.skipif(
+    HAS_METATENSOR_OPERATIONS is False, reason="metatensor-operations is not installed"
+)
 @pytest.mark.parametrize("frames", [h2o_isolated()])
 @pytest.mark.parametrize("correlation_order", [2, 3])
 @pytest.mark.parametrize("skip_redundant", [True, False])
