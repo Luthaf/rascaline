@@ -3,21 +3,21 @@ import os
 from typing import List
 
 import ase.io
+import metatensor
 import numpy as np
 import pytest
-from numpy.testing import assert_allclose
-
-import metatensor
-import rascaline
 from metatensor import Labels, TensorBlock, TensorMap
-from rascaline.utils import clebsch_gordan, PowerSpectrum
+
+import rascaline
+from rascaline.utils import PowerSpectrum
+from rascaline.utils.clebsch_gordan._cg_cache import ClebschGordanReal
 from rascaline.utils.clebsch_gordan.clebsch_gordan import (
     _correlate_density,
     _standardize_keys,
 )
 
-from .rotations import WignerDReal, transform_frame_so3, transform_frame_o3
-from rascaline.utils.clebsch_gordan._cg_cache import ClebschGordanReal
+from .rotations import WignerDReal, transform_frame_o3, transform_frame_so3
+
 
 DATA_ROOT = os.path.join(os.path.dirname(__file__), "data")
 
@@ -118,9 +118,12 @@ def get_norm(tensor: TensorMap):
     """
     norm = 0.0
     for key, block in tensor.items():  # Sum over lambda and sigma
-        l = key["spherical_harmonics_l"]
+        angular_l = key["spherical_harmonics_l"]
         norm += np.sum(
-            [np.linalg.norm(block.values[0, m, :]) ** 2 for m in range(-l, l + 1)]
+            [
+                np.linalg.norm(block.values[0, m, :]) ** 2
+                for m in range(-angular_l, angular_l + 1)
+            ]
         )
 
     return norm
@@ -282,9 +285,10 @@ def test_lambda_soap_vs_powerspectrum(frames):
 @pytest.mark.parametrize("correlation_order", [2, 3, 4])
 def test_combine_single_center_norm(frames, correlation_order):
     """
-    Checks \|ρ^\\nu\| =  \|ρ\|^\\nu in the case where l lists are not sorted. If
-    l lists are sorted, thus saving computation of redundant block combinations,
-    the norm check will not hold for target body order greater than 2.
+    Checks \\|ρ^\\nu\\| =  \\|ρ\\|^\\nu in the case where l lists are not
+    sorted. If l lists are sorted, thus saving computation of redundant block
+    combinations, the norm check will not hold for target body order greater
+    than 2.
     """
 
     # Build nu=1 SphericalExpansion
@@ -341,9 +345,9 @@ def test_combine_single_center_norm(frames, correlation_order):
         nux_sorted_sliced = metatensor.slice(nux_sorted_l, "samples", labels=sample)
 
         # Calculate norms
-        norm_nu1 += get_norm(nu1) ** correlation_order
-        norm_nux += get_norm(nux)
-        norm_nux_sorted_l += get_norm(nux_sorted_l)
+        norm_nu1 += get_norm(nu1_sliced) ** correlation_order
+        norm_nux += get_norm(nux_sliced)
+        norm_nux_sorted_l += get_norm(nux_sorted_sliced)
 
     # Without sorting the l list we should get the same norm
     assert np.allclose(norm_nu1, norm_nux)
@@ -491,8 +495,8 @@ def test_single_center_combine_angular_selection(
     if selected_keys is None:
         assert np.all(
             [
-                l in np.arange(SPHEX_HYPERS["max_angular"] * 2 + 1)
-                for l in np.unique(nu_2.keys.column("spherical_harmonics_l"))
+                angular in np.arange(SPHEX_HYPERS["max_angular"] * 2 + 1)
+                for angular in np.unique(nu_2.keys.column("spherical_harmonics_l"))
             ]
         )
 

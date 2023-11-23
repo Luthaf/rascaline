@@ -9,6 +9,7 @@ import numpy as np
 from metatensor import TensorBlock, TensorMap
 from scipy.spatial.transform import Rotation
 
+
 try:
     import torch
     from torch import Tensor as TorchTensor
@@ -72,6 +73,7 @@ def transform_frame_o3(frame: ase.Atoms, angles: Sequence[float]) -> ase.Atoms:
 
 
 # ===== WignerDReal for transformations in the spherical basis =====
+
 
 class WignerDReal:
     """
@@ -171,30 +173,30 @@ class WignerDReal:
         for symbol in frame.get_chemical_symbols():
             # Get the basis set lmax value for this species
             sym_lmax = lmax[symbol]
-            for l in range(sym_lmax + 1):
+            for angular_l in range(sym_lmax + 1):
                 # Get the number of radial functions for this species and l value
-                sym_l_nmax = nmax[(symbol, l)]
+                sym_l_nmax = nmax[(symbol, angular_l)]
                 # Get the Wigner D Matrix for this l value
-                wig_mat = self.matrices[l].T
-                for n in range(sym_l_nmax):
+                wig_mat = self.matrices[angular_l].T
+                for _n in range(sym_l_nmax):
                     # Retrieve the irreducible spherical component
-                    isc = coeffs[curr_idx : curr_idx + (2 * l + 1)]
+                    isc = coeffs[curr_idx : curr_idx + (2 * angular_l + 1)]
                     # Rotate the ISC and store
                     rot_isc = isc @ wig_mat
-                    rot_vect[curr_idx : curr_idx + (2 * l + 1)][:] = rot_isc[:]
+                    rot_vect[curr_idx : curr_idx + (2 * angular_l + 1)][:] = rot_isc[:]
                     # Update the start index for the next ISC
-                    curr_idx += 2 * l + 1
+                    curr_idx += 2 * angular_l + 1
 
         return rot_vect
 
-    def rotate_tensorblock(self, l: int, block: TensorBlock) -> TensorBlock:
+    def rotate_tensorblock(self, angular_l: int, block: TensorBlock) -> TensorBlock:
         """
         Rotates a TensorBlock ``block``, represented in the spherical basis,
         according to the Wigner D Real matrices for the given ``l`` value.
         Assumes the components of the block are [("spherical_harmonics_m",),].
         """
         # Get the Wigner matrix for this l value
-        wig = self.matrices[l].T
+        wig = self.matrices[angular_l].T
 
         # Copy the block
         block_rotated = block.copy()
@@ -233,10 +235,10 @@ class WignerDReal:
         rotated_blocks = []
         for key in keys:
             # Retrieve the l value
-            l = key[idx_l_value]
+            angular_l = key[idx_l_value]
 
             # Rotate the block and store
-            rotated_blocks.append(self.rotate_tensorblock(l, tensor[key]))
+            rotated_blocks.append(self.rotate_tensorblock(angular_l, tensor[key]))
 
         return TensorMap(keys, rotated_blocks)
 
@@ -256,10 +258,10 @@ class WignerDReal:
         new_blocks = []
         for key in keys:
             # Retrieve the l value
-            l = key[idx_l_value]
+            angular_l = key[idx_l_value]
 
             # Rotate the block
-            new_block = self.rotate_tensorblock(l, tensor[key])
+            new_block = self.rotate_tensorblock(angular_l, tensor[key])
 
             # Work out the inversion multiplier according to the convention
             inversion_multiplier = 1
@@ -287,7 +289,7 @@ class WignerDReal:
 # ===== Helper functions for WignerDReal
 
 
-def _wigner_d(l: int, angles: Sequence[float]) -> np.ndarray:
+def _wigner_d(angular_l: int, angles: Sequence[float]) -> np.ndarray:
     """
     Computes the Wigner D matrix:
         D^l_{mm'}(alpha, beta, gamma)
@@ -302,7 +304,7 @@ def _wigner_d(l: int, angles: Sequence[float]) -> np.ndarray:
         raise ModuleNotFoundError(
             "Calculation of Wigner D matrices requires a sympy installation"
         )
-    return np.complex128(wigner_d(l, *angles))
+    return np.complex128(wigner_d(angular_l, *angles))
 
 
 def _r2c(sp):
@@ -313,10 +315,12 @@ def _r2c(sp):
 
     i_sqrt_2 = 1.0 / np.sqrt(2)
 
-    l = (len(sp) - 1) // 2  # infers l from the vector size
+    angular_l = (len(sp) - 1) // 2  # infers l from the vector size
     rc = np.zeros(len(sp), dtype=np.complex128)
-    rc[l] = sp[l]
-    for m in range(1, l + 1):
-        rc[l + m] = (sp[l + m] + 1j * sp[l - m]) * i_sqrt_2 * (-1) ** m
-        rc[l - m] = (sp[l + m] - 1j * sp[l - m]) * i_sqrt_2
+    rc[angular_l] = sp[angular_l]
+    for m in range(1, angular_l + 1):
+        rc[angular_l + m] = (
+            (sp[angular_l + m] + 1j * sp[angular_l - m]) * i_sqrt_2 * (-1) ** m
+        )
+        rc[angular_l - m] = (sp[angular_l + m] - 1j * sp[angular_l - m]) * i_sqrt_2
     return rc

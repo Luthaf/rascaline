@@ -1,7 +1,5 @@
 import os
 
-import metatensor
-
 from .clebsch_gordan import *  # noqa
 from .power_spectrum import PowerSpectrum  # noqa
 from .splines import (  # noqa

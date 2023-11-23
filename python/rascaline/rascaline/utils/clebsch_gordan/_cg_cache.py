@@ -7,7 +7,7 @@ import wigners
 
 
 try:
-    from mops import sparse_accumulation_of_products as sap
+    import mops  # noqa F401
 
     HAS_MOPS = True
 except ImportError:
@@ -127,7 +127,8 @@ class ClebschGordanReal:
                 self._use_mops = False
             else:
                 print(
-                    "Backend Clebsch Gordan tensor products will be performed with Mops."
+                    "Backend Clebsch Gordan tensor products"
+                    " will be performed with Mops."
                 )
                 self._use_mops = True
 
@@ -136,7 +137,8 @@ class ClebschGordanReal:
             # if HAS_MOPS:
             #     import warnings
             #     warnings.warn(
-            #         "Mops is installed, but not being used as dense operations chosen."
+            #         "Mops is installed, but not being used"
+            #         " as dense operations chosen."
             #     )
             self._use_mops = False
 

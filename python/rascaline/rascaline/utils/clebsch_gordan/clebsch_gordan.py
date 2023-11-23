@@ -4,7 +4,6 @@ Module for computing Clebsch-gordan iterations with metatensor TensorMaps.
 import itertools
 from typing import List, Optional, Tuple, Union
 
-import metatensor
 from metatensor import Labels, TensorBlock, TensorMap
 
 from . import _dispatch
@@ -324,7 +323,9 @@ def _parse_selected_keys(
             selected_keys = [
                 Labels(
                     names=["spherical_harmonics_l"],
-                    values=_dispatch.int_range_like(0, angular_cutoff, like=like).reshape(-1, 1),
+                    values=_dispatch.int_range_like(
+                        0, angular_cutoff, like=like
+                    ).reshape(-1, 1),
                 )
             ] * n_iterations
 
@@ -370,14 +371,14 @@ def _parse_selected_keys(
                         " specified `angular_cutoff`"
                     )
             if not _dispatch.all(
-                [l >= 0 for l in slct.column("spherical_harmonics_l")]
+                [angular_l >= 0 for angular_l in slct.column("spherical_harmonics_l")]
             ):
                 raise ValueError(
                     "specified angular channels in `selected_keys` must be >= 0"
                 )
         if "inversion_sigma" in slct.names:
             if not _dispatch.all(
-                [s in [-1, +1] for s in slct.column("inversion_sigma")]
+                [parity_s in [-1, +1] for parity_s in slct.column("inversion_sigma")]
             ):
                 raise ValueError(
                     "specified parities in `selected_keys` must be -1 or +1"
@@ -463,6 +464,14 @@ def _precompute_keys(
                 keys_1_entries, keys_2_entries, keys_out
             )
 
+        # Check that some keys are produced as a result of the combination
+        if len(keys_out) == 0:
+            raise ValueError(
+                f"invalid selections: iteration {iteration + 1} produces no"
+                " valid combinations. Check the `angular_cutoff` and"
+                " `selected_keys` args and try again."
+            )
+
         keys_metadata.append((keys_1_entries, keys_2_entries, keys_out))
 
     return keys_metadata
@@ -495,8 +504,12 @@ def _precompute_keys_full_product(
 
     .. math ::
 
-        \bra{ n_1 l_1 ; n_2 l_2 k_2 ; ... ; n_{\nu-1} l_{\nu-1} k_{\nu-1} ;
-        n_{\nu} l_{\nu} k_{\nu}; \lambda } \ket{ \rho^{\otimes \nu}; \lambda M }
+        \\bra{
+            n_1 l_1 ; n_2 l_2 k_2 ; ... ;
+            n_{\nu-1} l_{\\nu-1} k_{\\nu-1} ;
+            n_{\\nu} l_{\\nu} k_{\\nu}; \\lambda
+        }
+        \\ket{ \\rho^{\\otimes \\nu}; \\lambda M }
 
     `keys_2` must follow the key name convention: ["order_nu",
     "inversion_sigma", "spherical_harmonics_l", "species_center"]
@@ -527,7 +540,7 @@ def _precompute_keys_full_product(
         l_list_names = []
         new_l_list_names = ["l1", "l2"]
     else:
-        l_list_names = [f"l{l}" for l in range(1, nu1 + 1)]
+        l_list_names = [f"l{angular_l}" for angular_l in range(1, nu1 + 1)]
         new_l_list_names = l_list_names + [f"l{nu}"]
 
     # Check key names
@@ -632,14 +645,6 @@ def _apply_key_selection(
     keys_1_entries = [k for k, isin in zip(keys_1_entries, mask) if isin]
     keys_2_entries = [k for k, isin in zip(keys_2_entries, mask) if isin]
     keys_out = Labels(names=keys_out.names, values=keys_out.values[mask])
-
-    # Check that some keys are produced as a result of the combination
-    if len(keys_out) == 0:
-        raise ValueError(
-            f"invalid selections: iteration {iteration + 1} produces no"
-            " valid combinations. Check the `angular_selection` and"
-            " `parity_selection` arguments."
-        )
 
     return keys_1_entries, keys_2_entries, keys_out
 

@@ -2,9 +2,11 @@
 Module containing dispatch functions for numpy/torch CG combination operations.
 """
 from typing import List, Optional, Union
+
 import numpy as np
 
 from ._cg_cache import HAS_MOPS
+
 
 if HAS_MOPS:
     from mops import sparse_accumulation_of_products as sap
@@ -197,8 +199,9 @@ def dense_combine(
         l2 = (arr_2.shape[1] - 1) // 2
         cg_coeffs = cg_cache.coeffs[(l1, l2, lam)]
 
-        # (samples None None l1_mu q) * (samples l2_mu p None None) -> (samples l2_mu p l1_mu q)
-        # we broadcast it in this way so we only need to do one swapaxes in the next step
+        # (samples None None l1_mu q) * (samples l2_mu p None None)
+        # -> (samples l2_mu p l1_mu q) we broadcast it in this way
+        # so we only need to do one swapaxes in the next step
         arr_out = arr_1[:, None, None, :, :] * arr_2[:, :, :, None, None]
 
         # (samples l2_mu p l1_mu q) -> (samples q p l1_mu l2_mu)
@@ -206,13 +209,16 @@ def dense_combine(
 
         # samples (q p l1_mu l2_mu) -> (samples (q p) (l1_mu l2_mu))
         arr_out = arr_out.reshape(
-            -1, arr_1.shape[2] * arr_2.shape[2], arr_1.shape[1] * arr_2.shape[1]
+            -1,
+            arr_1.shape[2] * arr_2.shape[2],
+            arr_1.shape[1] * arr_2.shape[1],
         )
 
         # (l1_mu l2_mu lam_mu) -> ((l1_mu l2_mu) lam_mu)
         cg_coeffs = cg_coeffs.reshape(-1, 2 * lam + 1)
 
-        # (samples (q p) (l1_mu l2_mu)) @ ((l1_mu l2_mu) lam_mu) -> samples (q p) lam_mu
+        # (samples (q p) (l1_mu l2_mu)) @ ((l1_mu l2_mu) lam_mu)
+        # -> samples (q p) lam_mu
         arr_out = arr_out @ cg_coeffs
 
         # (samples (q p) lam_mu) -> (samples lam_mu (q p))
@@ -237,7 +243,7 @@ def int_range_like(min_val, max_val, like):
     """Returns an array of integers from min to max, non-inclusive, based on the
     type of `like`"""
     if isinstance(like, TorchTensor):
-        return torch.arange(int_list, dtype=torch.int64, device=like.device)
+        return torch.arange(min_val, max_val, dtype=torch.int64, device=like.device)
     elif isinstance(like, np.ndarray):
         return np.arange(min_val, max_val).astype(np.int64)
     else:
