@@ -2,8 +2,20 @@
 import os
 from typing import List
 
+import metatensor
 import numpy as np
 import pytest
+from metatensor import Labels, TensorBlock, TensorMap
+
+import rascaline
+from rascaline.utils import PowerSpectrum
+from rascaline.utils.clebsch_gordan._cg_cache import ClebschGordanReal
+from rascaline.utils.clebsch_gordan.clebsch_gordan import (
+    _correlate_density,
+    _standardize_keys,
+    correlate_density,
+    correlate_density_metadata,
+)
 
 
 # Try to import some modules
@@ -18,24 +30,11 @@ try:
 except ImportError:
     HAS_METATENSOR_OPERATIONS = False
 try:
-    import sympy  # noqa F401
+    import sympy  # noqa: F401
 
     HAS_SYMPY = True
 except ImportError:
     HAS_SYMPY = False
-
-
-import metatensor  # noqa: E402
-from metatensor import Labels, TensorBlock, TensorMap  # noqa: E402
-
-import rascaline  # noqa: E402
-from rascaline.utils import PowerSpectrum  # noqa: E402
-from rascaline.utils.clebsch_gordan._cg_cache import ClebschGordanReal  # noqa: E402
-from rascaline.utils.clebsch_gordan.clebsch_gordan import (  # noqa: E402
-    _correlate_density,
-    _standardize_keys,
-)
-
 
 if HAS_SYMPY:
     from .rotations import WignerDReal, transform_frame_o3, transform_frame_so3
@@ -63,19 +62,16 @@ SPHEX_HYPERS_SMALL = {
     "center_atom_weight": 1.0,
 }
 
-# TODO: test a CG combination with LODE
-LODE_HYPERS_SMALL = {}
-
 
 # ============ Pytest fixtures ============
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture()
 def cg_cache_sparse():
     return ClebschGordanReal(lambda_max=5, sparse=True)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture()
 def cg_cache_dense():
     return ClebschGordanReal(lambda_max=5, sparse=False)
 
@@ -95,29 +91,29 @@ def h2o_periodic():
     return ase.io.read(os.path.join(DATA_ROOT, "h2o_periodic.xyz"), ":")
 
 
-def wigners(lmax: int):
+def wigner_d_matrices(lmax: int):
     return WignerDReal(lmax=lmax)
 
 
-def sphex(frames: List[ase.Atoms]):
+def spherical_expansion(frames: List[ase.Atoms]):
     """Returns a rascaline SphericalExpansion"""
     calculator = rascaline.SphericalExpansion(**SPHEX_HYPERS)
     return calculator.compute(frames)
 
 
-def sphex_small_features(frames: List[ase.Atoms]):
+def spherical_expansion_small(frames: List[ase.Atoms]):
     """Returns a rascaline SphericalExpansion"""
     calculator = rascaline.SphericalExpansion(**SPHEX_HYPERS_SMALL)
     return calculator.compute(frames)
 
 
-def powspec(frames: List[ase.Atoms]):
+def power_spectrum(frames: List[ase.Atoms]):
     """Returns a rascaline PowerSpectrum constructed from a
     SphericalExpansion"""
     return PowerSpectrum(rascaline.SphericalExpansion(**SPHEX_HYPERS)).compute(frames)
 
 
-def powspec_small_features(frames: List[ase.Atoms]):
+def power_spectrum_small(frames: List[ase.Atoms]):
     """Returns a rascaline PowerSpectrum constructed from a
     SphericalExpansion"""
     return PowerSpectrum(rascaline.SphericalExpansion(**SPHEX_HYPERS_SMALL)).compute(
@@ -125,19 +121,23 @@ def powspec_small_features(frames: List[ase.Atoms]):
     )
 
 
-def lode_small_features(frames: List[ase.Atoms]):
-    """Returns a rascaline LODE SphericalExpansion"""
-    return rascaline.LodeSphericalExpansion(**LODE_HYPERS_SMALL).compute(frames)
-
-
 def get_norm(tensor: TensorMap):
     """
-    Calculates the norm used in CG iteration tests. Assumes standardized
-    metadata and that the TensorMap is sliced to a single sample.
+    Calculates the norm used in CG iteration tests. Assumes that the TensorMap
+    is sliced to a single sample.
 
     For a given atomic sample, the norm is calculated for each feature vector,
     as a sum over lambda, sigma, and m.
     """
+    # Check that there is only one sample
+    assert (
+        len(
+            metatensor.unique_metadata(
+                tensor, "samples", ["structure", "center", "species_center"]
+            ).values
+        )
+        == 1
+    )
     norm = 0.0
     for key, block in tensor.items():  # Sum over lambda and sigma
         angular_l = key["spherical_harmonics_l"]
@@ -155,8 +155,8 @@ def get_norm(tensor: TensorMap):
 
 
 @pytest.mark.skipif(
-    HAS_SYMPY is False and HAS_METATENSOR_OPERATIONS is False,
-    reason="SymPy and metatensor-operations are not installed",
+    not HAS_SYMPY or not HAS_METATENSOR_OPERATIONS,
+    reason="SymPy or metatensor-operations are not installed",
 )
 @pytest.mark.parametrize(
     "frames, nu_target, angular_cutoff, selected_keys",
@@ -174,40 +174,37 @@ def get_norm(tensor: TensorMap):
         (h2o_periodic(), 2, 5, None),
     ],
 )
-def test_so3_equivariance(
-    frames: List[ase.Atoms],
-    nu_target: int,
-    angular_cutoff: int,
-    selected_keys: Labels,
-):
-    wig = wigners(nu_target * SPHEX_HYPERS["max_angular"])
+def test_so3_equivariance(frames, nu_target, angular_cutoff, selected_keys):
+    """
+    Tests that the output of :py:func:`correlate_density` is equivariant under
+    SO(3) transformations.
+    """
+    wig = wigner_d_matrices(nu_target * SPHEX_HYPERS["max_angular"])
     frames_so3 = [transform_frame_so3(frame, wig.angles) for frame in frames]
 
-    nu_1 = sphex(frames)
-    nu_1_so3 = sphex(frames_so3)
+    nu_1 = spherical_expansion(frames)
+    nu_1_so3 = spherical_expansion(frames_so3)
 
-    nu_3 = _correlate_density(
+    nu_3 = correlate_density(
         density=nu_1,
         correlation_order=nu_target,
         angular_cutoff=angular_cutoff,
         selected_keys=selected_keys,
-        compute_metadata_only=False,
-    )[0]
-    nu_3_so3 = _correlate_density(
+    )
+    nu_3_so3 = correlate_density(
         density=nu_1_so3,
         correlation_order=nu_target,
         angular_cutoff=angular_cutoff,
         selected_keys=selected_keys,
-        compute_metadata_only=False,
-    )[0]
+    )
 
     nu_3_transf = wig.transform_tensormap_so3(nu_3)
     assert metatensor.allclose(nu_3_transf, nu_3_so3)
 
 
 @pytest.mark.skipif(
-    HAS_SYMPY is False and HAS_METATENSOR_OPERATIONS is False,
-    reason="SymPy and metatensor-operations are not installed",
+    not HAS_SYMPY or not HAS_METATENSOR_OPERATIONS,
+    reason="SymPy or metatensor-operations are not installed",
 )
 @pytest.mark.parametrize(
     "frames, nu_target, angular_cutoff, selected_keys",
@@ -225,32 +222,29 @@ def test_so3_equivariance(
         (h2o_periodic(), 2, 5, None),
     ],
 )
-def test_o3_equivariance(
-    frames: List[ase.Atoms],
-    nu_target: int,
-    angular_cutoff: int,
-    selected_keys: Labels,
-):
-    wig = wigners(nu_target * SPHEX_HYPERS["max_angular"])
+def test_o3_equivariance(frames, nu_target, angular_cutoff, selected_keys):
+    """
+    Tests that the output of :py:func:`correlate_density` is equivariant under
+    O(3) transformations.
+    """
+    wig = wigner_d_matrices(nu_target * SPHEX_HYPERS["max_angular"])
     frames_o3 = [transform_frame_o3(frame, wig.angles) for frame in frames]
 
-    nu_1 = sphex(frames)
-    nu_1_o3 = sphex(frames_o3)
+    nu_1 = spherical_expansion(frames)
+    nu_1_o3 = spherical_expansion(frames_o3)
 
-    nu_3 = _correlate_density(
+    nu_3 = correlate_density(
         density=nu_1,
         correlation_order=nu_target,
         angular_cutoff=angular_cutoff,
         selected_keys=selected_keys,
-        compute_metadata_only=False,
-    )[0]
-    nu_3_o3 = _correlate_density(
+    )
+    nu_3_o3 = correlate_density(
         density=nu_1_o3,
         correlation_order=nu_target,
         angular_cutoff=angular_cutoff,
         selected_keys=selected_keys,
-        compute_metadata_only=False,
-    )[0]
+    )
 
     nu_3_transf = wig.transform_tensormap_o3(nu_3)
     assert metatensor.allclose(nu_3_transf, nu_3_o3)
@@ -260,28 +254,34 @@ def test_o3_equivariance(
 
 
 @pytest.mark.skipif(
-    HAS_METATENSOR_OPERATIONS is False, reason="metatensor-operations is not installed"
+    not HAS_METATENSOR_OPERATIONS, reason="metatensor-operations is not installed"
 )
 @pytest.mark.parametrize("frames", [h2_isolated()])
-def test_lambda_soap_vs_powerspectrum(frames):
+@pytest.mark.parametrize(
+    "sphex_powspec",
+    [
+        (spherical_expansion, power_spectrum),
+        (spherical_expansion_small, power_spectrum_small),
+    ],
+)
+def test_lambda_soap_vs_powerspectrum(frames, sphex_powspec):
     """
     Tests for exact equivalence between the invariant block of a generated
     lambda-SOAP equivariant and the Python implementation of PowerSpectrum in
     rascaline utils.
     """
     # Build a PowerSpectrum
-    ps = powspec_small_features(frames)
+    ps = sphex_powspec[1](frames)
 
     # Build a lambda-SOAP
-    density = sphex_small_features(frames)
-    lsoap = _correlate_density(
+    density = sphex_powspec[0](frames)
+    lsoap = correlate_density(
         density=density,
         correlation_order=2,
         selected_keys=Labels(
             names=["spherical_harmonics_l"], values=np.array([0]).reshape(-1, 1)
         ),
-        compute_metadata_only=False,
-    )[0]
+    )
     keys = lsoap.keys.remove(name="spherical_harmonics_l")
     lsoap = TensorMap(keys=keys, blocks=[b.copy() for b in lsoap.blocks()])
 
@@ -315,11 +315,11 @@ def test_lambda_soap_vs_powerspectrum(frames):
 
 
 @pytest.mark.skipif(
-    HAS_METATENSOR_OPERATIONS is False, reason="metatensor-operations is not installed"
+    not HAS_METATENSOR_OPERATIONS, reason="metatensor-operations is not installed"
 )
 @pytest.mark.parametrize("frames", [h2_isolated(), h2o_periodic()])
 @pytest.mark.parametrize("correlation_order", [2, 3, 4])
-def test_combine_single_center_norm(frames, correlation_order):
+def test_correlate_density_norm(frames, correlation_order):
     """
     Checks \\|ρ^\\nu\\| =  \\|ρ\\|^\\nu in the case where l lists are not
     sorted. If l lists are sorted, thus saving computation of redundant block
@@ -328,28 +328,24 @@ def test_combine_single_center_norm(frames, correlation_order):
     """
 
     # Build nu=1 SphericalExpansion
-    nu1 = sphex_small_features(frames)
+    nu1 = spherical_expansion_small(frames)
 
     # Build higher body order tensor without sorting the l lists
-    nux = _correlate_density(
+    nux = correlate_density(
         nu1,
         correlation_order=correlation_order,
         angular_cutoff=None,
         selected_keys=None,
         skip_redundant=False,
-        compute_metadata_only=False,
-        sparse=True,
-    )[0]
+    )
     # Build higher body order tensor *with* sorting the l lists
-    nux_sorted_l = _correlate_density(
+    nux_sorted_l = correlate_density(
         nu1,
         correlation_order=correlation_order,
         angular_cutoff=None,
         selected_keys=None,
         skip_redundant=True,
-        compute_metadata_only=False,
-        sparse=True,
-    )[0]
+    )
 
     # Standardize the features by passing through the CG combination code but with
     # no iterations (i.e. body order 1 -> 1)
@@ -436,27 +432,30 @@ def test_clebsch_gordan_orthogonality(cg_cache_dense, l1, l2):
 
 
 @pytest.mark.skipif(
-    HAS_METATENSOR_OPERATIONS is False, reason="metatensor-operations is not installed"
+    not HAS_METATENSOR_OPERATIONS, reason="metatensor-operations is not installed"
 )
 @pytest.mark.parametrize("frames", [h2_isolated(), h2o_isolated()])
-def test_single_center_combine_to_correlation_order_dense_sparse_agree(frames):
+def test_correlate_density_dense_sparse_agree(frames):
     """
     Tests for agreement between nu=3 tensors built using both sparse and dense
     CG coefficient caches.
     """
-    density = sphex_small_features(frames)
+    density = spherical_expansion_small(frames)
+
+    # NOTE: testing the private function here so we can control the use of
+    # sparse v dense CG cache
     n_body_sparse = _correlate_density(
         density,
         correlation_order=3,
-        sparse=True,
         compute_metadata_only=False,
-    )[0]
+        sparse=True,
+    )
     n_body_dense = _correlate_density(
         density,
         correlation_order=3,
-        sparse=False,
         compute_metadata_only=False,
-    )[0]
+        sparse=False,
+    )
 
     assert metatensor.allclose(n_body_sparse, n_body_dense, atol=1e-8, rtol=1e-8)
 
@@ -465,39 +464,34 @@ def test_single_center_combine_to_correlation_order_dense_sparse_agree(frames):
 
 
 @pytest.mark.skipif(
-    HAS_METATENSOR_OPERATIONS is False, reason="metatensor-operations is not installed"
+    not HAS_METATENSOR_OPERATIONS, reason="metatensor-operations is not installed"
 )
 @pytest.mark.parametrize("frames", [h2o_isolated()])
 @pytest.mark.parametrize("correlation_order", [2, 3])
 @pytest.mark.parametrize("skip_redundant", [True, False])
-def test_single_center_combine_to_correlation_order_metadata_agree(
-    frames, correlation_order, skip_redundant
-):
+def test_correlate_density_metadata_agree(frames, correlation_order, skip_redundant):
     """
-    Tests that the outputs from `_correlate_density` agrees when switching the
-    `compute_metadata_only` flag on and off.
+    Tests that the metadata of outputs from :py:func:`correlate_density` and
+    :py:func:`correlate_density_metadata` agree.
     """
-    for nu1 in [sphex_small_features(frames), sphex(frames)]:
+    for nu1 in [spherical_expansion_small(frames), spherical_expansion(frames)]:
         # Build higher body order tensor with CG computation
-        nux = _correlate_density(
+        nux = correlate_density(
             nu1,
             correlation_order=correlation_order,
             angular_cutoff=None,
             selected_keys=None,
             skip_redundant=skip_redundant,
-            compute_metadata_only=False,
-            sparse=True,
-        )[0]
+        )
         # Build higher body order tensor without CG computation - i.e. metadata
         # only
-        nux_metadata_only = _correlate_density(
+        nux_metadata_only = correlate_density_metadata(
             nu1,
             correlation_order=correlation_order,
             angular_cutoff=None,
             selected_keys=None,
             skip_redundant=skip_redundant,
-            compute_metadata_only=True,
-        )[0]
+        )
         assert metatensor.equal_metadata(nux, nux_metadata_only)
 
 
@@ -512,7 +506,7 @@ def test_single_center_combine_to_correlation_order_metadata_agree(
     ],
 )
 @pytest.mark.parametrize("skip_redundant", [True, False])
-def test_single_center_combine_angular_selection(
+def test_correlate_density_angular_selection(
     frames: List[ase.Atoms],
     selected_keys: Labels,
     skip_redundant: bool,
@@ -521,16 +515,15 @@ def test_single_center_combine_angular_selection(
     Tests that the correct angular channels are outputted based on the
     specified ``selected_keys``.
     """
-    nu_1 = sphex(frames)
+    nu_1 = spherical_expansion(frames)
 
-    nu_2 = _correlate_density(
+    nu_2 = correlate_density(
         density=nu_1,
         correlation_order=2,
         angular_cutoff=None,
         selected_keys=selected_keys,
         skip_redundant=skip_redundant,
-        compute_metadata_only=False,
-    )[0]
+    )
 
     if selected_keys is None:
         assert np.all(

@@ -6,8 +6,7 @@ from typing import List, Optional, Tuple, Union
 
 from metatensor import Labels, TensorBlock, TensorMap
 
-from . import _dispatch
-from ._cg_cache import ClebschGordanReal
+from . import _cg_cache, _dispatch
 
 
 # ======================================================================
@@ -22,17 +21,19 @@ def correlate_density(
     selected_keys: Optional[Union[Labels, List[Labels]]] = None,
     skip_redundant: Optional[Union[bool, List[bool]]] = False,
     output_selection: Optional[Union[bool, List[bool]]] = None,
-) -> List[TensorMap]:
+) -> Union[TensorMap, List[TensorMap]]:
     """
     Takes iterative Clebsch-Gordan (CG) tensor products of a density descriptor
-    with itself to the desired correlation order. Returns a list of TensorMaps
-    corresponding to the density correlations output from the specified
-    iterations.
+    with itself up to the desired correlation order. Returns
+    :py:class:`TensorMap`(s) corresponding to the density correlations output
+    from the specified iteration(s).
 
     A density descriptor necessarily is body order 2 (i.e. correlation order 1),
-    but can be single- or multi-center. The output is a list of density
-    correlations for each iteration specified in `output_selection`, up to the
-    target order passed in `correlation_order`.
+    but can be single- or multi-center. The output is a :py:class:`list` of
+    density correlations for each iteration specified in `output_selection`, up
+    to the target order passed in `correlation_order`. By default only the last
+    correlation (i.e. the correlation of order ``correlation_order``) is
+    returned.
 
     This function is an iterative special case of the more general
     :py:func:`correlate_tensors`. As a density is being correlated with itself,
@@ -44,7 +45,7 @@ def correlate_density(
     `parity_selection`.
 
     :param density: A density descriptor of body order 2 (correlation order 1),
-        in metatensor.TensorMap format. This may be, for example, a rascaline
+        in :py:class:`TensorMap` format. This may be, for example, a rascaline
         :py:class:`SphericalExpansion` or :py:class:`LodeSphericalExpansion`.
         Alternatively, this could be multi-center descriptor, such as a pair
         density.
@@ -53,26 +54,31 @@ def correlate_density(
     :param angular_cutoff: The maximum angular channel to compute at any given
         CG iteration, applied globally to all iterations until the target
         correlation order is reached.
-    :param selected_keys: Labels or List[Labels] specifying the angular and/or
-        parity channels to output at each iteration. All Labels objects passed
-        here must only contain key names "spherical_harmonics_l" and
-        "inversion_sigma". If a single Labels object is passed, this is applied
-        to the final iteration only. If a list of Labels objects is passed,
-        each is applied to its corresponding iteration. If None is passed, all
-        angular and parity channels are output at each iteration, with the
-        global `angular_cutoff` applied if specified.
+    :param selected_keys: :py:class:`Labels` or `List[:py:class:`Labels`]`
+        specifying the angular and/or parity channels to output at each
+        iteration. All :py:class:`Labels` objects passed here must only contain
+        key names "spherical_harmonics_l" and "inversion_sigma". If a single
+        :py:class:`Labels` object is passed, this is applied to the final
+        iteration only. If a :py:class:`list` of :py:class:`Labels` objects is
+        passed, each is applied to its corresponding iteration. If None is
+        passed, all angular and parity channels are output at each iteration,
+        with the global `angular_cutoff` applied if specified.
     :param skip_redundant: Whether to skip redundant CG combinations. Defaults
-        to False, which means all combinations are performed. If a list of bool
-        is passed, this is applied to each iteration. If a single bool is
-        passed, this is applied to all iterations.
-    :param output_selection: A list of bools specifying whether to output a
-        TensorMap for each iteration. If a single bool is passed as True,
-        outputs from all iterations will be returned. If a list of bools is
-        passed, this controls the output at each corresponding iteration. If
-        None is passed, only the final iteration is output.
+        to False, which means all combinations are performed. If a
+        :py:class:`list` of :py:class:`bool` is passed, this is applied to each
+        iteration. If a single :py:class:`bool` is passed, this is applied to
+        all iterations.
+    :param output_selection: A :py:class:`list` of :py:class:`bool` specifying
+        whether to output a :py:class:`TensorMap` for each iteration. If a
+        single :py:class:`bool` is passed as True, outputs from all iterations
+        will be returned. If a :py:class:`list` of :py:class:`bool` is passed,
+        this controls the output at each corresponding iteration. If None is
+        passed, only the final iteration is output.
 
-    :return List[TensorMap]: A list of TensorMaps corresponding to the density
-        correlations output from the specified iterations.
+    :return: A :py:class:`list` of :py:class:`TensorMap` corresponding to the
+        density correlations output from the specified iterations. If the output
+        from a single iteration is requested, a :py:class:`TensorMap` is
+        returned instead.
     """
     return _correlate_density(
         density,
@@ -93,44 +99,12 @@ def correlate_density_metadata(
     selected_keys: Optional[Union[Labels, List[Labels]]] = None,
     skip_redundant: Optional[Union[bool, List[bool]]] = False,
     output_selection: Optional[Union[bool, List[bool]]] = None,
-) -> List[TensorMap]:
+) -> Union[TensorMap, List[TensorMap]]:
     """
-    Returns the metadata-only TensorMaps that would be output by the function
-    :py:func:`correlate_density` under the same settings, without perfoming the
-    actual Clebsch-Gordan tensor products. See this function for full
-    documentation.
-
-    :param density: A density descriptor of body order 2 (correlation order 1),
-        in metatensor.TensorMap format. This may be, for example, a rascaline
-        :py:class:`SphericalExpansion` or :py:class:`LodeSphericalExpansion`.
-        Alternatively, this could be multi-center descriptor, such as a pair
-        density.
-    :param correlation_order: The desired correlation order of the output
-        descriptor. Must be >= 1.
-    :param angular_cutoff: The maximum angular channel to compute at any given
-        CG iteration, applied globally to all iterations until the target
-        correlation order is reached.
-    :param selected_keys: Labels or List[Labels] specifying the angular and/or
-        parity channels to output at each iteration. All Labels objects passed
-        here must only contain key names "spherical_harmonics_l" and
-        "inversion_sigma". If a single Labels object is passed, this is applied
-        to the final iteration only. If a list of Labels objects is passed,
-        each is applied to its corresponding iteration. If None is passed, all
-        angular and parity channels are output at each iteration, with the
-        global `angular_cutoff` applied if specified.
-    :param skip_redundant: Whether to skip redundant CG combinations. Defaults
-        to False, which means all combinations are performed. If a list of bool
-        is passed, this is applied to each iteration. If a single bool is
-        passed, this is applied to all iterations.
-    :param output_selection: A list of bools specifying whether to output a
-        TensorMap for each iteration. If a single bool is passed as True,
-        outputs from all iterations will be returned. If a list of bools is
-        passed, this controls the output at each corresponding iteration. If
-        None is passed, only the final iteration is output.
-
-    :return List[TensorMap]: A list of TensorMaps corresponding to the metadata
-        that would be output by :py:func:`correlate_density` under the same
-        settings.
+    Returns the metadata-only :py:class:`TensorMap`(s) that would be output by
+    the function :py:func:`correlate_density` under the same settings, without
+    perfoming the actual Clebsch-Gordan tensor products. See this function for
+    full documentation.
     """
 
     return _correlate_density(
@@ -158,17 +132,37 @@ def _correlate_density(
     output_selection: Optional[Union[bool, List[bool]]] = None,
     compute_metadata_only: bool = False,
     sparse: bool = True,
-) -> List[TensorMap]:
+) -> Union[TensorMap, List[TensorMap]]:
     """
     Performs the density correlations for public functions
     :py:func:`correlate_density` and :py:func:`correlate_density_metadata`.
     """
+    # Check inputs
     if correlation_order <= 1:
         raise ValueError("`correlation_order` must be > 1")
+    # TODO: implement combinations of gradients too
     if _dispatch.any([len(list(block.gradients())) > 0 for block in density]):
         raise NotImplementedError(
             "Clebsch Gordan combinations with gradients not yet implemented."
             " Use metatensor.remove_gradients to remove gradients from the input."
+        )
+    # Check metadata
+    if not (
+        _dispatch.all(density.keys.names == ["spherical_harmonics_l", "species_center"])
+        or _dispatch.all(
+            density.keys.names
+            == ["spherical_harmonics_l", "species_center", "species_neighbor"]
+        )
+    ):
+        raise ValueError(
+            "input `density` must have key names"
+            ' ["spherical_harmonics_l", "species_center"] or'
+            ' ["spherical_harmonics_l", "species_center", "species_neighbor"]'
+        )
+    if not _dispatch.all(density.component_names == ["spherical_harmonics_m"]):
+        raise ValueError(
+            "input `density` must have a single component"
+            " axis with name `spherical_harmonics_m`"
         )
     n_iterations = correlation_order - 1  # num iterations
     density = _standardize_keys(density)  # standardize metadata
@@ -209,9 +203,9 @@ def _correlate_density(
         )
         # TODO: keys have been precomputed, so perhaps we don't need to
         # compute all CG coefficients up to angular_max here.
-        # TODO: use sparse cache by default until we understamd under which
+        # TODO: use sparse cache by default until we understand under which
         # circumstances (and if) dense is faster.
-        cg_cache = ClebschGordanReal(angular_max, sparse=sparse)
+        cg_cache = _cg_cache.ClebschGordanReal(angular_max, sparse=sparse)
 
     # Perform iterative CG tensor products
     density_correlations = []
@@ -219,8 +213,8 @@ def _correlate_density(
         # Define the correlation order of the current iteration
         correlation_order_it = iteration + 2
 
+        # Combine block pairs
         blocks_out = []
-        # TODO: is there a faster way of iterating over keys/blocks here?
         for key_1, key_2, key_out in zip(*key_metadata[iteration]):
             block_out = _combine_blocks_same_samples(
                 density_correlation[key_1],
@@ -256,6 +250,11 @@ def _correlate_density(
             keys=keys, blocks=[b.copy() for b in tensor.blocks()]
         )
 
+    # Return a single TensorMap in the simple case
+    if len(density_correlations) == 1:
+        return density_correlations[0]
+
+    # Otherwise return a list of TensorMaps
     return density_correlations
 
 
@@ -301,10 +300,10 @@ def _parse_selected_keys(
 ) -> List[Union[None, Labels]]:
     """
     Parses the `selected_keys` argument passed to public functions. Checks the
-    values and returns a list of Labels objects, one for each iteration of CG
-    combination.
+    values and returns a :py:class:`list` of :py:class:`Labels` objects, one for
+    each iteration of CG combination.
 
-    `like` is required if a new Labels object is to be created by
+    `like` is required if a new :py:class:`Labels` object is to be created by
     :py:mod:`_dispatch`.
     """
     # Check angular_cutoff arg
@@ -335,7 +334,9 @@ def _parse_selected_keys(
 
     # Check the selected_keys
     if not isinstance(selected_keys, List):
-        raise TypeError("`selected_keys` must be a Labels or List[Union[None, Labels]]")
+        raise TypeError(
+            "`selected_keys` must be a `Labels` or List[Union[None, `Labels`]]"
+        )
     if not len(selected_keys) == n_iterations:
         raise ValueError(
             "`selected_keys` must be a List[Union[None, Labels]] of length"
@@ -399,10 +400,10 @@ def _parse_bool_iteration_filters(
     if isinstance(skip_redundant, bool):
         skip_redundant = [skip_redundant] * n_iterations
     if not _dispatch.all([isinstance(val, bool) for val in skip_redundant]):
-        raise TypeError("`skip_redundant` must be a bool or list of bools")
+        raise TypeError("`skip_redundant` must be a `bool` or `list` of `bool`")
     if not len(skip_redundant) == n_iterations:
         raise ValueError(
-            "`skip_redundant` must be a bool or list of bools of length"
+            "`skip_redundant` must be a bool or `list` of `bool` of length"
             " `correlation_order` - 1"
         )
     if output_selection is None:
@@ -411,17 +412,17 @@ def _parse_bool_iteration_filters(
         if isinstance(output_selection, bool):
             output_selection = [output_selection] * n_iterations
         if not isinstance(output_selection, List):
-            raise TypeError("`output_selection` must be passed as a list of bools")
+            raise TypeError("`output_selection` must be passed as `list` of `bool`")
 
     if not len(output_selection) == n_iterations:
         raise ValueError(
-            "`output_selection` must be a list of bools of length"
+            "`output_selection` must be a ``list`` of ``bool`` of length"
             " corresponding to the number of CG iterations"
         )
     if not _dispatch.all([isinstance(v, bool) for v in output_selection]):
-        raise TypeError("`output_selection` must be passed as a list of bools")
+        raise TypeError("`output_selection` must be passed as a `list` of `bool`")
     if not _dispatch.all([isinstance(v, bool) for v in output_selection]):
-        raise TypeError("`output_selection` must be passed as a list of bools")
+        raise TypeError("`output_selection` must be passed as a `list` of `bool`")
 
     return skip_redundant, output_selection
 
@@ -435,13 +436,16 @@ def _precompute_keys(
 ) -> List[Tuple[Labels, List[List[int]]]]:
     """
     Computes all the keys metadata needed to perform `n_iterations` of CG
-    combination steps, based on the keys of the 2 tensors being combined
-    (`keys_1` and `keys_2`), the maximum angular channel cutoff
-    (`angular_cutoff`), and the angular (`angular_selection`) and parity
-    (`parity_selection`) selections to be applied at each iteration.
+    combination steps.
+
+    At each iteration, a full product of the keys of two tensors, i.e. `keys_1`
+    and `keys_2` is computed. Then, key selections are applied according to the
+    user-defined settings: the maximum angular channel cutoff
+    (`angular_cutoff`), and angular and/or parity selections specified in
+    `selected_keys`.
 
     If `skip_redundant` is True, then keys that represent redundant CG
-    operations are not included in the output metadata.
+    operations are not included in the output keys at each step.
     """
     keys_metadata = []
     keys_out = keys_1
@@ -584,9 +588,9 @@ def _precompute_keys_full_product(
 
         # Now iterate over the non-zero angular channels and apply the custom
         # selections
-        for lam in nonzero_lams:
+        for lambda_ in nonzero_lams:
             # Calculate new sigma
-            sig = sig1 * sig2 * (-1) ** (lam1 + lam2 + lam)
+            sig = sig1 * sig2 * (-1) ** (lam1 + lam2 + lambda_)
 
             # Extract the l and k lists from keys_1
             l_list = key_1.values[4 : 4 + nu1].tolist()
@@ -595,7 +599,7 @@ def _precompute_keys_full_product(
             # Build the new keys values. l{nu} is `lam2`` (i.e.
             # "spherical_harmonics_l" of the key from `keys_2`. k{nu-1} is
             # `lam1` (i.e. "spherical_harmonics_l" of the key from `keys_1`).
-            new_vals = [nu, sig, lam, a] + l_list + [lam2] + k_list + [lam1]
+            new_vals = [nu, sig, lambda_, a] + l_list + [lam2] + k_list + [lam1]
             new_key_values.append(new_vals)
             keys_1_entries.append(key_1)
             keys_2_entries.append(key_2)
@@ -712,7 +716,7 @@ def _remove_redundant_keys(
 def _combine_blocks_same_samples(
     block_1: TensorBlock,
     block_2: TensorBlock,
-    lam: int,
+    lambda_: int,
     cg_cache,
     compute_metadata_only: bool = False,
 ) -> TensorBlock:
@@ -723,12 +727,12 @@ def _combine_blocks_same_samples(
 
     # Do the CG combination - single center so no shape pre-processing required
     if compute_metadata_only:
-        combined_values = _dispatch.combine_arrays(
-            block_1.values, block_2.values, lam, cg_cache, return_empty_array=True
+        combined_values = _cg_cache.combine_arrays(
+            block_1.values, block_2.values, lambda_, cg_cache, return_empty_array=True
         )
     else:
-        combined_values = _dispatch.combine_arrays(
-            block_1.values, block_2.values, lam, cg_cache, return_empty_array=False
+        combined_values = _cg_cache.combine_arrays(
+            block_1.values, block_2.values, lambda_, cg_cache, return_empty_array=False
         )
 
     # Infer the new nu value: block 1's properties are nu pairs of
@@ -748,7 +752,7 @@ def _combine_blocks_same_samples(
             Labels(
                 names=["spherical_harmonics_m"],
                 values=_dispatch.int_range_like(
-                    min_val=-lam, max_val=lam + 1, like=block_1.values
+                    min_val=-lambda_, max_val=lambda_ + 1, like=block_1.values
                 ).reshape(-1, 1),
             ),
         ],
