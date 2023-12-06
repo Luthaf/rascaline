@@ -19,7 +19,7 @@ jobs:
         include:
           - os: ubuntu-20.04
             torch-version: 1.11.*
-            python-version: "3.7"
+            python-version: "3.8"
             cargo-test-flags: --release
 
           - os: ubuntu-20.04

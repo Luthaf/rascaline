@@ -19,7 +19,7 @@ jobs:
       matrix:
         include:
           - os: ubuntu-20.04
-            python-version: "3.7"
+            python-version: "3.8"
           - os: ubuntu-20.04
             python-version: "3.11"
           - os: macos-11
@@ -75,7 +75,7 @@ jobs:
     name: Python ${{ matrix.python-version }} / check build
     strategy:
       matrix:
-        python-version: ['3.7', '3.11']
+        python-version: ['3.8', '3.11']
         os: [ubuntu-20.04]
     steps:
       - uses: actions/checkout@v3
