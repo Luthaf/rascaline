@@ -35,13 +35,14 @@ if HAVE_CHEMFILES:
 
 if HAVE_PYSCF:
     IntoSystem.__doc__ += """
-    - `pyscf.gto.mole.Mole`_ or `pyscf.pbc.gto.cell.Cell`_: pyscf' Frame type. There is no associated neighbor
-      list implementation, the system will only be usable with
-      ``use_native_system=True``
+    - `pyscf.gto.mole.Mole`_ or `pyscf.pbc.gto.cell.Cell`_: pyscf' Frame type.
+       There is no associated neighbor list implementation, the system will only
+       be usable with ``use_native_system=True``
 
     .. _pyscf.gto.mole.Mole: https://pyscf.org/user/gto.html
     .. _pyscf.pbc.gto.cell.Cell: https://pyscf.org/user/pbc/gto.html
     """
+
 
 def wrap_system(system: IntoSystem) -> SystemBase:
     """Wrap different systems implementation into the right class.
@@ -63,7 +64,7 @@ def wrap_system(system: IntoSystem) -> SystemBase:
 
     if HAVE_ASE and AseSystem.can_wrap(system):
         return AseSystem(system)
-        
+
     if HAVE_PYSCF and PyscfSystem.can_wrap(system):
         return PyscfSystem(system)
 
