@@ -44,6 +44,11 @@ class PyscfSystem(SystemBase):
     Atomic species are assigned as the atomic number if the atom ``type`` is one
     of the periodic table elements; or their opposite if they are ghost atoms.
     (Pyscf does not seem to support anything else)
+    
+    Please note that while pyscf uses Bohrs as length units internally,
+    we convert those back into Angströms for rascaline.
+    A pyscf object's "unit" attribute determines the units of the coordinates
+    given *to pyscf*, which are by default angströms.
 
     .. _pyscf.gto.mole.Mole: https://pyscf.org/user/gto.html
     .. _pyscf.pbc.gto.cell.Cell: https://pyscf.org/user/pbc/gto.html
@@ -81,11 +86,18 @@ class PyscfSystem(SystemBase):
         return self._species
 
     def positions(self):
-        return self._frame.atom_coords()
+        return pyscf.data.nist.BOHR * self._frame.atom_coords()
 
     def cell(self):
         if self.is_periodic:
-            return self._frame.a
+            cell = self._frame.a
+            if self._frame.unit[0].lower() == 'a':
+                # assume angströms, we are good to go
+                return cell
+            else:
+                # assume bohrs, correct this
+                return pyscf.data.nist.BOHS * np.asarray(cell)
+            return 
         else:
             return np.zeros((3, 3), float)
 
