@@ -21,7 +21,7 @@ def _std_symbol_without_ghost(symb_or_chg):
         rawsymb = pyscf.data.elements._rm_digit(symb_or_chg)
         if rawsymb in pyscf.data.elements._ELEMENTS_UPPER:
             return pyscf.data.elements._ELEMENTS_UPPER[rawsymb]
-        elif len(rawsymb) > 1 and symb_or_chg[0] == "X" and symb_or_chg[:2] != "XE":
+        elif len(rawsymb) > 1 and (symb_or_chg[0] == "X" and symb_or_chg[:2] != "XE"):
             rawsymb = rawsymb[1:]  # Remove the prefix X
             return pyscf.data.elements._ELEMENTS_UPPER[rawsymb]
         elif len(rawsymb) > 5 and rawsymb[:5] == "GHOST":
@@ -34,17 +34,19 @@ def _std_symbol_without_ghost(symb_or_chg):
 
 
 class PyscfSystem(SystemBase):
-    """Implements :py:class:`rascaline.SystemBase` wrapping a `pyscf.gto.mole.Mole`_
-    or `pyscf.pbc.gto.cell.Cell`_.
+    """Implements :py:class:`rascaline.SystemBase` wrapping a
+    `pyscf.gto.mole.Mole`_ or `pyscf.pbc.gto.cell.Cell`_.
 
     Since pyscf does not offer a neighbors list, this
-    implementation of system can only be used with ``use_native_system=True`` in
+    implementation of system can only be used with
+    ``use_native_system=True`` in
     :py:func:`rascaline.calculators.CalculatorBase.compute`.
 
-    Atomic species are assigned as the atomic number if the atom ``type`` is one
-    of the periodic table elements; or their opposite if they are ghost atoms.
+    Atomic species are assigned as the atomic number if the atom ``type`` is
+    one of the periodic table elements; or their opposite if they are
+    ghost atoms.
     (Pyscf does not seem to support anything else)
-    
+
     Please note that while pyscf uses Bohrs as length units internally,
     we convert those back into Angströms for rascaline.
     A pyscf object's "unit" attribute determines the units of the coordinates
@@ -56,7 +58,11 @@ class PyscfSystem(SystemBase):
 
     @staticmethod
     def can_wrap(o):
-        return isinstance(o, (pyscf.gto.mole.Mole, pyscf.pbc.gto.cell.Cell))
+        # assumption: if we have a periodic system, then pyscf.pbc is defined
+        if hasattr(pyscf, "pbc"):
+            return isinstance(o, (pyscf.gto.mole.Mole, pyscf.pbc.gto.cell.Cell))
+        else:
+            return isinstance(o, pyscf.gto.mole.Mole)
 
     def __init__(self, frame):
         """
@@ -64,7 +70,7 @@ class PyscfSystem(SystemBase):
             in this ``ChemfilesSystem``
         """
         super().__init__()
-        if not isinstance(frame, (pyscf.gto.mole.Mole, pyscf.pbc.gto.cell.Cell)):
+        if not self.can_wrap(frame):
             raise Exception(
                 "this class expects pyscf.gto.mole.Mole"
                 + "or pyscf.pbc.gto.cell.Cell objects"
@@ -91,13 +97,12 @@ class PyscfSystem(SystemBase):
     def cell(self):
         if self.is_periodic:
             cell = self._frame.a
-            if self._frame.unit[0].lower() == 'a':
+            if self._frame.unit[0].lower() == "a":
                 # assume angströms, we are good to go
                 return cell
             else:
                 # assume bohrs, correct this
                 return pyscf.data.nist.BOHS * np.asarray(cell)
-            return 
         else:
             return np.zeros((3, 3), float)
 
