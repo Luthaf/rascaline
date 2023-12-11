@@ -18,6 +18,7 @@ use super::super::neighbor_list::FullNeighborList;
 use super::{CutoffFunction, RadialScaling};
 
 use crate::calculators::radial_basis::RadialBasis;
+use crate::calculators::GradientsOptions;
 use super::SoapRadialIntegralCache;
 
 use super::radial_integral::SoapRadialIntegralParameters;
@@ -79,31 +80,17 @@ pub struct SphericalExpansionByPair {
     pub(crate) parameters: SphericalExpansionParameters,
     /// implementation + cached allocation to compute the radial integral for a
     /// single pair
-    radial_integral: ThreadLocal<RefCell<SoapRadialIntegralCache>>,
+    pub(crate) radial_integral: ThreadLocal<RefCell<SoapRadialIntegralCache>>,
     /// implementation + cached allocation to compute the spherical harmonics
     /// for a single pair
-    spherical_harmonics: ThreadLocal<RefCell<SphericalHarmonicsCache>>,
+    pub(crate) spherical_harmonics: ThreadLocal<RefCell<SphericalHarmonicsCache>>,
     /// Cache for (-1)^l values
-    m_1_pow_l: Vec<f64>,
+    pub(crate) m_1_pow_l: Vec<f64>,
 }
 
 impl std::fmt::Debug for SphericalExpansionByPair {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self.parameters)
-    }
-}
-
-
-/// Which gradients are we computing
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct GradientsOptions {
-    pub positions: bool,
-    pub cell: bool,
-}
-
-impl GradientsOptions {
-    pub fn either(self) -> bool {
-        return self.positions || self.cell;
     }
 }
 
@@ -193,14 +180,14 @@ impl SphericalExpansionByPair {
     }
 
     /// Compute the product of radial scaling & cutoff smoothing functions
-    fn scaling_functions(&self, r: f64) -> f64 {
+    pub(crate) fn scaling_functions(&self, r: f64) -> f64 {
         let cutoff = self.parameters.cutoff_function.compute(r, self.parameters.cutoff);
         let scaling = self.parameters.radial_scaling.compute(r);
         return cutoff * scaling;
     }
 
     /// Compute the gradient of the product of radial scaling & cutoff smoothing functions
-    fn scaling_functions_gradient(&self, r: f64) -> f64 {
+    pub(crate) fn scaling_functions_gradient(&self, r: f64) -> f64 {
         let cutoff = self.parameters.cutoff_function.compute(r, self.parameters.cutoff);
         let cutoff_grad = self.parameters.cutoff_function.derivative(r, self.parameters.cutoff);
 

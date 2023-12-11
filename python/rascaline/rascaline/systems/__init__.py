@@ -1,6 +1,7 @@
 from .ase import HAVE_ASE, AseSystem
 from .base import SystemBase
 from .chemfiles import HAVE_CHEMFILES, ChemfilesSystem
+from .pyscf import HAVE_PYSCF, PyscfSystem
 
 
 class IntoSystem:
@@ -32,6 +33,16 @@ if HAVE_CHEMFILES:
     .. _chemfiles.Frame: http://chemfiles.org/chemfiles.py/latest/reference/frame.html
     """
 
+if HAVE_PYSCF:
+    IntoSystem.__doc__ += """
+    - `pyscf.gto.mole.Mole`_ or `pyscf.pbc.gto.cell.Cell`_: pyscf' Frame type.
+       There is no associated neighbor list implementation, the system will only
+       be usable with ``use_native_system=True``
+
+    .. _pyscf.gto.mole.Mole: https://pyscf.org/user/gto.html
+    .. _pyscf.pbc.gto.cell.Cell: https://pyscf.org/user/pbc/gto.html
+    """
+
 
 def wrap_system(system: IntoSystem) -> SystemBase:
     """Wrap different systems implementation into the right class.
@@ -53,6 +64,9 @@ def wrap_system(system: IntoSystem) -> SystemBase:
 
     if HAVE_ASE and AseSystem.can_wrap(system):
         return AseSystem(system)
+
+    if HAVE_PYSCF and PyscfSystem.can_wrap(system):
+        return PyscfSystem(system)
 
     if HAVE_CHEMFILES and ChemfilesSystem.can_wrap(system):
         return ChemfilesSystem(system)

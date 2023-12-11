@@ -131,12 +131,13 @@ pub fn split_tensor_map_by_system(descriptor: &mut TensorMap, n_systems: usize) 
                 let mut structure_per_sample = vec![LabelValue::new(-1); block_data.samples.count()];
 
                 let system_start = *system_end;
-                for (sample_i, &[structure, center]) in block_data.samples.iter_fixed_size().enumerate().skip(system_start) {
+                for (sample_i, sample_label) in block_data.samples.iter().enumerate().skip(system_start) {
+                    let structure = sample_label[0];
                     structure_per_sample[sample_i] = structure;
 
                     if structure.usize() == system_i {
                         // this sample is part of to the current system
-                        samples.add(&[structure, center]);
+                        samples.add(sample_label);
                         let new_sample = samples_mapping.len();
                         samples_mapping.insert(sample_i, new_sample);
 

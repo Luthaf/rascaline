@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use metatensor::{Labels, LabelsBuilder};
 
 use crate::{System, Error};
-
+use crate::systems::BATripletNeighborList;
 
 /// Common interface to create a set of metatensor's `TensorMap` keys from systems
 pub trait KeysBuilder {
@@ -95,6 +95,52 @@ impl KeysBuilder for CenterSingleNeighborsSpeciesKeys {
     }
 }
 
+/// Compute a set of keys with three variables: the species of two central atoms within a given cutoff to each other,
+/// and the species of a third, neighbor atom, within a cutoff of the first two.
+pub struct TwoCentersSingleNeighborsSpeciesKeys<'a> {
+    /// Spherical cutoff to use when searching for neighbors around an atom
+    pub(crate) cutoffs: [f64;2],
+    /// Should we consider an atom to be it's own neighbor or not?
+    pub self_contributions: bool,
+    pub raw_triplets: &'a BATripletNeighborList,
+}
+
+impl<'a> TwoCentersSingleNeighborsSpeciesKeys<'a>{
+    pub fn bond_cutoff(&self) -> f64 {
+        self.cutoffs[0]
+    }
+    pub fn third_cutoff(&self) -> f64 {
+        self.cutoffs[1]
+    }
+}
+
+
+impl<'a> KeysBuilder for TwoCentersSingleNeighborsSpeciesKeys<'a> {
+    fn keys(&self, systems: &mut [System]) -> Result<Labels, Error> {
+        assert!(self.bond_cutoff() > 0.0 && self.bond_cutoff().is_finite() && self.third_cutoff() > 0.0 && self.third_cutoff().is_finite());
+
+        let mut all_species_triplets = BTreeSet::new();
+        for system in systems {
+            self.raw_triplets.ensure_computed_for_system(system)?;
+
+            let species = system.species()?;
+            for triplet in self.raw_triplets.get_for_system(system)? {
+                if (!self.self_contributions) && triplet.is_self_contrib {
+                    continue;
+                }
+                all_species_triplets.insert((species[triplet.atom_i], species[triplet.atom_j], species[triplet.atom_k]));
+                all_species_triplets.insert((species[triplet.atom_j], species[triplet.atom_i], species[triplet.atom_k]));
+            }
+        }
+
+        let mut keys = LabelsBuilder::new(vec!["species_center_1", "species_center_2", "species_neighbor"]);
+        for (center1, center2, neighbor) in all_species_triplets {
+            keys.add(&[center1,center2, neighbor]);
+        }
+
+        return Ok(keys.finish());
+    }
+}
 
 /// Compute a set of keys with three variables: the central atom species and two
 /// neighbor atom species.

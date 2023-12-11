@@ -12,10 +12,10 @@ use crate::systems::CellShape;
 use crate::labels::{SamplesBuilder, SpeciesFilter, AtomCenteredSamples};
 use crate::labels::{KeysBuilder, CenterSingleNeighborsSpeciesKeys};
 
-use super::super::CalculatorBase;
+use crate::calculators::{CalculatorBase,GradientsOptions};
 
 use super::{SphericalExpansionByPair, SphericalExpansionParameters};
-use super::spherical_expansion_pair::{GradientsOptions, PairContribution};
+use super::spherical_expansion_pair::PairContribution;
 
 use super::super::{split_tensor_map_by_system, array_mut_for_system};
 

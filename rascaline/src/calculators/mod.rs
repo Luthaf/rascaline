@@ -2,6 +2,20 @@ use metatensor::{TensorMap, Labels};
 
 use crate::{Error, System};
 
+
+/// Which gradients are we computing
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(self) struct GradientsOptions {
+    pub positions: bool,
+    pub cell: bool,
+}
+
+impl GradientsOptions {
+    pub fn either(self) -> bool {
+        return self.positions || self.cell;
+    }
+}
+
 /// The `CalculatorBase` trait is the interface shared by all calculator
 /// implementations; and used by [`crate::Calculator`] to run the calculation.
 ///
@@ -84,6 +98,7 @@ pub use self::sorted_distances::SortedDistances;
 mod neighbor_list;
 pub use self::neighbor_list::NeighborList;
 
+
 mod radial_basis;
 pub use self::radial_basis::{RadialBasis, GtoRadialBasis};
 
@@ -98,3 +113,6 @@ pub use self::soap::{SoapRadialSpectrum, RadialSpectrumParameters};
 
 pub mod lode;
 pub use self::lode::{LodeSphericalExpansion, LodeSphericalExpansionParameters};
+
+mod bondatom;
+pub use self::bondatom::{SphericalExpansionForBondsParameters, SphericalExpansionForBonds};

@@ -12,6 +12,7 @@ from .calculators import (
     SortedDistances,
     SphericalExpansion,
     SphericalExpansionByPair,
+    SphericalExpansionForBonds,
 )
 from .log import set_logging_callback  # noqa
 from .profiling import Profiler  # noqa
@@ -29,4 +30,5 @@ __all__ = [
     "SortedDistances",
     "SphericalExpansion",
     "SphericalExpansionByPair",
+    "SphericalExpansionForBonds",
 ]
