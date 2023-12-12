@@ -45,3 +45,27 @@ def test_pbc_data():
         np.array([[0, 0, 0], [1, 1, 1]], dtype=float),
         rtol=1e-14,
     )
+
+
+def test_explicit_units():
+    import pyscf.pbc
+
+    cell = np.array([[2, 0, 0], [0, 2, 1], [0, 0, 2]], dtype=float)
+
+    at1 = pyscf.pbc.gto.Cell(
+        atom="H 0 0 0; H 1 1 1",
+        a=cell,
+        unit="Angstrom",
+    ).build()
+    at2 = pyscf.pbc.gto.Cell(
+        atom=[("H", at1.atom_coord(0)), ("H", at1.atom_coord(1))],
+        a=cell / pyscf.data.nist.BOHR,
+        unit="Bohr",
+    ).build()
+    at1 = PyscfSystem(at1)
+    at2 = PyscfSystem(at2)
+
+    assert np.allclose(at1.positions(), at2.positions())
+    assert np.allclose(at1.positions(), np.array([[0, 0, 0], [1, 1, 1]], dtype=float))
+    assert np.allclose(at1.cell(), at2.cell())
+    assert np.allclose(at1.cell(), cell)

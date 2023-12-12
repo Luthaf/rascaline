@@ -102,7 +102,7 @@ class PyscfSystem(SystemBase):
                 return cell
             else:
                 # assume bohrs, correct this
-                return pyscf.data.nist.BOHS * np.asarray(cell)
+                return pyscf.data.nist.BOHR * np.asarray(cell)
         else:
             return np.zeros((3, 3), float)
 
