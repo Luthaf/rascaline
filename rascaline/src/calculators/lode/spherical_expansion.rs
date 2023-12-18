@@ -265,9 +265,8 @@ impl LodeSphericalExpansion {
     }
 
     #[allow(clippy::float_cmp)]
-    fn compute_density_fourrier(&self, k_vectors: &[KVector]) -> Array1<f64> {
-        let mut fourrier = Vec::new();
-        fourrier.reserve(k_vectors.len());
+    fn compute_density_fourier(&self, k_vectors: &[KVector]) -> Array1<f64> {
+        let mut fourier = Vec::with_capacity(k_vectors.len());
 
         let potential_exponent = self.parameters.potential_exponent as f64;
         let smearing_squared = self.parameters.atomic_gaussian_width * self.parameters.atomic_gaussian_width;
@@ -277,7 +276,7 @@ impl LodeSphericalExpansion {
 
             for k_vector in k_vectors {
                 let value = f64::exp(-0.5 * k_vector.norm * k_vector.norm * smearing_squared);
-                fourrier.push(factor * value);
+                fourier.push(factor * value);
             }
         } else if potential_exponent == 1.0 {
             let factor = 4.0 * std::f64::consts::PI;
@@ -285,7 +284,7 @@ impl LodeSphericalExpansion {
             for k_vector in k_vectors {
                 let k_norm_squared = k_vector.norm * k_vector.norm;
                 let value = f64::exp(-0.5 * k_norm_squared * smearing_squared) / k_norm_squared;
-                fourrier.push(factor * value);
+                fourier.push(factor * value);
             }
         } else {
             let p_eff = 3.0 - potential_exponent;
@@ -320,11 +319,11 @@ impl LodeSphericalExpansion {
                     panic!("potential_exponent = {} is not implemented", potential_exponent);
                 };
 
-                fourrier.push(factor * value);
+                fourier.push(factor * value);
             }
         }
 
-        return fourrier.into();
+        return fourier.into();
     }
 
     /// Compute k = 0 contributions.
@@ -333,8 +332,7 @@ impl LodeSphericalExpansion {
     fn compute_k0_contributions(&self) -> Array1<f64> {
         let atomic_gaussian_width = self.parameters.atomic_gaussian_width;
 
-        let mut k0_contrib = Vec::new();
-        k0_contrib.reserve(self.parameters.max_radial);
+        let mut k0_contrib = Vec::with_capacity(self.parameters.max_radial);
         let factor = if self.parameters.potential_exponent == 0 {
             let smearing_squared = atomic_gaussian_width * atomic_gaussian_width;
 
@@ -601,7 +599,7 @@ impl CalculatorBase for LodeSphericalExpansion {
                     &k_vectors
                 );
 
-                let density_fourrier = self.compute_density_fourrier(&k_vectors);
+                let density_fourier = self.compute_density_fourier(&k_vectors);
 
                 let global_factor = 4.0 * std::f64::consts::PI / cell.volume();
 
@@ -692,7 +690,7 @@ impl CalculatorBase for LodeSphericalExpansion {
                                         // for values.
                                         unsafe {
                                             value += global_factor * phase
-                                                * density_fourrier.uget(ik)
+                                                * density_fourier.uget(ik)
                                                 * sf_per_center.uget([center_i, ik])
                                                 * k_vector_to_m_n.uget([m, n, ik]);
                                         }
@@ -761,7 +759,7 @@ impl CalculatorBase for LodeSphericalExpansion {
                                                 // by ten for gradients.
                                                 unsafe {
                                                     grad += global_factor * phase
-                                                        * density_fourrier.uget(ik)
+                                                        * density_fourier.uget(ik)
                                                         * sf_grad.uget(ik)
                                                         * k_vector_to_m_n.uget([m, n, ik])
                                                         * k_vector.norm
@@ -887,7 +885,7 @@ mod tests {
     }
 
     #[test]
-    fn compute_density_fourrier() {
+    fn compute_density_fourier() {
         let k_vectors = [KVector{direction: Vector3D::zero(), norm: 1e-12},
                                        KVector{direction: Vector3D::zero(), norm: 1e-11}];
 
@@ -913,7 +911,7 @@ mod tests {
             ).unwrap();
 
             assert_relative_eq!(
-                spherical_expansion.compute_density_fourrier(&k_vectors),
+                spherical_expansion.compute_density_fourier(&k_vectors),
                 arr1(&reference_vals[i]),
                 max_relative=1e-8
             );
