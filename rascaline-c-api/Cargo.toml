@@ -27,9 +27,12 @@ time-graph = {version = "0.3.0", features = ["table", "json"]}
 libc = "0.2"
 
 [build-dependencies]
-cbindgen = { version = "0.24", default-features = false }
+cbindgen = { version = "0.26", default-features = false }
 fs_extra = "1"
 metatensor = "0.1"
 
 [dev-dependencies]
-which = "4"
+which = "5"
+
+# This is the last version supporting rustc 1.65
+home = "=0.5.5"
