@@ -11,6 +11,8 @@ cd "$ROOT_DIR"
 rm -rf dist
 rm -rf build
 rm -rf .coverage
+rm -rf docs/build
+rm -rf docs/src/examples
 
 rm -rf python/rascaline-torch/dist
 rm -rf python/rascaline-torch/build

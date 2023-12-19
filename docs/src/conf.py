@@ -109,7 +109,11 @@ extensions = [
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ["Thumbs.db", ".DS_Store"]
+exclude_patterns = [
+    "Thumbs.db",
+    ".DS_Store",
+    "sg_execution_times.rst",
+]
 
 
 autoclass_content = "both"
@@ -120,7 +124,7 @@ sphinx_gallery_conf = {
     "filename_pattern": "/*",
     "examples_dirs": ["../../python/rascaline/examples"],
     "gallery_dirs": ["examples"],
-    "min_reported_time": 60,
+    "min_reported_time": 5,
     # Make the code snippet for rascaline functions clickable
     "reference_url": {"rascaline": None},
     "prefer_full_module": ["rascaline"],
