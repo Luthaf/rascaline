@@ -42,8 +42,7 @@ def correlate_density(
     keyword.
 
     Selections on the angular and parity channels at each iteration can also be
-    controlled with arguments `angular_cutoff`, `angular_selection` and
-    `parity_selection`.
+    controlled with arguments `selected_keys`.
 
     :param density: A density descriptor of body order 2 (correlation order 1),
         in :py:class:`TensorMap` format. This may be, for example, a rascaline
