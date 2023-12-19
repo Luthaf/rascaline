@@ -7,8 +7,7 @@ from typing import List, Optional, Union
 
 from metatensor import Labels, TensorMap
 
-
-# from . import _cg_cache, _clebsch_gordan, _dispatch
+from . import _cg_cache, _clebsch_gordan, _dispatch
 
 
 # ======================================================================
@@ -19,7 +18,6 @@ from metatensor import Labels, TensorMap
 def correlate_tensors(
     tensor_1: TensorMap,
     tensor_2: TensorMap,
-    angular_cutoff: Optional[int] = None,
     selected_keys: Optional[Union[Labels, List[Labels]]] = None,
 ) -> TensorMap:
     """
@@ -33,9 +31,6 @@ def correlate_tensors(
 
     :param tensor_1: the first tensor to correlate.
     :param tensor_2: the second tensor to correlate.
-    :param angular_cutoff: The maximum angular channel to compute at any given
-        CG iteration, applied globally to all iterations until the target
-        correlation order is reached.
     :param selected_keys: :py:class:`Labels` or `List[:py:class:`Labels`]`
         specifying the angular and/or parity channels to output at each
         iteration. All :py:class:`Labels` objects passed here must only contain
@@ -51,7 +46,6 @@ def correlate_tensors(
     return _correlate_tensors(
         tensor_1,
         tensor_2,
-        angular_cutoff,
         selected_keys,
         compute_metadata_only=False,
         sparse=True,  # sparse CG cache by default
@@ -61,7 +55,6 @@ def correlate_tensors(
 def correlate_tensors_metadata(
     tensor_1: TensorMap,
     tensor_2: TensorMap,
-    angular_cutoff: Optional[int] = None,
     selected_keys: Optional[Union[Labels, List[Labels]]] = None,
 ) -> TensorMap:
     """
@@ -73,7 +66,6 @@ def correlate_tensors_metadata(
     return _correlate_tensors(
         tensor_1,
         tensor_2,
-        angular_cutoff,
         selected_keys,
         compute_metadata_only=True,
         sparse=True,  # sparse CG cache by default
@@ -88,7 +80,6 @@ def correlate_tensors_metadata(
 def _correlate_tensors(
     tensor_1: TensorMap,
     tensor_2: TensorMap,
-    angular_cutoff: Optional[int] = None,
     selected_keys: Optional[Union[Labels, List[Labels]]] = None,
     compute_metadata_only: bool = False,
     sparse: bool = True,
