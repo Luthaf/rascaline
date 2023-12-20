@@ -10,9 +10,9 @@ from metatensor import Labels, TensorBlock, TensorMap
 import rascaline
 from rascaline.utils import PowerSpectrum
 from rascaline.utils.clebsch_gordan._cg_cache import ClebschGordanReal
-from rascaline.utils.clebsch_gordan.clebsch_gordan import (
+from rascaline.utils.clebsch_gordan._clebsch_gordan import _standardize_keys
+from rascaline.utils.clebsch_gordan.correlate_density import (
     _correlate_density,
-    _standardize_keys,
     correlate_density,
     correlate_density_metadata,
 )
