@@ -257,3 +257,4 @@ def _correlate_density(
 
     # Otherwise return a list of TensorMaps
     return density_correlations
+    
