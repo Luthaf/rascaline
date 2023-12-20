@@ -5,9 +5,9 @@
 
 #include <rascaline.hpp>
 #include <metatensor/torch.hpp>
+#include <metatensor/torch/atomistic.hpp>
 
 #include "rascaline/torch/exports.h"
-#include "rascaline/torch/system.hpp"
 
 namespace rascaline_torch {
 class RascalineAutograd;
@@ -101,7 +101,7 @@ public:
 
     /// Run a calculation for the given `systems` using the given options
     metatensor_torch::TorchTensorMap compute(
-        std::vector<TorchSystem> systems,
+        std::vector<metatensor_torch::System> systems,
         TorchCalculatorOptions options = {}
     );
 
@@ -124,7 +124,7 @@ private:
 ///
 /// `forward_gradients` controls which gradients are left inside the TensorMap.
 metatensor_torch::TorchTensorMap RASCALINE_TORCH_EXPORT register_autograd(
-    std::vector<TorchSystem> systems,
+    std::vector<metatensor_torch::System> systems,
     metatensor_torch::TorchTensorMap precomputed,
     std::vector<std::string> forward_gradients
 );

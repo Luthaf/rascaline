@@ -1,7 +1,6 @@
 #ifndef RASCALINE_HPP
 #define RASCALINE_HPP
 
-#include <cassert>
 #include <cstring>
 #include <cstdint>
 
@@ -9,7 +8,6 @@
 #include <string>
 #include <vector>
 #include <mutex>
-#include <memory>
 #include <utility>
 #include <optional>
 #include <stdexcept>

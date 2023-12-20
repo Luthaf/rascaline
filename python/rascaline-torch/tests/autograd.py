@@ -3,9 +3,10 @@ import warnings
 import ase
 import pytest
 import torch
+from metatensor.torch.atomistic import System
 
 import rascaline.torch
-from rascaline.torch import SoapPowerSpectrum, SphericalExpansion, System
+from rascaline.torch import SoapPowerSpectrum, SphericalExpansion
 
 
 HYPERS = {

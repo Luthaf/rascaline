@@ -10,7 +10,8 @@ myst-parser     # markdown => rst translation, used in extensions/rascaline_json
 
 # dependencies for the tutorials
 --extra-index-url https://download.pytorch.org/whl/cpu
-metatensor[torch] >=0.1.0,<0.2.0
+metatensor >=0.1.0,<0.2.0
+metatensor-torch >= 0.2.0,<0.3.0
 torch
 chemfiles
 matplotlib

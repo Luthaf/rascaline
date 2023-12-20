@@ -24,7 +24,7 @@ from .calculators import (  # noqa
     SphericalExpansion,
     SphericalExpansionByPair,
 )
-from .system import System, systems_to_torch  # noqa
+from .system import systems_to_torch  # noqa
 
 
 __all__ = [

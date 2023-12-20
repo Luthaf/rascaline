@@ -5,44 +5,55 @@
 
 using namespace rascaline_torch;
 
-SystemHolder::SystemHolder(torch::Tensor species, torch::Tensor positions, torch::Tensor cell) {
-    auto species_sizes = species.sizes();
-    if (species_sizes.size() != 1) {
-        C10_THROW_ERROR(ValueError,
-            "atomic species tensor must be a 1D tensor"
-        );
+SystemAdapter::SystemAdapter(metatensor_torch::System system): system_(std::move(system)) {
+    this->species_ = system_->species().to(torch::kCPU).contiguous();
+    this->positions_ = system_->positions().to(torch::kDouble).to(torch::kCPU).contiguous();
+    this->cell_ = system_->cell().to(torch::kDouble).to(torch::kCPU).contiguous();
+
+    // convert all neighbors list that where requested by rascaline
+    for (const auto& options: system_->known_neighbors_lists()) {
+        for (const auto& requestor: options->requestors()) {
+            if (requestor == "rascaline") {
+                auto neighbors = system->get_neighbors_list(options);
+                auto samples_values = neighbors->samples()->values().to(torch::kCPU).contiguous();
+                auto samples = samples_values.accessor<int32_t, 2>();
+
+                auto distances_tensor = neighbors->values().reshape({-1, 3}).to(torch::kCPU, torch::kDouble).contiguous();
+                auto distances = distances_tensor.accessor<double, 2>();
+
+                auto n_pairs = samples.size(1);
+
+                auto pairs = std::vector<rascal_pair_t>();
+                pairs.reserve(static_cast<size_t>(n_pairs));
+                for (int64_t i=0; i<n_pairs; i++) {
+                    auto x = distances[i][0];
+                    auto y = distances[i][1];
+                    auto z = distances[i][2];
+
+                    auto pair = rascal_pair_t {};
+                    pair.first = static_cast<uintptr_t>(samples[i][0]);
+                    pair.second = static_cast<uintptr_t>(samples[i][1]);
+
+                    pair.distance = std::sqrt(x*x + y*y + z*z);
+                    pair.vector[0] = x;
+                    pair.vector[1] = y;
+                    pair.vector[2] = z;
+
+                    pair.cell_shift_indices[0] = samples[i][2];
+                    pair.cell_shift_indices[1] = samples[i][3];
+                    pair.cell_shift_indices[2] = samples[i][4];
+
+                    pairs.emplace_back(pair);
+                }
+
+                this->set_precomputed_pairs(options->model_cutoff(), std::move(pairs));
+                continue;
+            }
+        }
     }
-    auto n_atoms = species_sizes[0];
-
-    this->species_ = species.to(torch::kInt32).to(torch::kCPU).contiguous();
-    if (this->species_.requires_grad()) {
-        C10_THROW_ERROR(ValueError,
-            "species can not have requires_grad=True"
-        );
-    }
-
-    /**************************************************************************/
-    auto positions_sizes = positions.sizes();
-    if (positions_sizes.size() != 2 || positions_sizes[0] != n_atoms || positions_sizes[1] != 3) {
-        C10_THROW_ERROR(ValueError,
-            "the positions tensor must be a (n_atoms x 3) tensor"
-        );
-    }
-
-    this->positions_ = positions.to(torch::kDouble).to(torch::kCPU).contiguous();
-
-    /**************************************************************************/
-    auto cell_sizes = cell.sizes();
-    if (cell_sizes.size() != 2 || cell_sizes[0] != 3 || cell_sizes[1] != 3) {
-        C10_THROW_ERROR(ValueError,
-            "the cell tensor must be a (3 x 3) tensor"
-        );
-    }
-
-    this->cell_ = cell.to(torch::kDouble).to(torch::kCPU).contiguous();
 }
 
-void SystemHolder::set_precomputed_pairs(double cutoff, std::vector<rascal_pair_t> pairs) {
+void SystemAdapter::set_precomputed_pairs(double cutoff, std::vector<rascal_pair_t> pairs) {
     auto pairs_by_center = std::vector<std::vector<rascal_pair_t>>();
     pairs_by_center.resize(this->size());
 
@@ -57,11 +68,11 @@ void SystemHolder::set_precomputed_pairs(double cutoff, std::vector<rascal_pair_
     );
 }
 
-bool SystemHolder::use_native_system() const {
+bool SystemAdapter::use_native_system() const {
     return precomputed_pairs_.empty();
 }
 
-void SystemHolder::compute_neighbors(double cutoff) {
+void SystemAdapter::compute_neighbors(double cutoff) {
     if (this->use_native_system()) {
         C10_THROW_ERROR(ValueError,
             "this system only support 'use_native_systems=true'"
@@ -100,7 +111,7 @@ void SystemHolder::compute_neighbors(double cutoff) {
     last_cutoff_ = cutoff;
 }
 
-const std::vector<rascal_pair_t>& SystemHolder::pairs() const {
+const std::vector<rascal_pair_t>& SystemAdapter::pairs() const {
     if (this->use_native_system() || last_cutoff_ == -1.0) {
         C10_THROW_ERROR(ValueError,
             "this system only support 'use_native_systems=true'"
@@ -112,7 +123,7 @@ const std::vector<rascal_pair_t>& SystemHolder::pairs() const {
     return it->second.pairs_;
 }
 
-const std::vector<rascal_pair_t>& SystemHolder::pairs_containing(uintptr_t center) const {
+const std::vector<rascal_pair_t>& SystemAdapter::pairs_containing(uintptr_t center) const {
     if (this->use_native_system() || last_cutoff_ == -1.0) {
         C10_THROW_ERROR(ValueError,
             "this system only support 'use_native_systems=true'"
@@ -122,26 +133,4 @@ const std::vector<rascal_pair_t>& SystemHolder::pairs_containing(uintptr_t cente
     auto it = precomputed_pairs_.find(last_cutoff_);
     assert(it != std::end(precomputed_pairs_));
     return it->second.pairs_by_center_[center];
-}
-
-
-std::string SystemHolder::str() const {
-    auto result = std::ostringstream();
-    result << "System with " << this->size() << " atoms, ";
-    if (torch::all(cell_ == torch::zeros({3, 3})).item<bool>()) {
-        result << "non periodic";
-    } else {
-        result << "periodic cell: [";
-        for (int64_t i=0; i<3; i++) {
-            for (int64_t j=0; j<3; j++) {
-                result << cell_.index({i, j}).item<double>();
-                if (j != 2 || i != 2) {
-                    result << ", ";
-                }
-            }
-        }
-        result << "]";
-    }
-
-    return result.str();
 }
