@@ -12,7 +12,7 @@
 using namespace rascaline_torch;
 using namespace metatensor_torch;
 
-static TorchSystem test_system(bool positions_grad, bool cell_grad);
+static metatensor_torch::System test_system(bool positions_grad, bool cell_grad);
 
 
 TEST_CASE("Calculator") {
@@ -287,7 +287,7 @@ TEST_CASE("Calculator") {
     }
 }
 
-TorchSystem test_system(bool positions_grad, bool cell_grad) {
+metatensor_torch::System test_system(bool positions_grad, bool cell_grad) {
     auto species = torch::tensor({6, 1, 1, 1});
     auto positions = torch::tensor({
         0.0, 0.0, 0.0,
@@ -300,5 +300,5 @@ TorchSystem test_system(bool positions_grad, bool cell_grad) {
     auto cell = 10 * torch::eye(3);
     cell.requires_grad_(cell_grad);
 
-    return torch::make_intrusive<SystemHolder>(species, positions, cell);
+    return torch::make_intrusive<metatensor_torch::SystemHolder>(species, positions, cell);
 }

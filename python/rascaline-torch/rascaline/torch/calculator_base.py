@@ -2,6 +2,7 @@ from typing import List, Optional, Union
 
 import torch
 from metatensor.torch import Labels, TensorMap
+from metatensor.torch.atomistic import NeighborsListOptions
 
 from .system import System
 
@@ -81,6 +82,18 @@ class CalculatorModule(torch.nn.Module):
     def cutoffs(self) -> List[float]:
         """all the radial cutoffs used by this calculator's neighbors lists"""
         return self._c.cutoffs
+
+    def requested_neighbors_lists(self) -> List[NeighborsListOptions]:
+        options = []
+        for cutoff in self.cutoffs:
+            options.append(
+                NeighborsListOptions(
+                    model_cutoff=cutoff,
+                    full_list=False,
+                    requestor="rascaline",
+                )
+            )
+        return options
 
     def compute(
         self,

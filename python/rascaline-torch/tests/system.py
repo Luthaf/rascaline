@@ -2,39 +2,7 @@ import ase
 import numpy as np
 import torch
 
-from rascaline.torch import System, systems_to_torch
-
-
-def test_system():
-    # positional arguments
-    system = System(
-        torch.ones(4, dtype=torch.int32),
-        torch.zeros((4, 3), dtype=torch.float64),
-        torch.zeros((3, 3), dtype=torch.float64),
-    )
-
-    assert torch.all(system.species == torch.ones((4)))
-    assert torch.all(system.positions == torch.zeros((4, 3)))
-    assert torch.all(system.cell == torch.zeros((3, 3)))
-
-    assert len(system) == 4
-    assert str(system) == "System with 4 atoms, non periodic"
-
-    # named arguments
-    system = System(
-        species=torch.ones(4, dtype=torch.int32),
-        positions=torch.zeros((4, 3), dtype=torch.float64),
-        cell=6 * torch.eye(3),
-    )
-
-    assert torch.all(system.species == torch.ones((4)))
-    assert torch.all(system.positions == torch.zeros((4, 3)))
-    assert torch.all(system.cell == 6 * torch.eye(3))
-
-    assert len(system) == 4
-    assert (
-        str(system) == "System with 4 atoms, periodic cell: [6, 0, 0, 0, 6, 0, 0, 0, 6]"
-    )
+from rascaline.torch import systems_to_torch
 
 
 def test_system_conversion_from_ase():
@@ -82,46 +50,3 @@ def test_system_conversion_from_ase():
     # test a list of ase.Atoms
     systems = systems_to_torch([atoms, atoms])
     assert isinstance(systems[0], torch.ScriptObject)
-
-
-# define a wrapper class to make sure the types TorchScript uses for of all
-# C-defined functions matches what we expect
-class SystemWrap:
-    def __init__(
-        self,
-        species: torch.Tensor,
-        positions: torch.Tensor,
-        cell: torch.Tensor,
-    ):
-        self._c = System(
-            species=species,
-            positions=positions,
-            cell=cell,
-        )
-
-    def __str__(self) -> str:
-        return self._c.__str__()
-
-    def __repr__(self) -> str:
-        return self._c.__repr__()
-
-    def __len__(self) -> int:
-        return self._c.__len__()
-
-    def species(self) -> torch.Tensor:
-        return self._c.species
-
-    def positions(self) -> torch.Tensor:
-        return self._c.positions
-
-    def cell(self) -> torch.Tensor:
-        return self._c.cell
-
-
-def test_script():
-    class TestModule(torch.nn.Module):
-        def forward(self, x: SystemWrap) -> SystemWrap:
-            return x
-
-    module = TestModule()
-    module = torch.jit.script(module)

@@ -1,4 +1,3 @@
-#include <atomic>
 #include <algorithm>
 
 #include "metatensor/torch/tensor.hpp"
