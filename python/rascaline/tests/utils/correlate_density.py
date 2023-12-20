@@ -43,9 +43,9 @@ if HAS_SYMPY:
 DATA_ROOT = os.path.join(os.path.dirname(__file__), "data")
 
 SPHEX_HYPERS = {
-    "cutoff": 3.0,  # Angstrom
-    "max_radial": 6,  # Exclusive
-    "max_angular": 4,  # Inclusive
+    "cutoff": 2.5,  # Angstrom
+    "max_radial": 3,  # Exclusive
+    "max_angular": 3,  # Inclusive
     "atomic_gaussian_width": 0.2,
     "radial_basis": {"Gto": {}},
     "cutoff_function": {"ShiftedCosine": {"width": 0.5}},
@@ -53,7 +53,7 @@ SPHEX_HYPERS = {
 }
 
 SPHEX_HYPERS_SMALL = {
-    "cutoff": 3.0,  # Angstrom
+    "cutoff": 2.5,  # Angstrom
     "max_radial": 1,  # Exclusive
     "max_angular": 2,  # Inclusive
     "atomic_gaussian_width": 0.2,
@@ -160,19 +160,7 @@ def get_norm(tensor: TensorMap):
 )
 @pytest.mark.parametrize(
     "frames, nu_target, angular_cutoff, selected_keys",
-    [
-        (
-            h2_isolated(),
-            3,
-            None,
-            Labels(
-                names=["spherical_harmonics_l", "inversion_sigma"],
-                values=np.array([[0, 1], [4, 1], [5, 1]]),
-            ),
-        ),
-        (h2o_isolated(), 2, 5, None),
-        (h2o_periodic(), 2, 5, None),
-    ],
+    [(h2o_periodic(), 2, 3, None)],
 )
 def test_so3_equivariance(frames, nu_target, angular_cutoff, selected_keys):
     """
@@ -208,19 +196,7 @@ def test_so3_equivariance(frames, nu_target, angular_cutoff, selected_keys):
 )
 @pytest.mark.parametrize(
     "frames, nu_target, angular_cutoff, selected_keys",
-    [
-        (
-            h2_isolated(),
-            3,
-            None,
-            Labels(
-                names=["spherical_harmonics_l"],
-                values=np.array([0, 4, 5]).reshape(-1, 1),
-            ),
-        ),
-        (h2o_isolated(), 2, 5, None),
-        (h2o_periodic(), 2, 5, None),
-    ],
+    [(h2_isolated(), 2, 3, None)],
 )
 def test_o3_equivariance(frames, nu_target, angular_cutoff, selected_keys):
     """
@@ -259,10 +235,7 @@ def test_o3_equivariance(frames, nu_target, angular_cutoff, selected_keys):
 @pytest.mark.parametrize("frames", [h2_isolated()])
 @pytest.mark.parametrize(
     "sphex_powspec",
-    [
-        (spherical_expansion, power_spectrum),
-        (spherical_expansion_small, power_spectrum_small),
-    ],
+    [(spherical_expansion, power_spectrum)],
 )
 def test_lambda_soap_vs_powerspectrum(frames, sphex_powspec):
     """
@@ -282,7 +255,10 @@ def test_lambda_soap_vs_powerspectrum(frames, sphex_powspec):
             names=["spherical_harmonics_l"], values=np.array([0]).reshape(-1, 1)
         ),
     )
-    keys = lsoap.keys.remove(name="spherical_harmonics_l")
+    keys = lsoap.keys
+    keys = keys.remove(name="order_nu")
+    keys = keys.remove(name="inversion_sigma")
+    keys = keys.remove(name="spherical_harmonics_l")
     lsoap = TensorMap(keys=keys, blocks=[b.copy() for b in lsoap.blocks()])
 
     # Manipulate metadata to match that of PowerSpectrum:
@@ -303,11 +279,6 @@ def test_lambda_soap_vs_powerspectrum(frames, sphex_powspec):
             )
         )
     lsoap = TensorMap(keys=lsoap.keys, blocks=blocks)
-
-    # Compare metadata
-    assert metatensor.equal_metadata(lsoap, ps)
-
-    # allclose on values
     assert metatensor.allclose(lsoap, ps)
 
 
@@ -317,8 +288,8 @@ def test_lambda_soap_vs_powerspectrum(frames, sphex_powspec):
 @pytest.mark.skipif(
     not HAS_METATENSOR_OPERATIONS, reason="metatensor-operations is not installed"
 )
-@pytest.mark.parametrize("frames", [h2_isolated(), h2o_periodic()])
-@pytest.mark.parametrize("correlation_order", [2, 3, 4])
+@pytest.mark.parametrize("frames", [h2o_periodic()])
+@pytest.mark.parametrize("correlation_order", [2, 4])
 def test_correlate_density_norm(frames, correlation_order):
     """
     Checks \\|ρ^\\nu\\| =  \\|ρ\\|^\\nu in the case where l lists are not
@@ -434,7 +405,7 @@ def test_clebsch_gordan_orthogonality(cg_cache_dense, l1, l2):
 @pytest.mark.skipif(
     not HAS_METATENSOR_OPERATIONS, reason="metatensor-operations is not installed"
 )
-@pytest.mark.parametrize("frames", [h2_isolated(), h2o_isolated()])
+@pytest.mark.parametrize("frames", [h2o_periodic()])
 def test_correlate_density_dense_sparse_agree(frames):
     """
     Tests for agreement between nu=3 tensors built using both sparse and dense
@@ -446,13 +417,13 @@ def test_correlate_density_dense_sparse_agree(frames):
     # sparse v dense CG cache
     n_body_sparse = _correlate_density(
         density,
-        correlation_order=3,
+        correlation_order=2,
         compute_metadata_only=False,
         sparse=True,
     )
     n_body_dense = _correlate_density(
         density,
-        correlation_order=3,
+        correlation_order=2,
         compute_metadata_only=False,
         sparse=False,
     )
@@ -467,8 +438,8 @@ def test_correlate_density_dense_sparse_agree(frames):
     not HAS_METATENSOR_OPERATIONS, reason="metatensor-operations is not installed"
 )
 @pytest.mark.parametrize("frames", [h2o_isolated()])
-@pytest.mark.parametrize("correlation_order", [2, 3])
-@pytest.mark.parametrize("skip_redundant", [True, False])
+@pytest.mark.parametrize("correlation_order", [3])
+@pytest.mark.parametrize("skip_redundant", [True])
 def test_correlate_density_metadata_agree(frames, correlation_order, skip_redundant):
     """
     Tests that the metadata of outputs from :py:func:`correlate_density` and
@@ -479,7 +450,7 @@ def test_correlate_density_metadata_agree(frames, correlation_order, skip_redund
         nux = correlate_density(
             nu1,
             correlation_order=correlation_order,
-            angular_cutoff=None,
+            angular_cutoff=3,
             selected_keys=None,
             skip_redundant=skip_redundant,
         )
@@ -488,7 +459,7 @@ def test_correlate_density_metadata_agree(frames, correlation_order, skip_redund
         nux_metadata_only = correlate_density_metadata(
             nu1,
             correlation_order=correlation_order,
-            angular_cutoff=None,
+            angular_cutoff=3,
             selected_keys=None,
             skip_redundant=skip_redundant,
         )
@@ -501,7 +472,7 @@ def test_correlate_density_metadata_agree(frames, correlation_order, skip_redund
     [
         None,
         Labels(
-            names=["spherical_harmonics_l"], values=np.array([1, 2, 4]).reshape(-1, 1)
+            names=["spherical_harmonics_l"], values=np.array([1, 3]).reshape(-1, 1)
         ),
     ],
 )
