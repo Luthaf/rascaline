@@ -1,7 +1,10 @@
 """
 Module for computing Clebsch-gordan tensor product iterations on density (i.e.
-correlation order 1) tensors in TensorMap form. A special (and iterative) case
-of the more general :py:mod:`correlate_tensors` module.
+correlation order 1) tensors in TensorMap form, where the samples are
+equivalent. 
+
+This is a special (and iterative) case of the more general
+:py:mod:`correlate_tensors` module.
 """
 from typing import List, Optional, Union
 
@@ -237,22 +240,7 @@ def _correlate_density(
                 )
             )
 
-    # Drop redundant key names. TODO: these should be part of the global
-    # matadata associated with the TensorMap. Awaiting this functionality in
-    # metatensor.
-    for i, tensor in enumerate(density_correlations):
-        keys = tensor.keys
-        if len(_dispatch.unique(tensor.keys.column("order_nu"))) == 1:
-            keys = keys.remove(name="order_nu")
-        if len(_dispatch.unique(tensor.keys.column("inversion_sigma"))) == 1:
-            keys = keys.remove(name="inversion_sigma")
-        density_correlations[i] = TensorMap(
-            keys=keys, blocks=[b.copy() for b in tensor.blocks()]
-        )
-
-    # Return a single TensorMap in the simple case
-    if len(density_correlations) == 1:
+    if len(density_correlations) == 1:  # simple case: single TensorMap
         return density_correlations[0]
-
-    # Otherwise return a list of TensorMaps
-    return density_correlations
+        
+    return density_correlations  # list of TensorMaps

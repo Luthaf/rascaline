@@ -198,7 +198,9 @@ def _precompute_keys(
     `selected_keys`.
 
     If `skip_redundant` is True, then keys that represent redundant CG
-    operations are not included in the output keys at each step.
+    operations are not included in the output keys at each step. This is only
+    valid when iteratively correlating a density (i.e. correlation order 1)
+    descriptor with itself.
     """
     keys_metadata = []
     keys_out = keys_1
@@ -217,6 +219,9 @@ def _precompute_keys(
             )
 
         if skip_redundant[iteration]:
+            # Removing redundant keys is only valid when correlating a density
+            # iteratively with itself
+            assert set(keys_2.column("order_nu")) == {1}
             keys_1_entries, keys_2_entries, keys_out = _remove_redundant_keys(
                 keys_1_entries, keys_2_entries, keys_out
             )
@@ -278,19 +283,41 @@ def _precompute_keys_full_product(
     the pair of blocks indexed by correspoding key pairs in the first two lists.
     """
     # Get the correlation order of the first TensorMap.
-    unique_nu = _dispatch.unique(keys_1.column("order_nu"))
-    if len(unique_nu) > 1:
+    unique_nu1 = _dispatch.unique(keys_1.column("order_nu"))
+    if len(unique_nu1) > 1:
         raise ValueError(
             "keys_1 must correspond to a tensor of a single correlation order."
-            f" Found {len(unique_nu)} body orders: {unique_nu}"
+            f" Found {len(unique_nu1)} body orders: {unique_nu1}"
         )
-    nu1 = unique_nu[0]
+    nu1 = unique_nu1[0]
+
+    # Get the correlation order of the second TensorMap.
+    unique_nu2 = _dispatch.unique(keys_2.column("order_nu"))
+    if len(unique_nu2) > 1:
+        raise ValueError(
+            "keys_1 must correspond to a tensor of a single correlation order."
+            f" Found {len(unique_nu2)} body orders: {unique_nu2}"
+        )
+    nu2 = unique_nu2[0]
 
     # Define new correlation order of output TensorMap
-    nu = nu1 + 1
+    nu = nu1 + nu2
 
     # The correlation order of the second TensorMap should be nu = 1.
-    assert _dispatch.all(keys_2.column("order_nu") == 1)
+    assert nu2 == 1
+
+    # Define the sub-parts of the required key names. These are:
+    # 1) The base key names both keys should have: correlation order, parity,
+    #    lambda
+    base_key_names = ["order_nu", "inversion_sigma", "spherical_harmonics_l"]
+    # 2) The list of l values, depending on the correlation order
+    l_list_names_1 = [f"l{angular_l}" for angular_l in range(1, nu1 + 1)]
+    l_list_names_2 = [f"l{angular_l}" for angular_l in range(1, nu2 + 1)]
+    # 3) The list of k values, depending on the correlation order
+    k_list_names_1 = [f"k{k}" for k in range(2, nu1)]
+    k_list_names_2 = [f"k{k}" for k in range(2, nu2)]
+    # 4) Any other sparse keys - such as species center, species neighbor, etc.
+    other_key_names = 
 
     # If nu1 = 1, the key names don't yet have any "lx" columns
     if nu1 == 1:
@@ -301,6 +328,7 @@ def _precompute_keys_full_product(
         new_l_list_names = l_list_names + [f"l{nu}"]
 
     # Check key names
+    
     assert _dispatch.all(
         keys_1.names
         == ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center"]
@@ -421,6 +449,9 @@ def _remove_redundant_keys(
     # Get and check the correlation order of the input keys
     nu1 = keys_1_entries[0]["order_nu"]
     nu2 = keys_2_entries[0]["order_nu"]
+
+    # Removing redundant keys is only valid when correlating a density
+    # iteratively with itself
     assert nu2 == 1
 
     # Get the correlation order of the output TensorMap
