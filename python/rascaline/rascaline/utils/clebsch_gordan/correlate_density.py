@@ -7,7 +7,7 @@ from typing import List, Optional, Union
 
 from metatensor import Labels, TensorMap
 
-from . import _clebsch_gordan, _cg_cache, _dispatch
+from . import _cg_cache, _clebsch_gordan, _dispatch
 
 
 # ======================================================================
@@ -257,4 +257,3 @@ def _correlate_density(
 
     # Otherwise return a list of TensorMaps
     return density_correlations
-    

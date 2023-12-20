@@ -1,6 +1,6 @@
 import os
 
-from .clebsch_gordan import *  # noqa
+from .clebsch_gordan import correlate_density, correlate_density_metadata  # noqa
 from .power_spectrum import PowerSpectrum  # noqa
 from .splines import (  # noqa
     AtomicDensityBase,
