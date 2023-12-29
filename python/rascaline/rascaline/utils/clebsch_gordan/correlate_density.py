@@ -6,9 +6,8 @@ equivalent.
 
 from typing import List, Optional, Union
 
-from metatensor import Labels, TensorMap
-
 from . import _cg_cache, _clebsch_gordan, _dispatch
+from ._classes import Labels, LabelsEntry, TensorBlock, TensorMap, TorchTensor
 
 
 # ======================================================================
@@ -20,8 +19,8 @@ def correlate_density(
     density: TensorMap,
     correlation_order: int,
     angular_cutoff: Optional[int] = None,
-    selected_keys: Optional[Union[Labels, List[Labels]]] = None,
-    skip_redundant: Optional[Union[bool, List[bool]]] = False,
+    selected_keys: Optional[Union[Labels, List[Union[Labels, None]]]] = None,
+    skip_redundant: Union[bool, List[bool]] = False,
     output_selection: Optional[Union[bool, List[bool]]] = None,
 ) -> Union[TensorMap, List[TensorMap]]:
     """
@@ -98,8 +97,8 @@ def correlate_density_metadata(
     density: TensorMap,
     correlation_order: int,
     angular_cutoff: Optional[int] = None,
-    selected_keys: Optional[Union[Labels, List[Labels]]] = None,
-    skip_redundant: Optional[Union[bool, List[bool]]] = False,
+    selected_keys: Optional[Union[Labels, List[Union[Labels, None]]]] = None,
+    skip_redundant: Union[bool, List[bool]] = False,
     output_selection: Optional[Union[bool, List[bool]]] = None,
 ) -> Union[TensorMap, List[TensorMap]]:
     """
@@ -129,8 +128,8 @@ def _correlate_density(
     density: TensorMap,
     correlation_order: int,
     angular_cutoff: Optional[int] = None,
-    selected_keys: Optional[Union[Labels, List[Labels]]] = None,
-    skip_redundant: Optional[Union[bool, List[bool]]] = False,
+    selected_keys: Optional[Union[Labels, List[Union[Labels, None]]]] = None,
+    skip_redundant: Union[bool, List[bool]] = False,
     output_selection: Optional[Union[bool, List[bool]]] = None,
     compute_metadata_only: bool = False,
     sparse: bool = True,
@@ -143,25 +142,27 @@ def _correlate_density(
     if correlation_order <= 1:
         raise ValueError("`correlation_order` must be > 1")
     # TODO: implement combinations of gradients too
-    if _dispatch.any([len(list(block.gradients())) > 0 for block in density]):
+    # we have to create a bool array with dispatch to be TorchScript compatible
+    contains_gradients = all(
+        [len(list(block.gradients())) > 0 for _, block in density.items()]
+    )
+    if contains_gradients:
         raise NotImplementedError(
             "Clebsch Gordan combinations with gradients not yet implemented."
             " Use metatensor.remove_gradients to remove gradients from the input."
         )
     # Check metadata
     if not (
-        _dispatch.all(density.keys.names == ["spherical_harmonics_l", "species_center"])
-        or _dispatch.all(
-            density.keys.names
-            == ["spherical_harmonics_l", "species_center", "species_neighbor"]
-        )
+        density.keys.names == ["spherical_harmonics_l", "species_center"]
+        or density.keys.names
+        == ["spherical_harmonics_l", "species_center", "species_neighbor"]
     ):
         raise ValueError(
             "input `density` must have key names"
             ' ["spherical_harmonics_l", "species_center"] or'
             ' ["spherical_harmonics_l", "species_center", "species_neighbor"]'
         )
-    if not _dispatch.all(density.component_names == ["spherical_harmonics_m"]):
+    if not density.component_names == ["spherical_harmonics_m"]:
         raise ValueError(
             "input `density` must have a single component"
             " axis with name `spherical_harmonics_m`"
@@ -171,11 +172,11 @@ def _correlate_density(
     density_correlation = density  # create a copy to combine with itself
 
     # Parse the selected keys
-    selected_keys = _clebsch_gordan._parse_selected_keys(
+    selected_keys_: List[Union[Labels, None]] = _clebsch_gordan._parse_selected_keys(
         n_iterations=n_iterations,
+        like=density.keys.values,
         angular_cutoff=angular_cutoff,
         selected_keys=selected_keys,
-        like=density.keys.values,
     )
     # Parse the bool flags that control skipping of redundant CG combinations
     # and TensorMap output from each iteration
@@ -190,7 +191,7 @@ def _correlate_density(
         density.keys,
         density.keys,
         n_iterations=n_iterations,
-        selected_keys=selected_keys,
+        selected_keys=selected_keys_,
         skip_redundant=skip_redundant,
     )
     # Compute CG coefficient cache
@@ -198,32 +199,42 @@ def _correlate_density(
         cg_cache = None
     else:
         angular_max = max(
-            _dispatch.concatenate(
-                [density.keys.column("spherical_harmonics_l")]
-                + [mdata[2].column("spherical_harmonics_l") for mdata in key_metadata]
-            )
+            _dispatch.max(density.keys.column("spherical_harmonics_l")),
+            max(
+                [
+                    int(_dispatch.max(mdata[2].column("spherical_harmonics_l")))
+                    for mdata in key_metadata
+                ]
+            ),
         )
         # TODO: keys have been precomputed, so perhaps we don't need to
         # compute all CG coefficients up to angular_max here.
         # TODO: use sparse cache by default until we understand under which
         # circumstances (and if) dense is faster.
-        cg_cache = _cg_cache.ClebschGordanReal(angular_max, sparse=sparse)
+        cg_cache = _cg_cache.ClebschGordanReal(
+            angular_max,
+            sparse=sparse,
+            use_torch=isinstance(density[0].values, TorchTensor),
+        )
 
     # Perform iterative CG tensor products
-    density_correlations = []
+    density_correlations: List[TensorMap] = []
     for iteration in range(n_iterations):
         # Define the correlation order of the current iteration
         correlation_order_it = iteration + 2
 
         # Combine block pairs
-        blocks_out = []
-        for key_1, key_2, key_out in zip(*key_metadata[iteration]):
+        blocks_out: List[TensorBlock] = []
+        key_metadata_i = key_metadata[iteration]
+        for j in range(len(key_metadata_i[0])):
+            key_1: LabelsEntry = key_metadata_i[0][j]
+            key_2: LabelsEntry = key_metadata_i[1][j]
+            lambda_out: int = int(key_metadata_i[2].column("spherical_harmonics_l")[j])
             block_out = _clebsch_gordan._combine_blocks_same_samples(
-                density_correlation[key_1],
-                density[key_2],
-                key_out["spherical_harmonics_l"],
+                density_correlation.block(key_1),
+                density.block(key_2),
+                lambda_out,
                 cg_cache,
-                compute_metadata_only=compute_metadata_only,
             )
             blocks_out.append(block_out)
         keys_out = key_metadata[iteration][2]

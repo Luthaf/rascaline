@@ -4,12 +4,19 @@ Private module containing helper functions for public module
 metatensor :py:class:`TensorMap` objects.
 """
 
-import itertools
 from typing import List, Optional, Tuple, Union
 
-from metatensor import Labels, TensorBlock, TensorMap
-
 from . import _cg_cache, _dispatch
+from ._classes import (
+    Array,
+    Labels,
+    LabelsEntry,
+    TensorBlock,
+    TensorMap,
+    is_labels,
+    torch_jit_annotate,
+    torch_jit_is_scripting,
+)
 
 
 # ==================================================================
@@ -34,23 +41,27 @@ def _standardize_keys(tensor: TensorMap) -> TensorMap:
     if "species_neighbor" in tensor.keys.names:
         tensor = tensor.keys_to_properties(keys_to_move="species_neighbor")
     keys = tensor.keys.insert(
-        name="order_nu",
-        values=_dispatch.int_array_like([1], like=tensor.keys.values),
         index=0,
+        name="order_nu",
+        values=_dispatch.int_array_like(
+            len(tensor.keys.values) * [1], like=tensor.keys.values
+        ),
     )
     keys = keys.insert(
-        name="inversion_sigma",
-        values=_dispatch.int_array_like([1], like=tensor.keys.values),
         index=1,
+        name="inversion_sigma",
+        values=_dispatch.int_array_like(
+            len(tensor.keys.values) * [1], like=tensor.keys.values
+        ),
     )
     return TensorMap(keys=keys, blocks=[b.copy() for b in tensor.blocks()])
 
 
 def _parse_selected_keys(
     n_iterations: int,
+    like: Array,
     angular_cutoff: Optional[int] = None,
-    selected_keys: Optional[Union[Labels, List[Labels]]] = None,
-    like=None,
+    selected_keys: Optional[Union[Labels, List[Union[Labels, None]]]] = None,
 ) -> List[Union[None, Labels]]:
     """
     Parses the `selected_keys` argument passed to public functions. Checks the
@@ -60,6 +71,39 @@ def _parse_selected_keys(
     `like` is required if a new :py:class:`Labels` object is to be created by
     :py:mod:`_dispatch`.
     """
+    # Check the selected_keys
+    if (
+        (selected_keys is not None)
+        and (not isinstance(selected_keys, list))
+        and (not is_labels(selected_keys))
+    ):
+        raise TypeError(
+            "`selected_keys` must be a `Labels` or List[Union[None, `Labels`]]"
+        )
+
+    if isinstance(selected_keys, list):
+        # Both if conditions check the same thing, the second is for metetensor-core and
+        # metatensor-torch, the first one for torch-scripted metatensor-torch
+        if torch_jit_is_scripting():
+            if not all(
+                [
+                    isinstance(selected_keys[i], Labels) or (selected_keys[i] is None)
+                    for i in range(len(selected_keys))
+                ]
+            ):
+                raise TypeError(
+                    "`selected_keys` must be a Labels or List[Union[None, Labels]]"
+                )
+        elif not all(
+            [
+                is_labels(selected_keys[i]) or (selected_keys[i] is None)
+                for i in range(len(selected_keys))
+            ]
+        ):
+            raise TypeError(
+                "`selected_keys` must be a Labels or List[Union[None, Labels]]"
+            )
+
     # Check angular_cutoff arg
     if angular_cutoff is not None:
         if not isinstance(angular_cutoff, int):
@@ -67,46 +111,66 @@ def _parse_selected_keys(
         if angular_cutoff < 1:
             raise ValueError("`angular_cutoff` must be >= 1")
 
+    # we use a new variable for selected_keys so TorchScript can infer correct type
+    selected_keys_: List[Union[None, Labels]] = []
+
     if selected_keys is None:
         if angular_cutoff is None:  # no selections at all
-            selected_keys = [None] * n_iterations
+            selected_keys_ = [
+                torch_jit_annotate(Union[None, Labels], None)
+            ] * n_iterations
         else:
             # Create a key selection with all angular channels <= the specified
             # angular cutoff
-            selected_keys = [
+            label: Union[None, Labels] = torch_jit_annotate(
+                Union[None, Labels],
                 Labels(
                     names=["spherical_harmonics_l"],
-                    values=_dispatch.int_range_like(
-                        0, angular_cutoff, like=like
+                    values=_dispatch.int_array_like(
+                        list(range(0, angular_cutoff)), like=like
                     ).reshape(-1, 1),
-                )
-            ] * n_iterations
+                ),
+            )
+            selected_keys_ = [label] * n_iterations
 
-    if isinstance(selected_keys, Labels):
+    # Both if conditions check the same thing, we cannot write them out into one
+    # condition, because otherwise the TorchScript compiler cannot infer that
+    # selected_keys is Labels. We need both because isinstance(selected, Labels) works
+    # with metatensor-torch only when scripted
+    if torch_jit_is_scripting():
+        if isinstance(selected_keys, Labels):
+            # Create a list, but only apply a key selection at the final iteration
+            selected_keys_ = [torch_jit_annotate(Union[None, Labels], None)] * (
+                n_iterations - 1
+            )
+            selected_keys_.append(torch_jit_annotate(Labels, selected_keys))
+    elif is_labels(selected_keys):
         # Create a list, but only apply a key selection at the final iteration
-        selected_keys = [None] * (n_iterations - 1) + [selected_keys]
-
-    # Check the selected_keys
-    if not isinstance(selected_keys, List):
-        raise TypeError(
-            "`selected_keys` must be a `Labels` or List[Union[None, `Labels`]]"
+        selected_keys_ = [torch_jit_annotate(Union[None, Labels], None)] * (
+            n_iterations - 1
         )
-    if not len(selected_keys) == n_iterations:
+        selected_keys_.append(torch_jit_annotate(Labels, selected_keys))
+    elif isinstance(selected_keys, list):
+        selected_keys_ = selected_keys
+
+    if not len(selected_keys_) == n_iterations:
         raise ValueError(
             "`selected_keys` must be a List[Union[None, Labels]] of length"
             " `correlation_order` - 1"
         )
-    if not _dispatch.all(
-        [isinstance(val, (Labels, type(None))) for val in selected_keys]
-    ):
-        raise TypeError("`selected_keys` must be a Labels or List[Union[None, Labels]]")
 
     # Now iterate over each of the Labels (or None) in the list and check
-    for slct in selected_keys:
+    for slct in selected_keys_:
         if slct is None:
             continue
-        assert isinstance(slct, Labels)
-        if not _dispatch.all(
+        if torch_jit_is_scripting():
+            if not (isinstance(slct, Labels)):
+                raise ValueError("Asserted that elements in `slct` are Labels")
+        else:
+            if not (is_labels(slct)):
+                raise ValueError("Asserted that elements in `slct` are Labels")
+
+        if not all(
             [
                 name in ["spherical_harmonics_l", "inversion_sigma"]
                 for name in slct.names
@@ -118,33 +182,45 @@ def _parse_selected_keys(
             )
         if "spherical_harmonics_l" in slct.names:
             if angular_cutoff is not None:
-                if not _dispatch.all(
+                below_cutoff: Array = (
                     slct.column("spherical_harmonics_l") <= angular_cutoff
-                ):
+                )
+                if not _dispatch.all(below_cutoff):
                     raise ValueError(
                         "specified angular channels in `selected_keys` must be <= the"
                         " specified `angular_cutoff`"
                     )
-            if not _dispatch.all(
-                [angular_l >= 0 for angular_l in slct.column("spherical_harmonics_l")]
-            ):
+            above_zero = _dispatch.bool_array_like(
+                [
+                    bool(angular_l >= 0)
+                    for angular_l in slct.column("spherical_harmonics_l")
+                ],
+                like=like,
+            )
+            if not _dispatch.all(above_zero):
                 raise ValueError(
                     "specified angular channels in `selected_keys` must be >= 0"
                 )
         if "inversion_sigma" in slct.names:
             if not _dispatch.all(
-                [parity_s in [-1, +1] for parity_s in slct.column("inversion_sigma")]
+                _dispatch.bool_array_like(
+                    [
+                        bool(parity_s in [-1, 1])
+                        for parity_s in slct.column("inversion_sigma")
+                    ],
+                    like,
+                )
             ):
                 raise ValueError(
                     "specified parities in `selected_keys` must be -1 or +1"
                 )
 
-    return selected_keys
+    return selected_keys_
 
 
 def _parse_bool_iteration_filters(
     n_iterations: int,
-    skip_redundant: Optional[Union[bool, List[bool]]] = False,
+    skip_redundant: Union[bool, List[bool]] = False,
     output_selection: Optional[Union[bool, List[bool]]] = None,
 ) -> List[List[bool]]:
     """
@@ -152,10 +228,13 @@ def _parse_bool_iteration_filters(
     public functions.
     """
     if isinstance(skip_redundant, bool):
-        skip_redundant = [skip_redundant] * n_iterations
-    if not _dispatch.all([isinstance(val, bool) for val in skip_redundant]):
+        skip_redundant_ = [skip_redundant] * n_iterations
+    else:
+        skip_redundant_ = skip_redundant
+
+    if not all([isinstance(val, bool) for val in skip_redundant_]):
         raise TypeError("`skip_redundant` must be a `bool` or `list` of `bool`")
-    if not len(skip_redundant) == n_iterations:
+    if not len(skip_redundant_) == n_iterations:
         raise ValueError(
             "`skip_redundant` must be a bool or `list` of `bool` of length"
             " `correlation_order` - 1"
@@ -165,7 +244,7 @@ def _parse_bool_iteration_filters(
     else:
         if isinstance(output_selection, bool):
             output_selection = [output_selection] * n_iterations
-        if not isinstance(output_selection, List):
+        if not isinstance(output_selection, list):
             raise TypeError("`output_selection` must be passed as `list` of `bool`")
 
     if not len(output_selection) == n_iterations:
@@ -173,12 +252,12 @@ def _parse_bool_iteration_filters(
             "`output_selection` must be a ``list`` of ``bool`` of length"
             " corresponding to the number of CG iterations"
         )
-    if not _dispatch.all([isinstance(v, bool) for v in output_selection]):
+    if not all([isinstance(v, bool) for v in output_selection]):
         raise TypeError("`output_selection` must be passed as a `list` of `bool`")
-    if not _dispatch.all([isinstance(v, bool) for v in output_selection]):
+    if not all([isinstance(v, bool) for v in output_selection]):
         raise TypeError("`output_selection` must be passed as a `list` of `bool`")
 
-    return skip_redundant, output_selection
+    return skip_redundant_, output_selection
 
 
 def _precompute_keys(
@@ -187,7 +266,7 @@ def _precompute_keys(
     n_iterations: int,
     selected_keys: List[Union[None, Labels]],
     skip_redundant: List[bool],
-) -> List[Tuple[Labels, List[List[int]]]]:
+) -> List[Tuple[List[LabelsEntry], List[LabelsEntry], Labels]]:
     """
     Computes all the keys metadata needed to perform `n_iterations` of CG
     combination steps.
@@ -201,7 +280,7 @@ def _precompute_keys(
     If `skip_redundant` is True, then keys that represent redundant CG
     operations are not included in the output keys at each step.
     """
-    keys_metadata = []
+    keys_metadata: List[Tuple[List[LabelsEntry], List[LabelsEntry], Labels]] = []
     keys_out = keys_1
     for iteration in range(n_iterations):
         # Get the keys metadata for the combination of the 2 tensors
@@ -209,12 +288,13 @@ def _precompute_keys(
             keys_1=keys_out,
             keys_2=keys_2,
         )
-        if selected_keys[iteration] is not None:
+        selected_keys_i = selected_keys[iteration]
+        if selected_keys_i is not None:
             keys_1_entries, keys_2_entries, keys_out = _apply_key_selection(
                 keys_1_entries,
                 keys_2_entries,
                 keys_out,
-                selected_keys=selected_keys[iteration],
+                selected_keys=selected_keys_i,
             )
 
         if skip_redundant[iteration]:
@@ -237,7 +317,8 @@ def _precompute_keys(
 
 def _precompute_keys_full_product(
     keys_1: Labels, keys_2: Labels
-) -> Tuple[List, List, Labels]:
+) -> Tuple[List[LabelsEntry], List[LabelsEntry], Labels]:
+    # Due to TorchScript we cannot use List[LabelsEntry]
     """
     Given the keys of 2 TensorMaps, returns the keys that would be present after
     a full CG product of these TensorMaps.
@@ -272,11 +353,11 @@ def _precompute_keys_full_product(
     `keys_2` must follow the key name convention: ["order_nu",
     "inversion_sigma", "spherical_harmonics_l", "species_center"]
 
-    Returned is Tuple[List, List, Labels]. The first two lists correspond to the
-    LabelsEntry objects of the keys being combined. The third element is a
-    Labels object corresponding to the keys of the output TensorMap. Each entry
-    in this Labels object corresponds to the keys is formed by combination of
-    the pair of blocks indexed by correspoding key pairs in the first two lists.
+    The first two lists of the returned value correspond to the LabelsEntry objects of
+    the keys being combined. The third element is a Labels object corresponding to the
+    keys of the output TensorMap. Each entry in this Labels object corresponds to the
+    keys is formed by combination of the pair of blocks indexed by correspoding key
+    pairs in the first two lists.
     """
     # Get the correlation order of the first TensorMap.
     unique_nu = _dispatch.unique(keys_1.column("order_nu"))
@@ -285,7 +366,7 @@ def _precompute_keys_full_product(
             "keys_1 must correspond to a tensor of a single correlation order."
             f" Found {len(unique_nu)} body orders: {unique_nu}"
         )
-    nu1 = unique_nu[0]
+    nu1 = int(unique_nu[0])
 
     # Define new correlation order of output TensorMap
     nu = nu1 + 1
@@ -295,22 +376,31 @@ def _precompute_keys_full_product(
 
     # If nu1 = 1, the key names don't yet have any "lx" columns
     if nu1 == 1:
-        l_list_names = []
+        l_list_names: List[str] = []
         new_l_list_names = ["l1", "l2"]
     else:
         l_list_names = [f"l{angular_l}" for angular_l in range(1, nu1 + 1)]
         new_l_list_names = l_list_names + [f"l{nu}"]
 
     # Check key names
-    assert _dispatch.all(
-        keys_1.names
-        == ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center"]
-        + l_list_names
-        + [f"k{k}" for k in range(2, nu1)]
-    )
-    assert _dispatch.all(
-        keys_2.names
-        == ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center"]
+    assert keys_1.names == [
+        "order_nu",
+        "inversion_sigma",
+        "spherical_harmonics_l",
+        "species_center",
+    ] + l_list_names + [f"k{k}" for k in range(2, nu1)]
+    assert keys_2.names == [
+        "order_nu",
+        "inversion_sigma",
+        "spherical_harmonics_l",
+        "species_center",
+    ]
+
+    # Define key names of output Labels (i.e. for combined TensorMap)
+    new_names = (
+        ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center"]
+        + new_l_list_names
+        + [f"k{k}" for k in range(2, nu)]
     )
 
     # Define key names of output Labels (i.e. for combined TensorMap)
@@ -320,43 +410,59 @@ def _precompute_keys_full_product(
         + [f"k{k}" for k in range(2, nu)]
     )
 
-    new_key_values = []
-    keys_1_entries = []
-    keys_2_entries = []
-    for key_1, key_2 in itertools.product(keys_1, keys_2):
-        # Unpack relevant key values
-        sig1, lam1, a = key_1.values[1:4]
-        sig2, lam2, a2 = key_2.values[1:4]
+    new_key_values: List[List[int]] = []
+    # Types are actually LabelsEntry, but TorchScript does not understand this.
+    keys_1_entries: List[LabelsEntry] = []
+    keys_2_entries: List[LabelsEntry] = []
+    for i in range(len(keys_1)):
+        for j in range(len(keys_2)):
+            key_1 = keys_1.entry(i)
+            key_2 = keys_2.entry(j)
+            # Unpack relevant key values
+            sig1 = int(keys_1.values[i, 1])
+            lam1 = int(keys_1.values[i, 2])
+            a = int(keys_1.values[i, 3])
+            sig2 = int(keys_2.values[j, 1])
+            lam2 = int(keys_2.values[j, 2])
+            a2 = int(keys_2.values[j, 3])
 
-        # Only combine blocks of the same chemical species
-        if a != a2:
-            continue
+            # Only combine blocks of the same chemical species
+            if a != a2:
+                continue
 
-        # First calculate the possible non-zero angular channels that can be
-        # formed from combination of blocks of order `lam1` and `lam2`. This
-        # corresponds to values in the inclusive range { |lam1 - lam2|, ...,
-        # |lam1 + lam2| }
-        nonzero_lams = _dispatch.int_range_like(
-            abs(lam1 - lam2), abs(lam1 + lam2) + 1, like=key_1.values
-        )
+            # First calculate the possible non-zero angular channels that can be
+            # formed from combination of blocks of order `lam1` and `lam2`. This
+            # corresponds to values in the inclusive range { |lam1 - lam2|, ...,
+            # |lam1 + lam2| }
+            min_lam: int = abs(lam1 - lam2)
+            max_lam: int = abs(lam1 + lam2) + 1
+            nonzero_lams = list(range(min_lam, max_lam))
 
-        # Now iterate over the non-zero angular channels and apply the custom
-        # selections
-        for lambda_ in nonzero_lams:
-            # Calculate new sigma
-            sig = sig1 * sig2 * (-1) ** (lam1 + lam2 + lambda_)
+            # Now iterate over the non-zero angular channels and apply the custom
+            # selections
+            for lambda_ in nonzero_lams:
+                # Calculate new sigma
+                sig = int(sig1 * sig2 * (-1) ** (lam1 + lam2 + lambda_))
 
-            # Extract the l and k lists from keys_1
-            l_list = key_1.values[4 : 4 + nu1].tolist()
-            k_list = key_1.values[4 + nu1 :].tolist()
+                # Extract the l and k lists from keys_1
+                # We have to convert to int64 because of
+                # https://github.com/pytorch/pytorch/issues/76295
+                l_list: List[int] = _dispatch.to_int_list(keys_1.values[i, 4 : 4 + nu1])
+                k_list: List[int] = _dispatch.to_int_list(keys_1.values[i, 4 + nu1 :])
 
-            # Build the new keys values. l{nu} is `lam2`` (i.e.
-            # "spherical_harmonics_l" of the key from `keys_2`. k{nu-1} is
-            # `lam1` (i.e. "spherical_harmonics_l" of the key from `keys_1`).
-            new_vals = [nu, sig, lambda_, a] + l_list + [lam2] + k_list + [lam1]
-            new_key_values.append(new_vals)
-            keys_1_entries.append(key_1)
-            keys_2_entries.append(key_2)
+                # Build the new keys values. l{nu} is `lam2`` (i.e.
+                # "spherical_harmonics_l" of the key from `keys_2`. k{nu-1} is
+                # `lam1` (i.e. "spherical_harmonics_l" of the key from `keys_1`).
+                new_vals: List[int] = (
+                    torch_jit_annotate(List[int], [nu, sig, lambda_, a])
+                    + l_list
+                    + [lam2]
+                    + k_list
+                    + [lam1]
+                )
+                new_key_values.append(new_vals)
+                keys_1_entries.append(key_1)
+                keys_2_entries.append(key_2)
 
     # Define new keys as the full product of keys_1 and keys_2
     keys_out = Labels(
@@ -368,8 +474,11 @@ def _precompute_keys_full_product(
 
 
 def _apply_key_selection(
-    keys_1_entries: List, keys_2_entries: List, keys_out: Labels, selected_keys: Labels
-) -> Tuple[List, List, Labels]:
+    keys_1_entries: List[LabelsEntry],
+    keys_2_entries: List[LabelsEntry],
+    keys_out: Labels,
+    selected_keys: Labels,
+) -> Tuple[List[LabelsEntry], List[LabelsEntry], Labels]:
     """
     Applies a selection according to `selected_keys` to the keys of an output
     TensorMap `keys_out` produced by combination of blocks indexed by keys
@@ -381,35 +490,45 @@ def _apply_key_selection(
     If a selection in `selected_keys` is not valid based on the keys in
     `keys_out`, an error is raised.
     """
-    # Extract the relevant columns from `selected_keys` that the selection will
-    # be performed on
-    keys_out_vals = [[k[name] for name in selected_keys.names] for k in keys_out]
+    # Extract the relevant columns from `selected_keys` that the selection will be
+    # performed on
+    col_idx = _dispatch.int_array_like(
+        [keys_out.names.index(name) for name in selected_keys.names], keys_out.values
+    )
+    keys_out_vals = keys_out.values[:, col_idx]
 
     # First check that all of the selected keys exist in the output keys
     for slct in selected_keys.values:
-        if not _dispatch.any([_dispatch.all(slct == k) for k in keys_out_vals]):
+        if not any(
+            [bool(all(slct == keys_out_vals[i])) for i in range(len(keys_out_vals))]
+        ):
             raise ValueError(
                 f"selected key {selected_keys.names} = {slct} not found"
                 " in the output keys. Check the `selected_keys` argument."
             )
 
     # Build a mask of the selected keys
-    mask = [
-        _dispatch.any([_dispatch.all(i == j) for j in selected_keys.values])
-        for i in keys_out_vals
-    ]
+    mask = _dispatch.bool_array_like(
+        [any([bool(all(i == j)) for j in selected_keys.values]) for i in keys_out_vals],
+        like=selected_keys.values,
+    )
 
+    mask_indices = _dispatch.int_array_like(
+        list(range(len(keys_1_entries))), like=selected_keys.values
+    )[mask]
     # Apply the mask to key entries and keys and return
-    keys_1_entries = [k for k, isin in zip(keys_1_entries, mask) if isin]
-    keys_2_entries = [k for k, isin in zip(keys_2_entries, mask) if isin]
+    keys_1_entries = [keys_1_entries[i] for i in mask_indices]
+    keys_2_entries = [keys_2_entries[i] for i in mask_indices]
     keys_out = Labels(names=keys_out.names, values=keys_out.values[mask])
 
     return keys_1_entries, keys_2_entries, keys_out
 
 
 def _remove_redundant_keys(
-    keys_1_entries: List, keys_2_entries: List, keys_out: Labels
-) -> Tuple[List, List, Labels]:
+    keys_1_entries: List[LabelsEntry],
+    keys_2_entries: List[LabelsEntry],
+    keys_out: Labels,
+) -> Tuple[List[LabelsEntry], List[LabelsEntry], Labels]:
     """
     For a Labels object `keys_out` that corresponds to the keys of a TensorMap
     formed by combined of the blocks described by the entries in the lists
@@ -428,11 +547,13 @@ def _remove_redundant_keys(
     nu = nu1 + 1
 
     # Identify keys of redundant blocks and remove them
-    key_idxs_to_keep = []
-    for key_idx, key in enumerate(keys_out):
+    key_idxs_to_keep: List[int] = []
+    for key_idx in range(len(keys_out)):
+        key = keys_out.entry(key_idx)
         # Get the important key values. This is all of the keys, excpet the k
-        # list
-        key_vals_slice = key.values[: 4 + (nu + 1)].tolist()
+        # list. We have to convert to int64 because of
+        # https://github.com/pytorch/pytorch/issues/76295
+        key_vals_slice: List[int] = _dispatch.to_int_list(key.values[: 4 + (nu + 1)])
         first_part, l_list = key_vals_slice[:4], key_vals_slice[4:]
 
         # Sort the l list
@@ -441,18 +562,19 @@ def _remove_redundant_keys(
         # Compare the sliced key with the one recreated when the l list is
         # sorted. If they are identical, this is the key of the block that we
         # want to compute a CG combination for.
-        key_slice_tuple = tuple(first_part + l_list)
-        key_slice_sorted_tuple = tuple(first_part + l_list_sorted)
-        if _dispatch.all(key_slice_tuple == key_slice_sorted_tuple):
+        key_slice_tuple = _dispatch.int_array_like(first_part + l_list, like=key.values)
+        key_slice_sorted_tuple = _dispatch.int_array_like(
+            first_part + l_list_sorted, like=key.values
+        )
+        if all(key_slice_tuple == key_slice_sorted_tuple):
             key_idxs_to_keep.append(key_idx)
 
     # Build a reduced Labels object for the combined keys, with redundancies removed
     keys_out_red = Labels(
         names=keys_out.names,
-        values=_dispatch.int_array_like(
-            [keys_out[idx].values for idx in key_idxs_to_keep],
-            like=keys_1_entries[0].values,
-        ),
+        values=keys_out.values[
+            _dispatch.int_array_like(key_idxs_to_keep, like=keys_out.values)
+        ],
     )
 
     # Store the list of reduced entries that combine to form the reduced output keys
@@ -471,8 +593,7 @@ def _combine_blocks_same_samples(
     block_1: TensorBlock,
     block_2: TensorBlock,
     lambda_: int,
-    cg_cache,
-    compute_metadata_only: bool = False,
+    cg_cache: Union[_cg_cache.ClebschGordanReal, None],
 ) -> TensorBlock:
     """
     For a given pair of TensorBlocks and desired angular channel, combines the
@@ -480,14 +601,9 @@ def _combine_blocks_same_samples(
     """
 
     # Do the CG combination - single center so no shape pre-processing required
-    if compute_metadata_only:
-        combined_values = _cg_cache.combine_arrays(
-            block_1.values, block_2.values, lambda_, cg_cache, return_empty_array=True
-        )
-    else:
-        combined_values = _cg_cache.combine_arrays(
-            block_1.values, block_2.values, lambda_, cg_cache, return_empty_array=False
-        )
+    combined_values = _cg_cache.combine_arrays(
+        block_1.values, block_2.values, lambda_, cg_cache
+    )
 
     # Infer the new nu value: block 1's properties are nu pairs of
     # "species_neighbor_x" and "nx".
@@ -496,7 +612,25 @@ def _combine_blocks_same_samples(
     # Define the new property names for "nx" and "species_neighbor_x"
     n_names = [f"n{i}" for i in range(1, combined_nu + 1)]
     neighbor_names = [f"species_neighbor_{i}" for i in range(1, combined_nu + 1)]
-    prop_names = [item for i in zip(neighbor_names, n_names) for item in i]
+    prop_names_zip = [
+        [neighbor_names[i], n_names[i]] for i in range(len(neighbor_names))
+    ]
+    prop_names: List[str] = []
+    for i in range(len(prop_names_zip)):
+        prop_names.extend(prop_names_zip[i])
+
+    # create cross product list of indices in a torch-scriptable way of
+    # [[i, j] for i in range(len(block_1.properties.values)) for j in
+    #             range(len(block_2.properties.values))]
+    # [0, 1, 2], [0, 1] -> [[0, 1], [0, 2], [1, 0], [1, 1], [2, 0], [2, 1]]
+    block_1_block_2_product_idx = _dispatch.cartesian_prod(
+        _dispatch.int_range_like(
+            0, len(block_2.properties.values), like=block_2.values
+        ),
+        _dispatch.int_range_like(
+            0, len(block_1.properties.values), like=block_1.values
+        ),
+    )
 
     # Create a TensorBlock
     combined_block = TensorBlock(
@@ -514,11 +648,11 @@ def _combine_blocks_same_samples(
             names=prop_names,
             values=_dispatch.int_array_like(
                 [
-                    _dispatch.concatenate((b2, b1))
-                    for b2 in block_2.properties.values
-                    for b1 in block_1.properties.values
+                    _dispatch.to_int_list(block_2.properties.values[indices[0]])
+                    + _dispatch.to_int_list(block_1.properties.values[indices[1]])
+                    for indices in block_1_block_2_product_idx
                 ],
-                like=block_1.values,
+                block_1.properties.values,
             ),
         ),
     )

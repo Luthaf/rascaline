@@ -9,6 +9,7 @@ from metatensor import Labels, TensorBlock, TensorMap
 
 import rascaline
 from rascaline.utils import PowerSpectrum
+from rascaline.utils.clebsch_gordan import _dispatch
 from rascaline.utils.clebsch_gordan._cg_cache import ClebschGordanReal
 from rascaline.utils.clebsch_gordan._clebsch_gordan import _standardize_keys
 from rascaline.utils.clebsch_gordan.correlate_density import (
@@ -40,6 +41,28 @@ if HAS_SYMPY:
     from .rotations import WignerDReal, transform_frame_o3, transform_frame_so3
 
 
+try:
+    import torch
+    from torch import Tensor as TorchTensor
+
+    torch_dtype = torch.dtype
+    torch_device = torch.device
+
+    HAS_TORCH = True
+except ImportError:
+    HAS_TORCH = False
+
+    # PR TODO below needed?
+    class TorchTensor:
+        pass
+
+    class torch_dtype:
+        pass
+
+    class torch_device:
+        pass
+
+
 DATA_ROOT = os.path.join(os.path.dirname(__file__), "data")
 
 SPHEX_HYPERS = {
@@ -68,12 +91,12 @@ SPHEX_HYPERS_SMALL = {
 
 @pytest.fixture()
 def cg_cache_sparse():
-    return ClebschGordanReal(lambda_max=5, sparse=True)
+    return ClebschGordanReal(lambda_max=5, sparse=True, use_torch=HAS_TORCH)
 
 
 @pytest.fixture()
 def cg_cache_dense():
-    return ClebschGordanReal(lambda_max=5, sparse=False)
+    return ClebschGordanReal(lambda_max=5, sparse=False, use_torch=HAS_TORCH)
 
 
 # ============ Helper functions ============
@@ -360,32 +383,60 @@ def test_clebsch_gordan_orthogonality(cg_cache_dense, l1, l2):
     lam_min = abs(l1 - l2)
     lam_max = l1 + l2
 
+    if HAS_TORCH:
+        int64_like = torch.empty(0, dtype=torch.int64)
+        float64_like = torch.empty(0, dtype=torch.float64)
+        bool_like = torch.empty(0, dtype=torch.bool)
+    else:
+        int64_like = np.empty(0, dtype=np.int64)
+        float64_like = np.empty(0, dtype=np.float64)
+        bool_like = np.empty(0, dtype=np.bool_)
     # We test lam dimension
     # \sum_{-m1 \leq l1 \leq m1, -m2 \leq l2 \leq m2}
     #           <λμ|l1m1,l2m2> <l1m1',l2m2'|λμ'> = δ_μμ'
     for lam in range(lam_min, lam_max):
-        cg_mat = cg_cache_dense.coeffs[(l1, l2, lam)].reshape(-1, 2 * lam + 1)
+        cg_mat = cg_cache_dense.coeffs.get(l1, l2, lam).reshape(-1, 2 * lam + 1)
         dot_product = cg_mat.T @ cg_mat
-        diag_mask = np.zeros(dot_product.shape, dtype=np.bool_)
-        diag_mask[np.diag_indices(len(dot_product))] = True
-        assert np.allclose(
-            dot_product[~diag_mask], np.zeros(dot_product.shape)[~diag_mask]
+        diag_mask = _dispatch.zeros_like(bool_like, dot_product.shape)
+        diag_indices = (
+            _dispatch.int_range_like(0, len(dot_product), int64_like),
+            _dispatch.int_range_like(0, len(dot_product), int64_like),
         )
-        assert np.allclose(dot_product[diag_mask], dot_product[diag_mask][0])
+        diag_mask[diag_indices] = True
+        assert _dispatch.allclose(
+            dot_product[~diag_mask],
+            _dispatch.zeros_like(float64_like, dot_product.shape)[~diag_mask],
+            rtol=1e-05,
+            atol=1e-08,
+        )
+        assert _dispatch.allclose(
+            dot_product[diag_mask], dot_product[diag_mask][0:1], rtol=1e-05, atol=1e-08
+        )
 
     # We test l1 l2 dimension
     # \sum_{|l1-l2| \leq λ \leq l1+l2} \sum_{-μ \leq λ \leq μ}
     #            <l1m1,l2m2|λμ> <λμ|l1m1,l2m2> = δ_m1m1' δ_m2m2'
     l1l2_dim = (2 * l1 + 1) * (2 * l2 + 1)
-    dot_product = np.zeros((l1l2_dim, l1l2_dim))
+    dot_product = _dispatch.zeros_like(float64_like, (l1l2_dim, l1l2_dim))
     for lam in range(lam_min, lam_max + 1):
-        cg_mat = cg_cache_dense.coeffs[(l1, l2, lam)].reshape(-1, 2 * lam + 1)
+        cg_mat = cg_cache_dense.coeffs.get(l1, l2, lam).reshape(-1, 2 * lam + 1)
         dot_product += cg_mat @ cg_mat.T
-    diag_mask = np.zeros(dot_product.shape, dtype=np.bool_)
-    diag_mask[np.diag_indices(len(dot_product))] = True
+    diag_mask = _dispatch.zeros_like(bool_like, dot_product.shape)
+    diag_indices = (
+        _dispatch.int_range_like(0, len(dot_product), int64_like),
+        _dispatch.int_range_like(0, len(dot_product), int64_like),
+    )
+    diag_mask[diag_indices] = True
 
-    assert np.allclose(dot_product[~diag_mask], np.zeros(dot_product.shape)[~diag_mask])
-    assert np.allclose(dot_product[diag_mask], dot_product[diag_mask][0])
+    assert _dispatch.allclose(
+        dot_product[~diag_mask],
+        _dispatch.zeros_like(float64_like, dot_product.shape)[~diag_mask],
+        rtol=1e-05,
+        atol=1e-08,
+    )
+    assert _dispatch.allclose(
+        dot_product[diag_mask], dot_product[diag_mask][0:1], rtol=1e-05, atol=1e-08
+    )
 
 
 @pytest.mark.skipif(

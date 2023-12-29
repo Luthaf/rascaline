@@ -1,5 +1,6 @@
 import os
 
+from . import clebsch_gordan
 from .power_spectrum import PowerSpectrum
 
 
@@ -10,4 +11,4 @@ cmake_prefix_path = os.path.realpath(os.path.join(_HERE, "..", "lib", "cmake"))
 Path containing the CMake configuration files for the underlying C library
 """
 
-__all__ = ["PowerSpectrum"]
+__all__ = ["PowerSpectrum", "clebsch_gordan"]
