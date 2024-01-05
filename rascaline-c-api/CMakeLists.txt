@@ -165,27 +165,32 @@ endif()
 # Get the list of libraries linked by default by cargo/rustc to add when linking
 # to rascaline::static
 if (CARGO_VERSION_CHANGED)
+    include(cmake/tempdir.cmake)
+    get_tempdir(TMPDIR)
+
     # Adapted from https://github.com/corrosion-rs/corrosion/blob/dc1e4e5/cmake/FindRust.cmake
-    file(REMOVE_RECURSE "${CMAKE_CURRENT_BINARY_DIR}/_cargo_required_libs")
     execute_process(
         COMMAND "${CARGO_EXE}" new --lib _cargo_required_libs
-        WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+        WORKING_DIRECTORY "${TMPDIR}"
         RESULT_VARIABLE cargo_new_result
         ERROR_QUIET
     )
 
     if (cargo_new_result)
-        message(FATAL_ERRPR "could not create empty project to find default static libs: ${cargo_new_result}")
+        message(FATAL_ERROR "could not create empty project to find default static libs: ${cargo_new_result}")
     endif()
 
-    file(APPEND "${CMAKE_CURRENT_BINARY_DIR}/_cargo_required_libs/Cargo.toml"
-        "[workspace]\nmembers=[]\n[lib]\ncrate-type=[\"staticlib\"]")
+    file(APPEND "${TMPDIR}/_cargo_required_libs/Cargo.toml" "[lib]\ncrate-type=[\"staticlib\"]")
+
     execute_process(
         COMMAND ${CARGO_EXE} rustc --verbose --color never --target=${RUST_BUILD_TARGET} -- --print=native-static-libs
-        WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/_cargo_required_libs"
+        WORKING_DIRECTORY "${TMPDIR}/_cargo_required_libs"
         RESULT_VARIABLE cargo_build_result
         ERROR_VARIABLE cargo_build_error_message
     )
+
+    # clean up the files
+    file(REMOVE_RECURSE "${TMPDIR}")
 
     if(cargo_build_result)
         message(FATAL_ERROR "could extract default static libs: ${cargo_build_result}")
@@ -217,7 +222,7 @@ endif()
 # ============================================================================ #
 # Setup metatensor
 
-set(METATENSOR_FETCH_VERSION "0.1.0")
+set(METATENSOR_FETCH_VERSION "0.1.1")
 set(METATENSOR_REQUIRED_VERSION "0.1")
 if (RASCALINE_FETCH_METATENSOR)
     message(STATUS "Fetching metatensor @ ${METATENSOR_FETCH_VERSION} from github")
@@ -227,7 +232,7 @@ if (RASCALINE_FETCH_METATENSOR)
     FetchContent_Declare(
         metatensor
         URL      ${URL_ROOT}/metatensor-core-v${METATENSOR_FETCH_VERSION}/metatensor-core-cxx-${METATENSOR_FETCH_VERSION}.tar.gz
-        URL_HASH MD5=3b48fdd8b6ca72e92a7785326dd74f6a
+        URL_HASH SHA256=54ae6dd087263f1315a6008ceb501a229823eb9a08d69abd2906c9e362b12f35
     )
 
     if (CMAKE_VERSION VERSION_GREATER 3.18)
