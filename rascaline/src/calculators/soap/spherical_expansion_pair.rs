@@ -755,13 +755,7 @@ impl CalculatorBase for SphericalExpansionByPair {
                     }
                 }
 
-                // also check for the block with a reversed pair, except if
-                // we are handling a pair between an atom and it's own
-                // periodic image
-                if pair.first == pair.second {
-                    continue;
-                }
-
+                // also check for the block with a reversed pair
                 contribution.inverse_pair(&self.m_1_pow_l);
 
                 for spherical_harmonics_l in 0..=self.parameters.max_angular {
@@ -817,7 +811,7 @@ mod tests {
 
     fn parameters() -> SphericalExpansionParameters {
         SphericalExpansionParameters {
-            cutoff: 3.5,
+            cutoff: 7.3,
             max_radial: 6,
             max_angular: 6,
             atomic_gaussian_width: 0.3,
