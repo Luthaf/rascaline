@@ -241,12 +241,6 @@ impl SphericalExpansion {
                 }
             }
 
-            if pair.first == pair.second {
-                // do not compute for the reversed pair if the pair is
-                // between an atom and its image
-                continue;
-            }
-
             if let Some(mapped_center) = result.centers_mapping[pair.second] {
                 // add the pair contribution to the atomic environnement
                 // corresponding to the **second** atom in the pair
@@ -778,7 +772,7 @@ mod tests {
 
     fn parameters() -> SphericalExpansionParameters {
         SphericalExpansionParameters {
-            cutoff: 3.5,
+            cutoff: 7.8,
             max_radial: 6,
             max_angular: 6,
             atomic_gaussian_width: 0.3,
