@@ -58,6 +58,9 @@ class PowerSpectrum(torch.nn.Module, PowerSpectrumBase):
 
     :param calculator_1: first calculator
     :param calculator_1: second calculator
+    :param species: List of `species_neighbor` to fill all blocks with. This option
+        might be useful when joining along the ``sample`` direction after computation.
+        If :py:obj:`None` blocks are filled with `species_neighbor` from all blocks.
     :raises ValueError: If other calculators than
         :py:class:`rascaline.SphericalExpansion` or
         :py:class:`rascaline.LodeSphericalExpansion` are used.
@@ -68,12 +71,14 @@ class PowerSpectrum(torch.nn.Module, PowerSpectrumBase):
         self,
         calculator_1: CalculatorBase,
         calculator_2: Optional[CalculatorBase] = None,
+        species: Optional[List[int]] = None,
     ):
         torch.nn.Module.__init__(self)
         PowerSpectrumBase.__init__(
             self,
             calculator_1=calculator_1,
             calculator_2=calculator_2,
+            species=species,
         )
 
     def forward(
