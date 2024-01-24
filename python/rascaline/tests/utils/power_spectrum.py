@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import pytest
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_equal
 
 import rascaline
 from rascaline.utils import PowerSpectrum
@@ -169,3 +169,22 @@ def test_fill_species_neighbor() -> None:
     descriptor = calculator.compute(frames)
 
     descriptor.keys_to_samples("species_center")
+
+
+def test_fill_species_option() -> None:
+    """Test that ``species`` options adds arbitrary species."""
+
+    frames = [
+        ase.Atoms("H", positions=np.zeros([1, 3])),
+        ase.Atoms("O", positions=np.zeros([1, 3])),
+    ]
+
+    species = [1, 8, 10]
+    calculator = PowerSpectrum(
+        calculator_1=rascaline.SphericalExpansion(**HYPERS), species=species
+    )
+
+    descriptor = calculator.compute(frames)
+
+    assert_equal(np.unique(descriptor[0].properties["species_neighbor_1"]), species)
+    assert_equal(np.unique(descriptor[0].properties["species_neighbor_2"]), species)
