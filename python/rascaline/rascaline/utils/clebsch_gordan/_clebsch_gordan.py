@@ -3,6 +3,7 @@ Private module containing helper functions for public module
 :py:mod:`correlate_density` that compute Clebsch-gordan tensor products on
 metatensor :py:class:`TensorMap` objects.
 """
+
 import itertools
 from typing import List, Optional, Tuple, Union
 

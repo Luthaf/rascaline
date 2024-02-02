@@ -4,6 +4,7 @@ Computing SOAP features
 
 .. start-body
 """
+
 import chemfiles
 
 from rascaline import SoapPowerSpectrum
