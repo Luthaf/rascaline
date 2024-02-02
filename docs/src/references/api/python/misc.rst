@@ -1,5 +1,5 @@
-Miscelaneous
-============
+Miscellaneous
+=============
 
 .. autoclass:: rascaline.RascalError
     :members:
