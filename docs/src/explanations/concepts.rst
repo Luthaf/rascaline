@@ -67,7 +67,7 @@ After using a calculator on one or multiple systems, users will get the
 numerical representation of their atomic systems in a ``descriptor`` object.
 Rascaline uses `metatensor`_ ``TensorMap`` type when returning descriptors.
 
-.. _metatensor: https://lab-cosmo.github.io/metatensor/latest/
+.. _metatensor: https://lab-cosmo.github.io/metatensor/
 
 A ``TensorMap`` can be seen as a dictionary mapping some keys to a set of data
 blocks. Each block contains both data (and gradients) arrays — i.e.
