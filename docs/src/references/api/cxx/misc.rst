@@ -1,5 +1,5 @@
-Miscelaneous
-============
+Miscellaneous
+=============
 
 Logging should be handled using the :ref:`C API <c-api-logging>` functions.
 
