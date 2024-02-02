@@ -32,6 +32,7 @@ are provided, and you can implement your own by defining a new class.
     :show-inheritance:
 
 """
+
 from abc import ABC, abstractmethod
 from typing import Union
 

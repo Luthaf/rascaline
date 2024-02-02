@@ -4,6 +4,7 @@ Property Selection
 
 .. start-body
 """
+
 import chemfiles
 import numpy as np
 from metatensor import Labels, MetatensorError, TensorBlock, TensorMap

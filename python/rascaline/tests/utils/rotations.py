@@ -2,6 +2,7 @@
 Class for generating real Wigner-D matrices, and using them to rotate ASE frames
 and TensorMaps of density coefficients in the spherical basis.
 """
+
 from typing import Sequence
 
 import pytest

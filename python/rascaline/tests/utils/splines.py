@@ -163,9 +163,7 @@ def test_kspace_radial_integral():
                 * sigma[n] ** (2 * i1)
             )
             coeffs_exact[n, ell] = (
-                factors[n, ell]
-                * kk**ell
-                * hyp1f1(i1, i2, -0.5 * (kk * sigma[n]) ** 2)
+                factors[n, ell] * kk**ell * hyp1f1(i1, i2, -0.5 * (kk * sigma[n]) ** 2)
             )
 
             coeffs_num[n, ell] = spliner.radial_integral(n, ell, kk)

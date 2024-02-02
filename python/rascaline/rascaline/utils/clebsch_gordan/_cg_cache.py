@@ -2,6 +2,7 @@
 Module that stores the ClebschGordanReal class for computing and caching Clebsch
 Gordan coefficients for use in CG combinations.
 """
+
 from typing import Union
 
 import numpy as np

@@ -1,6 +1,7 @@
 """
 Module containing dispatch functions for numpy/torch CG combination operations.
 """
+
 from typing import List, Optional
 
 import numpy as np

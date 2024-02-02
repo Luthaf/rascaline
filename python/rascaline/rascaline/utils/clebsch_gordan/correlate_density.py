@@ -3,6 +3,7 @@ Module for computing Clebsch-gordan tensor product iterations on density (i.e.
 correlation order 1) tensors in TensorMap form, where the samples are
 equivalent.
 """
+
 from typing import List, Optional, Union
 
 from metatensor import Labels, TensorMap
