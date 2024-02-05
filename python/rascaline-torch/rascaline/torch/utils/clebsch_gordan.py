@@ -1,8 +1,6 @@
 import importlib
 import sys
-from typing import List, Optional, Union
 
-import torch
 from metatensor.torch import Labels, TensorBlock, TensorMap
 
 import rascaline.utils.clebsch_gordan

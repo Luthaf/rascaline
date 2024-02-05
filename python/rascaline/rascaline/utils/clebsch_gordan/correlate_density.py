@@ -5,9 +5,8 @@ equivalent.
 """
 from typing import List, Optional, Union
 
-from ._classes  import Labels, TensorMap
-
 from . import _cg_cache, _clebsch_gordan, _dispatch
+from ._classes import Labels, TensorMap
 
 
 # ======================================================================

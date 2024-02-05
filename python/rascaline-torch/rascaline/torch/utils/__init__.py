@@ -1,7 +1,7 @@
 import os
 
-from .power_spectrum import PowerSpectrum
 from . import clebsch_gordan
+from .power_spectrum import PowerSpectrum
 
 
 _HERE = os.path.dirname(__file__)

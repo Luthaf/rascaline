@@ -18,10 +18,23 @@ except ImportError:
     HAS_MOPS = False
 
 try:
+    import torch
     from torch import Tensor as TorchTensor
+
+    torch_dtype = torch.dtype
+    torch_device = torch.device
+
+    HAS_TORCH = True
 except ImportError:
+    HAS_TORCH = False
 
     class TorchTensor:
+        pass
+
+    class torch_dtype:
+        pass
+
+    class torch_device:
         pass
 
 
@@ -130,7 +143,13 @@ class ClebschGordanReal:
         be used if Mops is installed.
     """
 
-    def __init__(self, lambda_max: int, sparse: bool = True, use_mops: bool = HAS_MOPS):
+    def __init__(
+        self,
+        lambda_max: int,
+        sparse: bool = True,
+        use_mops: bool = HAS_MOPS,
+        use_torch: bool = False,
+    ):
         self._lambda_max = lambda_max
         self._sparse = sparse
 
@@ -158,10 +177,13 @@ class ClebschGordanReal:
             #     )
             self._use_mops = False
 
-        self._coeffs = ClebschGordanReal.build_coeff_dict(
+        self._use_torch = use_torch
+
+        self._coeffs = ClebschGordanReal._build_coeff_dict(
             self._lambda_max,
             self._sparse,
             self._use_mops,
+            self._use_torch,
         )
 
     @property
@@ -180,8 +202,9 @@ class ClebschGordanReal:
     def coeffs(self):
         return self._coeffs
 
-    @staticmethod
-    def build_coeff_dict(lambda_max: int, sparse: bool, use_mops: bool):
+    def _build_coeff_dict(
+        lambda_max: int, sparse: bool, use_mops: bool, use_torch: bool
+    ):
         """
         Builds a dictionary of Clebsch-Gordan coefficients for all possible
         combination of l1 and l2, up to lambda_max.
@@ -218,9 +241,14 @@ class ClebschGordanReal:
                     else:
                         cg_l1l2lam = np.imag(real_cg)
 
+                    if use_torch:
+                        cg_l1l2lam = torch.tensor(cg_l1l2lam)
+
                     if sparse:
                         # Find the m1, m2, mu idxs of the nonzero CG coeffs
-                        nonzeros_cg_coeffs_idx = np.where(np.abs(cg_l1l2lam) > 1e-15)
+                        nonzeros_cg_coeffs_idx = _dispatch.where(
+                            _dispatch.abs(cg_l1l2lam) > 1e-15
+                        )
                         if use_mops:
                             # Store CG coeffs in a specific format for use in
                             # MOPS. Here we need the m1, m2, mu, and CG coeffs
@@ -233,11 +261,11 @@ class ClebschGordanReal:
                                 C_arr.append(cg_l1l2lam[m1, m2, mu])
 
                             # Reorder the arrays based on sorted mu values
-                            mu_idxs = np.argsort(mu_arr)
-                            m1_arr = np.array(m1_arr)[mu_idxs]
-                            m2_arr = np.array(m2_arr)[mu_idxs]
-                            mu_arr = np.array(mu_arr)[mu_idxs]
-                            C_arr = np.array(C_arr)[mu_idxs]
+                            mu_idxs = _dispatch.argsort(mu_arr)
+                            m1_arr = _dispatch.array(m1_arr)[mu_idxs]
+                            m2_arr = _dispatch.array(m2_arr)[mu_idxs]
+                            mu_arr = _dispatch.array(mu_arr)[mu_idxs]
+                            C_arr = _dispatch.array(C_arr)[mu_idxs]
                             cg_l1l2lam = (C_arr, m1_arr, m2_arr, mu_arr)
                         else:
                             # Otherwise fall back to torch/numpy and store as
@@ -338,7 +366,7 @@ def _complex_clebsch_gordan_matrix(l1, l2, lambda_):
     >>> np.allclose(ratio[0], ratio)
     True
     """
-    if np.abs(l1 - l2) > lambda_ or np.abs(l1 + l2) < lambda_:
+    if abs(l1 - l2) > lambda_ or abs(l1 + l2) < lambda_:
         return np.zeros((2 * l1 + 1, 2 * l2 + 1, 2 * lambda_ + 1), dtype=np.double)
     else:
         return wigners.clebsch_gordan_array(l1, l2, lambda_)

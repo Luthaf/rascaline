@@ -6,9 +6,8 @@ metatensor :py:class:`TensorMap` objects.
 import itertools
 from typing import List, Optional, Tuple, Union
 
-from ._classes  import Labels, TensorBlock, TensorMap
-
 from . import _cg_cache, _dispatch
+from ._classes import Labels, TensorBlock, TensorMap
 
 
 # ==================================================================

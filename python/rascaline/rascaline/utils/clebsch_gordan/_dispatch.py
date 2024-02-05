@@ -20,12 +20,90 @@ UNKNOWN_ARRAY_TYPE = (
 )
 
 
+def _check_all_torch_tensor(arrays: List[TorchTensor]):
+    for array in arrays:
+        if not isinstance(array, TorchTensor):
+            raise TypeError(
+                f"expected argument to be a torch.Tensor, but got {type(array)}"
+            )
+
+
+def _check_all_np_ndarray(arrays):
+    for array in arrays:
+        if not isinstance(array, np.ndarray):
+            raise TypeError(
+                f"expected argument to be a np.ndarray, but got {type(array)}"
+            )
+
+
+def where(array):
+    """Return the indices where `array` is True.
+
+    This function has the same behavior as ``np.where(array)``.
+    """
+    if isinstance(array, TorchTensor):
+        return torch.where(array)
+    elif isinstance(array, np.ndarray):
+        return np.where(array)
+    else:
+        raise TypeError(UNKNOWN_ARRAY_TYPE)
+
+
+def abs(array):
+    """
+    Returns the absolute value of the elements in the array.
+
+    It is equivalent of np.abs(array) and torch.abs(tensor)
+    """
+    if isinstance(array, TorchTensor):
+        return torch.abs(array)
+    elif isinstance(array, np.ndarray):
+        return np.abs(array).astype(array.dtype)
+    else:
+        raise TypeError(UNKNOWN_ARRAY_TYPE)
+
+
+def argsort(array):
+    """
+    Returns the sorted arguments of the elements in the array.
+
+    It is equivalent of np.argsort(array) and torch.argsort(tensor)
+    """
+    if isinstance(array, TorchTensor):
+        return torch.argsort(array)
+    elif isinstance(array, np.ndarray):
+        return np.argsort(array)
+    else:
+        raise TypeError(UNKNOWN_ARRAY_TYPE)
+
+
 def unique(array, axis: Optional[int] = None):
     """Find the unique elements of an array."""
     if isinstance(array, TorchTensor):
         return torch.unique(array, dim=axis)
     elif isinstance(array, np.ndarray):
         return np.unique(array, axis=axis)
+
+
+def arange_like(array, start: int, end: int):
+    """
+    Create an array from start to end with ascending integers.
+
+    It is equivalent of np.arange(start, end) and torch.arange(start, end) for the given
+    array dtype and device.
+    """
+    if isinstance(array, TorchTensor):
+        return torch.arange(
+            start,
+            end,
+            dtype=array.dtype,
+            layout=array.layout,
+            device=array.device,
+        )
+    elif isinstance(array, np.ndarray):
+        return np.arange(start, end)
+    else:
+        raise TypeError(UNKNOWN_ARRAY_TYPE)
 
 
 def int_range_like(min_val, max_val, like):
@@ -119,6 +197,30 @@ def zeros_like(shape, like):
         )
     elif isinstance(like, np.ndarray):
         return np.zeros(shape, dtype=like.dtype)
+    else:
+        raise TypeError(UNKNOWN_ARRAY_TYPE)
+
+
+def allclose(
+    a: TorchTensor,
+    b: TorchTensor,
+    rtol: float,
+    atol: float,
+    equal_nan: bool = False,
+):
+    """Compare two arrays using ``allclose``
+
+    This function has the same behavior as
+    ``np.allclose(array1, array2, rtol, atol, equal_nan)``.
+    """
+    if isinstance(a, TorchTensor):
+        _check_all_torch_tensor([b])
+        return torch.allclose(
+            input=a, other=b, rtol=rtol, atol=atol, equal_nan=equal_nan
+        )
+    elif isinstance(a, np.ndarray):
+        _check_all_np_ndarray([b])
+        return np.allclose(a=a, b=b, rtol=rtol, atol=atol, equal_nan=equal_nan)
     else:
         raise TypeError(UNKNOWN_ARRAY_TYPE)
 
