@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import pytest
 from typing import List
 import os
 import torch
@@ -13,16 +14,34 @@ from rascaline.torch.utils.clebsch_gordan.correlate_density import (
 
 DATA_ROOT = os.path.join(os.path.dirname(__file__), "data")
 
+SPHEX_HYPERS = {
+    "cutoff": 2.5,  # Angstrom
+    "max_radial": 3,  # Exclusive
+    "max_angular": 3,  # Inclusive
+    "atomic_gaussian_width": 0.2,
+    "radial_basis": {"Gto": {}},
+    "cutoff_function": {"ShiftedCosine": {"width": 0.5}},
+    "center_atom_weight": 1.0,
+}
+
 def h2o_isolated():
     return ase.io.read(os.path.join(DATA_ROOT, "h2o_isolated.xyz"), ":")
 
 def spherical_expansion(frames: List[ase.Atoms]):
     """Returns a rascaline SphericalExpansion"""
     calculator = rascaline.torch.SphericalExpansion(**SPHEX_HYPERS)
-    return calculator.compute(frames)
+    return calculator.compute(rascaline.torch.systems_to_torch(frames))
 
 # copy of def test_correlate_density_angular_selection(
-def test_scritability(
+@pytest.mark.parametrize(
+    "selected_keys",
+    [
+        None,
+        Labels(names=["spherical_harmonics_l"], values=torch.tensor([1, 3]).reshape(-1, 1)),
+    ],
+)
+@pytest.mark.parametrize("skip_redundant", [True, False])
+def test_scriptability_correlate_density_angular_selection(
     selected_keys: Labels,
     skip_redundant: bool,
 ):

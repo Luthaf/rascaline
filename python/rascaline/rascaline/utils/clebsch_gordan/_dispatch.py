@@ -129,6 +129,17 @@ def int_array_like(int_list: List[int], like):
     else:
         raise TypeError(UNKNOWN_ARRAY_TYPE)
 
+def bool_array_like(bool_list: List[bool], like):
+    """
+    Converts the input list of bool to a numpy array or torch tensor
+    based on the type of `like`.
+    """
+    if isinstance(like, TorchTensor):
+        return torch.tensor(bool_list, dtype=torch.bool, device=like.device)
+    elif isinstance(like, np.ndarray):
+        return np.array(bool_list).astype(bool)
+    else:
+        raise TypeError(UNKNOWN_ARRAY_TYPE)
 
 def concatenate(arrays, axis: Optional[int] = 0):
     """Concatenate arrays along an axis."""

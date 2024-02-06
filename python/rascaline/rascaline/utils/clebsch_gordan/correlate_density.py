@@ -140,26 +140,31 @@ def _correlate_density(
     # Check inputs
     if correlation_order <= 1:
         raise ValueError("`correlation_order` must be > 1")
-    # TODO: implement combinations of gradients too
-    if _dispatch.any([len(list(block.gradients())) > 0 for block in density]):
+    # TODO: implement combinations of gradients too 
+    # we have to create a bool array with dispatch to be TorchScript compatible
+    contains_gradients = _dispatch.any(
+                _dispatch.bool_array_like(
+                    [len(block.gradients()) > 0 for _, block in density.items()],
+                    density[0].values
+                )
+            )
+    if contains_gradients:
         raise NotImplementedError(
             "Clebsch Gordan combinations with gradients not yet implemented."
             " Use metatensor.remove_gradients to remove gradients from the input."
         )
     # Check metadata
     if not (
-        _dispatch.all(density.keys.names == ["spherical_harmonics_l", "species_center"])
-        or _dispatch.all(
-            density.keys.names
+        density.keys.names == ["spherical_harmonics_l", "species_center"]
+        or density.keys.names
             == ["spherical_harmonics_l", "species_center", "species_neighbor"]
-        )
     ):
         raise ValueError(
             "input `density` must have key names"
             ' ["spherical_harmonics_l", "species_center"] or'
             ' ["spherical_harmonics_l", "species_center", "species_neighbor"]'
         )
-    if not _dispatch.all(density.component_names == ["spherical_harmonics_m"]):
+    if not density.component_names == ["spherical_harmonics_m"]:
         raise ValueError(
             "input `density` must have a single component"
             " axis with name `spherical_harmonics_m`"
