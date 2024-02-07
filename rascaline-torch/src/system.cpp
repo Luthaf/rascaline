@@ -7,8 +7,8 @@ using namespace rascaline_torch;
 
 SystemAdapter::SystemAdapter(metatensor_torch::System system): system_(std::move(system)) {
     this->species_ = system_->species().to(torch::kCPU).contiguous();
-    this->positions_ = system_->positions().to(torch::kDouble).to(torch::kCPU).contiguous();
-    this->cell_ = system_->cell().to(torch::kDouble).to(torch::kCPU).contiguous();
+    this->positions_ = system_->positions().to(torch::kCPU).to(torch::kDouble).contiguous();
+    this->cell_ = system_->cell().to(torch::kCPU).to(torch::kDouble).contiguous();
 
     // convert all neighbors list that where requested by rascaline
     for (const auto& options: system_->known_neighbors_lists()) {
@@ -18,7 +18,7 @@ SystemAdapter::SystemAdapter(metatensor_torch::System system): system_(std::move
                 auto samples_values = neighbors->samples()->values().to(torch::kCPU).contiguous();
                 auto samples = samples_values.accessor<int32_t, 2>();
 
-                auto distances_tensor = neighbors->values().reshape({-1, 3}).to(torch::kCPU, torch::kDouble).contiguous();
+                auto distances_tensor = neighbors->values().reshape({-1, 3}).to(torch::kCPU).to(torch::kDouble).contiguous();
                 auto distances = distances_tensor.accessor<double, 2>();
 
                 auto n_pairs = samples.size(1);

@@ -162,6 +162,48 @@ def test_base_classes():
     assert CalculatorModule.__bases__ == (torch.nn.Module,)
 
 
+def test_different_device_dtype_errors(system):
+    calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
+
+    message = "all systems should have the same dtype"
+    with pytest.raises(TypeError, match=message):
+        calculator.compute(
+            [
+                system.to(dtype=torch.float32),
+                system.to(dtype=torch.float64),
+            ]
+        )
+
+    message = "rascaline only supports float64 and float32 data"
+    with pytest.raises(TypeError, match=message):
+        calculator.compute(system.to(dtype=torch.float16))
+
+    # Different devices
+    custom_device = None
+    if torch.backends.mps.is_available() and torch.backends.mps.is_built():
+        custom_device = torch.device("mps:0")
+
+    if torch.cuda.is_available():
+        custom_device = torch.device("cuda:0")
+
+    if custom_device is not None:
+
+        device_system = system.to(device=custom_device)
+
+        torch.set_warn_always(True)
+        message = (
+            "Systems data is on device .* but rascaline only supports calculations "
+            "on CPU. All the data will be moved to CPU and then back on device on "
+            "your behalf"
+        )
+        with pytest.warns(match=message):
+            calculator.compute(device_system)
+
+        message = "all systems should have the same device"
+        with pytest.raises(TypeError, match=message):
+            calculator.compute([device_system, system])
+
+
 def test_script(tmpdir):
     class TestModule(torch.nn.Module):
         def __init__(self):

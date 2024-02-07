@@ -59,7 +59,7 @@ static torch::Tensor stack_all_positions(const std::vector<metatensor_torch::Sys
     all_positions.reserve(systems.size());
 
     for (const auto& system: systems) {
-        all_positions.push_back(system->positions());
+        all_positions.push_back(system->positions().to(torch::kCPU));
     }
 
     return torch::vstack(all_positions);
@@ -70,7 +70,7 @@ static torch::Tensor stack_all_cells(const std::vector<metatensor_torch::System>
     all_cells.reserve(systems.size());
 
     for (const auto& system: systems) {
-        all_cells.push_back(system->cell());
+        all_cells.push_back(system->cell().to(torch::kCPU));
     }
 
     return torch::vstack(all_cells);
@@ -120,11 +120,61 @@ static bool contains(const std::vector<std::string>& haystack, const std::string
     return std::find(std::begin(haystack), std::end(haystack), needle) != std::end(haystack);
 }
 
+static torch::ScalarType systems_dtype(const std::vector<metatensor_torch::System>& systems) {
+    if (systems.empty()) {
+        return torch::kFloat64;
+    } else {
+        auto dtype = systems[0]->scalar_type();
+        for (const auto& system: systems) {
+            if (system->scalar_type() != dtype) {
+                C10_THROW_ERROR(TypeError,
+                    std::string("all systems should have the same dtype, got ") +
+                    torch::toString(system->scalar_type()) + " and " +
+                    torch::toString(dtype)
+                );
+            }
+        }
+        return dtype;
+    }
+}
+
+static torch::Device systems_device(const std::vector<metatensor_torch::System>& systems) {
+    if (systems.empty()) {
+        return torch::kCPU;
+    } else {
+        auto device = systems[0]->device();
+        for (const auto& system: systems) {
+            if (system->device() != device) {
+                C10_THROW_ERROR(TypeError,
+                    "all systems should have the same device, got " +
+                    system->device().str() + " and " + device.str()
+                );
+            }
+        }
+        return device;
+    }
+}
+
 
 metatensor_torch::TorchTensorMap CalculatorHolder::compute(
     std::vector<metatensor_torch::System> systems,
     TorchCalculatorOptions torch_options
 ) {
+    auto dtype = systems_dtype(systems);
+    auto device = systems_device(systems);
+
+    if (!device.is_cpu()) {
+        TORCH_WARN_ONCE(
+            "Systems data is on device ", device, " but rascaline only supports ",
+            "calculations on CPU. All the data will be moved to CPU and then "
+            "back on device on your behalf"
+        );
+    }
+
+    if (dtype != torch::kFloat32 && dtype != torch::kFloat64) {
+        C10_THROW_ERROR(TypeError, "rascaline only supports float64 and float32 data");
+    }
+
     auto all_positions = stack_all_positions(systems);
     auto all_cells = stack_all_cells(systems);
     auto structures_start_ivalue = torch::IValue();
@@ -172,7 +222,7 @@ metatensor_torch::TorchTensorMap CalculatorHolder::compute(
     auto rascaline_systems = std::vector<SystemAdapter>();
     rascaline_systems.reserve(systems.size());
     for (auto& system: systems) {
-        rascaline_systems.push_back(SystemAdapter(system));
+        rascaline_systems.emplace_back(system);
     }
 
     options.use_native_system = all_systems_use_native(rascaline_systems);
@@ -199,18 +249,11 @@ metatensor_torch::TorchTensorMap CalculatorHolder::compute(
         std::move(blocks)
     );
 
-    // ============ register the autograd nodes for each block ============== //
-    auto all_positions_vec = std::vector<torch::Tensor>();
-    all_positions_vec.reserve(systems.size());
-
-    auto all_cells_vec = std::vector<torch::Tensor>();
-    all_cells_vec.reserve(systems.size());
-
-    for (const auto& system: systems) {
-        all_positions_vec.push_back(system->positions());
-        all_cells_vec.push_back(system->cell());
+    if (!systems.empty()) {
+        torch_descriptor = torch_descriptor->to(systems[0]->scalar_type(), systems[0]->device());
     }
 
+    // ============ register the autograd nodes for each block ============== //
     for (int64_t block_i=0; block_i<torch_descriptor->keys()->count(); block_i++) {
         auto block = TensorMapHolder::block_by_id(torch_descriptor, block_i);
         // see `RascalineAutograd::forward` for an explanation of what's happening
