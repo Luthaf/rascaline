@@ -18,7 +18,8 @@ using namespace rascaline_torch;
 
 /// Implementation of the positions part of `RascalineAutograd::backward` as
 /// another custom autograd function, to allow for double backward.
-struct PositionsGrad: torch::autograd::Function<PositionsGrad> {
+template <typename scalar_t>
+struct PositionsGrad: torch::autograd::Function<PositionsGrad<scalar_t>> {
     /// This operate one block at the time since we need to pass `dA_dX` (which
     /// comes from `RascalineAutograd::backward` `grad_outputs`) as a
     /// `torch::Tensor` to be able to register a `grad_fn` with it.
@@ -37,7 +38,8 @@ struct PositionsGrad: torch::autograd::Function<PositionsGrad> {
 };
 
 /// Same as `PositionsGrad` but for cell gradients
-struct CellGrad: torch::autograd::Function<CellGrad> {
+template <typename scalar_t>
+struct CellGrad: torch::autograd::Function<CellGrad<scalar_t>> {
     static std::vector<torch::Tensor> forward(
         torch::autograd::AutogradContext *ctx,
         torch::Tensor all_cells,
@@ -62,7 +64,8 @@ struct CellGrad: torch::autograd::Function<CellGrad> {
     do {                                                                       \
         if (!(condition)) {                                                    \
             throw std::runtime_error(                                          \
-                std::string("assert failed: ") + stringify(condition)          \
+                std::string("assert failed ") + __FILE__ + ":" +               \
+                std::to_string(__LINE__) + ": " + stringify(condition)         \
             );                                                                 \
         }                                                                      \
     } while (false)
@@ -149,14 +152,27 @@ std::vector<torch::Tensor> RascalineAutograd::backward(
         auto forward_gradient = ctx->saved_data["positions_gradients"].toCustomClass<TensorBlockHolder>();
         auto structures_start = ctx->saved_data["structures_start"];
 
-        auto output = PositionsGrad::apply(
-            all_positions,
-            grad_outputs[0],
-            forward_gradient,
-            structures_start
-        );
+        if (all_positions.scalar_type() == torch::kFloat32) {
+            auto output = PositionsGrad<float>::apply(
+                all_positions,
+                grad_outputs[0],
+                forward_gradient,
+                structures_start
+            );
 
-        positions_grad = output[0];
+            positions_grad = output[0];
+        } else if (all_positions.scalar_type() == torch::kFloat64) {
+            auto output = PositionsGrad<double>::apply(
+                all_positions,
+                grad_outputs[0],
+                forward_gradient,
+                structures_start
+            );
+
+            positions_grad = output[0];
+        } else {
+            C10_THROW_ERROR(TypeError, "rascaline only supports float64 and float32 data");
+        }
     }
 
     // ======================= gradient w.r.t. cell ========================= //
@@ -179,14 +195,28 @@ std::vector<torch::Tensor> RascalineAutograd::backward(
         int64_t structure_dimension = std::distance(std::begin(sample_names), structure_dimension_it);
 
         auto structures = block_samples->values().index({torch::indexing::Slice(), structure_dimension});
-        auto output = CellGrad::apply(
-            all_cells,
-            grad_outputs[0],
-            forward_gradient,
-            structures
-        );
 
-        cell_grad = output[0];
+        if (all_cells.scalar_type() == torch::kFloat32) {
+            auto output = CellGrad<float>::apply(
+                all_cells,
+                grad_outputs[0],
+                forward_gradient,
+                structures
+            );
+
+            cell_grad = output[0];
+        } else if (all_cells.scalar_type() == torch::kFloat64) {
+            auto output = CellGrad<double>::apply(
+                all_cells,
+                grad_outputs[0],
+                forward_gradient,
+                structures
+            );
+
+            cell_grad = output[0];
+        } else {
+            C10_THROW_ERROR(TypeError, "rascaline only supports float64 and float32 data");
+        }
     }
 
     return {
@@ -201,7 +231,8 @@ std::vector<torch::Tensor> RascalineAutograd::backward(
 /*                              PositionsGrad                                 */
 /******************************************************************************/
 
-std::vector<torch::Tensor> PositionsGrad::forward(
+template <typename scalar_t>
+std::vector<torch::Tensor> PositionsGrad<scalar_t>::forward(
     torch::autograd::AutogradContext *ctx,
     torch::Tensor all_positions,
     torch::Tensor dA_dX,
@@ -213,8 +244,8 @@ std::vector<torch::Tensor> PositionsGrad::forward(
     auto structures_start = structures_start_ivalue.toIntList();
 
     auto samples = dX_dr->samples();
-    auto sample_values = samples->values();
-    auto* sample_values_ptr = sample_values.data_ptr<int32_t>();
+    const auto* sample_ptr = samples->as_metatensor().values().data();
+
     always_assert(samples->names().size() == 3);
     always_assert(samples->names()[0] == "sample");
     always_assert(samples->names()[1] == "structure");
@@ -223,17 +254,20 @@ std::vector<torch::Tensor> PositionsGrad::forward(
     // ========================= extract pointers =========================== //
     auto dA_dr = torch::zeros_like(all_positions);
     always_assert(dA_dr.is_contiguous() && dA_dr.is_cpu());
-    auto* dA_dr_ptr = dA_dr.data_ptr<double>();
+    auto* dA_dr_ptr = dA_dr.data_ptr<scalar_t>();
 
-    auto dX_dr_values = dX_dr->values();
+    // TODO: remove all CPU <=> device data movement by rewriting the VJP
+    // below with torch primitives
+    auto dX_dr_values = dX_dr->values().to(torch::kCPU);
     always_assert(dX_dr_values.is_contiguous() && dX_dr_values.is_cpu());
-    auto* dX_dr_ptr = dX_dr_values.data_ptr<double>();
+    auto* dX_dr_ptr = dX_dr_values.data_ptr<scalar_t>();
 
-    const auto& dA_dX_sizes = dA_dX.sizes();
-    always_assert(dA_dX.is_contiguous() && dA_dX.is_cpu());
-    auto* dA_dX_ptr = dA_dX.data_ptr<double>();
+    auto dA_dX_cpu = dA_dX.to(torch::kCPU);
+    always_assert(dA_dX_cpu.is_contiguous() && dA_dX_cpu.is_cpu());
+    auto* dA_dX_ptr = dA_dX_cpu.data_ptr<scalar_t>();
 
     // total size of component + property dimension
+    const auto& dA_dX_sizes = dA_dX.sizes();
     int64_t n_features = 1;
     for (int i=1; i<dA_dX_sizes.size(); i++) {
         n_features *= dA_dX_sizes[i];
@@ -241,9 +275,9 @@ std::vector<torch::Tensor> PositionsGrad::forward(
 
     // =========================== compute dA_dr ============================ //
     for (int64_t grad_sample_i=0; grad_sample_i<samples->count(); grad_sample_i++) {
-        auto sample_i = sample_values_ptr[grad_sample_i * 3 + 0];
-        auto structure_i = sample_values_ptr[grad_sample_i * 3 + 1];
-        auto atom_i = sample_values_ptr[grad_sample_i* 3 + 2];
+        auto sample_i = sample_ptr[grad_sample_i * 3 + 0];
+        auto structure_i = sample_ptr[grad_sample_i * 3 + 1];
+        auto atom_i = sample_ptr[grad_sample_i* 3 + 2];
 
         auto global_atom_i = structures_start[structure_i] + atom_i;
 
@@ -267,7 +301,8 @@ std::vector<torch::Tensor> PositionsGrad::forward(
     return {dA_dr};
 }
 
-std::vector<torch::Tensor> PositionsGrad::backward(
+template <typename scalar_t>
+std::vector<torch::Tensor> PositionsGrad<scalar_t>::backward(
     torch::autograd::AutogradContext *ctx,
     std::vector<torch::Tensor> grad_outputs
 ) {
@@ -282,26 +317,30 @@ std::vector<torch::Tensor> PositionsGrad::backward(
     auto dB_d_dA_dr = grad_outputs[0]; // gradient of B w.r.t. dA/dr (output of forward)
 
     auto samples = dX_dr->samples();
-    auto sample_values = samples->values();
-    auto* sample_values_ptr = sample_values.data_ptr<int32_t>();
+    const auto* sample_ptr = samples->as_metatensor().values().data();
+
     always_assert(samples->names().size() == 3);
     always_assert(samples->names()[0] == "sample");
     always_assert(samples->names()[1] == "structure");
     always_assert(samples->names()[2] == "atom");
 
     // ========================= extract pointers =========================== //
-    auto dX_dr_values = dX_dr->values();
+    // TODO: remove all CPU <=> device data movement by rewriting the VJP
+    // below with torch primitives
+    auto dX_dr_values = dX_dr->values().to(torch::kCPU);
     always_assert(dX_dr_values.is_contiguous() && dX_dr_values.is_cpu());
-    auto* dX_dr_ptr = dX_dr_values.data_ptr<double>();
+    auto* dX_dr_ptr = dX_dr_values.data_ptr<scalar_t>();
 
     always_assert(dB_d_dA_dr.is_contiguous() && dB_d_dA_dr.is_cpu());
-    auto* dB_d_dA_dr_ptr = dB_d_dA_dr.data_ptr<double>();
+    auto* dB_d_dA_dr_ptr = dB_d_dA_dr.data_ptr<scalar_t>();
 
-    const auto& dA_dX_sizes = dA_dX.sizes();
-    always_assert(dA_dX.is_contiguous() && dA_dX.is_cpu());
-    auto* dA_dX_ptr = dA_dX.data_ptr<double>();
+
+    auto dA_dX_cpu = dA_dX.to(torch::kCPU);
+    always_assert(dA_dX_cpu.is_contiguous() && dA_dX_cpu.is_cpu());
+    auto* dA_dX_ptr = dA_dX_cpu.data_ptr<scalar_t>();
 
     // total size of component + property dimension
+    const auto& dA_dX_sizes = dA_dX.sizes();
     int64_t n_features = 1;
     for (int i=1; i<dA_dX_sizes.size(); i++) {
         n_features *= dA_dX_sizes[i];
@@ -320,17 +359,17 @@ std::vector<torch::Tensor> PositionsGrad::backward(
     // ============ gradient of B w.r.t. dA/dX (input of forward) =========== //
     auto dB_d_dA_dX = torch::Tensor();
     if (dA_dX.requires_grad()) {
-        dB_d_dA_dX = torch::zeros_like(dA_dX);
+        dB_d_dA_dX = torch::zeros_like(dA_dX_cpu);
         always_assert(dB_d_dA_dX.is_contiguous() && dB_d_dA_dX.is_cpu());
-        auto* dB_d_dA_dX_ptr = dB_d_dA_dX.data_ptr<double>();
+        auto* dB_d_dA_dX_ptr = dB_d_dA_dX.data_ptr<scalar_t>();
 
         // dX_dr.shape      == [positions gradient samples, 3, features...]
         // dB_d_dA_dr.shape == [n_atoms, 3]
         // dB_d_dA_dX.shape == [samples, features...]
         for (int64_t grad_sample_i=0; grad_sample_i<samples->count(); grad_sample_i++) {
-            auto sample_i = sample_values_ptr[grad_sample_i * 3 + 0];
-            auto structure_i = sample_values_ptr[grad_sample_i * 3 + 1];
-            auto atom_i = sample_values_ptr[grad_sample_i* 3 + 2];
+            auto sample_i = sample_ptr[grad_sample_i * 3 + 0];
+            auto structure_i = sample_ptr[grad_sample_i * 3 + 1];
+            auto atom_i = sample_ptr[grad_sample_i* 3 + 2];
 
             auto global_atom_i = structures_start[structure_i] + atom_i;
 
@@ -349,7 +388,7 @@ std::vector<torch::Tensor> PositionsGrad::backward(
 
     return {
         dB_dr,
-        dB_d_dA_dX,
+        dB_d_dA_dX.to(dA_dX.device()),
         torch::Tensor(),
         torch::Tensor(),
     };
@@ -360,7 +399,8 @@ std::vector<torch::Tensor> PositionsGrad::backward(
 /*                                CellGrad                                    */
 /******************************************************************************/
 
-std::vector<torch::Tensor> CellGrad::forward(
+template <typename scalar_t>
+std::vector<torch::Tensor> CellGrad<scalar_t>::forward(
     torch::autograd::AutogradContext *ctx,
     torch::Tensor all_cells,
     torch::Tensor dA_dX,
@@ -371,23 +411,26 @@ std::vector<torch::Tensor> CellGrad::forward(
     always_assert(all_cells.requires_grad());
     auto cell_grad = torch::zeros_like(all_cells);
     always_assert(cell_grad.is_contiguous() && cell_grad.is_cpu());
-    auto* cell_grad_ptr = cell_grad.data_ptr<double>();
+    auto* cell_grad_ptr = cell_grad.data_ptr<scalar_t>();
 
     auto samples = dX_dH->samples();
-    auto sample_values = samples->values();
-    auto* sample_values_ptr = sample_values.data_ptr<int32_t>();
+    const auto* sample_ptr = samples->as_metatensor().values().data();
+
     always_assert(samples->names().size() == 1);
     always_assert(samples->names()[0] == "sample");
 
     // ========================= extract pointers =========================== //
-    auto dX_dH_values = dX_dH->values();
+    auto dX_dH_values = dX_dH->values().to(torch::kCPU);
     always_assert(dX_dH_values.is_contiguous() && dX_dH_values.is_cpu());
-    auto* dX_dH_ptr = dX_dH_values.data_ptr<double>();
+    auto* dX_dH_ptr = dX_dH_values.data_ptr<scalar_t>();
+
+    // TODO: remove all CPU <=> device data movement by rewriting the VJP
+    // below with torch primitives
+    auto dA_dX_cpu = dA_dX.to(torch::kCPU);
+    always_assert(dA_dX_cpu.is_contiguous() && dA_dX_cpu.is_cpu());
+    auto* dA_dX_ptr = dA_dX_cpu.data_ptr<scalar_t>();
 
     const auto& dA_dX_sizes = dA_dX.sizes();
-    always_assert(dA_dX.is_contiguous() && dA_dX.is_cpu());
-    auto* dA_dX_ptr = dA_dX.data_ptr<double>();
-
     // total size of component + property dimension
     int64_t n_features = 1;
     for (int i=1; i<dA_dX_sizes.size(); i++) {
@@ -396,7 +439,7 @@ std::vector<torch::Tensor> CellGrad::forward(
 
     // =========================== compute dA_dH ============================ //
     for (int64_t grad_sample_i=0; grad_sample_i<samples->count(); grad_sample_i++) {
-        auto sample_i = sample_values_ptr[grad_sample_i];
+        auto sample_i = sample_ptr[grad_sample_i];
         // we get the structure from the samples of the values
         auto structure_i = static_cast<int64_t>(structures[sample_i].item<int32_t>());
 
@@ -423,7 +466,8 @@ std::vector<torch::Tensor> CellGrad::forward(
 }
 
 
-std::vector<torch::Tensor> CellGrad::backward(
+template <typename scalar_t>
+std::vector<torch::Tensor> CellGrad<scalar_t>::backward(
     torch::autograd::AutogradContext *ctx,
     std::vector<torch::Tensor> grad_outputs
 ) {
@@ -438,24 +482,26 @@ std::vector<torch::Tensor> CellGrad::backward(
     auto dB_d_dA_dH = grad_outputs[0]; // gradient of B w.r.t. dA/dH (output of forward)
 
     auto samples = dX_dH->samples();
-    auto sample_values = samples->values();
-    auto* sample_values_ptr = sample_values.data_ptr<int32_t>();
+    const auto* sample_ptr = samples->as_metatensor().values().data();
     always_assert(samples->names().size() == 1);
     always_assert(samples->names()[0] == "sample");
 
     // ========================= extract pointers =========================== //
-    auto dX_dH_values = dX_dH->values();
+    // TODO: remove all CPU <=> device data movement by rewriting the VJP
+    // below with torch primitives
+    auto dX_dH_values = dX_dH->values().to(torch::kCPU);
     always_assert(dX_dH_values.is_contiguous() && dX_dH_values.is_cpu());
-    auto* dX_dH_ptr = dX_dH_values.data_ptr<double>();
+    auto* dX_dH_ptr = dX_dH_values.data_ptr<scalar_t>();
 
     always_assert(dB_d_dA_dH.is_contiguous() && dB_d_dA_dH.is_cpu());
-    auto* dB_d_dA_dH_ptr = dB_d_dA_dH.data_ptr<double>();
+    auto* dB_d_dA_dH_ptr = dB_d_dA_dH.data_ptr<scalar_t>();
 
-    const auto& dA_dX_sizes = dA_dX.sizes();
-    always_assert(dA_dX.is_contiguous() && dA_dX.is_cpu());
-    auto* dA_dX_ptr = dA_dX.data_ptr<double>();
+    auto dA_dX_cpu = dA_dX.to(torch::kCPU);
+    always_assert(dA_dX_cpu.is_contiguous() && dA_dX_cpu.is_cpu());
+    auto* dA_dX_ptr = dA_dX_cpu.data_ptr<scalar_t>();
 
     // total size of component + property dimension
+    const auto& dA_dX_sizes = dA_dX.sizes();
     int64_t n_features = 1;
     for (int i=1; i<dA_dX_sizes.size(); i++) {
         n_features *= dA_dX_sizes[i];
@@ -474,15 +520,15 @@ std::vector<torch::Tensor> CellGrad::backward(
     // ============ gradient of B w.r.t. dA/dX (input of forward) =========== //
     auto dB_d_dA_dX = torch::Tensor();
     if (dA_dX.requires_grad()) {
-        dB_d_dA_dX = torch::zeros_like(dA_dX);
+        dB_d_dA_dX = torch::zeros_like(dA_dX_cpu);
         always_assert(dB_d_dA_dX.is_contiguous() && dB_d_dA_dX.is_cpu());
-        auto* dB_d_dA_dX_ptr = dB_d_dA_dX.data_ptr<double>();
+        auto* dB_d_dA_dX_ptr = dB_d_dA_dX.data_ptr<scalar_t>();
 
         // dX_dH.shape      == [cell gradient samples, 3, 3, features...]
         // dB_d_dA_dH.shape == [structures, 3, 3]
         // dB_d_dA_dX.shape == [samples, features...]
         for (int64_t grad_sample_i=0; grad_sample_i<samples->count(); grad_sample_i++) {
-            auto sample_i = sample_values_ptr[grad_sample_i];
+            auto sample_i = sample_ptr[grad_sample_i];
             auto structure_i = static_cast<int64_t>(structures[sample_i].item<int32_t>());
 
             for (int64_t i=0; i<n_features; i++) {
@@ -502,7 +548,7 @@ std::vector<torch::Tensor> CellGrad::backward(
 
     return {
         dB_dH,
-        dB_d_dA_dX,
+        dB_d_dA_dX.to(dA_dX.device()),
         torch::Tensor(),
         torch::Tensor(),
     };

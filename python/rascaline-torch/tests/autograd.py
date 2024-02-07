@@ -240,3 +240,74 @@ def test_power_spectrum_cell_grad_grad():
             (weights),
             fast_mode=True,
         )
+
+
+def test_different_device_dtype():
+    # check autograd if the data is on different devices/dtypes as well
+    options = [
+        (torch.device("cpu"), torch.float32),
+        (torch.device("cpu"), torch.float64),
+    ]
+    if torch.backends.mps.is_available() and torch.backends.mps.is_built():
+        options.append((torch.device("mps:0"), torch.float32))
+
+    if torch.cuda.is_available():
+        options.append((torch.device("cuda:0"), torch.float64))
+
+    for device, dtype in options:
+        species, positions, cell = _create_random_system(n_atoms=10, cell_size=3.0)
+        positions = positions.to(dtype=dtype, device=device, copy=True)
+        positions.requires_grad = True
+        assert positions.grad is None
+
+        cell = cell.to(dtype=dtype, device=device, copy=True)
+        cell.requires_grad = True
+        assert cell.grad is None
+
+        species = species.to(device=device, copy=True)
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+
+            X = _compute_power_spectrum(species, positions, cell)
+
+        assert X.dtype == dtype
+        assert X.device == device
+
+        weights = torch.rand(
+            (X.shape[-1], 1), requires_grad=True, dtype=X.dtype, device=X.device
+        )
+        assert weights.grad is None
+
+        A = (X @ weights).sum()
+        positions_grad = torch.autograd.grad(
+            outputs=A,
+            inputs=positions,
+            grad_outputs=torch.ones_like(A),
+            retain_graph=True,
+            create_graph=True,
+        )[0]
+
+        cell_grad = torch.autograd.grad(
+            outputs=A,
+            inputs=cell,
+            grad_outputs=torch.ones_like(A),
+            retain_graph=True,
+            create_graph=True,
+        )[0]
+
+        assert positions_grad.dtype == dtype
+        assert positions_grad.device == device
+
+        assert cell_grad.dtype == dtype
+        assert cell_grad.device == device
+
+        # should not error
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+
+            positions_grad.sum().backward()
+            cell_grad.sum().backward()
+
+        assert weights.grad.dtype == dtype
+        assert weights.grad.device == device
