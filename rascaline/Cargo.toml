@@ -37,6 +37,9 @@ harness = false
 
 [dependencies]
 metatensor = {version = "0.1", features = ["rayon"]}
+# This is last version supporting rustc 1.65 used in metatensor.
+# Remove once new version of metatensor with pinned version is relased.
+ahash = "=0.8.7"
 
 ndarray = {version = "0.15", features = ["approx-0_5", "rayon", "serde"]}
 num-traits = "0.2"
