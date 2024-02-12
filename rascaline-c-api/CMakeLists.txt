@@ -222,7 +222,7 @@ endif()
 # ============================================================================ #
 # Setup metatensor
 
-set(METATENSOR_FETCH_VERSION "0.1.2")
+set(METATENSOR_FETCH_VERSION "0.1.3")
 set(METATENSOR_REQUIRED_VERSION "0.1")
 if (RASCALINE_FETCH_METATENSOR)
     message(STATUS "Fetching metatensor @ ${METATENSOR_FETCH_VERSION} from github")
@@ -232,7 +232,7 @@ if (RASCALINE_FETCH_METATENSOR)
     FetchContent_Declare(
         metatensor
         URL      ${URL_ROOT}/metatensor-core-v${METATENSOR_FETCH_VERSION}/metatensor-core-cxx-${METATENSOR_FETCH_VERSION}.tar.gz
-        URL_HASH SHA256=d793a5f0c96ed79ba3fa944eb99cf72cbed2b76b7f90045db5855c219ecea843
+        URL_HASH SHA256=4cde7a2d904274ea7ee74a187fb8b358248b257d50c7726c0cc5a6e2b6c9d028
     )
 
     if (CMAKE_VERSION VERSION_GREATER 3.18)
