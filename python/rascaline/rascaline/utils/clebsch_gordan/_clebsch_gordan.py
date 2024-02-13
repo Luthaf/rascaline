@@ -18,7 +18,6 @@ from ._classes import (
     torch_jit_is_scripting,
 )
 
-
 # ==================================================================
 # ===== Functions to handle metadata
 # ==================================================================
@@ -59,17 +58,15 @@ def _standardize_keys(tensor: TensorMap) -> TensorMap:
 
 def _parse_selected_keys(
     n_iterations: int,
-    like: Array,
+    array_like: Array,
     angular_cutoff: Optional[int] = None,
     selected_keys: Optional[Union[Labels, List[Union[Labels, None]]]] = None,
 ) -> List[Union[None, Labels]]:
     """
     Parses the `selected_keys` argument passed to public functions. Checks the
     values and returns a :py:class:`list` of :py:class:`Labels` objects, one for
-    each iteration of CG combination.
-
-    `like` is required if a new :py:class:`Labels` object is to be created by
-    :py:mod:`_dispatch`.
+    each iteration of CG combination.The `:param array_like:` determines the
+    array backend of the Labels created
     """
     # Check the selected_keys
     if (
@@ -78,7 +75,7 @@ def _parse_selected_keys(
         and (not is_labels(selected_keys))
     ):
         raise TypeError(
-            "`selected_keys` must be a `Labels` or List[Union[None, `Labels`]]"
+            "`selected_keys` must be `None`, `Labels` or List[Union[None, `Labels`]]"
         )
 
     if isinstance(selected_keys, list):
@@ -127,7 +124,7 @@ def _parse_selected_keys(
                 Labels(
                     names=["spherical_harmonics_l"],
                     values=_dispatch.int_array_like(
-                        list(range(0, angular_cutoff)), like=like
+                        list(range(0, angular_cutoff)), like=array_like
                     ).reshape(-1, 1),
                 ),
             )
@@ -195,7 +192,7 @@ def _parse_selected_keys(
                     bool(angular_l >= 0)
                     for angular_l in slct.column("spherical_harmonics_l")
                 ],
-                like=like,
+                like=array_like,
             )
             if not _dispatch.all(above_zero):
                 raise ValueError(
@@ -208,7 +205,7 @@ def _parse_selected_keys(
                         bool(parity_s in [-1, 1])
                         for parity_s in slct.column("inversion_sigma")
                     ],
-                    like,
+                    array_like,
                 )
             ):
                 raise ValueError(
@@ -222,7 +219,7 @@ def _parse_bool_iteration_filters(
     n_iterations: int,
     skip_redundant: Union[bool, List[bool]] = False,
     output_selection: Optional[Union[bool, List[bool]]] = None,
-) -> List[List[bool]]:
+) -> Tuple[List[bool], List[bool]]:
     """
     Parses the `skip_redundant` and `output_selection` arguments passed to
     public functions.
@@ -593,7 +590,7 @@ def _combine_blocks_same_samples(
     block_1: TensorBlock,
     block_2: TensorBlock,
     lambda_: int,
-    cg_cache: Union[_cg_cache.ClebschGordanReal, None],
+    cg_coeffs: Union[_cg_cache.SparseCgDict, _cg_cache.DenseCgDict, None],
 ) -> TensorBlock:
     """
     For a given pair of TensorBlocks and desired angular channel, combines the
@@ -602,7 +599,7 @@ def _combine_blocks_same_samples(
 
     # Do the CG combination - single center so no shape pre-processing required
     combined_values = _cg_cache.combine_arrays(
-        block_1.values, block_2.values, lambda_, cg_cache
+        block_1.values, block_2.values, lambda_, cg_coeffs
     )
 
     # Infer the new nu value: block 1's properties are nu pairs of

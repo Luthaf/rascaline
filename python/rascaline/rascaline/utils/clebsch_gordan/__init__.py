@@ -1,7 +1,6 @@
-from .correlate_density import correlate_density, correlate_density_metadata  # noqa
+from .correlate_density import DensityCorrelations # noqa
 
 
 __all__ = [
-    "correlate_density",
-    "correlate_density_metadata",
+    "DensityCorrelations",
 ]

@@ -10,29 +10,15 @@ import numpy as np
 import wigners
 
 from . import _dispatch
-from ._classes import Array, torch_jit_annotate, torch_jit_is_scripting
+from ._classes import Array, torch_jit_annotate, torch_jit_is_scripting, TorchModule
 
 
 try:
     from mops import sparse_accumulation_of_products as sap  # noqa F401
 
-    # We need to define a variable that is globally accessible in this way to be
-    # compatible with torch script
-    class MOPS_CONFIG:
-        def __init__(self):
-            return
-
-        def is_installed(self) -> bool:
-            return True
-
+    HAS_MOPS = True
 except ImportError:
-
-    class MOPS_CONFIG:
-        def __init__(self):
-            return
-
-        def is_installed(self) -> bool:
-            return False
+    HAS_MOPS = False
 
 
 try:
@@ -66,7 +52,7 @@ UNKNOWN_ARRAY_TYPE = (
 # =================================
 
 
-class ClebschGordanReal:
+class ClebschGordanReal(TorchModule):
     """
     Class for computing Clebsch-Gordan coefficients for real spherical
     harmonics.
@@ -170,13 +156,14 @@ class ClebschGordanReal:
         use_mops: Optional[bool] = None,
         use_torch: bool = False,
     ):
+        super().__init__()
         self._lambda_max = lambda_max
 
         # For TorchScript we declare type
         self._use_mops: bool = False
         if sparse:
             if use_mops is None:
-                self._use_mops = MOPS_CONFIG().is_installed()
+                self._use_mops = HAS_MOPS
                 # TODO: provide a warning once Mops is fully ready
                 # import warnings
                 # warnings.warn(
@@ -186,7 +173,7 @@ class ClebschGordanReal:
                 #     " Falling back to numpy for now."
                 # )
             else:
-                if use_mops and not MOPS_CONFIG().is_installed():
+                if use_mops and not HAS_MOPS:
                     raise ImportError("Specified to use MOPS, but it is not installed.")
                 else:
                     self._use_mops = use_mops
@@ -390,7 +377,7 @@ def _build_cg_coeff_dict(
                     )
                     # Till MOPS does not TorchScript support we disable the scripting
                     # of this part here.
-                    if not torch_jit_is_scripting() and use_mops:
+                    if use_mops:
                         # Store CG coeffs in a specific format for use in
                         # MOPS. Here we need the m1, m2, mu, and CG coeffs
                         # to be stored as separate 1D arrays.
@@ -547,7 +534,7 @@ def combine_arrays(
     arr_1: Array,
     arr_2: Array,
     lambda_: int,
-    cg_cache: Union[ClebschGordanReal, None],
+    cg_coeffs: Union[SparseCgDict, DenseCgDict, None],
 ) -> Array:
     """
     Couples arrays `arr_1` and `arr_2` corresponding to the irreducible
@@ -591,15 +578,14 @@ def combine_arrays(
     :returns: array of shape [n_samples, (2*lambda_+1), q_properties * p_properties]
     """
     # If just precomputing metadata, return an empty array
-    if cg_cache is None:
+    if cg_coeffs is None:
         return empty_combine(arr_1, arr_2, lambda_)
 
     # We have to temporary store it so TorchScript can infer the correct type
-    cg_cache_coeffs = cg_cache.coeffs
-    if isinstance(cg_cache_coeffs, SparseCgDict):
-        return sparse_combine(arr_1, arr_2, lambda_, cg_cache_coeffs)
-    elif isinstance(cg_cache_coeffs, DenseCgDict):
-        return dense_combine(arr_1, arr_2, lambda_, cg_cache_coeffs)
+    if isinstance(cg_coeffs, SparseCgDict):
+        return sparse_combine(arr_1, arr_2, lambda_, cg_coeffs)
+    elif isinstance(cg_coeffs, DenseCgDict):
+        return dense_combine(arr_1, arr_2, lambda_, cg_coeffs)
     else:
         raise ValueError(
             "Wrong type of cg coeffs, found type {type(cg_cache.coeffs)},"
@@ -660,7 +646,7 @@ def sparse_combine(
     n_p = arr_1.shape[2]  # number of properties in arr_1
     n_q = arr_2.shape[2]  # number of properties in arr_2
 
-    if isinstance(arr_1, TorchTensor) or not MOPS_CONFIG().is_installed():
+    if isinstance(arr_1, TorchTensor) or not HAS_MOPS:
         # Initialise output array
         arr_out = _dispatch.zeros_like(arr_1, (n_i, 2 * lambda_ + 1, n_p * n_q))
 
@@ -680,7 +666,7 @@ def sparse_combine(
             ).reshape(n_i, n_p * n_q)
 
         return arr_out
-    elif isinstance(arr_1, np.ndarray) and MOPS_CONFIG().is_installed():
+    elif isinstance(arr_1, np.ndarray) and HAS_MOPS:
         # Reshape
         arr_1 = np.repeat(arr_1[:, :, :, None], n_q, axis=3).reshape(
             n_i, 2 * l1 + 1, n_p * n_q

@@ -11,11 +11,12 @@ import rascaline
 from rascaline.utils import PowerSpectrum
 from rascaline.utils.clebsch_gordan import _dispatch
 from rascaline.utils.clebsch_gordan._cg_cache import ClebschGordanReal
-from rascaline.utils.clebsch_gordan._clebsch_gordan import _standardize_keys
+from rascaline.utils.clebsch_gordan._clebsch_gordan import (
+    _standardize_keys,
+    _precompute_keys
+)
 from rascaline.utils.clebsch_gordan.correlate_density import (
-    _correlate_density,
-    correlate_density,
-    correlate_density_metadata,
+    DensityCorrelations
 )
 
 
@@ -43,24 +44,10 @@ if HAS_SYMPY:
 
 try:
     import torch
-    from torch import Tensor as TorchTensor
-
-    torch_dtype = torch.dtype
-    torch_device = torch.device
 
     HAS_TORCH = True
 except ImportError:
     HAS_TORCH = False
-
-    # PR TODO below needed?
-    class TorchTensor:
-        pass
-
-    class torch_dtype:
-        pass
-
-    class torch_device:
-        pass
 
 
 DATA_ROOT = os.path.join(os.path.dirname(__file__), "data")
@@ -173,6 +160,23 @@ def get_norm(tensor: TensorMap):
 
     return norm
 
+def get_max_angular(density: TensorMap, calculator: DensityCorrelations):
+    key_metadata = _precompute_keys(
+        density.keys,
+        density.keys,
+        n_iterations=calculator._n_iterations,
+        selected_keys=calculator._selected_keys,
+        skip_redundant=calculator._skip_redundant,
+    )
+    return max(
+        _dispatch.max(density.keys.column("spherical_harmonics_l")),
+                max(
+                    [
+                        int(_dispatch.max(mdata[2].column("spherical_harmonics_l")))
+                        for mdata in key_metadata
+                    ]
+                ),
+    )
 
 # ============ Test equivariance ============
 
@@ -192,19 +196,14 @@ def test_so3_equivariance():
 
     nu_1 = spherical_expansion(frames)
     nu_1_so3 = spherical_expansion(frames_so3)
-
-    nu_3 = correlate_density(
-        density=nu_1,
+    corr_calculator = DensityCorrelations(
+        max_angular=3,
         correlation_order=nu_target,
         angular_cutoff=angular_cutoff,
         selected_keys=selected_keys,
     )
-    nu_3_so3 = correlate_density(
-        density=nu_1_so3,
-        correlation_order=nu_target,
-        angular_cutoff=angular_cutoff,
-        selected_keys=selected_keys,
-    )
+    nu_3 = corr_calculator.compute(nu_1)
+    nu_3_so3 = corr_calculator.compute(nu_1_so3)
 
     nu_3_transf = wig.transform_tensormap_so3(nu_3)
     assert metatensor.allclose(nu_3_transf, nu_3_so3)
@@ -226,18 +225,14 @@ def test_o3_equivariance():
     nu_1 = spherical_expansion(frames)
     nu_1_o3 = spherical_expansion(frames_o3)
 
-    nu_3 = correlate_density(
-        density=nu_1,
+    corr_calculator = DensityCorrelations(
+        max_angular=angular_cutoff,
         correlation_order=nu_target,
         angular_cutoff=angular_cutoff,
         selected_keys=selected_keys,
     )
-    nu_3_o3 = correlate_density(
-        density=nu_1_o3,
-        correlation_order=nu_target,
-        angular_cutoff=angular_cutoff,
-        selected_keys=selected_keys,
-    )
+    nu_3 = corr_calculator.compute(nu_1)
+    nu_3_o3 = corr_calculator.compute(nu_1_o3)
 
     nu_3_transf = wig.transform_tensormap_o3(nu_3)
     assert metatensor.allclose(nu_3_transf, nu_3_o3)
@@ -261,13 +256,14 @@ def test_lambda_soap_vs_powerspectrum():
 
     # Build a lambda-SOAP
     density = spherical_expansion(frames)
-    lsoap = correlate_density(
-        density=density,
+    corr_calculator = DensityCorrelations(
+        max_angular=SPHEX_HYPERS["max_angular"],
         correlation_order=2,
         selected_keys=Labels(
             names=["spherical_harmonics_l"], values=np.array([0]).reshape(-1, 1)
         ),
     )
+    lsoap = corr_calculator.compute(density)
     keys = lsoap.keys.remove(name="spherical_harmonics_l")
     lsoap = TensorMap(keys=keys, blocks=[b.copy() for b in lsoap.blocks()])
 
@@ -311,21 +307,23 @@ def test_correlate_density_norm(correlation_order):
     nu1 = spherical_expansion_small(frames)
 
     # Build higher body order tensor without sorting the l lists
-    nux = correlate_density(
-        nu1,
+    corr_calculator = DensityCorrelations(
+        max_angular=SPHEX_HYPERS_SMALL["max_angular"]*correlation_order,
         correlation_order=correlation_order,
         angular_cutoff=None,
         selected_keys=None,
         skip_redundant=False,
     )
-    # Build higher body order tensor *with* sorting the l lists
-    nux_sorted_l = correlate_density(
-        nu1,
+    corr_calculator_skip_redundant = DensityCorrelations(
+        max_angular=SPHEX_HYPERS_SMALL["max_angular"]*correlation_order,
         correlation_order=correlation_order,
         angular_cutoff=None,
         selected_keys=None,
         skip_redundant=True,
     )
+    nux = corr_calculator.compute(nu1)
+    # Build higher body order tensor *with* sorting the l lists
+    nux_sorted_l = corr_calculator_skip_redundant.compute(nu1)
 
     # Standardize the features by passing through the CG combination code but with
     # no iterations (i.e. body order 1 -> 1)
@@ -450,20 +448,21 @@ def test_correlate_density_dense_sparse_agree():
     frames = h2o_periodic()
     density = spherical_expansion_small(frames)
 
+    correlation_order = 2
+    corr_calculator_sparse = DensityCorrelations(
+        max_angular=SPHEX_HYPERS_SMALL["max_angular"]*correlation_order,
+        correlation_order=correlation_order,
+        cg_combine_backend="python-sparse"
+    )
+    corr_calculator_dense = DensityCorrelations(
+        max_angular=SPHEX_HYPERS_SMALL["max_angular"]*correlation_order,
+        correlation_order=correlation_order,
+        cg_combine_backend="python-dense"
+    )
     # NOTE: testing the private function here so we can control the use of
     # sparse v dense CG cache
-    n_body_sparse = _correlate_density(
-        density,
-        correlation_order=2,
-        compute_metadata_only=False,
-        sparse=True,
-    )
-    n_body_dense = _correlate_density(
-        density,
-        correlation_order=2,
-        compute_metadata_only=False,
-        sparse=False,
-    )
+    n_body_sparse = corr_calculator_sparse.compute(density)
+    n_body_dense = corr_calculator_dense.compute(density)
 
     assert metatensor.allclose(n_body_sparse, n_body_dense, atol=1e-8, rtol=1e-8)
 
@@ -480,26 +479,22 @@ def test_correlate_density_metadata_agree():
     :py:func:`correlate_density_metadata` agree.
     """
     frames = h2o_isolated()
-    correlation_order = 3
     skip_redundant = True
-    for nu1 in [spherical_expansion_small(frames), spherical_expansion(frames)]:
-        # Build higher body order tensor with CG computation
-        nux = correlate_density(
-            nu1,
-            correlation_order=correlation_order,
+
+    for max_angular, nu1 in [(2, spherical_expansion_small(frames)),
+        (3, spherical_expansion(frames))]:
+        corr_calculator = DensityCorrelations(
+            max_angular=max_angular,
+            correlation_order=3,
             angular_cutoff=3,
             selected_keys=None,
             skip_redundant=skip_redundant,
         )
+        # Build higher body order tensor with CG computation
+        nux = corr_calculator.compute(nu1)
         # Build higher body order tensor without CG computation - i.e. metadata
         # only
-        nux_metadata_only = correlate_density_metadata(
-            nu1,
-            correlation_order=correlation_order,
-            angular_cutoff=3,
-            selected_keys=None,
-            skip_redundant=skip_redundant,
-        )
+        nux_metadata_only = corr_calculator.compute_metadata(nu1)
         assert metatensor.equal_metadata(nux, nux_metadata_only)
 
 
@@ -522,13 +517,15 @@ def test_correlate_density_angular_selection(
     frames = h2o_isolated()
     nu_1 = spherical_expansion(frames)
 
-    nu_2 = correlate_density(
-        density=nu_1,
-        correlation_order=2,
+    correlation_order = 2
+    corr_calculator = DensityCorrelations(
+        max_angular=SPHEX_HYPERS["max_angular"]*correlation_order,
+        correlation_order=correlation_order,
         angular_cutoff=None,
         selected_keys=selected_keys,
         skip_redundant=skip_redundant,
     )
+    nu_2 = corr_calculator.compute(nu_1)
 
     if selected_keys is None:
         assert np.all(
