@@ -132,9 +132,9 @@ impl CellList {
         // number of cells to search in each direction to make sure all possible
         // pairs below the cutoff are accounted for.
         let mut n_search = [
-            f64::trunc(cutoff * n_cells[0] / distances_between_faces[0]) as i32,
-            f64::trunc(cutoff * n_cells[1] / distances_between_faces[1]) as i32,
-            f64::trunc(cutoff * n_cells[2] / distances_between_faces[2]) as i32,
+            f64::ceil(cutoff * n_cells[0] / distances_between_faces[0]) as i32,
+            f64::ceil(cutoff * n_cells[1] / distances_between_faces[1]) as i32,
+            f64::ceil(cutoff * n_cells[2] / distances_between_faces[2]) as i32,
         ];
 
         let n_cells = [
@@ -407,8 +407,7 @@ impl NeighborsList {
 mod tests {
     use approx::assert_ulps_eq;
 
-    use crate::Matrix3;
-
+    use crate::types::Matrix3;
     use super::*;
 
     #[test]
@@ -523,6 +522,41 @@ mod tests {
             assert_ulps_eq!(pair.distance, 0.5);
             assert_ulps_eq!(pair.vector, vector);
             assert_eq!(&pair.cell_shift_indices, shifts);
+        }
+    }
+
+    #[test]
+    fn non_cubic_cell() {
+        let cell = UnitCell::from(Matrix3::new([
+            [4.26, -2.45951215, 0.0],
+            [2.13, 1.22975607, 0.0],
+            [0.0, 0.0, 50.0],
+        ]));
+        let positions = [
+            Vector3D::new(1.42, 0.0, 0.0),
+            Vector3D::new(2.84, 0.0, 0.0),
+            Vector3D::new(3.55, -1.22975607, 0.0),
+            Vector3D::new(4.97, -1.22975607, 0.0),
+        ];
+        let neighbors = NeighborsList::new(&positions, cell, 6.4);
+
+        assert_eq!(neighbors.pairs.len(), 90);
+
+        let previously_missing = [
+            (0, 3, [-2, 0, 0]),
+            (0, 3, [-2, 1, 0]),
+            (0, 3, [-2, 2, 0]),
+        ];
+
+        for missing in previously_missing {
+            let mut found = false;
+            for pair in &neighbors.pairs {
+                if pair.first == missing.0 && pair.second == missing.1
+                   && pair.cell_shift_indices == missing.2 {
+                    found = true;
+                }
+            }
+            assert!(found, "could not find pair {:?}", missing);
         }
     }
 }
