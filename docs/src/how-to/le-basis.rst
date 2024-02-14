@@ -13,11 +13,11 @@ This examples shows how to calculate a spherical expansion using a Laplacian eig
 
             .. container:: sphx-glr-download sphx-glr-download-python
 
-                :download:`Download Python source code for this example: tabulated.py <../examples/le-basis.py>`
+                :download:`Download Python source code for this example: le-basis.py <../examples/le-basis.py>`
 
             .. container:: sphx-glr-download sphx-glr-download-jupyter
 
-                :download:`Download Jupyter notebook for this example: tabulated.ipynb <../examples/le-basis.ipynb>`
+                :download:`Download Jupyter notebook for this example: le-basis.ipynb <../examples/le-basis.ipynb>`
 
         .. include:: ../examples/le-basis.rst
             :start-after: start-body
