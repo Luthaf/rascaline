@@ -18,6 +18,7 @@ from ._classes import (
     torch_jit_is_scripting,
 )
 
+
 # ==================================================================
 # ===== Functions to handle metadata
 # ==================================================================
@@ -591,15 +592,19 @@ def _combine_blocks_same_samples(
     block_2: TensorBlock,
     lambda_: int,
     cg_coeffs: Union[_cg_cache.SparseCgDict, _cg_cache.DenseCgDict, None],
+    cg_backend: str
 ) -> TensorBlock:
     """
     For a given pair of TensorBlocks and desired angular channel, combines the
     values arrays and returns a new TensorBlock.
+
+    If cg_coeffs are None, tensor blocks with empty arrays are returned that only
+    contain the metadata.
     """
 
     # Do the CG combination - single center so no shape pre-processing required
     combined_values = _cg_cache.combine_arrays(
-        block_1.values, block_2.values, lambda_, cg_coeffs
+        block_1.values, block_2.values, lambda_, cg_coeffs, cg_backend
     )
 
     # Infer the new nu value: block 1's properties are nu pairs of

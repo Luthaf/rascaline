@@ -12,12 +12,10 @@ from rascaline.utils import PowerSpectrum
 from rascaline.utils.clebsch_gordan import _dispatch
 from rascaline.utils.clebsch_gordan._cg_cache import ClebschGordanReal
 from rascaline.utils.clebsch_gordan._clebsch_gordan import (
+    _precompute_keys,
     _standardize_keys,
-    _precompute_keys
 )
-from rascaline.utils.clebsch_gordan.correlate_density import (
-    DensityCorrelations
-)
+from rascaline.utils.clebsch_gordan.correlate_density import DensityCorrelations
 
 
 # Try to import some modules
@@ -160,6 +158,7 @@ def get_norm(tensor: TensorMap):
 
     return norm
 
+
 def get_max_angular(density: TensorMap, calculator: DensityCorrelations):
     key_metadata = _precompute_keys(
         density.keys,
@@ -170,13 +169,14 @@ def get_max_angular(density: TensorMap, calculator: DensityCorrelations):
     )
     return max(
         _dispatch.max(density.keys.column("spherical_harmonics_l")),
-                max(
-                    [
-                        int(_dispatch.max(mdata[2].column("spherical_harmonics_l")))
-                        for mdata in key_metadata
-                    ]
-                ),
+        max(
+            [
+                int(_dispatch.max(mdata[2].column("spherical_harmonics_l")))
+                for mdata in key_metadata
+            ]
+        ),
     )
+
 
 # ============ Test equivariance ============
 
@@ -308,14 +308,14 @@ def test_correlate_density_norm(correlation_order):
 
     # Build higher body order tensor without sorting the l lists
     corr_calculator = DensityCorrelations(
-        max_angular=SPHEX_HYPERS_SMALL["max_angular"]*correlation_order,
+        max_angular=SPHEX_HYPERS_SMALL["max_angular"] * correlation_order,
         correlation_order=correlation_order,
         angular_cutoff=None,
         selected_keys=None,
         skip_redundant=False,
     )
     corr_calculator_skip_redundant = DensityCorrelations(
-        max_angular=SPHEX_HYPERS_SMALL["max_angular"]*correlation_order,
+        max_angular=SPHEX_HYPERS_SMALL["max_angular"] * correlation_order,
         correlation_order=correlation_order,
         angular_cutoff=None,
         selected_keys=None,
@@ -450,14 +450,14 @@ def test_correlate_density_dense_sparse_agree():
 
     correlation_order = 2
     corr_calculator_sparse = DensityCorrelations(
-        max_angular=SPHEX_HYPERS_SMALL["max_angular"]*correlation_order,
+        max_angular=SPHEX_HYPERS_SMALL["max_angular"] * correlation_order,
         correlation_order=correlation_order,
-        cg_combine_backend="python-sparse"
+        cg_backend="python-sparse",
     )
     corr_calculator_dense = DensityCorrelations(
-        max_angular=SPHEX_HYPERS_SMALL["max_angular"]*correlation_order,
+        max_angular=SPHEX_HYPERS_SMALL["max_angular"] * correlation_order,
         correlation_order=correlation_order,
-        cg_combine_backend="python-dense"
+        cg_backend="python-dense",
     )
     # NOTE: testing the private function here so we can control the use of
     # sparse v dense CG cache
@@ -481,8 +481,10 @@ def test_correlate_density_metadata_agree():
     frames = h2o_isolated()
     skip_redundant = True
 
-    for max_angular, nu1 in [(2, spherical_expansion_small(frames)),
-        (3, spherical_expansion(frames))]:
+    for max_angular, nu1 in [
+        (2, spherical_expansion_small(frames)),
+        (3, spherical_expansion(frames)),
+    ]:
         corr_calculator = DensityCorrelations(
             max_angular=max_angular,
             correlation_order=3,
@@ -519,7 +521,7 @@ def test_correlate_density_angular_selection(
 
     correlation_order = 2
     corr_calculator = DensityCorrelations(
-        max_angular=SPHEX_HYPERS["max_angular"]*correlation_order,
+        max_angular=SPHEX_HYPERS["max_angular"] * correlation_order,
         correlation_order=correlation_order,
         angular_cutoff=None,
         selected_keys=selected_keys,

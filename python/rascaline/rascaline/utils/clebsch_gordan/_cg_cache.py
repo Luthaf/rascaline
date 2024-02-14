@@ -10,7 +10,7 @@ import numpy as np
 import wigners
 
 from . import _dispatch
-from ._classes import Array, torch_jit_annotate, torch_jit_is_scripting, TorchModule
+from ._classes import Array, TorchModule, torch_jit_annotate, torch_jit_is_scripting
 
 
 try:
@@ -333,7 +333,7 @@ def _build_cg_coeff_dict(
     else:
         coeff_dict: Union[SparseCgDict, DenseCgDict] = DenseCgDict()
 
-    if use_torch or torch_jit_is_scripting():
+    if use_torch:
         complex_like = torch.empty(0, dtype=torch.complex128)
         double_like = torch.empty(0, dtype=torch.double)
     else:
@@ -517,12 +517,7 @@ def _complex_clebsch_gordan_matrix(l1: int, l2: int, lambda_: int, like: Array):
     if abs(l1 - l2) > lambda_ or abs(l1 + l2) < lambda_:
         return _dispatch.zeros_like(like, (2 * l1 + 1, 2 * l2 + 1, 2 * lambda_ + 1))
     else:
-        # TODO temporary disable wigners package till refactor of cg correlate_density
-        #      API
-        if torch_jit_is_scripting():
-            return _dispatch.zeros_like(like, (2 * l1 + 1, 2 * l2 + 1, 2 * lambda_ + 1))
-        else:
-            return wigners.clebsch_gordan_array(l1, l2, lambda_)
+        return wigners.clebsch_gordan_array(l1, l2, lambda_)
 
 
 # =================================================
@@ -534,7 +529,8 @@ def combine_arrays(
     arr_1: Array,
     arr_2: Array,
     lambda_: int,
-    cg_coeffs: Union[SparseCgDict, DenseCgDict, None],
+    cg_coeffs: Union[SparseCgDict, DenseCgDict],
+    cg_backend: Optional[str] = None,
 ) -> Array:
     """
     Couples arrays `arr_1` and `arr_2` corresponding to the irreducible
@@ -552,7 +548,7 @@ def combine_arrays(
     The ouput array has shape (n_i, 2 * lambda + 1, n_p * n_q), where lambda is
     the input parameter `lambda_`.
 
-    The Clebsch-Gordan coefficients are cached in `cg_cache`. Currently, these
+    The Clebsch-Gordan coefficients are cached in `cg_coeffs`. Currently, these
     must be produced by the ClebschGordanReal class in this module. These
     coefficients can be stored in either sparse dictionaries or dense arrays.
 
@@ -570,25 +566,31 @@ def combine_arrays(
     :param arr_2: array with the m values for l2 with shape [n_samples, 2 * l2 +
         1, n_p_properties]
     :param lambda_: int value of the resulting coupled channel
-    :param cg_cache: either a sparse dictionary with keys (m1, m2, mu) and array
+    :param cg_coeffs: either a sparse dictionary with keys (m1, m2, mu) and array
         values being sparse blocks of shape <TODO: fill out>, or a dense array
         of shape [(2 * l1 +1) * (2 * l2 +1), (2 * lambda_ + 1)].
-        If it is None we only return an empty array
+        If it is None we only return an empty array of the shape.
+    :param cg_backend: specifies the combine backend with sparse CG coefficients.
+        It can have the values "python-sparse" and "mops".
+
 
     :returns: array of shape [n_samples, (2*lambda_+1), q_properties * p_properties]
     """
     # If just precomputing metadata, return an empty array
+
     if cg_coeffs is None:
         return empty_combine(arr_1, arr_2, lambda_)
 
     # We have to temporary store it so TorchScript can infer the correct type
     if isinstance(cg_coeffs, SparseCgDict):
-        return sparse_combine(arr_1, arr_2, lambda_, cg_coeffs)
+        return sparse_combine(
+            arr_1, arr_2, lambda_, cg_coeffs, cg_backend
+        )
     elif isinstance(cg_coeffs, DenseCgDict):
         return dense_combine(arr_1, arr_2, lambda_, cg_coeffs)
     else:
         raise ValueError(
-            "Wrong type of cg coeffs, found type {type(cg_cache.coeffs)},"
+            "Wrong type of cg coeffs, found type {type(cg_coeffs)},"
             " but only support SparseCgDict, DenseCgDict"
         )
 
@@ -616,7 +618,8 @@ def sparse_combine(
     arr_1: Array,
     arr_2: Array,
     lambda_: int,
-    cg_cache_coeffs: SparseCgDict,
+    cg_coeffs: SparseCgDict,
+    cg_backend: str,
 ) -> Array:
     """
     Performs a Clebsch-Gordan combination step on 2 arrays using sparse
@@ -629,8 +632,10 @@ def sparse_combine(
     :param arr_2: array with the m values for l2 with shape [n_samples, 2 * l2 +
         1, n_p_properties]
     :param lambda_: int value of the resulting coupled channel
-    :param cg_cache: sparse dictionary with keys (m1, m2, mu) and array values
+    :param cg_coeffs: sparse dictionary with keys (m1, m2, mu) and array values
         being sparse blocks of shape <TODO: fill out>
+    :param cg_backend: specifies the combine backend with sparse CG coefficients.
+        It can have the values "python-sparse" and "mops"
 
     :returns: array of shape [n_samples, (2*lambda_+1), q_properties * p_properties]
     """
@@ -646,15 +651,18 @@ def sparse_combine(
     n_p = arr_1.shape[2]  # number of properties in arr_1
     n_q = arr_2.shape[2]  # number of properties in arr_2
 
-    if isinstance(arr_1, TorchTensor) or not HAS_MOPS:
+    # The isinstance checks and cg_backend checks makes the logic a bit redundant
+    # but the redundancy by the isinstance check is required for TorchScript. Logic
+    # can be made more straightforward once MOPS support TorchScript
+    if isinstance(arr_1, TorchTensor) or cg_backend == "python-sparse":
         # Initialise output array
         arr_out = _dispatch.zeros_like(arr_1, (n_i, 2 * lambda_ + 1, n_p * n_q))
 
         # Get the corresponding Clebsch-Gordan coefficients
-        cg_coeffs = cg_cache_coeffs.get(l1, l2, lambda_)
+        cg_l1l2lam = cg_coeffs.get(l1, l2, lambda_)
 
         # Fill in each mu component of the output array in turn
-        for item in cg_coeffs.keys():
+        for item in cg_l1l2lam.keys():
             m1 = item[0]
             m2 = item[1]
             mu = item[2]
@@ -662,11 +670,11 @@ def sparse_combine(
             arr_out[:, mu, :] += (
                 arr_1[:, m1, :, None]
                 * arr_2[:, m2, None, :]
-                * cg_coeffs.get(m1, m2, mu)
+                * cg_l1l2lam.get(m1, m2, mu)
             ).reshape(n_i, n_p * n_q)
 
         return arr_out
-    elif isinstance(arr_1, np.ndarray) and HAS_MOPS:
+    elif isinstance(arr_1, np.ndarray) and cg_backend == "mops":
         # Reshape
         arr_1 = np.repeat(arr_1[:, :, :, None], n_q, axis=3).reshape(
             n_i, 2 * l1 + 1, n_p * n_q
@@ -682,7 +690,7 @@ def sparse_combine(
         arr_out = sap(
             arr_1,
             arr_2,
-            *cg_cache_coeffs[(l1, l2, lambda_)],
+            *cg_coeffs.get(l1, l2, lambda_),
             output_size=2 * lambda_ + 1,
         )
         assert arr_out.shape == (n_i * n_p * n_q, 2 * lambda_ + 1)
@@ -692,6 +700,11 @@ def sparse_combine(
         arr_out = _dispatch.swapaxes(arr_out, 1, 2)
 
         return arr_out
+    elif cg_backend not in ["python", "mops"]:
+        raise ValueError(
+            f"sparse cg backend '{cg_backend}' is not known. "
+            "Only values 'python-sparse' and 'mops' are valid."
+        )
     else:
         raise TypeError(UNKNOWN_ARRAY_TYPE)
 
@@ -700,7 +713,7 @@ def dense_combine(
     arr_1: Array,
     arr_2: Array,
     lambda_: int,
-    cg_cache_coeffs: DenseCgDict,
+    cg_coeffs: DenseCgDict,
 ) -> Array:
     """
     Performs a Clebsch-Gordan combination step on 2 arrays using a dense
@@ -713,7 +726,7 @@ def dense_combine(
     :param arr_2: array with the m values for l2 with shape [n_samples, 2 * l2 +
         1, n_p_properties]
     :param lambda_: int value of the resulting coupled channel
-    :param cg_cache: dense array of shape [(2 * l1 +1) * (2 * l2 +1), (2 * lambda_ +
+    :param cg_coeffs: dense array of shape [(2 * l1 +1) * (2 * l2 +1), (2 * lambda_ +
         1)]
 
     :returns: array of shape [n_samples, (2*lambda_+1), q_properties * p_properties]
@@ -721,7 +734,7 @@ def dense_combine(
     # Infer l1 and l2 from the len of the length of axis 1 of each tensor
     l1 = (arr_1.shape[1] - 1) // 2
     l2 = (arr_2.shape[1] - 1) // 2
-    cg_coeffs = cg_cache_coeffs.get(l1, l2, lambda_)
+    cg_coeffs = cg_coeffs.get(l1, l2, lambda_)
 
     # (samples None None l1_mu q) * (samples l2_mu p None None)
     # -> (samples l2_mu p l1_mu q) we broadcast it in this way

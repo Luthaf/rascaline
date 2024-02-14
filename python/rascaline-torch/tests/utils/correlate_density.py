@@ -10,7 +10,7 @@ import torch
 from metatensor.torch import Labels, TensorBlock, TensorMap  # noqa
 
 import rascaline.torch
-from rascaline.torch.utils.clebsch_gordan.correlate_density import correlate_density
+from rascaline.torch.utils.clebsch_gordan.correlate_density import DensityCorrelations
 
 
 DATA_ROOT = os.path.join(os.path.dirname(__file__), "data")
@@ -57,25 +57,27 @@ def test_torch_script_correlate_density_angular_selection(
     """
     frames = h2o_isolated()
     nu_1 = spherical_expansion(frames)
-    scripted_correlate_density = torch.jit.script(correlate_density)
-    scripted_nu_2 = scripted_correlate_density(
-        density=nu_1,
-        correlation_order=2,
+    correlation_order = 2
+    corr_calculator = DensityCorrelations(
+        max_angular=SPHEX_HYPERS["max_angular"]*correlation_order
+        correlation_order=correlation_order,
         angular_cutoff=None,
         selected_keys=selected_keys,
         skip_redundant=skip_redundant,
     )
-    nu_2 = correlate_density(
-        density=nu_1,
-        correlation_order=2,
-        angular_cutoff=None,
-        selected_keys=selected_keys,
-        skip_redundant=skip_redundant,
-    )
+
+    scripted_corr_calculator = torch.jit.script(corr_calculator)
+
+    # Test compute
+    nu_2 = corr_calculator.compute(nu_1)
+    scripted_nu_2 = scripted_corr_calculator.compute(nu_1)
+
     assert metatensor.torch.equal_metadata(scripted_nu_2, nu_2)
-    # The test below cannot pass for the moment until we can script wigners or extract
-    # cg_cache out of the scripting. For the moment the output is only zeros
-    # assert metatensor.torch.allclose(scripted_nu_2, nu_2)
+    assert metatensor.torch.allclose(scripted_nu_2, nu_2)
+
+    # Teste compute_metadata
+    scripted_nu_2 = scripted_corr_calculator.compute_metadata(nu_1)
+    assert metatensor.torch.equal_metadata(scripted_nu_2, nu_2)
 
 
 def test_save_load():

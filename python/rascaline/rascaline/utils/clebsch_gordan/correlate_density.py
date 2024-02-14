@@ -5,13 +5,22 @@ equivalent.
 """
 
 from typing import List, Optional, Union
+
 import numpy as np
 
 from . import _cg_cache, _clebsch_gordan, _dispatch
-from ._classes import Labels, LabelsEntry, TensorBlock, TensorMap, TorchTensor, TorchModule, torch_jit_is_scripting
+from ._classes import (
+    Labels,
+    LabelsEntry,
+    TensorBlock,
+    TensorMap,
+    TorchModule,
+    torch_jit_is_scripting,
+)
+
 
 try:
-    from mops import sparse_accumulation_of_products as sap  # noqa F401
+    import mops
 
     HAS_MOPS = True
 except ImportError:
@@ -27,6 +36,7 @@ except ImportError:
 # ======================================================================
 # ===== Public API functions
 # ======================================================================
+
 
 class DensityCorrelations(TorchModule):
     """
@@ -77,7 +87,7 @@ class DensityCorrelations(TorchModule):
         this controls the output at each corresponding iteration. If None is
         passed, only the final iteration is output.
     :param arrays_backend: Determines the array backend be "numpy" or "torch"
-    :param cg_combine_backend: Determines the backend for the CG combination. It can
+    :param cg_backend: Determines the backend for the CG combination. It can
         be even "python-sparse", "python-dense" or "mops". If the CG combination
         performs on the sparse coefficients, it means that for each (l1, l2, lambda)
         block the (m1, m2, mu) coefficients are stored in a sparse format only storing
@@ -95,6 +105,7 @@ class DensityCorrelations(TorchModule):
         from a single iteration is requested, a :py:class:`TensorMap` is
         returned instead.
     """
+
     def __init__(
         self,
         max_angular: int,
@@ -104,7 +115,7 @@ class DensityCorrelations(TorchModule):
         skip_redundant: Optional[Union[bool, List[bool]]] = False,
         output_selection: Optional[Union[bool, List[bool]]] = None,
         arrays_backend: Optional[str] = None,
-        cg_combine_backend: Optional[str] = None,
+        cg_backend: Optional[str] = None,
     ):
         super().__init__()
         if arrays_backend is None:
@@ -116,51 +127,55 @@ class DensityCorrelations(TorchModule):
             if torch_jit_is_scripting():
                 raise ValueError(
                     "Module is torch scripted but 'numpy' was given as `arrays_backend`"
-                    )
+                )
             self._arrays_backend = "numpy"
         elif arrays_backend == "torch":
             self._arrays_backend = "torch"
         else:
             raise ValueError(
                 f"Unkown `arrays_backend` {arrays_backend}."
-                 "Only 'numpy' and 'torch' are supported.")
+                "Only 'numpy' and 'torch' are supported."
+            )
 
         # Choosing the optimal cg combine backend
-        if cg_combine_backend is None:
+        if cg_backend is None:
             if self._arrays_backend == "torch":
-                self._cg_combine_backend = "python-dense"
+                self._cg_backend = "python-dense"
             if self._arrays_backend == "numpy" and HAS_MOPS:
-                self._cg_combine_backend = "mops"
+                self._cg_backend = "mops"
             else:
-                self._cg_combine_backend = "python-sparse"
-        elif cg_combine_backend == "python-dense":
-            self._cg_combine_backend = "python-dense"
-        elif cg_combine_backend == "python-sparse":
-            self._cg_combine_backend = "python-sparse"
-        elif cg_combine_backend == "mops":
+                self._cg_backend = "python-sparse"
+        elif cg_backend == "python-dense":
+            self._cg_backend = "python-dense"
+        elif cg_backend == "python-sparse":
+            self._cg_backend = "python-sparse"
+        elif cg_backend == "mops":
             if self._arrays_backend == "torch":
                 raise NotImplementedError(
                     "'numpy' was determined or given as `arrays_backend` "
-                    "and 'mops' was given as `cg_combine_backend`, "
+                    "and 'mops' was given as `cg_backend`, "
                     "but mops does not support torch backend yet"
                 )
         else:
             raise ValueError(
-                f"Unkown `cg_combined_backend` {cg_combined_backend}."
-                 "Only 'python-dense', 'python-sparse' and 'mops' are supported.")
+                f"Unkown `cg_backend` {cg_backend}."
+                "Only 'python-dense', 'python-sparse' and 'mops' are supported."
+            )
 
         if max_angular < 0:
-            raise ValueError(f"Given `max_angular={max_angular}` negative. "
-                    "Must be greater equal 0.")
+            raise ValueError(
+                f"Given `max_angular={max_angular}` negative. "
+                "Must be greater equal 0."
+            )
         self._max_angular = max_angular
 
-        if self._cg_combine_backend == "python-dense":
+        if self._cg_backend == "python-dense":
             sparse = False
             use_mops = False
-        elif self._cg_combine_backend == "python-sparse":
+        elif self._cg_backend == "python-sparse":
             sparse = True
             use_mops = False
-        elif self._cg_combine_backend == "mops":
+        elif self._cg_backend == "mops":
             sparse = True
             use_mops = True
 
@@ -185,21 +200,23 @@ class DensityCorrelations(TorchModule):
         elif self._arrays_backend == "numpy":
             array_like = np.empty(0)
 
-        self._selected_keys : List[Union[Labels, None]] = \
+        self._selected_keys: List[Union[Labels, None]] = (
             _clebsch_gordan._parse_selected_keys(
                 n_iterations=n_iterations,
                 array_like=array_like,
                 angular_cutoff=self._angular_cutoff,
                 selected_keys=selected_keys,
             )
+        )
         # Parse the bool flags that control skipping of redundant CG combinations
         # and TensorMap output from each iteration
-        self._skip_redundant, self._output_selection = \
+        self._skip_redundant, self._output_selection = (
             _clebsch_gordan._parse_bool_iteration_filters(
                 n_iterations,
                 skip_redundant=skip_redundant,
                 output_selection=output_selection,
             )
+        )
 
         # Compute CG coefficient cache
         # TODO: keys have been precomputed, so perhaps we don't need to
@@ -208,12 +225,28 @@ class DensityCorrelations(TorchModule):
         # circumstances (and if) dense is faster
 
     @property
+    def correlation_order(self):
+        return self._correlation_order
+
+    @property
+    def selected_keys(self) -> List[Union[Labels, None]]:
+        return self._selected_keys
+
+    @property
+    def skip_redundant(self) -> List[bool]:
+        return self._skip_redundant
+
+    @property
+    def output_selection(self) -> List[bool]:
+        return self._output_selection
+
+    @property
     def arrays_backend(self):
         return self._arrays_backend
 
     @property
-    def cg_combine_backend(self):
-        return self._cg_combine_backend
+    def cg_backend(self):
+        return self._cg_backend
 
     @property
     def cg_coeffs(self) -> Union[_cg_cache.SparseCgDict, _cg_cache.DenseCgDict]:
@@ -235,13 +268,8 @@ class DensityCorrelations(TorchModule):
         """
         return self._correlate_density(
             density,
-            self._correlation_order,
-            self._selected_keys,
-            self._skip_redundant,
-            self._output_selection,
-            self._cg_coeffs,
+            compute_metadata=False,
         )
-
 
     def compute_metadata(
         self,
@@ -261,13 +289,8 @@ class DensityCorrelations(TorchModule):
         """
         return self._correlate_density(
             density,
-            self._correlation_order,
-            self._selected_keys,
-            self._skip_redundant,
-            self._output_selection,
-            None,
+            compute_metadata=True,
         )
-
 
     # ====================================================================
     # ===== Private functions that do the work on the TensorMap level
@@ -276,11 +299,7 @@ class DensityCorrelations(TorchModule):
     def _correlate_density(
         self,
         density: TensorMap,
-        correlation_order: int,  # TODO remove since it is self
-        selected_keys: List[Union[Labels, None]], # TODO remove since it is self
-        skip_redundant: List[bool], # TODO remove since it is self
-        output_selection: List[bool], # TODO remove since it is self
-        cg_coeffs: Union[_cg_cache.SparseCgDict, _cg_cache.DenseCgDict, None],
+        compute_metadata: bool
     ) -> Union[TensorMap, List[TensorMap]]:
 
         # Check metadata
@@ -299,7 +318,7 @@ class DensityCorrelations(TorchModule):
                 "input `density` must have a single component"
                 " axis with name `spherical_harmonics_m`"
             )
-        n_iterations = correlation_order - 1  # num iterations
+        n_iterations = self._correlation_order - 1  # num iterations
         density = _clebsch_gordan._standardize_keys(density)  # standardize metadata
         density_correlation = density  # create a copy to combine with itself
 
@@ -319,25 +338,30 @@ class DensityCorrelations(TorchModule):
             density.keys,
             density.keys,
             n_iterations=n_iterations,
-            selected_keys=selected_keys,
-            skip_redundant=skip_redundant,
+            selected_keys=self._selected_keys,
+            skip_redundant=self._skip_redundant,
         )
         max_angular = max(
             _dispatch.max(density.keys.column("spherical_harmonics_l")),
-                    max(
-                        [
-                            int(_dispatch.max(mdata[2].column("spherical_harmonics_l")))
-                            for mdata in key_metadata
-                        ]
-                    ),
+            max(
+                [
+                    int(_dispatch.max(mdata[2].column("spherical_harmonics_l")))
+                    for mdata in key_metadata
+                ]
+            ),
         )
         if self._max_angular < max_angular:
             raise ValueError(
-                    f"The density you provide requires max_angular={max_angular} "
-                    f"but on initialization max_angular={self._max_angular} was given")
+                f"The density you provide requires max_angular={max_angular} "
+                f"but on initialization max_angular={self._max_angular} was given"
+            )
 
         # Perform iterative CG tensor products
         density_correlations: List[TensorMap] = []
+        if compute_metadata:
+            cg_coeffs = None
+        else:
+            cg_coeffs = self._cg_coeffs
         for iteration in range(n_iterations):
             # Define the correlation order of the current iteration
             correlation_order_it = iteration + 2
@@ -348,12 +372,15 @@ class DensityCorrelations(TorchModule):
             for j in range(len(key_metadata_i[0])):
                 key_1: LabelsEntry = key_metadata_i[0][j]
                 key_2: LabelsEntry = key_metadata_i[1][j]
-                lambda_out: int = int(key_metadata_i[2].column("spherical_harmonics_l")[j])
+                lambda_out: int = int(
+                    key_metadata_i[2].column("spherical_harmonics_l")[j]
+                )
                 block_out = _clebsch_gordan._combine_blocks_same_samples(
                     density_correlation.block(key_1),
                     density.block(key_2),
                     lambda_out,
                     cg_coeffs,
+                    self._cg_backend,
                 )
                 blocks_out.append(block_out)
             keys_out = key_metadata[iteration][2]
@@ -361,7 +388,7 @@ class DensityCorrelations(TorchModule):
 
             # If this tensor is to be included in the output, move the [l1, l2, ...]
             # keys to properties and store
-            if output_selection[iteration]:
+            if self._output_selection[iteration]:
                 density_correlations.append(
                     density_correlation.keys_to_properties(
                         [f"l{i}" for i in range(1, correlation_order_it + 1)]
