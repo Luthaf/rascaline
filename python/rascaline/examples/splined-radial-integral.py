@@ -1,4 +1,7 @@
 """
+
+.. _userdoc-tutorials-splined-radial-integrals:
+
 Splined radial integrals
 ========================
 

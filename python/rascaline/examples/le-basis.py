@@ -1,4 +1,6 @@
 """
+.. _userdoc-tutorials-le-basis:
+
 LE basis
 ========
 
@@ -9,8 +11,8 @@ eigenstate (LE) basis (https://doi.org/10.1063/5.0124363), both using truncation
 ``l_max``, ``n_max`` hyper-parameters and with an eigenvalue threshold.
 
 Here we use :class:`rascaline.utils.SphericalBesselBasis` class. An detailed how-to
-guide how to construct radial integrals for the LE basis from scratch given is given in
-:ref:`userdoc-how-to-le-basis`.
+guide how to construct radial integrals for the LE basis from scratch is given in
+:ref:`userdoc-tutorials-splined-radial-integrals`.
 """
 
 # %%
@@ -63,6 +65,7 @@ E_max = 400  # eigenvalue threshold
 
 # %%
 # Spherical Bessel zeros and Laplacian eigenvalues
+# ------------------------------------------------
 
 l_max_large = 50  # just used to get the eigenvalues
 n_max_large = 50  # just used to get the eigenvalues
@@ -71,9 +74,8 @@ n_max_large = 50  # just used to get the eigenvalues
 # And compute the zeroth of the spherical Bessel functions
 z_ln = rascaline.utils.SphericalBesselBasis.compute_zeros(l_max_large, n_max_large)
 
-E_ln = (
-    z_ln**2
-)  # proportional to the Laplacian eigenvalues, which would be z_ln**2 / cutoff**2
+# proportional to the Laplacian eigenvalues, which would be z_ln**2 / cutoff**2
+E_ln = z_ln**2
 
 # %%
 # Determine the l_max, n_max parameters that will certainly contain all the desired
