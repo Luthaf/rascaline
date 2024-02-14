@@ -41,7 +41,7 @@ jobs:
             cargo-test-flags: --release
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: setup rust
         uses: dtolnay/rust-toolchain@master
@@ -50,7 +50,7 @@ jobs:
 
       # we get torch from pip to run the C++ test
       - name: setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 

@@ -18,10 +18,10 @@ jobs:
       - name: free disk space
         run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android || true
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
@@ -86,7 +86,8 @@ jobs:
             coverage xml
 
       - name: upload to codecov.io
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           fail_ci_if_error: true
           files: target/tarpaulin/cobertura.xml,coverage.xml,coverage.info
+          token: ${{ secrets.CODECOV_TOKEN }}
