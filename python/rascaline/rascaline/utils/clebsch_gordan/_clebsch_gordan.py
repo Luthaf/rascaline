@@ -591,8 +591,8 @@ def _combine_blocks_same_samples(
     block_1: TensorBlock,
     block_2: TensorBlock,
     lambda_: int,
-    cg_coeffs: Union[_cg_cache.SparseCgDict, _cg_cache.DenseCgDict, None],
-    cg_backend: str
+    cg_coeffs: Union[TensorMap, None],
+    cg_backend: str,
 ) -> TensorBlock:
     """
     For a given pair of TensorBlocks and desired angular channel, combines the

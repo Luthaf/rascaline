@@ -4,13 +4,20 @@ Gordan coefficients for use in CG combinations.
 """
 
 import math
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional
 
 import numpy as np
 import wigners
 
 from . import _dispatch
-from ._classes import Array, TorchModule, torch_jit_annotate, torch_jit_is_scripting
+from ._classes import (
+    Array,
+    Labels,
+    TensorBlock,
+    TensorMap,
+    TorchModule,
+    torch_jit_is_scripting,
+)
 
 
 try:
@@ -158,6 +165,7 @@ class ClebschGordanReal(TorchModule):
     ):
         super().__init__()
         self._lambda_max = lambda_max
+        self._sparse = sparse
 
         # For TorchScript we declare type
         self._use_mops: bool = False
@@ -218,7 +226,7 @@ class ClebschGordanReal(TorchModule):
 
     @property
     def sparse(self):
-        return isinstance(self._coeffs, SparseCgDict)
+        return self._sparse
 
     @property
     def use_mops(self):
@@ -227,94 +235,6 @@ class ClebschGordanReal(TorchModule):
     @property
     def coeffs(self):
         return self._coeffs
-
-
-class DenseCgDict:
-    """
-    This is a class imtates the access of a Dict[Tuple[int, int, int], Array] object.
-    We cannot directly use a dict of this type because we support TorchScript
-    and TorchScript only supports dicts of type Dict[int], Dict[float], Dict[str].
-    Internally we represent data structure as  Dict[int, Dict[int, Dict[int, Array]]]
-
-    Reference
-    ---------
-    https://pytorch.org/docs/stable/jit_language_reference.html
-    """
-
-    def __init__(self):
-        self._dict: Dict[int, Dict[int, Dict[int, Array]]] = {}
-
-    def get(self, i: int, j: int, k: int):
-        # __getitem__ is not supported by TorchScript
-        return self._dict[i][j][k]
-
-    def set(self, i: int, j: int, k: int, value: Array):
-        # __setitem__ is not supported by TorchScript
-        if i not in self._dict:
-            self._dict[i] = torch_jit_annotate(Dict[int, Dict[int, Array]], {})
-        if j not in self._dict[i]:
-            self._dict[i][j] = torch_jit_annotate(Dict[int, Array], {})
-        self._dict[i][j][k] = value
-
-    def delete(self, i: int, j: int, k: int):
-        # __delitem__ is not supported by TorchScript
-        del self._dict[i][j][k]
-        if len(self._dict[i][j]) == 0:
-            del self._dict[i][j]
-        if len(self._dict[i]) == 0:
-            del self._dict[i]
-
-    def keys(self):
-        keys: List[List[int]] = []
-        for i in self._dict.keys():
-            for j in self._dict[i].keys():
-                for k in self._dict[i][j].keys():
-                    keys.append([i, j, k])
-        return keys
-
-
-class SparseCgDict:
-    """
-    This is a class imtates the access of a Dict[Tuple[int, int, int], Array] object.
-    We cannot directly use a dict of this type because we support TorchScript
-    and TorchScript only supports dicts of type Dict[int], Dict[float], Dict[str].
-    Internally we represent data structure as  Dict[int, Dict[int, Dict[int, Array]]]
-
-    Reference
-    ---------
-    https://pytorch.org/docs/stable/jit_language_reference.html
-    """
-
-    def __init__(self):
-        self._dict: Dict[int, Dict[int, Dict[int, DenseCgDict]]] = {}
-
-    def get(self, l1: int, l2: int, lambda_: int):
-        # __getitem__ is not supported by TorchScript
-        return self._dict[l1][l2][lambda_]
-
-    def set(self, l1: int, l2: int, lambda_: int, value: DenseCgDict):
-        # __setitem__ is not supported by TorchScript
-        if l1 not in self._dict:
-            self._dict[l1] = torch_jit_annotate(Dict[int, Dict[int, DenseCgDict]], {})
-        if l2 not in self._dict[l1]:
-            self._dict[l1][l2] = torch_jit_annotate(Dict[int, DenseCgDict], {})
-        self._dict[l1][l2][lambda_] = value
-
-    def delete(self, l1: int, l2: int, lambda_: int):
-        # __delitem__ is not supported by TorchScript
-        del self._dict[l1][l2][lambda_]
-        if len(self._dict[l1][l2]) == 0:
-            del self._dict[l1][l2]
-        if len(self._dict[l1]) == 0:
-            del self._dict[l1]
-
-    def keys(self):
-        keys: List[List[int]] = []
-        for l1 in self._dict.keys():
-            for l2 in self._dict[l1].keys():
-                for lambda_ in self._dict[l1][l2].keys():
-                    keys.append([l1, l2, lambda_])
-        return keys
 
 
 def _build_cg_coeff_dict(
@@ -328,17 +248,25 @@ def _build_cg_coeff_dict(
     r2c: Dict[int, Array] = {}
     c2r: Dict[int, Array] = {}
 
-    if sparse:
-        coeff_dict: Union[SparseCgDict, DenseCgDict] = SparseCgDict()
-    else:
-        coeff_dict: Union[SparseCgDict, DenseCgDict] = DenseCgDict()
+    coeff_dict = {}
 
     if use_torch:
         complex_like = torch.empty(0, dtype=torch.complex128)
         double_like = torch.empty(0, dtype=torch.double)
+        # For metatensor-core backen we have to use the for Labels numpy arrays
+        # even with use_torch true. Logic is a nested because while scripting
+        # the compiler may not see `torch.ScriptClass`
+        if torch_jit_is_scripting():
+            labels_values_like = torch.empty(0, dtype=torch.double)
+        else:
+            if isinstance(Labels, torch.ScriptClass):
+                labels_values_like = torch.empty(0, dtype=torch.double)
+            else:
+                labels_values_like = np.empty(0, dtype=np.double)
     else:
         complex_like = np.empty(0, dtype=np.complex128)
         double_like = np.empty(0, dtype=np.double)
+        labels_values_like = np.empty(0, dtype=np.double)
 
     for lambda_ in range(0, lambda_max + 1):
         c2r[lambda_] = _complex2real(lambda_, like=complex_like)
@@ -370,7 +298,7 @@ def _build_cg_coeff_dict(
                 else:
                     cg_l1l2lam_dense = _dispatch.imag(real_cg)
 
-                if isinstance(coeff_dict, SparseCgDict):
+                if sparse:
                     # Find the m1, m2, mu idxs of the nonzero CG coeffs
                     nonzeros_cg_coeffs_idx = _dispatch.where(
                         _dispatch.abs(cg_l1l2lam_dense) > 1e-15
@@ -403,24 +331,85 @@ def _build_cg_coeff_dict(
                         mu_arr = _dispatch.int_array_like(mu_arr, double_like)[mu_idxs]
                         C_arr = _dispatch.double_array_like(C_arr, double_like)[mu_idxs]
                         cg_l1l2lam_sparse = (C_arr, m1_arr, m2_arr, mu_arr)
-                        coeff_dict.set(l1, l2, lambda_, cg_l1l2lam_sparse)
+                        coeff_dict[(l1, l2, lambda_)] = cg_l1l2lam_sparse
                     else:
                         # Otherwise fall back to torch/numpy and store as
                         # sparse dicts.
-                        cg_l1l2lam_sparse = DenseCgDict()
+                        cg_l1l2lam_sparse = {}
                         for i in range(len(nonzeros_cg_coeffs_idx[0])):
                             m1 = nonzeros_cg_coeffs_idx[0][i]
                             m2 = nonzeros_cg_coeffs_idx[1][i]
                             mu = nonzeros_cg_coeffs_idx[2][i]
-                            cg_l1l2lam_sparse.set(
-                                m1, m2, mu, cg_l1l2lam_dense[m1, m2, mu]
-                            )
-                        coeff_dict.set(l1, l2, lambda_, cg_l1l2lam_sparse)
+                            cg_l1l2lam_sparse[(m1, m2, mu)] = cg_l1l2lam_dense[
+                                m1, m2, mu
+                            ]
+                        coeff_dict[(l1, l2, lambda_)] = cg_l1l2lam_sparse
                 else:
                     # Store
-                    coeff_dict.set(l1, l2, lambda_, cg_l1l2lam_dense)
-
-    return coeff_dict
+                    coeff_dict[(l1, l2, lambda_)] = cg_l1l2lam_dense
+    blocks = []
+    if sparse:
+        for l1l2lam_dict in coeff_dict.values():
+            l1l2lam_sample_values = []
+            for m1m2mu_key in l1l2lam_dict.keys():
+                l1l2lam_sample_values.append(m1m2mu_key)
+            # extending shape by samples and properties
+            values = _dispatch.double_array_like(
+                [*l1l2lam_dict.values()], double_like
+            ).reshape(-1, 1)
+            l1l2lam_sample_values = _dispatch.int_array_like(
+                l1l2lam_sample_values, double_like
+            )
+            # we have to move put the m1 m2 m3 inside a block so we can access it easier
+            # inside cg combine function,
+            blocks.append(
+                TensorBlock(
+                    values=values,
+                    samples=Labels(["m1", "m2", "mu"], l1l2lam_sample_values),
+                    components=[],
+                    properties=Labels.range("property", 1),
+                )
+            )
+        keys = Labels(
+            ["l1", "l2", "lambda"],
+            _dispatch.int_array_like(list(coeff_dict.keys()), labels_values_like),
+        )
+    else:
+        keys = Labels(
+            ["l1", "l2", "lambda"],
+            _dispatch.int_array_like(list(coeff_dict.keys()), labels_values_like),
+        )
+        for l1l2lam_values in coeff_dict.values():
+            # extending shape by samples and properties
+            block_value_shape = (1,) + l1l2lam_values.shape + (1,)
+            blocks.append(
+                TensorBlock(
+                    values=l1l2lam_values.reshape(block_value_shape),
+                    samples=Labels.range("sample", 1),
+                    components=[
+                        Labels(
+                            ["m1"],
+                            _dispatch.int_range_like(
+                                0, l1l2lam_values.shape[0], labels_values_like
+                            ).reshape(-1, 1),
+                        ),
+                        Labels(
+                            ["m2"],
+                            _dispatch.int_range_like(
+                                0, l1l2lam_values.shape[1], labels_values_like
+                            ).reshape(-1, 1),
+                        ),
+                        Labels(
+                            ["mu"],
+                            _dispatch.int_range_like(
+                                0, l1l2lam_values.shape[2], labels_values_like
+                            ).reshape(-1, 1),
+                        ),
+                    ],
+                    properties=Labels.range("property", 1),
+                )
+            )
+    return TensorMap(keys, blocks)
 
 
 # ============================
@@ -529,7 +518,7 @@ def combine_arrays(
     arr_1: Array,
     arr_2: Array,
     lambda_: int,
-    cg_coeffs: Union[SparseCgDict, DenseCgDict],
+    cg_coeffs: TensorMap,
     cg_backend: Optional[str] = None,
 ) -> Array:
     """
@@ -577,21 +566,18 @@ def combine_arrays(
     :returns: array of shape [n_samples, (2*lambda_+1), q_properties * p_properties]
     """
     # If just precomputing metadata, return an empty array
-
     if cg_coeffs is None:
         return empty_combine(arr_1, arr_2, lambda_)
 
     # We have to temporary store it so TorchScript can infer the correct type
-    if isinstance(cg_coeffs, SparseCgDict):
-        return sparse_combine(
-            arr_1, arr_2, lambda_, cg_coeffs, cg_backend
-        )
-    elif isinstance(cg_coeffs, DenseCgDict):
+    if cg_backend == "python-sparse" or cg_backend == "mops":
+        return sparse_combine(arr_1, arr_2, lambda_, cg_coeffs, cg_backend)
+    elif cg_backend == "python-dense":
         return dense_combine(arr_1, arr_2, lambda_, cg_coeffs)
     else:
         raise ValueError(
-            "Wrong type of cg coeffs, found type {type(cg_coeffs)},"
-            " but only support SparseCgDict, DenseCgDict"
+            "Wrong cg_backend, got '{cg_backend}',"
+            " but only support 'python-dense', 'python-sparse' and 'mops'."
         )
 
 
@@ -618,7 +604,7 @@ def sparse_combine(
     arr_1: Array,
     arr_2: Array,
     lambda_: int,
-    cg_coeffs: SparseCgDict,
+    cg_coeffs: TensorMap,
     cg_backend: str,
 ) -> Array:
     """
@@ -659,18 +645,16 @@ def sparse_combine(
         arr_out = _dispatch.zeros_like(arr_1, (n_i, 2 * lambda_ + 1, n_p * n_q))
 
         # Get the corresponding Clebsch-Gordan coefficients
-        cg_l1l2lam = cg_coeffs.get(l1, l2, lambda_)
-
         # Fill in each mu component of the output array in turn
-        for item in cg_l1l2lam.keys():
-            m1 = item[0]
-            m2 = item[1]
-            mu = item[2]
+        cg_l1l2lam = cg_coeffs.block({"l1": l1, "l2": l2, "lambda": lambda_})
+        for i in range(len(cg_l1l2lam.samples)):
+            m1m2mu_key = cg_l1l2lam.samples.entry(i)
+            m1 = m1m2mu_key[0]
+            m2 = m1m2mu_key[1]
+            mu = m1m2mu_key[2]
             # Broadcast arrays, multiply together and with CG coeff
             arr_out[:, mu, :] += (
-                arr_1[:, m1, :, None]
-                * arr_2[:, m2, None, :]
-                * cg_l1l2lam.get(m1, m2, mu)
+                arr_1[:, m1, :, None] * arr_2[:, m2, None, :] * cg_l1l2lam.values[i, 0]
             ).reshape(n_i, n_p * n_q)
 
         return arr_out
@@ -690,7 +674,7 @@ def sparse_combine(
         arr_out = sap(
             arr_1,
             arr_2,
-            *cg_coeffs.get(l1, l2, lambda_),
+            *cg_coeffs.block({"l1": l1, "l2": l2, "lambda": lambda_}).values.flatten(),
             output_size=2 * lambda_ + 1,
         )
         assert arr_out.shape == (n_i * n_p * n_q, 2 * lambda_ + 1)
@@ -713,7 +697,7 @@ def dense_combine(
     arr_1: Array,
     arr_2: Array,
     lambda_: int,
-    cg_coeffs: DenseCgDict,
+    cg_coeffs: TensorMap,
 ) -> Array:
     """
     Performs a Clebsch-Gordan combination step on 2 arrays using a dense
@@ -734,7 +718,8 @@ def dense_combine(
     # Infer l1 and l2 from the len of the length of axis 1 of each tensor
     l1 = (arr_1.shape[1] - 1) // 2
     l2 = (arr_2.shape[1] - 1) // 2
-    cg_coeffs = cg_coeffs.get(l1, l2, lambda_)
+
+    cg_l1l2lam = cg_coeffs.block({"l1": l1, "l2": l2, "lambda": lambda_}).values
 
     # (samples None None l1_mu q) * (samples l2_mu p None None)
     # -> (samples l2_mu p l1_mu q) we broadcast it in this way
@@ -752,11 +737,11 @@ def dense_combine(
     )
 
     # (l1_mu l2_mu lam_mu) -> ((l1_mu l2_mu) lam_mu)
-    cg_coeffs = cg_coeffs.reshape(-1, 2 * lambda_ + 1)
+    cg_l1l2lam = cg_l1l2lam.reshape(-1, 2 * lambda_ + 1)
 
     # (samples (q p) (l1_mu l2_mu)) @ ((l1_mu l2_mu) lam_mu)
     # -> samples (q p) lam_mu
-    arr_out = arr_out @ cg_coeffs
+    arr_out = arr_out @ cg_l1l2lam
 
     # (samples (q p) lam_mu) -> (samples lam_mu (q p))
     return _dispatch.swapaxes(arr_out, 1, 2)

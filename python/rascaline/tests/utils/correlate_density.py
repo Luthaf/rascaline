@@ -393,7 +393,9 @@ def test_clebsch_gordan_orthogonality(cg_cache_dense, l1, l2):
     # \sum_{-m1 \leq l1 \leq m1, -m2 \leq l2 \leq m2}
     #           <λμ|l1m1,l2m2> <l1m1',l2m2'|λμ'> = δ_μμ'
     for lam in range(lam_min, lam_max):
-        cg_mat = cg_cache_dense.coeffs.get(l1, l2, lam).reshape(-1, 2 * lam + 1)
+        cg_mat = cg_cache_dense.coeffs.block(
+            {"l1": l1, "l2": l2, "lambda": lam}
+        ).values.reshape(-1, 2 * lam + 1)
         dot_product = cg_mat.T @ cg_mat
         diag_mask = _dispatch.zeros_like(bool_like, dot_product.shape)
         diag_indices = (
@@ -417,7 +419,9 @@ def test_clebsch_gordan_orthogonality(cg_cache_dense, l1, l2):
     l1l2_dim = (2 * l1 + 1) * (2 * l2 + 1)
     dot_product = _dispatch.zeros_like(float64_like, (l1l2_dim, l1l2_dim))
     for lam in range(lam_min, lam_max + 1):
-        cg_mat = cg_cache_dense.coeffs.get(l1, l2, lam).reshape(-1, 2 * lam + 1)
+        cg_mat = cg_cache_dense.coeffs.block(
+            {"l1": l1, "l2": l2, "lambda": lam}
+        ).values.reshape(-1, 2 * lam + 1)
         dot_product += cg_mat @ cg_mat.T
     diag_mask = _dispatch.zeros_like(bool_like, dot_product.shape)
     diag_indices = (

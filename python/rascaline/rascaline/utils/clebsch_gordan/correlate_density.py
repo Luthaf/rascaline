@@ -20,7 +20,7 @@ from ._classes import (
 
 
 try:
-    import mops
+    import mops  # noqa F401
 
     HAS_MOPS = True
 except ImportError:
@@ -179,6 +179,8 @@ class DensityCorrelations(TorchModule):
             sparse = True
             use_mops = True
 
+        # We cannot store this into one member variable because TorchScript
+        # has problems scripting which cannot be resolved with isinstance checks
         self._cg_coeffs = _cg_cache.ClebschGordanReal(
             self._max_angular,
             sparse=sparse,
@@ -229,7 +231,13 @@ class DensityCorrelations(TorchModule):
         return self._correlation_order
 
     @property
-    def selected_keys(self) -> List[Union[Labels, None]]:
+    def selected_keys(self):
+        """
+        Outputs the selected keys used in the CG iterations of type List[Union[Labels,
+        None]].
+        """
+        # TorchScript cannot infer the type properly so we removed the type hint of
+        # output
         return self._selected_keys
 
     @property
@@ -249,7 +257,7 @@ class DensityCorrelations(TorchModule):
         return self._cg_backend
 
     @property
-    def cg_coeffs(self) -> Union[_cg_cache.SparseCgDict, _cg_cache.DenseCgDict]:
+    def cg_coeffs(self) -> TensorMap:
         return self._cg_coeffs
 
     def forward(self, density: TensorMap) -> Union[TensorMap, List[TensorMap]]:
@@ -297,9 +305,7 @@ class DensityCorrelations(TorchModule):
     # ====================================================================
     # TODO replace arguments with self.
     def _correlate_density(
-        self,
-        density: TensorMap,
-        compute_metadata: bool
+        self, density: TensorMap, compute_metadata: bool
     ) -> Union[TensorMap, List[TensorMap]]:
 
         # Check metadata
@@ -362,6 +368,7 @@ class DensityCorrelations(TorchModule):
             cg_coeffs = None
         else:
             cg_coeffs = self._cg_coeffs
+
         for iteration in range(n_iterations):
             # Define the correlation order of the current iteration
             correlation_order_it = iteration + 2

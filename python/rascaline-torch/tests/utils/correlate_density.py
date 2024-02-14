@@ -59,7 +59,7 @@ def test_torch_script_correlate_density_angular_selection(
     nu_1 = spherical_expansion(frames)
     correlation_order = 2
     corr_calculator = DensityCorrelations(
-        max_angular=SPHEX_HYPERS["max_angular"]*correlation_order
+        max_angular=SPHEX_HYPERS["max_angular"] * correlation_order,
         correlation_order=correlation_order,
         angular_cutoff=None,
         selected_keys=selected_keys,
@@ -81,7 +81,12 @@ def test_torch_script_correlate_density_angular_selection(
 
 
 def test_save_load():
-    scripted_correlate_density = torch.jit.script(correlate_density)
+    corr_calculator = DensityCorrelations(
+        max_angular=2,
+        correlation_order=2,
+        angular_cutoff=1,
+    )
+    scripted_correlate_density = torch.jit.script(corr_calculator)
     buffer = io.BytesIO()
     torch.jit.save(scripted_correlate_density, buffer)
     buffer.seek(0)
