@@ -23,6 +23,8 @@ jobs:
             cargo-test-flags: --release
 
           - os: ubuntu-20.04
+            # These should be updated to torch 2.2 and Python 3.12 once
+            # https://github.com/pytorch/pytorch/issues/118862 is solved
             torch-version: 2.1.*
             python-version: "3.11"
             cargo-test-flags: --release
