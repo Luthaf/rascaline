@@ -84,7 +84,7 @@ jobs:
         uses: actions/setup-python@v4
         if: "!matrix.container"
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
       - name: setup rust
         uses: dtolnay/rust-toolchain@master
@@ -127,11 +127,6 @@ jobs:
   prevent-bitrot:
     runs-on: ubuntu-20.04
     name: check examples / benchmarks
-    strategy:
-      matrix:
-        include:
-          - rust-version:
-            rust-target:
     steps:
       - uses: actions/checkout@v3
 

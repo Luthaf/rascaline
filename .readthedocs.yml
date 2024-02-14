@@ -11,7 +11,7 @@ build:
   apt_packages:
     - cmake
   tools:
-    python: "3.11"
+    python: "3.12"
     rust: "1.75"
   jobs:
     post_install:
