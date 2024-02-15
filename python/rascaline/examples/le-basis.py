@@ -68,18 +68,15 @@ E_max = 400  # eigenvalue threshold
 
 # %%
 #
-# Spherical Bessel zeros and Laplacian eigenvalues
-# ------------------------------------------------
+# Computation of the spherical Bessel zeros and Laplacian eigenvalues
 
 l_max_large = 50  # just used to get the eigenvalues
 n_max_large = 50  # just used to get the eigenvalues
 
-# %%
-#
-# And compute the zeroth of the spherical Bessel functions
+# compute the zeroth of the spherical Bessel functions
 z_ln = rascaline.utils.SphericalBesselBasis.compute_zeros(l_max_large, n_max_large)
 
-# proportional to the Laplacian eigenvalues, which would be z_ln**2 / cutoff**2
+# calculate quantities proportional to the Laplacian eigenvalues, which would be z_ln**2 / cutoff**2
 E_ln = z_ln**2
 
 # %%
@@ -120,11 +117,14 @@ plt.show()
 
 # %%
 #
-# Set up a TensorMap for property selection
+# Set up a TensorMap for property selection. This allows to compute
+# only a subset of the ``properties`` axis of the descriptors
+# (see :ref:`_userdoc-how-to-property-selection:` for more details.).
 
+# extract all the species from the small dataset
 all_species = list(
     np.unique(np.concatenate([structure.numbers for structure in structures]))
-)  # extract all the species from the small dataset
+)
 
 keys = []
 blocks = []
@@ -156,6 +156,8 @@ selected_properties = TensorMap(
 #
 # Build a calculator and calculate the spherical expansion coefficents
 
+# set up a spliner object for the spherical Bessel functions
+# this radial basis will be used to compute the spherical expansion
 spliner = rascaline.utils.SoapSpliner(
     cutoff=cutoff,
     max_radial=n_max,
