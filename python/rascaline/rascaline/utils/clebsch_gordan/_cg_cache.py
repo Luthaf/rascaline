@@ -364,7 +364,7 @@ def _build_cg_coeff_dict(
             # inside cg combine function,
             blocks.append(
                 TensorBlock(
-                    values=values,
+                    values=_dispatch.contiguous(values),
                     samples=Labels(["m1", "m2", "mu"], l1l2lam_sample_values),
                     components=[],
                     properties=Labels.range("property", 1),
@@ -384,7 +384,9 @@ def _build_cg_coeff_dict(
             block_value_shape = (1,) + l1l2lam_values.shape + (1,)
             blocks.append(
                 TensorBlock(
-                    values=l1l2lam_values.reshape(block_value_shape),
+                    values=_dispatch.contiguous(
+                        l1l2lam_values.reshape(block_value_shape)
+                    ),
                     samples=Labels.range("sample", 1),
                     components=[
                         Labels(

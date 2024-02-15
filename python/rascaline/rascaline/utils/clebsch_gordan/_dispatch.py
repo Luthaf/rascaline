@@ -78,6 +78,26 @@ def argsort(array):
         raise TypeError(UNKNOWN_ARRAY_TYPE)
 
 
+def contiguous(array):
+    """
+    Returns a contiguous array.
+
+    It is equivalent of np.ascontiguousarray(array) and tensor.contiguous(). In
+    the case of numpy, C order is used for consistency with torch. As such, only
+    C-contiguity is checked.
+    """
+    if isinstance(array, TorchTensor):
+        if array.is_contiguous():
+            return array
+        return array.contiguous()
+    elif isinstance(array, np.ndarray):
+        if array.flags["C_CONTIGUOUS"]:
+            return array
+        return np.ascontiguousarray(array)
+    else:
+        raise TypeError(UNKNOWN_ARRAY_TYPE)
+
+
 def unique(array, axis: Optional[int] = None):
     """Find the unique elements of an array."""
     if isinstance(array, TorchTensor):

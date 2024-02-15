@@ -266,14 +266,14 @@ class DensityCorrelations(TorchModule):
 
     def compute(self, density: TensorMap) -> Union[TensorMap, List[TensorMap]]:
         """
-        Performs the density correlations for public functions
-        :py:func:`correlate_density` and :py:func:`correlate_density_metadata`.
+        Computes the density correlations by taking iterative Clebsch-Gordan
+        (CG) tensor products of the input `density` descriptor with itself.
 
-        :param density: A density descriptor of body order 2 (correlation order 1),
-            in :py:class:`TensorMap` format. This may be, for example, a rascaline
-            :py:class:`SphericalExpansion` or :py:class:`LodeSphericalExpansion`.
-            Alternatively, this could be multi-center descriptor, such as a pair
-            density.
+        :param density: A density descriptor of body order 2 (correlation order
+            1), in :py:class:`TensorMap` format. This may be, for example, a
+            rascaline :py:class:`SphericalExpansion` or
+            :py:class:`LodeSphericalExpansion`. Alternatively, this could be
+            multi-center descriptor, such as a pair density.
         """
         return self._correlate_density(
             density,
@@ -286,16 +286,16 @@ class DensityCorrelations(TorchModule):
         density: TensorMap,
     ) -> Union[TensorMap, List[TensorMap]]:
         """
-        Returns the metadata-only :py:class:`TensorMap`(s) that would be output by
-        the function :py:func:`correlate_density` under the same settings, without
-        perfoming the actual Clebsch-Gordan tensor products. See this function for
-        full documentation.
+        Returns the metadata-only :py:class:`TensorMap`(s) that would be output
+        by the function :py:meth:`compute` for the same calculator under the
+        same settings, without perfoming the actual Clebsch-Gordan tensor
+        products.
 
-        :param density: A density descriptor of body order 2 (correlation order 1),
-            in :py:class:`TensorMap` format. This may be, for example, a rascaline
-            :py:class:`SphericalExpansion` or :py:class:`LodeSphericalExpansion`.
-            Alternatively, this could be multi-center descriptor, such as a pair
-            density.
+        :param density: A density descriptor of body order 2 (correlation order
+            1), in :py:class:`TensorMap` format. This may be, for example, a
+            rascaline :py:class:`SphericalExpansion` or
+            :py:class:`LodeSphericalExpansion`. Alternatively, this could be
+            multi-center descriptor, such as a pair density.
         """
         return self._correlate_density(
             density,
