@@ -15,7 +15,6 @@ from ._classes import (
     TensorMap,
     is_labels,
     torch_jit_annotate,
-    torch_jit_is_scripting,
 )
 
 
@@ -80,19 +79,7 @@ def _parse_selected_keys(
         )
 
     if isinstance(selected_keys, list):
-        # Both if conditions check the same thing, the second is for metetensor-core and
-        # metatensor-torch, the first one for torch-scripted metatensor-torch
-        if torch_jit_is_scripting():
-            if not all(
-                [
-                    isinstance(selected_keys[i], Labels) or (selected_keys[i] is None)
-                    for i in range(len(selected_keys))
-                ]
-            ):
-                raise TypeError(
-                    "`selected_keys` must be a Labels or List[Union[None, Labels]]"
-                )
-        elif not all(
+        if not all(
             [
                 is_labels(selected_keys[i]) or (selected_keys[i] is None)
                 for i in range(len(selected_keys))
@@ -114,40 +101,22 @@ def _parse_selected_keys(
 
     if selected_keys is None:
         if angular_cutoff is None:  # no selections at all
-            selected_keys_ = [
-                torch_jit_annotate(Union[None, Labels], None)
-            ] * n_iterations
+            selected_keys_ = [None] * n_iterations
         else:
             # Create a key selection with all angular channels <= the specified
             # angular cutoff
-            label: Union[None, Labels] = torch_jit_annotate(
-                Union[None, Labels],
-                Labels(
-                    names=["spherical_harmonics_l"],
-                    values=_dispatch.int_array_like(
-                        list(range(0, angular_cutoff)), like=array_like
-                    ).reshape(-1, 1),
-                ),
+            label = Labels(
+                names=["spherical_harmonics_l"],
+                values=_dispatch.int_array_like(
+                    list(range(0, angular_cutoff)), like=array_like
+                ).reshape(-1, 1),
             )
             selected_keys_ = [label] * n_iterations
 
-    # Both if conditions check the same thing, we cannot write them out into one
-    # condition, because otherwise the TorchScript compiler cannot infer that
-    # selected_keys is Labels. We need both because isinstance(selected, Labels) works
-    # with metatensor-torch only when scripted
-    if torch_jit_is_scripting():
-        if isinstance(selected_keys, Labels):
-            # Create a list, but only apply a key selection at the final iteration
-            selected_keys_ = [torch_jit_annotate(Union[None, Labels], None)] * (
-                n_iterations - 1
-            )
-            selected_keys_.append(torch_jit_annotate(Labels, selected_keys))
-    elif is_labels(selected_keys):
+    if is_labels(selected_keys):
         # Create a list, but only apply a key selection at the final iteration
-        selected_keys_ = [torch_jit_annotate(Union[None, Labels], None)] * (
-            n_iterations - 1
-        )
-        selected_keys_.append(torch_jit_annotate(Labels, selected_keys))
+        selected_keys_ = [None] * (n_iterations - 1)
+        selected_keys_.append(selected_keys)
     elif isinstance(selected_keys, list):
         selected_keys_ = selected_keys
 
@@ -161,12 +130,8 @@ def _parse_selected_keys(
     for slct in selected_keys_:
         if slct is None:
             continue
-        if torch_jit_is_scripting():
-            if not (isinstance(slct, Labels)):
-                raise ValueError("Asserted that elements in `slct` are Labels")
-        else:
-            if not (is_labels(slct)):
-                raise ValueError("Asserted that elements in `slct` are Labels")
+        if not (is_labels(slct)):
+            raise ValueError("Asserted that elements in `slct` are Labels")
 
         if not all(
             [
