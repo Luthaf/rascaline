@@ -102,13 +102,13 @@ n_max = n_max_l[0]
 # see that the eigenvalue thresholding leads to a gradual decrease of ``n_max`` for high
 # ``l`` values
 
-plt.plot(
+plt.fill_between(
     list(range(15 + 1)),
     [4 if ell < 11 else 0 for ell in range(15 + 1)],
     ".",
     label="l_max, n_max threshold",
 )
-plt.plot(list(range(l_max + 1)), n_max_l, ".", label="Eigenvalue threshold")
+plt.fill_between(list(range(l_max + 1)), n_max_l, ".", label="Eigenvalue threshold")
 plt.xlabel("l")
 plt.ylabel("n_max")
 plt.ylim(-0.5, n_max_l[0] + 0.5)
@@ -119,7 +119,7 @@ plt.show()
 #
 # Set up a TensorMap for property selection. This allows to compute
 # only a subset of the ``properties`` axis of the descriptors
-# (see :ref:`_userdoc-how-to-property-selection:` for more details.).
+# (see :ref:`_userdoc-how-to-property-selection` for more details.).
 
 # extract all the species from the small dataset
 all_species = list(
