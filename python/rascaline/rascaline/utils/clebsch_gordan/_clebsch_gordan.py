@@ -262,7 +262,7 @@ def _precompute_keys(
     keys_1: Labels,
     keys_2: Labels,
     n_iterations: int,
-    selected_keys: List[Union[None, Labels]],
+    selected_keys: List[Union[Labels, None]],
     skip_redundant: List[bool],
 ) -> List[Tuple[List[LabelsEntry], List[LabelsEntry], Labels]]:
     """
@@ -286,6 +286,7 @@ def _precompute_keys(
             keys_1=keys_out,
             keys_2=keys_2,
         )
+        # For TorchScript to determine the type correctly so we can subscript it
         selected_keys_i = selected_keys[iteration]
         if selected_keys_i is not None:
             keys_1_entries, keys_2_entries, keys_out = _apply_key_selection(

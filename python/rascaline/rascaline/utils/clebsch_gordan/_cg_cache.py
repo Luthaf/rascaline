@@ -358,7 +358,7 @@ def _build_cg_coeff_dict(
                 [*l1l2lam_dict.values()], double_like
             ).reshape(-1, 1)
             l1l2lam_sample_values = _dispatch.int_array_like(
-                l1l2lam_sample_values, double_like
+                l1l2lam_sample_values, labels_values_like
             )
             # we have to move put the m1 m2 m3 inside a block so we can access it easier
             # inside cg combine function,

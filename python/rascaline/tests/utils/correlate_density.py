@@ -47,6 +47,10 @@ try:
 except ImportError:
     HAS_TORCH = False
 
+if HAS_TORCH:
+    ARRAYS_BACKEND = ["numpy", "torch"]
+else:
+    ARRAYS_BACKEND = ["numpy"]
 
 DATA_ROOT = os.path.join(os.path.dirname(__file__), "data")
 
@@ -69,19 +73,6 @@ SPHEX_HYPERS_SMALL = {
     "cutoff_function": {"ShiftedCosine": {"width": 0.5}},
     "center_atom_weight": 1.0,
 }
-
-
-# ============ Pytest fixtures ============
-
-
-@pytest.fixture()
-def cg_cache_sparse():
-    return ClebschGordanReal(lambda_max=5, sparse=True, use_torch=HAS_TORCH)
-
-
-@pytest.fixture()
-def cg_cache_dense():
-    return ClebschGordanReal(lambda_max=5, sparse=False, use_torch=HAS_TORCH)
 
 
 # ============ Helper functions ============
@@ -370,7 +361,8 @@ def test_correlate_density_norm(correlation_order):
 
 
 @pytest.mark.parametrize("l1, l2", [(1, 2), (2, 3), (0, 5)])
-def test_clebsch_gordan_orthogonality(cg_cache_dense, l1, l2):
+@pytest.mark.parametrize("arrays_backend", ARRAYS_BACKEND)
+def test_clebsch_gordan_orthogonality(l1, l2, arrays_backend):
     """
     Test orthogonality relationships of cached dense CG coefficients.
 
@@ -378,24 +370,30 @@ def test_clebsch_gordan_orthogonality(cg_cache_dense, l1, l2):
     https://en.wikipedia.org/wiki/Clebsch%E2%80%93Gordan_coefficients#Orthogonality_relations
     for details.
     """
+    cg_coeffs = ClebschGordanReal(
+        lambda_max=5, sparse=False, use_torch=arrays_backend == "torch"
+    ).coeffs
+
     lam_min = abs(l1 - l2)
     lam_max = l1 + l2
 
-    if HAS_TORCH:
+    if arrays_backend == "torch":
         int64_like = torch.empty(0, dtype=torch.int64)
         float64_like = torch.empty(0, dtype=torch.float64)
         bool_like = torch.empty(0, dtype=torch.bool)
-    else:
+    elif arrays_backend == "numpy":
         int64_like = np.empty(0, dtype=np.int64)
         float64_like = np.empty(0, dtype=np.float64)
         bool_like = np.empty(0, dtype=np.bool_)
+    else:
+        raise ValueError(f"Not supported arrays backend {arrays_backend}.")
     # We test lam dimension
     # \sum_{-m1 \leq l1 \leq m1, -m2 \leq l2 \leq m2}
     #           <λμ|l1m1,l2m2> <l1m1',l2m2'|λμ'> = δ_μμ'
     for lam in range(lam_min, lam_max):
-        cg_mat = cg_cache_dense.coeffs.block(
-            {"l1": l1, "l2": l2, "lambda": lam}
-        ).values.reshape(-1, 2 * lam + 1)
+        cg_mat = cg_coeffs.block({"l1": l1, "l2": l2, "lambda": lam}).values.reshape(
+            -1, 2 * lam + 1
+        )
         dot_product = cg_mat.T @ cg_mat
         diag_mask = _dispatch.zeros_like(bool_like, dot_product.shape)
         diag_indices = (
@@ -419,9 +417,9 @@ def test_clebsch_gordan_orthogonality(cg_cache_dense, l1, l2):
     l1l2_dim = (2 * l1 + 1) * (2 * l2 + 1)
     dot_product = _dispatch.zeros_like(float64_like, (l1l2_dim, l1l2_dim))
     for lam in range(lam_min, lam_max + 1):
-        cg_mat = cg_cache_dense.coeffs.block(
-            {"l1": l1, "l2": l2, "lambda": lam}
-        ).values.reshape(-1, 2 * lam + 1)
+        cg_mat = cg_coeffs.block({"l1": l1, "l2": l2, "lambda": lam}).values.reshape(
+            -1, 2 * lam + 1
+        )
         dot_product += cg_mat @ cg_mat.T
     diag_mask = _dispatch.zeros_like(bool_like, dot_product.shape)
     diag_indices = (
@@ -512,7 +510,7 @@ def test_correlate_density_metadata_agree():
     ],
 )
 @pytest.mark.parametrize("skip_redundant", [True, False])
-@pytest.mark.parametrize("arrays_backend", ["numpy", "torch"])
+@pytest.mark.parametrize("arrays_backend", ARRAYS_BACKEND + [None])
 def test_correlate_density_angular_selection(
     selected_keys: Labels,
     skip_redundant: bool,
@@ -532,8 +530,11 @@ def test_correlate_density_angular_selection(
         angular_cutoff=None,
         selected_keys=selected_keys,
         skip_redundant=skip_redundant,
+        arrays_backend=arrays_backend,
     )
-    nu_2 = corr_calculator.compute(nu_1.to(arrays="torch"))
+    if arrays_backend is not None:
+        nu_1 = nu_1.to(arrays=arrays_backend)
+    nu_2 = corr_calculator.compute(nu_1)
 
     if selected_keys is None:
         assert np.all(

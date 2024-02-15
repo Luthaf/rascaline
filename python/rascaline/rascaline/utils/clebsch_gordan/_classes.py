@@ -11,18 +11,19 @@ def torch_jit_is_scripting():
 def torch_jit_annotate(annotation, obj):
     return obj
 
-def torch_jit_script(func):
+
+def torch_jit_export(func):
     return func
+
 
 def is_labels(obj: Any):
     return isinstance(obj, Labels)
 
-check_isinstance = isinstance
 
 try:
+    from torch import ScriptClass as TorchScriptClass
     from torch import Tensor as TorchTensor
     from torch.nn import Module as TorchModule
-    from torch import ScriptClass as TorchScriptClass
 except ImportError:
 
     class TorchTensor:
@@ -43,10 +44,12 @@ __all__ = [
     "Labels",
     "TensorBlock",
     "TensorMap",
+    "TorchTensor",
+    "TorchModule",
+    "TorchScriptClass",
     "LabelsEntry",
     "torch_jit_is_scripting",
     "torch_jit_annotate",
-    "torch_jit_scipt"
-    "check_isinstance",
+    "torch_jit_export",
     "is_labels",
 ]

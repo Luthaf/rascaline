@@ -16,9 +16,8 @@ from ._classes import (
     TensorMap,
     TorchModule,
     TorchScriptClass,
+    torch_jit_export,
     torch_jit_is_scripting,
-    torch_jit_annotate,
-    torch_jit_script,
 )
 
 
@@ -108,6 +107,8 @@ class DensityCorrelations(TorchModule):
         from a single iteration is requested, a :py:class:`TensorMap` is
         returned instead.
     """
+
+    _selected_keys: List[Union[Labels, None]]
 
     def __init__(
         self,
@@ -208,13 +209,14 @@ class DensityCorrelations(TorchModule):
         elif self._arrays_backend == "numpy":
             array_like = np.empty(0)
 
-        self._selected_keys: List[Union[Labels, None]] = \
+        self._selected_keys: List[Union[Labels, None]] = (
             _clebsch_gordan._parse_selected_keys(
                 n_iterations=n_iterations,
                 array_like=array_like,
                 angular_cutoff=self._angular_cutoff,
                 selected_keys=selected_keys,
             )
+        )
         # Parse the bool flags that control skipping of redundant CG combinations
         # and TensorMap output from each iteration
         self._skip_redundant, self._output_selection = (
@@ -237,14 +239,6 @@ class DensityCorrelations(TorchModule):
 
     @property
     def selected_keys(self) -> List[Union[Labels, None]]:
-        if torch_jit_is_scripting():
-            if torch.jit.isinstance(self._selected_keys, List[Union[Labels, None]]):
-                return self._selected_keys
-            else:
-                selected_keys_: List[Union[None, Labels]] = [
-                    torch_jit_annotate(Union[None, Labels], None)
-                ] * len(self._selected_keys)
-                return selected_keys_
         return self._selected_keys
 
     @property
@@ -286,7 +280,7 @@ class DensityCorrelations(TorchModule):
             compute_metadata=False,
         )
 
-    @torch_jit_script
+    @torch_jit_export
     def compute_metadata(
         self,
         density: TensorMap,
@@ -345,13 +339,12 @@ class DensityCorrelations(TorchModule):
                 "Clebsch Gordan combinations with gradients not yet implemented."
                 " Use metatensor.remove_gradients to remove gradients from the input."
             )
-
         # Pre-compute the keys needed to perform each CG iteration
         key_metadata = _clebsch_gordan._precompute_keys(
             density.keys,
             density.keys,
             n_iterations=n_iterations,
-            selected_keys=self.selected_keys, #TODO hacky better way?
+            selected_keys=self._selected_keys,
             skip_redundant=self._skip_redundant,
         )
         max_angular = max(
