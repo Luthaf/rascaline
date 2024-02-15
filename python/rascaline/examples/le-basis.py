@@ -104,14 +104,11 @@ n_max = n_max_l[0]
 # ``l`` values
 
 plt.fill_between(
-    list(range(15 + 1)),
-    [4 if ell < 11 else 0 for ell in range(15 + 1)],
-    ".",
-    label="l_max, n_max threshold",
+    [0, 10], [4, 4], label=r"$l_\mathrm{max}$, $n_\mathrm{max}$ threshold", color="gray"
 )
-plt.fill_between(list(range(l_max + 1)), n_max_l, ".", label="Eigenvalue threshold")
-plt.xlabel("l")
-plt.ylabel("n_max")
+plt.fill_between(np.arange(l_max + 1), n_max_l, label="Eigenvalue threshold", alpha=0.5)
+plt.xlabel("$l$")
+plt.ylabel(r"$n_\mathrm{max}$")
 plt.ylim(-0.5, n_max_l[0] + 0.5)
 plt.legend()
 plt.show()
