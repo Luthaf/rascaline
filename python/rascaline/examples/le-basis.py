@@ -76,7 +76,8 @@ n_max_large = 50  # just used to get the eigenvalues
 # compute the zeroth of the spherical Bessel functions
 z_ln = rascaline.utils.SphericalBesselBasis.compute_zeros(l_max_large, n_max_large)
 
-# calculate quantities proportional to the Laplacian eigenvalues, which would be z_ln**2 / cutoff**2
+# calculate the Laplacian eigenvalues, up to a constant factor
+# (the Laplacian eigenvalues are z_ln**2 / cutoff**2)
 E_ln = z_ln**2
 
 # %%
@@ -119,7 +120,7 @@ plt.show()
 #
 # Set up a TensorMap for property selection. This allows to compute
 # only a subset of the ``properties`` axis of the descriptors
-# (see :ref:`_userdoc-how-to-property-selection` for more details.).
+# (see :ref:`userdoc-how-to-property-selection` for more details.).
 
 # extract all the species from the small dataset
 all_species = list(
