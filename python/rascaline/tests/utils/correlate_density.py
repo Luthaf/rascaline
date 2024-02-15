@@ -512,9 +512,11 @@ def test_correlate_density_metadata_agree():
     ],
 )
 @pytest.mark.parametrize("skip_redundant", [True, False])
+@pytest.mark.parametrize("arrays_backend", ["numpy", "torch"])
 def test_correlate_density_angular_selection(
     selected_keys: Labels,
     skip_redundant: bool,
+    arrays_backend: str,
 ):
     """
     Tests that the correct angular channels are output based on the specified
@@ -531,7 +533,7 @@ def test_correlate_density_angular_selection(
         selected_keys=selected_keys,
         skip_redundant=skip_redundant,
     )
-    nu_2 = corr_calculator.compute(nu_1)
+    nu_2 = corr_calculator.compute(nu_1.to(arrays="torch"))
 
     if selected_keys is None:
         assert np.all(

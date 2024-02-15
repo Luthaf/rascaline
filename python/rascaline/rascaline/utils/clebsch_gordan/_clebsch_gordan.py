@@ -642,7 +642,7 @@ def _combine_blocks_same_samples(
             Labels(
                 names=["spherical_harmonics_m"],
                 values=_dispatch.int_range_like(
-                    min_val=-lambda_, max_val=lambda_ + 1, like=block_1.values
+                    min_val=-lambda_, max_val=lambda_ + 1, like=block_1.samples.values
                 ).reshape(-1, 1),
             ),
         ],
@@ -654,7 +654,7 @@ def _combine_blocks_same_samples(
                     + _dispatch.to_int_list(block_1.properties.values[indices[1]])
                     for indices in block_1_block_2_product_idx
                 ],
-                block_1.properties.values,
+                block_1.samples.values,
             ),
         ),
     )
