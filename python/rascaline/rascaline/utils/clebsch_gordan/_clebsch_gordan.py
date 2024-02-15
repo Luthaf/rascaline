@@ -591,7 +591,7 @@ def _combine_blocks_same_samples(
     block_1: TensorBlock,
     block_2: TensorBlock,
     lambda_: int,
-    cg_coeffs: Union[TensorMap, None],
+    cg_coeffs: TensorMap,
     cg_backend: str,
 ) -> TensorBlock:
     """

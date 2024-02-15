@@ -519,7 +519,7 @@ def combine_arrays(
     arr_2: Array,
     lambda_: int,
     cg_coeffs: TensorMap,
-    cg_backend: Optional[str] = None,
+    cg_backend: str,
 ) -> Array:
     """
     Couples arrays `arr_1` and `arr_2` corresponding to the irreducible
@@ -560,13 +560,13 @@ def combine_arrays(
         of shape [(2 * l1 +1) * (2 * l2 +1), (2 * lambda_ + 1)].
         If it is None we only return an empty array of the shape.
     :param cg_backend: specifies the combine backend with sparse CG coefficients.
-        It can have the values "python-sparse" and "mops".
+        It can have the values "python-dense", "python-sparse", "mops" and "metadata"
 
 
     :returns: array of shape [n_samples, (2*lambda_+1), q_properties * p_properties]
     """
     # If just precomputing metadata, return an empty array
-    if cg_coeffs is None:
+    if cg_backend == "metadata":
         return empty_combine(arr_1, arr_2, lambda_)
 
     # We have to temporary store it so TorchScript can infer the correct type

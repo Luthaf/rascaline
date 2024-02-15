@@ -15,7 +15,10 @@ from ._classes import (
     TensorBlock,
     TensorMap,
     TorchModule,
+    TorchScriptClass,
     torch_jit_is_scripting,
+    torch_jit_annotate,
+    torch_jit_script,
 )
 
 
@@ -122,7 +125,10 @@ class DensityCorrelations(TorchModule):
             if torch_jit_is_scripting():
                 self._arrays_backend = "torch"
             else:
-                self._arrays_backend = "numpy"
+                if isinstance(Labels, TorchScriptClass):
+                    self._arrays_backend = "torch"
+                else:
+                    self._arrays_backend = "numpy"
         elif arrays_backend == "numpy":
             if torch_jit_is_scripting():
                 raise ValueError(
@@ -202,14 +208,13 @@ class DensityCorrelations(TorchModule):
         elif self._arrays_backend == "numpy":
             array_like = np.empty(0)
 
-        self._selected_keys: List[Union[Labels, None]] = (
+        self._selected_keys: List[Union[Labels, None]] = \
             _clebsch_gordan._parse_selected_keys(
                 n_iterations=n_iterations,
                 array_like=array_like,
                 angular_cutoff=self._angular_cutoff,
                 selected_keys=selected_keys,
             )
-        )
         # Parse the bool flags that control skipping of redundant CG combinations
         # and TensorMap output from each iteration
         self._skip_redundant, self._output_selection = (
@@ -231,13 +236,15 @@ class DensityCorrelations(TorchModule):
         return self._correlation_order
 
     @property
-    def selected_keys(self):
-        """
-        Outputs the selected keys used in the CG iterations of type List[Union[Labels,
-        None]].
-        """
-        # TorchScript cannot infer the type properly so we removed the type hint of
-        # output
+    def selected_keys(self) -> List[Union[Labels, None]]:
+        if torch_jit_is_scripting():
+            if torch.jit.isinstance(self._selected_keys, List[Union[Labels, None]]):
+                return self._selected_keys
+            else:
+                selected_keys_: List[Union[None, Labels]] = [
+                    torch_jit_annotate(Union[None, Labels], None)
+                ] * len(self._selected_keys)
+                return selected_keys_
         return self._selected_keys
 
     @property
@@ -279,6 +286,7 @@ class DensityCorrelations(TorchModule):
             compute_metadata=False,
         )
 
+    @torch_jit_script
     def compute_metadata(
         self,
         density: TensorMap,
@@ -303,7 +311,6 @@ class DensityCorrelations(TorchModule):
     # ====================================================================
     # ===== Private functions that do the work on the TensorMap level
     # ====================================================================
-    # TODO replace arguments with self.
     def _correlate_density(
         self, density: TensorMap, compute_metadata: bool
     ) -> Union[TensorMap, List[TensorMap]]:
@@ -344,7 +351,7 @@ class DensityCorrelations(TorchModule):
             density.keys,
             density.keys,
             n_iterations=n_iterations,
-            selected_keys=self._selected_keys,
+            selected_keys=self.selected_keys, #TODO hacky better way?
             skip_redundant=self._skip_redundant,
         )
         max_angular = max(
@@ -365,9 +372,9 @@ class DensityCorrelations(TorchModule):
         # Perform iterative CG tensor products
         density_correlations: List[TensorMap] = []
         if compute_metadata:
-            cg_coeffs = None
+            cg_backend = "metadata"
         else:
-            cg_coeffs = self._cg_coeffs
+            cg_backend = self._cg_backend
 
         for iteration in range(n_iterations):
             # Define the correlation order of the current iteration
@@ -386,8 +393,8 @@ class DensityCorrelations(TorchModule):
                     density_correlation.block(key_1),
                     density.block(key_2),
                     lambda_out,
-                    cg_coeffs,
-                    self._cg_backend,
+                    self._cg_coeffs,
+                    cg_backend,
                 )
                 blocks_out.append(block_out)
             keys_out = key_metadata[iteration][2]
