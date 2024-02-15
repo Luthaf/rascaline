@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import io
 import os
-from typing import List
+from typing import Any, List
 
 import ase.io
 import metatensor.torch
@@ -14,6 +14,13 @@ from rascaline.torch.utils.clebsch_gordan.correlate_density import DensityCorrel
 
 
 DATA_ROOT = os.path.join(os.path.dirname(__file__), "data")
+
+
+def is_tensor_map(obj: Any):
+    return isinstance(obj, TensorMap)
+
+
+is_tensor_map = torch.jit.script(is_tensor_map)
 
 SPHEX_HYPERS = {
     "cutoff": 2.5,  # Angstrom
@@ -66,18 +73,26 @@ def test_torch_script_correlate_density_angular_selection(
         skip_redundant=skip_redundant,
     )
 
+    ref_nu_2 = corr_calculator.compute(nu_1)
     scripted_corr_calculator = torch.jit.script(corr_calculator)
 
     # Test compute
-    ref_nu_2 = corr_calculator.compute(nu_1)
     scripted_nu_2 = scripted_corr_calculator.compute(nu_1)
-
     assert metatensor.torch.equal_metadata(scripted_nu_2, ref_nu_2)
     assert metatensor.torch.allclose(scripted_nu_2, ref_nu_2)
 
     # Test compute_metadata
-    #scripted_nu_2 = scripted_corr_calculator.compute_metadata(nu_1)
-    #assert metatensor.torch.equal_metadata(scripted_nu_2, nu_2)
+    scripted_nu_2 = scripted_corr_calculator.compute_metadata(nu_1)
+    assert metatensor.torch.equal_metadata(scripted_nu_2, ref_nu_2)
+
+    # Test if properties are accesible
+    assert isinstance(corr_calculator.correlation_order, int)
+    assert isinstance(corr_calculator.selected_keys, list)
+    assert isinstance(corr_calculator.skip_redundant, list)
+    assert isinstance(corr_calculator.output_selection, list)
+    assert isinstance(corr_calculator.arrays_backend, str)
+    assert isinstance(corr_calculator.cg_backend, str)
+    assert is_tensor_map(corr_calculator.cg_coeffs)
 
 
 def test_save_load():
