@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 
+from rascaline import SphericalExpansion
 from rascaline.systems import AseSystem
 
 
@@ -145,3 +146,56 @@ def test_no_pbc_cell():
     )
     with pytest.warns(Warning, match=message):
         AseSystem(atoms)
+
+
+def test_same_spherical_expansion():
+    system = ase.Atoms(
+        "CaC6",
+        positions=[
+            (0.0, 0.0, 0.0),
+            (1.88597, 1.92706, 0.0113749),
+            (2.66157, 3.55479, 7.7372),
+            (2.35488, 3.36661, 3.88),
+            (2.19266, 2.11524, 3.86858),
+            (2.52936, 4.62777, 3.87771),
+            (2.01817, 0.85408, 3.87087),
+        ],
+        cell=[[3.57941, 0, 0], [0.682558, 5.02733, 0], [0.285565, 0.454525, 7.74858]],
+        pbc=True,
+    )
+
+    calculator = SphericalExpansion(
+        # make sure to choose a cutoff larger then the cell to test for pairs crossing
+        # multiple periodic boundaries
+        cutoff=9,
+        max_radial=5,
+        max_angular=5,
+        atomic_gaussian_width=0.3,
+        radial_basis={"Gto": {}},
+        center_atom_weight=1.0,
+        cutoff_function={"Step": {}},
+    )
+
+    rascaline_nl = calculator.compute(
+        system, gradients=["positions", "cell"], use_native_system=True
+    )
+
+    ase_nl = calculator.compute(
+        system, gradients=["positions", "cell"], use_native_system=False
+    )
+
+    for key, block in rascaline_nl.items():
+        ase_block = ase_nl.block(key)
+
+        assert ase_block.samples == block.samples
+        # Since the pairs are in a different order, the values are slightly different
+        assert np.allclose(ase_block.values, block.values, atol=1e-16, rtol=1e-9)
+
+        for parameter in ["cell", "positions"]:
+            gradient = block.gradient(parameter)
+            ase_gradient = ase_block.gradient(parameter)
+
+            assert gradient.samples == ase_gradient.samples
+            assert np.allclose(
+                ase_gradient.values, gradient.values, atol=1e-16, rtol=1e-6
+            )

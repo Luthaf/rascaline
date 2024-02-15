@@ -91,10 +91,23 @@ class AseSystem(SystemBase):
 
         nl_result = neighborlist.neighbor_list("ijdDS", self._atoms, cutoff)
         for i, j, d, D, S in zip(*nl_result):
+            # we want a half neighbor list, so drop all duplicated neighbors
             if j < i:
-                # we want a half neighbor list, so drop all duplicated
-                # neighbors
                 continue
+            elif i == j:
+                if S[0] == 0 and S[1] == 0 and S[2] == 0:
+                    # only create pairs with the same atom twice if the pair spans more
+                    # than one unit cell
+                    continue
+                elif S[0] + S[1] + S[2] < 0 or (
+                    (S[0] + S[1] + S[2] == 0) and (S[2] < 0 or (S[2] == 0 and S[1] < 0))
+                ):
+                    # When creating pairs between an atom and one of its periodic
+                    # images, the code generate multiple redundant pairs (e.g. with
+                    # shifts 0 1 1 and 0 -1 -1); and we want to only keep one of these.
+                    # We keep the pair in the positive half plane of shifts.
+                    continue
+
             self._pairs.append((i, j, d, D, S))
 
         self._pairs_by_center = []
