@@ -69,6 +69,7 @@ E_max = 400  # eigenvalue threshold
 # %%
 #
 # Spherical Bessel zeros and Laplacian eigenvalues
+# ------------------------------------------------
 
 l_max_large = 50  # just used to get the eigenvalues
 n_max_large = 50  # just used to get the eigenvalues
