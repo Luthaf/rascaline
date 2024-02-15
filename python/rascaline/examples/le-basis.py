@@ -16,6 +16,7 @@ guide how to construct radial integrals for the LE basis from scratch is given i
 """
 
 # %%
+#
 
 import ase.io
 import matplotlib.pyplot as plt
@@ -26,6 +27,7 @@ import rascaline
 
 
 # %%
+#
 # First using a truncation with ``l_max`` amd ``n_max`` hyper-parameters
 
 cutoff = 4.4
@@ -58,19 +60,21 @@ calculator = rascaline.SphericalExpansion(
 spherical_expansion = calculator.compute(structures)
 
 # %%
+#
 # Now we will calculate the same basis with an eigenvalue threshold (more involved),
 # which affords a better accuracy/cost ratio, using property selection.
 
 E_max = 400  # eigenvalue threshold
 
 # %%
+#
 # Spherical Bessel zeros and Laplacian eigenvalues
-# ------------------------------------------------
 
 l_max_large = 50  # just used to get the eigenvalues
 n_max_large = 50  # just used to get the eigenvalues
 
 # %%
+#
 # And compute the zeroth of the spherical Bessel functions
 z_ln = rascaline.utils.SphericalBesselBasis.compute_zeros(l_max_large, n_max_large)
 
@@ -78,6 +82,7 @@ z_ln = rascaline.utils.SphericalBesselBasis.compute_zeros(l_max_large, n_max_lar
 E_ln = z_ln**2
 
 # %%
+#
 # Determine the l_max, n_max parameters that will certainly contain all the desired
 # terms
 
@@ -94,6 +99,7 @@ for ell in range(l_max_large + 1):
 n_max = n_max_l[0]
 
 # %%
+#
 # Comparing this l-dependent threshold with the one based on ``l_max`` and ``n_max``, we
 # see that the eigenvalue thresholding leads to a gradual decrease of ``n_max`` for high
 # ``l`` values
@@ -112,6 +118,7 @@ plt.legend()
 plt.show()
 
 # %%
+#
 # Set up a TensorMap for property selection
 
 all_species = list(
@@ -145,6 +152,7 @@ selected_properties = TensorMap(
 )
 
 # %%
+#
 # Build a calculator and calculate the spherical expansion coefficents
 
 spliner = rascaline.utils.SoapSpliner(
