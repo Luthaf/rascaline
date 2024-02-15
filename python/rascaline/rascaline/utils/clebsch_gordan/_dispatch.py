@@ -211,24 +211,9 @@ def max(array):
     ``np.max(array)`` or ``torch.max(array)``.
     """
     if isinstance(array, TorchTensor):
-        return torch.max(input=array)
+        return torch.max(array)
     elif isinstance(array, np.ndarray):
-        return np.max(a=array)
-    else:
-        raise TypeError(UNKNOWN_ARRAY_TYPE)
-
-
-def max_axis(array, axis: int = 0):
-    """
-    Takes the maximun values of the array along the axis.
-
-    This function has the same behavior as
-    ``np.max(array, axis=axis)`` or ``torch.max(array, dim=axis)``.
-    """
-    if isinstance(array, TorchTensor):
-        return torch.max(input=array, dim=axis)
-    elif isinstance(array, np.ndarray):
-        return np.max(a=array, axis=axis)
+        return np.max(array)
     else:
         raise TypeError(UNKNOWN_ARRAY_TYPE)
 
