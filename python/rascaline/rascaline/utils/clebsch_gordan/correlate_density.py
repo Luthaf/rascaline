@@ -227,12 +227,6 @@ class DensityCorrelations(TorchModule):
             )
         )
 
-        # Compute CG coefficient cache
-        # TODO: keys have been precomputed, so perhaps we don't need to
-        # compute all CG coefficients up to max_angular here.
-        # TODO: use sparse cache by default until we understand under which
-        # circumstances (and if) dense is faster
-
     @property
     def correlation_order(self):
         return self._correlation_order
