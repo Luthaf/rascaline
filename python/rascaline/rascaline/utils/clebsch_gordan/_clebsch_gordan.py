@@ -115,8 +115,7 @@ def _parse_selected_keys(
 
     if is_labels(selected_keys):
         # Create a list, but only apply a key selection at the final iteration
-        selected_keys_ = [None] * (n_iterations - 1)
-        selected_keys_.append(selected_keys)
+        selected_keys_ = [None] * (n_iterations - 1) + [selected_keys]
     elif isinstance(selected_keys, list):
         selected_keys_ = selected_keys
 
