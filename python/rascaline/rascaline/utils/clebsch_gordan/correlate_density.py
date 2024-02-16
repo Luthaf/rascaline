@@ -63,6 +63,10 @@ class DensityCorrelations(TorchModule):
     controlled with arguments `angular_cutoff`, `angular_selection` and
     `parity_selection`.
 
+    :param max_angular: The maximum angular order for which CG coefficients
+        should be computed and stored. This must be large enough to cover the
+        maximum angular order reached in the CG iterations on a density input to
+        the :py:meth:`compute` method.
     :param correlation_order: The desired correlation order of the output
         descriptor. Must be >= 1.
     :param angular_cutoff: The maximum angular channel to compute at any given
@@ -88,19 +92,22 @@ class DensityCorrelations(TorchModule):
         will be returned. If a :py:class:`list` of :py:class:`bool` is passed,
         this controls the output at each corresponding iteration. If None is
         passed, only the final iteration is output.
-    :param arrays_backend: Determines the array backend be "numpy" or "torch"
-    :param cg_backend: Determines the backend for the CG combination. It can
-        be even "python-sparse", "python-dense" or "mops". If the CG combination
-        performs on the sparse coefficients, it means that for each (l1, l2, lambda)
-        block the (m1, m2, mu) coefficients are stored in a sparse format only storing
-        the nonzero coefficients. If the parameter are None, the most optimal choice is
-        determined given available packages and ``arrays_backend``.
-        - "python-dense": Uses the python implementation performing the combinations
-                           with the dense CG coefficients.
-        - "python-sparse": Uses the python implementation performing the combinations
-                           with the sparse CG coefficients.
-        - "mops": Uses the package ``mops`` that optimized the sparse combinations.
-                  At the moment it is only available with "numpy" as ``arrays_backend``
+    :param arrays_backend: Determines the array backend, either "numpy" or
+        "torch".
+    :param cg_backend: Determines the backend for the CG combination. It can be
+        even "python-sparse", "python-dense" or "mops". If the CG combination
+        performs on the sparse coefficients, it means that for each (l1, l2,
+        lambda) block the (m1, m2, mu) coefficients are stored in a sparse
+        format only storing the nonzero coefficients. If the parameter are None,
+        the most optimal choice is determined given available packages and
+        ``arrays_backend``.
+            - "python-dense": Uses the python implementation performing the
+            combinations with the dense CG coefficients.
+            - "python-sparse": Uses the python implementation performing
+            the combinations with the sparse CG coefficients.
+            - "mops": Uses the package ``mops`` that optimized the sparse
+            combinations. At the moment it is only available with "numpy" as
+            ``arrays_backend``
 
     :return: A :py:class:`list` of :py:class:`TensorMap` corresponding to the
         density correlations output from the specified iterations. If the output

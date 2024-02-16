@@ -11,10 +11,7 @@ import rascaline
 from rascaline.utils import PowerSpectrum
 from rascaline.utils.clebsch_gordan import _dispatch
 from rascaline.utils.clebsch_gordan._cg_cache import ClebschGordanReal
-from rascaline.utils.clebsch_gordan._clebsch_gordan import (
-    _precompute_keys,
-    _standardize_keys,
-)
+from rascaline.utils.clebsch_gordan._clebsch_gordan import _standardize_keys
 from rascaline.utils.clebsch_gordan.correlate_density import DensityCorrelations
 
 
@@ -148,25 +145,6 @@ def get_norm(tensor: TensorMap):
         )
 
     return norm
-
-
-def get_max_angular(density: TensorMap, calculator: DensityCorrelations):
-    key_metadata = _precompute_keys(
-        density.keys,
-        density.keys,
-        n_iterations=calculator._n_iterations,
-        selected_keys=calculator._selected_keys,
-        skip_redundant=calculator._skip_redundant,
-    )
-    return max(
-        _dispatch.max(density.keys.column("spherical_harmonics_l")),
-        max(
-            [
-                int(_dispatch.max(mdata[2].column("spherical_harmonics_l")))
-                for mdata in key_metadata
-            ]
-        ),
-    )
 
 
 # ============ Test equivariance ============

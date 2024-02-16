@@ -95,7 +95,7 @@ def test_torch_script_correlate_density_angular_selection(
     assert is_tensor_map(corr_calculator.cg_coeffs)
 
 
-def test_save_load():
+def test_jit_save_load():
     corr_calculator = DensityCorrelations(
         max_angular=2,
         correlation_order=2,
@@ -106,4 +106,21 @@ def test_save_load():
     torch.jit.save(scripted_correlate_density, buffer)
     buffer.seek(0)
     torch.jit.load(buffer)
+    buffer.close()
+
+
+def test_save_load():
+    """Tests for saving and loading with cg_backend="python-dense",
+    which makes the DensityCorrelations object non-scriptable due to
+    a non-contiguous CG cache."""
+    corr_calculator = DensityCorrelations(
+        max_angular=2,
+        correlation_order=2,
+        angular_cutoff=1,
+        cg_backend="python-dense",
+    )
+    buffer = io.BytesIO()
+    torch.save(corr_calculator, buffer)
+    buffer.seek(0)
+    torch.load(buffer)
     buffer.close()
