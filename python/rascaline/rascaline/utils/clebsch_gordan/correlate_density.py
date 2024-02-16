@@ -186,8 +186,6 @@ class DensityCorrelations(TorchModule):
             sparse = True
             use_mops = True
 
-        # We cannot store this into one member variable because TorchScript
-        # has problems scripting which cannot be resolved with isinstance checks
         self._cg_coeffs = _cg_cache.ClebschGordanReal(
             self._max_angular,
             sparse=sparse,
