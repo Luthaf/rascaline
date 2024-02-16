@@ -23,6 +23,8 @@ jobs:
             cargo-test-flags: --release
 
           - os: ubuntu-20.04
+            # These should be updated to torch 2.2 and Python 3.12 once
+            # https://github.com/pytorch/pytorch/issues/118862 is solved
             torch-version: 2.1.*
             python-version: "3.11"
             cargo-test-flags: --release
@@ -39,7 +41,7 @@ jobs:
             cargo-test-flags: --release
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: setup rust
         uses: dtolnay/rust-toolchain@master
@@ -48,7 +50,7 @@ jobs:
 
       # we get torch from pip to run the C++ test
       - name: setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 

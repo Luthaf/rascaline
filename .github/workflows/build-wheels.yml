@@ -3,7 +3,7 @@ name: Build Python wheels
 on:
   push:
     branches: [master]
-    tags: "*"
+    tags: ["*"]
   pull_request:
     # Check all PR
 
@@ -36,7 +36,7 @@ jobs:
             rust-target: x86_64-pc-windows-msvc
             cibw_arch: AMD64
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -47,9 +47,9 @@ jobs:
           target: ${{ matrix.rust-target }}
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
       - name: install dependencies
         run: python -m pip install cibuildwheel
@@ -85,17 +85,17 @@ jobs:
     runs-on: ubuntu-20.04
     name: sdist
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
       - name: build sdist
         run: |
-          pip install wheel
-          python setup.py sdist
+          pip install build
+          python -m build --sdist .
       - uses: actions/upload-artifact@v3
         with:
           name: wheels

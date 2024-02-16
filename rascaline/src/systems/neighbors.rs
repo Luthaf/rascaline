@@ -132,9 +132,9 @@ impl CellList {
         // number of cells to search in each direction to make sure all possible
         // pairs below the cutoff are accounted for.
         let mut n_search = [
-            f64::trunc(cutoff * n_cells[0] / distances_between_faces[0]) as i32,
-            f64::trunc(cutoff * n_cells[1] / distances_between_faces[1]) as i32,
-            f64::trunc(cutoff * n_cells[2] / distances_between_faces[2]) as i32,
+            f64::ceil(cutoff * n_cells[0] / distances_between_faces[0]) as i32,
+            f64::ceil(cutoff * n_cells[1] / distances_between_faces[1]) as i32,
+            f64::ceil(cutoff * n_cells[2] / distances_between_faces[2]) as i32,
         ];
 
         let n_cells = [
@@ -174,7 +174,7 @@ impl CellList {
         let n_cells = self.cells.shape();
         let n_cells = [n_cells[0], n_cells[1], n_cells[2]];
 
-        // find the cell in which this atom should go
+        // find the subcell in which this atom 'should go'
         let cell_index = [
             f64::floor(fractional[0] * n_cells[0] as f64) as i32,
             f64::floor(fractional[1] * n_cells[1] as f64) as i32,
@@ -250,10 +250,39 @@ impl CellList {
                                 let shift = CellShift(cell_shift) + atom_i.shift - atom_j.shift;
                                 let shift_is_zero = shift[0] == 0 && shift[1] == 0 && shift[2] == 0;
 
-                                if atom_i.index == atom_j.index && shift_is_zero {
-                                    // only create pair with the same atom twice
-                                    // if the pair spans more than one unit cell
-                                    continue;
+                                if atom_i.index == atom_j.index {
+                                    if shift_is_zero {
+                                        // only create pairs with the same atom twice
+                                        // if the pair spans more than one unit cell
+                                        continue;
+                                    }
+
+                                    // When creating pairs between an atom and one of its
+                                    // periodic images, the code generate multiple redundant
+                                    // pairs (e.g. with shifts 0 1 1 and 0 -1 -1); and we
+                                    // want to only keep one of these.
+                                    if shift[0] + shift[1] + shift[2] < 0 {
+                                        // drop shifts on the negative half-space
+                                        continue;
+                                    }
+
+                                    if (shift[0] + shift[1] + shift[2] == 0)
+                                        && (shift[2] < 0 || (shift[2] == 0 && shift[1] < 0)) {
+
+                                        // drop shifts in the negative half plane or the
+                                        // negative shift[1] axis. See below for a graphical
+                                        // representation: we are keeping the shifts indicated
+                                        // with `O` and dropping the ones indicated with `X`
+                                        //
+                                        //  O O O │ O O O
+                                        //  O O O │ O O O
+                                        //  O O O │ O O O
+                                        // ─X─X─X─┼─O─O─O─
+                                        //  X X X │ X X X
+                                        //  X X X │ X X X
+                                        //  X X X │ X X X
+                                        continue;
+                                    }
                                 }
 
                                 if self.unit_cell.is_infinite() && !shift_is_zero {
@@ -378,8 +407,7 @@ impl NeighborsList {
 mod tests {
     use approx::assert_ulps_eq;
 
-    use crate::Matrix3;
-
+    use crate::types::Matrix3;
     use super::*;
 
     #[test]
@@ -426,21 +454,15 @@ mod tests {
         let neighbors = NeighborsList::new(&positions, cell, 3.0);
 
         let expected = [
-            (Vector3D::new(0.0, -1.0, -1.0), [-1, 0, 0]),
             (Vector3D::new(1.0, 0.0, -1.0),  [-1, 0, 1]),
             (Vector3D::new(1.0, -1.0, 0.0),  [-1, 1, 0]),
-            (Vector3D::new(-1.0, 0.0, -1.0), [0, -1, 0]),
             (Vector3D::new(0.0, 1.0, -1.0),  [0, -1, 1]),
-            (Vector3D::new(-1.0, -1.0, 0.0), [0, 0, -1]),
             (Vector3D::new(1.0, 1.0, 0.0),   [0, 0, 1]),
-            (Vector3D::new(0.0, -1.0, 1.0),  [0, 1, -1]),
             (Vector3D::new(1.0, 0.0, 1.0),   [0, 1, 0]),
-            (Vector3D::new(-1.0, 1.0, 0.0),  [1, -1, 0]),
-            (Vector3D::new(-1.0, 0.0, 1.0),  [1, 0, -1]),
             (Vector3D::new(0.0, 1.0, 1.0),   [1, 0, 0]),
         ];
 
-        assert_eq!(neighbors.pairs.len(), 12);
+        assert_eq!(neighbors.pairs.len(), 6);
         for (pair, (vector, shifts)) in neighbors.pairs.iter().zip(&expected) {
             assert_eq!(pair.first, 0);
             assert_eq!(pair.second, 0);
@@ -478,6 +500,63 @@ mod tests {
             assert_eq!(pair.second, expected.1);
             assert_eq!(pair.cell_shift_indices, [0, 0, 0]);
             assert_ulps_eq!(pair.distance, 2.0);
+        }
+    }
+
+    #[test]
+    fn small_cell_large_cutoffs() {
+        let cell = UnitCell::cubic(0.5);
+        let positions = [Vector3D::new(0.0, 0.0, 0.0)];
+        let neighbors = NeighborsList::new(&positions, cell, 0.6);
+
+        let expected = [
+            (Vector3D::new(0.0, 0.0, 0.5), [0, 0, 1]),
+            (Vector3D::new(0.0, 0.5, 0.0),  [0, 1, 0]),
+            (Vector3D::new(0.5, 0.0, 0.0),  [1, 0, 0]),
+        ];
+
+        assert_eq!(neighbors.pairs.len(), 3);
+        for (pair, (vector, shifts)) in neighbors.pairs.iter().zip(&expected) {
+            assert_eq!(pair.first, 0);
+            assert_eq!(pair.second, 0);
+            assert_ulps_eq!(pair.distance, 0.5);
+            assert_ulps_eq!(pair.vector, vector);
+            assert_eq!(&pair.cell_shift_indices, shifts);
+        }
+    }
+
+    #[test]
+    fn non_cubic_cell() {
+        let cell = UnitCell::from(Matrix3::new([
+            [4.26, -2.45951215, 0.0],
+            [2.13, 1.22975607, 0.0],
+            [0.0, 0.0, 50.0],
+        ]));
+        let positions = [
+            Vector3D::new(1.42, 0.0, 0.0),
+            Vector3D::new(2.84, 0.0, 0.0),
+            Vector3D::new(3.55, -1.22975607, 0.0),
+            Vector3D::new(4.97, -1.22975607, 0.0),
+        ];
+        let neighbors = NeighborsList::new(&positions, cell, 6.4);
+
+        assert_eq!(neighbors.pairs.len(), 90);
+
+        let previously_missing = [
+            (0, 3, [-2, 0, 0]),
+            (0, 3, [-2, 1, 0]),
+            (0, 3, [-2, 2, 0]),
+        ];
+
+        for missing in previously_missing {
+            let mut found = false;
+            for pair in &neighbors.pairs {
+                if pair.first == missing.0 && pair.second == missing.1
+                   && pair.cell_shift_indices == missing.2 {
+                    found = true;
+                }
+            }
+            assert!(found, "could not find pair {:?}", missing);
         }
     }
 }
