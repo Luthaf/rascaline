@@ -22,15 +22,19 @@ def is_tensor_map(obj: Any):
 
 is_tensor_map = torch.jit.script(is_tensor_map)
 
-SPHEX_HYPERS = {
-    "cutoff": 2.5,  # Angstrom
-    "max_radial": 3,  # Exclusive
-    "max_angular": 3,  # Inclusive
+SPHERICAL_EXPANSION_HYPERS = {
+    "cutoff": 2.5,
+    "max_radial": 3,
+    "max_angular": 3,
     "atomic_gaussian_width": 0.2,
     "radial_basis": {"Gto": {}},
     "cutoff_function": {"ShiftedCosine": {"width": 0.5}},
     "center_atom_weight": 1.0,
 }
+
+SELECTED_KEYS = Labels(
+    names=["spherical_harmonics_l"], values=torch.tensor([1, 3]).reshape(-1, 1)
+)
 
 
 def h2o_isolated():
@@ -39,20 +43,12 @@ def h2o_isolated():
 
 def spherical_expansion(frames: List[ase.Atoms]):
     """Returns a rascaline SphericalExpansion"""
-    calculator = rascaline.torch.SphericalExpansion(**SPHEX_HYPERS)
+    calculator = rascaline.torch.SphericalExpansion(**SPHERICAL_EXPANSION_HYPERS)
     return calculator.compute(rascaline.torch.systems_to_torch(frames))
 
 
 # copy of def test_correlate_density_angular_selection(
-@pytest.mark.parametrize(
-    "selected_keys",
-    [
-        None,
-        Labels(
-            names=["spherical_harmonics_l"], values=torch.tensor([1, 3]).reshape(-1, 1)
-        ),
-    ],
-)
+@pytest.mark.parametrize("selected_keys", [None, SELECTED_KEYS])
 @pytest.mark.parametrize("skip_redundant", [True, False])
 def test_torch_script_correlate_density_angular_selection(
     selected_keys: Labels,
@@ -66,7 +62,7 @@ def test_torch_script_correlate_density_angular_selection(
     nu_1 = spherical_expansion(frames)
     correlation_order = 2
     corr_calculator = DensityCorrelations(
-        max_angular=SPHEX_HYPERS["max_angular"] * correlation_order,
+        max_angular=SPHERICAL_EXPANSION_HYPERS["max_angular"] * correlation_order,
         correlation_order=correlation_order,
         angular_cutoff=None,
         selected_keys=selected_keys,
@@ -102,11 +98,11 @@ def test_jit_save_load():
         angular_cutoff=1,
     )
     scripted_correlate_density = torch.jit.script(corr_calculator)
-    buffer = io.BytesIO()
-    torch.jit.save(scripted_correlate_density, buffer)
-    buffer.seek(0)
-    torch.jit.load(buffer)
-    buffer.close()
+    with io.BytesIO() as buffer:
+        torch.jit.save(scripted_correlate_density, buffer)
+        buffer.seek(0)
+        torch.jit.load(buffer)
+        buffer.close()
 
 
 def test_save_load():
@@ -119,8 +115,8 @@ def test_save_load():
         angular_cutoff=1,
         cg_backend="python-dense",
     )
-    buffer = io.BytesIO()
-    torch.save(corr_calculator, buffer)
-    buffer.seek(0)
-    torch.load(buffer)
-    buffer.close()
+    with io.BytesIO() as buffer:
+        torch.save(corr_calculator, buffer)
+        buffer.seek(0)
+        torch.load(buffer)
+        buffer.close()

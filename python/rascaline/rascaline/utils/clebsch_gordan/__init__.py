@@ -1,4 +1,4 @@
-from .correlate_density import DensityCorrelations  # noqa
+from .correlate_density import DensityCorrelations
 
 
 __all__ = [

@@ -9,8 +9,8 @@ from typing import Dict, List, Optional
 import numpy as np
 import wigners
 
-from . import _dispatch
-from ._classes import (
+from .. import _dispatch
+from .._backend import (
     Array,
     Labels,
     TensorBlock,
@@ -64,10 +64,96 @@ class ClebschGordanReal(TorchModule):
     Class for computing Clebsch-Gordan coefficients for real spherical
     harmonics.
 
-    Stores the coefficients in a dictionary in the `self.coeffs` attribute,
-    which is built at initialization. There are 3 current use cases for the
-    format of these coefficients. By default, sparse accumulation of products is
-    performed, whether or not Mops is installed.
+    Stores the coefficients in the `self._cg_coeffs` attribute in TensorMap
+    format, which is built at initialization.
+
+    :param lambda_max: maximum lambda value to compute CG coefficients for.
+    :param sparse: whether to store the CG coefficients in sparse format.
+    :param use_mops: whether to store the CG coefficients in MOPS sparse format.
+        This is recommended as the default for sparse accumulation, but can only
+        be used if Mops is installed.
+    :param use_torch: whether torch tensor or numpy arrays should be used for the cg
+        coeffs
+    """
+
+    def __init__(
+        self,
+        lambda_max: int,
+        sparse: bool = True,
+        use_mops: Optional[bool] = None,
+        use_torch: bool = False,
+    ):
+        super().__init__()
+        self._lambda_max = lambda_max
+        self._sparse = sparse
+
+        # For TorchScript we declare type
+        self._use_mops: bool = False
+        if sparse:
+            if use_mops is None:
+                self._use_mops = HAS_MOPS
+                # TODO: provide a warning once Mops is fully ready
+                # import warnings
+                # warnings.warn(
+                #     "It is recommended to use MOPS for sparse accumulation. "
+                #     " This can be installed with ``pip install"
+                #     " git+https://github.com/lab-cosmo/mops`."
+                #     " Falling back to numpy for now."
+                # )
+            else:
+                if use_mops and not HAS_MOPS:
+                    raise ImportError("Specified to use MOPS, but it is not installed.")
+                else:
+                    self._use_mops = use_mops
+
+        else:
+            # The logic is a bit complicated so TorchScript can understand that it is
+            # not None
+            if use_mops is None:
+                self._use_mops = False
+            # TODO: provide a warning once Mops is fully ready
+            # if HAS_MOPS:
+            #     import warnings
+            #     warnings.warn(
+            #         "Mops is installed, but not being used"
+            #         " as dense operations chosen."
+            #     )
+            elif use_mops:
+                raise ImportError("MOPS is not available for non sparse operations.")
+            else:
+                self._use_mops = False
+
+        if torch_jit_is_scripting():
+            if not use_torch:
+                raise ValueError(
+                    "use_torch is False, but this option is not supported when torch"
+                    " scripted."
+                )
+            self._use_torch = True
+        else:
+            self._use_torch = use_torch
+
+        self._cg_coeffs = _build_cg_coeff_dict(
+            self._lambda_max,
+            sparse,
+            self._use_mops,
+            self._use_torch,
+        )
+
+
+def _build_cg_coeff_dict(
+    lambda_max: int, sparse: bool, use_mops: bool, use_torch: bool
+):
+    """
+    Builds a dictionary of Clebsch-Gordan coefficients for all possible
+    combination of l1 and l2, up to lambda_max.
+
+    This is an intermediate data structure, as the dictionary is converted to a
+    TensorMap by calling the :py:func:`_cg_coeff_dict_to_tensormap` function.
+    For transparency, the intermediate dict data structure is described here.
+
+    There are 3 current use cases for the format of these coefficients, and for
+    each the intermediate dict has a different data structure.
 
     Case 1: standard sparse format.
 
@@ -146,103 +232,6 @@ class ClebschGordanReal(TorchModule):
     channel into the irreducible tensor of order `lambda`. In all cases, these
     correspond to the non-zero CG coefficients, i.e. those in the range |-l,
     ..., +l| for each angular order l in {l1, l2, lambda}.
-
-    :param lambda_max: maximum lambda value to compute CG coefficients for.
-    :param sparse: whether to store the CG coefficients in sparse format.
-    :param use_mops: whether to store the CG coefficients in MOPS sparse format.
-        This is recommended as the default for sparse accumulation, but can only
-        be used if Mops is installed.
-    :param use_torch: whether torch tensor or numpy arrays should be used for the cg
-        coeffs
-    """
-
-    def __init__(
-        self,
-        lambda_max: int,
-        sparse: bool = True,
-        use_mops: Optional[bool] = None,
-        use_torch: bool = False,
-    ):
-        super().__init__()
-        self._lambda_max = lambda_max
-        self._sparse = sparse
-
-        # For TorchScript we declare type
-        self._use_mops: bool = False
-        if sparse:
-            if use_mops is None:
-                self._use_mops = HAS_MOPS
-                # TODO: provide a warning once Mops is fully ready
-                # import warnings
-                # warnings.warn(
-                #     "It is recommended to use MOPS for sparse accumulation. "
-                #     " This can be installed with ``pip install"
-                #     " git+https://github.com/lab-cosmo/mops`."
-                #     " Falling back to numpy for now."
-                # )
-            else:
-                if use_mops and not HAS_MOPS:
-                    raise ImportError("Specified to use MOPS, but it is not installed.")
-                else:
-                    self._use_mops = use_mops
-
-        else:
-            # The logic is a bit complicated so TorchScript can understand that it is
-            # not None
-            if use_mops is None:
-                self._use_mops = False
-            # TODO: provide a warning once Mops is fully ready
-            # if HAS_MOPS:
-            #     import warnings
-            #     warnings.warn(
-            #         "Mops is installed, but not being used"
-            #         " as dense operations chosen."
-            #     )
-            elif use_mops:
-                raise ImportError("MOPS is not available for non sparse operations.")
-            else:
-                self._use_mops = False
-
-        if torch_jit_is_scripting():
-            if not use_torch:
-                raise ValueError(
-                    "use_torch is False, but this option is not supported when torch"
-                    " scripted."
-                )
-            self._use_torch = True
-        else:
-            self._use_torch = use_torch
-
-        self._coeffs = _build_cg_coeff_dict(
-            self._lambda_max,
-            sparse,
-            self._use_mops,
-            self._use_torch,
-        )
-
-    @property
-    def lambda_max(self):
-        return self._lambda_max
-
-    @property
-    def sparse(self):
-        return self._sparse
-
-    @property
-    def use_mops(self):
-        return self._use_mops
-
-    @property
-    def coeffs(self):
-        return self._coeffs
-
-
-def _build_cg_coeff_dict(
-    lambda_max: int, sparse: bool, use_mops: bool, use_torch: bool
-):
-    """
-    Builds a dictionary of Clebsch-Gordan coefficients for all possible
-    combination of l1 and l2, up to lambda_max.
     """
     # real-to-complex and complex-to-real transformations as matrices
     r2c: Dict[int, Array] = {}
@@ -253,16 +242,10 @@ def _build_cg_coeff_dict(
     if use_torch:
         complex_like = torch.empty(0, dtype=torch.complex128)
         double_like = torch.empty(0, dtype=torch.double)
-        # For metatensor-core backen we have to use the for Labels numpy arrays
-        # even with use_torch true. Logic is a nested because while scripting
-        # the compiler may not see `torch.ScriptClass`
-        if torch_jit_is_scripting():
+        if isinstance(Labels, torch.ScriptClass):
             labels_values_like = torch.empty(0, dtype=torch.double)
         else:
-            if isinstance(Labels, torch.ScriptClass):
-                labels_values_like = torch.empty(0, dtype=torch.double)
-            else:
-                labels_values_like = np.empty(0, dtype=np.double)
+            labels_values_like = np.empty(0, dtype=np.double)
     else:
         complex_like = np.empty(0, dtype=np.complex128)
         double_like = np.empty(0, dtype=np.double)
@@ -303,8 +286,6 @@ def _build_cg_coeff_dict(
                     nonzeros_cg_coeffs_idx = _dispatch.where(
                         _dispatch.abs(cg_l1l2lam_dense) > 1e-15
                     )
-                    # Till MOPS does not TorchScript support we disable the scripting
-                    # of this part here.
                     if use_mops:
                         # Store CG coeffs in a specific format for use in
                         # MOPS. Here we need the m1, m2, mu, and CG coeffs
@@ -347,6 +328,42 @@ def _build_cg_coeff_dict(
                 else:
                     # Store
                     coeff_dict[(l1, l2, lambda_)] = cg_l1l2lam_dense
+
+    return _cg_coeff_dict_to_tensormap(
+        coeff_dict, sparse, double_like, labels_values_like
+    )
+
+
+def _cg_coeff_dict_to_tensormap(
+    coeff_dict: Dict, sparse: bool, double_like, labels_values_like
+):
+    """
+    Converts the dictionary of Clebsch-Gordan coefficients to
+    :py:class:`TensorMap` format, whose data structure depends on whether they
+    will be used for sparse or dense operations.
+
+    For both, keys are indexed by `(l1, l2, lambda)`, which stores CG
+    coefficients for the combination of two blocks (of order where `l1` and `l2`
+    respectively) to angular order `lambda`.
+
+    Each block then has a different structure for performing sparse and dense
+    combinations
+
+    Sparse:
+        - samples: `(m1, m2, mu)`, where `m1` and `m2` are the m component
+          values for the two arrays being combined and `mu` is the m component
+          value for the resulting array.
+        - components: `[]`, i.e. no components axis.
+        - properties: `property`, i.e. a dummy property.
+
+    Dense:
+        - samples: `sample`, i.e. a dummy sample.
+        - components: `[(m1,), (m2,), (mu,)]`, i.e. on separate components axes,
+          where `m1` and `m2` are the m component values for the two arrays
+          being combined and `mu` is the m component value for the resulting
+          array.
+        - properties: `property`, i.e. a dummy property.
+    """
     blocks = []
     if sparse:
         for l1l2lam_dict in coeff_dict.values():
@@ -432,7 +449,7 @@ def _real2complex(lambda_: int, like: Array) -> Array:
 
     Operations are dispatched to the corresponding array type given by ``like``
     """
-    result = _dispatch.zeros_like(like, (2 * lambda_ + 1, 2 * lambda_ + 1))
+    result = _dispatch.zeros_like(like, shape=(2 * lambda_ + 1, 2 * lambda_ + 1))
     inv_sqrt_2 = 1.0 / math.sqrt(2.0)
     i_sqrt_2 = 1.0j / complex(math.sqrt(2.0))
 
@@ -517,22 +534,22 @@ def _complex_clebsch_gordan_matrix(l1: int, l2: int, lambda_: int, like: Array):
 
 
 def combine_arrays(
-    arr_1: Array,
-    arr_2: Array,
+    array_1: Array,
+    array_2: Array,
     lambda_: int,
     cg_coeffs: TensorMap,
     cg_backend: str,
 ) -> Array:
     """
-    Couples arrays `arr_1` and `arr_2` corresponding to the irreducible
+    Couples arrays `array_1` and `array_2` corresponding to the irreducible
     spherical components of 2 angular channels l1 and l2 using the appropriate
     Clebsch-Gordan coefficients. As l1 and l2 can be combined to form multiple
     lambda channels, this function returns the coupling to a single specified
     channel `lambda`. The angular channels l1 and l2 are inferred from the size
     of the components axis (axis 1) of the input arrays.
 
-    `arr_1` has shape (n_i, 2 * l1 + 1, n_p) and `arr_2` has shape (n_i, 2 * l2
-    + 1, n_q). n_i is the number of samples, n_p and n_q are the number of
+    `array_1` has shape (n_i, 2 * l1 + 1, n_p) and `array_2` has shape (n_i, 2 *
+    l2 + 1, n_q). n_i is the number of samples, n_p and n_q are the number of
     properties in each array. The number of samples in each array must be the
     same.
 
@@ -552,59 +569,65 @@ def combine_arrays(
     computational cost of performing the CG combinations - i.e. using the
     function :py:func:`combine_single_center_to_body_order_metadata_only`.
 
-    :param arr_1: array with the m values for l1 with shape [n_samples, 2 * l1 +
-        1, n_q_properties]
-    :param arr_2: array with the m values for l2 with shape [n_samples, 2 * l2 +
-        1, n_p_properties]
+    :param array_1: array with the m values for l1 with shape [n_samples, 2 * l1
+        + 1, n_q_properties]
+    :param array_2: array with the m values for l2 with shape [n_samples, 2 * l2
+        + 1, n_p_properties]
     :param lambda_: int value of the resulting coupled channel
-    :param cg_coeffs: either a sparse dictionary with keys (m1, m2, mu) and array
-        values being sparse blocks of shape <TODO: fill out>, or a dense array
-        of shape [(2 * l1 +1) * (2 * l2 +1), (2 * lambda_ + 1)].
-        If it is None we only return an empty array of the shape.
-    :param cg_backend: specifies the combine backend with sparse CG coefficients.
-        It can have the values "python-dense", "python-sparse", "mops" and "metadata"
+    :param cg_coeffs: either a sparse dictionary with keys (m1, m2, mu) and
+        array values being sparse blocks of shape <TODO: fill out>, or a dense
+        array of shape [(2 * l1 +1) * (2 * l2 +1), (2 * lambda_ + 1)]. If it is
+        None we only return an empty array of the shape.
+    :param cg_backend: specifies the combine backend with sparse CG
+        coefficients. It can have the values "python-dense", "python-sparse",
+        "mops" and "metadata". If "python-dense" or "python-sparse" is chosen, a
+        dense or sparse combination (respectively) of the arrays is performed
+        using either numpy or torch, depending on the backend. If "mops" is
+        chosen, a sparse combination of the arrays is performed if the external
+        package MOPS is installed. If "metadata" is chosen, no combination is
+        perfomed, and an empty array of the correct shape is returned.
 
 
-    :returns: array of shape [n_samples, (2*lambda_+1), q_properties * p_properties]
+    :returns: array of shape [n_samples, (2*lambda_+1), q_properties *
+        p_properties]
     """
     # If just precomputing metadata, return an empty array
     if cg_backend == "metadata":
-        return empty_combine(arr_1, arr_2, lambda_)
+        return empty_combine(array_1, array_2, lambda_)
 
-    # We have to temporary store it so TorchScript can infer the correct type
     if cg_backend == "python-sparse" or cg_backend == "mops":
-        return sparse_combine(arr_1, arr_2, lambda_, cg_coeffs, cg_backend)
+        return sparse_combine(array_1, array_2, lambda_, cg_coeffs, cg_backend)
     elif cg_backend == "python-dense":
-        return dense_combine(arr_1, arr_2, lambda_, cg_coeffs)
+        return dense_combine(array_1, array_2, lambda_, cg_coeffs)
     else:
         raise ValueError(
-            "Wrong cg_backend, got '{cg_backend}',"
+            f"Wrong cg_backend, got '{cg_backend}',"
             " but only support 'python-dense', 'python-sparse' and 'mops'."
         )
 
 
 def empty_combine(
-    arr_1: Array,
-    arr_2: Array,
+    array_1: Array,
+    array_2: Array,
     lambda_: int,
 ) -> Array:
     """
-    Returns the s Clebsch-Gordan combination step on 2 arrays using sparse
+    Returns a Clebsch-Gordan combination step on two arrays using sparse
     """
     # Samples dimensions must be the same
-    assert arr_1.shape[0] == arr_2.shape[0]
+    assert array_1.shape[0] == array_2.shape[0]
 
     # Define other useful dimensions
-    n_i = arr_1.shape[0]  # number of samples
-    n_p = arr_1.shape[2]  # number of properties in arr_1
-    n_q = arr_2.shape[2]  # number of properties in arr_2
+    n_i = array_1.shape[0]  # number of samples
+    n_p = array_1.shape[2]  # number of properties in array_1
+    n_q = array_2.shape[2]  # number of properties in array_2
 
-    return _dispatch.empty_like(arr_1, (n_i, 2 * lambda_ + 1, n_p * n_q))
+    return _dispatch.empty_like(array_1, (n_i, 2 * lambda_ + 1, n_p * n_q))
 
 
 def sparse_combine(
-    arr_1: Array,
-    arr_2: Array,
+    array_1: Array,
+    array_2: Array,
     lambda_: int,
     cg_coeffs: TensorMap,
     cg_backend: str,
@@ -615,36 +638,43 @@ def sparse_combine(
     its component axis, and the blocks are combined to the desired output
     angular channel `lambda_` using the appropriate Clebsch-Gordan coefficients.
 
-    :param arr_1: array with the m values for l1 with shape [n_samples, 2 * l1 +
-        1, n_q_properties]
-    :param arr_2: array with the m values for l2 with shape [n_samples, 2 * l2 +
-        1, n_p_properties]
+    :param array_1: array with the m values for l1 with shape [n_samples, 2 * l1
+        + 1, n_q_properties]
+    :param array_2: array with the m values for l2 with shape [n_samples, 2 * l2
+        + 1, n_p_properties]
     :param lambda_: int value of the resulting coupled channel
     :param cg_coeffs: sparse dictionary with keys (m1, m2, mu) and array values
         being sparse blocks of shape <TODO: fill out>
-    :param cg_backend: specifies the combine backend with sparse CG coefficients.
-        It can have the values "python-sparse" and "mops"
+    :param cg_backend: specifies the combine backend with sparse CG
+        coefficients. It can have the values "python-dense", "python-sparse",
+        "mops" and "metadata". If "python-dense" or "python-sparse" is chosen, a
+        dense or sparse combination (respectively) of the arrays is performed
+        using either numpy or torch, depending on the backend. If "mops" is
+        chosen, a sparse combination of the arrays is performed if the external
+        package MOPS is installed. If "metadata" is chosen, no combination is
+        perfomed, and an empty array of the correct shape is returned.
 
-    :returns: array of shape [n_samples, (2*lambda_+1), q_properties * p_properties]
+    :returns: array of shape [n_samples, (2*lambda_+1), q_properties *
+        p_properties]
     """
     # Samples dimensions must be the same
-    assert arr_1.shape[0] == arr_2.shape[0]
+    assert array_1.shape[0] == array_2.shape[0]
 
     # Infer l1 and l2 from the len of the length of axis 1 of each tensor
-    l1 = (arr_1.shape[1] - 1) // 2
-    l2 = (arr_2.shape[1] - 1) // 2
+    l1 = (array_1.shape[1] - 1) // 2
+    l2 = (array_2.shape[1] - 1) // 2
 
     # Define other useful dimensions
-    n_i = arr_1.shape[0]  # number of samples
-    n_p = arr_1.shape[2]  # number of properties in arr_1
-    n_q = arr_2.shape[2]  # number of properties in arr_2
+    n_i = array_1.shape[0]  # number of samples
+    n_p = array_1.shape[2]  # number of properties in array_1
+    n_q = array_2.shape[2]  # number of properties in array_2
 
     # The isinstance checks and cg_backend checks makes the logic a bit redundant
     # but the redundancy by the isinstance check is required for TorchScript. Logic
     # can be made more straightforward once MOPS support TorchScript
-    if isinstance(arr_1, TorchTensor) or cg_backend == "python-sparse":
+    if isinstance(array_1, TorchTensor) or cg_backend == "python-sparse":
         # Initialise output array
-        arr_out = _dispatch.zeros_like(arr_1, (n_i, 2 * lambda_ + 1, n_p * n_q))
+        array_out = _dispatch.zeros_like(array_1, (n_i, 2 * lambda_ + 1, n_p * n_q))
 
         # Get the corresponding Clebsch-Gordan coefficients
         # Fill in each mu component of the output array in turn
@@ -655,38 +685,40 @@ def sparse_combine(
             m2 = m1m2mu_key[1]
             mu = m1m2mu_key[2]
             # Broadcast arrays, multiply together and with CG coeff
-            arr_out[:, mu, :] += (
-                arr_1[:, m1, :, None] * arr_2[:, m2, None, :] * cg_l1l2lam.values[i, 0]
+            array_out[:, mu, :] += (
+                array_1[:, m1, :, None]
+                * array_2[:, m2, None, :]
+                * cg_l1l2lam.values[i, 0]
             ).reshape(n_i, n_p * n_q)
 
-        return arr_out
-    elif isinstance(arr_1, np.ndarray) and cg_backend == "mops":
+        return array_out
+    elif isinstance(array_1, np.ndarray) and cg_backend == "mops":
         # Reshape
-        arr_1 = np.repeat(arr_1[:, :, :, None], n_q, axis=3).reshape(
+        array_1 = np.repeat(array_1[:, :, :, None], n_q, axis=3).reshape(
             n_i, 2 * l1 + 1, n_p * n_q
         )
-        arr_2 = np.repeat(arr_2[:, :, None, :], n_p, axis=2).reshape(
+        array_2 = np.repeat(array_2[:, :, None, :], n_p, axis=2).reshape(
             n_i, 2 * l2 + 1, n_p * n_q
         )
 
-        arr_1 = _dispatch.swapaxes(arr_1, 1, 2).reshape(n_i * n_p * n_q, 2 * l1 + 1)
-        arr_2 = _dispatch.swapaxes(arr_2, 1, 2).reshape(n_i * n_p * n_q, 2 * l2 + 1)
+        array_1 = _dispatch.swapaxes(array_1, 1, 2).reshape(n_i * n_p * n_q, 2 * l1 + 1)
+        array_2 = _dispatch.swapaxes(array_2, 1, 2).reshape(n_i * n_p * n_q, 2 * l2 + 1)
 
         # Do SAP
-        arr_out = sap(
-            arr_1,
-            arr_2,
+        array_out = sap(
+            array_1,
+            array_2,
             *cg_coeffs.block({"l1": l1, "l2": l2, "lambda": lambda_}).values.flatten(),
             output_size=2 * lambda_ + 1,
         )
-        assert arr_out.shape == (n_i * n_p * n_q, 2 * lambda_ + 1)
+        assert array_out.shape == (n_i * n_p * n_q, 2 * lambda_ + 1)
 
         # Reshape back
-        arr_out = arr_out.reshape(n_i, n_p * n_q, 2 * lambda_ + 1)
-        arr_out = _dispatch.swapaxes(arr_out, 1, 2)
+        array_out = array_out.reshape(n_i, n_p * n_q, 2 * lambda_ + 1)
+        array_out = _dispatch.swapaxes(array_out, 1, 2)
 
-        return arr_out
-    elif cg_backend not in ["python", "mops"]:
+        return array_out
+    elif cg_backend not in ["python-sparse", "mops"]:
         raise ValueError(
             f"sparse cg backend '{cg_backend}' is not known. "
             "Only values 'python-sparse' and 'mops' are valid."
@@ -696,8 +728,8 @@ def sparse_combine(
 
 
 def dense_combine(
-    arr_1: Array,
-    arr_2: Array,
+    array_1: Array,
+    array_2: Array,
     lambda_: int,
     cg_coeffs: TensorMap,
 ) -> Array:
@@ -707,35 +739,36 @@ def dense_combine(
     its component axis, and the blocks are combined to the desired output
     angular channel `lambda_` using the appropriate Clebsch-Gordan coefficients.
 
-    :param arr_1: array with the m values for l1 with shape [n_samples, 2 * l1 +
-        1, n_q_properties]
-    :param arr_2: array with the m values for l2 with shape [n_samples, 2 * l2 +
-        1, n_p_properties]
+    :param array_1: array with the m values for l1 with shape [n_samples, 2 * l1
+        + 1, n_q_properties]
+    :param array_2: array with the m values for l2 with shape [n_samples, 2 * l2
+        + 1, n_p_properties]
     :param lambda_: int value of the resulting coupled channel
-    :param cg_coeffs: dense array of shape [(2 * l1 +1) * (2 * l2 +1), (2 * lambda_ +
-        1)]
+    :param cg_coeffs: dense array of shape [(2 * l1 +1) * (2 * l2 +1), (2 *
+        lambda_ + 1)]
 
-    :returns: array of shape [n_samples, (2*lambda_+1), q_properties * p_properties]
+    :returns: array of shape [n_samples, (2*lambda_+1), q_properties *
+        p_properties]
     """
     # Infer l1 and l2 from the len of the length of axis 1 of each tensor
-    l1 = (arr_1.shape[1] - 1) // 2
-    l2 = (arr_2.shape[1] - 1) // 2
+    l1 = (array_1.shape[1] - 1) // 2
+    l2 = (array_2.shape[1] - 1) // 2
 
     cg_l1l2lam = cg_coeffs.block({"l1": l1, "l2": l2, "lambda": lambda_}).values
 
     # (samples None None l1_mu q) * (samples l2_mu p None None)
     # -> (samples l2_mu p l1_mu q) we broadcast it in this way
     # so we only need to do one swapaxes in the next step
-    arr_out = arr_1[:, None, None, :, :] * arr_2[:, :, :, None, None]
+    array_out = array_1[:, None, None, :, :] * array_2[:, :, :, None, None]
 
     # (samples l2_mu p l1_mu q) -> (samples q p l1_mu l2_mu)
-    arr_out = _dispatch.swapaxes(arr_out, 1, 4)
+    array_out = _dispatch.swapaxes(array_out, 1, 4)
 
     # samples (q p l1_mu l2_mu) -> (samples (q p) (l1_mu l2_mu))
-    arr_out = arr_out.reshape(
+    array_out = array_out.reshape(
         -1,
-        arr_1.shape[2] * arr_2.shape[2],
-        arr_1.shape[1] * arr_2.shape[1],
+        array_1.shape[2] * array_2.shape[2],
+        array_1.shape[1] * array_2.shape[1],
     )
 
     # (l1_mu l2_mu lam_mu) -> ((l1_mu l2_mu) lam_mu)
@@ -743,7 +776,7 @@ def dense_combine(
 
     # (samples (q p) (l1_mu l2_mu)) @ ((l1_mu l2_mu) lam_mu)
     # -> samples (q p) lam_mu
-    arr_out = arr_out @ cg_l1l2lam
+    array_out = array_out @ cg_l1l2lam
 
     # (samples (q p) lam_mu) -> (samples lam_mu (q p))
-    return _dispatch.swapaxes(arr_out, 1, 2)
+    return _dispatch.swapaxes(array_out, 1, 2)

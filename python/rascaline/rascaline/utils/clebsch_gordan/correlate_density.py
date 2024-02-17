@@ -8,17 +8,27 @@ from typing import List, Optional, Union
 
 import numpy as np
 
-from . import _cg_cache, _clebsch_gordan, _dispatch
-from ._classes import (
+from .. import _dispatch
+
+# from ._classes import (
+#     Labels,
+#     LabelsEntry,
+#     TensorBlock,
+#     TensorMap,
+#     TorchScriptClass,
+#     torch_jit_export,
+#     torch_jit_is_scripting,
+# )
+from .._backend import (
     Labels,
     LabelsEntry,
     TensorBlock,
     TensorMap,
-    TorchModule,
     TorchScriptClass,
     torch_jit_export,
     torch_jit_is_scripting,
 )
+from . import _cg_cache, _clebsch_gordan
 
 
 try:
@@ -40,7 +50,7 @@ except ImportError:
 # ======================================================================
 
 
-class DensityCorrelations(TorchModule):
+class DensityCorrelations:
     """
     Takes iterative Clebsch-Gordan (CG) tensor products of a density descriptor
     with itself up to the desired correlation order. Returns
@@ -122,7 +132,7 @@ class DensityCorrelations(TorchModule):
         max_angular: int,
         correlation_order: int,
         angular_cutoff: Optional[int] = None,
-        selected_keys: Optional[Union[Labels, List[Union[Labels, None]]]] = None,
+        selected_keys: Optional[Union[Labels, List[Labels]]] = None,
         skip_redundant: Optional[Union[bool, List[bool]]] = False,
         output_selection: Optional[Union[bool, List[bool]]] = None,
         arrays_backend: Optional[str] = None,
@@ -198,7 +208,7 @@ class DensityCorrelations(TorchModule):
             sparse=sparse,
             use_mops=use_mops,
             use_torch=(self._arrays_backend == "torch"),
-        ).coeffs
+        )._cg_coeffs
 
         # Check inputs
         if correlation_order <= 1:
@@ -231,30 +241,6 @@ class DensityCorrelations(TorchModule):
                 output_selection=output_selection,
             )
         )
-
-    @property
-    def correlation_order(self):
-        return self._correlation_order
-
-    @property
-    def selected_keys(self) -> List[Union[Labels, None]]:
-        return self._selected_keys
-
-    @property
-    def skip_redundant(self) -> List[bool]:
-        return self._skip_redundant
-
-    @property
-    def output_selection(self) -> List[bool]:
-        return self._output_selection
-
-    @property
-    def arrays_backend(self):
-        return self._arrays_backend
-
-    @property
-    def cg_backend(self):
-        return self._cg_backend
 
     @property
     def cg_coeffs(self) -> TensorMap:

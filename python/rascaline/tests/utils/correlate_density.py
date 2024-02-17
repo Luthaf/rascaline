@@ -8,8 +8,7 @@ import pytest
 from metatensor import Labels, TensorBlock, TensorMap
 
 import rascaline
-from rascaline.utils import PowerSpectrum
-from rascaline.utils.clebsch_gordan import _dispatch
+from rascaline.utils import PowerSpectrum, _dispatch
 from rascaline.utils.clebsch_gordan._cg_cache import ClebschGordanReal
 from rascaline.utils.clebsch_gordan._clebsch_gordan import _standardize_keys
 from rascaline.utils.clebsch_gordan.correlate_density import DensityCorrelations
@@ -76,15 +75,44 @@ SPHEX_HYPERS_SMALL = {
 
 
 def h2_isolated():
-    return ase.io.read(os.path.join(DATA_ROOT, "h2_isolated.xyz"), ":")
+    return [
+        ase.Atoms(
+            symbols=["H", "H"],
+            positions=[
+                [1.97361700, 1.73067300, 2.47063400],
+                [1.97361700, 3.26932700, 2.47063400],
+            ],
+        )
+    ]
 
 
 def h2o_isolated():
-    return ase.io.read(os.path.join(DATA_ROOT, "h2o_isolated.xyz"), ":")
+    return [
+        ase.Atoms(
+            symbols=["O", "H", "H"],
+            positions=[
+                [2.56633400, 2.50000000, 2.50370100],
+                [1.97361700, 1.73067300, 2.47063400],
+                [1.97361700, 3.26932700, 2.47063400],
+            ],
+        )
+    ]
 
 
 def h2o_periodic():
-    return ase.io.read(os.path.join(DATA_ROOT, "h2o_periodic.xyz"), ":")
+
+    return [
+        ase.Atoms(
+            symbols=["O", "H", "H"],
+            positions=[
+                [2.56633400, 2.50000000, 2.50370100],
+                [1.97361700, 1.73067300, 2.47063400],
+                [1.97361700, 3.26932700, 2.47063400],
+            ],
+            cell=[5, 5, 5],
+            pbc=[True, True, True],
+        )
+    ]
 
 
 def wigner_d_matrices(lmax: int):
@@ -350,7 +378,7 @@ def test_clebsch_gordan_orthogonality(l1, l2, arrays_backend):
     """
     cg_coeffs = ClebschGordanReal(
         lambda_max=5, sparse=False, use_torch=arrays_backend == "torch"
-    ).coeffs
+    )._cg_coeffs
 
     lam_min = abs(l1 - l2)
     lam_max = l1 + l2

@@ -2,8 +2,10 @@ import json
 from math import sqrt
 from typing import List, Optional, Union
 
-from . import _dispatch
-from ._classes import CalculatorBase, IntoSystem, Labels, TensorBlock, TensorMap
+from .. import _dispatch
+
+# from ._classes import CalculatorBase, IntoSystem, Labels, TensorBlock, TensorMap
+from .._backend import CalculatorBase, IntoSystem, Labels, TensorBlock, TensorMap
 
 
 class PowerSpectrum:

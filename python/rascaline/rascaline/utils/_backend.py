@@ -3,6 +3,9 @@ from typing import Any, Union
 import numpy as np
 from metatensor import Labels, LabelsEntry, TensorBlock, TensorMap
 
+from ..calculator_base import CalculatorBase
+from ..systems import IntoSystem
+
 
 def torch_jit_is_scripting():
     return False
@@ -41,6 +44,8 @@ except ImportError:
 Array = Union[np.ndarray, TorchTensor]
 
 __all__ = [
+    "CalculatorBase",
+    "IntoSystem",
     "Labels",
     "TensorBlock",
     "TensorMap",

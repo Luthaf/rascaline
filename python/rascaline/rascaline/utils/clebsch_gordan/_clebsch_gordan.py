@@ -6,8 +6,18 @@ metatensor :py:class:`TensorMap` objects.
 
 from typing import List, Optional, Tuple, Union
 
-from . import _cg_cache, _dispatch
-from ._classes import (
+from .. import _dispatch
+
+# from ._classes import (
+#     Array,
+#     Labels,
+#     LabelsEntry,
+#     TensorBlock,
+#     TensorMap,
+#     is_labels,
+#     torch_jit_annotate,
+# )
+from .._backend import (
     Array,
     Labels,
     LabelsEntry,
@@ -16,6 +26,7 @@ from ._classes import (
     is_labels,
     torch_jit_annotate,
 )
+from . import _cg_cache
 
 
 # ==================================================================
@@ -60,8 +71,8 @@ def _parse_selected_keys(
     n_iterations: int,
     array_like: Array,
     angular_cutoff: Optional[int] = None,
-    selected_keys: Optional[Union[Labels, List[Union[Labels, None]]]] = None,
-) -> List[Union[None, Labels]]:
+    selected_keys: Optional[Union[Labels, List[Labels]]] = None,
+) -> List[Labels]:
     """
     Parses the `selected_keys` argument passed to public functions. Checks the
     values and returns a :py:class:`list` of :py:class:`Labels` objects, one for
@@ -74,9 +85,7 @@ def _parse_selected_keys(
         and (not isinstance(selected_keys, list))
         and (not is_labels(selected_keys))
     ):
-        raise TypeError(
-            "`selected_keys` must be `None`, `Labels` or List[Union[None, `Labels`]]"
-        )
+        raise TypeError("`selected_keys` must be `None`, `Labels` or List[`Labels`]")
 
     if isinstance(selected_keys, list):
         if not all(
@@ -85,9 +94,7 @@ def _parse_selected_keys(
                 for i in range(len(selected_keys))
             ]
         ):
-            raise TypeError(
-                "`selected_keys` must be a Labels or List[Union[None, Labels]]"
-            )
+            raise TypeError("`selected_keys` must be a Labels or List[Labels]")
 
     # Check angular_cutoff arg
     if angular_cutoff is not None:
@@ -121,31 +128,31 @@ def _parse_selected_keys(
 
     if not len(selected_keys_) == n_iterations:
         raise ValueError(
-            "`selected_keys` must be a List[Union[None, Labels]] of length"
+            "`selected_keys` must be a List[Labels] of length"
             " `correlation_order` - 1"
         )
 
     # Now iterate over each of the Labels (or None) in the list and check
-    for slct in selected_keys_:
-        if slct is None:
+    for selected in selected_keys_:
+        if selected is None:
             continue
-        if not (is_labels(slct)):
-            raise ValueError("Asserted that elements in `slct` are Labels")
+        if not (is_labels(selected)):
+            raise ValueError("Asserted that elements in `selected` are Labels")
 
         if not all(
             [
                 name in ["spherical_harmonics_l", "inversion_sigma"]
-                for name in slct.names
+                for name in selected.names
             ]
         ):
             raise ValueError(
                 "specified key names in `selected_keys` must be either"
                 " 'spherical_harmonics_l' or 'inversion_sigma'"
             )
-        if "spherical_harmonics_l" in slct.names:
+        if "spherical_harmonics_l" in selected.names:
             if angular_cutoff is not None:
                 below_cutoff: Array = (
-                    slct.column("spherical_harmonics_l") <= angular_cutoff
+                    selected.column("spherical_harmonics_l") <= angular_cutoff
                 )
                 if not _dispatch.all(below_cutoff):
                     raise ValueError(
@@ -155,7 +162,7 @@ def _parse_selected_keys(
             above_zero = _dispatch.bool_array_like(
                 [
                     bool(angular_l >= 0)
-                    for angular_l in slct.column("spherical_harmonics_l")
+                    for angular_l in selected.column("spherical_harmonics_l")
                 ],
                 like=array_like,
             )
@@ -163,12 +170,12 @@ def _parse_selected_keys(
                 raise ValueError(
                     "specified angular channels in `selected_keys` must be >= 0"
                 )
-        if "inversion_sigma" in slct.names:
+        if "inversion_sigma" in selected.names:
             if not _dispatch.all(
                 _dispatch.bool_array_like(
                     [
                         bool(parity_s in [-1, 1])
-                        for parity_s in slct.column("inversion_sigma")
+                        for parity_s in selected.column("inversion_sigma")
                     ],
                     array_like,
                 )
@@ -408,8 +415,6 @@ def _precompute_keys_full_product(
                 sig = int(sig1 * sig2 * (-1) ** (lam1 + lam2 + lambda_))
 
                 # Extract the l and k lists from keys_1
-                # We have to convert to int64 because of
-                # https://github.com/pytorch/pytorch/issues/76295
                 l_list: List[int] = _dispatch.to_int_list(keys_1.values[i, 4 : 4 + nu1])
                 k_list: List[int] = _dispatch.to_int_list(keys_1.values[i, 4 + nu1 :])
 
@@ -461,12 +466,12 @@ def _apply_key_selection(
     keys_out_vals = keys_out.values[:, col_idx]
 
     # First check that all of the selected keys exist in the output keys
-    for slct in selected_keys.values:
+    for selected in selected_keys.values:
         if not any(
-            [bool(all(slct == keys_out_vals[i])) for i in range(len(keys_out_vals))]
+            [bool(all(selected == keys_out_vals[i])) for i in range(len(keys_out_vals))]
         ):
             raise ValueError(
-                f"selected key {selected_keys.names} = {slct} not found"
+                f"selected key {selected_keys.names} = {selected} not found"
                 " in the output keys. Check the `selected_keys` argument."
             )
 
@@ -513,9 +518,8 @@ def _remove_redundant_keys(
     key_idxs_to_keep: List[int] = []
     for key_idx in range(len(keys_out)):
         key = keys_out.entry(key_idx)
-        # Get the important key values. This is all of the keys, excpet the k
-        # list. We have to convert to int64 because of
-        # https://github.com/pytorch/pytorch/issues/76295
+        # Get the important key values. This is all of the keys, except the k
+        # list.
         key_vals_slice: List[int] = _dispatch.to_int_list(key.values[: 4 + (nu + 1)])
         first_part, l_list = key_vals_slice[:4], key_vals_slice[4:]
 
