@@ -159,10 +159,18 @@ class DensityCorrelations(TorchModule):
         elif cg_backend == "mops":
             if arrays_backend == "torch":
                 raise NotImplementedError(
-                    "'numpy' was determined or given as `arrays_backend` "
+                    "'torch' was determined or given as `arrays_backend` "
                     "and 'mops' was given as `cg_backend`, "
                     "but mops does not support torch backend yet"
                 )
+            else:
+                assert arrays_backend == "numpy"
+                if not HAS_MOPS:
+                    raise ImportError(
+                        "mops is not installed, but 'mops' was given as `cg_backend`"
+                    )
+                self._cg_backend = "mops"
+
         else:
             raise ValueError(
                 f"Unknown `cg_backend` {cg_backend}."
@@ -186,12 +194,12 @@ class DensityCorrelations(TorchModule):
             sparse = True
             use_mops = True
 
-        self._cg_coefficients = _cg_cache.ClebschGordanReal(
-            self._max_angular,
+        self._cg_coefficients = _cg_cache.calculate_cg_coefficients(
+            lambda_max=self._max_angular,
             sparse=sparse,
             use_mops=use_mops,
             use_torch=(arrays_backend == "torch"),
-        )._cg_coeffs
+        )
 
         # Check inputs
         if correlation_order <= 1:

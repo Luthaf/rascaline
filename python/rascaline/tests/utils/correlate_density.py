@@ -9,7 +9,7 @@ from metatensor import Labels, TensorBlock, TensorMap
 
 import rascaline
 from rascaline.utils import PowerSpectrum, _dispatch
-from rascaline.utils.clebsch_gordan._cg_cache import ClebschGordanReal
+from rascaline.utils.clebsch_gordan._cg_cache import calculate_cg_coefficients
 from rascaline.utils.clebsch_gordan._clebsch_gordan import _standardize_keys
 from rascaline.utils.clebsch_gordan.correlate_density import DensityCorrelations
 
@@ -31,6 +31,12 @@ try:
     HAS_SYMPY = True
 except ImportError:
     HAS_SYMPY = False
+try:
+    from mops import sparse_accumulation_of_products as sap  # noqa F401
+
+    HAS_MOPS = True
+except ImportError:
+    HAS_MOPS = False
 
 if HAS_SYMPY:
     from .rotations import WignerDReal, transform_frame_o3, transform_frame_so3
@@ -376,9 +382,9 @@ def test_clebsch_gordan_orthogonality(l1, l2, arrays_backend):
     https://en.wikipedia.org/wiki/Clebsch%E2%80%93Gordan_coefficients#Orthogonality_relations
     for details.
     """
-    cg_coeffs = ClebschGordanReal(
+    cg_coeffs = calculate_cg_coefficients(
         lambda_max=5, sparse=False, use_torch=arrays_backend == "torch"
-    )._cg_coeffs
+    )
 
     lam_min = abs(l1 - l2)
     lam_max = l1 + l2
@@ -450,7 +456,7 @@ def test_clebsch_gordan_orthogonality(l1, l2, arrays_backend):
 )
 def test_correlate_density_dense_sparse_agree():
     """
-    Tests for agreement between nu=3 tensors built using both sparse and dense
+    Tests for agreement between nu=2 tensors built using both sparse and dense
     CG coefficient caches.
     """
     frames = h2o_periodic()
@@ -473,6 +479,34 @@ def test_correlate_density_dense_sparse_agree():
     n_body_dense = corr_calculator_dense.compute(density)
 
     assert metatensor.allclose(n_body_sparse, n_body_dense, atol=1e-8, rtol=1e-8)
+
+
+@pytest.mark.skipif(not HAS_MOPS, reason="mops is not installed")
+def test_correlate_density_mops_python_sparse_agree():
+    """
+    Tests for agreement between nu=2 tensors built using both "python-sparse"
+    and "mops" CG backend.
+    """
+    frames = h2o_periodic()
+    density = spherical_expansion_small(frames)
+
+    correlation_order = 2
+    corr_calculator_python = DensityCorrelations(
+        max_angular=SPHEX_HYPERS_SMALL["max_angular"] * correlation_order,
+        correlation_order=correlation_order,
+        cg_backend="python-sparse",
+    )
+    corr_calculator_mops = DensityCorrelations(
+        max_angular=SPHEX_HYPERS_SMALL["max_angular"] * correlation_order,
+        correlation_order=correlation_order,
+        cg_backend="mops",
+    )
+    # NOTE: testing the private function here so we can control the use of
+    # sparse v dense CG cache
+    n_body_python = corr_calculator_python.compute(density)
+    n_body_mops = corr_calculator_mops.compute(density)
+
+    assert metatensor.allclose(n_body_python, n_body_mops, atol=1e-8, rtol=1e-8)
 
 
 # ============ Test metadata  ============

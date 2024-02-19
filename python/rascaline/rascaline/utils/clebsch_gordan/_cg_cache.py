@@ -4,20 +4,13 @@ Gordan coefficients for use in CG combinations.
 """
 
 import math
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import wigners
 
 from .. import _dispatch
-from .._backend import (
-    Array,
-    Labels,
-    TensorBlock,
-    TensorMap,
-    TorchModule,
-    torch_jit_is_scripting,
-)
+from .._backend import Array, Labels, TensorBlock, TensorMap, torch_jit_is_scripting
 
 
 try:
@@ -54,128 +47,147 @@ UNKNOWN_ARRAY_TYPE = (
 )
 
 
-# =================================
-# ===== ClebschGordanReal class
-# =================================
-
-
-class ClebschGordanReal(TorchModule):
+def calculate_cg_coefficients(
+    lambda_max: int,
+    sparse: bool = True,
+    use_mops: Optional[bool] = None,
+    use_torch: bool = False,
+) -> TensorMap:
     """
-    Class for computing Clebsch-Gordan coefficients for real spherical
-    harmonics.
+    Calculates the Clebsch-Gordan coefficients for all possible combination of l1 and
+    l2, up to ``lambda_max``. Returns them in :py:class:`TensorMap` format.
 
-    Stores the coefficients in the `self._cg_coeffs` attribute in TensorMap
-    format, which is built at initialization.
+    The output data structure of the output :py:class:`TensorMap` depends on the backend
+    used to perform CG tensor products, currently: ["python-dense", "python-sparse",
+    "mops"].
+
+    ``cg_backend="python-dense"``:
+        - samples: `sample`, i.e. a dummy sample.
+        - components: `[(m1,), (m2,), (mu,)]`, i.e. on separate components axes,
+          where `m1` and `m2` are the m component values for the two arrays
+          being combined and `mu` is the m component value for the resulting
+          array.
+        - properties: `property`, i.e. a dummy property.
+
+    ``cg_backend="python-sparse"`` or ``cg_backend="mops"`` (i.e. sparse with MOPS)::
+        - samples: `(m1, m2, mu)`, where `m1` and `m2` are the m component
+          values for the two arrays being combined and `mu` is the m component
+          value for the resulting array.
+        - components: `[]`, i.e. no components axis.
+        - properties: `property`, i.e. a dummy property.
+
 
     :param lambda_max: maximum lambda value to compute CG coefficients for.
     :param sparse: whether to store the CG coefficients in sparse format.
-    :param use_mops: whether to store the CG coefficients in MOPS sparse format.
-        This is recommended as the default for sparse accumulation, but can only
-        be used if Mops is installed.
+    :param use_mops: whether to store the CG coefficients in MOPS sparse format. This is
+        recommended as the default for sparse accumulation, but can only be used if Mops
+        is installed.
     :param use_torch: whether torch tensor or numpy arrays should be used for the cg
         coeffs
+
+    :returns: :py:class:`TensorMap` of the Clebsch-Gordan coefficients.
     """
+    # Parse the various boolean options for array and CG combination backends
+    sparse, use_mops, use_torch = _parse_backend_options(sparse, use_mops, use_torch)
 
-    def __init__(
-        self,
-        lambda_max: int,
-        sparse: bool = True,
-        use_mops: Optional[bool] = None,
-        use_torch: bool = False,
-    ):
-        super().__init__()
-        self._lambda_max = lambda_max
-        self._sparse = sparse
-
-        # For TorchScript we declare type
-        self._use_mops: bool = False
-        if sparse:
-            if use_mops is None:
-                self._use_mops = HAS_MOPS
-                # TODO: provide a warning once Mops is fully ready
-                # import warnings
-                # warnings.warn(
-                #     "It is recommended to use MOPS for sparse accumulation. "
-                #     " This can be installed with ``pip install"
-                #     " git+https://github.com/lab-cosmo/mops`."
-                #     " Falling back to numpy for now."
-                # )
-            else:
-                if use_mops and not HAS_MOPS:
-                    raise ImportError("Specified to use MOPS, but it is not installed.")
-                else:
-                    self._use_mops = use_mops
-
+    # Build some 'like' arrays for the backend dispatch
+    if use_torch:
+        complex_like = torch.empty(0, dtype=torch.complex128)
+        double_like = torch.empty(0, dtype=torch.double)
+        if isinstance(Labels, torch.ScriptClass):
+            labels_values_like = torch.empty(0, dtype=torch.double)
         else:
-            # The logic is a bit complicated so TorchScript can understand that it is
-            # not None
-            if use_mops is None:
-                self._use_mops = False
-            # TODO: provide a warning once Mops is fully ready
-            # if HAS_MOPS:
-            #     import warnings
-            #     warnings.warn(
-            #         "Mops is installed, but not being used"
-            #         " as dense operations chosen."
-            #     )
-            elif use_mops:
-                raise ImportError("MOPS is not available for non sparse operations.")
-            else:
-                self._use_mops = False
+            labels_values_like = np.empty(0, dtype=np.double)
+    else:
+        complex_like = np.empty(0, dtype=np.complex128)
+        double_like = np.empty(0, dtype=np.double)
+        labels_values_like = np.empty(0, dtype=np.double)
 
-        if torch_jit_is_scripting():
-            if not use_torch:
-                raise ValueError(
-                    "use_torch is False, but this option is not supported when torch"
-                    " scripted."
-                )
-            self._use_torch = True
-        else:
-            self._use_torch = use_torch
+    # Calculate the CG coefficients, stored as a dict of dense arrays. This is the
+    # starting point for the conversion to a TensorMap of different formats depending on
+    # the backend options.
+    cg_coeff_dict = _build_dense_cg_coeff_dict(
+        lambda_max, complex_like, double_like, labels_values_like
+    )
 
-        self._cg_coeffs = _build_cg_coeff_dict(
-            self._lambda_max,
-            sparse,
-            self._use_mops,
-            self._use_torch,
+    # Build the CG cache depending on whether the CG backend is sparse or dense. The
+    # dispatching of the arrays backends are accounted for by `double_like` and
+    # `labels_values_like`.
+    if sparse:
+        return _cg_coeff_dict_to_tensormap_sparse(
+            cg_coeff_dict, double_like, labels_values_like
         )
 
+    return _cg_coeff_dict_to_tensormap_dense(
+        cg_coeff_dict, double_like, labels_values_like
+    )
 
-def _build_cg_coeff_dict(
-    lambda_max: int, sparse: bool, use_mops: bool, use_torch: bool
-):
+
+def _parse_backend_options(
+    sparse: bool, use_mops: bool, use_torch: bool
+) -> Tuple[bool]:
     """
-    Builds a dictionary of Clebsch-Gordan coefficients for all possible
-    combination of l1 and l2, up to lambda_max.
+    Parses the boolean arguments for controlling the backend array and CG coefficient
+    calculation options.
 
-    This is an intermediate data structure, as the dictionary is converted to a
-    TensorMap by calling the :py:func:`_cg_coeff_dict_to_tensormap` function.
-    For transparency, the intermediate dict data structure is described here.
+    Raises an error for invalid options, or returns them as a tuple of booleans.
+    """
+    _use_mops: bool = False  # declare type for TorchScript
+    if sparse:
+        if use_mops is None:
+            _use_mops = HAS_MOPS
+            # TODO: provide a warning once Mops is fully ready
+            # import warnings
+            # warnings.warn(
+            #     "It is recommended to use MOPS for sparse accumulation. "
+            #     " This can be installed with ``pip install"
+            #     " git+https://github.com/lab-cosmo/mops`."
+            #     " Falling back to numpy for now."
+            # )
+        else:
+            if use_mops and not HAS_MOPS:
+                raise ImportError("Specified to use MOPS, but it is not installed.")
+            else:
+                _use_mops = use_mops
 
-    There are 3 current use cases for the format of these coefficients, and for
-    each the intermediate dict has a different data structure.
+    else:
+        # The logic is a bit complicated so TorchScript can understand that it is
+        # not None
+        if use_mops is None:
+            _use_mops = False
+        # TODO: provide a warning once Mops is fully ready
+        # if HAS_MOPS:
+        #     import warnings
+        #     warnings.warn(
+        #         "Mops is installed, but not being used"
+        #         " as dense operations chosen."
+        #     )
+        elif use_mops:
+            raise ImportError("MOPS is not available for non sparse operations.")
+        else:
+            _use_mops = False
 
-    Case 1: standard sparse format.
+    if torch_jit_is_scripting():
+        if not use_torch:
+            raise ValueError(
+                "use_torch is False, but this option is not supported when torch"
+                " scripted."
+            )
+        _use_torch = True
+    else:
+        _use_torch = use_torch
 
-    Each dictionary entry is a dictionary with entries for each (m1, m2, mu)
-    combination.
+    return sparse, _use_mops, _use_torch
 
-    {
-        (l1, l2, lambda): {
-            (m1, m2, mu) : cg_{m1, m2, mu}^{l1, l2, lambda}
-            for m1 in range(-l1, l1 + 1),
-            for m2 in range(-l2, l2 + 1),
-        },
-        ...
-        for l1 in range(0, l1_list)
-        for l2 in range(0, l2_list)
-        for lambda in range(0, range(|l1 - l2|, ..., |l1 + l2|))
-    }
 
-    Case 2: standard dense format.
+def _build_dense_cg_coeff_dict(
+    lambda_max: int, complex_like: Array, double_like: Array, labels_values_like: Array
+) -> Dict[int, Array]:
+    """
+    Calculates the CG coefficients and stores them as dense arrays in a dictionary.
 
-    Each dictionary entry is a dense array with shape (2 * l1 + 1, 2 * l2 + 1, 2
-    * lambda + 1).
+    Each dictionary entry is a dense array with shape
+    (2 * l1 + 1, 2 * l2 + 1, 2 * lambda + 1).
 
     {
         (l1, l2, lambda):
@@ -194,62 +206,27 @@ def _build_cg_coeff_dict(
         for lambda in range(0, range(|l1 - l2|, ..., |l1 + l2|))
     }
 
-    Case 3: MOPS sparse format.
-
-    Each dictionary entry contains a tuple with four 1D arrays, corresponding to
-    the CG coeffs and m1, m2, mu indices respectively. All of these arrays are
-    sorted according to the mu index. This format is used for Sparse
-    Accumulation of Products (SAP) as implemented in MOPS. See
-    https://github.com/lab-cosmo/mops .
-
-    {
-        (l1, l2, lambda):
-            (
-                [
-                    cg_{m1, m2, mu}^{l1, l2, lambda}
-                    ...
-                    for m1 in range(-l1, l1 + 1),
-                    for m2 in range(-l2, l2 + 1),
-                    for mu in range(-lambda, lambda + 1)
-                ],
-                [
-                    m1 for m1 in range(-l1, l1 + 1),
-                ],
-                [
-                    m2 for m2 in range(-l2, l2 + 1),
-                ],
-                [
-                    mu for mu in range(-lambda, lambda + 1),
-                ],
-            )
-
-
-    }
-
     where `cg_{m1, m2, mu}^{l1, l2, lambda}` is the Clebsch-Gordan coefficient
     that describes the combination of the `m1` irreducible component of the `l1`
     angular channel and the `m2` irreducible component of the `l2` angular
     channel into the irreducible tensor of order `lambda`. In all cases, these
     correspond to the non-zero CG coefficients, i.e. those in the range |-l,
     ..., +l| for each angular order l in {l1, l2, lambda}.
+
+    :param lambda_max: maximum lambda value to compute CG coefficients for.
+    :param complex_like: an empty array of dtype complex, used for dispatching
+        operations
+    :param double_like: an empty array of dtype double, used for dispatching
+        operations
+    :param labels_values_like: an empty array of dtype double, used for dispatching
+        operations
+
+    :returns: dictionary of dense CG coefficients.
     """
     # real-to-complex and complex-to-real transformations as matrices
     r2c: Dict[int, Array] = {}
     c2r: Dict[int, Array] = {}
-
     coeff_dict = {}
-
-    if use_torch:
-        complex_like = torch.empty(0, dtype=torch.complex128)
-        double_like = torch.empty(0, dtype=torch.double)
-        if isinstance(Labels, torch.ScriptClass):
-            labels_values_like = torch.empty(0, dtype=torch.double)
-        else:
-            labels_values_like = np.empty(0, dtype=np.double)
-    else:
-        complex_like = np.empty(0, dtype=np.complex128)
-        double_like = np.empty(0, dtype=np.double)
-        labels_values_like = np.empty(0, dtype=np.double)
 
     for lambda_ in range(0, lambda_max + 1):
         c2r[lambda_] = _complex2real(lambda_, like=complex_like)
@@ -281,153 +258,112 @@ def _build_cg_coeff_dict(
                 else:
                     cg_l1l2lam_dense = _dispatch.imag(real_cg)
 
-                if sparse:
-                    # Find the m1, m2, mu idxs of the nonzero CG coeffs
-                    nonzeros_cg_coeffs_idx = _dispatch.where(
-                        _dispatch.abs(cg_l1l2lam_dense) > 1e-15
-                    )
-                    if use_mops:
-                        # Store CG coeffs in a specific format for use in
-                        # MOPS. Here we need the m1, m2, mu, and CG coeffs
-                        # to be stored as separate 1D arrays.
-                        m1_arr: List[int] = []
-                        m2_arr: List[int] = []
-                        mu_arr: List[int] = []
-                        C_arr: List[float] = []
-                        for i in range(len(nonzeros_cg_coeffs_idx[0])):
-                            m1 = int(nonzeros_cg_coeffs_idx[0][i])
-                            m2 = int(nonzeros_cg_coeffs_idx[1][i])
-                            mu = int(nonzeros_cg_coeffs_idx[2][i])
-                            m1_arr.append(m1)
-                            m2_arr.append(m2)
-                            mu_arr.append(mu)
-                            C_arr.append(float(cg_l1l2lam_dense[m1, m2, mu]))
+                coeff_dict[(l1, l2, lambda_)] = cg_l1l2lam_dense
 
-                        # Reorder the arrays based on sorted mu values
-                        mu_idxs = _dispatch.argsort(
-                            _dispatch.int_array_like(mu_arr, double_like)
-                        )
-                        m1_arr = _dispatch.int_array_like(m1_arr, double_like)[mu_idxs]
-                        m2_arr = _dispatch.int_array_like(m2_arr, double_like)[mu_idxs]
-                        mu_arr = _dispatch.int_array_like(mu_arr, double_like)[mu_idxs]
-                        C_arr = _dispatch.double_array_like(C_arr, double_like)[mu_idxs]
-                        cg_l1l2lam_sparse = (C_arr, m1_arr, m2_arr, mu_arr)
-                        coeff_dict[(l1, l2, lambda_)] = cg_l1l2lam_sparse
-                    else:
-                        # Otherwise fall back to torch/numpy and store as
-                        # sparse dicts.
-                        cg_l1l2lam_sparse = {}
-                        for i in range(len(nonzeros_cg_coeffs_idx[0])):
-                            m1 = nonzeros_cg_coeffs_idx[0][i]
-                            m2 = nonzeros_cg_coeffs_idx[1][i]
-                            mu = nonzeros_cg_coeffs_idx[2][i]
-                            cg_l1l2lam_sparse[(m1, m2, mu)] = cg_l1l2lam_dense[
-                                m1, m2, mu
-                            ]
-                        coeff_dict[(l1, l2, lambda_)] = cg_l1l2lam_sparse
-                else:
-                    # Store
-                    coeff_dict[(l1, l2, lambda_)] = cg_l1l2lam_dense
+    return coeff_dict
 
-    return _cg_coeff_dict_to_tensormap(
-        coeff_dict, sparse, double_like, labels_values_like
+
+def _cg_coeff_dict_to_tensormap_dense(
+    coeff_dict: Dict, double_like: Array, labels_values_like: Array
+) -> TensorMap:
+    """
+    Converts the dictionary of dense CG coefficients coefficients to
+    :py:class:`TensorMap` format, specifically for performing CG tensor products with
+    the "python-dense" backend.
+    """
+    keys = Labels(
+        ["l1", "l2", "lambda"],
+        _dispatch.int_array_like(list(coeff_dict.keys()), labels_values_like),
     )
-
-
-def _cg_coeff_dict_to_tensormap(
-    coeff_dict: Dict, sparse: bool, double_like, labels_values_like
-):
-    """
-    Converts the dictionary of Clebsch-Gordan coefficients to
-    :py:class:`TensorMap` format, whose data structure depends on whether they
-    will be used for sparse or dense operations.
-
-    For both, keys are indexed by `(l1, l2, lambda)`, which stores CG
-    coefficients for the combination of two blocks (of order where `l1` and `l2`
-    respectively) to angular order `lambda`.
-
-    Each block then has a different structure for performing sparse and dense
-    combinations
-
-    Sparse:
-        - samples: `(m1, m2, mu)`, where `m1` and `m2` are the m component
-          values for the two arrays being combined and `mu` is the m component
-          value for the resulting array.
-        - components: `[]`, i.e. no components axis.
-        - properties: `property`, i.e. a dummy property.
-
-    Dense:
-        - samples: `sample`, i.e. a dummy sample.
-        - components: `[(m1,), (m2,), (mu,)]`, i.e. on separate components axes,
-          where `m1` and `m2` are the m component values for the two arrays
-          being combined and `mu` is the m component value for the resulting
-          array.
-        - properties: `property`, i.e. a dummy property.
-    """
     blocks = []
-    if sparse:
-        for l1l2lam_dict in coeff_dict.values():
-            l1l2lam_sample_values = []
-            for m1m2mu_key in l1l2lam_dict.keys():
-                l1l2lam_sample_values.append(m1m2mu_key)
-            # extending shape by samples and properties
-            values = _dispatch.double_array_like(
-                [*l1l2lam_dict.values()], double_like
-            ).reshape(-1, 1)
-            l1l2lam_sample_values = _dispatch.int_array_like(
-                l1l2lam_sample_values, labels_values_like
-            )
-            # we have to move put the m1 m2 m3 inside a block so we can access it easier
-            # inside cg combine function,
-            blocks.append(
-                TensorBlock(
-                    values=_dispatch.contiguous(values),
-                    samples=Labels(["m1", "m2", "mu"], l1l2lam_sample_values),
-                    components=[],
-                    properties=Labels.range("property", 1),
-                )
-            )
-        keys = Labels(
-            ["l1", "l2", "lambda"],
-            _dispatch.int_array_like(list(coeff_dict.keys()), labels_values_like),
-        )
-    else:
-        keys = Labels(
-            ["l1", "l2", "lambda"],
-            _dispatch.int_array_like(list(coeff_dict.keys()), labels_values_like),
-        )
-        for l1l2lam_values in coeff_dict.values():
-            # extending shape by samples and properties
-            block_value_shape = (1,) + l1l2lam_values.shape + (1,)
-            blocks.append(
-                TensorBlock(
-                    values=_dispatch.contiguous(
-                        l1l2lam_values.reshape(block_value_shape)
+
+    for l1l2lam_values in coeff_dict.values():
+        # extending shape by samples and properties
+        block_value_shape = (1,) + l1l2lam_values.shape + (1,)
+        blocks.append(
+            TensorBlock(
+                values=_dispatch.contiguous(l1l2lam_values.reshape(block_value_shape)),
+                samples=Labels.range("sample", 1),
+                components=[
+                    Labels(
+                        ["m1"],
+                        _dispatch.int_range_like(
+                            0, l1l2lam_values.shape[0], labels_values_like
+                        ).reshape(-1, 1),
                     ),
-                    samples=Labels.range("sample", 1),
-                    components=[
-                        Labels(
-                            ["m1"],
-                            _dispatch.int_range_like(
-                                0, l1l2lam_values.shape[0], labels_values_like
-                            ).reshape(-1, 1),
-                        ),
-                        Labels(
-                            ["m2"],
-                            _dispatch.int_range_like(
-                                0, l1l2lam_values.shape[1], labels_values_like
-                            ).reshape(-1, 1),
-                        ),
-                        Labels(
-                            ["mu"],
-                            _dispatch.int_range_like(
-                                0, l1l2lam_values.shape[2], labels_values_like
-                            ).reshape(-1, 1),
-                        ),
-                    ],
-                    properties=Labels.range("property", 1),
-                )
+                    Labels(
+                        ["m2"],
+                        _dispatch.int_range_like(
+                            0, l1l2lam_values.shape[1], labels_values_like
+                        ).reshape(-1, 1),
+                    ),
+                    Labels(
+                        ["mu"],
+                        _dispatch.int_range_like(
+                            0, l1l2lam_values.shape[2], labels_values_like
+                        ).reshape(-1, 1),
+                    ),
+                ],
+                properties=Labels.range("property", 1),
             )
+        )
+
+    return TensorMap(keys, blocks)
+
+
+def _cg_coeff_dict_to_tensormap_sparse(
+    coeff_dict: Dict, double_like: Array, labels_values_like: Array
+) -> TensorMap:
+    """
+    Converts the dictionary of dense CG coefficients coefficients to
+    :py:class:`TensorMap` format, specifically for performing CG tensor products with
+    the "python-sparse" backend.
+    """
+    dict_keys = list(coeff_dict.keys())
+    keys = Labels(
+        ["l1", "l2", "lambda"],
+        _dispatch.int_array_like(list(dict_keys), labels_values_like),
+    )
+    blocks = []
+
+    # For each (l1, l2, lambda) combination, build a TensorBlock of non-zero CG coeffs
+    for l1, l2, lambda_ in dict_keys:
+        cg_l1l2lam_dense = coeff_dict[(l1, l2, lambda_)]
+
+        # Find the dense indices of the non-zero CG coeffs
+        nonzeros_cg_coeffs_idx = _dispatch.where(
+            _dispatch.abs(cg_l1l2lam_dense) > 1e-15
+        )
+
+        # Create a sparse dictionary indexed by  of the non-zero CG coeffs
+        cg_l1l2lam_sparse = {}
+        for i in range(len(nonzeros_cg_coeffs_idx[0])):
+            m1 = nonzeros_cg_coeffs_idx[0][i]
+            m2 = nonzeros_cg_coeffs_idx[1][i]
+            mu = nonzeros_cg_coeffs_idx[2][i]
+            cg_l1l2lam_sparse[(m1, m2, mu)] = cg_l1l2lam_dense[m1, m2, mu]
+
+        l1l2lam_sample_values = []
+        for m1m2mu_key in cg_l1l2lam_sparse.keys():
+            l1l2lam_sample_values.append(m1m2mu_key)
+        # extending shape by samples and properties
+        values = _dispatch.double_array_like(
+            [*cg_l1l2lam_sparse.values()], double_like
+        ).reshape(-1, 1)
+        l1l2lam_sample_values = _dispatch.int_array_like(
+            l1l2lam_sample_values, labels_values_like
+        )
+        # we have to move put the m1 m2 m3 inside a block so we can access it easier
+        # inside cg combine function,
+        blocks.append(
+            TensorBlock(
+                values=_dispatch.contiguous(values),
+                samples=Labels(["m1", "m2", "mu"], l1l2lam_sample_values),
+                components=[],
+                properties=Labels.range("property", 1),
+            )
+        )
+
     return TensorMap(keys, blocks)
 
 
@@ -612,7 +548,7 @@ def empty_combine(
     lambda_: int,
 ) -> Array:
     """
-    Returns a Clebsch-Gordan combination step on two arrays using sparse
+    Returns a Clebsch-Gordan combination step on two arrays using sparse operations
     """
     # Samples dimensions must be the same
     assert array_1.shape[0] == array_2.shape[0]
@@ -693,7 +629,9 @@ def sparse_combine(
 
         return array_out
     elif isinstance(array_1, np.ndarray) and cg_backend == "mops":
-        # Reshape
+        # MOPS sparse accumulation requires some reshaping of the input arrays. See
+        # https://github.com/lab-cosmo/mops . Currently only supported for a numpy array
+        # backend.
         array_1 = np.repeat(array_1[:, :, :, None], n_q, axis=3).reshape(
             n_i, 2 * l1 + 1, n_p * n_q
         )
@@ -704,11 +642,31 @@ def sparse_combine(
         array_1 = _dispatch.swapaxes(array_1, 1, 2).reshape(n_i * n_p * n_q, 2 * l1 + 1)
         array_2 = _dispatch.swapaxes(array_2, 1, 2).reshape(n_i * n_p * n_q, 2 * l2 + 1)
 
+        # We also need to pass SAP the CG coefficients and m1, m2, and mu indices as 1D
+        # arrays. Extract these from the corresponding TensorBlock in the TensorMap CG
+        # cache.
+        block = cg_coeffs.block({"l1": l1, "l2": l2, "lambda": lambda_})
+        samples = block.samples
+
+        m1_arr: List[int] = []
+        m2_arr: List[int] = []
+        mu_arr: List[int] = []
+        C_arr: List[float] = []
+        for sample_i, (m1, m2, mu) in enumerate(samples):
+
+            m1_arr.append(int(m1))
+            m2_arr.append(int(m2))
+            mu_arr.append(int(mu))
+            C_arr.append(float(block.values[sample_i, 0]))
+
         # Do SAP
         array_out = sap(
-            array_1,
-            array_2,
-            *cg_coeffs.block({"l1": l1, "l2": l2, "lambda": lambda_}).values.flatten(),
+            A=array_1,
+            B=array_2,
+            C=C_arr,
+            indices_A=m1_arr,
+            indices_B=m2_arr,
+            indices_output=mu_arr,
             output_size=2 * lambda_ + 1,
         )
         assert array_out.shape == (n_i * n_p * n_q, 2 * lambda_ + 1)
