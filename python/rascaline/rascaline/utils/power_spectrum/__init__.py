@@ -1,1 +1,1 @@
-from .calculator import PowerSpectrum
+from .calculator import PowerSpectrum  # noqa: F401
