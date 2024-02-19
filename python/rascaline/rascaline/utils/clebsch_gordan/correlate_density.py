@@ -9,21 +9,12 @@ from typing import List, Optional, Union
 import numpy as np
 
 from .. import _dispatch
-
-# from ._classes import (
-#     Labels,
-#     LabelsEntry,
-#     TensorBlock,
-#     TensorMap,
-#     TorchScriptClass,
-#     torch_jit_export,
-#     torch_jit_is_scripting,
-# )
 from .._backend import (
     Labels,
     LabelsEntry,
     TensorBlock,
     TensorMap,
+    TorchModule,
     TorchScriptClass,
     torch_jit_export,
     torch_jit_is_scripting,
@@ -50,7 +41,7 @@ except ImportError:
 # ======================================================================
 
 
-class DensityCorrelations:
+class DensityCorrelations(TorchModule):
     """
     Takes iterative Clebsch-Gordan (CG) tensor products of a density descriptor
     with itself up to the desired correlation order. Returns
@@ -141,31 +132,31 @@ class DensityCorrelations:
         super().__init__()
         if arrays_backend is None:
             if torch_jit_is_scripting():
-                self._arrays_backend = "torch"
+                arrays_backend = "torch"
             else:
                 if isinstance(Labels, TorchScriptClass):
-                    self._arrays_backend = "torch"
+                    arrays_backend = "torch"
                 else:
-                    self._arrays_backend = "numpy"
+                    arrays_backend = "numpy"
         elif arrays_backend == "numpy":
             if torch_jit_is_scripting():
                 raise ValueError(
                     "Module is torch scripted but 'numpy' was given as `arrays_backend`"
                 )
-            self._arrays_backend = "numpy"
+            arrays_backend = "numpy"
         elif arrays_backend == "torch":
-            self._arrays_backend = "torch"
+            arrays_backend = "torch"
         else:
             raise ValueError(
-                f"Unkown `arrays_backend` {arrays_backend}."
+                f"Unknown `arrays_backend` {arrays_backend}."
                 "Only 'numpy' and 'torch' are supported."
             )
 
         # Choosing the optimal cg combine backend
         if cg_backend is None:
-            if self._arrays_backend == "torch":
+            if arrays_backend == "torch":
                 self._cg_backend = "python-dense"
-            if self._arrays_backend == "numpy" and HAS_MOPS:
+            if arrays_backend == "numpy" and HAS_MOPS:
                 self._cg_backend = "mops"
             else:
                 self._cg_backend = "python-sparse"
@@ -174,7 +165,7 @@ class DensityCorrelations:
         elif cg_backend == "python-sparse":
             self._cg_backend = "python-sparse"
         elif cg_backend == "mops":
-            if self._arrays_backend == "torch":
+            if arrays_backend == "torch":
                 raise NotImplementedError(
                     "'numpy' was determined or given as `arrays_backend` "
                     "and 'mops' was given as `cg_backend`, "
@@ -182,7 +173,7 @@ class DensityCorrelations:
                 )
         else:
             raise ValueError(
-                f"Unkown `cg_backend` {cg_backend}."
+                f"Unknown `cg_backend` {cg_backend}."
                 "Only 'python-dense', 'python-sparse' and 'mops' are supported."
             )
 
@@ -203,11 +194,11 @@ class DensityCorrelations:
             sparse = True
             use_mops = True
 
-        self._cg_coeffs = _cg_cache.ClebschGordanReal(
+        self._cg_coefficients = _cg_cache.ClebschGordanReal(
             self._max_angular,
             sparse=sparse,
             use_mops=use_mops,
-            use_torch=(self._arrays_backend == "torch"),
+            use_torch=(arrays_backend == "torch"),
         )._cg_coeffs
 
         # Check inputs
@@ -219,9 +210,9 @@ class DensityCorrelations:
         # Parse the selected keys
         self._angular_cutoff = angular_cutoff
 
-        if self._arrays_backend == "torch":
+        if arrays_backend == "torch":
             array_like = torch.empty(0)
-        elif self._arrays_backend == "numpy":
+        elif arrays_backend == "numpy":
             array_like = np.empty(0)
 
         self._selected_keys: List[Union[Labels, None]] = (
@@ -242,11 +233,8 @@ class DensityCorrelations:
             )
         )
 
-    @property
-    def cg_coeffs(self) -> TensorMap:
-        return self._cg_coeffs
-
     def forward(self, density: TensorMap) -> Union[TensorMap, List[TensorMap]]:
+        """TODO"""
         return self.compute(density)
 
     def compute(self, density: TensorMap) -> Union[TensorMap, List[TensorMap]]:
@@ -273,7 +261,7 @@ class DensityCorrelations:
         """
         Returns the metadata-only :py:class:`TensorMap`(s) that would be output
         by the function :py:meth:`compute` for the same calculator under the
-        same settings, without perfoming the actual Clebsch-Gordan tensor
+        same settings, without performing the actual Clebsch-Gordan tensor
         products.
 
         :param density: A density descriptor of body order 2 (correlation order
@@ -371,7 +359,7 @@ class DensityCorrelations:
                     density_correlation.block(key_1),
                     density.block(key_2),
                     lambda_out,
-                    self._cg_coeffs,
+                    self._cg_coefficients,
                     cg_backend,
                 )
                 blocks_out.append(block_out)
@@ -389,7 +377,7 @@ class DensityCorrelations:
                 )
 
         # Drop redundant key names. TODO: these should be part of the global
-        # matadata associated with the TensorMap. Awaiting this functionality in
+        # metadata associated with the TensorMap. Awaiting this functionality in
         # metatensor.
         for i, tensor in enumerate(density_correlations):
             keys = tensor.keys

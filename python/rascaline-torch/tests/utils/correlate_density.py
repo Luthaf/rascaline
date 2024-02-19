@@ -81,15 +81,6 @@ def test_torch_script_correlate_density_angular_selection(
     scripted_nu_2 = scripted_corr_calculator.compute_metadata(nu_1)
     assert metatensor.torch.equal_metadata(scripted_nu_2, ref_nu_2)
 
-    # Test if properties are accesible
-    assert isinstance(corr_calculator.correlation_order, int)
-    assert isinstance(corr_calculator.selected_keys, list)
-    assert isinstance(corr_calculator.skip_redundant, list)
-    assert isinstance(corr_calculator.output_selection, list)
-    assert isinstance(corr_calculator.arrays_backend, str)
-    assert isinstance(corr_calculator.cg_backend, str)
-    assert is_tensor_map(corr_calculator.cg_coeffs)
-
 
 def test_jit_save_load():
     corr_calculator = DensityCorrelations(

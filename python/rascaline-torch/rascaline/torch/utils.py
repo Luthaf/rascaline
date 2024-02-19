@@ -6,14 +6,20 @@ from typing import Any
 import torch
 from metatensor.torch import Labels, LabelsEntry, TensorBlock, TensorMap
 
-import rascaline.utils.clebsch_gordan
+import rascaline.utils
+
+from .calculator_base import CalculatorModule
+from .system import System
+
+
+_HERE = os.path.dirname(__file__)
 
 
 # For details what is happening here take a look an `rascaline.torch.calculators`.
 
-# Step 1: create the `_classes` module as an empty module
+# create the `_backend` module as an empty module
 spec = importlib.util.spec_from_loader(
-    "rascaline.torch.utils.clebsch_gordan._classes",
+    "rascaline.torch.utils._backend",
     loader=None,
 )
 module = importlib.util.module_from_spec(spec)
@@ -31,6 +37,8 @@ module.__dict__["TorchTensor"] = torch.Tensor
 module.__dict__["TorchModule"] = torch.nn.Module
 module.__dict__["TorchScriptClass"] = torch.ScriptClass
 module.__dict__["Array"] = torch.Tensor
+module.__dict__["CalculatorBase"] = CalculatorModule
+module.__dict__["IntoSystem"] = System
 
 
 def is_labels(obj: Any):
@@ -55,19 +63,26 @@ def check_isinstance(obj, ty):
         return isinstance(obj, ty)
 
 
-module.__dict__["check_isinstance"] = check_isinstance
-
 # register the module in sys.modules, so future import find it directly
 sys.modules[spec.name] = module
 
-
-# Step 2: create a module named `rascaline.torch.utils.clebsch_gordan` using code from
-# `rascaline.utils.clebsch_gordan`
+# create a module named `rascaline.torch.utils` using code from
+# `rascaline.utils`
 spec = importlib.util.spec_from_file_location(
-    "rascaline.torch.utils.clebsch_gordan",
-    rascaline.utils.clebsch_gordan.__file__,
+    "rascaline.torch.utils", rascaline.utils.__file__
 )
 
 module = importlib.util.module_from_spec(spec)
+
+
+cmake_prefix_path = os.path.realpath(os.path.join(_HERE, "..", "lib", "cmake"))
+"""
+Path containing the CMake configuration files for the underlying C library
+"""
+
+module.__dict__["cmake_prefix_path"] = cmake_prefix_path
+
+# override `rascaline.torch.utils` (the module associated with the current file)
+# with the newly created module
 sys.modules[spec.name] = module
 spec.loader.exec_module(module)

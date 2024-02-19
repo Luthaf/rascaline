@@ -44,6 +44,7 @@ except ImportError:
 Array = Union[np.ndarray, TorchTensor]
 
 __all__ = [
+    "Array",
     "CalculatorBase",
     "IntoSystem",
     "Labels",
