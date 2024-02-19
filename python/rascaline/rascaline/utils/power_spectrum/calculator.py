@@ -324,7 +324,12 @@ class PowerSpectrum(TorchModule):
         gradients: Optional[List[str]] = None,
         use_native_system: bool = True,
     ) -> TensorMap:
-        """TODO"""
+        """
+        Calls the :py:meth:`PowerSpectrum.compute` function.
+
+        This is intended for :py:class:`torch.nn.Module` compatibility, and should be
+        ignored in pure Python mode.
+        """
 
         return self.compute(
             systems=systems,

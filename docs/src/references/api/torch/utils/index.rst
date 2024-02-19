@@ -8,3 +8,4 @@ Utility functions and classes that extend the core usage of rascaline-torch
     :maxdepth: 1
 
     power-spectrum
+    clebsch-gordan

@@ -43,77 +43,69 @@ except ImportError:
 
 class DensityCorrelations(TorchModule):
     """
-    Takes iterative Clebsch-Gordan (CG) tensor products of a density descriptor
-    with itself up to the desired correlation order. Returns
-    :py:class:`TensorMap`(s) corresponding to the density correlations output
-    from the specified iteration(s).
+    Takes iterative Clebsch-Gordan (CG) tensor products of a density descriptor with
+    itself up to the desired correlation order. Returns :py:class:`TensorMap`
+    corresponding to the density correlations output from the specified iteration(s).
 
-    A density descriptor necessarily is body order 2 (i.e. correlation order 1),
-    but can be single- or multi-center. The output is a :py:class:`list` of
-    density correlations for each iteration specified in `output_selection`, up
-    to the target order passed in `correlation_order`. By default only the last
-    correlation (i.e. the correlation of order ``correlation_order``) is
-    returned.
+    A density descriptor necessarily is body order 2 (i.e. correlation order 1), but can
+    be single- or multi-center. The output is a :py:class:`list` of density correlations
+    for each iteration specified in `output_selection`, up to the target order passed in
+    `correlation_order`. By default only the last correlation (i.e. the correlation of
+    order ``correlation_order``) is returned.
 
     This function is an iterative special case of the more general
-    :py:func:`correlate_tensors`. As a density is being correlated with itself,
-    some redundant CG tensor products can be skipped with the `skip_redundant`
-    keyword.
+    :py:func:`correlate_tensors`. As a density is being correlated with itself, some
+    redundant CG tensor products can be skipped with the `skip_redundant` keyword.
 
     Selections on the angular and parity channels at each iteration can also be
     controlled with arguments `angular_cutoff`, `angular_selection` and
     `parity_selection`.
 
-    :param max_angular: The maximum angular order for which CG coefficients
-        should be computed and stored. This must be large enough to cover the
-        maximum angular order reached in the CG iterations on a density input to
-        the :py:meth:`compute` method.
-    :param correlation_order: The desired correlation order of the output
-        descriptor. Must be >= 1.
-    :param angular_cutoff: The maximum angular channel to compute at any given
-        CG iteration, applied globally to all iterations until the target
-        correlation order is reached.
-    :param selected_keys: :py:class:`Labels` or `List[:py:class:`Labels`]`
-        specifying the angular and/or parity channels to output at each
-        iteration. All :py:class:`Labels` objects passed here must only contain
-        key names "spherical_harmonics_l" and "inversion_sigma". If a single
-        :py:class:`Labels` object is passed, this is applied to the final
-        iteration only. If a :py:class:`list` of :py:class:`Labels` objects is
-        passed, each is applied to its corresponding iteration. If None is
-        passed, all angular and parity channels are output at each iteration,
-        with the global `angular_cutoff` applied if specified.
-    :param skip_redundant: Whether to skip redundant CG combinations. Defaults
-        to False, which means all combinations are performed. If a
-        :py:class:`list` of :py:class:`bool` is passed, this is applied to each
-        iteration. If a single :py:class:`bool` is passed, this is applied to
-        all iterations.
-    :param output_selection: A :py:class:`list` of :py:class:`bool` specifying
-        whether to output a :py:class:`TensorMap` for each iteration. If a
-        single :py:class:`bool` is passed as True, outputs from all iterations
-        will be returned. If a :py:class:`list` of :py:class:`bool` is passed,
-        this controls the output at each corresponding iteration. If None is
-        passed, only the final iteration is output.
-    :param arrays_backend: Determines the array backend, either "numpy" or
-        "torch".
-    :param cg_backend: Determines the backend for the CG combination. It can be
-        even "python-sparse", "python-dense" or "mops". If the CG combination
-        performs on the sparse coefficients, it means that for each (l1, l2,
-        lambda) block the (m1, m2, mu) coefficients are stored in a sparse
-        format only storing the nonzero coefficients. If the parameter are None,
-        the most optimal choice is determined given available packages and
-        ``arrays_backend``.
-            - "python-dense": Uses the python implementation performing the
-            combinations with the dense CG coefficients.
-            - "python-sparse": Uses the python implementation performing
-            the combinations with the sparse CG coefficients.
-            - "mops": Uses the package ``mops`` that optimized the sparse
-            combinations. At the moment it is only available with "numpy" as
-            ``arrays_backend``
+    :param max_angular: The maximum angular order for which CG coefficients should be
+        computed and stored. This must be large enough to cover the maximum angular
+        order reached in the CG iterations on a density input to the :py:meth:`compute`
+        method.
+    :param correlation_order: The desired correlation order of the output descriptor.
+        Must be >= 1.
+    :param angular_cutoff: The maximum angular channel to compute at any given CG
+        iteration, applied globally to all iterations until the target correlation order
+        is reached.
+    :param selected_keys: :py:class:`Labels` or `List[:py:class:`Labels`]` specifying
+        the angular and/or parity channels to output at each iteration. All
+        :py:class:`Labels` objects passed here must only contain key names
+        "spherical_harmonics_l" and "inversion_sigma". If a single :py:class:`Labels`
+        object is passed, this is applied to the final iteration only. If a
+        :py:class:`list` of :py:class:`Labels` objects is passed, each is applied to its
+        corresponding iteration. If None is passed, all angular and parity channels are
+        output at each iteration, with the global `angular_cutoff` applied if specified.
+    :param skip_redundant: Whether to skip redundant CG combinations. Defaults to False,
+        which means all combinations are performed. If a :py:class:`list` of
+        :py:class:`bool` is passed, this is applied to each iteration. If a single
+        :py:class:`bool` is passed, this is applied to all iterations.
+    :param output_selection: A :py:class:`list` of :py:class:`bool` specifying whether
+        to output a :py:class:`TensorMap` for each iteration. If a single
+        :py:class:`bool` is passed as True, outputs from all iterations will be
+        returned. If a :py:class:`list` of :py:class:`bool` is passed, this controls the
+        output at each corresponding iteration. If None is passed, only the final
+        iteration is output.
+    :param arrays_backend: Determines the array backend, either "numpy" or "torch".
+    :param cg_backend: Determines the backend for the CG combination. It can be even
+        "python-sparse", "python-dense" or "mops". If the CG combination performs on the
+        sparse coefficients, it means that for each (l1, l2, lambda) block the (m1, m2,
+        mu) coefficients are stored in a sparse format only storing the nonzero
+        coefficients. If the parameter are None, the most optimal choice is determined
+        given available packages and ``arrays_backend``.
 
-    :return: A :py:class:`list` of :py:class:`TensorMap` corresponding to the
-        density correlations output from the specified iterations. If the output
-        from a single iteration is requested, a :py:class:`TensorMap` is
-        returned instead.
+        - "python-dense": Uses the python implementation performing the combinations
+          with the dense CG coefficients.
+        - "python-sparse": Uses the python implementation performing the
+          combinations with the sparse CG coefficients.
+        - "mops": Uses the ``mops`` package to optimize the sparse combinations. At
+          the moment it is only available with ``arrays_backend="numpy"``
+
+    :return: A :py:class:`list` of :py:class:`TensorMap` corresponding to the density
+        correlations output from the specified iterations. If the output from a single
+        iteration is requested, a :py:class:`TensorMap` is returned instead.
     """
 
     _selected_keys: List[Union[Labels, None]]
@@ -234,19 +226,24 @@ class DensityCorrelations(TorchModule):
         )
 
     def forward(self, density: TensorMap) -> Union[TensorMap, List[TensorMap]]:
-        """TODO"""
+        """
+        Calls the :py:meth:`DensityCorrelations.compute` function.
+
+        This is intended for :py:class:`torch.nn.Module` compatibility, and should be
+        ignored in pure Python mode.
+        """
         return self.compute(density)
 
     def compute(self, density: TensorMap) -> Union[TensorMap, List[TensorMap]]:
         """
-        Computes the density correlations by taking iterative Clebsch-Gordan
-        (CG) tensor products of the input `density` descriptor with itself.
+        Computes the density correlations by taking iterative Clebsch-Gordan (CG) tensor
+        products of the input `density` descriptor with itself.
 
-        :param density: A density descriptor of body order 2 (correlation order
-            1), in :py:class:`TensorMap` format. This may be, for example, a
-            rascaline :py:class:`SphericalExpansion` or
-            :py:class:`LodeSphericalExpansion`. Alternatively, this could be
-            multi-center descriptor, such as a pair density.
+        :param density: A density descriptor of body order 2 (correlation order 1), in
+            :py:class:`TensorMap` format. This may be, for example, a rascaline
+            :py:class:`SphericalExpansion` or :py:class:`LodeSphericalExpansion`.
+            Alternatively, this could be multi-center descriptor, such as a pair
+            density.
         """
         return self._correlate_density(
             density,
@@ -259,16 +256,15 @@ class DensityCorrelations(TorchModule):
         density: TensorMap,
     ) -> Union[TensorMap, List[TensorMap]]:
         """
-        Returns the metadata-only :py:class:`TensorMap`(s) that would be output
-        by the function :py:meth:`compute` for the same calculator under the
-        same settings, without performing the actual Clebsch-Gordan tensor
-        products.
+        Returns the metadata-only :py:class:`TensorMap` that would be output by the
+        function :py:meth:`compute` for the same calculator under the same settings,
+        without performing the actual Clebsch-Gordan tensor products.
 
-        :param density: A density descriptor of body order 2 (correlation order
-            1), in :py:class:`TensorMap` format. This may be, for example, a
-            rascaline :py:class:`SphericalExpansion` or
-            :py:class:`LodeSphericalExpansion`. Alternatively, this could be
-            multi-center descriptor, such as a pair density.
+        :param density: A density descriptor of body order 2 (correlation order 1), in
+            :py:class:`TensorMap` format. This may be, for example, a rascaline
+            :py:class:`SphericalExpansion` or :py:class:`LodeSphericalExpansion`.
+            Alternatively, this could be multi-center descriptor, such as a pair
+            density.
         """
         return self._correlate_density(
             density,

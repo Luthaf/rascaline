@@ -11,3 +11,4 @@ Utility functions and classes that extend the core usage of rascaline.
     radial-basis
     power-spectrum
     splines
+    clebsch-gordan
