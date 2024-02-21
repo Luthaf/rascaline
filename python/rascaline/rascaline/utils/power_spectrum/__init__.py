@@ -1,4 +1,1 @@
-from .calculator import PowerSpectrum
-
-
-__all__ = ["PowerSpectrum"]
+from .calculator import PowerSpectrum  # noqa: F401

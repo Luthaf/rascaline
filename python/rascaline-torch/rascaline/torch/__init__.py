@@ -9,12 +9,12 @@ from ._c_lib import _load_library
 
 _load_library()
 
-from . import utils  # noqa
-from .calculator_base import CalculatorModule, register_autograd  # noqa
+from . import utils  # noqa: E402, F401
+from .calculator_base import CalculatorModule, register_autograd  # noqa: E402, F401
 
 # don't forget to also update `rascaline/__init__.py` and
 # `rascaline/torch/calculators.py` when modifying this file
-from .calculators import (  # noqa
+from .calculators import (  # noqa: E402, F401
     AtomicComposition,
     LodeSphericalExpansion,
     NeighborList,
@@ -24,7 +24,7 @@ from .calculators import (  # noqa
     SphericalExpansion,
     SphericalExpansionByPair,
 )
-from .system import systems_to_torch  # noqa
+from .system import systems_to_torch  # noqa: E402, F401
 
 
 __all__ = [
