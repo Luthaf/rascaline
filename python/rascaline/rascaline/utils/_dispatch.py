@@ -32,29 +32,12 @@ def _check_all_torch_tensor(arrays: List[TorchTensor]):
             )
 
 
-# def _check_all_torch_tensor(arrays: List[TorchTensor]):
-#     for array in arrays:
-#         if not isinstance(array, TorchTensor):
-#             raise TypeError(
-#                 f"expected argument to be a torch.Tensor, but got
-#                 {type(array)}"
-#             )
-
-
 def _check_all_np_ndarray(arrays):
     for array in arrays:
         if not isinstance(array, np.ndarray):
             raise TypeError(
                 f"expected argument to be a np.ndarray, but got {type(array)}"
             )
-
-
-# def _check_all_np_ndarray(arrays):
-#     for array in arrays:
-#         if not isinstance(array, np.ndarray):
-#             raise TypeError(
-#                 f"expected argument to be a np.ndarray, but got {type(array)}"
-#             )
 
 
 def concatenate(arrays: List[TorchTensor], axis: int):
@@ -76,16 +59,6 @@ def concatenate(arrays: List[TorchTensor], axis: int):
         return np.concatenate(arrays, axis)
     else:
         raise TypeError(UNKNOWN_ARRAY_TYPE)
-
-
-# def concatenate(arrays, axis: Optional[int] = 0):
-#     """Concatenate arrays along an axis."""
-#     if isinstance(arrays[0], TorchTensor):
-#         return torch.cat(arrays, dim=axis)
-#     elif isinstance(arrays[0], np.ndarray):
-#         return np.concatenate(arrays, axis=axis)
-#     else:
-#         raise TypeError(UNKNOWN_ARRAY_TYPE)
 
 
 def empty_like(array, shape: Optional[List[int]] = None, requires_grad: bool = False):
@@ -112,33 +85,6 @@ def empty_like(array, shape: Optional[List[int]] = None, requires_grad: bool = F
         return np.empty_like(array, shape=shape, subok=False)
     else:
         raise TypeError(UNKNOWN_ARRAY_TYPE)
-
-
-# def empty_like(array, shape: Optional[List[int]] = None, requires_grad: bool = False):
-#     """
-#     Create an empty array, with the given ``shape``, and similar dtype, device
-#     and other options as ``array``.
-
-#     If ``shape`` is :py:obj:`None`, the array shape is used instead.
-#     ``requires_grad`` is only used for torch tensors, and set the corresponding
-#     value on the returned array.
-
-#     This is the equivalent to ``np.empty_like(array, shape=shape)``.
-#     """
-#     if isinstance(array, TorchTensor):
-#         if shape is None:
-#             shape = array.size()
-
-#         return torch.empty(
-#             shape,
-#             dtype=array.dtype,
-#             layout=array.layout,
-#             device=array.device,
-#         ).requires_grad_(requires_grad)
-#     elif isinstance(array, np.ndarray):
-#         return np.empty_like(array, shape=shape, subok=False)
-#     else:
-#         raise TypeError(UNKNOWN_ARRAY_TYPE)
 
 
 def list_to_array(array, data: List[List[int]]):
@@ -195,14 +141,6 @@ def unique(array, axis: Optional[int] = None):
         raise TypeError(UNKNOWN_ARRAY_TYPE)
 
 
-# def unique(array, axis: Optional[int] = None):
-#     """Find the unique elements of an array."""
-#     if isinstance(array, TorchTensor):
-#         return torch.unique(array, dim=axis)
-#     elif isinstance(array, np.ndarray):
-#         return np.unique(array, axis=axis)
-
-
 def zeros_like(array, shape: Optional[List[int]] = None, requires_grad: bool = False):
     """
     Create an array filled with zeros, with the given ``shape``, and similar
@@ -230,33 +168,6 @@ def zeros_like(array, shape: Optional[List[int]] = None, requires_grad: bool = F
         return np.zeros_like(array, shape=shape, subok=False)
     else:
         raise TypeError(UNKNOWN_ARRAY_TYPE)
-
-
-# def zeros_like(array, shape: Optional[List[int]] = None, requires_grad: bool = False):
-#     """
-#     Create an array filled with zeros, with the given ``shape``, and similar
-#     dtype, device and other options as ``array``.
-
-#     If ``shape`` is :py:obj:`None`, the array shape is used instead.
-#     ``requires_grad`` is only used for torch tensors, and set the corresponding
-#     value on the returned array.
-
-#     This is the equivalent to ``np.zeros_like(array, shape=shape)``.
-#     """
-#     if isinstance(array, TorchTensor):
-#         if shape is None:
-#             shape = array.size()
-
-#         return torch.zeros(
-#             shape,
-#             dtype=array.dtype,
-#             layout=array.layout,
-#             device=array.device,
-#         ).requires_grad_(requires_grad)
-#     elif isinstance(array, np.ndarray):
-#         return np.zeros_like(array, shape=shape, subok=False)
-#     else:
-#         raise TypeError(UNKNOWN_ARRAY_TYPE)
 
 
 def where(array):

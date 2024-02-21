@@ -16,6 +16,7 @@ from rascaline.torch.utils.clebsch_gordan.correlate_density import DensityCorrel
 DATA_ROOT = os.path.join(os.path.dirname(__file__), "data")
 
 
+@torch.jit.script
 def is_tensor_map(obj: Any):
     return isinstance(obj, TensorMap)
 
@@ -38,7 +39,16 @@ SELECTED_KEYS = Labels(
 
 
 def h2o_isolated():
-    return ase.io.read(os.path.join(DATA_ROOT, "h2o_isolated.xyz"), ":")
+    return [
+        ase.Atoms(
+            symbols=["O", "H", "H"],
+            positions=[
+                [2.56633400, 2.50000000, 2.50370100],
+                [1.97361700, 1.73067300, 2.47063400],
+                [1.97361700, 3.26932700, 2.47063400],
+            ],
+        )
+    ]
 
 
 def spherical_expansion(frames: List[ase.Atoms]):
@@ -93,7 +103,6 @@ def test_jit_save_load():
         torch.jit.save(scripted_correlate_density, buffer)
         buffer.seek(0)
         torch.jit.load(buffer)
-        buffer.close()
 
 
 def test_save_load():
@@ -110,4 +119,3 @@ def test_save_load():
         torch.save(corr_calculator, buffer)
         buffer.seek(0)
         torch.load(buffer)
-        buffer.close()

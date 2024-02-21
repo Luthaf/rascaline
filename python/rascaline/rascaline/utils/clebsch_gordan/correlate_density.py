@@ -183,21 +183,9 @@ class DensityCorrelations(TorchModule):
                 "Must be greater equal 0."
             )
         self._max_angular = max_angular
-
-        if self._cg_backend == "python-dense":
-            sparse = False
-            use_mops = False
-        elif self._cg_backend == "python-sparse":
-            sparse = True
-            use_mops = False
-        elif self._cg_backend == "mops":
-            sparse = True
-            use_mops = True
-
         self._cg_coefficients = _cg_cache.calculate_cg_coefficients(
             lambda_max=self._max_angular,
-            sparse=sparse,
-            use_mops=use_mops,
+            sparse=(self._cg_backend == "python-sparse" or self._cg_backend == "mops"),
             use_torch=(arrays_backend == "torch"),
         )
 

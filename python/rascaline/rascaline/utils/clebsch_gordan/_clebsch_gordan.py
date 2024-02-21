@@ -7,16 +7,6 @@ metatensor :py:class:`TensorMap` objects.
 from typing import List, Optional, Tuple, Union
 
 from .. import _dispatch
-
-# from ._classes import (
-#     Array,
-#     Labels,
-#     LabelsEntry,
-#     TensorBlock,
-#     TensorMap,
-#     is_labels,
-#     torch_jit_annotate,
-# )
 from .._backend import (
     Array,
     Labels,
