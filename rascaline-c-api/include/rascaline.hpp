@@ -174,11 +174,11 @@ public:
 
     /// Get a pointer to the first element a contiguous array (typically
     /// `std::vector` or memory allocated with `new[]`) containing the atomic
-    /// species of each atom in this system. Different atomics species should be
+    /// type of each atom in this system. Different atomics types should be
     /// identified with a different value. These values are usually the atomic
     /// number, but don't have to be. The array should contain `System::size()`
     /// elements.
-    virtual const int32_t* species() const = 0;
+    virtual const int32_t* types() const = 0;
 
     /// Get a pointer to the first element of a contiguous array containing the
     /// atomic cartesian coordinates. `positions[0], positions[1], positions[2]`
@@ -208,14 +208,14 @@ public:
     /// `System::compute_neighbors`.
     virtual const std::vector<rascal_pair_t>& pairs() const = 0;
 
-    /// Get the list of pairs in this system containing the atom with index
-    /// `center`.
+    /// Get the list of pairs in this system containing the `atom` at the given
+    /// index.
     ///
     /// The same restrictions on the list of pairs as `System::pairs` applies,
     /// with the additional condition that the pair `i-j` should be included
     /// both in the return of `System::pairs_containing(i)` and
     /// `System::pairs_containing(j)`.
-    virtual const std::vector<rascal_pair_t>& pairs_containing(uintptr_t center) const = 0;
+    virtual const std::vector<rascal_pair_t>& pairs_containing(uintptr_t atom) const = 0;
 
     /// Convert a child instance of the `System` class to a `rascal_system_t` to
     /// be passed to the rascaline functions.
@@ -232,10 +232,10 @@ public:
                     *size = static_cast<const System*>(self)->size();
                 );
             },
-            // species
-            [](const void* self, const int32_t** species) {
+            // types
+            [](const void* self, const int32_t** types) {
                 RASCAL_SYSTEM_CATCH_EXCEPTIONS(
-                    *species = static_cast<const System*>(self)->species();
+                    *types = static_cast<const System*>(self)->types();
                 );
             },
             // positions
@@ -266,9 +266,9 @@ public:
                 );
             },
             // pairs_containing
-            [](const void* self, uintptr_t center, const rascal_pair_t** pairs, uintptr_t* size) {
+            [](const void* self, uintptr_t atom, const rascal_pair_t** pairs, uintptr_t* size) {
                 RASCAL_SYSTEM_CATCH_EXCEPTIONS(
-                    const auto& cpp_pairs = reinterpret_cast<const System*>(self)->pairs_containing(center);
+                    const auto& cpp_pairs = reinterpret_cast<const System*>(self)->pairs_containing(atom);
                     *pairs = cpp_pairs.data();
                     *size = cpp_pairs.size();
                 );

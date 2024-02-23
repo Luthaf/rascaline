@@ -28,7 +28,7 @@ struct PositionsGrad: torch::autograd::Function<PositionsGrad<scalar_t>> {
         torch::Tensor all_positions,
         torch::Tensor dA_dX,
         TorchTensorBlock dX_dr,
-        torch::IValue structures_start
+        torch::IValue systems_start
     );
 
     static std::vector<torch::Tensor> backward(
@@ -45,7 +45,7 @@ struct CellGrad: torch::autograd::Function<CellGrad<scalar_t>> {
         torch::Tensor all_cells,
         torch::Tensor dA_dX,
         TorchTensorBlock dX_dH,
-        torch::Tensor structures
+        torch::Tensor systems
     );
 
     static std::vector<torch::Tensor> backward(
@@ -98,13 +98,13 @@ std::vector<torch::Tensor> RascalineAutograd::forward(
     torch::autograd::AutogradContext *ctx,
     torch::Tensor all_positions,
     torch::Tensor all_cells,
-    torch::IValue structures_start,
+    torch::IValue systems_start,
     metatensor_torch::TorchTensorBlock block
 ) {
     ctx->save_for_backward({all_positions, all_cells});
 
     if (all_positions.requires_grad()) {
-        ctx->saved_data.emplace("structures_start", structures_start);
+        ctx->saved_data.emplace("systems_start", systems_start);
 
         auto gradient = TensorBlockHolder::gradient(block, "positions");
         ctx->saved_data["positions_gradients"] = torch::make_intrusive<TensorBlockHolder>(
@@ -150,14 +150,14 @@ std::vector<torch::Tensor> RascalineAutograd::backward(
     // ===================== gradient w.r.t. positions ====================== //
     if (all_positions.requires_grad()) {
         auto forward_gradient = ctx->saved_data["positions_gradients"].toCustomClass<TensorBlockHolder>();
-        auto structures_start = ctx->saved_data["structures_start"];
+        auto systems_start = ctx->saved_data["systems_start"];
 
         if (all_positions.scalar_type() == torch::kFloat32) {
             auto output = PositionsGrad<float>::apply(
                 all_positions,
                 grad_outputs[0],
                 forward_gradient,
-                structures_start
+                systems_start
             );
 
             positions_grad = output[0];
@@ -166,7 +166,7 @@ std::vector<torch::Tensor> RascalineAutograd::backward(
                 all_positions,
                 grad_outputs[0],
                 forward_gradient,
-                structures_start
+                systems_start
             );
 
             positions_grad = output[0];
@@ -180,28 +180,28 @@ std::vector<torch::Tensor> RascalineAutograd::backward(
         auto forward_gradient = ctx->saved_data["cell_gradients"].toCustomClass<TensorBlockHolder>();
         auto block_samples = ctx->saved_data["samples"].toCustomClass<LabelsHolder>();
 
-        // find the index of the "structure" dimension in the samples
+        // find the index of the "system" dimension in the samples
         const auto& sample_names = block_samples->names();
-        auto structure_dimension_it = std::find(
+        auto system_dimension_it = std::find(
             std::begin(sample_names),
             std::end(sample_names),
-            "structure"
+            "system"
         );
-        if (structure_dimension_it == std::end(sample_names)) {
+        if (system_dimension_it == std::end(sample_names)) {
             C10_THROW_ERROR(ValueError,
-                "could not find 'structure' in the samples, this calculator is missing it"
+                "could not find 'system' in the samples, this calculator is missing it"
             );
         }
-        int64_t structure_dimension = std::distance(std::begin(sample_names), structure_dimension_it);
+        int64_t system_dimension = std::distance(std::begin(sample_names), system_dimension_it);
 
-        auto structures = block_samples->values().index({torch::indexing::Slice(), structure_dimension});
+        auto systems = block_samples->values().index({torch::indexing::Slice(), system_dimension});
 
         if (all_cells.scalar_type() == torch::kFloat32) {
             auto output = CellGrad<float>::apply(
                 all_cells,
                 grad_outputs[0],
                 forward_gradient,
-                structures
+                systems
             );
 
             cell_grad = output[0];
@@ -210,7 +210,7 @@ std::vector<torch::Tensor> RascalineAutograd::backward(
                 all_cells,
                 grad_outputs[0],
                 forward_gradient,
-                structures
+                systems
             );
 
             cell_grad = output[0];
@@ -237,18 +237,18 @@ std::vector<torch::Tensor> PositionsGrad<scalar_t>::forward(
     torch::Tensor all_positions,
     torch::Tensor dA_dX,
     TorchTensorBlock dX_dr,
-    torch::IValue structures_start_ivalue
+    torch::IValue systems_start_ivalue
 ) {
     // ====================== input parameters checks ======================= //
     always_assert(all_positions.requires_grad());
-    auto structures_start = structures_start_ivalue.toIntList();
+    auto systems_start = systems_start_ivalue.toIntList();
 
     auto samples = dX_dr->samples();
     const auto* sample_ptr = samples->as_metatensor().values().data();
 
     always_assert(samples->names().size() == 3);
     always_assert(samples->names()[0] == "sample");
-    always_assert(samples->names()[1] == "structure");
+    always_assert(samples->names()[1] == "system");
     always_assert(samples->names()[2] == "atom");
 
     // ========================= extract pointers =========================== //
@@ -276,27 +276,27 @@ std::vector<torch::Tensor> PositionsGrad<scalar_t>::forward(
     // =========================== compute dA_dr ============================ //
     for (int64_t grad_sample_i=0; grad_sample_i<samples->count(); grad_sample_i++) {
         auto sample_i = sample_ptr[grad_sample_i * 3 + 0];
-        auto structure_i = sample_ptr[grad_sample_i * 3 + 1];
+        auto system_i = sample_ptr[grad_sample_i * 3 + 1];
         auto atom_i = sample_ptr[grad_sample_i* 3 + 2];
 
-        auto global_atom_i = structures_start[structure_i] + atom_i;
+        auto global_atom_i = systems_start[system_i] + atom_i;
 
-        for (int64_t direction=0; direction<3; direction++) {
+        for (int64_t xyz=0; xyz<3; xyz++) {
             auto dot = 0.0;
             for (int64_t i=0; i<n_features; i++) {
                 dot += (
-                    dX_dr_ptr[(grad_sample_i * 3 + direction) * n_features + i]
+                    dX_dr_ptr[(grad_sample_i * 3 + xyz) * n_features + i]
                     * dA_dX_ptr[sample_i * n_features + i]
                 );
             }
-            dA_dr_ptr[global_atom_i * 3 + direction] += dot;
+            dA_dr_ptr[global_atom_i * 3 + xyz] += dot;
         }
     }
 
     // ===================== data for double backward ======================= //
     ctx->save_for_backward({all_positions, dA_dX});
     ctx->saved_data.emplace("positions_gradients", dX_dr);
-    ctx->saved_data.emplace("structures_start", structures_start_ivalue);
+    ctx->saved_data.emplace("systems_start", systems_start_ivalue);
 
     return {dA_dr};
 }
@@ -312,7 +312,7 @@ std::vector<torch::Tensor> PositionsGrad<scalar_t>::backward(
     auto dA_dX = saved_variables[1];
 
     auto dX_dr = ctx->saved_data["positions_gradients"].toCustomClass<TensorBlockHolder>();
-    auto structures_start = ctx->saved_data["structures_start"].toIntList();
+    auto systems_start = ctx->saved_data["systems_start"].toIntList();
 
     auto dB_d_dA_dr = grad_outputs[0]; // gradient of B w.r.t. dA/dr (output of forward)
 
@@ -321,7 +321,7 @@ std::vector<torch::Tensor> PositionsGrad<scalar_t>::backward(
 
     always_assert(samples->names().size() == 3);
     always_assert(samples->names()[0] == "sample");
-    always_assert(samples->names()[1] == "structure");
+    always_assert(samples->names()[1] == "system");
     always_assert(samples->names()[2] == "atom");
 
     // ========================= extract pointers =========================== //
@@ -368,17 +368,17 @@ std::vector<torch::Tensor> PositionsGrad<scalar_t>::backward(
         // dB_d_dA_dX.shape == [samples, features...]
         for (int64_t grad_sample_i=0; grad_sample_i<samples->count(); grad_sample_i++) {
             auto sample_i = sample_ptr[grad_sample_i * 3 + 0];
-            auto structure_i = sample_ptr[grad_sample_i * 3 + 1];
+            auto system_i = sample_ptr[grad_sample_i * 3 + 1];
             auto atom_i = sample_ptr[grad_sample_i* 3 + 2];
 
-            auto global_atom_i = structures_start[structure_i] + atom_i;
+            auto global_atom_i = systems_start[system_i] + atom_i;
 
             for (int64_t i=0; i<n_features; i++) {
                 auto dot = 0.0;
-                for (int64_t direction=0; direction<3; direction++) {
+                for (int64_t xyz=0; xyz<3; xyz++) {
                     dot += (
-                        dX_dr_ptr[(grad_sample_i * 3 + direction) * n_features + i]
-                        * dB_d_dA_dr_ptr[global_atom_i * 3 + direction]
+                        dX_dr_ptr[(grad_sample_i * 3 + xyz) * n_features + i]
+                        * dB_d_dA_dr_ptr[global_atom_i * 3 + xyz]
                     );
                 }
                 dB_d_dA_dX_ptr[sample_i * n_features + i] += dot;
@@ -405,7 +405,7 @@ std::vector<torch::Tensor> CellGrad<scalar_t>::forward(
     torch::Tensor all_cells,
     torch::Tensor dA_dX,
     TorchTensorBlock dX_dH,
-    torch::Tensor structures
+    torch::Tensor systems
 ) {
     // ====================== input parameters checks ======================= //
     always_assert(all_cells.requires_grad());
@@ -440,26 +440,26 @@ std::vector<torch::Tensor> CellGrad<scalar_t>::forward(
     // =========================== compute dA_dH ============================ //
     for (int64_t grad_sample_i=0; grad_sample_i<samples->count(); grad_sample_i++) {
         auto sample_i = sample_ptr[grad_sample_i];
-        // we get the structure from the samples of the values
-        auto structure_i = static_cast<int64_t>(structures[sample_i].item<int32_t>());
+        // we get the system index from the samples of the values
+        auto system_i = static_cast<int64_t>(systems[sample_i].item<int32_t>());
 
-        for (int64_t direction_1=0; direction_1<3; direction_1++) {
-            for (int64_t direction_2=0; direction_2<3; direction_2++) {
+        for (int64_t xyz_1=0; xyz_1<3; xyz_1++) {
+            for (int64_t xyz_2=0; xyz_2<3; xyz_2++) {
                 auto dot = 0.0;
                 for (int64_t i=0; i<n_features; i++) {
-                    auto sample_component_row = (grad_sample_i * 3 + direction_2) * 3 + direction_1;
+                    auto sample_component_row = (grad_sample_i * 3 + xyz_2) * 3 + xyz_1;
                     dot += (
                         dA_dX_ptr[sample_i * n_features + i]
                         * dX_dH_ptr[sample_component_row * n_features + i]
                     );
                 }
-                cell_grad_ptr[(structure_i * 3 + direction_1) * 3 + direction_2] += dot;
+                cell_grad_ptr[(system_i * 3 + xyz_1) * 3 + xyz_2] += dot;
             }
         }
     }
 
     // ===================== data for double backward ======================= //
-    ctx->save_for_backward({all_cells, dA_dX, structures});
+    ctx->save_for_backward({all_cells, dA_dX, systems});
     ctx->saved_data.emplace("cell_gradients", dX_dH);
 
     return {cell_grad};
@@ -475,7 +475,7 @@ std::vector<torch::Tensor> CellGrad<scalar_t>::backward(
     auto saved_variables = ctx->get_saved_variables();
     auto all_cells = saved_variables[0];
     auto dA_dX = saved_variables[1];
-    auto structures = saved_variables[2];
+    auto systems = saved_variables[2];
 
     auto dX_dH = ctx->saved_data["cell_gradients"].toCustomClass<TensorBlockHolder>();
 
@@ -525,18 +525,18 @@ std::vector<torch::Tensor> CellGrad<scalar_t>::backward(
         auto* dB_d_dA_dX_ptr = dB_d_dA_dX.data_ptr<scalar_t>();
 
         // dX_dH.shape      == [cell gradient samples, 3, 3, features...]
-        // dB_d_dA_dH.shape == [structures, 3, 3]
+        // dB_d_dA_dH.shape == [systems, 3, 3]
         // dB_d_dA_dX.shape == [samples, features...]
         for (int64_t grad_sample_i=0; grad_sample_i<samples->count(); grad_sample_i++) {
             auto sample_i = sample_ptr[grad_sample_i];
-            auto structure_i = static_cast<int64_t>(structures[sample_i].item<int32_t>());
+            auto system_i = static_cast<int64_t>(systems[sample_i].item<int32_t>());
 
             for (int64_t i=0; i<n_features; i++) {
                 auto dot = 0.0;
-                for (int64_t direction_1=0; direction_1<3; direction_1++) {
-                    for (int64_t direction_2=0; direction_2<3; direction_2++) {
-                        auto idx_1 = (structure_i * 3 + direction_1) * 3 + direction_2;
-                        auto idx_2 = (grad_sample_i * 3 + direction_2) * 3 + direction_1;
+                for (int64_t xyz_1=0; xyz_1<3; xyz_1++) {
+                    for (int64_t xyz_2=0; xyz_2<3; xyz_2++) {
+                        auto idx_1 = (system_i * 3 + xyz_1) * 3 + xyz_2;
+                        auto idx_2 = (grad_sample_i * 3 + xyz_2) * 3 + xyz_1;
 
                         dot += dB_d_dA_dH_ptr[idx_1] * dX_dH_ptr[idx_2 * n_features + i];
                     }

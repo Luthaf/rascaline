@@ -31,7 +31,6 @@ module.__dict__["TensorBlock"] = TensorBlock
 module.__dict__["TensorMap"] = TensorMap
 module.__dict__["LabelsEntry"] = LabelsEntry
 module.__dict__["torch_jit_is_scripting"] = torch.jit.is_scripting
-module.__dict__["torch_jit_annotate"] = torch.jit.annotate
 module.__dict__["torch_jit_export"] = torch.jit.export
 module.__dict__["TorchTensor"] = torch.Tensor
 module.__dict__["TorchModule"] = torch.nn.Module

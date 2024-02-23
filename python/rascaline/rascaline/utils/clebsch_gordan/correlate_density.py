@@ -73,7 +73,7 @@ class DensityCorrelations(TorchModule):
     :param selected_keys: :py:class:`Labels` or `List[:py:class:`Labels`]` specifying
         the angular and/or parity channels to output at each iteration. All
         :py:class:`Labels` objects passed here must only contain key names
-        "spherical_harmonics_l" and "inversion_sigma". If a single :py:class:`Labels`
+        "o3_lambda" and "o3_sigma". If a single :py:class:`Labels`
         object is passed, this is applied to the final iteration only. If a
         :py:class:`list` of :py:class:`Labels` objects is passed, each is applied to its
         corresponding iteration. If None is passed, all angular and parity channels are
@@ -276,19 +276,18 @@ class DensityCorrelations(TorchModule):
 
         # Check metadata
         if not (
-            density.keys.names == ["spherical_harmonics_l", "species_center"]
+            density.keys.names == ["o3_lambda", "o3_sigma", "center_type"]
             or density.keys.names
-            == ["spherical_harmonics_l", "species_center", "species_neighbor"]
+            == ["o3_lambda", "o3_sigma", "center_type", "neighbor_type"]
         ):
             raise ValueError(
                 "input `density` must have key names"
-                ' ["spherical_harmonics_l", "species_center"] or'
-                ' ["spherical_harmonics_l", "species_center", "species_neighbor"]'
+                " ['o3_lambda', 'o3_sigma', 'center_type'] or"
+                " ['o3_lambda', 'o3_sigma', 'center_type', 'neighbor_type']"
             )
-        if not density.component_names == ["spherical_harmonics_m"]:
+        if not density.component_names == ["o3_mu"]:
             raise ValueError(
-                "input `density` must have a single component"
-                " axis with name `spherical_harmonics_m`"
+                "input `density` must have a single component" " axis with name `o3_mu`"
             )
         n_iterations = self._correlation_order - 1  # num iterations
         density = _clebsch_gordan._standardize_keys(density)  # standardize metadata
@@ -313,10 +312,10 @@ class DensityCorrelations(TorchModule):
             skip_redundant=self._skip_redundant,
         )
         max_angular = max(
-            _dispatch.max(density.keys.column("spherical_harmonics_l")),
+            _dispatch.max(density.keys.column("o3_lambda")),
             max(
                 [
-                    int(_dispatch.max(mdata[2].column("spherical_harmonics_l")))
+                    int(_dispatch.max(mdata[2].column("o3_lambda")))
                     for mdata in key_metadata
                 ]
             ),
@@ -344,9 +343,7 @@ class DensityCorrelations(TorchModule):
             for j in range(len(key_metadata_i[0])):
                 key_1: LabelsEntry = key_metadata_i[0][j]
                 key_2: LabelsEntry = key_metadata_i[1][j]
-                lambda_out: int = int(
-                    key_metadata_i[2].column("spherical_harmonics_l")[j]
-                )
+                lambda_out: int = int(key_metadata_i[2].column("o3_lambda")[j])
                 block_out = _clebsch_gordan._combine_blocks_same_samples(
                     density_correlation.block(key_1),
                     density.block(key_2),
@@ -363,8 +360,8 @@ class DensityCorrelations(TorchModule):
             if self._output_selection[iteration]:
                 density_correlations.append(
                     density_correlation.keys_to_properties(
-                        [f"l{i}" for i in range(1, correlation_order_it + 1)]
-                        + [f"k{i}" for i in range(2, correlation_order_it)]
+                        [f"l_{i}" for i in range(1, correlation_order_it + 1)]
+                        + [f"k_{i}" for i in range(2, correlation_order_it)]
                     )
                 )
 
@@ -375,8 +372,6 @@ class DensityCorrelations(TorchModule):
             keys = tensor.keys
             if len(_dispatch.unique(tensor.keys.column("order_nu"))) == 1:
                 keys = keys.remove(name="order_nu")
-            if len(_dispatch.unique(tensor.keys.column("inversion_sigma"))) == 1:
-                keys = keys.remove(name="inversion_sigma")
             density_correlations[i] = TensorMap(
                 keys=keys, blocks=[b.copy() for b in tensor.blocks()]
             )

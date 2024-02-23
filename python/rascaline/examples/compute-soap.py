@@ -12,18 +12,18 @@ from rascaline import SoapPowerSpectrum
 
 # %%
 #
-# Read structures using chemfiles. You can obtain the dataset used in this
+# Read systems using chemfiles. You can obtain the dataset used in this
 # example from our :download:`website <../../static/dataset.xyz>`.
 
 with chemfiles.Trajectory("dataset.xyz") as trajectory:
-    frames = [f for f in trajectory]
+    systems = [s for s in trajectory]
 
 # %%
 #
-# Rascaline can also handles structures read by `ASE
+# Rascaline can also handles systems read by `ASE
 # <https://wiki.fysik.dtu.dk/ase/>`_ using
 #
-# ``frames = ase.io.read("dataset.xyz", ":")``.
+# ``systems = ase.io.read("dataset.xyz", ":")``.
 #
 # We can now define hyper parameters for the calculation
 
@@ -47,7 +47,7 @@ calculator = SoapPowerSpectrum(**HYPER_PARAMETERS)
 #
 # And then run the actual calculation, including gradients with respect to positions
 
-descriptor = calculator.compute(frames, gradients=["positions"])
+descriptor = calculator.compute(systems, gradients=["positions"])
 
 # %%
 #
@@ -58,8 +58,8 @@ descriptor = calculator.compute(frames, gradients=["positions"])
 
 print("before: ", len(descriptor.keys))
 
-descriptor = descriptor.keys_to_samples("species_center")
-descriptor = descriptor.keys_to_properties(["species_neighbor_1", "species_neighbor_2"])
+descriptor = descriptor.keys_to_samples("center_type")
+descriptor = descriptor.keys_to_properties(["neighbor_1_type", "neighbor_2_type"])
 print("after: ", len(descriptor.keys))
 
 # %%

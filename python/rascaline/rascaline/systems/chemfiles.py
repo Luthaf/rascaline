@@ -23,31 +23,31 @@ except ImportError:
     HAVE_CHEMFILES = False
 
 
-# global cache of species number for atoms outside of the periodic table
-SPECIES_CACHE = {}
+# global cache of types number for atoms outside of the periodic table
+ATOMIC_TYPES_CACHE = {}
 
 
-def get_species_for_non_element(name):
-    """Get species number associated with atom that is not in the periodic table."""
-    if name in SPECIES_CACHE:
-        return SPECIES_CACHE[name]
+def get_type_for_non_element(name):
+    """Get type associated with atom that is not in the periodic table."""
+    if name in ATOMIC_TYPES_CACHE:
+        return ATOMIC_TYPES_CACHE[name]
     else:
         # start at 120 since that more atoms that are in the periodic table
-        species = 120 + len(SPECIES_CACHE)
-        SPECIES_CACHE[name] = species
-        return species
+        atomic_type = 120 + len(ATOMIC_TYPES_CACHE)
+        ATOMIC_TYPES_CACHE[name] = atomic_type
+        return atomic_type
 
 
 class ChemfilesSystem(SystemBase):
     """Implements :py:class:`rascaline.SystemBase` wrapping a `chemfiles.Frame`_.
 
-    Since chemfiles does not offer a neighbors list, this
-    implementation of system can only be used with ``use_native_system=True`` in
+    Since chemfiles does not offer a neighbors list, this implementation of system can
+    only be used with ``use_native_system=True`` in
     :py:func:`rascaline.calculators.CalculatorBase.compute`.
 
-    Atomic species are assigned as the atomic number if the atom ``type`` is one
-    of the periodic table elements; or as a value above 120 if the atom type is
-    not in the periodic table.
+    Atomic type are assigned as the atomic number if the atom ``type`` is one of the
+    periodic table elements; or as a value above 120 if the atom type is not in the
+    periodic table.
 
     .. _chemfiles.Frame: http://chemfiles.org/chemfiles.py/latest/reference/frame.html
     """
@@ -66,18 +66,18 @@ class ChemfilesSystem(SystemBase):
             raise Exception("this class expects chemfiles.Frame objects")
 
         self._frame = frame
-        self._species = np.zeros((self.size()), dtype=c_uintptr_t)
+        self._type = np.zeros((self.size()), dtype=c_uintptr_t)
         for i, atom in enumerate(self._frame.atoms):
             if atom.atomic_number != 0:
-                self._species[i] = atom.atomic_number
+                self._type[i] = atom.atomic_number
             else:
-                self._species[i] = get_species_for_non_element(atom.type)
+                self._type[i] = get_type_for_non_element(atom.type)
 
     def size(self):
         return len(self._frame.atoms)
 
-    def species(self):
-        return self._species
+    def types(self):
+        return self._type
 
     def positions(self):
         return self._frame.positions
@@ -97,7 +97,7 @@ class ChemfilesSystem(SystemBase):
             "chemfiles systems can only be used with 'use_native_system=True'"
         )
 
-    def pairs_containing(self, center):
+    def pairs_containing(self, atom):
         raise Exception(
             "chemfiles systems can only be used with 'use_native_system=True'"
         )

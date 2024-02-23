@@ -40,7 +40,7 @@ def test_selection_existing():
 
     # Manually select the keys
     selected_keys = Labels(
-        names=["species_center"],
+        names=["center_type"],
         values=np.array([[1]], dtype=np.int32),
     )
     descriptor = calculator.compute(
@@ -57,14 +57,14 @@ def test_select_key_not_in_systems():
 
     # Manually select the keys
     selected_keys = Labels(
-        names=["species_center"],
+        names=["center_type"],
         values=np.array([[4]], dtype=np.int32),
     )
     descriptor = calculator.compute(
         system, use_native_system=False, selected_keys=selected_keys
     )
 
-    C_block = descriptor.block(species_center=4)
+    C_block = descriptor.block(center_type=4)
     assert C_block.values.shape == (0, 2)
 
 
@@ -73,12 +73,12 @@ def test_predefined_selection():
     calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
 
     selected_keys = Labels(
-        names=["species_center"],
+        names=["center_type"],
         values=np.array([[1]], dtype=np.int32),
     )
 
     keys = Labels(
-        names=["species_center"],
+        names=["center_type"],
         values=np.array([[1], [8]], dtype=np.int32),
     )
 
@@ -103,7 +103,7 @@ def test_predefined_selection():
     )
 
     assert len(descriptor.keys) == 1
-    H_block = descriptor.block(species_center=1)
+    H_block = descriptor.block(center_type=1)
     assert H_block.values.shape == (2, 1)
     assert np.all(H_block.values[0] == (2,))
     assert np.all(H_block.values[1] == (3,))
@@ -120,7 +120,7 @@ def test_name_errors():
 
     message = (
         "invalid parameter: names for the keys of the calculator "
-        "\\[species_center\\] and selected keys \\[bad_name\\] do not match"
+        "\\[center_type\\] and selected keys \\[bad_name\\] do not match"
     )
     with pytest.raises(RascalError, match=message):
         calculator.compute(system, use_native_system=False, selected_keys=selected_keys)
@@ -131,7 +131,7 @@ def test_key_errors():
     calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
 
     selected_keys = Labels(
-        names=["species_center"],
+        names=["center_type"],
         values=np.empty((0, 1), dtype=np.int32),
     )
 
@@ -143,12 +143,12 @@ def test_key_errors():
     # selected_keys are given, the selected keys must be in the keys of the
     # predefined tensor_map
     selected_keys = Labels(
-        names=["species_center"],
+        names=["center_type"],
         values=np.array([[4]], dtype=np.int32),
     )
 
     keys = Labels(
-        names=["species_center"],
+        names=["center_type"],
         values=np.array([[1], [8]], dtype=np.int32),
     )
 
@@ -165,7 +165,7 @@ def test_key_errors():
     selected_properties = _tensor_map_selection("properties", keys, selected)
 
     message = (
-        "invalid parameter: expected a block for \\(species_center=4\\) in "
+        "invalid parameter: expected a block for \\(center_type=4\\) in "
         "predefined properties selection"
     )
     with pytest.raises(RascalError, match=message):

@@ -10,8 +10,8 @@ use super::{CutoffFunction, RadialScaling, SphericalExpansion};
 use crate::calculators::radial_basis::RadialBasis;
 
 use crate::labels::AtomCenteredSamples;
-use crate::labels::{CenterSingleNeighborsSpeciesKeys, KeysBuilder};
-use crate::labels::{SamplesBuilder, SpeciesFilter};
+use crate::labels::{CenterSingleNeighborsTypesKeys, KeysBuilder};
+use crate::labels::{SamplesBuilder, AtomicTypeFilter};
 
 /// Parameters for the SOAP radial spectrum calculator.
 ///
@@ -88,18 +88,19 @@ impl SoapRadialSpectrum {
     fn selected_spx_labels(descriptor: &TensorMap) -> TensorMap {
         assert_eq!(
             descriptor.keys().names(),
-            ["species_center", "species_neighbor"]
+            ["center_type", "neighbor_type"]
         );
 
         let mut keys_builder = LabelsBuilder::new(vec![
-            "spherical_harmonics_l",
-            "species_center",
-            "species_neighbor",
+            "o3_lambda",
+            "o3_sigma",
+            "center_type",
+            "neighbor_type",
         ]);
         let mut blocks = Vec::new();
         for (&[center, neighbor], block) in descriptor.keys().iter_fixed_size().zip(descriptor.blocks()) {
-            // spherical_harmonics_l is always 0
-            keys_builder.add(&[LabelValue::new(0), center, neighbor]);
+            // o3_lambda is always 0, o3_sigma always 1
+            keys_builder.add(&[LabelValue::new(0), LabelValue::new(1), center, neighbor]);
 
             let block = block.data();
             blocks.push(
@@ -130,7 +131,7 @@ impl CalculatorBase for SoapRadialSpectrum {
     }
 
     fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<metatensor::Labels, Error> {
-        let builder = CenterSingleNeighborsSpeciesKeys {
+        let builder = CenterSingleNeighborsTypesKeys {
             cutoff: self.parameters.cutoff,
             self_pairs: true,
         };
@@ -146,13 +147,13 @@ impl CalculatorBase for SoapRadialSpectrum {
         keys: &metatensor::Labels,
         systems: &mut [Box<dyn System>],
     ) -> Result<Vec<Labels>, Error> {
-        assert_eq!(keys.names(), ["species_center", "species_neighbor"]);
+        assert_eq!(keys.names(), ["center_type", "neighbor_type"]);
         let mut result = Vec::new();
-        for [species_center, species_neighbor] in keys.iter_fixed_size() {
+        for [center_type, neighbor_type] in keys.iter_fixed_size() {
             let builder = AtomCenteredSamples {
                 cutoff: self.parameters.cutoff,
-                species_center: SpeciesFilter::Single(species_center.i32()),
-                species_neighbor: SpeciesFilter::Single(species_neighbor.i32()),
+                center_type: AtomicTypeFilter::Single(center_type.i32()),
+                neighbor_type: AtomicTypeFilter::Single(neighbor_type.i32()),
                 self_pairs: true,
             };
 
@@ -170,15 +171,15 @@ impl CalculatorBase for SoapRadialSpectrum {
     }
 
     fn positions_gradient_samples(&self, keys: &Labels, samples: &[Labels], systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
-        assert_eq!(keys.names(), ["species_center", "species_neighbor"]);
+        assert_eq!(keys.names(), ["center_type", "neighbor_type"]);
         assert_eq!(keys.count(), samples.len());
 
         let mut gradient_samples = Vec::new();
-        for ([species_center, species_neighbor], samples) in keys.iter_fixed_size().zip(samples) {
+        for ([center_type, neighbor_type], samples) in keys.iter_fixed_size().zip(samples) {
             let builder = AtomCenteredSamples {
                 cutoff: self.parameters.cutoff,
-                species_center: SpeciesFilter::Single(species_center.i32()),
-                species_neighbor: SpeciesFilter::Single(species_neighbor.i32()),
+                center_type: AtomicTypeFilter::Single(center_type.i32()),
+                neighbor_type: AtomicTypeFilter::Single(neighbor_type.i32()),
                 self_pairs: true,
             };
 
@@ -208,7 +209,7 @@ impl CalculatorBase for SoapRadialSpectrum {
 
     #[time_graph::instrument(name = "SoapRadialSpectrum::compute")]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
-        assert_eq!(descriptor.keys().names(), ["species_center", "species_neighbor"]);
+        assert_eq!(descriptor.keys().names(), ["center_type", "neighbor_type"]);
         let mut gradients = Vec::new();
         if descriptor.block_by_id(0).gradient("positions").is_some() {
             gradients.push("positions");
@@ -364,13 +365,13 @@ mod tests {
             [1],
         ]);
 
-        let samples = Labels::new(["structure", "center"], &[
+        let samples = Labels::new(["system", "atom"], &[
             [1, 0],
             [0, 1],
             [0, 0],
         ]);
 
-        let keys = Labels::new(["species_center", "species_neighbor"], &[
+        let keys = Labels::new(["center_type", "neighbor_type"], &[
             [1, 1],
             [9, 1], // not part of the default keys
             [-42, 1],

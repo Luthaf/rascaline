@@ -3,9 +3,9 @@ use metatensor::{Labels, LabelsBuilder, TensorMap};
 use super::CalculatorBase;
 
 use crate::{Error, System};
-use crate::labels::{SpeciesFilter, SamplesBuilder};
+use crate::labels::{AtomicTypeFilter, SamplesBuilder};
 use crate::labels::AtomCenteredSamples;
-use crate::labels::{KeysBuilder, CenterSpeciesKeys, CenterSingleNeighborsSpeciesKeys};
+use crate::labels::{KeysBuilder, CenterTypesKeys, CenterSingleNeighborsTypesKeys};
 
 #[derive(Debug, Clone)]
 #[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
@@ -16,16 +16,16 @@ use crate::labels::{KeysBuilder, CenterSpeciesKeys, CenterSingleNeighborsSpecies
 /// less neighbors than `max_neighbors`, the remaining entries are filled with
 /// `cutoff` instead.
 ///
-/// Separate species for neighbors are represented separately, meaning that the
-/// `max_neighbors` parameter only apply to a single species.
+/// Separate types for neighbors are represented separately, meaning that the
+/// `max_neighbors` parameter applies one atomic type at the time.
 pub struct SortedDistances {
     /// Spherical cutoff to use for atomic environments
     cutoff: f64,
-    /// Maximal number of neighbors of a given atomic species a center is
+    /// Maximal number of neighbors of a given atomic type a center is
     /// allowed to have. This is also the dimensionality of the features.
     max_neighbors: usize,
-    /// Should separate neighbor species be represented separately?
-    separate_neighbor_species: bool,
+    /// Should separate neighbor types be represented separately?
+    separate_neighbor_types: bool,
 }
 
 impl CalculatorBase for SortedDistances {
@@ -42,15 +42,15 @@ impl CalculatorBase for SortedDistances {
     }
 
     fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
-        if self.separate_neighbor_species {
-            let builder = CenterSingleNeighborsSpeciesKeys {
+        if self.separate_neighbor_types {
+            let builder = CenterSingleNeighborsTypesKeys {
                 cutoff: self.cutoff,
                 self_pairs: false,
             };
             return builder.keys(systems);
         }
 
-        return CenterSpeciesKeys.keys(systems);
+        return CenterTypesKeys.keys(systems);
     }
 
     fn sample_names(&self) -> Vec<&str> {
@@ -59,25 +59,25 @@ impl CalculatorBase for SortedDistances {
 
     fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         let mut samples = Vec::new();
-        if self.separate_neighbor_species {
-            assert_eq!(keys.names(), ["species_center", "species_neighbor"]);
-            for [species_center, species_neighbor] in keys.iter_fixed_size() {
+        if self.separate_neighbor_types {
+            assert_eq!(keys.names(), ["center_type", "neighbor_type"]);
+            for [center_type, neighbor_type] in keys.iter_fixed_size() {
                 let builder = AtomCenteredSamples {
                     cutoff: self.cutoff,
-                    species_center: SpeciesFilter::Single(species_center.i32()),
-                    species_neighbor: SpeciesFilter::Single(species_neighbor.i32()),
+                    center_type: AtomicTypeFilter::Single(center_type.i32()),
+                    neighbor_type: AtomicTypeFilter::Single(neighbor_type.i32()),
                     self_pairs: false,
                 };
 
                 samples.push(builder.samples(systems)?);
             }
         } else {
-            assert_eq!(keys.names(), ["species_center"]);
-            for [species_center] in keys.iter_fixed_size() {
+            assert_eq!(keys.names(), ["center_type"]);
+            for [center_type] in keys.iter_fixed_size() {
                 let builder = AtomCenteredSamples {
                     cutoff: self.cutoff,
-                    species_center: SpeciesFilter::Single(species_center.i32()),
-                    species_neighbor: SpeciesFilter::Any,
+                    center_type: AtomicTypeFilter::Single(center_type.i32()),
+                    neighbor_type: AtomicTypeFilter::Any,
                     self_pairs: false,
                 };
 
@@ -116,14 +116,14 @@ impl CalculatorBase for SortedDistances {
 
     #[time_graph::instrument(name = "SortedDistances::compute")]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
-        if self.separate_neighbor_species {
-            assert_eq!(descriptor.keys().names(), ["species_center", "species_neighbor"]);
+        if self.separate_neighbor_types {
+            assert_eq!(descriptor.keys().names(), ["center_type", "neighbor_type"]);
         } else {
-            assert_eq!(descriptor.keys().names(), ["species_center"]);
+            assert_eq!(descriptor.keys().names(), ["center_type"]);
         }
 
         for (key, mut block) in descriptor {
-            let species_neighbor = if self.separate_neighbor_species {
+            let neighbor_type = if self.separate_neighbor_types {
                 Some(key[1].i32())
             } else {
                 None
@@ -132,16 +132,16 @@ impl CalculatorBase for SortedDistances {
             let block_data = block.data_mut();
             let array = block_data.values.to_array_mut();
 
-            for (sample_i, [structure_i, center_i]) in block_data.samples.iter_fixed_size().enumerate() {
+            for (sample_i, [system_i, center_i]) in block_data.samples.iter_fixed_size().enumerate() {
                 let center_i = center_i.usize();
 
-                let system = &mut systems[structure_i.usize()];
+                let system = &mut systems[system_i.usize()];
                 system.compute_neighbors(self.cutoff)?;
-                let species = system.species()?;
+                let types = system.types()?;
 
                 let mut distances = Vec::new();
                 for pair in system.pairs_containing(center_i)? {
-                    if let Some(species_neighbor) = species_neighbor {
+                    if let Some(neighbor_type) = neighbor_type {
                         let neighbor_i = if pair.first == center_i {
                             pair.second
                         } else {
@@ -149,7 +149,7 @@ impl CalculatorBase for SortedDistances {
                             pair.first
                         };
 
-                        if species[neighbor_i] == species_neighbor {
+                        if types[neighbor_i] == neighbor_type {
                             distances.push(pair.distance);
                         }
                     } else {
@@ -188,11 +188,11 @@ mod tests {
         let calculator = Calculator::from(Box::new(SortedDistances{
             cutoff: 1.5,
             max_neighbors: 3,
-            separate_neighbor_species: false
+            separate_neighbor_types: false
         }) as Box<dyn CalculatorBase>);
 
         assert_eq!(calculator.name(), "sorted distances vector");
-        assert_eq!(calculator.parameters(), "{\"cutoff\":1.5,\"max_neighbors\":3,\"separate_neighbor_species\":false}");
+        assert_eq!(calculator.parameters(), "{\"cutoff\":1.5,\"max_neighbors\":3,\"separate_neighbor_types\":false}");
     }
 
     #[test]
@@ -200,13 +200,13 @@ mod tests {
         let mut calculator = Calculator::from(Box::new(SortedDistances {
             cutoff: 1.5,
             max_neighbors: 3,
-            separate_neighbor_species: false
+            separate_neighbor_types: false
         }) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
         let descriptor = calculator.compute(&mut systems, Default::default()).unwrap();
 
-        let keys_to_move = Labels::empty(vec!["species_center"]);
+        let keys_to_move = Labels::empty(vec!["center_type"]);
         let descriptor = descriptor.keys_to_samples(&keys_to_move, true).unwrap();
 
         assert_eq!(descriptor.blocks().len(), 1);
@@ -224,13 +224,13 @@ mod tests {
         let calculator = Calculator::from(Box::new(SortedDistances{
             cutoff: 1.5,
             max_neighbors: 3,
-            separate_neighbor_species: false,
+            separate_neighbor_types: false,
         }) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
 
-        let keys = Labels::new(["species_center"], &[[1], [6], [8], [-42]]);
-        let samples = Labels::new(["structure", "center"], &[[0, 1]]);
+        let keys = Labels::new(["center_type"], &[[1], [6], [8], [-42]]);
+        let samples = Labels::new(["system", "atom"], &[[0, 1]]);
         let properties = Labels::new(["neighbor"], &[[2], [0]]);
 
         crate::calculators::tests_utils::compute_partial(

@@ -1,7 +1,4 @@
 #include <cstring>
-#include <cassert>
-
-#include <stdexcept>
 
 #include "helpers.hpp"
 
@@ -26,9 +23,9 @@ rascal_system_t simple_system() {
         return RASCAL_SUCCESS;
     };
 
-    system.species = [](const void* _, const int32_t** species) {
-        static int32_t SPECIES[4] = {6, 1, 1, 1};
-        *species = SPECIES;
+    system.types = [](const void* _, const int32_t** types) {
+        static int32_t TYPES[4] = {6, 1, 1, 1};
+        *types = TYPES;
         return RASCAL_SUCCESS;
     };
 
@@ -63,7 +60,7 @@ rascal_system_t simple_system() {
         return RASCAL_SUCCESS;
     };
 
-    system.pairs_containing = [](const void* _, uintptr_t center, const rascal_pair_t** pairs, uintptr_t* count){
+    system.pairs_containing = [](const void* _, uintptr_t atom, const rascal_pair_t** pairs, uintptr_t* count){
         static rascal_pair_t PAIRS_0[] = {
             {0, 1, SQRT_3, {1.0, 1.0, 1.0}, {1, 1, 1}},
         };
@@ -82,16 +79,16 @@ rascal_system_t simple_system() {
             {2, 3, SQRT_3, {1.0, 1.0, 1.0}, {0, 0, 0}},
         };
 
-        if (center == 0) {
+        if (atom == 0) {
             *pairs = PAIRS_0;
             *count = 1;
-        } else if (center == 1) {
+        } else if (atom == 1) {
             *pairs = PAIRS_1;
             *count = 2;
-        } else if (center == 2) {
+        } else if (atom == 2) {
             *pairs = PAIRS_2;
             *count = 2;
-        } else if (center == 3) {
+        } else if (atom == 3) {
             *pairs = PAIRS_3;
             *count = 1;
         } else {

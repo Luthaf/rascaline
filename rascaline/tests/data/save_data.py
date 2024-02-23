@@ -45,7 +45,7 @@ def validate_frames(frames):
 def frame_to_json(frame):
     return {
         "positions": frame.positions.tolist(),
-        "species": frame.numbers.tolist(),
+        "types": frame.numbers.tolist(),
         "cell": np.concatenate(frame.cell).tolist(),
     }
 

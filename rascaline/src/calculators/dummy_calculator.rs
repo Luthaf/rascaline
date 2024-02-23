@@ -4,9 +4,9 @@ use metatensor::TensorMap;
 use metatensor::{Labels, LabelsBuilder};
 
 use super::CalculatorBase;
-use crate::labels::{SpeciesFilter, SamplesBuilder};
+use crate::labels::{AtomicTypeFilter, SamplesBuilder};
 use crate::labels::AtomCenteredSamples;
-use crate::labels::{CenterSpeciesKeys, KeysBuilder};
+use crate::labels::{CenterTypesKeys, KeysBuilder};
 
 use crate::{Error, System, Vector3D};
 
@@ -44,7 +44,7 @@ impl CalculatorBase for DummyCalculator {
     }
 
     fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
-        return CenterSpeciesKeys.keys(systems);
+        return CenterTypesKeys.keys(systems);
     }
 
     fn sample_names(&self) -> Vec<&str> {
@@ -52,13 +52,13 @@ impl CalculatorBase for DummyCalculator {
     }
 
     fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
-        assert_eq!(keys.names(), ["species_center"]);
+        assert_eq!(keys.names(), ["center_type"]);
         let mut samples = Vec::new();
-        for [species_center] in keys.iter_fixed_size() {
+        for [center_type] in keys.iter_fixed_size() {
             let builder = AtomCenteredSamples {
                 cutoff: self.cutoff,
-                species_center: SpeciesFilter::Single(species_center.i32()),
-                species_neighbor: SpeciesFilter::Any,
+                center_type: AtomicTypeFilter::Single(center_type.i32()),
+                neighbor_type: AtomicTypeFilter::Any,
                 self_pairs: false,
             };
 
@@ -78,11 +78,11 @@ impl CalculatorBase for DummyCalculator {
     fn positions_gradient_samples(&self, keys: &Labels, samples: &[Labels], systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
         debug_assert_eq!(keys.count(), samples.len());
         let mut gradient_samples = Vec::new();
-        for ([species_center], samples) in keys.iter_fixed_size().zip(samples) {
+        for ([center_type], samples) in keys.iter_fixed_size().zip(samples) {
             let builder = AtomCenteredSamples{
                 cutoff: self.cutoff,
-                species_center: SpeciesFilter::Single(species_center.i32()),
-                species_neighbor: SpeciesFilter::Any,
+                center_type: AtomicTypeFilter::Single(center_type.i32()),
+                neighbor_type: AtomicTypeFilter::Any,
                 self_pairs: false,
             };
 
@@ -118,27 +118,27 @@ impl CalculatorBase for DummyCalculator {
         }
 
         for (key, mut block) in descriptor {
-            let species_center = key[0].i32();
+            let center_type = key[0].i32();
 
             let block_data = block.data_mut();
             let array = block_data.values.to_array_mut();
 
-            for (sample_i, [system, center]) in block_data.samples.iter_fixed_size().enumerate() {
+            for (sample_i, [system, atom]) in block_data.samples.iter_fixed_size().enumerate() {
                 let system_i = system.usize();
-                let center_i = center.usize();
+                let atom_i = atom.usize();
 
-                debug_assert_eq!(systems[system_i].species()?[center_i], species_center);
+                debug_assert_eq!(systems[system_i].types()?[atom_i], center_type);
 
                 for (property_i, property) in block_data.properties.iter().enumerate() {
                     if property[0].i32() == 1 {
-                        array[[sample_i, property_i]] = center_i as f64 + self.delta as f64;
+                        array[[sample_i, property_i]] = atom_i as f64 + self.delta as f64;
                     } else if property[1].i32() == 1 {
                         let system = &mut *systems[system_i];
                         system.compute_neighbors(self.cutoff)?;
 
                         let positions = system.positions()?;
                         let cell = system.cell()?.matrix();
-                        let mut sum = positions[center_i][0] + positions[center_i][1] + positions[center_i][2];
+                        let mut sum = positions[atom_i][0] + positions[atom_i][1] + positions[atom_i][2];
                         for pair in system.pairs()? {
                             // this code just check for consistency in the
                             // neighbor list
@@ -182,11 +182,11 @@ impl CalculatorBase for DummyCalculator {
                             // end of neighbors list consistency check
 
                             // actual values calculation
-                            if pair.first == center_i {
+                            if pair.first == atom_i {
                                 sum += positions[pair.second][0] + positions[pair.second][1] + positions[pair.second][2];
                             }
 
-                            if pair.second == center_i {
+                            if pair.second == atom_i {
                                 sum += positions[pair.first][0] + positions[pair.first][1] + positions[pair.first][2];
                             }
                         }
@@ -263,7 +263,7 @@ mod tests {
         let descriptor = calculator.compute(&mut systems, Default::default()).unwrap();
 
         let keys = descriptor.keys();
-        assert_eq!(keys.names(), ["species_center"]);
+        assert_eq!(keys.names(), ["center_type"]);
         assert_eq!(keys.count(), 2);
         assert_eq!(keys[0], [-42]);
         assert_eq!(keys[1], [1]);
@@ -289,9 +289,9 @@ mod tests {
         }) as Box<dyn CalculatorBase>);
         let mut systems = test_systems(&["water"]);
 
-        let samples = Labels::new(["structure", "center"], &[[0, 1]]);
+        let samples = Labels::new(["system", "atom"], &[[0, 1]]);
         let properties = Labels::new(["index_delta", "x_y_z"], &[[0, 1]]);
-        let keys = Labels::new(["species_center"], &[[0], [1], [6], [-42]]);
+        let keys = Labels::new(["center_type"], &[[0], [1], [6], [-42]]);
 
         crate::calculators::tests_utils::compute_partial(
             calculator, &mut systems, &keys, &samples, &properties

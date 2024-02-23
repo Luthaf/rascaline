@@ -124,25 +124,26 @@ hypers_spherical_expansion = {
 calculator = SphericalExpansion(**hypers_spherical_expansion)
 
 # %%
-# Create dummy structures to test if the calculator outputs correct radial functions:
+#
+# Create dummy systems to test if the calculator outputs correct radial functions:
 
 
-def get_dummy_structures(r_array):
-    dummy_structures = []
+def get_dummy_systems(r_array):
+    dummy_systems = []
     for r in r_array:
-        dummy_structures.append(ase.Atoms("CH", positions=[(0, 0, 0), (0, 0, r)]))
-    return dummy_structures
+        dummy_systems.append(ase.Atoms("CH", positions=[(0, 0, 0), (0, 0, r)]))
+    return dummy_systems
 
 
 r = np.linspace(0.1, 4.9, 20)
-structures = get_dummy_structures(r)
-spherical_expansion_coefficients = calculator.compute(structures)
+systems = get_dummy_systems(r)
+spherical_expansion_coefficients = calculator.compute(systems)
 
 # %%
 # Extract ``l = 0`` features and check that the ``n = 2`` predictions are the same:
 
 block_C_l0 = spherical_expansion_coefficients.block(
-    species_center=6, spherical_harmonics_l=0, species_neighbor=1
+    center_type=6, o3_lambda=0, neighbor_type=1
 )
 block_C_l0_n2 = block_C_l0.values[:, :, 2].flatten()
 spherical_harmonics_0 = 1.0 / np.sqrt(4.0 * np.pi)

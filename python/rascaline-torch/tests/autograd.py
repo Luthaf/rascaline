@@ -22,115 +22,113 @@ HYPERS = {
 
 def _create_random_system(n_atoms, cell_size):
     torch.manual_seed(0)
-    species = torch.randint(3, (n_atoms,), dtype=torch.int)
+    types = torch.randint(3, (n_atoms,), dtype=torch.int)
 
     cell = ase.cell.Cell.new([cell_size, 1.4 * cell_size, 0.8 * cell_size, 90, 80, 110])
     cell = torch.tensor(cell[:], dtype=torch.float64)
 
     positions = torch.rand((n_atoms, 3), dtype=torch.float64) @ cell
 
-    return species, positions, cell
+    return types, positions, cell
 
 
-def _compute_spherical_expansion(species, positions, cell):
+def _compute_spherical_expansion(types, positions, cell):
     system = System(
+        species=types,
         positions=positions,
-        species=species,
         cell=cell,
     )
 
     calculator = SphericalExpansion(**HYPERS)
     descriptor = calculator(system)
-    descriptor = descriptor.components_to_properties("spherical_harmonics_m")
-    descriptor = descriptor.keys_to_properties("spherical_harmonics_l")
+    descriptor = descriptor.components_to_properties("o3_mu")
+    descriptor = descriptor.keys_to_properties(["o3_lambda", "o3_sigma"])
 
-    descriptor = descriptor.keys_to_samples("species_center")
-    descriptor = descriptor.keys_to_properties("species_neighbor")
+    descriptor = descriptor.keys_to_samples("center_type")
+    descriptor = descriptor.keys_to_properties("neighbor_type")
 
     return descriptor.block(0).values
 
 
-def _compute_power_spectrum(species, positions, cell):
+def _compute_power_spectrum(types, positions, cell):
     system = System(
+        species=types,
         positions=positions,
-        species=species,
         cell=cell,
     )
 
     calculator = SoapPowerSpectrum(**HYPERS)
     descriptor = calculator(system)
-    descriptor = descriptor.keys_to_samples("species_center")
-    descriptor = descriptor.keys_to_properties(
-        ["species_neighbor_1", "species_neighbor_2"]
-    )
+    descriptor = descriptor.keys_to_samples("center_type")
+    descriptor = descriptor.keys_to_properties(["neighbor_1_type", "neighbor_2_type"])
 
     return descriptor.block(0).values
 
 
 def test_spherical_expansion_positions_grad():
-    species, positions, cell = _create_random_system(n_atoms=75, cell_size=5.0)
+    types, positions, cell = _create_random_system(n_atoms=75, cell_size=5.0)
     positions.requires_grad = True
 
     assert torch.autograd.gradcheck(
         _compute_spherical_expansion,
-        (species, positions, cell),
+        (types, positions, cell),
         fast_mode=True,
     )
 
 
 def test_spherical_expansion_cell_grad():
-    species, positions, cell = _create_random_system(n_atoms=75, cell_size=5.0)
+    types, positions, cell = _create_random_system(n_atoms=75, cell_size=5.0)
 
     original_cell = cell.clone()
     cell.requires_grad = True
 
-    def compute(species, positions, cell):
+    def compute(types, positions, cell):
         # modifying the cell for numerical gradients should also displace
         # the atoms
         fractional = positions @ torch.linalg.inv(original_cell)
         positions = fractional @ cell.detach()
 
-        return _compute_spherical_expansion(species, positions, cell)
+        return _compute_spherical_expansion(types, positions, cell)
 
     assert torch.autograd.gradcheck(
         compute,
-        (species, positions, cell),
+        (types, positions, cell),
         fast_mode=True,
     )
 
 
 def test_power_spectrum_positions_grad():
-    species, positions, cell = _create_random_system(n_atoms=75, cell_size=5.0)
+    types, positions, cell = _create_random_system(n_atoms=75, cell_size=5.0)
     positions.requires_grad = True
 
     assert torch.autograd.gradcheck(
         _compute_power_spectrum,
-        (species, positions, cell),
+        (types, positions, cell),
         fast_mode=True,
     )
 
 
 def test_power_spectrum_positions_grad_register_autograd():
     # check autograd when registering the graph after pre-computing a representation
-    species, positions, cell = _create_random_system(n_atoms=75, cell_size=5.0)
+    types, positions, cell = _create_random_system(n_atoms=75, cell_size=5.0)
 
     calculator = SoapPowerSpectrum(**HYPERS)
-    precomputed = calculator(System(species, positions, cell), gradients=["positions"])
+    precomputed = calculator(System(types, positions, cell), gradients=["positions"])
 
     # no grad_fn for now
     assert precomputed.block(0).values.grad_fn is None
 
     def compute(positions, cell):
         system = System(
+            species=types,
             positions=positions,
-            species=species,
             cell=cell,
         )
 
         descriptor = rascaline.torch.register_autograd(system, precomputed)
-        descriptor = descriptor.keys_to_samples("species_center")
+        descriptor = descriptor.keys_to_samples("center_type")
         descriptor = descriptor.keys_to_properties(
-            ["species_neighbor_1", "species_neighbor_2"]
+            ["neighbor_1_type", "neighbor_2_type"]
         )
 
         # a grad_fn have been added!
@@ -147,34 +145,34 @@ def test_power_spectrum_positions_grad_register_autograd():
 
 
 def test_power_spectrum_cell_grad():
-    species, positions, cell = _create_random_system(n_atoms=75, cell_size=5.0)
+    types, positions, cell = _create_random_system(n_atoms=75, cell_size=5.0)
 
     original_cell = cell.clone()
     cell.requires_grad = True
 
-    def compute(species, positions, cell):
+    def compute(types, positions, cell):
         # modifying the cell for numerical gradients should also displace
         # the atoms
         fractional = positions @ torch.linalg.inv(original_cell)
         positions = fractional @ cell.detach()
-        return _compute_power_spectrum(species, positions, cell)
+        return _compute_power_spectrum(types, positions, cell)
 
     assert torch.autograd.gradcheck(
         compute,
-        (species, positions, cell),
+        (types, positions, cell),
         fast_mode=True,
     )
 
 
 def test_power_spectrum_positions_grad_grad():
-    species, positions, cell = _create_random_system(n_atoms=75, cell_size=5.0)
+    types, positions, cell = _create_random_system(n_atoms=75, cell_size=5.0)
     positions.requires_grad = True
 
-    X = _compute_power_spectrum(species, positions, cell)
+    X = _compute_power_spectrum(types, positions, cell)
     weights = torch.rand((X.shape[-1], 1), requires_grad=True, dtype=torch.float64)
 
     def compute(weights):
-        X = _compute_power_spectrum(species, positions, cell)
+        X = _compute_power_spectrum(types, positions, cell)
         A = X @ weights
 
         return torch.autograd.grad(
@@ -205,14 +203,14 @@ def test_power_spectrum_positions_grad_grad():
 
 
 def test_power_spectrum_cell_grad_grad():
-    species, positions, cell = _create_random_system(n_atoms=75, cell_size=5.0)
+    types, positions, cell = _create_random_system(n_atoms=75, cell_size=5.0)
     cell.requires_grad = True
 
-    X = _compute_power_spectrum(species, positions, cell)
+    X = _compute_power_spectrum(types, positions, cell)
     weights = torch.rand((X.shape[-1], 1), requires_grad=True, dtype=torch.float64)
 
     def compute(weights):
-        X = _compute_power_spectrum(species, positions, cell)
+        X = _compute_power_spectrum(types, positions, cell)
         A = X @ weights
 
         return torch.autograd.grad(
@@ -255,7 +253,7 @@ def test_different_device_dtype():
         options.append((torch.device("cuda:0"), torch.float64))
 
     for device, dtype in options:
-        species, positions, cell = _create_random_system(n_atoms=10, cell_size=3.0)
+        types, positions, cell = _create_random_system(n_atoms=10, cell_size=3.0)
         positions = positions.to(dtype=dtype, device=device, copy=True)
         positions.requires_grad = True
         assert positions.grad is None
@@ -264,12 +262,12 @@ def test_different_device_dtype():
         cell.requires_grad = True
         assert cell.grad is None
 
-        species = species.to(device=device, copy=True)
+        types = types.to(device=device, copy=True)
 
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
 
-            X = _compute_power_spectrum(species, positions, cell)
+            X = _compute_power_spectrum(types, positions, cell)
 
         assert X.dtype == dtype
         assert X.device == device

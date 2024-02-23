@@ -6,7 +6,7 @@
 using namespace rascaline_torch;
 
 SystemAdapter::SystemAdapter(metatensor_torch::System system): system_(std::move(system)) {
-    this->species_ = system_->species().to(torch::kCPU).contiguous();
+    this->types_ = system_->species().to(torch::kCPU).contiguous();
     this->positions_ = system_->positions().to(torch::kCPU).to(torch::kDouble).contiguous();
     this->cell_ = system_->cell().to(torch::kCPU).to(torch::kDouble).contiguous();
 
@@ -123,7 +123,7 @@ const std::vector<rascal_pair_t>& SystemAdapter::pairs() const {
     return it->second.pairs_;
 }
 
-const std::vector<rascal_pair_t>& SystemAdapter::pairs_containing(uintptr_t center) const {
+const std::vector<rascal_pair_t>& SystemAdapter::pairs_containing(uintptr_t atom) const {
     if (this->use_native_system() || last_cutoff_ == -1.0) {
         C10_THROW_ERROR(ValueError,
             "this system only support 'use_native_systems=true'"
@@ -132,5 +132,5 @@ const std::vector<rascal_pair_t>& SystemAdapter::pairs_containing(uintptr_t cent
 
     auto it = precomputed_pairs_.find(last_cutoff_);
     assert(it != std::end(precomputed_pairs_));
-    return it->second.pairs_by_center_[center];
+    return it->second.pairs_by_atom_[atom];
 }

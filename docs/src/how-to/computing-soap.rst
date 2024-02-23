@@ -3,17 +3,16 @@
 Computing SOAP features
 =======================
 
-This examples shows how to compute the SOAP power spectrum descriptor
-for each atom in each structure of a provided structure file.
-The path to the structure file is taken from the first command line argument.
+This examples shows how to compute the SOAP power spectrum descriptor for each
+atom in each system of a provided systems file. The path to the systems file is
+taken from the first command line argument.
 
-In the end, the descriptor is transformed
-in a way compatible with how most classic machine learning (such as PCA or
-linear regression) work.
+In the end, the descriptor is transformed in a way compatible with how most
+classic machine learning (such as PCA or linear regression) work.
 
 The workflow is the same for every provided descriptor. Take a look at the
-:ref:`userdoc-references` for a list with all descriptors and their
-specific parameters.
+:ref:`userdoc-references` for a list with all descriptors and their specific
+parameters.
 
 You can obtain a testing dataset from our :download:`website <../../static/dataset.xyz>`.
 

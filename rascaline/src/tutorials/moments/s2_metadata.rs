@@ -1,8 +1,8 @@
 use metatensor::{Labels, TensorMap, LabelsBuilder};
 
 use crate::{System, Error};
-use crate::labels::{CenterSingleNeighborsSpeciesKeys, KeysBuilder};
-use crate::labels::{AtomCenteredSamples, SamplesBuilder, SpeciesFilter};
+use crate::labels::{CenterSingleNeighborsTypesKeys, KeysBuilder};
+use crate::labels::{AtomCenteredSamples, SamplesBuilder, AtomicTypeFilter};
 use crate::calculators::CalculatorBase;
 
 // [struct]
@@ -35,7 +35,7 @@ impl CalculatorBase for GeometricMoments {
 
     // [CalculatorBase::keys]
     fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
-        let builder = CenterSingleNeighborsSpeciesKeys {
+        let builder = CenterSingleNeighborsTypesKeys {
             cutoff: self.cutoff,
             // self pairs would have a distance of 0 and would not contribute
             // anything meaningful to a GeometricMoments representation
@@ -51,17 +51,17 @@ impl CalculatorBase for GeometricMoments {
     }
 
     fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
-        assert_eq!(keys.names(), ["species_center", "species_neighbor"]);
+        assert_eq!(keys.names(), ["center_type", "neighbor_type"]);
 
         let mut samples = Vec::new();
-        for [species_center, species_neighbor] in keys.iter_fixed_size() {
+        for [center_type, neighbor_type] in keys.iter_fixed_size() {
             let builder = AtomCenteredSamples {
                 cutoff: self.cutoff,
-                // only include centers of this species
-                species_center: SpeciesFilter::Single(species_center.i32()),
-                // with a neighbor of this species somewhere in the neighborhood
+                // only include central atoms of this type
+                center_type: AtomicTypeFilter::Single(center_type.i32()),
+                // with a neighbor of this type somewhere in the neighborhood
                 // defined by the spherical `cutoff`.
-                species_neighbor: SpeciesFilter::Single(species_neighbor.i32()),
+                neighbor_type: AtomicTypeFilter::Single(neighbor_type.i32()),
                 self_pairs: false,
             };
 
@@ -83,18 +83,18 @@ impl CalculatorBase for GeometricMoments {
 
     // [CalculatorBase::positions_gradient_samples]
     fn positions_gradient_samples(&self, keys: &Labels, samples: &[Labels], systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
-        assert_eq!(keys.names(), ["species_center", "species_neighbor"]);
+        assert_eq!(keys.names(), ["center_type", "neighbor_type"]);
         debug_assert_eq!(keys.count(), samples.len());
 
         let mut gradient_samples = Vec::new();
-        for ([center_species, species_neighbor], samples_for_key) in keys.iter_fixed_size().zip(samples) {
+        for ([center_type, neighbor_type], samples_for_key) in keys.iter_fixed_size().zip(samples) {
             let builder = AtomCenteredSamples {
                 cutoff: self.cutoff,
-                species_center: SpeciesFilter::Single(center_species.i32()),
+                center_type: AtomicTypeFilter::Single(center_type.i32()),
                 // only include gradients with respect to neighbor atoms with
-                // this species (the other atoms do not contribute to the
+                // this atomic type (the other atoms do not contribute to the
                 // gradients in the current block).
-                species_neighbor: SpeciesFilter::Single(species_neighbor.i32()),
+                neighbor_type: AtomicTypeFilter::Single(neighbor_type.i32()),
                 self_pairs: false,
             };
 

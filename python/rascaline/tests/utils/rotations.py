@@ -117,65 +117,62 @@ class WignerDReal:
 
     def rotate_coeff_vector(
         self,
-        frame: ase.Atoms,
+        atoms: ase.Atoms,
         coeffs: np.ndarray,
         lmax: dict,
         nmax: dict,
     ) -> np.ndarray:
         """
-        Rotates the irreducible spherical components (ISCs) of basis set
-        coefficients in the spherical basis passed in as a flat vector.
+        Rotates the irreducible spherical components (ISCs) of basis set coefficients in
+        the spherical basis passed in as a flat vector.
 
-        Required is the basis set definition specified by ``lmax`` and ``nmax``.
-        This are dicts of the form:
+        Required is the basis set definition specified by ``lmax`` and ``nmax``. This
+        are dicts of the form:
 
-            lmax = {symbol: lmax_value, ...}
-            nmax = {(symbol, l): nmax_value, ...}
+            lmax = {symbol: lmax_value, ...} nmax = {(symbol, l): nmax_value, ...}
 
-        where ``symbol`` is the chemical symbol of the atom, ``lmax_value`` is
-        its corresponding max l channel value. For each combination of species
-        symbol and lmax, there exists a max radial channel value ``nmax_value``.
+        where ``symbol`` is the chemical symbol of the atom, ``lmax_value`` is its
+        corresponding max l channel value. For each combination of species symbol and
+        lmax, there exists a max radial channel value ``nmax_value``.
 
-        Then, the assumed ordering of basis function coefficients follows a
-        hierarchy, which can be read as nested loops over the various indices.
-        Be mindful that some indices range are from 0 to x (exclusive) and
-        others from 0 to x + 1 (exclusive). The ranges reported below are
-        ordered.
+        Then, the assumed ordering of basis function coefficients follows a hierarchy,
+        which can be read as nested loops over the various indices. Be mindful that some
+        indices range are from 0 to x (exclusive) and others from 0 to x + 1
+        (exclusive). The ranges reported below are ordered.
 
-        1. Loop over atoms (index ``i``, of chemical species ``a``) in the
-        structure. ``i`` takes values 0 to N (** exclusive **), where N is the
-        number of atoms in the structure.
+        1. Loop over atoms (index ``i``, of chemical species ``a``) in the system. ``i``
+           takes values 0 to N (** exclusive **), where N is the number of atoms in the
+           system.
 
-        2. Loop over spherical harmonics channel (index ``l``) for each atom.
-        ``l`` takes values from 0 to ``lmax[a] + 1`` (** exclusive **), where
-        ``a`` is the chemical species of atom ``i``, given by the chemical
-        symbol at the ``i``th position of ``symbol_list``.
+        2. Loop over spherical harmonics channel (index ``l``) for each atom. ``l``
+           takes values from 0 to ``lmax[a] + 1`` (** exclusive **), where ``a`` is the
+           chemical species of atom ``i``, given by the chemical symbol at the ``i``th
+           position of ``symbol_list``.
 
-        3. Loop over radial channel (index ``n``) for each atom ``i`` and
-        spherical harmonics channel ``l`` combination. ``n`` takes values from 0
-        to ``nmax[(a, l)]`` (** exclusive **).
+        3. Loop over radial channel (index ``n``) for each atom ``i`` and spherical
+           harmonics channel ``l`` combination. ``n`` takes values from 0 to
+          ``nmax[(a, l)]`` (** exclusive **).
 
-        4. Loop over spherical harmonics component (index ``m``) for each atom.
-        ``m`` takes values from ``-l`` to ``l`` (** inclusive **).
+        4. Loop over spherical harmonics component (index ``m``) for each atom. ``m``
+           takes values from ``-l`` to ``l`` (** inclusive **).
 
-        :param frame: the atomic structure in ASE format for which the
-            coefficients are defined.
-        :param coeffs: the coefficients in the spherical basis, as a flat
-            vector.
-        :param lmax: dict containing the maximum spherical harmonics (l) value
-            for each atom type.
-        :param nmax: dict containing the maximum radial channel (n) value for
-            each combination of atom type and l.
+        :param atoms: the atomic systems in ASE format for which the coefficients are
+            defined.
+        :param coeffs: the coefficients in the spherical basis, as a flat vector.
+        :param lmax: dict containing the maximum spherical harmonics (l) value for each
+            atom type.
+        :param nmax: dict containing the maximum radial channel (n) value for each
+            combination of atom type and l.
 
-        :return: the rotated coefficients in the spherical basis, as a flat
-            vector with the same order as the input vector.
+        :return: the rotated coefficients in the spherical basis, as a flat vector with
+            the same order as the input vector.
         """
         # Initialize empty vector for storing the rotated ISCs
         rot_vect = np.empty_like(coeffs)
 
         # Iterate over atomic species of the atoms in the frame
         curr_idx = 0
-        for symbol in frame.get_chemical_symbols():
+        for symbol in atoms.get_chemical_symbols():
             # Get the basis set lmax value for this species
             sym_lmax = lmax[symbol]
             for angular_l in range(sym_lmax + 1):
@@ -198,7 +195,7 @@ class WignerDReal:
         """
         Rotates a TensorBlock ``block``, represented in the spherical basis,
         according to the Wigner D Real matrices for the given ``l`` value.
-        Assumes the components of the block are [("spherical_harmonics_m",),].
+        Assumes the components of the block are [("o3_mu",),].
         """
         # Get the Wigner matrix for this l value
         wig = self.matrices[angular_l].T
@@ -234,7 +231,7 @@ class WignerDReal:
         """
         # Retrieve the key and the position of the l value in the key names
         keys = tensor.keys
-        idx_l_value = keys.names.index("spherical_harmonics_l")
+        idx_l_value = keys.names.index("o3_lambda")
 
         # Iterate over the blocks and rotate
         rotated_blocks = []
@@ -257,7 +254,7 @@ class WignerDReal:
         """
         # Retrieve the key and the position of the l value in the key names
         keys = tensor.keys
-        idx_l_value = keys.names.index("spherical_harmonics_l")
+        idx_l_value = keys.names.index("o3_lambda")
 
         # Iterate over the blocks and rotate
         new_blocks = []
@@ -270,13 +267,13 @@ class WignerDReal:
 
             # Work out the inversion multiplier according to the convention
             inversion_multiplier = 1
-            if key["spherical_harmonics_l"] % 2 == 1:
+            if key["o3_lambda"] % 2 == 1:
                 inversion_multiplier *= -1
 
-            # "inversion_sigma" may not be present if CG iterations haven't been
+            # "o3_sigma" may not be present if CG iterations haven't been
             # performed (i.e. nu=1 rascaline SphericalExpansion)
-            if "inversion_sigma" in keys.names:
-                if key["inversion_sigma"] == -1:
+            if "o3_sigma" in keys.names:
+                if key["o3_sigma"] == -1:
                     inversion_multiplier *= -1
 
             # Invert the block by applying the inversion multiplier

@@ -1,8 +1,8 @@
 use metatensor::{Labels, TensorMap, LabelsBuilder};
 
 use crate::{System, Error};
-use crate::labels::{CenterSingleNeighborsSpeciesKeys, KeysBuilder};
-use crate::labels::{AtomCenteredSamples, SamplesBuilder, SpeciesFilter};
+use crate::labels::{CenterSingleNeighborsTypesKeys, KeysBuilder};
+use crate::labels::{AtomCenteredSamples, SamplesBuilder, AtomicTypeFilter};
 use crate::calculators::CalculatorBase;
 
 #[derive(Clone, Debug)]
@@ -26,7 +26,7 @@ impl CalculatorBase for GeometricMoments {
     }
 
     fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
-        let builder = CenterSingleNeighborsSpeciesKeys {
+        let builder = CenterSingleNeighborsTypesKeys {
             cutoff: self.cutoff,
             self_pairs: false,
         };
@@ -38,14 +38,14 @@ impl CalculatorBase for GeometricMoments {
     }
 
     fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
-        assert_eq!(keys.names(), ["species_center", "species_neighbor"]);
+        assert_eq!(keys.names(), ["center_type", "neighbor_type"]);
 
         let mut samples = Vec::new();
-        for [species_center, species_neighbor] in keys.iter_fixed_size() {
+        for [center_type, neighbor_type] in keys.iter_fixed_size() {
             let builder = AtomCenteredSamples {
                 cutoff: self.cutoff,
-                species_center: SpeciesFilter::Single(species_center.i32()),
-                species_neighbor: SpeciesFilter::Single(species_neighbor.i32()),
+                center_type: AtomicTypeFilter::Single(center_type.i32()),
+                neighbor_type: AtomicTypeFilter::Single(neighbor_type.i32()),
                 self_pairs: false,
             };
 
@@ -63,15 +63,15 @@ impl CalculatorBase for GeometricMoments {
     }
 
     fn positions_gradient_samples(&self, keys: &Labels, samples: &[Labels], systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
-        assert_eq!(keys.names(), ["species_center", "species_neighbor"]);
+        assert_eq!(keys.names(), ["center_type", "neighbor_type"]);
         debug_assert_eq!(keys.count(), samples.len());
 
         let mut gradient_samples = Vec::new();
-        for ([center_species, species_neighbor], samples_for_key) in keys.iter_fixed_size().zip(samples) {
+        for ([center_type, neighbor_type], samples_for_key) in keys.iter_fixed_size().zip(samples) {
             let builder = AtomCenteredSamples {
                 cutoff: self.cutoff,
-                species_center: SpeciesFilter::Single(center_species.i32()),
-                species_neighbor: SpeciesFilter::Single(species_neighbor.i32()),
+                center_type: AtomicTypeFilter::Single(center_type.i32()),
+                neighbor_type: AtomicTypeFilter::Single(neighbor_type.i32()),
                 self_pairs: false,
             };
 
@@ -101,17 +101,17 @@ impl CalculatorBase for GeometricMoments {
 
     // [compute]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
-        assert_eq!(descriptor.keys().names(), ["species_center", "species_neighbor"]);
+        assert_eq!(descriptor.keys().names(), ["center_type", "neighbor_type"]);
 
         let do_positions_gradients = descriptor.block_by_id(0).gradient("positions").is_some();
 
         for (system_i, system) in systems.iter_mut().enumerate() {
             system.compute_neighbors(self.cutoff)?;
-            let species = system.species()?;
+            let types = system.types()?;
 
             for pair in system.pairs()? {
                 let first_block_id = descriptor.keys().position(&[
-                    species[pair.first].into(), species[pair.second].into(),
+                    types[pair.first].into(), types[pair.second].into(),
                 ]);
 
                 let first_sample_position = if let Some(block_id) = first_block_id {
@@ -123,7 +123,7 @@ impl CalculatorBase for GeometricMoments {
                 };
 
                 let second_block_id = descriptor.keys().position(&[
-                    species[pair.second].into(), species[pair.first].into(),
+                    types[pair.second].into(), types[pair.first].into(),
                 ]);
                 let second_sample_position = if let Some(block_id) = second_block_id {
                     descriptor.block_by_id(block_id).samples().position(&[
@@ -274,7 +274,7 @@ mod tests {
 
         // check the results
         assert_eq!(*descriptor.keys(), Labels::new(
-            ["species_center", "species_neighbor"],
+            ["center_type", "neighbor_type"],
             &[[-42, 1], [1, -42], [1, 1], [1, 6], [6, 1]]
         ));
 
@@ -284,7 +284,7 @@ mod tests {
         // O center, H neighbor
         let block = &descriptor.block_by_id(0);
         assert_eq!(block.samples(), Labels::new(
-            ["structure", "center"],
+            ["system", "atom"],
             &[[0, 0]]
         ));
 
@@ -296,7 +296,7 @@ mod tests {
         // H center, O neighbor
         let block = &descriptor.block_by_id(1);
         assert_eq!(block.samples(), Labels::new(
-            ["structure", "center"],
+            ["system", "atom"],
             &[[0, 1], [0, 2]]
         ));
 
@@ -308,7 +308,7 @@ mod tests {
         // H center, H neighbor
         let block = &descriptor.block_by_id(2);
         assert_eq!(block.samples(), Labels::new(
-            ["structure", "center"],
+            ["system", "atom"],
             &[[0, 1], [0, 2]]
         ));
 
@@ -320,7 +320,7 @@ mod tests {
         // H center, C neighbor
         let block = &descriptor.block_by_id(3);
         assert_eq!(block.samples(), Labels::new(
-            ["structure", "center"],
+            ["system", "atom"],
             &[[1, 1]]
         ));
 
@@ -332,7 +332,7 @@ mod tests {
         // C center, H neighbor
         let block = &descriptor.block_by_id(4);
         assert_eq!(block.samples(), Labels::new(
-            ["structure", "center"],
+            ["system", "atom"],
             &[[1, 0]]
         ));
 
@@ -361,7 +361,7 @@ mod more_tests {
 
         // build a list of samples to compute
         let samples = Labels::new(
-            ["structure", "center"],
+            ["system", "atom"],
             &[[0, 1], [0, 2], [1, 0], [1, 2]]
         );
 
@@ -371,7 +371,7 @@ mod more_tests {
 
         // Some keys (more than the calculator would produce by default)
         let keys = Labels::new(
-            ["species_center", "species_neighbor"],
+            ["center_type", "neighbor_type"],
             &[[-42, 1], [1, 8], [1, -42], [8, 8], [1, 1], [1, 6], [6, 1]]
         );
 

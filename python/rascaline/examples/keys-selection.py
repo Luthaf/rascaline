@@ -54,7 +54,7 @@ print("keys names:", descriptor.keys.names)
 # keys ``[1,1,1]`` and ``[4,4,4]`` will be calculated.
 
 selection = Labels(
-    names=["species_center", "species_neighbor_1", "species_neighbor_2"],
+    names=["center_type", "neighbor_1_type", "neighbor_2_type"],
     values=np.array([[1, 1, 1], [4, 4, 4]], dtype=np.int32),
 )
 selected_descriptor = calculator.compute(frames, selected_keys=selection)
@@ -86,8 +86,8 @@ print(selected_descriptor.block(1).values.shape)
 # select different properties for each block:
 
 selection = [
-    Labels(names=["l", "n1", "n2"], values=np.array([[0, 0, 0]])),
-    Labels(names=["l", "n1", "n2"], values=np.array([[1, 1, 1]])),
+    Labels(names=["l", "n_1", "n_2"], values=np.array([[0, 0, 0]])),
+    Labels(names=["l", "n_1", "n_2"], values=np.array([[1, 1, 1]])),
 ]
 blocks = []
 for entries in selection:
@@ -101,7 +101,7 @@ for entries in selection:
     )
 
 keys = Labels(
-    names=["species_center", "species_neighbor_1", "species_neighbor_2"],
+    names=["center_type", "neighbor_1_type", "neighbor_2_type"],
     values=np.array([[1, 1, 1], [8, 8, 8]], dtype=np.int32),
 )
 
@@ -113,7 +113,7 @@ selected_properties = TensorMap(keys, blocks)
 # ``selected_keys``, meaning the output will only contain this one key/block.
 
 selected_keys = Labels(
-    names=["species_center", "species_neighbor_1", "species_neighbor_2"],
+    names=["center_type", "neighbor_1_type", "neighbor_2_type"],
     values=np.array([[1, 1, 1]], dtype=np.int32),
 )
 

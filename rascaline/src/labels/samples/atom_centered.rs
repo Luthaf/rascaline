@@ -3,29 +3,29 @@ use std::collections::BTreeSet;
 use metatensor::{Labels, LabelsBuilder};
 
 use crate::{Error, System};
-use super::{SamplesBuilder, SpeciesFilter};
+use super::{SamplesBuilder, AtomicTypeFilter};
 
 
 /// `SampleBuilder` for atom-centered representation. This will create one
-/// sample for each atom, optionally filtering on the central atom species. The
-/// sample names are ("structure", "center").
+/// sample for each atom, optionally filtering on the central atom type. The
+/// sample names are ("system", "atom").
 ///
 /// Positions gradient samples include all atoms within a spherical cutoff,
-/// optionally filtering on the neighbor atom species.
+/// optionally filtering on the neighbor atom type.
 pub struct AtomCenteredSamples {
     /// spherical cutoff radius used to construct the atom-centered environments
     pub cutoff: f64,
-    /// Filter for the central atom species
-    pub species_center: SpeciesFilter,
-    /// Filter for the neighbor atom species
-    pub species_neighbor: SpeciesFilter,
+    /// Filter for the central atom type
+    pub center_type: AtomicTypeFilter,
+    /// Filter for the neighbor atom type
+    pub neighbor_type: AtomicTypeFilter,
     /// Should the central atom be considered it's own neighbor?
     pub self_pairs: bool,
 }
 
 impl SamplesBuilder for AtomCenteredSamples {
     fn sample_names() -> Vec<&'static str> {
-        vec!["structure", "center"]
+        vec!["system", "atom"]
     }
 
     fn samples(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
@@ -33,65 +33,65 @@ impl SamplesBuilder for AtomCenteredSamples {
         let mut builder = LabelsBuilder::new(Self::sample_names());
         for (system_i, system) in systems.iter_mut().enumerate() {
             system.compute_neighbors(self.cutoff)?;
-            let species = system.species()?;
+            let types = system.types()?;
 
-            match &self.species_neighbor {
-                SpeciesFilter::Any => {
-                    for (center_i, &species_center) in species.iter().enumerate() {
-                        if self.species_center.matches(species_center) {
+            match &self.neighbor_type {
+                AtomicTypeFilter::Any => {
+                    for (center_i, &center_type) in types.iter().enumerate() {
+                        if self.center_type.matches(center_type) {
                             builder.add(&[system_i, center_i]);
                         }
                     }
                 }
-                SpeciesFilter::AllOf(requested_species) => {
-                    let mut neighbor_species = BTreeSet::new();
-                    for (center_i, &species_center) in species.iter().enumerate() {
-                        if self.species_center.matches(species_center) {
-                            for pair in system.pairs_containing(center_i)? {
-                                let neighbor = if pair.first == center_i {
+                AtomicTypeFilter::AllOf(requested_types) => {
+                    let mut neighbor_types = BTreeSet::new();
+                    for (atom_i, &center_type) in types.iter().enumerate() {
+                        if self.center_type.matches(center_type) {
+                            for pair in system.pairs_containing(atom_i)? {
+                                let neighbor = if pair.first == atom_i {
                                     pair.second
                                 } else {
                                     pair.first
                                 };
 
-                                neighbor_species.insert(species[neighbor]);
+                                neighbor_types.insert(types[neighbor]);
                             }
 
                             if self.self_pairs {
-                                neighbor_species.insert(species_center);
+                                neighbor_types.insert(center_type);
                             }
 
-                            if requested_species.is_subset(&neighbor_species) {
-                                builder.add(&[system_i, center_i]);
+                            if requested_types.is_subset(&neighbor_types) {
+                                builder.add(&[system_i, atom_i]);
                             }
-                            neighbor_species.clear();
+                            neighbor_types.clear();
                         }
                     }
                 }
                 selection => {
-                    let mut matching_centers = BTreeSet::new();
-                    for (center_i, &species_center) in species.iter().enumerate() {
-                        if self.species_center.matches(species_center) {
-                            if self.self_pairs && selection.matches(species_center) {
-                                matching_centers.insert(center_i);
+                    let mut matching_atoms = BTreeSet::new();
+                    for (atom_i, &center_type) in types.iter().enumerate() {
+                        if self.center_type.matches(center_type) {
+                            if self.self_pairs && selection.matches(center_type) {
+                                matching_atoms.insert(atom_i);
                             }
 
-                            for pair in system.pairs_containing(center_i)? {
-                                let neighbor = if pair.first == center_i {
+                            for pair in system.pairs_containing(atom_i)? {
+                                let neighbor = if pair.first == atom_i {
                                     pair.second
                                 } else {
                                     pair.first
                                 };
 
-                                if selection.matches(species[neighbor]) {
-                                    matching_centers.insert(center_i);
+                                if selection.matches(types[neighbor]) {
+                                    matching_atoms.insert(atom_i);
                                 }
                             }
                         }
                     }
 
-                    for center in matching_centers {
-                        builder.add(&[system_i, center]);
+                    for atom_i in matching_atoms {
+                        builder.add(&[system_i, atom_i]);
                     }
                 }
             }
@@ -102,46 +102,46 @@ impl SamplesBuilder for AtomCenteredSamples {
 
     fn gradients_for(&self, systems: &mut [Box<dyn System>], samples: &Labels) -> Result<Labels, Error> {
         assert!(self.cutoff > 0.0 && self.cutoff.is_finite(), "cutoff must be positive for AtomCenteredSamples");
-        assert_eq!(samples.names(), ["structure", "center"]);
-        let mut builder = LabelsBuilder::new(vec!["sample", "structure", "atom"]);
+        assert_eq!(samples.names(), ["system", "atom"]);
+        let mut builder = LabelsBuilder::new(vec!["sample", "system", "atom"]);
 
         // we could try to find a better way to estimate this, but in the worst
         // case this would only over-allocate a bit
         let average_neighbors_per_atom = 10;
         builder.reserve(average_neighbors_per_atom * samples.count());
 
-        for (sample_i, [structure_i, center_i]) in samples.iter_fixed_size().enumerate() {
-            let structure_i = structure_i.usize();
-            let center_i = center_i.usize();
+        for (sample_i, [system_i, center_i]) in samples.iter_fixed_size().enumerate() {
+            let system_i = system_i.usize();
+            let atom_i = center_i.usize();
 
-            let system = &mut systems[structure_i];
+            let system = &mut systems[system_i];
             system.compute_neighbors(self.cutoff)?;
-            let species = system.species()?;
+            let types = system.types()?;
 
             let mut neighbors = BTreeSet::new();
             // gradient with respect to the position of the central atom
-            if self.self_pairs && self.species_neighbor.matches(species[center_i]) {
-                neighbors.insert(center_i);
+            if self.self_pairs && self.neighbor_type.matches(types[atom_i]) {
+                neighbors.insert(atom_i);
             }
 
-            for pair in system.pairs_containing(center_i)? {
-                let neighbor_i = if pair.first == center_i {
+            for pair in system.pairs_containing(atom_i)? {
+                let neighbor_i = if pair.first == atom_i {
                     pair.second
                 } else {
-                    debug_assert_eq!(pair.second, center_i);
+                    debug_assert_eq!(pair.second, atom_i);
                     pair.first
                 };
 
-                if self.species_neighbor.matches(species[neighbor_i]) {
+                if self.neighbor_type.matches(types[neighbor_i]) {
                     neighbors.insert(neighbor_i);
-                    // if the neighbor species matches, the center will also
+                    // if the neighbor type matches, the center will also
                     // contribute to gradients
-                    neighbors.insert(center_i);
+                    neighbors.insert(atom_i);
                 }
             }
 
             for neighbor in neighbors {
-                builder.add(&[sample_i, structure_i, neighbor]);
+                builder.add(&[sample_i, system_i, neighbor]);
             }
         }
 
@@ -159,20 +159,20 @@ mod tests {
         let mut systems = test_systems(&["CH", "water"]);
         let builder = AtomCenteredSamples {
             cutoff: 2.0,
-            species_center: SpeciesFilter::Any,
-            species_neighbor: SpeciesFilter::Any,
+            center_type: AtomicTypeFilter::Any,
+            neighbor_type: AtomicTypeFilter::Any,
             self_pairs: true,
         };
 
         let samples = builder.samples(&mut systems).unwrap();
         assert_eq!(samples, Labels::new(
-            ["structure", "center"],
+            ["system", "atom"],
             &[[0, 0], [0, 1], [1, 0], [1, 1], [1, 2]],
         ));
 
         let gradient_samples = builder.gradients_for(&mut systems, &samples).unwrap();
         assert_eq!(gradient_samples, Labels::new(
-            ["sample", "structure", "atom"],
+            ["sample", "system", "atom"],
             &[
                 // gradients of atoms in CH
                 [0, 0, 0], [0, 0, 1],
@@ -186,24 +186,24 @@ mod tests {
     }
 
     #[test]
-    fn filter_species_center() {
+    fn filter_center_type() {
         let mut systems = test_systems(&["CH", "water"]);
         let builder = AtomCenteredSamples {
             cutoff: 2.0,
-            species_center: SpeciesFilter::Single(1),
-            species_neighbor: SpeciesFilter::Any,
+            center_type: AtomicTypeFilter::Single(1),
+            neighbor_type: AtomicTypeFilter::Any,
             self_pairs: true,
         };
 
         let samples = builder.samples(&mut systems).unwrap();
         assert_eq!(samples, Labels::new(
-            ["structure", "center"],
+            ["system", "atom"],
             &[[0, 1], [1, 1], [1, 2]],
         ));
 
         let gradient_samples = builder.gradients_for(&mut systems, &samples).unwrap();
         assert_eq!(gradient_samples, Labels::new(
-            ["sample", "structure", "atom"],
+            ["sample", "system", "atom"],
             &[
                 // gradients of atoms in CH
                 [0, 0, 0], [0, 0, 1],
@@ -215,24 +215,24 @@ mod tests {
     }
 
     #[test]
-    fn filter_species_neighbor() {
+    fn filter_neighbor_type() {
         let mut systems = test_systems(&["CH", "water"]);
         let builder = AtomCenteredSamples {
             cutoff: 2.0,
-            species_center: SpeciesFilter::Any,
-            species_neighbor: SpeciesFilter::Single(1),
+            center_type: AtomicTypeFilter::Any,
+            neighbor_type: AtomicTypeFilter::Single(1),
             self_pairs: true,
         };
 
         let samples = builder.samples(&mut systems).unwrap();
         assert_eq!(samples, Labels::new(
-            ["structure", "center"],
+            ["system", "atom"],
             &[[0, 0], [0, 1], [1, 0], [1, 1], [1, 2]],
         ));
 
         let gradient_samples = builder.gradients_for(&mut systems, &samples).unwrap();
         assert_eq!(gradient_samples, Labels::new(
-            ["sample", "structure", "atom"],
+            ["sample", "system", "atom"],
             &[
                 // gradients of atoms in CH w.r.t H atom only
                 [0, 0, 0], [0, 0, 1],
@@ -246,14 +246,14 @@ mod tests {
 
         let builder = AtomCenteredSamples {
             cutoff: 2.0,
-            species_center: SpeciesFilter::Any,
-            species_neighbor: SpeciesFilter::OneOf(vec![1, 6]),
+            center_type: AtomicTypeFilter::Any,
+            neighbor_type: AtomicTypeFilter::OneOf(vec![1, 6]),
             self_pairs: true,
         };
 
         let gradient_samples = builder.gradients_for(&mut systems, &samples).unwrap();
         assert_eq!(gradient_samples, Labels::new(
-            ["sample", "structure", "atom"],
+            ["sample", "system", "atom"],
             &[
                 // gradients of atoms in CH w.r.t C and H atoms
                 [0, 0, 0], [0, 0, 1],
@@ -268,7 +268,7 @@ mod tests {
 
     #[test]
     fn partial_gradients() {
-        let samples = Labels::new(["structure", "center"], &[
+        let samples = Labels::new(["system", "atom"], &[
             [1, 0],
             [0, 0],
             [1, 1],
@@ -277,26 +277,26 @@ mod tests {
         let mut systems = test_systems(&["CH", "water"]);
         let builder = AtomCenteredSamples {
             cutoff: 2.0,
-            species_center: SpeciesFilter::Any,
-            species_neighbor: SpeciesFilter::Single(-42),
+            center_type: AtomicTypeFilter::Any,
+            neighbor_type: AtomicTypeFilter::Single(-42),
             self_pairs: true,
         };
 
         let gradients = builder.gradients_for(&mut systems, &samples).unwrap();
         assert_eq!(gradients, Labels::new(
-            ["sample", "structure", "atom"],
+            ["sample", "system", "atom"],
             &[[0, 1, 0], [2, 1, 0], [2, 1, 1]]
         ));
 
         let builder = AtomCenteredSamples {
             cutoff: 2.0,
-            species_center: SpeciesFilter::Any,
-            species_neighbor: SpeciesFilter::Single(1),
+            center_type: AtomicTypeFilter::Any,
+            neighbor_type: AtomicTypeFilter::Single(1),
             self_pairs: true,
         };
         let gradients = builder.gradients_for(&mut systems, &samples).unwrap();
         assert_eq!(gradients, Labels::new(
-            ["sample", "structure", "atom"],
+            ["sample", "system", "atom"],
             &[
                 // gradients of first sample, O in water
                 [0, 1, 0], [0, 1, 1], [0, 1, 2],

@@ -48,8 +48,8 @@ metatensor::TensorMap compute_soap(const std::string& path) {
     auto calculator = rascaline::Calculator("soap_power_spectrum", parameters);
     auto descriptor = calculator.compute(systems);
 
-    descriptor.keys_to_samples("species_center");
-    descriptor.keys_to_properties(std::vector<std::string>{"species_neighbor_1", "species_neighbor_2"});
+    descriptor.keys_to_samples("center_type");
+    descriptor.keys_to_properties(std::vector<std::string>{"neighbor_1_type", "neighbor_2_type"});
 
     return descriptor;
 }

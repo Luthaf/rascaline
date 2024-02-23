@@ -45,11 +45,11 @@ pub trait System: Send + Sync {
     /// Get the number of atoms in this system
     fn size(&self) -> Result<usize, Error>;
 
-    /// Get the atomic species for all atoms in this system. The returned value
+    /// Get the atomic types for all atoms in this system. The returned value
     /// must be a slice of length `self.size()`, where each different atomic
-    /// species is identified with a different integer value. These values are
+    /// type is identified with a different integer value. These values are
     /// usually the atomic number, but don't have to.
-    fn species(&self) -> Result<&[i32], Error>;
+    fn types(&self) -> Result<&[i32], Error>;
 
     /// Get the positions for all atoms in this system. The returned value must
     /// be a slice of length `self.size()` containing the Cartesian coordinates
@@ -68,10 +68,10 @@ pub trait System: Send + Sync {
     /// call to `compute_neighbors`.
     fn pairs(&self) -> Result<&[Pair], Error>;
 
-    /// Get the list of pairs in this system which include the atom at index
-    /// `center`. The same restrictions on the list of pairs as `System::pairs`
+    /// Get the list of pairs in this system which include the atom at the given
+    /// index. The same restrictions on the list of pairs as `System::pairs`
     /// applies, with the additional condition that the pair `i-j` should be
     /// included both in the return of `pairs_containing(i)` and
     /// `pairs_containing(j)`.
-    fn pairs_containing(&self, center: usize) -> Result<&[Pair], Error>;
+    fn pairs_containing(&self, atom: usize) -> Result<&[Pair], Error>;
 }

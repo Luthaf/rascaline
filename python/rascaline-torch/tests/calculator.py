@@ -35,16 +35,16 @@ def test_compute(system):
     descriptor = calculator.compute(system, gradients=["positions"])
 
     assert len(descriptor.keys) == 2
-    assert descriptor.keys.names == ["species_center"]
+    assert descriptor.keys.names == ["center_type"]
     assert torch.all(descriptor.keys.values == torch.tensor([[1], [8]]))
 
-    H_block = descriptor.block({"species_center": 1})
+    H_block = descriptor.block({"center_type": 1})
     assert H_block.values.shape == (2, 2)
     assert torch.all(H_block.values[0] == torch.tensor([2, 6]))
     assert torch.all(H_block.values[1] == torch.tensor([3, 6]))
 
     assert len(H_block.samples) == 2
-    assert H_block.samples.names == ["structure", "center"]
+    assert H_block.samples.names == ["system", "atom"]
     assert tuple(H_block.samples[0]) == (0, 0)
     assert tuple(H_block.samples[1]) == (0, 1)
 
@@ -63,7 +63,7 @@ def test_compute(system):
         assert torch.all(gradient.values[i, 2, :] == torch.tensor([0, 1]))
 
     assert len(gradient.samples) == 8
-    assert gradient.samples.names == ["sample", "structure", "atom"]
+    assert gradient.samples.names == ["sample", "system", "atom"]
     assert tuple(gradient.samples[0]) == (0, 0, 0)
     assert tuple(gradient.samples[1]) == (0, 0, 1)
     assert tuple(gradient.samples[2]) == (0, 0, 2)
@@ -76,7 +76,7 @@ def test_compute(system):
     assert len(gradient.components) == 1
     component = gradient.components[0]
     assert len(component) == 3
-    assert component.names == ["direction"]
+    assert component.names == ["xyz"]
     assert tuple(component[0]) == (0,)
     assert tuple(component[1]) == (1,)
     assert tuple(component[2]) == (2,)
@@ -86,7 +86,7 @@ def test_compute(system):
     assert tuple(gradient.properties[0]) == (1, 0)
     assert tuple(gradient.properties[1]) == (0, 1)
 
-    O_block = descriptor.block({"species_center": 8})
+    O_block = descriptor.block({"center_type": 8})
     assert O_block.values.shape == (2, 2)
     assert torch.all(O_block.values[0] == torch.tensor([4, 6]))
     assert torch.all(O_block.values[1] == torch.tensor([5, 6]))
@@ -103,12 +103,12 @@ def test_compute_multiple_systems(system):
     calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
     descriptor = calculator.compute(systems)
 
-    H_block = descriptor.block({"species_center": 1})
+    H_block = descriptor.block({"center_type": 1})
     assert H_block.values.shape == (6, 2)
     expected = torch.tensor([(0, 0), (0, 1), (1, 0), (1, 1), (2, 0), (2, 1)])
     assert torch.all(H_block.samples.values == expected)
 
-    O_block = descriptor.block({"species_center": 8})
+    O_block = descriptor.block({"center_type": 8})
     assert O_block.values.shape == (6, 2)
 
 
@@ -116,14 +116,14 @@ def test_key_selection(system):
     calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
     descriptor = calculator.compute(
         system,
-        selected_keys=Labels("species_center", torch.IntTensor([[12], [1]])),
+        selected_keys=Labels("center_type", torch.IntTensor([[12], [1]])),
     )
     assert torch.all(descriptor.keys.values == torch.tensor([[12], [1]]))
 
-    H_block = descriptor.block({"species_center": 1})
+    H_block = descriptor.block({"center_type": 1})
     assert H_block.values.shape == (2, 2)
 
-    missing_block = descriptor.block({"species_center": 12})
+    missing_block = descriptor.block({"center_type": 12})
     assert missing_block.values.shape == (0, 2)
 
 
@@ -131,13 +131,13 @@ def test_samples_selection(system):
     calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
     descriptor = calculator.compute(
         system,
-        selected_samples=Labels("center", torch.IntTensor([[0], [2]])),
+        selected_samples=Labels("atom", torch.IntTensor([[0], [2]])),
     )
 
-    H_block = descriptor.block({"species_center": 1})
+    H_block = descriptor.block({"center_type": 1})
     assert torch.all(H_block.samples.values == torch.tensor([(0, 0)]))
 
-    O_block = descriptor.block({"species_center": 8})
+    O_block = descriptor.block({"center_type": 8})
     assert torch.all(O_block.samples.values == torch.tensor([(0, 2)]))
 
 
@@ -148,10 +148,10 @@ def test_properties_selection(system):
         selected_properties=Labels("index_delta", torch.IntTensor([[0]])),
     )
 
-    H_block = descriptor.block({"species_center": 1})
+    H_block = descriptor.block({"center_type": 1})
     assert torch.all(H_block.properties.values == torch.tensor([(0, 1)]))
 
-    O_block = descriptor.block({"species_center": 8})
+    O_block = descriptor.block({"center_type": 8})
     assert torch.all(O_block.properties.values == torch.tensor([(0, 1)]))
 
 

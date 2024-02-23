@@ -11,8 +11,8 @@ use metatensor::{LabelsBuilder, Labels, LabelValue};
 use crate::{Error, System, Vector3D};
 use crate::systems::UnitCell;
 
-use crate::labels::{SamplesBuilder, SpeciesFilter, LongRangeSamplesPerAtom};
-use crate::labels::{KeysBuilder, AllSpeciesPairsKeys};
+use crate::labels::{SamplesBuilder, AtomicTypeFilter, LongRangeSamplesPerAtom};
+use crate::labels::{KeysBuilder, AllTypesPairsKeys};
 
 use super::super::CalculatorBase;
 
@@ -94,15 +94,15 @@ struct StructureFactors {
     /// Imaginary part of `e^{i k r}`, the array shape is `(n_atoms, k_vector)`
     imag: Array2<f64>,
     /// Real part of `\sum_j e^{i k r_i} e^{-i k r_j}`, with one map entry for
-    /// each species of the atom j. The arrays shape are `(n_atoms, k_vector)`
+    /// each atomic neighbor type. The arrays shape are `(n_atoms, k_vector)`
     real_per_center: BTreeMap<i32, Array2<f64>>,
     /// Imaginary part of `\sum_j e^{i k r_i} e^{-i k r_j}`, with one map entry
-    /// for each species of the atom j. The arrays shape are `(n_atoms,
+    /// for each atomic neighbor type. The arrays shape are `(n_atoms,
     /// k_vector)`
     imag_per_center: BTreeMap<i32, Array2<f64>>,
 }
 
-fn compute_structure_factors(positions: &[Vector3D], species: &[i32], k_vectors: &[KVector]) -> StructureFactors {
+fn compute_structure_factors(positions: &[Vector3D], types: &[i32], k_vectors: &[KVector]) -> StructureFactors {
     let n_atoms = positions.len();
     let n_k_vectors = k_vectors.len();
 
@@ -118,39 +118,40 @@ fn compute_structure_factors(positions: &[Vector3D], species: &[i32], k_vectors:
         }
     }
 
-    let all_species = species.iter().copied().collect::<BTreeSet<_>>();
-    let mut real_per_center = all_species.iter().copied()
+    let all_types = types.iter().copied().collect::<BTreeSet<_>>();
+    let mut real_per_center = all_types.iter().copied()
         .map(|s| (s, Array2::from_elem((n_atoms, n_k_vectors), 0.0)))
         .collect::<BTreeMap<_, _>>();
-    let mut imag_per_center = all_species.iter().copied()
+    let mut imag_per_center = all_types.iter().copied()
         .map(|s| (s, Array2::from_elem((n_atoms, n_k_vectors), 0.0)))
         .collect::<BTreeMap<_, _>>();
 
-    // Precompute species-dependent sum over neighbours j of sines and cosines
-    let mut sumjcos = all_species.iter().copied()
+    // Precompute sums of sines and cosines over neighbors (j), depending on the
+    // neighbors atomic types
+    let mut sum_j_cos = all_types.iter().copied()
         .map(|s| (s, Array1::from_elem(n_k_vectors, 0.0)))
         .collect::<BTreeMap<_, _>>();
-    let mut sumjsin = all_species.iter().copied()
+    let mut sum_j_sin = all_types.iter().copied()
         .map(|s| (s, Array1::from_elem(n_k_vectors, 0.0)))
         .collect::<BTreeMap<_, _>>();
     for j in 0..n_atoms {
-        let sumjcos = sumjcos.get_mut(&species[j]).unwrap();
-        let sumjsin = sumjsin.get_mut(&species[j]).unwrap();
+        let sum_j_cos = sum_j_cos.get_mut(&types[j]).unwrap();
+        let sum_j_sin = sum_j_sin.get_mut(&types[j]).unwrap();
         for k in 0..n_k_vectors {
-            sumjcos[k] += cosines[[j, k]];
-            sumjsin[k] += sines[[j, k]];
+            sum_j_cos[k] += cosines[[j, k]];
+            sum_j_sin[k] += sines[[j, k]];
         }
     }
 
     // Compute Sum_j cos(k*r_ij) and Sum_j sin(k*r_ij) using the subtraction theorem
     for i in 0..n_atoms {
-        for (species, real_per_center) in &mut real_per_center {
-            let sumjcos = sumjcos.get_mut(species).unwrap();
-            let sumjsin = sumjsin.get_mut(species).unwrap();
-            let imag_per_center = imag_per_center.get_mut(species).unwrap();
+        for (neighbor_type, real_per_center) in &mut real_per_center {
+            let sum_j_cos = sum_j_cos.get_mut(neighbor_type).unwrap();
+            let sum_j_sin = sum_j_sin.get_mut(neighbor_type).unwrap();
+            let imag_per_center = imag_per_center.get_mut(neighbor_type).unwrap();
             for k in 0..n_k_vectors {
-                let real = cosines[[i, k]] * sumjcos[k] + sines[[i, k]] * sumjsin[k];
-                let imag = sines[[i, k]] * sumjcos[k] - cosines[[i, k]] * sumjsin[k];
+                let real = cosines[[i, k]] * sum_j_cos[k] + sines[[i, k]] * sum_j_sin[k];
+                let imag = sines[[i, k]] * sum_j_cos[k] - cosines[[i, k]] * sum_j_sin[k];
                 real_per_center[[i, k]] += 2.0 * real;
                 imag_per_center[[i, k]] += 2.0 * imag;
             }
@@ -211,17 +212,17 @@ impl LodeSphericalExpansion {
             return RefCell::new(k_vector_to_m_n);
         }).borrow_mut();
 
-        for spherical_harmonics_l in 0..=self.parameters.max_angular {
-            let shape = (2 * spherical_harmonics_l + 1, self.parameters.max_radial, k_vectors.len());
+        for o3_lambda in 0..=self.parameters.max_angular {
+            let shape = (2 * o3_lambda + 1, self.parameters.max_radial, k_vectors.len());
 
             // resize the arrays while keeping existing allocations
-            let array = std::mem::take(&mut k_vector_to_m_n[spherical_harmonics_l]);
+            let array = std::mem::take(&mut k_vector_to_m_n[o3_lambda]);
 
             let mut data = array.into_raw_vec();
             data.resize(shape.0 * shape.1 * shape.2, 0.0);
             let array = Array3::from_shape_vec(shape, data).expect("wrong shape");
 
-            k_vector_to_m_n[spherical_harmonics_l] = array;
+            k_vector_to_m_n[o3_lambda] = array;
         }
 
         let mut radial_integral = self.radial_integral.get_or(|| {
@@ -380,8 +381,8 @@ impl LodeSphericalExpansion {
     /// Compute center atom contribution.
     ///
     /// By symmetry, this only affects the (l, m) = (0, 0) components of the
-    /// projection coefficients and only the chemical species channel that
-    /// agrees with the center atom.
+    /// projection coefficients and only the neighbor type blocks that agrees
+    /// with the center atom.
     fn do_center_contribution(&mut self, systems: &mut[Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
         let mut radial_integral = self.radial_integral.get_or(|| {
             let radial_integral = LodeRadialIntegralCache::new(
@@ -403,13 +404,14 @@ impl LodeSphericalExpansion {
         let central_atom_contrib = &radial_integral.center_contribution;
 
         for (system_i, system) in systems.iter_mut().enumerate() {
-            let species = system.species()?;
+            let types = system.types()?;
 
             for center_i in 0..system.size()? {
                 let block_i = descriptor.keys().position(&[
                     0.into(),
-                    species[center_i].into(),
-                    species[center_i].into(),
+                    1.into(),
+                    types[center_i].into(),
+                    types[center_i].into(),
                 ]);
 
                 if block_i.is_none() {
@@ -452,13 +454,13 @@ impl CalculatorBase for LodeSphericalExpansion {
     }
 
     fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
-        let builder = AllSpeciesPairsKeys {};
+        let builder = AllTypesPairsKeys {};
         let keys = builder.keys(systems)?;
 
-        let mut builder = LabelsBuilder::new(vec!["spherical_harmonics_l", "species_center", "species_neighbor"]);
-        for &[species_center, species_neighbor] in keys.iter_fixed_size() {
-            for spherical_harmonics_l in 0..=self.parameters.max_angular {
-                builder.add(&[spherical_harmonics_l.into(), species_center, species_neighbor]);
+        let mut builder = LabelsBuilder::new(vec!["o3_lambda", "o3_sigma", "center_type", "neighbor_type"]);
+        for &[center_type, neighbor_type] in keys.iter_fixed_size() {
+            for o3_lambda in 0..=self.parameters.max_angular {
+                builder.add(&[o3_lambda.into(), 1.into(), center_type, neighbor_type]);
             }
         }
 
@@ -470,29 +472,29 @@ impl CalculatorBase for LodeSphericalExpansion {
     }
 
     fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
-        assert_eq!(keys.names(), ["spherical_harmonics_l", "species_center", "species_neighbor"]);
+        assert_eq!(keys.names(), ["o3_lambda", "o3_sigma", "center_type", "neighbor_type"]);
 
-        // only compute the samples once for each `species_center, species_neighbor`,
-        // and re-use the results across `spherical_harmonics_l`.
-        let mut samples_per_species = BTreeMap::new();
-        for [_, species_center, species_neighbor] in keys.iter_fixed_size() {
-            if samples_per_species.contains_key(&(species_center, species_neighbor)) {
+        // only compute the samples once for each `center_type, neighbor_type`,
+        // and re-use the results across `o3_lambda`.
+        let mut samples_per_types = BTreeMap::new();
+        for [_, _, center_type, neighbor_type] in keys.iter_fixed_size() {
+            if samples_per_types.contains_key(&(center_type, neighbor_type)) {
                 continue;
             }
 
             let builder = LongRangeSamplesPerAtom {
-                species_center: SpeciesFilter::Single(species_center.i32()),
-                species_neighbor: SpeciesFilter::Single(species_neighbor.i32()),
+                center_type: AtomicTypeFilter::Single(center_type.i32()),
+                neighbor_type: AtomicTypeFilter::Single(neighbor_type.i32()),
                 self_pairs: true,
             };
 
-            samples_per_species.insert((species_center, species_neighbor), builder.samples(systems)?);
+            samples_per_types.insert((center_type, neighbor_type), builder.samples(systems)?);
         }
 
         let mut result = Vec::new();
-        for [_, species_center, species_neighbor] in keys.iter_fixed_size() {
-            let samples = samples_per_species.get(
-                &(species_center, species_neighbor)
+        for [_, _, center_type, neighbor_type] in keys.iter_fixed_size() {
+            let samples = samples_per_types.get(
+                &(center_type, neighbor_type)
             ).expect("missing samples");
 
             result.push(samples.clone());
@@ -509,14 +511,14 @@ impl CalculatorBase for LodeSphericalExpansion {
     }
 
     fn positions_gradient_samples(&self, keys: &Labels, samples: &[Labels], systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
-        assert_eq!(keys.names(), ["spherical_harmonics_l", "species_center", "species_neighbor"]);
+        assert_eq!(keys.names(), ["o3_lambda", "o3_sigma", "center_type", "neighbor_type"]);
         assert_eq!(keys.count(), samples.len());
 
         let mut gradient_samples = Vec::new();
-        for ([_, species_center, species_neighbor], samples) in keys.iter_fixed_size().zip(samples) {
+        for ([_, _, center_type, neighbor_type], samples) in keys.iter_fixed_size().zip(samples) {
             let builder = LongRangeSamplesPerAtom {
-                species_center: SpeciesFilter::Single(species_center.i32()),
-                species_neighbor: SpeciesFilter::Single(species_neighbor.i32()),
+                center_type: AtomicTypeFilter::Single(center_type.i32()),
+                neighbor_type: AtomicTypeFilter::Single(neighbor_type.i32()),
                 self_pairs: true,
             };
 
@@ -527,28 +529,28 @@ impl CalculatorBase for LodeSphericalExpansion {
     }
 
     fn components(&self, keys: &Labels) -> Vec<Vec<Labels>> {
-        assert_eq!(keys.names(), ["spherical_harmonics_l", "species_center", "species_neighbor"]);
+        assert_eq!(keys.names(), ["o3_lambda", "o3_sigma", "center_type", "neighbor_type"]);
 
-        // only compute the components once for each `spherical_harmonics_l`,
-        // and re-use the results across `species_center, species_neighbor`.
+        // only compute the components once for each `o3_lambda`,
+        // and re-use the results across `center_type, neighbor_type`.
         let mut component_by_l = BTreeMap::new();
-        for [spherical_harmonics_l, _, _] in keys.iter_fixed_size() {
-            if component_by_l.contains_key(spherical_harmonics_l) {
+        for [o3_lambda, _, _, _] in keys.iter_fixed_size() {
+            if component_by_l.contains_key(o3_lambda) {
                 continue;
             }
 
-            let mut component = LabelsBuilder::new(vec!["spherical_harmonics_m"]);
-            for m in -spherical_harmonics_l.i32()..=spherical_harmonics_l.i32() {
+            let mut component = LabelsBuilder::new(vec!["o3_mu"]);
+            for m in -o3_lambda.i32()..=o3_lambda.i32() {
                 component.add(&[LabelValue::new(m)]);
             }
 
             let components = vec![component.finish()];
-            component_by_l.insert(*spherical_harmonics_l, components);
+            component_by_l.insert(*o3_lambda, components);
         }
 
         let mut result = Vec::new();
-        for [spherical_harmonics_l, _, _] in keys.iter_fixed_size() {
-            let components = component_by_l.get(spherical_harmonics_l).expect("missing samples");
+        for [o3_lambda, _, _, _] in keys.iter_fixed_size() {
+            let components = component_by_l.get(o3_lambda).expect("missing samples");
             result.push(components.clone());
         }
         return result;
@@ -570,7 +572,7 @@ impl CalculatorBase for LodeSphericalExpansion {
 
     #[time_graph::instrument(name = "LodeSphericalExpansion::compute")]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
-        assert_eq!(descriptor.keys().names(), ["spherical_harmonics_l", "species_center", "species_neighbor"]);
+        assert_eq!(descriptor.keys().names(), ["o3_lambda", "o3_sigma", "center_type", "neighbor_type"]);
 
         self.do_center_contribution(systems, descriptor)?;
 
@@ -580,7 +582,7 @@ impl CalculatorBase for LodeSphericalExpansion {
             .zip_eq(&mut descriptors_by_system)
             .enumerate()
             .try_for_each(|(system_i, (system, descriptor))| {
-                let species = system.species()?;
+                let types = system.types()?;
                 let cell = system.cell()?;
                 if cell.shape() == UnitCell::infinite().shape() {
                     return Err(Error::InvalidParameter("LODE can only be used with periodic systems".into()));
@@ -595,7 +597,7 @@ impl CalculatorBase for LodeSphericalExpansion {
 
                 let structure_factors = compute_structure_factors(
                     system.positions()?,
-                    system.species()?,
+                    system.types()?,
                     &k_vectors
                 );
 
@@ -606,12 +608,13 @@ impl CalculatorBase for LodeSphericalExpansion {
                 // Add k = 0 contributions for (m, l) = (0, 0)
                 if self.parameters.potential_exponent == 0 || self.parameters.potential_exponent > 3 {
                     let k0_contrib = &self.compute_k0_contributions();
-                    for &species_neighbor in species {
+                    for &neighbor_type in types {
                         for center_i in 0..system.size()? {
                             let block_i = descriptor.keys().position(&[
                                 0.into(),
-                                species[center_i].into(),
-                                species_neighbor.into(),
+                                1.into(),
+                                types[center_i].into(),
+                                neighbor_type.into(),
                             ]).expect("missing block");
 
                             let mut block = descriptor.block_mut_by_id(block_i);
@@ -637,27 +640,28 @@ impl CalculatorBase for LodeSphericalExpansion {
                     .borrow();
 
                 // Main loop: Iterate over all atoms to evaluate the projection coefficients
-                for spherical_harmonics_l in 0..=self.parameters.max_angular {
-                    let phase = if spherical_harmonics_l % 2 == 0 {
-                        (-1.0_f64).powi(spherical_harmonics_l as i32 / 2)
+                for o3_lambda in 0..=self.parameters.max_angular {
+                    let phase = if o3_lambda % 2 == 0 {
+                        (-1.0_f64).powi(o3_lambda as i32 / 2)
                     } else {
-                        (-1.0_f64).powi((spherical_harmonics_l as i32 + 1) / 2)
+                        (-1.0_f64).powi((o3_lambda as i32 + 1) / 2)
                     };
 
-                    let sf_per_center = if spherical_harmonics_l % 2 == 0 {
+                    let sf_per_center = if o3_lambda % 2 == 0 {
                         &structure_factors.real_per_center
                     } else {
                         &structure_factors.imag_per_center
                     };
 
-                    let k_vector_to_m_n = &k_vector_to_m_n[spherical_harmonics_l];
+                    let k_vector_to_m_n = &k_vector_to_m_n[o3_lambda];
 
-                    for (&species_neighbor, sf_per_center) in sf_per_center {
+                    for (&neighbor_type, sf_per_center) in sf_per_center {
                         for center_i in 0..system.size()? {
                             let block_i = descriptor.keys().position(&[
-                                spherical_harmonics_l.into(),
-                                species[center_i].into(),
-                                species_neighbor.into(),
+                                o3_lambda.into(),
+                                1.into(),
+                                types[center_i].into(),
+                                neighbor_type.into(),
                             ]);
 
                             if block_i.is_none() {
@@ -676,7 +680,7 @@ impl CalculatorBase for LodeSphericalExpansion {
                                 None => continue
                             };
 
-                            for m in 0..(2 * spherical_harmonics_l + 1) {
+                            for m in 0..(2 * o3_lambda + 1) {
                                 for (property_i, [n]) in data.properties.iter_fixed_size().enumerate() {
                                     let n = n.usize();
 
@@ -703,12 +707,12 @@ impl CalculatorBase for LodeSphericalExpansion {
                                 let gradient = gradient.data_mut();
                                 let mut array = array_mut_for_system(gradient.values);
 
-                                for (neighbor_i, &current_neighbor_species) in species.iter().enumerate() {
+                                for (neighbor_i, &current_neighbor_type) in types.iter().enumerate() {
                                     if neighbor_i == center_i {
                                         continue;
                                     }
 
-                                    if current_neighbor_species != species_neighbor {
+                                    if current_neighbor_type != neighbor_type {
                                         continue;
                                     }
 
@@ -723,7 +727,7 @@ impl CalculatorBase for LodeSphericalExpansion {
                                     let mut sf_grad = Vec::with_capacity(k_vectors.len());
                                     let cosines = &structure_factors.real;
                                     let sines = &structure_factors.imag;
-                                    if spherical_harmonics_l % 2 == 0 {
+                                    if o3_lambda % 2 == 0 {
                                         let i = center_i;
                                         let j = neighbor_i;
                                         // real part of i*e^{i k (rj - ri)}
@@ -744,7 +748,7 @@ impl CalculatorBase for LodeSphericalExpansion {
                                     }
                                     let sf_grad = Array1::from(sf_grad);
 
-                                    for m in 0..(2 * spherical_harmonics_l + 1) {
+                                    for m in 0..(2 * o3_lambda + 1) {
                                         for (property_i, [n]) in gradient.properties.iter_fixed_size().enumerate() {
                                             let n = n.usize();
 
@@ -858,25 +862,25 @@ mod tests {
             [2],
         ]);
 
-        let samples = Labels::new(["structure", "center"], &[
+        let samples = Labels::new(["system", "atom"], &[
             [0, 1],
             [0, 2],
         ]);
 
-        let keys = Labels::new(["spherical_harmonics_l", "species_center", "species_neighbor"], &[
-            [0, -42, -42],
-            [0, 6, 1], // not part of the default keys
-            [2, -42, -42],
-            [1, -42, -42],
-            [1, -42, 1],
-            [1, 1, -42],
-            [0, -42, 1],
-            [2, -42, 1],
-            [0, 1, 1],
-            [1, 1, 1],
-            [0, 1, -42],
-            [2, 1, -42],
-            [2, 1, 1],
+        let keys = Labels::new(["o3_lambda", "o3_sigma", "center_type", "neighbor_type"], &[
+            [0, 1, -42, -42],
+            [0, 1, 6, 1], // not part of the default keys
+            [2, 1, -42, -42],
+            [1, 1, -42, -42],
+            [1, 1, -42, 1],
+            [1, 1, 1, -42],
+            [0, 1, -42, 1],
+            [2, 1, -42, 1],
+            [0, 1, 1, 1],
+            [1, 1, 1, 1],
+            [0, 1, 1, -42],
+            [2, 1, 1, -42],
+            [2, 1, 1, 1],
         ]);
 
         crate::calculators::tests_utils::compute_partial(

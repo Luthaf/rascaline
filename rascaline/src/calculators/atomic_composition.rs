@@ -3,23 +3,24 @@ use metatensor::{Labels, LabelsBuilder, TensorMap};
 use crate::{Error, System};
 
 use super::CalculatorBase;
-use crate::labels::{CenterSpeciesKeys, KeysBuilder};
+use crate::labels::{CenterTypesKeys, KeysBuilder};
 
 
-/// An atomic composition calculator for obtaining the stoichiometric information.
+/// An atomic composition calculator for obtaining the stoichiometric
+/// information.
 ///
-/// For `per_structure=False` calculator has one property `count` that is
-/// `1` for all centers, and has a sample index that indicates the central atom type.
+/// For `per_system=False` calculator has one property `count` that is `1` for
+/// all atoms, and has a sample index that indicates the central atom type.
 ///
-/// For `per_structure=True` a sum for each structure is performed and the number of
-/// atoms per structure is saved. The only sample left is names ``structure``.
+/// For `per_system=True` a sum for each system is performed and the number of
+/// atoms per system is saved. The only sample left is names `system`.
 ///
-/// Positions/cell gradients of the composition are zero everywhere. Therefore, the
-/// gradient data will only be an empty array.
+/// Positions/cell gradients of the composition are zero everywhere. Therefore,
+/// the gradient data will only be an empty array.
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 pub struct AtomicComposition {
-    /// Sum atom numbers for each structure.
-    pub per_structure: bool,
+    /// Sum atom numbers for each system.
+    pub per_system: bool,
 }
 
 impl CalculatorBase for AtomicComposition {
@@ -36,31 +37,31 @@ impl CalculatorBase for AtomicComposition {
     }
 
     fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
-        return CenterSpeciesKeys.keys(systems);
+        return CenterTypesKeys.keys(systems);
     }
 
     fn sample_names(&self) -> Vec<&str> {
-        if self.per_structure {
-            return vec!["structure"];
+        if self.per_system {
+            return vec!["system"];
         }
 
-        return vec!["structure", "center"];
+        return vec!["system", "atom"];
     }
 
     fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error> {
-        assert_eq!(keys.names(), ["species_center"]);
+        assert_eq!(keys.names(), ["center_type"]);
         let mut samples = Vec::new();
-        for [species_center_key] in keys.iter_fixed_size() {
+        for [center_type_key] in keys.iter_fixed_size() {
             let mut builder = LabelsBuilder::new(self.sample_names());
 
             for (system_i, system) in systems.iter_mut().enumerate() {
-                if self.per_structure {
+                if self.per_system {
                     builder.add(&[system_i]);
                 } else {
-                    let species = system.species()?;
+                    let types = system.types()?;
 
-                    for (center_i, &species_center_sys) in species.iter().enumerate() {
-                        if species_center_key.i32() == species_center_sys {
+                    for (center_i, &center_type) in types.iter().enumerate() {
+                        if center_type_key.i32() == center_type {
                             builder.add(&[system_i, center_i]);
                         }
                     }
@@ -88,7 +89,7 @@ impl CalculatorBase for AtomicComposition {
     ) -> Result<Vec<Labels>, Error> {
         // Positions/cell gradients of the composition are zero everywhere.
         // Therefore, we only return a vector of empty labels (one for each key).
-        let gradient_samples = Labels::empty(vec!["sample", "structure", "atom"]);
+        let gradient_samples = Labels::empty(vec!["sample", "system", "atom"]);
         return Ok(vec![gradient_samples; keys.count()]);
     }
 
@@ -113,10 +114,10 @@ impl CalculatorBase for AtomicComposition {
         systems: &mut [Box<dyn System>],
         descriptor: &mut TensorMap,
     ) -> Result<(), Error> {
-        assert_eq!(descriptor.keys().names(), ["species_center"]);
+        assert_eq!(descriptor.keys().names(), ["center_type"]);
 
         for (key, mut block) in descriptor {
-            let species_center = key[0].i32();
+            let center_type = key[0].i32();
 
             let block = block.data_mut();
             let array = block.values.to_array_mut();
@@ -126,12 +127,12 @@ impl CalculatorBase for AtomicComposition {
                     for (sample_i, samples) in block.samples.iter().enumerate() {
                         let mut value = 0.0;
 
-                        if self.per_structure {
+                        if self.per_system {
                             // Current system is saved in the 0th index of the samples.
                             let system_i = samples[0].usize();
                             let system = &systems[system_i];
-                            for &species in system.species()? {
-                                if species == species_center {
+                            for &atomic_type in system.types()? {
+                                if atomic_type == center_type {
                                     value += 1.0;
                                 }
                             }
@@ -161,17 +162,17 @@ mod tests {
     #[test]
     fn name_and_parameters() {
         let calculator = Calculator::from(Box::new(AtomicComposition {
-            per_structure: false,
+            per_system: false,
         }) as Box<dyn CalculatorBase>);
 
         assert_eq!(calculator.name(), "atom-centered composition features");
-        assert_eq!(calculator.parameters(), "{\"per_structure\":false}");
+        assert_eq!(calculator.parameters(), "{\"per_system\":false}");
     }
 
     #[test]
     fn values() {
         let mut calculator = Calculator::from(Box::new(AtomicComposition {
-            per_structure: false,
+            per_system: false,
         }) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
@@ -188,9 +189,9 @@ mod tests {
     }
 
     #[test]
-    fn values_per_structure() {
+    fn values_per_system() {
         let mut calculator = Calculator::from(Box::new(AtomicComposition {
-            per_structure: true,
+            per_system: true,
         }) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
@@ -209,7 +210,7 @@ mod tests {
     #[test]
     fn finite_differences_positions() {
         let calculator = Calculator::from(Box::new(AtomicComposition {
-            per_structure: false,
+            per_system: false,
         }) as Box<dyn CalculatorBase>);
 
         let system = test_system("water");
@@ -222,9 +223,9 @@ mod tests {
     }
 
     #[test]
-    fn finite_differences_positions_per_structure() {
+    fn finite_differences_positions_per_system() {
         let calculator = Calculator::from(Box::new(AtomicComposition {
-            per_structure: true,
+            per_system: true,
         }) as Box<dyn CalculatorBase>);
 
         let system = test_system("water");
@@ -239,13 +240,13 @@ mod tests {
     #[test]
     fn compute_partial() {
         let calculator = Calculator::from(Box::new(AtomicComposition {
-            per_structure: false,
+            per_system: false,
         }) as Box<dyn CalculatorBase>);
 
         let mut systems = test_systems(&["water"]);
 
-        let keys = Labels::new(["species_center"], &[[1], [6], [8], [-42]]);
-        let samples = Labels::new(["structure", "center"], &[[0, 1]]);
+        let keys = Labels::new(["center_type"], &[[1], [6], [8], [-42]]);
+        let samples = Labels::new(["system", "atom"], &[[0, 1]]);
         let properties = Labels::new(["count"], &[[0]]);
 
         crate::calculators::tests_utils::compute_partial(

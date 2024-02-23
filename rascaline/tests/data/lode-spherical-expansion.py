@@ -76,10 +76,10 @@ for potential_exponent in [1, 2, 3, 4, 5, 6]:
     calculator = LodeSphericalExpansion(**hyperparameters)
     descriptor = calculator.compute(frame, use_native_system=True)
 
-    descriptor.keys_to_samples("species_center")
-    descriptor.keys_to_properties("species_neighbor")
-    descriptor.components_to_properties("spherical_harmonics_m")
-    descriptor.keys_to_properties("spherical_harmonics_l")
+    descriptor.keys_to_samples("center_type")
+    descriptor.keys_to_properties("neighbor_type")
+    descriptor.components_to_properties("o3_mu")
+    descriptor.keys_to_properties("o3_lambda")
 
     save_calculator_input(os.path.join(path, "values"), frame, hyperparameters)
     save_numpy_array(os.path.join(path, "values"), descriptor.block().values)
@@ -95,10 +95,10 @@ for potential_exponent in [1, 2, 3, 4, 5, 6]:
         gradients=["positions"],
     )
 
-    descriptor.keys_to_samples("species_center")
-    descriptor.keys_to_properties("species_neighbor")
-    descriptor.components_to_properties("spherical_harmonics_m")
-    descriptor.keys_to_properties("spherical_harmonics_l")
+    descriptor.keys_to_samples("center_type")
+    descriptor.keys_to_properties("neighbor_type")
+    descriptor.components_to_properties("o3_mu")
+    descriptor.keys_to_properties("o3_lambda")
 
     save_calculator_input(os.path.join(path, "gradients"), frame, hyperparameters)
     save_numpy_array(os.path.join(path, "positions-gradient"), sum_gradient(descriptor))

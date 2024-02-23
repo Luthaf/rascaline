@@ -24,8 +24,8 @@ public:
     /// pre-computed gradients in `block`.
     ///
     /// If `all_positions.requires_grad` is True, `block` must have a
-    /// `"positions"` gradient; and `structures_start` should contain the index
-    /// of the first atom of each structure in `all_positions`.
+    /// `"positions"` gradient; and `systems_start` should contain the index of
+    /// the first atom of each system in `all_positions`.
     ///
     /// If `all_cells.requires_grad` is True, `block` must have a `"cell"`
     /// gradient, and the block samples must contain a `"stucture"` dimension.
@@ -40,7 +40,7 @@ public:
         torch::autograd::AutogradContext *ctx,
         torch::Tensor all_positions,
         torch::Tensor all_cells,
-        torch::IValue structures_start,
+        torch::IValue systems_start,
         metatensor_torch::TorchTensorBlock block
     );
 

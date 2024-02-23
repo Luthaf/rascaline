@@ -1,8 +1,8 @@
 use metatensor::{Labels, TensorMap, LabelsBuilder};
 
 use crate::{System, Error};
-use crate::labels::{CenterSingleNeighborsSpeciesKeys, KeysBuilder};
-use crate::labels::{AtomCenteredSamples, SamplesBuilder, SpeciesFilter};
+use crate::labels::{CenterSingleNeighborsTypesKeys, KeysBuilder};
+use crate::labels::{AtomCenteredSamples, SamplesBuilder, AtomicTypeFilter};
 use crate::calculators::CalculatorBase;
 
 // these are here just to make the code below compile

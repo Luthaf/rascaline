@@ -17,8 +17,8 @@ int main(int argc, char* argv[]) {
     const uintptr_t* shape = NULL;
     uintptr_t shape_count = 0;
     bool got_error = true;
-    const char* keys_to_samples[] = {"species_center"};
-    const char* keys_to_properties[] = {"species_neighbor_1", "species_neighbor_2"};
+    const char* keys_to_samples[] = {"center_type"};
+    const char* keys_to_properties[] = {"neighbor_1_type", "neighbor_2_type"};
     // use the default set of options, computing all samples and all features,
     // and including gradients with respect to positions
     rascal_calculation_options_t options = {0};

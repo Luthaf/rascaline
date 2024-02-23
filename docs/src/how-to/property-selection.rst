@@ -4,11 +4,11 @@ Property Selection
 ==================
 
 This examples shows how to only compute a subset of properties for each sample
-with a given rascaline representation. In particular, we will use the SOAP
-power spectrum representation, and select the most significant features within
-a single block using farthest point sampling (FPS). We will run the calculation
-for all atoms in a structure file, the path to which should be given as the
-first command line argument.
+with a given rascaline representation. In particular, we will use the SOAP power
+spectrum representation, and select the most significant features within a
+single block using farthest point sampling (FPS). We will run the calculation
+for all atomic systems stored in a file, the path to which should be given as
+the first command line argument.
 
 This is useful if we are interested in the contribution of individual features
 to the result, or if we want to reduce the computational cost by using only

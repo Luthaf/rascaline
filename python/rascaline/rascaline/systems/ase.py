@@ -68,13 +68,13 @@ class AseSystem(SystemBase):
 
         self._atoms = atoms
         self._pairs = []
-        self._pairs_by_center = []
+        self._pairs_by_atom = []
         self._last_cutoff = None
 
     def size(self):
         return len(self._atoms)
 
-    def species(self):
+    def types(self):
         return self._atoms.numbers
 
     def positions(self):
@@ -110,16 +110,16 @@ class AseSystem(SystemBase):
 
             self._pairs.append((i, j, d, D, S))
 
-        self._pairs_by_center = []
+        self._pairs_by_atom = []
         for _ in range(self.size()):
-            self._pairs_by_center.append([])
+            self._pairs_by_atom.append([])
 
         for i, j, d, D, S in self._pairs:
-            self._pairs_by_center[i].append((i, j, d, D, S))
-            self._pairs_by_center[j].append((i, j, d, D, S))
+            self._pairs_by_atom[i].append((i, j, d, D, S))
+            self._pairs_by_atom[j].append((i, j, d, D, S))
 
     def pairs(self):
         return self._pairs
 
-    def pairs_containing(self, center):
-        return self._pairs_by_center[center]
+    def pairs_containing(self, atom):
+        return self._pairs_by_atom[atom]

@@ -10,9 +10,9 @@ class TestSystem: public rascaline::System {
         return 4;
     }
 
-    const int32_t* species() const override {
-        static int32_t SPECIES[4] = {6, 1, 1, 1};
-        return &SPECIES[0];
+    const int32_t* types() const override {
+        static int32_t TYPES[4] = {6, 1, 1, 1};
+        return &TYPES[0];
     }
 
     const double* positions() const override {
@@ -47,7 +47,7 @@ class TestSystem: public rascaline::System {
         return PAIRS;
     }
 
-    const std::vector<rascal_pair_t>& pairs_containing(uintptr_t center) const override {
+    const std::vector<rascal_pair_t>& pairs_containing(uintptr_t atom) const override {
         static std::vector<rascal_pair_t> PAIRS_0 = {
             {0, 1, SQRT_3, {1.0, 1.0, 1.0}, {1, 1, 1}},
         };
@@ -66,16 +66,16 @@ class TestSystem: public rascaline::System {
             {2, 3, SQRT_3, {1.0, 1.0, 1.0}, {0, 0, 0}},
         };
 
-        if (center == 0) {
+        if (atom == 0) {
             return PAIRS_0;
-        } else if (center == 1) {
+        } else if (atom == 1) {
             return PAIRS_1;
-        } else if (center == 2) {
+        } else if (atom == 2) {
             return PAIRS_2;
-        } else if (center == 3) {
+        } else if (atom == 3) {
             return PAIRS_3;
         } else {
-            throw std::runtime_error("center should be below 3");
+            throw std::runtime_error("atom should be below 3");
         }
     }
 };

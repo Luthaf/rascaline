@@ -74,10 +74,10 @@ blocks. Each block contains both data (and gradients) arrays — i.e.
 multidimensional arrays containing the descriptor values — and metadata
 describing the different dimensions of these arrays. Which keys are present in a
 ``TensorMap`` will depend on ``Calculator`` being used. Typically,
-representation using one-hot encoding of atomic species will have species keys
-(for example ``species_center``, ``species_neighbor``, *etc.*), and equivariant
-representations will have keys for the different equivariance classes
-(``spherical_harmonics_l`` for SO(3) equivariants, *etc.*).
+representation using one-hot encoding of atomic types will have the
+corresponding keys (for example ``center_type``, ``neighbor_type``, *etc.*), and
+equivariant representations will have keys for the different equivariance
+classes (``o3_lambda`` for SO(3) equivariants, *etc.*).
 
 For more information on ``TensorMap`` and what can be done with one, please see
 the `metatensor`_ documentation.

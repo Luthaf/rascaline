@@ -45,17 +45,17 @@ def test_compute():
     )
 
     assert len(descriptor.keys) == 2
-    assert descriptor.keys.names == ["species_center"]
+    assert descriptor.keys.names == ["center_type"]
     assert tuple(descriptor.keys[0]) == (1,)
     assert tuple(descriptor.keys[1]) == (8,)
 
-    H_block = descriptor.block(species_center=1)
+    H_block = descriptor.block(center_type=1)
     assert H_block.values.shape == (2, 2)
     assert np.all(H_block.values[0] == (2, 11))
     assert np.all(H_block.values[1] == (3, 13))
 
     assert len(H_block.samples) == 2
-    assert H_block.samples.names == ["structure", "center"]
+    assert H_block.samples.names == ["system", "atom"]
     assert tuple(H_block.samples[0]) == (0, 0)
     assert tuple(H_block.samples[1]) == (0, 1)
 
@@ -74,7 +74,7 @@ def test_compute():
         assert np.all(gradient.values[i, 2, :] == (0, 1))
 
     assert len(gradient.samples) == 5
-    assert gradient.samples.names == ["sample", "structure", "atom"]
+    assert gradient.samples.names == ["sample", "system", "atom"]
     assert tuple(gradient.samples[0]) == (0, 0, 0)
     assert tuple(gradient.samples[1]) == (0, 0, 1)
     assert tuple(gradient.samples[2]) == (1, 0, 0)
@@ -84,7 +84,7 @@ def test_compute():
     assert len(gradient.components) == 1
     component = gradient.components[0]
     assert len(component) == 3
-    assert component.names == ["direction"]
+    assert component.names == ["xyz"]
     assert tuple(component[0]) == (0,)
     assert tuple(component[1]) == (1,)
     assert tuple(component[2]) == (2,)
@@ -94,7 +94,7 @@ def test_compute():
     assert tuple(gradient.properties[0]) == (1, 0)
     assert tuple(gradient.properties[1]) == (0, 1)
 
-    O_block = descriptor.block(species_center=8)
+    O_block = descriptor.block(center_type=8)
     assert O_block.values.shape == (2, 2)
     assert np.all(O_block.values[0] == (4, 6))
     assert np.all(O_block.values[1] == (5, 5))
@@ -105,10 +105,10 @@ def test_compute_multiple_systems():
     calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
     descriptor = calculator.compute(systems, use_native_system=False)
 
-    H_block = descriptor.block(species_center=1)
+    H_block = descriptor.block(center_type=1)
     assert H_block.values.shape == (6, 2)
     expected = np.array([(0, 0), (0, 1), (1, 0), (1, 1), (2, 0), (2, 1)])
     np.testing.assert_equal(H_block.samples.values, expected)
 
-    O_block = descriptor.block(species_center=8)
+    O_block = descriptor.block(center_type=8)
     assert O_block.values.shape == (6, 2)

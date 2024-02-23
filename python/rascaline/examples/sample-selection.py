@@ -53,43 +53,43 @@ print("sample names:", descriptor.sample_names)
 #
 # We can use a subset of these names to define a selection. In this case, only
 # samples matching the labels in this selection will be used by rascaline (here,
-# only atoms from structures 0, 2, and 3)
+# only atoms from system 0, 2, and 3)
 
 selection = Labels(
-    names=["structure"],
+    names=["system"],
     values=np.array([[0], [2], [3]]),
 )
 
 descriptor_selected = calculator.compute(frames, selected_samples=selection)
 
-descriptor_selected = descriptor_selected.keys_to_samples("species_center")
+descriptor_selected = descriptor_selected.keys_to_samples("center_type")
 descriptor_selected = descriptor_selected.keys_to_properties(
-    ["species_neighbor_1", "species_neighbor_2"]
+    ["neighbor_1_type", "neighbor_2_type"]
 )
 
 samples = descriptor_selected.block().samples
 
 # %%
 #
-# The first block should have ``[0, 2, 3]`` as ``samples["structure"]``
+# The first block should have ``[0, 2, 3]`` as ``samples["system"]``
 
-print(f"we have the following structures: {np.unique(samples['structure'])}")
+print(f"we have the following systems: {np.unique(samples['system'])}")
 
 # %%
 #
-# If we want to select not only based on the structure indexes but also atomic
-# indexes, we can do the following (here we select atom 0 in the first structure
-# and atom 1 in the third structure):
+# If we want to select not only based on the system indexes but also atomic
+# indexes, we can do the following (here we select atom 0 in the first system
+# and atom 1 in the third system):
 
 selection = Labels(
-    names=["structure", "center"],
+    names=["system", "atom"],
     values=np.array([[0, 0], [2, 1]]),
 )
 
 descriptor_selected = calculator.compute(frames, selected_samples=selection)
-descriptor_selected = descriptor_selected.keys_to_samples("species_center")
+descriptor_selected = descriptor_selected.keys_to_samples("center_type")
 descriptor_selected = descriptor_selected.keys_to_properties(
-    ["species_neighbor_1", "species_neighbor_2"]
+    ["neighbor_1_type", "neighbor_2_type"]
 )
 
 # %%

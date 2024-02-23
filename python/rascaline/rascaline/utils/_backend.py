@@ -11,10 +11,6 @@ def torch_jit_is_scripting():
     return False
 
 
-def torch_jit_annotate(annotation, obj):
-    return obj
-
-
 def torch_jit_export(func):
     return func
 
@@ -55,7 +51,6 @@ __all__ = [
     "TorchScriptClass",
     "LabelsEntry",
     "torch_jit_is_scripting",
-    "torch_jit_annotate",
     "torch_jit_export",
     "is_labels",
 ]
