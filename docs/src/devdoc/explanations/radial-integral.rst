@@ -20,8 +20,8 @@ determined by specifying two ingredients:
 
 -  the atomic density function :math:`g(r)` as implemented in
    :ref:`python-atomic-density`, often chosen to be a Gaussian or Delta function, that
-   defined the type of density under consideration. For a given center atom :math:`i` in
-   the structure, the total density function :math:`\rho_i(\boldsymbol{r})` around is
+   defined the type of density under consideration. For a given central atom :math:`i` in
+   the system, the total density function :math:`\rho_i(\boldsymbol{r})` around is
    then defined as :math:`\rho_i(\boldsymbol{r}) = \sum_{j} g(\boldsymbol{r} -
    \boldsymbol{r}_{ij})`.
 
@@ -37,8 +37,8 @@ determined by specifying two ingredients:
    :math:`\hat{r}`, i.e. at the spherical angles :math:`(\theta, \phi)` that determine
    the orientation of the unit vector :math:`\hat{r} = \boldsymbol{r}/r`.
 
-The spherical expansion coefficient :math:`\langle nlm | \rho_i \rangle` (we ommit the
-chemical species index :math:`a` for simplicity) is then defined as
+The spherical expansion coefficient :math:`\langle nlm | \rho_i \rangle` (we omit the
+atom type index :math:`a` for simplicity) is then defined as
 
 .. math::
 
@@ -110,7 +110,7 @@ The key point is that the dependence on the vectorial position
 :math:`\boldsymbol{r}_{ij}` is split into a factor that contains information about the
 orientation of this vector, namely :math:`Y_{lm}(\hat{r}_{ij})`, which is just the
 spherical harmonic evaluated at :math:`\hat{r}_{ij}`, and a remaining part that captures
-the dependence on the distance of atom :math:`j` from the center atom :math:`i`, namely
+the dependence on the distance of atom :math:`j` from the central atom :math:`i`, namely
 :math:`I_{nl}(r_{ij})`, which we shall call the radial integral. The radial integral
 class computes and outputs this radial part :math:`I_{nl}(r_{ij})`. Since the angular
 part is just the usual spherical harmonic, this is the part that also depends on the

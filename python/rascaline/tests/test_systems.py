@@ -5,7 +5,7 @@ class SystemForTests(SystemBase):
     def size(self):
         return 4
 
-    def species(self):
+    def types(self):
         return [1, 1, 8, 8]
 
     def positions(self):
@@ -24,34 +24,34 @@ class SystemForTests(SystemBase):
             (2, 3, 1.0, (0.0, 0.0, 1.0), (0, 0, 0)),
         ]
 
-    def pairs_containing(self, center):
-        if center == 0:
+    def pairs_containing(self, atom):
+        if atom == 0:
             return [
                 (0, 1, 1.0, (0.0, 0.0, 1.0), (0, 0, 1)),
             ]
-        elif center == 1:
+        elif atom == 1:
             return [
                 (0, 1, 1.0, (0.0, 0.0, 1.0), (0, 0, 1)),
                 (1, 2, 1.0, (0.0, 0.0, 1.0), (0, 0, 0)),
             ]
-        elif center == 2:
+        elif atom == 2:
             return [
                 (1, 2, 1.0, (0.0, 0.0, 1.0), (0, 0, 0)),
                 (2, 3, 1.0, (0.0, 0.0, 1.0), (0, 0, 0)),
             ]
-        elif center == 3:
+        elif atom == 3:
             return [
                 (2, 3, 1.0, (0.0, 0.0, 1.0), (0, 0, 0)),
             ]
         else:
-            raise Exception("got invalid center")
+            raise Exception("got invalid atom")
 
 
 class EmptySystem(SystemBase):
     def size(self):
         return 0
 
-    def species(self):
+    def types(self):
         return []
 
     def positions(self):

@@ -14,10 +14,10 @@ fn values() {
     let mut calculator = Calculator::new("soap_power_spectrum", parameters).unwrap();
     let descriptor = calculator.compute(&mut systems, Default::default()).expect("failed to run calculation");
 
-    let keys_to_move = Labels::empty(vec!["species_center"]);
+    let keys_to_move = Labels::empty(vec!["center_type"]);
     let descriptor = descriptor.keys_to_samples(&keys_to_move, true).unwrap();
 
-    let keys_to_move = Labels::empty(vec!["species_neighbor_1", "species_neighbor_2"]);
+    let keys_to_move = Labels::empty(vec!["neighbor_1_type", "neighbor_2_type"]);
     let descriptor = descriptor.keys_to_properties(&keys_to_move, true).unwrap();
 
     assert_eq!(descriptor.blocks().len(), 1);
@@ -42,10 +42,10 @@ fn gradients() {
     };
     let descriptor = calculator.compute(&mut systems, options).expect("failed to run calculation");
 
-    let keys_to_move = Labels::empty(vec!["species_center"]);
+    let keys_to_move = Labels::empty(vec!["center_type"]);
     let descriptor = descriptor.keys_to_samples(&keys_to_move, true).unwrap();
 
-    let keys_to_move = Labels::empty(vec!["species_neighbor_1", "species_neighbor_2"]);
+    let keys_to_move = Labels::empty(vec!["neighbor_1_type", "neighbor_2_type"]);
     let descriptor = descriptor.keys_to_properties(&keys_to_move, true).unwrap();
 
     assert_eq!(descriptor.blocks().len(), 1);
@@ -65,7 +65,7 @@ fn gradients() {
 }
 
 fn sum_gradients(n_atoms: usize, gradients: TensorBlockRef<'_>) -> ArrayD<f64> {
-    assert_eq!(gradients.samples().names(), &["sample", "structure", "atom"]);
+    assert_eq!(gradients.samples().names(), &["sample", "system", "atom"]);
     let array = gradients.values().to_array();
 
     let mut sum = ArrayD::from_elem(vec![n_atoms, 3, gradients.properties().count()], 0.0);
@@ -80,7 +80,7 @@ fn sum_gradients(n_atoms: usize, gradients: TensorBlockRef<'_>) -> ArrayD<f64> {
 
 // Add back the missing (-1)^l factor to the reference data
 fn correct_factor(reference: &mut ndarray::ArrayD<f64>, properties: Labels) {
-    assert!(properties.names() == [ "species_neighbor_1", "species_neighbor_2", "l", "n1", "n2"]);
+    assert!(properties.names() == [ "neighbor_1_type", "neighbor_2_type", "l", "n_1", "n_2"]);
 
     let last_axis = reference.shape().len() - 1;
 

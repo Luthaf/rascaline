@@ -177,7 +177,7 @@ metatensor_torch::TorchTensorMap CalculatorHolder::compute(
 
     auto all_positions = stack_all_positions(systems);
     auto all_cells = stack_all_cells(systems);
-    auto structures_start_ivalue = torch::IValue();
+    auto systems_start_ivalue = torch::IValue();
 
     // =============== Handle all options for the calculation =============== //
     if (torch_options.get() == nullptr) {
@@ -197,13 +197,13 @@ metatensor_torch::TorchTensorMap CalculatorHolder::compute(
     if (contains(torch_options->gradients, "positions") || all_positions.requires_grad()) {
         options.gradients.push_back("positions");
 
-        auto structures_start = c10::List<int64_t>();
+        auto systems_start = c10::List<int64_t>();
         int64_t current_start = 0;
         for (auto& system: systems) {
-            structures_start.push_back(current_start);
+            systems_start.push_back(current_start);
             current_start += static_cast<int64_t>(system->size());
         }
-        structures_start_ivalue = torch::IValue(std::move(structures_start));
+        systems_start_ivalue = torch::IValue(std::move(systems_start));
     }
 
     if (contains(torch_options->gradients, "cell") || all_cells.requires_grad()) {
@@ -260,7 +260,7 @@ metatensor_torch::TorchTensorMap CalculatorHolder::compute(
         auto _ = RascalineAutograd::apply(
             all_positions,
             all_cells,
-            structures_start_ivalue,
+            systems_start_ivalue,
             block
         );
     }
@@ -285,7 +285,7 @@ metatensor_torch::TorchTensorMap rascaline_torch::register_autograd(
 
     auto all_positions = stack_all_positions(systems);
     auto all_cells = stack_all_cells(systems);
-    auto structures_start_ivalue = torch::IValue();
+    auto systems_start_ivalue = torch::IValue();
 
     auto precomputed_gradients = TensorMapHolder::block_by_id(precomputed, 0)->gradients_list();
 
@@ -298,13 +298,13 @@ metatensor_torch::TorchTensorMap rascaline_torch::register_autograd(
             );
         }
 
-        auto structures_start = c10::List<int64_t>();
+        auto systems_start = c10::List<int64_t>();
         int64_t current_start = 0;
         for (auto& system: systems) {
-            structures_start.push_back(current_start);
+            systems_start.push_back(current_start);
             current_start += static_cast<int64_t>(system->size());
         }
-        structures_start_ivalue = torch::IValue(std::move(structures_start));
+        systems_start_ivalue = torch::IValue(std::move(systems_start));
     }
 
     if (all_cells.requires_grad()) {
@@ -334,7 +334,7 @@ metatensor_torch::TorchTensorMap rascaline_torch::register_autograd(
         auto _ = RascalineAutograd::apply(
             all_positions,
             all_cells,
-            structures_start_ivalue,
+            systems_start_ivalue,
             block
         );
     }

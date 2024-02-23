@@ -38,12 +38,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let descriptor = calculator.compute(&mut systems, options)?;
 
     // Transform the descriptor to dense representation, with one sample for
-    // each atom-centered environment, and all neighbor species part of the
+    // each atom-centered environment, and the neighbor atomic types part of the
     // properties
-    let keys_to_move = Labels::empty(vec!["species_center"]);
+    let keys_to_move = Labels::empty(vec!["center_type"]);
     let descriptor = descriptor.keys_to_samples(&keys_to_move, /* sort_samples */ true)?;
 
-    let keys_to_move = Labels::empty(vec!["species_neighbor_1", "species_neighbor_2"]);
+    let keys_to_move = Labels::empty(vec!["neighbor_1_type", "neighbor_2_type"]);
     let descriptor = descriptor.keys_to_properties(&keys_to_move, /* sort_samples */ true)?;
 
     // descriptor now contains a single block, which can be used as the input

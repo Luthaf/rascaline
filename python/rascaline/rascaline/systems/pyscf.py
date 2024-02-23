@@ -37,20 +37,17 @@ class PyscfSystem(SystemBase):
     """Implements :py:class:`rascaline.SystemBase` wrapping a
     `pyscf.gto.mole.Mole`_ or `pyscf.pbc.gto.cell.Cell`_.
 
-    Since pyscf does not offer a neighbors list, this
-    implementation of system can only be used with
-    ``use_native_system=True`` in
+    Since pyscf does not offer a neighbors list, this implementation of system can only
+    be used with ``use_native_system=True`` in
     :py:func:`rascaline.calculators.CalculatorBase.compute`.
 
-    Atomic species are assigned as the atomic number if the atom ``type`` is
-    one of the periodic table elements; or their opposite if they are
-    ghost atoms.
-    (Pyscf does not seem to support anything else)
+    Atomic type are assigned as the atomic number if the atom ``type`` is one of the
+    periodic table elements; or their opposite if they are ghost atoms. (Pyscf does not
+    seem to support anything else)
 
-    Please note that while pyscf uses Bohrs as length units internally,
-    we convert those back into Angströms for rascaline.
-    A pyscf object's "unit" attribute determines the units of the coordinates
-    given *to pyscf*, which are by default angströms.
+    Please note that while pyscf uses Bohrs as length units internally, we convert those
+    back into Angströms for rascaline. A pyscf object's "unit" attribute determines the
+    units of the coordinates given *to pyscf*, which are by default angströms.
 
     .. _pyscf.gto.mole.Mole: https://pyscf.org/user/gto.html
     .. _pyscf.pbc.gto.cell.Cell: https://pyscf.org/user/pbc/gto.html
@@ -77,19 +74,19 @@ class PyscfSystem(SystemBase):
             )
 
         self._frame = frame
-        self._species = self._frame.atom_charges().copy()  # dtype=int32
-        for atm_i, species in enumerate(self._species):
-            if species == 0:
+        self._types = self._frame.atom_charges().copy()  # dtype=int32
+        for atm_i, atomic_type in enumerate(self._types):
+            if atomic_type == 0:
                 symb = self._frame.atom_symbol(atm_i)
                 chg = pyscf.data.elements.index(symb)
-                self._species[atm_i] = -chg
+                self._types[atm_i] = -chg
         self.is_periodic = isinstance(self._frame, pyscf.pbc.gto.cell.Cell)
 
     def size(self):
         return self._frame.natm
 
-    def species(self):
-        return self._species
+    def types(self):
+        return self._types
 
     def positions(self):
         return pyscf.data.nist.BOHR * self._frame.atom_coords()
@@ -112,5 +109,5 @@ class PyscfSystem(SystemBase):
     def pairs(self):
         raise Exception("pyscf systems can only be used with 'use_native_system=True'")
 
-    def pairs_containing(self, center):
+    def pairs_containing(self, atom):
         raise Exception("pyscf systems can only be used with 'use_native_system=True'")

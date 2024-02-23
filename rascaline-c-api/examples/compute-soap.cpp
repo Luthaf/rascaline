@@ -33,8 +33,8 @@ int main(int argc, char* argv[]) {
     // The descriptor is a metatensor `TensorMap`, containing multiple blocks.
     // We can transform it to a single block containing a dense representation,
     // with one sample for each atom-centered environment.
-    descriptor.keys_to_samples("species_center");
-    descriptor.keys_to_properties(std::vector<std::string>{"species_neighbor_1", "species_neighbor_2"});
+    descriptor.keys_to_samples("center_type");
+    descriptor.keys_to_properties(std::vector<std::string>{"neighbor_1_type", "neighbor_2_type"});
 
     // extract values from the descriptor in the only remaining block
     auto block = descriptor.block_by_id(0);

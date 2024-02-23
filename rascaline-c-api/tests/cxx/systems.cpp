@@ -14,10 +14,10 @@ TEST_CASE("basic systems") {
     system->size(system->user_data, &size);
     CHECK(size == 54);
 
-    const int32_t* species = nullptr;
-    system->species(system->user_data, &species);
+    const int32_t* types = nullptr;
+    system->types(system->user_data, &types);
     for (size_t i=0; i<size; i++) {
-        CHECK(species[i] == 14);
+        CHECK(types[i] == 14);
     }
 
     const double* positions = nullptr;
@@ -47,8 +47,8 @@ public:
         throw std::runtime_error("unimplemented function 'size'");
     }
 
-    const int32_t* species() const override {
-        throw std::runtime_error("unimplemented function 'species'");
+    const int32_t* types() const override {
+        throw std::runtime_error("unimplemented function 'types'");
     }
 
     const double* positions() const override {
@@ -67,7 +67,7 @@ public:
         throw std::runtime_error("unimplemented function 'pairs'");
     }
 
-    const std::vector<rascal_pair_t>& pairs_containing(uintptr_t center) const override {
+    const std::vector<rascal_pair_t>& pairs_containing(uintptr_t atom) const override {
         throw std::runtime_error("unimplemented function 'pairs_containing'");
     }
 };
@@ -83,5 +83,5 @@ TEST_CASE("systems errors") {
     auto system = BadSystem();
     auto calculator = rascaline::Calculator("dummy_calculator", HYPERS_JSON);
 
-    CHECK_THROWS_WITH(calculator.compute(system), "unimplemented function 'species'");
+    CHECK_THROWS_WITH(calculator.compute(system), "unimplemented function 'types'");
 }

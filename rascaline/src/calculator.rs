@@ -373,9 +373,8 @@ impl Calculator {
         assert_eq!(keys.count(), components.len());
         assert_eq!(keys.count(), properties.len());
 
-        let direction = Labels::new(["direction"], &[[0], [1], [2]]);
-        let direction_1 = Labels::new(["direction_1"], &[[0], [1], [2]]);
-        let direction_2 = Labels::new(["direction_2"], &[[0], [1], [2]]);
+        let xyz = Labels::new(["xyz"], &[[0], [1], [2]]);
+        let abc = Labels::new(["abc"], &[[0], [1], [2]]);
 
         let mut blocks = Vec::new();
         for (block_i, ((samples, components), properties)) in samples.into_iter().zip(components).zip(properties).enumerate() {
@@ -391,11 +390,11 @@ impl Calculator {
 
             if let Some(ref gradient_samples) = positions_gradient_samples {
                 let gradient_samples = &gradient_samples[block_i];
-                assert_eq!(gradient_samples.names(), ["sample", "structure", "atom"]);
+                assert_eq!(gradient_samples.names(), ["sample", "system", "atom"]);
 
                 // add the x/y/z component for gradients
                 let mut components = components.clone();
-                components.insert(0, direction.clone());
+                components.insert(0, xyz.clone());
                 let shape = shape_from_labels(
                     gradient_samples, &components, &properties
                 );
@@ -416,8 +415,8 @@ impl Calculator {
 
                 // add the components for cell gradients
                 let mut components = components;
-                components.insert(0, direction_2.clone());
-                components.insert(0, direction_1.clone());
+                components.insert(0, abc.clone());
+                components.insert(0, xyz.clone());
                 let shape = shape_from_labels(
                     gradient_samples, &components, &properties
                 );

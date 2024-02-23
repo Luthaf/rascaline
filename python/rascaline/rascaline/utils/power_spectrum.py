@@ -2,8 +2,8 @@ import json
 from math import sqrt
 from typing import List, Optional, Union
 
-from .. import _dispatch
-from .._backend import (
+from . import _dispatch
+from ._backend import (
     CalculatorBase,
     IntoSystem,
     Labels,
@@ -42,10 +42,10 @@ class PowerSpectrum(TorchModule):
 
     :param calculator_1: first calculator
     :param calculator_1: second calculator
-    :param species: List of ``"species_neighbor"`` to use in the properties of the
+    :param types: List of ``"neighbor_type"`` to use in the properties of the
         output. This option might be useful when running the calculation on subset of a
         whole dataset and trying to join along the ``sample`` dimension after the
-        calculation. If :py:obj:`None` blocks are filled with ``"species_neighbor"``
+        calculation. If :py:obj:`None` blocks are filled with ``"neighbor_type"``
         found in the systems.
     :raises ValueError: If other calculators than
         :py:class:`rascaline.SphericalExpansion` or
@@ -108,15 +108,15 @@ class PowerSpectrum(TorchModule):
 
     >>> power_spectrum.keys
     Labels(
-        species_center
-              11
-              17
+        center_type
+            11
+            17
     )
     >>> power_spectrum[0]
     TensorBlock
-        samples (1): ['structure', 'center']
+        samples (1): ['system', 'atom']
         components (): []
-        properties (432): ['l', 'species_neighbor_1', 'n1', 'species_neighbor_2', 'n2']
+        properties (432): ['l', 'neighbor_1_type', 'n_1', 'neighbor_2_type', 'n_2']
         gradients: None
 
 
@@ -129,12 +129,12 @@ class PowerSpectrum(TorchModule):
         self,
         calculator_1: CalculatorBase,
         calculator_2: Optional[CalculatorBase] = None,
-        species: Optional[List[int]] = None,
+        types: Optional[List[int]] = None,
     ):
         super().__init__()
         self.calculator_1 = calculator_1
         self.calculator_2 = calculator_2
-        self.species = species
+        self.types = types
 
         supported_calculators = ["lode_spherical_expansion", "spherical_expansion"]
 
@@ -188,27 +188,28 @@ class PowerSpectrum(TorchModule):
         )
 
         expected_key_names = [
-            "spherical_harmonics_l",
-            "species_center",
-            "species_neighbor",
+            "o3_lambda",
+            "o3_sigma",
+            "center_type",
+            "neighbor_type",
         ]
 
         assert spherical_expansion_1.keys.names == expected_key_names
         assert spherical_expansion_1.property_names == ["n"]
 
-        if self.species is None:
-            # Fill blocks with `species_neighbor` from ALL blocks. If we don't do this
+        if self.types is None:
+            # Fill blocks with `neighbor_type` from ALL blocks. If we don't do this
             # merging blocks along the ``sample`` direction might be not possible.
-            array = spherical_expansion_1.keys.column("species_neighbor")
+            array = spherical_expansion_1.keys.column("neighbor_type")
             values = _dispatch.unique(array).reshape(-1, 1)
         else:
-            # Take user provided `species_neighbor` list.
+            # Take user provided `neighbor_type` list.
             values = _dispatch.list_to_array(
                 array=spherical_expansion_1.keys.values,
-                data=[[s] for s in self.species],
+                data=[[t] for t in self.types],
             )
 
-        keys_to_move = Labels(names="species_neighbor", values=values)
+        keys_to_move = Labels(names="neighbor_type", values=values)
 
         spherical_expansion_1 = spherical_expansion_1.keys_to_properties(keys_to_move)
 
@@ -223,16 +224,16 @@ class PowerSpectrum(TorchModule):
             assert spherical_expansion_2.keys.names == expected_key_names
             assert spherical_expansion_2.property_names == ["n"]
 
-            if self.species is None:
-                array = spherical_expansion_2.keys.column("species_neighbor")
+            if self.types is None:
+                array = spherical_expansion_2.keys.column("neighbor_type")
                 values = _dispatch.unique(array).reshape(-1, 1)
             else:
                 values = _dispatch.list_to_array(
                     array=spherical_expansion_2.keys.values,
-                    data=[[s] for s in self.species],
+                    data=[[t] for t in self.types],
                 )
 
-            keys_to_move = Labels(names="species_neighbor", values=values)
+            keys_to_move = Labels(names="neighbor_type", values=values)
 
             spherical_expansion_2 = spherical_expansion_2.keys_to_properties(
                 keys_to_move
@@ -242,20 +243,19 @@ class PowerSpectrum(TorchModule):
         new_keys_values: List[List[int]] = []
 
         for key, block_1 in spherical_expansion_1.items():
-            ell = key[0]
-            species_center = key[1]
+            o3_lambda = key["o3_lambda"]
+            center_type = key["center_type"]
 
             # For consistency with a full Clebsch-Gordan product we need to add
             # a `-1^l / sqrt(2 l + 1)` factor to the power spectrum invariants
-            factor = (-1) ** ell / sqrt(2 * ell + 1)
+            factor = (-1) ** o3_lambda / sqrt(2 * o3_lambda + 1)
 
-            # Find that block indices that have the same spherical_harmonics_l and
-            # species_center
+            # Find that block indices that have the same o3_lambda and center_type
             selection = Labels(
-                names=["spherical_harmonics_l", "species_center"],
+                names=["o3_lambda", "center_type"],
                 values=_dispatch.list_to_array(
+                    data=[[o3_lambda, center_type]],
                     array=spherical_expansion_1.keys.values,
-                    data=[[ell, species_center]],
                 ),
             )
             blocks_2 = spherical_expansion_2.blocks(selection)
@@ -285,7 +285,7 @@ class PowerSpectrum(TorchModule):
                         new_property_values[i, j, len(values_1) :] = values_2
 
                 properties = Labels(
-                    names=["species_neighbor_1", "n1", "species_neighbor_2", "n2"],
+                    names=["neighbor_1_type", "n_1", "neighbor_2_type", "n_2"],
                     values=new_property_values.reshape(-1, n_keys_dimensions),
                 )
 
@@ -306,11 +306,11 @@ class PowerSpectrum(TorchModule):
                     if parameter == "positions":
                         _positions_gradients(new_block, block_1, block_2, factor)
 
-                new_keys_values.append([ell, species_center])
+                new_keys_values.append([o3_lambda, center_type])
                 new_blocks.append(new_block)
 
         new_keys = Labels(
-            names=["l", "species_center"],
+            names=["l", "center_type"],
             values=_dispatch.list_to_array(
                 array=spherical_expansion_1.keys.values, data=new_keys_values
             ),
@@ -345,7 +345,7 @@ def _positions_gradients(
     gradient_2 = block_2.gradient("positions")
 
     if len(gradient_1.samples) == 0 or len(gradient_2.samples) == 0:
-        gradients_samples = Labels.empty(["sample", "structure", "atom"])
+        gradients_samples = Labels.empty(["sample", "system", "atom"])
         gradient_values = _dispatch.list_to_array(
             array=gradient_1.values, data=[]
         ).reshape(0, 1, len(new_block.properties))

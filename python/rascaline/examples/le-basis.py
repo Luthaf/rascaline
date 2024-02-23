@@ -101,14 +101,15 @@ calculator = rascaline.SphericalExpansion(
 # This calculator defaults to the "traditional" basis function selection, so we have the
 # same maximal ``n`` value for all ``l``.
 
-structures = ase.io.read("dataset.xyz", ":10")
-descriptor = calculator.compute(structures)
-descriptor = descriptor.keys_to_properties("species_neighbor")
-descriptor = descriptor.keys_to_samples("species_center")
+systems = ase.io.read("dataset.xyz", ":10")
+
+descriptor = calculator.compute(systems)
+descriptor = descriptor.keys_to_properties("neighbor_type")
+descriptor = descriptor.keys_to_samples("center_type")
 
 for key, block in descriptor.items():
     n_max = np.max(block.properties["n"]) + 1
-    print(f"l = {key['spherical_harmonics_l']}, n_max = {n_max}")
+    print(f"l = {key['o3_lambda']}, n_max = {n_max}")
 
 # %%
 #
@@ -195,19 +196,19 @@ plt.show()
 # basis; and then only asking for a subset of properties to be computed. See
 # :ref:`userdoc-how-to-property-selection` for more details on properties selection.
 
-# extract all the species from our dataset
-all_species = list(
-    np.unique(np.concatenate([structure.numbers for structure in structures]))
+# extract all the atomic types from our dataset
+all_atomic_types = list(
+    np.unique(np.concatenate([system.numbers for system in systems]))
 )
 
 keys = []
 blocks = []
-for center_species in all_species:
-    for neighbor_species in all_species:
+for center_type in all_atomic_types:
+    for neighbor_type in all_atomic_types:
         for ell in range(max_angular + 1):
             max_radial = max_radial_by_angular[ell]
 
-            keys.append([ell, center_species, neighbor_species])
+            keys.append([ell, 1, center_type, neighbor_type])
             blocks.append(
                 TensorBlock(
                     values=np.zeros((0, max_radial)),
@@ -219,7 +220,7 @@ for center_species in all_species:
 
 selected_properties = TensorMap(
     keys=Labels(
-        names=["spherical_harmonics_l", "species_center", "species_neighbor"],
+        names=["o3_lambda", "o3_sigma", "center_type", "neighbor_type"],
         values=np.array(keys),
     ),
     blocks=blocks,
@@ -263,18 +264,18 @@ calculator = rascaline.SphericalExpansion(
 # features!
 
 descriptor = calculator.compute(
-    structures,
+    systems,
     # we tell the calculator to only compute the selected properties
     # (the desired set of (l,n) expansion coefficients
     selected_properties=selected_properties,
 )
 
-descriptor = descriptor.keys_to_properties("species_neighbor")
-descriptor = descriptor.keys_to_samples("species_center")
+descriptor = descriptor.keys_to_properties("neighbor_type")
+descriptor = descriptor.keys_to_samples("center_type")
 
 for key, block in descriptor.items():
     n_max = np.max(block.properties["n"]) + 1
-    print(f"l = {key['spherical_harmonics_l']}, n_max = {n_max}")
+    print(f"l = {key['o3_lambda']}, n_max = {n_max}")
 
 # %%
 #

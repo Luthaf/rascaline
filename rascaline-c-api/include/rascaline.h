@@ -181,13 +181,13 @@ typedef struct rascal_system_t {
    */
   rascal_status_t (*size)(const void *user_data, uintptr_t *size);
   /**
-   * This function should set `*species` to a pointer to the first element of
-   * a contiguous array containing the atomic species of each atom in the
-   * system. Different atomic species should be identified with a different
+   * This function should set `*types` to a pointer to the first element of
+   * a contiguous array containing the atomic types of each atom in the
+   * system. Different atomic types should be identified with a different
    * value. These values are usually the atomic number, but don't have to be.
    * The array should contain `rascal_system_t::size()` elements.
    */
-  rascal_status_t (*species)(const void *user_data, const int32_t **species);
+  rascal_status_t (*types)(const void *user_data, const int32_t **types);
   /**
    * This function should set `*positions` to a pointer to the first element
    * of a contiguous array containing the atomic cartesian coordinates.
@@ -223,7 +223,7 @@ typedef struct rascal_system_t {
   /**
    * This function should set `*pairs` to a pointer to the first element of a
    * contiguous array containing all pairs in this system containing the atom
-   * with index `center`; and `*count` to the size of the array/the number of
+   * with index `atom`; and `*count` to the size of the array/the number of
    * pairs.
    *
    * The same restrictions on the list of pairs as `rascal_system_t::pairs`
@@ -232,7 +232,7 @@ typedef struct rascal_system_t {
    * `pairs_containing(j)`.
    */
   rascal_status_t (*pairs_containing)(const void *user_data,
-                                      uintptr_t center,
+                                      uintptr_t atom,
                                       const struct rascal_pair_t **pairs,
                                       uintptr_t *count);
 } rascal_system_t;

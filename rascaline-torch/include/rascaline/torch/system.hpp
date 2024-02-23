@@ -41,12 +41,12 @@ public:
 
     /// @private
     uintptr_t size() const override {
-        return static_cast<uintptr_t>(species_.size(0));
+        return static_cast<uintptr_t>(types_.size(0));
     }
 
     /// @private
-    const int32_t* species() const override {
-        return species_.data_ptr<int32_t>();
+    const int32_t* types() const override {
+        return types_.data_ptr<int32_t>();
     }
 
     /// @private
@@ -71,7 +71,7 @@ public:
     const std::vector<rascal_pair_t>& pairs() const override;
 
     /// @private
-    const std::vector<rascal_pair_t>& pairs_containing(uintptr_t center) const override;
+    const std::vector<rascal_pair_t>& pairs_containing(uintptr_t atom) const override;
 
     /*========================================================================*/
     /*                 Functions to re-use pre-computed pairs                 */
@@ -86,8 +86,8 @@ private:
     // the origin of all the data
     metatensor_torch::System system_;
 
-    /// species tensor, contiguous and on CPU
-    torch::Tensor species_;
+    /// atomic types tensor, contiguous and on CPU
+    torch::Tensor types_;
     /// positions tensor, contiguous, on CPU and with dtype=float64
     torch::Tensor positions_;
     /// cell tensor, contiguous, on CPU and with dtype=float64
@@ -96,7 +96,7 @@ private:
 
     struct PrecomputedPairs {
         std::vector<rascal_pair_t> pairs_;
-        std::vector<std::vector<rascal_pair_t>> pairs_by_center_;
+        std::vector<std::vector<rascal_pair_t>> pairs_by_atom_;
     };
 
     void set_precomputed_pairs(double cutoff, std::vector<rascal_pair_t> pairs);

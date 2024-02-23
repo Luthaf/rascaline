@@ -33,9 +33,7 @@ SPHERICAL_EXPANSION_HYPERS = {
     "center_atom_weight": 1.0,
 }
 
-SELECTED_KEYS = Labels(
-    names=["spherical_harmonics_l"], values=torch.tensor([1, 3]).reshape(-1, 1)
-)
+SELECTED_KEYS = Labels(names=["o3_lambda"], values=torch.tensor([1, 3]).reshape(-1, 1))
 
 
 def h2o_isolated():
@@ -84,7 +82,7 @@ def test_torch_script_correlate_density_angular_selection(
 
     # Test compute
     scripted_nu_2 = scripted_corr_calculator.compute(nu_1)
-    assert metatensor.torch.equal_metadata(scripted_nu_2, ref_nu_2)
+    metatensor.torch.equal_metadata_raise(scripted_nu_2, ref_nu_2)
     assert metatensor.torch.allclose(scripted_nu_2, ref_nu_2)
 
     # Test compute_metadata

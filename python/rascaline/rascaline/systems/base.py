@@ -41,19 +41,19 @@ class SystemBase:
     >>> import numpy as np
     >>>
     >>> class SimpleSystem(rascaline.systems.SystemBase):
-    ...     def __init__(self, species, positions, cell):
+    ...     def __init__(self, types, positions, cell):
     ...         super().__init__()
     ...
-    ...         # species should be a 1D array of integers
-    ...         species = np.asarray(species)
-    ...         assert len(species.shape) == 1
-    ...         assert species.dtype == np.int32
-    ...         self._species = species
+    ...         # types should be a 1D array of integers
+    ...         types = np.asarray(types)
+    ...         assert len(types.shape) == 1
+    ...         assert types.dtype == np.int32
+    ...         self._types = types
     ...
     ...         # positions should be a 2D array of float
     ...         positions = np.asarray(positions)
     ...         assert len(positions.shape) == 2
-    ...         assert positions.shape[0] == species.shape[0]
+    ...         assert positions.shape[0] == types.shape[0]
     ...         assert positions.shape[1] == 3
     ...         assert positions.dtype == np.float64
     ...         self._positions = positions
@@ -67,10 +67,10 @@ class SystemBase:
     ...         self._cell = cell
     ...
     ...     def size(self):
-    ...         return len(self._species)
+    ...         return len(self._types)
     ...
-    ...     def species(self):
-    ...         return self._species
+    ...     def types(self):
+    ...         return self._types
     ...
     ...     def positions(self):
     ...         return self._positions
@@ -84,11 +84,11 @@ class SystemBase:
     ...     def pairs(self):
     ...         raise NotImplementedError("this system does not have a neighbors list")
     ...
-    ...     def pairs_containing(self, center):
+    ...     def pairs_containing(self, atom):
     ...         raise NotImplementedError("this system does not have a neighbors list")
     ...
     >>> system = SimpleSystem(
-    ...     species=np.random.randint(2, size=25, dtype=np.int32),
+    ...     types=np.random.randint(2, size=25, dtype=np.int32),
     ...     positions=6 * np.random.uniform(size=(25, 3)),
     ...     cell=6 * np.eye(3),
     ... )
@@ -96,17 +96,17 @@ class SystemBase:
     >>> calculator = rascaline.SortedDistances(
     ...     cutoff=3.3,
     ...     max_neighbors=4,
-    ...     separate_neighbor_species=True,
+    ...     separate_neighbor_types=True,
     ... )
     >>>
     >>> # this works, and uses our new system
     >>> calculator.compute(system)
     TensorMap with 4 blocks
-    keys: species_center  species_neighbor
-                0                0
-                0                1
-                1                0
-                1                1
+    keys: center_type  neighbor_type
+               0             0
+               0             1
+               1             0
+               1             1
     >>> # this does not work, since the code is trying to get a neighbors list
     >>> try:
     ...     calculator.compute(system, use_native_system=False)
@@ -152,18 +152,18 @@ class SystemBase:
         struct.size = struct.size.__class__(rascal_system_size)
 
         @catch_exceptions
-        def rascal_system_species(user_data, data):
+        def rascal_system_types(user_data, data):
             """
-            Implementation of ``rascal_system_t::species`` using
-            :py:func:`SystemBase.species`.
+            Implementation of ``rascal_system_t::types`` using
+            :py:func:`SystemBase.types`.
             """
             self = get_self(user_data)
 
-            species = np.asarray(self.species(), order="C", dtype=np.int32)
-            data[0] = species.ctypes.data
-            self._keepalive["species"] = species
+            types = np.asarray(self.types(), order="C", dtype=np.int32)
+            data[0] = types.ctypes.data
+            self._keepalive["types"] = types
 
-        struct.species = struct.species.__class__(rascal_system_species)
+        struct.types = struct.types.__class__(rascal_system_types)
 
         @catch_exceptions
         def rascal_system_positions(user_data, data):
@@ -238,7 +238,7 @@ class SystemBase:
         struct.pairs = struct.pairs.__class__(rascal_system_pairs)
 
         @catch_exceptions
-        def rascal_system_pairs_containing(user_data, center, data, count):
+        def rascal_system_pairs_containing(user_data, atom, data, count):
             """
             Implementation of ``rascal_system_t::pairs_containing`` using
             :py:func:`SystemBase.pairs_containing`.
@@ -246,7 +246,7 @@ class SystemBase:
             self = get_self(user_data)
 
             pairs = np.asarray(
-                self.pairs_containing(center),
+                self.pairs_containing(atom),
                 order="C",
                 dtype=rascal_pair_t,
             )
@@ -266,17 +266,17 @@ class SystemBase:
 
         raise NotImplementedError("System.size method is not implemented")
 
-    def species(self):
-        """Get the atomic species of all atoms in the system.
+    def types(self):
+        """Get the atomic types of all atoms in the system.
 
         Get a list of integers or a 1D numpy array of integers (ideally 32-bit
         integers, otherwise they will be converted on the fly) containing the
-        atomic species for each atom in the system. Different atomic species
+        atomic types for each atom in the system. Different atomic types
         should be identified with a different value. These values are usually
-        the atomic number, but don't have to be.
+        the element number, but don't have to be.
         """
 
-        raise NotImplementedError("System.species method is not implemented")
+        raise NotImplementedError("System.types method is not implemented")
 
     def positions(self):
         """Get the cartesian position of all atoms in this system.
@@ -333,10 +333,10 @@ class SystemBase:
 
         raise NotImplementedError("System.pairs method is not implemented")
 
-    def pairs_containing(self, center):
+    def pairs_containing(self, atom):
         """
         Get all neighbor pairs in this system containing the atom with index
-        ``center``.
+        ``atom``.
 
         The return type of this function should be the same as
         :py:func:`rascaline.SystemBase.pairs`. The same restrictions on the list

@@ -160,7 +160,7 @@ TEST_CASE("Compute descriptor") {
         CHECK_SUCCESS(status);
 
         CHECK(keys.size == 1);
-        CHECK(keys.names[0] == std::string("species_center"));
+        CHECK(keys.names[0] == std::string("center_type"));
         CHECK(keys.count == 2);
         CHECK(keys.values[0] == 1);
         CHECK(keys.values[1] == 6);
@@ -220,7 +220,7 @@ TEST_CASE("Compute descriptor") {
             0, 1, /**/ 0, 3,
         };
         auto selected_sample_names = std::vector<const char*>{
-            "structure", "center"
+            "system", "atom"
         };
 
         mts_labels_t selected_samples;
@@ -257,7 +257,7 @@ TEST_CASE("Compute descriptor") {
         CHECK_SUCCESS(status);
 
         CHECK(keys.size == 1);
-        CHECK(keys.names[0] == std::string("species_center"));
+        CHECK(keys.names[0] == std::string("center_type"));
         CHECK(keys.count == 2);
         CHECK(keys.values[0] == 1);
         CHECK(keys.values[1] == 6);
@@ -338,7 +338,7 @@ TEST_CASE("Compute descriptor") {
         CHECK_SUCCESS(status);
 
         CHECK(keys.size == 1);
-        CHECK(keys.names[0] == std::string("species_center"));
+        CHECK(keys.names[0] == std::string("center_type"));
         CHECK(keys.count == 2);
         CHECK(keys.values[0] == 1);
         CHECK(keys.values[1] == 6);
@@ -395,7 +395,7 @@ TEST_CASE("Compute descriptor") {
 
     SECTION("Partial compute -- preselected") {
         auto sample_names = std::vector<const char*>{
-            "structure", "center"
+            "system", "atom"
         };
         auto property_names = std::vector<const char*>{
             "index_delta", "x_y_z"
@@ -446,7 +446,7 @@ TEST_CASE("Compute descriptor") {
         blocks[1] = mts_block(empty_array({1, 1}), c_samples, nullptr, 0, c_properties);
         REQUIRE(blocks[1] != nullptr);
 
-        auto keys_names = std::vector<const char*>{"species_center"};
+        auto keys_names = std::vector<const char*>{"center_type"};
         auto keys_values = std::vector<int32_t>{1, 6};
 
         mts_labels_t keys = {};
@@ -478,7 +478,7 @@ TEST_CASE("Compute descriptor") {
         CHECK_SUCCESS(status);
 
         CHECK(keys.size == 1);
-        CHECK(keys.names[0] == std::string("species_center"));
+        CHECK(keys.names[0] == std::string("center_type"));
         CHECK(keys.count == 2);
         CHECK(keys.values[0] == 1);
         CHECK(keys.values[1] == 6);
@@ -535,7 +535,7 @@ TEST_CASE("Compute descriptor") {
         // in a different order than what would be the default (6, 12).
 
         mts_labels_t selected_keys = {};
-        const char* sample_names[] = {"species_center"};
+        const char* sample_names[] = {"center_type"};
         selected_keys.names = sample_names;
         selected_keys.size = 1;
 
@@ -565,7 +565,7 @@ TEST_CASE("Compute descriptor") {
         CHECK_SUCCESS(status);
 
         CHECK(keys.size == 1);
-        CHECK(keys.names[0] == std::string("species_center"));
+        CHECK(keys.names[0] == std::string("center_type"));
         CHECK(keys.count == 2);
         CHECK(keys.values[0] == 12);
         CHECK(keys.values[1] == 6);
@@ -579,7 +579,7 @@ TEST_CASE("Compute descriptor") {
         auto gradient_samples = std::vector<int32_t>{};
         auto gradients = std::vector<double>{};
 
-        // empty block, species 12 is not present in the system
+        // empty block, center_type=12 is not present in the system
         check_block(descriptor, 0, samples, properties, values, gradient_samples, gradients);
 
         samples = std::vector<int32_t>{
@@ -627,8 +627,8 @@ void check_block(
     CHECK_SUCCESS(status);
 
     CHECK(labels.size == 2);
-    CHECK(labels.names[0] == std::string("structure"));
-    CHECK(labels.names[1] == std::string("center"));
+    CHECK(labels.names[0] == std::string("system"));
+    CHECK(labels.names[1] == std::string("atom"));
     auto n_samples = labels.count;
 
     auto label_values = std::vector<int32_t>(
@@ -686,7 +686,7 @@ void check_block(
 
     CHECK(labels.size == 3);
     CHECK(labels.names[0] == std::string("sample"));
-    CHECK(labels.names[1] == std::string("structure"));
+    CHECK(labels.names[1] == std::string("system"));
     CHECK(labels.names[2] == std::string("atom"));
     auto n_gradient_samples = labels.count;
 

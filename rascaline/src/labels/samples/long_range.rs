@@ -1,7 +1,7 @@
 use metatensor::{Labels, LabelsBuilder};
 
 use crate::{Error, System};
-use super::{SamplesBuilder, SpeciesFilter};
+use super::{SamplesBuilder, AtomicTypeFilter};
 
 
 /// Samples builder for long-range (i.e. infinite cutoff), per atom, two bodies
@@ -9,17 +9,17 @@ use super::{SamplesBuilder, SpeciesFilter};
 ///
 /// With this builder, all atoms are considered neighbors of all other atoms.
 pub struct LongRangeSamplesPerAtom {
-    /// Filter for the central atom species
-    pub species_center: SpeciesFilter,
-    /// Filter for the neighbor atom species
-    pub species_neighbor: SpeciesFilter,
+    /// Filter for the central atom type
+    pub center_type: AtomicTypeFilter,
+    /// Filter for the neighbor atom type
+    pub neighbor_type: AtomicTypeFilter,
     /// Should the central atom be considered it's own neighbor?
     pub self_pairs: bool,
 }
 
 impl SamplesBuilder for LongRangeSamplesPerAtom {
     fn sample_names() -> Vec<&'static str> {
-        vec!["structure", "center"]
+        vec!["system", "atom"]
     }
 
     fn samples(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
@@ -27,22 +27,22 @@ impl SamplesBuilder for LongRangeSamplesPerAtom {
 
         let mut builder = LabelsBuilder::new(Self::sample_names());
         for (system_i, system) in systems.iter_mut().enumerate() {
-            let species = system.species()?;
+            let types = system.types()?;
 
-            // we want to take all centers matching `species_center` iff
+            // we want to take all atoms matching `center_type` iff
             // there is at least one atom in the system matching
-            // `species_neighbor`
+            // `neighbor_type`
             let mut has_matching_neighbor = false;
-            for &species_neighbor in species {
-                if self.species_neighbor.matches(species_neighbor) {
+            for &neighbor_type in types {
+                if self.neighbor_type.matches(neighbor_type) {
                     has_matching_neighbor = true;
                     break;
                 }
             }
 
             if has_matching_neighbor {
-                for (center_i, &species_center) in species.iter().enumerate() {
-                    if self.species_center.matches(species_center) {
+                for (center_i, &center_type) in types.iter().enumerate() {
+                    if self.center_type.matches(center_type) {
                         builder.add(&[system_i, center_i]);
                     }
                 }
@@ -53,16 +53,16 @@ impl SamplesBuilder for LongRangeSamplesPerAtom {
     }
 
     fn gradients_for(&self, systems: &mut [Box<dyn System>], samples: &Labels) -> Result<Labels, Error> {
-        assert_eq!(samples.names(), ["structure", "center"]);
-        let mut builder = LabelsBuilder::new(vec!["sample", "structure", "atom"]);
+        assert_eq!(samples.names(), ["system", "atom"]);
+        let mut builder = LabelsBuilder::new(vec!["sample", "system", "atom"]);
 
-        for (sample_i, [structure_i, center_i]) in samples.iter_fixed_size().enumerate() {
-            let structure_i = structure_i.usize();
+        for (sample_i, [system_i, center_i]) in samples.iter_fixed_size().enumerate() {
+            let system_i = system_i.usize();
 
-            let system = &mut systems[structure_i];
-            for (neighbor_i, &species_neighbor) in system.species()?.iter().enumerate() {
-                if self.species_neighbor.matches(species_neighbor) || neighbor_i == center_i.usize() {
-                    builder.add(&[sample_i, structure_i, neighbor_i]);
+            let system = &mut systems[system_i];
+            for (neighbor_i, &neighbor_type) in system.types()?.iter().enumerate() {
+                if self.neighbor_type.matches(neighbor_type) || neighbor_i == center_i.usize() {
+                    builder.add(&[sample_i, system_i, neighbor_i]);
                 }
             }
         }
@@ -80,21 +80,21 @@ mod tests {
     fn all_samples() {
         let mut systems = test_systems(&["CH", "water"]);
         let builder = LongRangeSamplesPerAtom {
-            species_center: SpeciesFilter::Single(1),
-            species_neighbor: SpeciesFilter::Any,
+            center_type: AtomicTypeFilter::Single(1),
+            neighbor_type: AtomicTypeFilter::Any,
             self_pairs: true,
         };
 
         let samples = builder.samples(&mut systems).unwrap();
         assert_eq!(samples, Labels::new(
-            ["structure", "center"],
+            ["system", "atom"],
             &[[0, 1], [1, 1], [1, 2]],
         ));
 
 
         let gradient_samples = builder.gradients_for(&mut systems, &samples).unwrap();
         assert_eq!(gradient_samples, Labels::new(
-            ["sample", "structure", "atom"],
+            ["sample", "system", "atom"],
             &[
                 // gradients of atoms in CH
                 [0, 0, 0], [0, 0, 1],

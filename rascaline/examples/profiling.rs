@@ -57,10 +57,10 @@ fn compute_soap(path: &str) -> Result<TensorMap, Box<dyn std::error::Error>> {
         calculator.compute(&mut systems, options)?
     });
 
-    let keys_to_move = Labels::empty(vec!["species_center"]);
+    let keys_to_move = Labels::empty(vec!["center_type"]);
     let descriptor = descriptor.keys_to_samples(&keys_to_move, /* sort_samples */ true)?;
 
-    let keys_to_move = Labels::empty(vec!["species_neighbor_1", "species_neighbor_2"]);
+    let keys_to_move = Labels::empty(vec!["neighbor_1_type", "neighbor_2_type"]);
     let descriptor = descriptor.keys_to_properties(&keys_to_move, /* sort_samples */ true)?;
 
     Ok(descriptor)

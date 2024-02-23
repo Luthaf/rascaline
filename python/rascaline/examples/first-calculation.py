@@ -125,18 +125,16 @@ print(descriptor0)
 # %%
 #
 # The :class:`metatensor.TensorMap` is structured in several instances of an
-# :class:`metatensor.TensorBlock`. To distinguish the block each block is
-# associated with a unique key. For the current example, we have one block for
-# each angular channel labeled by ``spherical_harmonics_l``, the central atom
-# species ``species_center`` and neighbor atom species labeled by
-# ``species_neighbor``. Different atomic species are represented using their
-# atomic number, e.g. 1 for hydrogen, 6 for carbon, etc. To summarize, this
-# descriptor contains 112 blocks covering all combinations of the angular
-# channels of the central and neighbor atom species in our dataset.
+# :class:`metatensor.TensorBlock`. To distinguish the block each block is associated
+# with a unique key. For the current example, we have one block for each angular channel
+# labeled by ``o3_lambda``, the central atom type ``center_type`` and
+# neighbor atom type labeled by ``neighbor_type``. Different atomic types are
+# represented using their atomic number, e.g. 1 for hydrogen, 6 for carbon, etc. To
+# summarize, this descriptor contains 112 blocks covering all combinations of the
+# angular channels of the central and neighbor atom types in our dataset.
 #
-# Let us take a look at the second block (at index 1) in detail. This block
-# contains the descriptor for the :math:`l=1` angular channel for
-# hydrogen-hydrogen pairs.
+# Let us take a look at the second block (at index 1) in detail. This block contains the
+# descriptor for the :math:`l=1` angular channel for hydrogen-hydrogen pairs.
 
 block = descriptor0.block(1)
 print(descriptor0.keys[1])
@@ -190,9 +188,9 @@ print(block.components)
 # %%
 #
 # Here, the components are associated with the angular channels of the
-# representation. The size of ``spherical_harmonics_m`` is :math:`2l + 1`, where
-# :math:`l` is the current ``spherical_harmonics_l`` of the block. Here, its
-# dimension is three because we are looking at the ``spherical_harmonics_l=1``
+# representation. The size of ``o3_mu`` is :math:`2l + 1`, where
+# :math:`l` is the current ``o3_lambda`` of the block. Here, its
+# dimension is three because we are looking at the ``o3_lambda=1``
 # block. You may have noticed that the return value of the last call is a
 # :class:`list` of :class:`metatensor.Labels` and not a single ``Labels``
 # instance. The reason is that a block can have several component dimensions as
@@ -299,12 +297,12 @@ print(gradient_position.components)
 
 # %%
 #
-# we find two of them. Besides the `spherical_harmonics_m` component that is
-# also present in the features position gradients also have a component
-# indicating the direction of the gradient vector.
+# we find two of them. Besides the `o3_mu` component that is also present in the
+# features position gradients also have a component indicating the direction of the
+# gradient vector.
 #
-# Finally, the :attr:`metatensor.block.Gradient.properties` dimension is the same
-# as for the values
+# Finally, the :attr:`metatensor.block.Gradient.properties` dimension is the same as for
+# the values
 
 print(gradient_position.properties)
 

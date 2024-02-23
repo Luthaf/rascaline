@@ -17,10 +17,10 @@ TEST_CASE("basic systems") {
     system.size(system.user_data, &size);
     CHECK(size == 54);
 
-    const int32_t* species = nullptr;
-    system.species(system.user_data, &species);
+    const int32_t* types = nullptr;
+    system.types(system.user_data, &types);
     for (size_t i=0; i<size; i++) {
-        CHECK(species[i] == 14);
+        CHECK(types[i] == 14);
     }
 
     const double* positions = nullptr;
@@ -67,10 +67,10 @@ TEST_CASE("systems errors") {
     CHECK(descriptor == nullptr);
     CHECK(status == RASCAL_SYSTEM_ERROR);
 
-    std::string expected = "error from external code (status 128): rascal_system_t.species function is NULL";
+    std::string expected = "error from external code (status 128): rascal_system_t.types function is NULL";
     CHECK(rascal_last_error() == expected);
 
-    system.species = [](const void* _, const int32_t** species) {
+    system.types = [](const void* _, const int32_t** types) {
         return -5242832;
     };
 
@@ -79,7 +79,7 @@ TEST_CASE("systems errors") {
     );
     CHECK(descriptor == nullptr);
     CHECK(status == -5242832);
-    expected = "error from external code (status -5242832): call to rascal_system_t.species failed";
+    expected = "error from external code (status -5242832): call to rascal_system_t.types failed";
     CHECK(rascal_last_error() == expected);
 
     rascal_calculator_free(calculator);

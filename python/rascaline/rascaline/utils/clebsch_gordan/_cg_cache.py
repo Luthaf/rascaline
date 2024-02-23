@@ -407,7 +407,7 @@ def combine_arrays(
     array_1: Array,
     array_2: Array,
     o3_lambda: int,
-    cg_coeffs: TensorMap,
+    cg_coefficients: TensorMap,
     cg_backend: str,
 ) -> Array:
     """
@@ -425,9 +425,9 @@ def combine_arrays(
     The ouput array has shape (n_i, 2 * lambda + 1, n_p * n_q), where lambda is the
     input parameter `o3_lambda`.
 
-    The Clebsch-Gordan coefficients are cached in `cg_coeffs`. Currently, these must be
-    produced by the ClebschGordanReal class in this module. These coefficients can be
-    stored in either sparse dictionaries or dense arrays.
+    The Clebsch-Gordan coefficients are cached in `cg_coefficients`. Currently, these
+    must be produced by the ClebschGordanReal class in this module. These coefficients
+    can be stored in either sparse dictionaries or dense arrays.
 
     The combination operation is dispatched such that numpy arrays or torch tensors are
     automatically handled.
@@ -443,8 +443,8 @@ def combine_arrays(
     :param array_2: array with the m values for l2 with shape [n_samples, 2 * l2 + 1,
         n_p_properties]
     :param o3_lambda: int value of the resulting coupled channel
-    :param cg_coeffs: a :py:class:`TensorMap` containing CG coefficients in a format for
-        either sparse or dense CG tensor products, as returned by
+    :param cg_coefficients: a :py:class:`TensorMap` containing CG coefficients in a
+        format for either sparse or dense CG tensor products, as returned by
         :py:func:`calculate_cg_coefficients`. See the function docstring for details on
         the data structure. Only used if ``cg_backend`` is not ``"metadata"``.
     :param cg_backend: specifies the combine backend with sparse CG coefficients. It can
@@ -463,9 +463,9 @@ def combine_arrays(
         return empty_combine(array_1, array_2, o3_lambda)
 
     if cg_backend == "python-sparse" or cg_backend == "mops":
-        return sparse_combine(array_1, array_2, o3_lambda, cg_coeffs, cg_backend)
+        return sparse_combine(array_1, array_2, o3_lambda, cg_coefficients, cg_backend)
     elif cg_backend == "python-dense":
-        return dense_combine(array_1, array_2, o3_lambda, cg_coeffs)
+        return dense_combine(array_1, array_2, o3_lambda, cg_coefficients)
     else:
         raise ValueError(
             f"Wrong cg_backend, got '{cg_backend}',"
@@ -497,7 +497,7 @@ def sparse_combine(
     array_1: Array,
     array_2: Array,
     o3_lambda: int,
-    cg_coeffs: TensorMap,
+    cg_coefficients: TensorMap,
     cg_backend: str,
 ) -> Array:
     """
@@ -511,8 +511,8 @@ def sparse_combine(
     :param array_2: array with the m values for l2 with shape [n_samples, 2 * l2 + 1,
         n_p_properties]
     :param o3_lambda: int value of the resulting coupled channel
-    :param cg_coeffs: a :py:class:`TensorMap` containing CG coefficients in a format for
-        either sparse or dense CG tensor products, as returned by
+    :param cg_coefficients: a :py:class:`TensorMap` containing CG coefficients in a
+        format for either sparse or dense CG tensor products, as returned by
         :py:func:`calculate_cg_coefficients`. See the function docstring for details on
         the data structure. Only used if ``cg_backend`` is not ``"metadata"``.
     :param cg_backend: specifies the combine backend with sparse CG coefficients. It can
@@ -546,7 +546,7 @@ def sparse_combine(
 
         # Get the corresponding Clebsch-Gordan coefficients
         # Fill in each mu component of the output array in turn
-        cg_l1l2lam = cg_coeffs.block({"l1": l1, "l2": l2, "lambda": o3_lambda})
+        cg_l1l2lam = cg_coefficients.block({"l1": l1, "l2": l2, "lambda": o3_lambda})
         for i in range(len(cg_l1l2lam.samples)):
             m1m2mu_key = cg_l1l2lam.samples.entry(i)
             m1 = m1m2mu_key[0]
@@ -577,7 +577,7 @@ def sparse_combine(
         # We also need to pass SAP the CG coefficients and m1, m2, and mu indices as 1D
         # arrays. Extract these from the corresponding TensorBlock in the TensorMap CG
         # cache.
-        block = cg_coeffs.block({"l1": l1, "l2": l2, "lambda": o3_lambda})
+        block = cg_coefficients.block({"l1": l1, "l2": l2, "lambda": o3_lambda})
         samples = block.samples
 
         m1_arr: List[int] = []
@@ -621,7 +621,7 @@ def dense_combine(
     array_1: Array,
     array_2: Array,
     o3_lambda: int,
-    cg_coeffs: TensorMap,
+    cg_coefficients: TensorMap,
 ) -> Array:
     """
     Performs a Clebsch-Gordan combination step on 2 arrays using a dense operation. The
@@ -634,8 +634,8 @@ def dense_combine(
     :param array_2: array with the m values for l2 with shape [n_samples, 2 * l2 + 1,
         n_p_properties]
     :param o3_lambda: int value of the resulting coupled channel
-    :param cg_coeffs: a :py:class:`TensorMap` containing CG coefficients in a format for
-        either sparse or dense CG tensor products, as returned by
+    :param cg_coefficients: a :py:class:`TensorMap` containing CG coefficients in a
+        format for either sparse or dense CG tensor products, as returned by
         :py:func:`calculate_cg_coefficients`. See the function docstring for details on
         the data structure. Only used if ``cg_backend`` is not ``"metadata"``.
 
@@ -646,7 +646,7 @@ def dense_combine(
     l1 = (array_1.shape[1] - 1) // 2
     l2 = (array_2.shape[1] - 1) // 2
 
-    cg_l1l2lam = cg_coeffs.block({"l1": l1, "l2": l2, "lambda": o3_lambda}).values
+    cg_l1l2lam = cg_coefficients.block({"l1": l1, "l2": l2, "lambda": o3_lambda}).values
 
     # (samples None None l1_mu q) * (samples l2_mu p None None)
     # -> (samples l2_mu p l1_mu q) we broadcast it in this way

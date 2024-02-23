@@ -19,7 +19,7 @@ def test_system_implementation():
     system = ChemfilesSystem(frame)
 
     assert system.size() == 4
-    assert np.all(system.species() == [6, 120, 121, 30])
+    assert np.all(system.types() == [6, 120, 121, 30])
     positions = [
         (0, 0, 0),
         (0, 1, 0),

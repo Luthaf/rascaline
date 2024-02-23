@@ -11,16 +11,16 @@ except NameError:
 class AtomicComposition(CalculatorBase):
     """An atomic composition calculator for obtaining the stoichiometric information.
 
-    For ``per_structure=False`` calculator has one property ``count`` that is
-    ``1`` for all centers, and has a sample index that indicates the central atom type.
+    For ``per_system=False`` calculator has one property ``count`` that is ``1`` for all
+    atoms, and has a sample index that indicates the central atom type.
 
-    For ``per_structure=True`` a sum for each structure is performed. The number of
-    atoms per structure is saved. The only sample left is names ``structure``.
+    For ``per_system=True`` a sum for each system is performed. The number of atoms per
+    system is saved. The only sample left is named ``system``.
     """
 
-    def __init__(self, per_structure):
+    def __init__(self, per_system):
         parameters = {
-            "per_structure": per_structure,
+            "per_system": per_system,
         }
         super().__init__("atomic_composition", json.dumps(parameters))
 
@@ -49,28 +49,12 @@ class NeighborList(CalculatorBase):
     of 0 (i.e. self pairs inside the original unit cell) are only included when using
     ``self_pairs=True``.
 
-    The ``quantity`` parameter determine what will be included in the output. It can
-    take one of three values:
+    This calculator produces a single property (``"distance"``) with three components
+    (``"pair_xyz"``) containing the x, y, and z component of the distance vector of the
+    pair.
 
-    - ``"Distance"``, to get the distance between the atoms, accounting for periodic
-      boundary conditions. This is the default.
-    - ``"CellShiftVector"``, to get the cell shift vector, which can then be used to
-      apply periodic boundary conditions and compute the distance vector.
-
-      If ``S`` is the cell shift vector, ``rij`` the pair distance vector, ``ri`` and
-      ``rj`` the position of the atoms, ``rij = rj - ri + S``.
-    - ``"CellShiftIndices"``, to get three integers indicating the number of cell
-      vectors (``A``, ``B``, and ``C``) entering the cell shift.
-
-      If the cell vectors are ``A``, ``B``, and ``C``, this returns three integers
-      ``sa``, ``sb``, and ``sc`` such that the cell shift ``S = sa * A + sb * B + sc *
-      C``.
-
-    This calculator produces a single property (``"distance"``, ``"cell_shift_vector"``,
-    or ``"cell_shift_indices"``) with three components (``"pair_direction"``) containing
-    the x, y, and z component of the requested vector. In addition to the atom indexes,
-    the samples also contain a pair index, to be able to distinguish between multiple
-    pairs between the same atom (if the cutoff is larger than the cell).
+    The samples contain the two atoms indexes, as well as the number of cell boundaries
+    crossed to create this pair.
     """
 
     def __init__(
@@ -95,18 +79,18 @@ class SortedDistances(CalculatorBase):
     are less neighbors than ``max_neighbors``, the remaining entries are filled
     with ``cutoff`` instead.
 
-    Separate species for neighbors are represented separately, meaning that the
-    ``max_neighbors`` parameter only apply to a single species.
+    Separate atomic types for neighbors are represented separately, meaning that the
+    ``max_neighbors`` parameter only apply to a single atomic type.
 
     For a full description of the hyper-parameters, see the corresponding
     :ref:`documentation <sorted-distances>`.
     """
 
-    def __init__(self, cutoff, max_neighbors, separate_neighbor_species):
+    def __init__(self, cutoff, max_neighbors, separate_neighbor_types):
         parameters = {
             "cutoff": cutoff,
             "max_neighbors": max_neighbors,
-            "separate_neighbor_species": separate_neighbor_species,
+            "separate_neighbor_types": separate_neighbor_types,
         }
         super().__init__("sorted_distances", json.dumps(parameters))
 

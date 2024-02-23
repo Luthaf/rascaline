@@ -4,27 +4,27 @@ use metatensor::Labels;
 
 use crate::{Error, System};
 
-/// Atomic species filters to be used when building samples and gradient sample
-pub enum SpeciesFilter {
-    /// Any atomic species is fine
+/// Atomic type filters to be used when building samples and gradient sample
+pub enum AtomicTypeFilter {
+    /// Any atomic type is fine
     Any,
-    /// Only the given atomic species should match
+    /// Only the given atomic type should match
     Single(i32),
-    /// Any of the given atomic species is fine
+    /// Any of the given atomic type is fine
     OneOf(Vec<i32>),
-    /// All of the given atoms species must be present. This can only be used
-    /// for neighbor species selection.
+    /// All of the given atoms types must be present. This can only be used
+    /// for neighbor types selection.
     AllOf(BTreeSet<i32>),
 }
 
-impl SpeciesFilter {
-    /// Check if a given species matches the filter
-    pub fn matches(&self, species: i32) -> bool {
+impl AtomicTypeFilter {
+    /// Check if a given type matches the filter
+    pub fn matches(&self, atomic_type: i32) -> bool {
         match self {
-            SpeciesFilter::Any => true,
-            SpeciesFilter::Single(selected) => species == *selected,
-            SpeciesFilter::OneOf(selected) => selected.contains(&species),
-            SpeciesFilter::AllOf(_) => panic!("internal error: can not call `matches` on a `SpeciesFilter::AllOf`"),
+            AtomicTypeFilter::Any => true,
+            AtomicTypeFilter::Single(selected) => atomic_type == *selected,
+            AtomicTypeFilter::OneOf(selected) => selected.contains(&atomic_type),
+            AtomicTypeFilter::AllOf(_) => panic!("internal error: can not call `matches` on a `AtomicTypeFilter::AllOf`"),
         }
     }
 }
@@ -32,7 +32,7 @@ impl SpeciesFilter {
 /// Abstraction over the different kinds of samples used in rascaline.
 ///
 /// Different implementations of this trait correspond to different types of
-/// samples (for example one sample for each structure; or one sample for each
+/// samples (for example one sample for each system; or one sample for each
 /// pair, etc.)
 ///
 /// Each implementation must be able to generate samples from a list of systems,

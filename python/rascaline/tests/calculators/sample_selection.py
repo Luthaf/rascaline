@@ -40,19 +40,19 @@ def test_selection():
 
     # Manually constructing the selected samples
     selected_samples = Labels(
-        names=["structure", "center"],
+        names=["system", "atom"],
         values=np.array([(0, 0), (0, 3), (0, 1)], dtype=np.int32),
     )
     descriptor = calculator.compute(
         system, use_native_system=False, selected_samples=selected_samples
     )
 
-    H_block = descriptor.block(species_center=1)
+    H_block = descriptor.block(center_type=1)
     assert H_block.values.shape == (2, 2)
     assert np.all(H_block.values[0] == (2, 11))
     assert np.all(H_block.values[1] == (3, 13))
 
-    O_block = descriptor.block(species_center=8)
+    O_block = descriptor.block(center_type=8)
     assert O_block.values.shape == (1, 2)
     assert np.all(O_block.values[0] == (5, 5))
 
@@ -63,19 +63,19 @@ def test_subset_variables():
 
     # Only a subset of the variables defined
     selected_samples = Labels(
-        names=["center"],
+        names=["atom"],
         values=np.array([0, 3, 1], dtype=np.int32).reshape(3, 1),
     )
     descriptor = calculator.compute(
         system, use_native_system=False, selected_samples=selected_samples
     )
 
-    H_block = descriptor.block(species_center=1)
+    H_block = descriptor.block(center_type=1)
     assert H_block.values.shape == (2, 2)
     assert np.all(H_block.values[0] == (2, 11))
     assert np.all(H_block.values[1] == (3, 13))
 
-    O_block = descriptor.block(species_center=8)
+    O_block = descriptor.block(center_type=8)
     assert O_block.values.shape == (1, 2)
     assert np.all(O_block.values[0] == (5, 5))
 
@@ -86,17 +86,17 @@ def test_empty_selection():
 
     # empty selected samples
     selected_samples = Labels(
-        names=["center"],
+        names=["atom"],
         values=np.empty((0, 1), dtype=np.int32),
     )
     descriptor = calculator.compute(
         system, use_native_system=False, selected_samples=selected_samples
     )
 
-    H_block = descriptor.block(species_center=1)
+    H_block = descriptor.block(center_type=1)
     assert H_block.values.shape == (0, 2)
 
-    O_block = descriptor.block(species_center=8)
+    O_block = descriptor.block(center_type=8)
     assert O_block.values.shape == (0, 2)
 
 
@@ -105,18 +105,18 @@ def test_predefined_selection():
     calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
 
     keys = Labels(
-        names=["species_center"],
+        names=["center_type"],
         values=np.array([[1], [8]], dtype=np.int32),
     )
 
     # selection from TensorMap
     selected = [
         Labels(
-            names=["structure", "center"],
+            names=["system", "atom"],
             values=np.array([[0, 1]], dtype=np.int32),
         ),
         Labels(
-            names=["structure", "center"],
+            names=["system", "atom"],
             values=np.array([[0, 3]], dtype=np.int32),
         ),
     ]
@@ -126,11 +126,11 @@ def test_predefined_selection():
         system, use_native_system=False, selected_samples=selected_samples
     )
 
-    H_block = descriptor.block(species_center=1)
+    H_block = descriptor.block(center_type=1)
     assert H_block.values.shape == (1, 2)
     assert np.all(H_block.values[0] == (3, 13))
 
-    O_block = descriptor.block(species_center=8)
+    O_block = descriptor.block(center_type=8)
     assert O_block.values.shape == (1, 2)
     assert np.all(O_block.values[0] == (5, 5))
 

@@ -7,15 +7,7 @@ metatensor :py:class:`TensorMap` objects.
 from typing import List, Optional, Tuple, Union
 
 from .. import _dispatch
-from .._backend import (
-    Array,
-    Labels,
-    LabelsEntry,
-    TensorBlock,
-    TensorMap,
-    is_labels,
-    torch_jit_annotate,
-)
+from .._backend import Array, Labels, LabelsEntry, TensorBlock, TensorMap, is_labels
 from . import _cg_cache
 
 
@@ -27,29 +19,24 @@ from . import _cg_cache
 def _standardize_keys(tensor: TensorMap) -> TensorMap:
     """
     Takes a nu=1 tensor and standardizes its metadata. This involves: 1) moving
-    the "species_neighbor" key to properties, if present as a dimension in the
+    the "neighbor_type" key to properties, if present as a dimension in the
     keys, and 2) adding dimensions in the keys for tracking the body order
-    ("order_nu") and parity ("inversion_sigma") of the blocks.
+    ("order_nu").
 
-    Checking for the presence of the "species_neighbor" key in the keys allows
+    Checking for the presence of the "neighbor_type" key in the keys allows
     the option of the user pre-moving this key to the properties before calling
     `n_body_iteration_single_center`, allowing sparsity in a set of global
     neighbors to be created if desired.
 
-    Assumes that the input `tensor` is nu=1, and has only even parity blocks.
+    Assumes that the input `tensor` is nu=1.
     """
-    if "species_neighbor" in tensor.keys.names:
-        tensor = tensor.keys_to_properties(keys_to_move="species_neighbor")
+
+    if "neighbor_type" in tensor.keys.names:
+        tensor = tensor.keys_to_properties(keys_to_move="neighbor_type")
+
     keys = tensor.keys.insert(
         index=0,
         name="order_nu",
-        values=_dispatch.int_array_like(
-            len(tensor.keys.values) * [1], like=tensor.keys.values
-        ),
-    )
-    keys = keys.insert(
-        index=1,
-        name="inversion_sigma",
         values=_dispatch.int_array_like(
             len(tensor.keys.values) * [1], like=tensor.keys.values
         ),
@@ -103,7 +90,7 @@ def _parse_selected_keys(
             # Create a key selection with all angular channels <= the specified
             # angular cutoff
             label = Labels(
-                names=["spherical_harmonics_l"],
+                names=["o3_lambda"],
                 values=_dispatch.int_array_like(
                     list(range(0, angular_cutoff)), like=array_like
                 ).reshape(-1, 1),
@@ -129,50 +116,33 @@ def _parse_selected_keys(
         if not (is_labels(selected)):
             raise ValueError("Asserted that elements in `selected` are Labels")
 
-        if not all(
-            [
-                name in ["spherical_harmonics_l", "inversion_sigma"]
-                for name in selected.names
-            ]
-        ):
+        if not all([name in ["o3_lambda", "o3_sigma"] for name in selected.names]):
             raise ValueError(
                 "specified key names in `selected_keys` must be either"
-                " 'spherical_harmonics_l' or 'inversion_sigma'"
+                " 'o3_lambda' or 'o3_sigma'"
             )
-        if "spherical_harmonics_l" in selected.names:
+        if "o3_lambda" in selected.names:
             if angular_cutoff is not None:
-                below_cutoff: Array = (
-                    selected.column("spherical_harmonics_l") <= angular_cutoff
-                )
+                below_cutoff: Array = selected.column("o3_lambda") <= angular_cutoff
                 if not _dispatch.all(below_cutoff):
                     raise ValueError(
-                        "specified angular channels in `selected_keys` must be <= the"
-                        " specified `angular_cutoff`"
+                        "o3_lambda in `selected_keys` must be smaller or equal to "
+                        "`angular_cutoff`"
                     )
             above_zero = _dispatch.bool_array_like(
-                [
-                    bool(angular_l >= 0)
-                    for angular_l in selected.column("spherical_harmonics_l")
-                ],
+                [bool(angular_l >= 0) for angular_l in selected.column("o3_lambda")],
                 like=array_like,
             )
             if not _dispatch.all(above_zero):
-                raise ValueError(
-                    "specified angular channels in `selected_keys` must be >= 0"
-                )
-        if "inversion_sigma" in selected.names:
+                raise ValueError("o3_lambda in `selected_keys` must be >= 0")
+        if "o3_sigma" in selected.names:
             if not _dispatch.all(
                 _dispatch.bool_array_like(
-                    [
-                        bool(parity_s in [-1, 1])
-                        for parity_s in selected.column("inversion_sigma")
-                    ],
+                    [bool(sigma in [-1, 1]) for sigma in selected.column("o3_sigma")],
                     array_like,
                 )
             ):
-                raise ValueError(
-                    "specified parities in `selected_keys` must be -1 or +1"
-                )
+                raise ValueError("o3_sigma in `selected_keys` must be -1 or +1")
 
     return selected_keys_
 
@@ -280,43 +250,39 @@ def _precompute_keys_full_product(
 ) -> Tuple[List[LabelsEntry], List[LabelsEntry], Labels]:
     # Due to TorchScript we cannot use List[LabelsEntry]
     """
-    Given the keys of 2 TensorMaps, returns the keys that would be present after
-    a full CG product of these TensorMaps.
+    Given the keys of 2 TensorMaps, returns the keys that would be present after a full
+    CG product of these TensorMaps.
 
-    Assumes that `keys_1` corresponds to a TensorMap with arbitrary body order,
-    while `keys_2` corresponds to a TensorMap with body order 1. `keys_1`  must
-    follow the key name convention:
+    Assumes that `keys_1` corresponds to a TensorMap with arbitrary body order, while
+    `keys_2` corresponds to a TensorMap with body order 1. `keys_1`  must follow the key
+    name convention:
 
-    ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center",
-    "l1", "l2", ..., f"l{`nu`}", "k2", ..., f"k{`nu`-1}"]. The "lx" columns
-    track the l values of the nu=1 blocks that were previously combined. The
-    "kx" columns tracks the intermediate lambda values of nu > 1 blocks that
-    have been combined.
+    ["order_nu", "o3_sigma", "o3_lambda", "center_type", "l1", "l2", ..., f"l{`nu`}",
+    "k2", ..., f"k{`nu`-1}"]. The "lx" columns track the l values of the nu=1 blocks
+    that were previously combined. The "kx" columns tracks the intermediate lambda
+    values of nu > 1 blocks that have been combined.
 
-    For instance, a TensorMap of body order nu=4 will have key names
-    ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center",
-    "l1", "l2", "l3", "l4", "k2", "k3"]. Two nu=1 TensorMaps with blocks of
-    order "l1" and "l2" were combined to form a nu=2 TensorMap with blocks of
-    order "k2". This was combined with a nu=1 TensorMap with blocks of order
-    "l3" to form a nu=3 TensorMap with blocks of order "k3". Finally, this was
-    combined with a nu=1 TensorMap with blocks of order "l4" to form a nu=4.
+    For instance, a TensorMap of body order nu=4 will have key names ["order_nu",
+    "o3_sigma", "o3_lambda", "center_type", "l1", "l2", "l3", "l4", "k2", "k3"]. Two
+    nu=1 TensorMaps with blocks of order "l1" and "l2" were combined to form a nu=2
+    TensorMap with blocks of order "k2". This was combined with a nu=1 TensorMap with
+    blocks of order "l3" to form a nu=3 TensorMap with blocks of order "k3". Finally,
+    this was combined with a nu=1 TensorMap with blocks of order "l4" to form a nu=4.
 
     .. math ::
 
         \\bra{
-            n_1 l_1 ; n_2 l_2 k_2 ; ... ;
-            n_{\nu-1} l_{\\nu-1} k_{\\nu-1} ;
-            n_{\\nu} l_{\\nu} k_{\\nu}; \\lambda
-        }
-        \\ket{ \\rho^{\\otimes \\nu}; \\lambda M }
+            n_1 l_1 ; n_2 l_2 k_2 ; ... ; n_{\nu-1} l_{\\nu-1} k_{\\nu-1} ; n_{\\nu}
+            l_{\\nu} k_{\\nu}; \\lambda
+        } \\ket{ \\rho^{\\otimes \\nu}; \\lambda M }
 
-    `keys_2` must follow the key name convention: ["order_nu",
-    "inversion_sigma", "spherical_harmonics_l", "species_center"]
+    `keys_2` must follow the key name convention: ["order_nu", "o3_sigma", "o3_lambda",
+    "center_type"]
 
     The first two lists of the returned value correspond to the LabelsEntry objects of
     the keys being combined. The third element is a Labels object corresponding to the
     keys of the output TensorMap. Each entry in this Labels object corresponds to the
-    keys is formed by combination of the pair of blocks indexed by correspoding key
+    keys is formed by combination of the pair of blocks indexed by corresponding key
     pairs in the first two lists.
     """
     # Get the correlation order of the first TensorMap.
@@ -326,48 +292,49 @@ def _precompute_keys_full_product(
             "keys_1 must correspond to a tensor of a single correlation order."
             f" Found {len(unique_nu)} body orders: {unique_nu}"
         )
-    nu1 = int(unique_nu[0])
+    nu_1 = int(unique_nu[0])
 
     # Define new correlation order of output TensorMap
-    nu = nu1 + 1
+    nu = nu_1 + 1
 
     # The correlation order of the second TensorMap should be nu = 1.
     assert _dispatch.all(keys_2.column("order_nu") == 1)
 
-    # If nu1 = 1, the key names don't yet have any "lx" columns
-    if nu1 == 1:
+    # If nu_1 = 1, the key names don't yet have any "lx" columns
+    if nu_1 == 1:
         l_list_names: List[str] = []
-        new_l_list_names = ["l1", "l2"]
+        new_l_list_names = ["l_1", "l_2"]
     else:
-        l_list_names = [f"l{angular_l}" for angular_l in range(1, nu1 + 1)]
-        new_l_list_names = l_list_names + [f"l{nu}"]
+        l_list_names = [f"l_{angular_l}" for angular_l in range(1, nu_1 + 1)]
+        new_l_list_names = l_list_names + [f"l_{nu}"]
 
     # Check key names
     assert keys_1.names == [
         "order_nu",
-        "inversion_sigma",
-        "spherical_harmonics_l",
-        "species_center",
-    ] + l_list_names + [f"k{k}" for k in range(2, nu1)]
+        "o3_lambda",
+        "o3_sigma",
+        "center_type",
+    ] + l_list_names + [f"k_{k}" for k in range(2, nu_1)]
+
     assert keys_2.names == [
         "order_nu",
-        "inversion_sigma",
-        "spherical_harmonics_l",
-        "species_center",
+        "o3_lambda",
+        "o3_sigma",
+        "center_type",
     ]
 
     # Define key names of output Labels (i.e. for combined TensorMap)
     new_names = (
-        ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center"]
+        ["order_nu", "o3_lambda", "o3_sigma", "center_type"]
         + new_l_list_names
-        + [f"k{k}" for k in range(2, nu)]
+        + [f"k_{k}" for k in range(2, nu)]
     )
 
     # Define key names of output Labels (i.e. for combined TensorMap)
     new_names = (
-        ["order_nu", "inversion_sigma", "spherical_harmonics_l", "species_center"]
+        ["order_nu", "o3_lambda", "o3_sigma", "center_type"]
         + new_l_list_names
-        + [f"k{k}" for k in range(2, nu)]
+        + [f"k_{k}" for k in range(2, nu)]
     )
 
     new_key_values: List[List[int]] = []
@@ -379,44 +346,40 @@ def _precompute_keys_full_product(
             key_1 = keys_1.entry(i)
             key_2 = keys_2.entry(j)
             # Unpack relevant key values
-            sig1 = int(keys_1.values[i, 1])
-            lam1 = int(keys_1.values[i, 2])
-            a = int(keys_1.values[i, 3])
-            sig2 = int(keys_2.values[j, 1])
-            lam2 = int(keys_2.values[j, 2])
-            a2 = int(keys_2.values[j, 3])
+            sigma_1 = int(key_1["o3_sigma"])
+            l_1 = int(key_1["o3_lambda"])
+            type_1 = int(key_1["center_type"])
+            sigma_2 = int(key_2["o3_sigma"])
+            l_2 = int(key_2["o3_lambda"])
+            type_2 = int(key_2["center_type"])
 
-            # Only combine blocks of the same chemical species
-            if a != a2:
+            # Only combine blocks of the same atomic types
+            if type_1 != type_2:
                 continue
 
-            # First calculate the possible non-zero angular channels that can be
-            # formed from combination of blocks of order `lam1` and `lam2`. This
-            # corresponds to values in the inclusive range { |lam1 - lam2|, ...,
-            # |lam1 + lam2| }
-            min_lam: int = abs(lam1 - lam2)
-            max_lam: int = abs(lam1 + lam2) + 1
+            # First calculate the possible non-zero angular channels that can be formed
+            # from combination of blocks of order `lambda_1` and `lambda_2`. This
+            # corresponds to values in the inclusive range { |lambda_1 - lambda_2|, ...,
+            # |lambda_1 + lambda_2| }
+            min_lam = abs(l_1 - l_2)
+            max_lam = abs(l_1 + l_2) + 1
             nonzero_lams = list(range(min_lam, max_lam))
 
             # Now iterate over the non-zero angular channels and apply the custom
             # selections
-            for lambda_ in nonzero_lams:
+            for o3_lambda in nonzero_lams:
                 # Calculate new sigma
-                sig = int(sig1 * sig2 * (-1) ** (lam1 + lam2 + lambda_))
+                o3_sigma = int(sigma_1 * sigma_2 * (-1) ** (l_1 + l_2 + o3_lambda))
 
                 # Extract the l and k lists from keys_1
-                l_list: List[int] = _dispatch.to_int_list(keys_1.values[i, 4 : 4 + nu1])
-                k_list: List[int] = _dispatch.to_int_list(keys_1.values[i, 4 + nu1 :])
+                l_list = _dispatch.to_int_list(keys_1.values[i, 4 : 4 + nu_1])
+                k_list = _dispatch.to_int_list(keys_1.values[i, 4 + nu_1 :])
 
-                # Build the new keys values. l{nu} is `lam2`` (i.e.
-                # "spherical_harmonics_l" of the key from `keys_2`. k{nu-1} is
-                # `lam1` (i.e. "spherical_harmonics_l" of the key from `keys_1`).
+                # Build the new keys values. l{nu} is `lambda_2`` (i.e.
+                # "o3_lambda" of the key from `keys_2`. k{nu-1} is
+                # `lambda_1` (i.e. "o3_lambda" of the key from `keys_1`).
                 new_vals: List[int] = (
-                    torch_jit_annotate(List[int], [nu, sig, lambda_, a])
-                    + l_list
-                    + [lam2]
-                    + k_list
-                    + [lam1]
+                    [nu, o3_lambda, o3_sigma, type_1] + l_list + [l_2] + k_list + [l_1]
                 )
                 new_key_values.append(new_vals)
                 keys_1_entries.append(key_1)
@@ -550,35 +513,35 @@ def _combine_blocks_same_samples(
     block_1: TensorBlock,
     block_2: TensorBlock,
     lambda_: int,
-    cg_coeffs: TensorMap,
+    cg_coefficients: TensorMap,
     cg_backend: str,
 ) -> TensorBlock:
     """
     For a given pair of TensorBlocks and desired angular channel, combines the
     values arrays and returns a new TensorBlock.
 
-    If cg_coeffs are None, tensor blocks with empty arrays are returned that only
+    If cg_coefficients are None, tensor blocks with empty arrays are returned that only
     contain the metadata.
     """
 
     # Do the CG combination - single center so no shape pre-processing required
     combined_values = _cg_cache.combine_arrays(
-        block_1.values, block_2.values, lambda_, cg_coeffs, cg_backend
+        block_1.values, block_2.values, lambda_, cg_coefficients, cg_backend
     )
 
     # Infer the new nu value: block 1's properties are nu pairs of
-    # "species_neighbor_x" and "nx".
+    # "neighbor_type_x" and "nx".
     combined_nu = int((len(block_1.properties.names) / 2) + 1)
 
-    # Define the new property names for "nx" and "species_neighbor_x"
-    n_names = [f"n{i}" for i in range(1, combined_nu + 1)]
-    neighbor_names = [f"species_neighbor_{i}" for i in range(1, combined_nu + 1)]
-    prop_names_zip = [
+    # Define the new property names for "n_<i>" and "neighbor_<i>_type"
+    n_names = [f"n_{i}" for i in range(1, combined_nu + 1)]
+    neighbor_names = [f"neighbor_{i}_type" for i in range(1, combined_nu + 1)]
+    property_names_zip = [
         [neighbor_names[i], n_names[i]] for i in range(len(neighbor_names))
     ]
-    prop_names: List[str] = []
-    for i in range(len(prop_names_zip)):
-        prop_names.extend(prop_names_zip[i])
+    property_names: List[str] = []
+    for i in range(len(property_names_zip)):
+        property_names.extend(property_names_zip[i])
 
     # create cross product list of indices in a torch-scriptable way of
     # [[i, j] for i in range(len(block_1.properties.values)) for j in
@@ -599,14 +562,14 @@ def _combine_blocks_same_samples(
         samples=block_1.samples,
         components=[
             Labels(
-                names=["spherical_harmonics_m"],
+                names=["o3_mu"],
                 values=_dispatch.int_range_like(
                     min_val=-lambda_, max_val=lambda_ + 1, like=block_1.samples.values
                 ).reshape(-1, 1),
             ),
         ],
         properties=Labels(
-            names=prop_names,
+            names=property_names,
             values=_dispatch.int_array_like(
                 [
                     _dispatch.to_int_list(block_2.properties.values[indices[0]])

@@ -128,24 +128,24 @@ pub fn split_tensor_map_by_system(descriptor: &mut TensorMap, n_systems: usize) 
 
                 let mut samples = LabelsBuilder::new(block_data.samples.names());
                 let mut samples_mapping = BTreeMap::new();
-                let mut structure_per_sample = vec![LabelValue::new(-1); block_data.samples.count()];
+                let mut system_per_sample = vec![LabelValue::new(-1); block_data.samples.count()];
 
                 let system_start = *system_end;
-                for (sample_i, &[structure, center]) in block_data.samples.iter_fixed_size().enumerate().skip(system_start) {
-                    structure_per_sample[sample_i] = structure;
+                for (sample_i, &[system, atom]) in block_data.samples.iter_fixed_size().enumerate().skip(system_start) {
+                    system_per_sample[sample_i] = system;
 
-                    if structure.usize() == system_i {
+                    if system.usize() == system_i {
                         // this sample is part of to the current system
-                        samples.add(&[structure, center]);
+                        samples.add(&[system, atom]);
                         let new_sample = samples_mapping.len();
                         samples_mapping.insert(sample_i, new_sample);
 
                         *system_end += 1;
-                    } else if structure.usize() > system_i {
+                    } else if system.usize() > system_i {
                         // found the next system
                         break;
                     } else {
-                        // structure.usize() < system_i
+                        // system.usize() < system_i
                         panic!("expected samples to be ordered by system, they are not");
                     }
                 }
@@ -196,19 +196,19 @@ pub fn split_tensor_map_by_system(descriptor: &mut TensorMap, n_systems: usize) 
                     let mut samples = LabelsBuilder::new(gradient.samples.names());
                     for gradient_sample in gradient.samples.iter().skip(system_start_grad) {
                         let sample_i = gradient_sample[0].usize();
-                        let structure = structure_per_sample[sample_i];
-                        if structure.usize() == system_i {
+                        let system = system_per_sample[sample_i];
+                        if system.usize() == system_i {
                             // this sample is part of to the current system
                             let mut new_gradient_sample = gradient_sample.to_vec();
                             new_gradient_sample[0] = samples_mapping[&sample_i].into();
                             samples.add(&new_gradient_sample);
 
                             *system_end_grad += 1;
-                        } else if structure.usize() > system_i {
+                        } else if system.usize() > system_i {
                             // found the next system
                             break;
                         } else {
-                            // structure.usize() < system_i
+                            // system.usize() < system_i
                             panic!("expected samples to be ordered by system, they are not");
                         }
                     }

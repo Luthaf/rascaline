@@ -340,8 +340,8 @@ pub struct NeighborsList {
     pub cutoff: f64,
     /// all pairs in the system
     pub pairs: Vec<Pair>,
-    /// all pairs in the system, classified by associated center
-    pub pairs_by_center: Vec<Vec<Pair>>,
+    /// all pairs associated with a given atom
+    pub pairs_by_atom: Vec<Vec<Pair>>,
 }
 
 impl NeighborsList {
@@ -398,7 +398,7 @@ impl NeighborsList {
         return NeighborsList {
             cutoff: cutoff,
             pairs: pairs,
-            pairs_by_center: pairs_by_center,
+            pairs_by_atom: pairs_by_center,
         };
     }
 }

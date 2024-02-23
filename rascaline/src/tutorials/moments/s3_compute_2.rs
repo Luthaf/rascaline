@@ -1,8 +1,8 @@
 use metatensor::{Labels, TensorMap, LabelsBuilder};
 
 use crate::{System, Error};
-use crate::labels::{CenterSingleNeighborsSpeciesKeys, KeysBuilder};
-use crate::labels::{AtomCenteredSamples, SamplesBuilder, SpeciesFilter};
+use crate::labels::{CenterSingleNeighborsTypesKeys, KeysBuilder};
+use crate::labels::{AtomCenteredSamples, SamplesBuilder, AtomicTypeFilter};
 use crate::calculators::CalculatorBase;
 
 #[derive(Clone, Debug)]
@@ -59,7 +59,7 @@ impl CalculatorBase for GeometricMoments {
 
     // [compute]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
-        assert_eq!(descriptor.keys().names(), ["species_center", "species_neighbor"]);
+        assert_eq!(descriptor.keys().names(), ["center_type", "neighbor_type"]);
 
         for (system_i, system) in systems.iter_mut().enumerate() {
             system.compute_neighbors(self.cutoff)?;

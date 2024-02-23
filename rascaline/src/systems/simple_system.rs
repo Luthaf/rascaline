@@ -8,7 +8,7 @@ use super::neighbors::NeighborsList;
 #[derive(Clone, Debug)]
 pub struct SimpleSystem {
     pub(crate) cell: UnitCell,
-    species: Vec<i32>,
+    types: Vec<i32>,
     positions: Vec<Vector3D>,
     neighbors: Option<NeighborsList>,
 }
@@ -18,15 +18,15 @@ impl SimpleSystem {
     pub fn new(cell: UnitCell) -> SimpleSystem {
         SimpleSystem {
             cell: cell,
-            species: Vec::new(),
+            types: Vec::new(),
             positions: Vec::new(),
             neighbors: None,
         }
     }
 
-    /// Add an atom with the given species and position to this system
-    pub fn add_atom(&mut self, species: i32, position: Vector3D) {
-        self.species.push(species);
+    /// Add an atom with the given atomic type and position to this system
+    pub fn add_atom(&mut self, atomic_type: i32, position: Vector3D) {
+        self.types.push(atomic_type);
         self.positions.push(position);
     }
 
@@ -47,15 +47,15 @@ impl SimpleSystem {
 
 impl System for SimpleSystem {
     fn size(&self) -> Result<usize, Error> {
-        Ok(self.species.len())
+        Ok(self.types.len())
     }
 
     fn positions(&self) -> Result<&[Vector3D], Error> {
         Ok(&self.positions)
     }
 
-    fn species(&self) -> Result<&[i32], Error> {
-        Ok(&self.species)
+    fn types(&self) -> Result<&[i32], Error> {
+        Ok(&self.types)
     }
 
     fn cell(&self) -> Result<UnitCell, Error> {
@@ -82,11 +82,11 @@ impl System for SimpleSystem {
         Ok(&neighbors.pairs)
     }
 
-    fn pairs_containing(&self, center: usize) -> Result<&[Pair], Error> {
+    fn pairs_containing(&self, atom: usize) -> Result<&[Pair], Error> {
         let neighbors = self.neighbors.as_ref().ok_or_else(|| Error::Internal(
             "neighbor list is not initialized".into()
         ))?;
-        Ok(&neighbors.pairs_by_center[center])
+        Ok(&neighbors.pairs_by_atom[atom])
     }
 }
 
@@ -95,8 +95,8 @@ impl std::convert::TryFrom<&dyn System> for SimpleSystem {
 
     fn try_from(system: &dyn System) -> Result<SimpleSystem, Error> {
         let mut new = SimpleSystem::new(system.cell()?);
-        for (&species, &position) in system.species()?.iter().zip(system.positions()?) {
-            new.add_atom(species, position);
+        for (&atomic_type, &position) in system.types()?.iter().zip(system.positions()?) {
+            new.add_atom(atomic_type, position);
         }
         return Ok(new);
     }
@@ -114,10 +114,10 @@ mod tests {
         system.add_atom(3, Vector3D::new(5.0, 3.0, 4.0));
 
         assert_eq!(system.size().unwrap(), 3);
-        assert_eq!(system.species.len(), 3);
+        assert_eq!(system.types.len(), 3);
         assert_eq!(system.positions.len(), 3);
 
-        assert_eq!(system.species().unwrap(), &[3, 1, 3]);
+        assert_eq!(system.types().unwrap(), &[3, 1, 3]);
         assert_eq!(system.positions().unwrap(), &[
             Vector3D::new(2.0, 3.0, 4.0),
             Vector3D::new(1.0, 3.0, 4.0),

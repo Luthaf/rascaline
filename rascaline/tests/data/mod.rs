@@ -23,11 +23,11 @@ pub fn load_calculator_input(path: impl AsRef<Path>) -> (Vec<Box<dyn System>>, H
         let cell = read_cell(&system["cell"]);
         let mut simple_system = SimpleSystem::new(cell);
 
-        let species = system["species"].as_array().expect("species must be an array");
+        let types = system["types"].as_array().expect("types must be an array");
         let positions = system["positions"].as_array().expect("positions must be an array");
 
-        for (species, position) in species.iter().zip(positions) {
-            let species = species.as_i64().expect("species must be an integer") as i32;
+        for (atomic_type, position) in types.iter().zip(positions) {
+            let atomic_type = atomic_type.as_i64().expect("atomic_type must be an integer") as i32;
             let position = position.as_array().expect("position must be an array");
             let position = Vector3D::new(
                 position[0].as_f64().unwrap(),
@@ -35,7 +35,7 @@ pub fn load_calculator_input(path: impl AsRef<Path>) -> (Vec<Box<dyn System>>, H
                 position[2].as_f64().unwrap(),
             );
 
-            simple_system.add_atom(species, position);
+            simple_system.add_atom(atomic_type, position);
         }
 
         systems.push(Box::new(simple_system) as Box<dyn System>);

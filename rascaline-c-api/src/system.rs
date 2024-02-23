@@ -68,12 +68,12 @@ pub struct rascal_system_t {
     user_data: *mut c_void,
     /// This function should set `*size` to the number of atoms in this system
     size: Option<unsafe extern fn(user_data: *const c_void, size: *mut usize) -> rascal_status_t>,
-    /// This function should set `*species` to a pointer to the first element of
-    /// a contiguous array containing the atomic species of each atom in the
-    /// system. Different atomic species should be identified with a different
+    /// This function should set `*types` to a pointer to the first element of
+    /// a contiguous array containing the atomic types of each atom in the
+    /// system. Different atomic types should be identified with a different
     /// value. These values are usually the atomic number, but don't have to be.
     /// The array should contain `rascal_system_t::size()` elements.
-    species: Option<unsafe extern fn(user_data: *const c_void, species: *mut *const i32) -> rascal_status_t>,
+    types: Option<unsafe extern fn(user_data: *const c_void, types: *mut *const i32) -> rascal_status_t>,
     /// This function should set `*positions` to a pointer to the first element
     /// of a contiguous array containing the atomic cartesian coordinates.
     /// `positions[0], positions[1], positions[2]` must contain the x, y, z
@@ -98,14 +98,14 @@ pub struct rascal_system_t {
     pairs: Option<unsafe extern fn(user_data: *const c_void, pairs: *mut *const rascal_pair_t, count: *mut usize) -> rascal_status_t>,
     /// This function should set `*pairs` to a pointer to the first element of a
     /// contiguous array containing all pairs in this system containing the atom
-    /// with index `center`; and `*count` to the size of the array/the number of
+    /// with index `atom`; and `*count` to the size of the array/the number of
     /// pairs.
     ///
     /// The same restrictions on the list of pairs as `rascal_system_t::pairs`
     /// applies, with the additional condition that the pair `i-j` should be
     /// included both in the return of `pairs_containing(i)` and
     /// `pairs_containing(j)`.
-    pairs_containing: Option<unsafe extern fn(user_data: *const c_void, center: usize, pairs: *mut *const rascal_pair_t, count: *mut usize) -> rascal_status_t>,
+    pairs_containing: Option<unsafe extern fn(user_data: *const c_void, atom: usize, pairs: *mut *const rascal_pair_t, count: *mut usize) -> rascal_status_t>,
 }
 
 unsafe impl Send for rascal_system_t {}
@@ -133,10 +133,10 @@ impl<'a> System for &'a mut rascal_system_t {
         return Ok(value);
     }
 
-    fn species(&self) -> Result<&[i32], Error> {
-        let function = self.species.ok_or_else(|| Error::External {
+    fn types(&self) -> Result<&[i32], Error> {
+        let function = self.types.ok_or_else(|| Error::External {
             status: RASCAL_SYSTEM_ERROR,
-            message: "rascal_system_t.species function is NULL".into(),
+            message: "rascal_system_t.types function is NULL".into(),
         })?;
 
         let mut ptr = std::ptr::null();
@@ -147,7 +147,7 @@ impl<'a> System for &'a mut rascal_system_t {
         if !status.is_success() {
             return Err(Error::External {
                 status: status.as_i32(),
-                message: "call to rascal_system_t.species failed".into(),
+                message: "call to rascal_system_t.types failed".into(),
             });
         }
 
@@ -155,7 +155,7 @@ impl<'a> System for &'a mut rascal_system_t {
         if ptr.is_null() && size != 0 {
             return Err(Error::External {
                 status: RASCAL_SYSTEM_ERROR,
-                message: "rascal_system_t.species returned a NULL pointer with non zero size".into(),
+                message: "rascal_system_t.types returned a NULL pointer with non zero size".into(),
             });
         }
 
@@ -268,7 +268,7 @@ impl<'a> System for &'a mut rascal_system_t {
         }
     }
 
-    fn pairs_containing(&self, center: usize) -> Result<&[Pair], Error> {
+    fn pairs_containing(&self, atom: usize) -> Result<&[Pair], Error> {
         let function = self.pairs_containing.ok_or_else(|| Error::External {
             status: RASCAL_SYSTEM_ERROR,
             message: "rascal_system_t.pairs_containing function is NULL".into(),
@@ -277,7 +277,7 @@ impl<'a> System for &'a mut rascal_system_t {
         let mut ptr = std::ptr::null();
         let mut count = 0;
         let status = unsafe {
-            function(self.user_data, center, &mut ptr, &mut count)
+            function(self.user_data, atom, &mut ptr, &mut count)
         };
 
         if !status.is_success() {
@@ -310,9 +310,9 @@ impl From<SimpleSystem> for rascal_system_t {
             })
         }
 
-        unsafe extern fn species(this: *const c_void, species: *mut *const i32) -> rascal_status_t {
+        unsafe extern fn types(this: *const c_void, types: *mut *const i32) -> rascal_status_t {
             catch_unwind(|| {
-                *species = (*this.cast::<SimpleSystem>()).species()?.as_ptr();
+                *types = (*this.cast::<SimpleSystem>()).types()?.as_ptr();
                 Ok(())
             })
         }
@@ -367,12 +367,12 @@ impl From<SimpleSystem> for rascal_system_t {
 
         unsafe extern fn pairs_containing(
             this: *const c_void,
-            center: usize,
+            atom: usize,
             pairs: *mut *const rascal_pair_t,
             count: *mut usize,
         ) -> rascal_status_t {
             catch_unwind(|| {
-                let all_pairs = (*this.cast::<SimpleSystem>()).pairs_containing(center)?;
+                let all_pairs = (*this.cast::<SimpleSystem>()).pairs_containing(atom)?;
                 *pairs = all_pairs.as_ptr().cast();
                 *count = all_pairs.len();
 
@@ -383,7 +383,7 @@ impl From<SimpleSystem> for rascal_system_t {
         rascal_system_t {
             user_data: Box::into_raw(Box::new(system)).cast(),
             size: Some(size),
-            species: Some(species),
+            types: Some(types),
             positions: Some(positions),
             cell: Some(cell),
             compute_neighbors: Some(compute_neighbors),

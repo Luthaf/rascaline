@@ -47,12 +47,12 @@ def test_selection():
         system, use_native_system=False, selected_properties=selected_properties
     )
 
-    H_block = descriptor.block(species_center=1)
+    H_block = descriptor.block(center_type=1)
     assert H_block.values.shape == (2, 1)
     assert np.all(H_block.values[0] == (2,))
     assert np.all(H_block.values[1] == (3,))
 
-    O_block = descriptor.block(species_center=8)
+    O_block = descriptor.block(center_type=8)
     assert O_block.values.shape == (2, 1)
     assert np.all(O_block.values[0] == (4,))
     assert np.all(O_block.values[1] == (5,))
@@ -71,12 +71,12 @@ def test_subset_variables():
         system, use_native_system=False, selected_properties=selected_properties
     )
 
-    H_block = descriptor.block(species_center=1)
+    H_block = descriptor.block(center_type=1)
     assert H_block.values.shape == (2, 1)
     assert np.all(H_block.values[0] == (2,))
     assert np.all(H_block.values[1] == (3,))
 
-    O_block = descriptor.block(species_center=8)
+    O_block = descriptor.block(center_type=8)
     assert O_block.values.shape == (2, 1)
     assert np.all(O_block.values[0] == (4,))
     assert np.all(O_block.values[1] == (5,))
@@ -95,10 +95,10 @@ def test_empty_selection():
         system, use_native_system=False, selected_properties=selected_properties
     )
 
-    H_block = descriptor.block(species_center=1)
+    H_block = descriptor.block(center_type=1)
     assert H_block.values.shape == (2, 0)
 
-    O_block = descriptor.block(species_center=8)
+    O_block = descriptor.block(center_type=8)
     assert O_block.values.shape == (2, 0)
 
 
@@ -107,7 +107,7 @@ def test_predefined_selection():
     calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
 
     keys = Labels(
-        names=["species_center"],
+        names=["center_type"],
         values=np.array([[1], [8]], dtype=np.int32),
     )
 
@@ -128,12 +128,12 @@ def test_predefined_selection():
         system, use_native_system=False, selected_properties=selected_properties
     )
 
-    H_block = descriptor.block(species_center=1)
+    H_block = descriptor.block(center_type=1)
     assert H_block.values.shape == (2, 1)
     assert np.all(H_block.values[0] == (2,))
     assert np.all(H_block.values[1] == (3,))
 
-    O_block = descriptor.block(species_center=8)
+    O_block = descriptor.block(center_type=8)
     assert O_block.values.shape == (2, 1)
     assert np.all(O_block.values[0] == (6,))
     assert np.all(O_block.values[1] == (5,))

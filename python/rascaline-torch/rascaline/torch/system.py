@@ -63,7 +63,7 @@ def _system_to_torch(system, positions_requires_grad, cell_requires_grad):
     if not _is_torch_system(system):
         system = rascaline.systems.wrap_system(system)
         system = System(
-            species=torch.tensor(system.species()),
+            species=torch.tensor(system.types()),
             positions=torch.tensor(system.positions()),
             cell=torch.tensor(system.cell()),
         )

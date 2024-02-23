@@ -44,15 +44,15 @@ List of implemented representations
      - Core of representations in LODE (Long distance equivariant)
      - positions
    * - Sorted distances
-     - Each atomic center is represented by a vector of distance to its
-       neighbors within the spherical cutoff
+     - Each atom is represented by a vector of distance to its neighbors within
+       the spherical cutoff
      - no
    * - Neighbor List
      - Each pair is represented by the vector between the atoms. This is
        intended to be used as a starting point for more complex representations
      - positions
    * - AtomicComposition
-     - Obtaining the stoichiometric information of a structure
+     - Obtaining the stoichiometric information of a system
      - positions and cell
 
 .. inclusion-marker-representations-end

@@ -14,14 +14,14 @@ fn values_no_pbc() {
     let mut calculator = Calculator::new("spherical_expansion", parameters).unwrap();
     let descriptor = calculator.compute(&mut systems, Default::default()).expect("failed to run calculation");
 
-    let keys_to_move = Labels::empty(vec!["species_center"]);
+    let keys_to_move = Labels::empty(vec!["center_type"]);
     let descriptor = descriptor.keys_to_samples(&keys_to_move, true).unwrap();
 
-    let keys_to_move = Labels::empty(vec!["species_neighbor"]);
+    let keys_to_move = Labels::empty(vec!["neighbor_type"]);
     let descriptor = descriptor.keys_to_properties(&keys_to_move, true).unwrap();
-    let descriptor = descriptor.components_to_properties(&["spherical_harmonics_m"]).unwrap();
+    let descriptor = descriptor.components_to_properties(&["o3_mu"]).unwrap();
 
-    let keys_to_move = Labels::empty(vec!["spherical_harmonics_l"]);
+    let keys_to_move = Labels::empty(vec!["o3_lambda"]);
     let descriptor = descriptor.keys_to_properties(&keys_to_move, true).unwrap();
 
     assert_eq!(descriptor.blocks().len(), 1);
@@ -39,14 +39,14 @@ fn values_pbc() {
     let mut calculator = Calculator::new("spherical_expansion", parameters).unwrap();
     let descriptor = calculator.compute(&mut systems, Default::default()).expect("failed to run calculation");
 
-    let keys_to_move = Labels::empty(vec!["species_center"]);
+    let keys_to_move = Labels::empty(vec!["center_type"]);
     let descriptor = descriptor.keys_to_samples(&keys_to_move, true).unwrap();
 
-    let keys_to_move = Labels::empty(vec!["species_neighbor"]);
+    let keys_to_move = Labels::empty(vec!["neighbor_type"]);
     let descriptor = descriptor.keys_to_properties(&keys_to_move, true).unwrap();
-    let descriptor = descriptor.components_to_properties(&["spherical_harmonics_m"]).unwrap();
+    let descriptor = descriptor.components_to_properties(&["o3_mu"]).unwrap();
 
-    let keys_to_move = Labels::empty(vec!["spherical_harmonics_l"]);
+    let keys_to_move = Labels::empty(vec!["o3_lambda"]);
     let descriptor = descriptor.keys_to_properties(&keys_to_move, true).unwrap();
 
     assert_eq!(descriptor.blocks().len(), 1);
@@ -70,14 +70,14 @@ fn gradients() {
     };
     let descriptor = calculator.compute(&mut systems, options).expect("failed to run calculation");
 
-    let keys_to_move = Labels::empty(vec!["species_center"]);
+    let keys_to_move = Labels::empty(vec!["center_type"]);
     let descriptor = descriptor.keys_to_samples(&keys_to_move, true).unwrap();
 
-    let keys_to_move = Labels::empty(vec!["species_neighbor"]);
+    let keys_to_move = Labels::empty(vec!["neighbor_type"]);
     let descriptor = descriptor.keys_to_properties(&keys_to_move, true).unwrap();
-    let descriptor = descriptor.components_to_properties(&["spherical_harmonics_m"]).unwrap();
+    let descriptor = descriptor.components_to_properties(&["o3_mu"]).unwrap();
 
-    let keys_to_move = Labels::empty(vec!["spherical_harmonics_l"]);
+    let keys_to_move = Labels::empty(vec!["o3_lambda"]);
     let descriptor = descriptor.keys_to_properties(&keys_to_move, true).unwrap();
 
     assert_eq!(descriptor.blocks().len(), 1);
@@ -95,7 +95,7 @@ fn gradients() {
 }
 
 fn sum_gradients(n_atoms: usize, gradients: TensorBlockRef<'_>) -> ArrayD<f64> {
-    assert_eq!(gradients.samples().names(), &["sample", "structure", "atom"]);
+    assert_eq!(gradients.samples().names(), &["sample", "system", "atom"]);
     let array = gradients.values().to_array();
 
     let mut sum = ArrayD::from_elem(vec![n_atoms, 3, gradients.properties().count()], 0.0);

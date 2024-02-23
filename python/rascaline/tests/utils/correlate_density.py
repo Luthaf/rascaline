@@ -163,18 +163,18 @@ def get_norm(tensor: TensorMap):
     assert (
         len(
             metatensor.unique_metadata(
-                tensor, "samples", ["structure", "center", "species_center"]
+                tensor, "samples", ["system", "atom", "center_type"]
             ).values
         )
         == 1
     )
     norm = 0.0
     for key, block in tensor.items():  # Sum over lambda and sigma
-        angular_l = key["spherical_harmonics_l"]
+        o3_sigma = key["o3_lambda"]
         norm += np.sum(
             [
                 np.linalg.norm(block.values[0, m, :]) ** 2
-                for m in range(-angular_l, angular_l + 1)
+                for m in range(-o3_sigma, o3_sigma + 1)
             ]
         )
 
@@ -199,14 +199,14 @@ def test_so3_equivariance():
 
     nu_1 = spherical_expansion(frames)
     nu_1_so3 = spherical_expansion(frames_so3)
-    corr_calculator = DensityCorrelations(
+    calculator = DensityCorrelations(
         max_angular=3,
         correlation_order=nu_target,
         angular_cutoff=angular_cutoff,
         selected_keys=selected_keys,
     )
-    nu_3 = corr_calculator.compute(nu_1)
-    nu_3_so3 = corr_calculator.compute(nu_1_so3)
+    nu_3 = calculator.compute(nu_1)
+    nu_3_so3 = calculator.compute(nu_1_so3)
 
     nu_3_transf = wig.transform_tensormap_so3(nu_3)
     assert metatensor.allclose(nu_3_transf, nu_3_so3)
@@ -228,14 +228,14 @@ def test_o3_equivariance():
     nu_1 = spherical_expansion(frames)
     nu_1_o3 = spherical_expansion(frames_o3)
 
-    corr_calculator = DensityCorrelations(
+    calculator = DensityCorrelations(
         max_angular=angular_cutoff,
         correlation_order=nu_target,
         angular_cutoff=angular_cutoff,
         selected_keys=selected_keys,
     )
-    nu_3 = corr_calculator.compute(nu_1)
-    nu_3_o3 = corr_calculator.compute(nu_1_o3)
+    nu_3 = calculator.compute(nu_1)
+    nu_3_o3 = calculator.compute(nu_1_o3)
 
     nu_3_transf = wig.transform_tensormap_o3(nu_3)
     assert metatensor.allclose(nu_3_transf, nu_3_o3)
@@ -259,16 +259,14 @@ def test_lambda_soap_vs_powerspectrum():
 
     # Build a lambda-SOAP
     density = spherical_expansion(frames)
-    corr_calculator = DensityCorrelations(
+    calculator = DensityCorrelations(
         max_angular=SPHEX_HYPERS["max_angular"],
         correlation_order=2,
-        selected_keys=Labels(
-            names=["spherical_harmonics_l"], values=np.array([0]).reshape(-1, 1)
-        ),
+        selected_keys=Labels(names=["o3_lambda"], values=np.array([0]).reshape(-1, 1)),
     )
-    lsoap = corr_calculator.compute(density)
-    keys = lsoap.keys.remove(name="spherical_harmonics_l")
-    lsoap = TensorMap(keys=keys, blocks=[b.copy() for b in lsoap.blocks()])
+    lsoap = calculator.compute(density)
+    keys = lsoap.keys.remove(name="o3_lambda")
+    keys = keys.remove("o3_sigma")
 
     # Manipulate metadata to match that of PowerSpectrum:
     # 1) remove components axis
@@ -277,8 +275,8 @@ def test_lambda_soap_vs_powerspectrum():
     for block in lsoap.blocks():
         n_samples, n_props = block.values.shape[0], block.values.shape[2]
         new_props = block.properties
-        new_props = new_props.remove(name="l1")
-        new_props = new_props.rename(old="l2", new="l")
+        new_props = new_props.remove(name="l_1")
+        new_props = new_props.rename(old="l_2", new="l")
         blocks.append(
             TensorBlock(
                 values=block.values.reshape((n_samples, n_props)),
@@ -287,7 +285,8 @@ def test_lambda_soap_vs_powerspectrum():
                 properties=new_props,
             )
         )
-    lsoap = TensorMap(keys=lsoap.keys, blocks=blocks)
+    lsoap = TensorMap(keys=keys, blocks=blocks)
+
     assert metatensor.allclose(lsoap, ps)
 
 
@@ -310,7 +309,7 @@ def test_correlate_density_norm(correlation_order):
     nu1 = spherical_expansion_small(frames)
 
     # Build higher body order tensor without sorting the l lists
-    corr_calculator = DensityCorrelations(
+    calculator = DensityCorrelations(
         max_angular=SPHEX_HYPERS_SMALL["max_angular"] * correlation_order,
         correlation_order=correlation_order,
         angular_cutoff=None,
@@ -324,7 +323,7 @@ def test_correlate_density_norm(correlation_order):
         selected_keys=None,
         skip_redundant=True,
     )
-    nux = corr_calculator.compute(nu1)
+    nux = calculator.compute(nu1)
     # Build higher body order tensor *with* sorting the l lists
     nux_sorted_l = corr_calculator_skip_redundant.compute(nu1)
 
@@ -333,14 +332,14 @@ def test_correlate_density_norm(correlation_order):
     nu1 = _standardize_keys(nu1)
 
     # Make only lambda and sigma part of keys
-    nu1 = nu1.keys_to_samples(["species_center"])
-    nux = nux.keys_to_samples(["species_center"])
-    nux_sorted_l = nux_sorted_l.keys_to_samples(["species_center"])
+    nu1 = nu1.keys_to_samples(["center_type"])
+    nux = nux.keys_to_samples(["center_type"])
+    nux_sorted_l = nux_sorted_l.keys_to_samples(["center_type"])
 
     # The norm shoudl be calculated for each sample. First find the unqiue
     # samples
     uniq_samples = metatensor.unique_metadata(
-        nux, "samples", names=["structure", "center", "species_center"]
+        nux, "samples", names=["system", "atom", "center_type"]
     )
     grouped_labels = [
         Labels(names=nux.sample_names, values=uniq_samples.values[i].reshape(1, 3))
@@ -523,11 +522,11 @@ def test_correlate_density_metadata_agree():
     frames = h2o_isolated()
     skip_redundant = True
 
-    for max_angular, nu1 in [
+    for max_angular, nu_1 in [
         (2, spherical_expansion_small(frames)),
         (3, spherical_expansion(frames)),
     ]:
-        corr_calculator = DensityCorrelations(
+        calculator = DensityCorrelations(
             max_angular=max_angular,
             correlation_order=3,
             angular_cutoff=3,
@@ -535,26 +534,21 @@ def test_correlate_density_metadata_agree():
             skip_redundant=skip_redundant,
         )
         # Build higher body order tensor with CG computation
-        nux = corr_calculator.compute(nu1)
+        nu_x = calculator.compute(nu_1)
         # Build higher body order tensor without CG computation - i.e. metadata
         # only
-        nux_metadata_only = corr_calculator.compute_metadata(nu1)
-        assert metatensor.equal_metadata(nux, nux_metadata_only)
+        nu_x_metadata_only = calculator.compute_metadata(nu_1)
+        assert metatensor.equal_metadata(nu_x, nu_x_metadata_only)
 
 
-@pytest.mark.parametrize(
-    "selected_keys",
-    [
-        None,
-        Labels(names=["spherical_harmonics_l"], values=np.array([1, 3]).reshape(-1, 1)),
-    ],
-)
+SELECTED_KEYS = Labels(names=["o3_lambda"], values=np.array([[1], [3]]))
+
+
+@pytest.mark.parametrize("selected_keys", [None, SELECTED_KEYS])
 @pytest.mark.parametrize("skip_redundant", [True, False])
 @pytest.mark.parametrize("arrays_backend", ARRAYS_BACKEND + [None])
 def test_correlate_density_angular_selection(
-    selected_keys: Labels,
-    skip_redundant: bool,
-    arrays_backend: str,
+    selected_keys, skip_redundant, arrays_backend
 ):
     """
     Tests that the correct angular channels are output based on the specified
@@ -564,7 +558,7 @@ def test_correlate_density_angular_selection(
     nu_1 = spherical_expansion(frames)
 
     correlation_order = 2
-    corr_calculator = DensityCorrelations(
+    calculator = DensityCorrelations(
         max_angular=SPHEX_HYPERS["max_angular"] * correlation_order,
         correlation_order=correlation_order,
         angular_cutoff=None,
@@ -574,18 +568,18 @@ def test_correlate_density_angular_selection(
     )
     if arrays_backend is not None:
         nu_1 = nu_1.to(arrays=arrays_backend)
-    nu_2 = corr_calculator.compute(nu_1)
+    nu_2 = calculator.compute(nu_1)
 
     if selected_keys is None:
         assert np.all(
             [
                 angular in np.arange(SPHEX_HYPERS["max_angular"] * 2 + 1)
-                for angular in np.unique(nu_2.keys.column("spherical_harmonics_l"))
+                for angular in np.unique(nu_2.keys.column("o3_lambda"))
             ]
         )
 
     else:
         assert np.all(
-            np.sort(np.unique(nu_2.keys.column("spherical_harmonics_l")))
-            == np.sort(selected_keys.column("spherical_harmonics_l"))
+            np.sort(np.unique(nu_2.keys.column("o3_lambda")))
+            == np.sort(selected_keys.column("o3_lambda"))
         )

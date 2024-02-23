@@ -14,9 +14,9 @@ another instead of complex math or performance tricks.
 
 The calculator that we will create computes an atom-centered representation,
 where each atomic environment is represented with the moments of the positions
-of the neighbors up to a maximal order. Each atomic species in the neighborhood
+of the neighbors up to a maximal order. Each atomic type in the neighborhood
 will be considered separately. The resulting descriptor will represent an
-atom-centered environment :math:`\ket{\mathcal{A}_i}` on a basis of species
+atom-centered environment :math:`\ket{\mathcal{A}_i}` on a basis of atomic types
 :math:`\alpha` and moment order :math:`k`:
 
 .. math::
@@ -169,15 +169,15 @@ Keys
 ++++
 
 First, we have one function defining the set of keys that will be in the final
-``TensorMap``. In our case, we will want to have the center atom species and the
-neighbor atom species as keys. This allow to only store data if a given neighbor
-is actually present around a given center.
+``TensorMap``. In our case, we will want to have the central atom type and the
+neighbor atom type as keys. This allow to only store data if a given neighbor
+is actually present around a given atom.
 
 We could manually create a set of `Labels`_ with a `LabelsBuilder`_ and return
 them. But since multiple calculators will create the same kind of keys, there
-are already implementation of typical species keys. Here we use
-``CenterSingleNeighborsSpeciesKeys`` to create a set of keys containing the
-center species and one neighbor species. This key builder requires a ``cutoff``
+are already implementation of typical atomic types keys. Here we use
+``CenterSingleNeighborsTypesKeys`` to create a set of keys containing the
+central atom type and one neighbor type. This key builder requires a ``cutoff``
 (to determine which neighbors it should use) and ``self_pairs`` indicated
 whether atoms should be considered to be their own neighbor or not.
 
@@ -273,15 +273,15 @@ values above: samples, components and properties. Properties are easy, because
 they are the same between the values and the gradients. The components are also
 similar, with some additional components added at the beginning depending on the
 kind of gradient. For example, if a calculator uses ``[first, second]`` as it's
-set of components, the ``"positions"`` gradient would use ``[direction, first,
-second]``, where ``direction`` contains 3 entries (x/y/z). The ``"cell"``
-gradients would use ``[direction_1, direction_2, first, second]``, with
-``direction_1`` and ``direction_2`` containing 3 entries (x/y/z) each.
+set of components, the ``"positions"`` gradient would use ``[xyz, first,
+second]``, where ``xyz`` contains 3 entries. The ``"cell"`` gradients would use
+``[abc, xyz, first, second]``, where ``abc`` contain the index of the cell
+vector.
 
 Finally, the samples needs to be defined. For the ``"cell"`` gradients, there is
 always exactly one gradient sample per value sample. For the ``"positions"``
 gradient samples, we could have one gradient sample for each atom in the same
-structure for each value sample. However, this would create a very large number
+system for each value sample. However, this would create a very large number
 of gradient samples (number of atoms squared), and a lot of entries would be
 filled with zeros. Instead, each calculator which supports positions gradients
 must implement the ``positions_gradient_samples`` function, and use it to return
@@ -350,7 +350,7 @@ result is ``Ok(v)``, ``?`` extract the ``v`` and the execution continues.
    :dedent: 4
 
 For each pair, we now have to find the corresponding block (using the center and
-neighbor species values), and check wether the corresponding sample was
+neighbor atomic types), and check wether the corresponding sample was
 requested by the user.
 
 To find blocks and check for samples, we can use the `Labels::position`_
@@ -365,8 +365,8 @@ deal with missing samples later.
 One thing to keep in mind is that a given pair can participate to two different
 samples. If two atoms ``i`` and ``j`` are closer than the cutoff, the list of
 pairs will only contain the ``i-j`` pair, and not the ``j-i`` pair (it is a
-so-called half neighbors list). That being said, we can get the list of species
-with ``system.species()`` before the loop over pairs, and then construct the two
+so-called half neighbors list). That being said, we can get the list of atomic types
+with ``system.types()`` before the loop over pairs, and then construct the two
 candidate samples and check for their presence. If neither of the samples was
 requested, then we can skip the calculation for this pair. We also use
 ``system.pairs_containing()`` to get the number of neighbors a given center has.
@@ -528,8 +528,8 @@ Rust book for a great introduction to this subject.
 Depending on the representation you are working with, you should write tests
 that check the fundamental properties of this representation. For example, for
 our geometric moments representation, the first moment (with order 0) should
-always be the number of neighbor of the current species over the total number of
-neighbors. A test checking this property would look like this:
+always be the number of neighbor of the current atomic type over the total
+number of neighbors. A test checking this property would look like this:
 
 .. literalinclude:: ../../../../rascaline/src/tutorials/moments/moments.rs
    :language: rust

@@ -1,8 +1,8 @@
 use metatensor::{Labels, TensorMap, LabelsBuilder};
 
 use crate::{System, Error};
-use crate::labels::{CenterSingleNeighborsSpeciesKeys, KeysBuilder};
-use crate::labels::{AtomCenteredSamples, SamplesBuilder, SpeciesFilter};
+use crate::labels::{CenterSingleNeighborsTypesKeys, KeysBuilder};
+use crate::labels::{AtomCenteredSamples, SamplesBuilder, AtomicTypeFilter};
 use crate::calculators::CalculatorBase;
 
 #[derive(Clone, Debug)]
@@ -59,18 +59,18 @@ impl CalculatorBase for GeometricMoments {
 
     // [compute]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
-        assert_eq!(descriptor.keys().names(), ["species_center", "species_neighbor"]);
+        assert_eq!(descriptor.keys().names(), ["center_type", "neighbor_type"]);
 
         for (system_i, system) in systems.iter_mut().enumerate() {
             system.compute_neighbors(self.cutoff)?;
 
             // add this line
-            let species = system.species()?;
+            let types = system.types()?;
 
             for pair in system.pairs()? {
                 // get the block where the first atom is the center
                 let first_block_id = descriptor.keys().position(&[
-                    species[pair.first].into(), species[pair.second].into(),
+                    types[pair.first].into(), types[pair.second].into(),
                 ]);
 
                 // get the sample corresponding to the first atom as a center
@@ -87,7 +87,7 @@ impl CalculatorBase for GeometricMoments {
 
                 // get the id of the block where the second atom is the center
                 let second_block_id = descriptor.keys().position(&[
-                    species[pair.second].into(), species[pair.first].into(),
+                    types[pair.second].into(), types[pair.first].into(),
                 ]);
                 // get the sample corresponding to the first atom as a center
                 let second_sample_position = if let Some(block_id) = second_block_id {

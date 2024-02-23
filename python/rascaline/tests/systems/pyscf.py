@@ -18,7 +18,7 @@ def system():
 
 def test_system_implementation(system):
     assert system.size() == 3
-    assert np.all(system.species() == [6, 8, 8])
+    assert np.all(system.types() == [6, 8, 8])
 
     positions = np.array(
         [
@@ -27,7 +27,6 @@ def test_system_implementation(system):
             (0, 0, -1.6),
         ]
     )
-    print(system.positions(), positions)
     assert np.allclose(system.positions(), positions, rtol=1e-14)
     assert np.all(system.cell() == [[0, 0, 0], [0, 0, 0], [0, 0, 0]])
 

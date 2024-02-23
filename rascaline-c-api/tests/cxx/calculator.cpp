@@ -97,14 +97,14 @@ TEST_CASE("Compute descriptor") {
         auto descriptor = calculator.compute(systems, options);
 
         CHECK(descriptor.keys() == metatensor::Labels(
-            {"species_center"},
+            {"center_type"},
             {{1}, {6}}
         ));
 
         // H block
         auto block = descriptor.block_by_id(0);
         CHECK(block.samples() == metatensor::Labels(
-            {"structure", "center"},
+            {"system", "atom"},
             {{0, 1}, {0, 2}, {0, 3}}
         ));
         CHECK(block.properties() == metatensor::Labels(
@@ -118,7 +118,7 @@ TEST_CASE("Compute descriptor") {
 
         auto gradient = block.gradient("positions");
         CHECK(gradient.samples() == metatensor::Labels(
-            {"sample", "structure", "atom"},
+            {"sample", "system", "atom"},
             {
                 {0, 0, 0}, {0, 0, 1}, {0, 0, 2},
                 {1, 0, 1}, {1, 0, 2}, {1, 0, 3},
@@ -142,7 +142,7 @@ TEST_CASE("Compute descriptor") {
         // C block
         block = descriptor.block_by_id(1);
         CHECK(block.samples() == metatensor::Labels(
-            {"structure", "center"},
+            {"system", "atom"},
             {{0, 0}}
         ));
         CHECK(block.properties() == metatensor::Labels(
@@ -156,7 +156,7 @@ TEST_CASE("Compute descriptor") {
 
         gradient = block.gradient("positions");
         CHECK(gradient.samples() == metatensor::Labels(
-            {"sample", "structure", "atom"},
+            {"sample", "system", "atom"},
             {{0, 0, 0}, {0, 0, 1}}
         ));
         CHECK(gradient.values() == metatensor::NDArray<double>(
@@ -172,19 +172,19 @@ TEST_CASE("Compute descriptor") {
         auto options = rascaline::CalculationOptions();
         options.gradients.push_back("positions");
         options.selected_samples = rascaline::LabelsSelection::subset(
-            metatensor::Labels({"structure", "center"}, {{0, 1}, {0, 3}})
+            metatensor::Labels({"system", "atom"}, {{0, 1}, {0, 3}})
         );
         auto descriptor = calculator.compute(systems, options);
 
         CHECK(descriptor.keys() == metatensor::Labels(
-            {"species_center"},
+            {"center_type"},
             {{1}, {6}}
         ));
 
         // H block
         auto block = descriptor.block_by_id(0);
         CHECK(block.samples() == metatensor::Labels(
-            {"structure", "center"},
+            {"system", "atom"},
             {{0, 1}, {0, 3}}
         ));
         CHECK(block.properties() == metatensor::Labels(
@@ -198,7 +198,7 @@ TEST_CASE("Compute descriptor") {
 
         auto gradient = block.gradient("positions");
         CHECK(gradient.samples() == metatensor::Labels(
-            {"sample", "structure", "atom"},
+            {"sample", "system", "atom"},
             {
                 {0, 0, 0}, {0, 0, 1}, {0, 0, 2},
                 {1, 0, 2}, {1, 0, 3},
@@ -218,7 +218,7 @@ TEST_CASE("Compute descriptor") {
         // C block
         block = descriptor.block_by_id(1);
         CHECK(block.samples() == metatensor::Labels(
-            {"structure", "center"},
+            {"system", "atom"},
             {}
         ));
         CHECK(block.properties() == metatensor::Labels(
@@ -232,7 +232,7 @@ TEST_CASE("Compute descriptor") {
 
         gradient = block.gradient("positions");
         CHECK(gradient.samples() == metatensor::Labels(
-            {"sample", "structure", "atom"},
+            {"sample", "system", "atom"},
             {}
         ));
         CHECK(gradient.values() == metatensor::NDArray<double>(
@@ -250,14 +250,14 @@ TEST_CASE("Compute descriptor") {
         auto descriptor = calculator.compute(systems, options);
 
         CHECK(descriptor.keys() == metatensor::Labels(
-            {"species_center"},
+            {"center_type"},
             {{1}, {6}}
         ));
 
         // H block
         auto block = descriptor.block_by_id(0);
         CHECK(block.samples() == metatensor::Labels(
-            {"structure", "center"},
+            {"system", "atom"},
             {{0, 1}, {0, 2}, {0, 3}}
         ));
         CHECK(block.properties() == metatensor::Labels(
@@ -271,7 +271,7 @@ TEST_CASE("Compute descriptor") {
 
         auto gradient = block.gradient("positions");
         CHECK(gradient.samples() == metatensor::Labels(
-            {"sample", "structure", "atom"},
+            {"sample", "system", "atom"},
             {
                 {0, 0, 0}, {0, 0, 1}, {0, 0, 2},
                 {1, 0, 1}, {1, 0, 2}, {1, 0, 3},
@@ -295,7 +295,7 @@ TEST_CASE("Compute descriptor") {
         // C block
         block = descriptor.block_by_id(1);
         CHECK(block.samples() == metatensor::Labels(
-            {"structure", "center"},
+            {"system", "atom"},
             {{0, 0}}
         ));
         CHECK(block.properties() == metatensor::Labels(
@@ -309,7 +309,7 @@ TEST_CASE("Compute descriptor") {
 
         gradient = block.gradient("positions");
         CHECK(gradient.samples() == metatensor::Labels(
-            {"sample", "structure", "atom"},
+            {"sample", "system", "atom"},
             {{0, 0, 0}, {0, 0, 1}}
         ));
         CHECK(gradient.values() == metatensor::NDArray<double>(
@@ -329,7 +329,7 @@ TEST_CASE("Compute descriptor") {
         blocks.emplace_back(
             metatensor::TensorBlock(
                 std::unique_ptr<metatensor::SimpleDataArray>(new metatensor::SimpleDataArray({1, 1})),
-                metatensor::Labels({"structure", "center"}, {{0, 3}}),
+                metatensor::Labels({"system", "atom"}, {{0, 3}}),
                 {},
                 metatensor::Labels({"index_delta", "x_y_z"}, {{0, 1}})
             )
@@ -338,14 +338,14 @@ TEST_CASE("Compute descriptor") {
         blocks.emplace_back(
             metatensor::TensorBlock(
                 std::unique_ptr<metatensor::SimpleDataArray>(new metatensor::SimpleDataArray({1, 1})),
-                metatensor::Labels({"structure", "center"}, {{0, 0}}),
+                metatensor::Labels({"system", "atom"}, {{0, 0}}),
                 {},
                 metatensor::Labels({"index_delta", "x_y_z"}, {{1, 0}})
             )
         );
 
         auto predefined = metatensor::TensorMap(
-            metatensor::Labels({"species_center"}, {{1}, {6}}),
+            metatensor::Labels({"center_type"}, {{1}, {6}}),
             std::move(blocks)
         );
         options.selected_samples = rascaline::LabelsSelection::predefined(predefined);
@@ -354,14 +354,14 @@ TEST_CASE("Compute descriptor") {
         auto descriptor = calculator.compute(systems, options);
 
         CHECK(descriptor.keys() == metatensor::Labels(
-            {"species_center"},
+            {"center_type"},
             {{1}, {6}}
         ));
 
         // H block
         auto block = descriptor.block_by_id(0);
         CHECK(block.samples() == metatensor::Labels(
-            {"structure", "center"},
+            {"system", "atom"},
             {{0, 3}}
         ));
         CHECK(block.properties() == metatensor::Labels(
@@ -375,7 +375,7 @@ TEST_CASE("Compute descriptor") {
 
         auto gradient = block.gradient("positions");
         CHECK(gradient.samples() == metatensor::Labels(
-            {"sample", "structure", "atom"},
+            {"sample", "system", "atom"},
             {
                 {0, 0, 2}, {0, 0, 3},
             }
@@ -391,7 +391,7 @@ TEST_CASE("Compute descriptor") {
         // C block
         block = descriptor.block_by_id(1);
         CHECK(block.samples() == metatensor::Labels(
-            {"structure", "center"},
+            {"system", "atom"},
             {{0, 0}}
         ));
         CHECK(block.properties() == metatensor::Labels(
@@ -405,7 +405,7 @@ TEST_CASE("Compute descriptor") {
 
         gradient = block.gradient("positions");
         CHECK(gradient.samples() == metatensor::Labels(
-            {"sample", "structure", "atom"},
+            {"sample", "system", "atom"},
             {{0, 0, 0}, {0, 0, 1}}
         ));
         CHECK(gradient.values() == metatensor::NDArray<double>(
@@ -424,20 +424,20 @@ TEST_CASE("Compute descriptor") {
 
         auto options = rascaline::CalculationOptions();
         options.selected_keys = metatensor::Labels(
-            {"species_center"},
+            {"center_type"},
             {{12}, {6}}
         );
         auto descriptor = calculator.compute(systems, options);
 
         CHECK(descriptor.keys() == metatensor::Labels(
-            {"species_center"},
+            {"center_type"},
             {{12}, {6}}
         ));
 
         // empty block
         auto block = descriptor.block_by_id(0);
         CHECK(block.samples() == metatensor::Labels(
-            {"structure", "center"},
+            {"system", "atom"},
             {}
         ));
         CHECK(block.properties() == metatensor::Labels(
@@ -452,7 +452,7 @@ TEST_CASE("Compute descriptor") {
         // C block
         block = descriptor.block_by_id(1);
         CHECK(block.samples() == metatensor::Labels(
-            {"structure", "center"},
+            {"system", "atom"},
             {{0, 0}}
         ));
         CHECK(block.properties() == metatensor::Labels(

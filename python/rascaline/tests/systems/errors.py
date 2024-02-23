@@ -15,9 +15,9 @@ def test_unimplemented():
 
     message = (
         "error from external code \\(status -1\\): "
-        "call to rascal_system_t.species failed"
+        "call to rascal_system_t.types failed"
     )
     with pytest.raises(RascalError, match=message) as cm:
         calculator.compute(system, use_native_system=False)
 
-    assert cm.value.__cause__.args[0] == "System.species method is not implemented"
+    assert cm.value.__cause__.args[0] == "System.types method is not implemented"

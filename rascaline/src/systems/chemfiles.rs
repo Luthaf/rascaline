@@ -27,15 +27,15 @@ pub fn read_from_file(path: impl AsRef<Path>) -> Result<Vec<SimpleSystem>, Error
     let mut trajectory = chemfiles::Trajectory::open(path, 'r')?;
     let mut frame = chemfiles::Frame::new();
 
-    let mut assigned_species = HashMap::new();
-    let mut get_species = |atom: chemfiles::AtomRef| {
+    let mut assigned_types = HashMap::new();
+    let mut get_atomic_type = |atom: chemfiles::AtomRef| {
         let atomic_number = atom.atomic_number();
         if atomic_number == 0 {
             // use number assigned from the the atomic type, starting at 120
             // since that's larger than the number of elements in the periodic
             // table
-            let new_species = 120 + assigned_species.len() as i32;
-            *assigned_species.entry(atom.atomic_type()).or_insert(new_species)
+            let new_type = 120 + assigned_types.len() as i32;
+            *assigned_types.entry(atom.atomic_type()).or_insert(new_type)
         } else {
             atomic_number as i32
         }
@@ -56,7 +56,7 @@ pub fn read_from_file(path: impl AsRef<Path>) -> Result<Vec<SimpleSystem>, Error
         let mut system = SimpleSystem::new(cell);
         for i in 0..frame.size() {
             let atom = frame.atom(i);
-            system.add_atom(get_species(atom), positions[i].into());
+            system.add_atom(get_atomic_type(atom), positions[i].into());
         }
 
         systems.push(system);
@@ -97,7 +97,7 @@ mod tests {
 
         assert_eq!(systems.len(), 30);
         assert_eq!(systems[0].size()?, 54);
-        assert_eq!(systems[0].species()?, [14; 54].as_ref());
+        assert_eq!(systems[0].types()?, [14; 54].as_ref());
 
         assert_relative_eq!(
             systems[0].positions()?[0],

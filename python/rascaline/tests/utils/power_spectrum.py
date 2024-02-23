@@ -26,7 +26,7 @@ HYPERS = hypers = {
         "ShiftedCosine": {"width": 0.5},
     },
 }
-N_SPECIES = len(np.unique(SystemForTests().species()))
+N_ATOMIC_TYPES = len(np.unique(SystemForTests().types()))
 
 
 def soap_calculator():
@@ -53,13 +53,13 @@ def power_spectrum():
 def test_power_spectrum(calculator) -> None:
     """Test that power spectrum works and that the shape is correct."""
     ps_python = PowerSpectrum(calculator).compute(SystemForTests())
-    ps_python = ps_python.keys_to_samples(["species_center"])
+    ps_python = ps_python.keys_to_samples(["center_type"])
 
     # Test the number of properties is correct
     n_props_actual = len(ps_python.block().properties)
 
     n_props_expected = (
-        N_SPECIES**2 * HYPERS["max_radial"] ** 2 * (HYPERS["max_angular"] + 1)
+        N_ATOMIC_TYPES**2 * HYPERS["max_radial"] ** 2 * (HYPERS["max_angular"] + 1)
     )
 
     assert n_props_actual == n_props_expected
@@ -112,7 +112,7 @@ def test_power_spectrum_rust() -> None:
     """Test that the dot kernels of the rust and python version are the same."""
 
     power_spectrum_python = power_spectrum()
-    power_spectrum_python = power_spectrum_python.keys_to_samples(["species_center"])
+    power_spectrum_python = power_spectrum_python.keys_to_samples(["center_type"])
     kernel_python = np.dot(
         power_spectrum_python[0].values, power_spectrum_python[0].values.T
     )
@@ -120,9 +120,9 @@ def test_power_spectrum_rust() -> None:
     power_spectrum_rust = rascaline.SoapPowerSpectrum(**HYPERS).compute(
         SystemForTests()
     )
-    power_spectrum_rust = power_spectrum_rust.keys_to_samples(["species_center"])
+    power_spectrum_rust = power_spectrum_rust.keys_to_samples(["center_type"])
     power_spectrum_rust = power_spectrum_rust.keys_to_properties(
-        ["species_neighbor_1", "species_neighbor_2"]
+        ["neighbor_1_type", "neighbor_2_type"]
     )
     kernel_rust = np.dot(power_spectrum_rust[0].values, power_spectrum_rust[0].values.T)
     assert_allclose(kernel_python, kernel_rust)
@@ -153,8 +153,8 @@ def test_power_spectrum_unknown_gradient() -> None:
         PowerSpectrum(calculator).compute(SystemForTests(), gradients=["cell"])
 
 
-def test_fill_species_neighbor() -> None:
-    """Test that ``species_center`` keys can be merged for different blocks."""
+def test_fill_neighbor_type() -> None:
+    """Test that ``center_type`` keys can be merged for different blocks."""
 
     frames = [
         ase.Atoms("H", positions=np.zeros([1, 3])),
@@ -168,23 +168,23 @@ def test_fill_species_neighbor() -> None:
 
     descriptor = calculator.compute(frames)
 
-    descriptor.keys_to_samples("species_center")
+    descriptor.keys_to_samples("center_type")
 
 
-def test_fill_species_option() -> None:
-    """Test that ``species`` options adds arbitrary species."""
+def test_fill_types_option() -> None:
+    """Test that ``types`` options adds arbitrary atomic types."""
 
     frames = [
         ase.Atoms("H", positions=np.zeros([1, 3])),
         ase.Atoms("O", positions=np.zeros([1, 3])),
     ]
 
-    species = [1, 8, 10]
+    types = [1, 8, 10]
     calculator = PowerSpectrum(
-        calculator_1=rascaline.SphericalExpansion(**HYPERS), species=species
+        calculator_1=rascaline.SphericalExpansion(**HYPERS), types=types
     )
 
     descriptor = calculator.compute(frames)
 
-    assert_equal(np.unique(descriptor[0].properties["species_neighbor_1"]), species)
-    assert_equal(np.unique(descriptor[0].properties["species_neighbor_2"]), species)
+    assert_equal(np.unique(descriptor[0].properties["neighbor_1_type"]), types)
+    assert_equal(np.unique(descriptor[0].properties["neighbor_2_type"]), types)

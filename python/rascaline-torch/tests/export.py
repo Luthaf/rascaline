@@ -25,16 +25,17 @@ HYPERS = {
 
 
 class Model(torch.nn.Module):
-    def __init__(self, species: List[int]):
+
+    def __init__(self, types: List[int]):
         super().__init__()
         self.calculator = SoapPowerSpectrum(**HYPERS)
-        self.species_neighbors = torch.IntTensor(
-            [(s1, s2) for s1 in species for s2 in species if s1 < s2]
+        self.neighbor_types = torch.IntTensor(
+            [(t1, t2) for t1 in types for t2 in types if t1 < t2]
         )
 
         n_max = HYPERS["max_radial"]
         l_max = HYPERS["max_angular"]
-        in_features = (n_max * len(species)) ** 2 * l_max
+        in_features = (n_max * len(types)) ** 2 * l_max
         self.linear = torch.nn.Linear(in_features=in_features, out_features=1)
 
     def forward(
@@ -50,8 +51,8 @@ class Model(torch.nn.Module):
 
         if selected_atoms is not None:
             # TODO: change rascaline names to match metatensor
-            selected_atoms = selected_atoms.rename("system", "structure")
-            selected_atoms = selected_atoms.rename("atom", "center")
+            selected_atoms = selected_atoms.rename("system", "system")
+            selected_atoms = selected_atoms.rename("atom", "atom")
 
         soap = self.calculator(
             systems=systems,
@@ -59,21 +60,21 @@ class Model(torch.nn.Module):
         )
 
         soap = soap.keys_to_properties(
-            Labels(["species_neighbor_1", "species_neighbor_2"], self.species_neighbors)
+            Labels(["neighbor_1_type", "neighbor_2_type"], self.neighbor_types)
         )
-        soap = soap.keys_to_samples("species_center")
+        soap = soap.keys_to_samples("center_type")
 
         features = soap.block().values
 
         if options.per_atom:
             samples = soap.block().samples
             # TODO: change rascaline names to match metatensor
-            samples = samples.rename("structure", "system")
-            samples = samples.rename("center", "atom")
+            samples = samples.rename("system", "system")
+            samples = samples.rename("atom", "atom")
         else:
             features = soap.block().values.sum(dim=0, keepdim=True)
             samples = Labels(
-                ["structure"],
+                ["system"],
                 torch.arange(len(systems), dtype=torch.int32),
             )
 
@@ -90,7 +91,7 @@ class Model(torch.nn.Module):
 
 
 def test_export_as_metatensor_model(tmpdir):
-    model = Model(species=[1, 6, 8])
+    model = Model(types=[1, 6, 8])
     model.eval()
 
     export = MetatensorAtomisticModel(model, ModelCapabilities())

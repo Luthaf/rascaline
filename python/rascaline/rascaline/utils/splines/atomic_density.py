@@ -5,8 +5,8 @@ Atomic Density
 ==============
 
 the atomic density function :math:`g(r)`, often chosen to be a Gaussian or Delta
-function, that defined the type of density under consideration. For a given center atom
-:math:`i` in the structure, the total density function :math:`\rho_i(\boldsymbol{r})`
+function, that defined the type of density under consideration. For a given central atom
+:math:`i` in the system, the total density function :math:`\rho_i(\boldsymbol{r})`
 around is then defined as :math:`\rho_i(\boldsymbol{r}) = \sum_{j} g(\boldsymbol{r} -
 \boldsymbol{r}_{ij})`.
 

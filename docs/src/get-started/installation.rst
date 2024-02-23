@@ -79,7 +79,7 @@ The build and installation can be configures with a few cmake options, using
 |                                      | of the library                                |                |
 +--------------------------------------+-----------------------------------------------+----------------+
 | RASCALINE_ENABLE_CHEMFILES           | Enable the usage of chemfiles for reading     | ON             |
-|                                      | structures from files                         |                |
+|                                      | systems from files                            |                |
 +--------------------------------------+-----------------------------------------------+----------------+
 | RASCALINE_FETCH_METATENSOR           | Automatically fetch, build and install        | OFF            |
 |                                      | metatensor (a dependency of rascaline)        |                |

@@ -62,9 +62,9 @@ selection = Labels(
 )
 selected_descriptor = calculator.compute(frames, selected_properties=selection)
 
-selected_descriptor = selected_descriptor.keys_to_samples("species_center")
+selected_descriptor = selected_descriptor.keys_to_samples("center_type")
 selected_descriptor = selected_descriptor.keys_to_properties(
-    ["species_neighbor_1", "species_neighbor_2"]
+    ["neighbor_1_type", "neighbor_2_type"]
 )
 
 properties = selected_descriptor.block().properties
@@ -157,7 +157,7 @@ selected_descriptor = calculator.compute(frames, selected_properties=selection)
 # matrix, because each block will have its own properties.
 
 try:
-    selected_descriptor.keys_to_samples("species_center")
+    selected_descriptor.keys_to_samples("center_type")
 except MetatensorError as err:
     print(err)
 

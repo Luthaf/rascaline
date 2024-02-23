@@ -25,7 +25,7 @@ def system():
 
 def test_system_implementation(system):
     assert system.size() == 3
-    assert np.all(system.species() == [6, 8, 8])
+    assert np.all(system.types() == [6, 8, 8])
 
     positions = [
         (0, 0, 0),

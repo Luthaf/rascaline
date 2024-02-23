@@ -54,7 +54,7 @@ class rascal_system_t(ctypes.Structure):
     _fields_ = [
         ("user_data", ctypes.c_void_p),
         ("size", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, POINTER(c_uintptr_t))),
-        ("species", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, POINTER(ndpointer(ctypes.c_int32, flags='C_CONTIGUOUS')))),
+        ("types", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, POINTER(ndpointer(ctypes.c_int32, flags='C_CONTIGUOUS')))),
         ("positions", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, POINTER(ndpointer(ctypes.c_double, flags='C_CONTIGUOUS')))),
         ("cell", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, POINTER(ctypes.c_double))),
         ("compute_neighbors", CFUNCTYPE(rascal_status_t, ctypes.c_void_p, ctypes.c_double)),
