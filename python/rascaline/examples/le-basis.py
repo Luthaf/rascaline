@@ -58,6 +58,34 @@ spliner = rascaline.utils.SoapSpliner(
     accuracy=1e-8,
 )
 
+# %%
+#
+# Plot the splines for a couple of functions. This gives an idea of the
+# smoothness of the different components
+#
+
+splined_basis = spliner.compute()
+xgrid = [p["position"] for p in splined_basis["TabulatedRadialIntegral"]["points"]]
+values = np.array(
+    [
+        np.array(p["values"]["data"]).reshape(p["values"]["dim"])
+        for p in splined_basis["TabulatedRadialIntegral"]["points"]
+    ]
+)
+
+plt.plot(xgrid, values[:, 1, 1], "b-", label="l=1, n=1")
+plt.plot(xgrid, values[:, 4, 1], "r-", label="l=4, n=1")
+plt.plot(xgrid, values[:, 1, 4], "g-", label="l=1, n=4")
+plt.plot(xgrid, values[:, 4, 4], "y-", label="l=4, n=4")
+plt.xlabel("$r$")
+plt.ylabel(r"$R_{nl}$")
+plt.legend()
+plt.show()
+
+# %%
+#
+# Now off to using the splines to evaluate spherical expansion coefficients
+
 calculator = rascaline.SphericalExpansion(
     cutoff=cutoff,
     max_radial=n_max,
@@ -73,10 +101,10 @@ spherical_expansion = calculator.compute(structures)
 # %%
 #
 # Now we will calculate the same basis with an eigenvalue threshold (more involved),
-# which affords a better accuracy/cost ratio, using property selection. 
-# The idea is to treat on the same footings the radial and angular dimension, and 
+# which affords a better accuracy/cost ratio, using property selection.
+# The idea is to treat on the same footings the radial and angular dimension, and
 # select all functions with a mean Laplacian below a certain threshold. This is similar
-# to the common practice in plane-wave electronic-structure methods to use a 
+# to the common practice in plane-wave electronic-structure methods to use a
 # kinetic energy cutoff where ``k_x**2+k_y**2+k_z**2<k_max**2``
 
 E_max = 400  # eigenvalue threshold
@@ -88,7 +116,7 @@ E_max = 400  # eigenvalue threshold
 l_max_large = 50  # just used to get the eigenvalues
 n_max_large = 50  # just used to get the eigenvalues
 
-# compute the zeroth of the spherical Bessel functions 
+# compute the zeroth of the spherical Bessel functions
 z_ln = rascaline.utils.SphericalBesselBasis.compute_zeros(l_max_large, n_max_large)
 
 # calculate the Laplacian eigenvalues, up to a constant factor
