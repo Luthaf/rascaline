@@ -9,6 +9,14 @@ LE basis
 This example illustrates how to generate a spherical expansion using the Laplacian
 eigenstate (LE) basis (https://doi.org/10.1063/5.0124363), both using truncation with
 ``l_max``, ``n_max`` hyper-parameters and with an eigenvalue threshold.
+The main ideas behind this approach are:
+
+1. use a basis of controllable _smoothness_ (intended in the same sense as the 
+   smoothness of a low-pass-truncated Fourier expansion) 
+2. apply a "ragged truncation" strategy in which different ``l`` channels are 
+   truncated at a different ``n_max``, so as to obtain more balanced smoothness
+   level in the radial and angular direction, for a given number of basis functions.
+
 
 Here we use :class:`rascaline.utils.SphericalBesselBasis` class. An detailed how-to
 guide how to construct radial integrals for the LE basis from scratch is given in
@@ -28,7 +36,10 @@ import rascaline
 
 # %%
 #
-# First using a truncation with ``l_max`` amd ``n_max`` hyper-parameters
+# First using a truncation with ``l_max`` and ``n_max`` hyper-parameters. This uses
+# basis functions that are the solution of a radial Laplacian eigenvalue problem
+# (spherical Bessel functions) but apply a "traditional" basis selection strategy
+# that retains all functions with ``l<l_max`` and ``n<n_max``
 
 cutoff = 4.4
 l_max = 6
@@ -62,7 +73,11 @@ spherical_expansion = calculator.compute(structures)
 # %%
 #
 # Now we will calculate the same basis with an eigenvalue threshold (more involved),
-# which affords a better accuracy/cost ratio, using property selection.
+# which affords a better accuracy/cost ratio, using property selection. 
+# The idea is to treat on the same footings the radial and angular dimension, and 
+# select all functions with a mean Laplacian below a certain threshold. This is similar
+# to the common practice in plane-wave electronic-structure methods to use a 
+# kinetic energy cutoff where ``k_x**2+k_y**2+k_z**2<k_max**2``
 
 E_max = 400  # eigenvalue threshold
 
@@ -73,11 +88,12 @@ E_max = 400  # eigenvalue threshold
 l_max_large = 50  # just used to get the eigenvalues
 n_max_large = 50  # just used to get the eigenvalues
 
-# compute the zeroth of the spherical Bessel functions
+# compute the zeroth of the spherical Bessel functions 
 z_ln = rascaline.utils.SphericalBesselBasis.compute_zeros(l_max_large, n_max_large)
 
 # calculate the Laplacian eigenvalues, up to a constant factor
-# (the Laplacian eigenvalues are z_ln**2 / cutoff**2)
+# (the Laplacian eigenvalues are z_ln**2 / cutoff**2). These are directly
+# related to the "resolution" of the corresponding basis functions
 E_ln = z_ln**2
 
 # %%
@@ -180,7 +196,8 @@ calculator = rascaline.SphericalExpansion(
 spherical_expansion = calculator.compute(
     structures,
     selected_properties=selected_properties,
-    # we tell the calculator to only compute the selected properties
+    # we tell the calculator to only compute the selected properties (the
+    # desired set of (l,n) expansion coefficients
 )
 
 # %%
