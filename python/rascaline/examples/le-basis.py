@@ -7,24 +7,24 @@ LE basis
 .. start-body
 
 This example illustrates how to generate a spherical expansion using the Laplacian
-eigenstate (LE) basis (https://doi.org/10.1063/5.0124363), both using truncation with
-``l_max``, ``n_max`` hyper-parameters and with an eigenvalue threshold.
-The main ideas behind this approach are:
+eigenstate (LE) basis (https://doi.org/10.1063/5.0124363), using two different basis
+truncations approaches. The basis can be truncated in the "traditional"  way, using all
+values below a limit in the angular and radial direction; or using a "ragged
+truncation", where basis functions are selected according to an eigenvalue threshold.
 
-1. use a basis of controllable _smoothness_ (intended in the same sense as the
+The main ideas behind the LE basis are:
+
+1. use a basis of controllable *smoothness* (intended in the same sense as the
    smoothness of a low-pass-truncated Fourier expansion)
-2. apply a "ragged truncation" strategy in which different ``l`` channels are
-   truncated at a different ``n_max``, so as to obtain more balanced smoothness
-   level in the radial and angular direction, for a given number of basis functions.
+2. apply a "ragged truncation" strategy in which different angular channels are
+   truncated at a different number of radial channels, so as to obtain more balanced
+   smoothness level in the radial and angular direction, for a given number of basis
+   functions.
 
-
-Here we use :class:`rascaline.utils.SphericalBesselBasis` class. An detailed how-to
-guide how to construct radial integrals for the LE basis from scratch is given in
-:ref:`userdoc-tutorials-splined-radial-integrals`.
+Here we use :class:`rascaline.utils.SphericalBesselBasis` to create a spline of the
+radial integral corresponding to the LE basis. An detailed how-to guide how to construct
+radial integrals is given in :ref:`userdoc-tutorials-splined-radial-integrals`.
 """
-
-# %%
-#
 
 import ase.io
 import matplotlib.pyplot as plt
@@ -36,23 +36,23 @@ import rascaline
 
 # %%
 #
-# First using a truncation with ``l_max`` and ``n_max`` hyper-parameters. This uses
-# basis functions that are the solution of a radial Laplacian eigenvalue problem
-# (spherical Bessel functions) but apply a "traditional" basis selection strategy
-# that retains all functions with ``l<l_max`` and ``n<n_max``
+# Let's start by using a traditional/square basis truncation. Here we will select all
+# basis functions with ``l <= max_angular`` and ``n < max_radial``. The basis functions
+# are the solution of a radial Laplacian eigenvalue problem (spherical Bessel
+# functions).
 
 cutoff = 4.4
-l_max = 6
-n_max = 8
+max_angular = 6
+max_radial = 8
 
-structures = ase.io.read("dataset.xyz", ":10")
-
+# create a spliner for the SOAP radial integral, using delta functions for the atomic
+# density and spherical Bessel functions for the basis
 spliner = rascaline.utils.SoapSpliner(
     cutoff=cutoff,
-    max_radial=n_max,
-    max_angular=l_max,
+    max_radial=max_radial,
+    max_angular=max_angular,
     basis=rascaline.utils.SphericalBesselBasis(
-        cutoff=cutoff, max_radial=n_max, max_angular=l_max
+        cutoff=cutoff, max_radial=max_radial, max_angular=max_angular
     ),
     density=rascaline.utils.DeltaDensity(),
     accuracy=1e-8,
@@ -60,12 +60,11 @@ spliner = rascaline.utils.SoapSpliner(
 
 # %%
 #
-# Plot the splines for a couple of functions. This gives an idea of the
-# smoothness of the different components
-#
+# We can now plot the radial integral splines for a couple of functions. This gives an
+# idea of the smoothness of the different components
 
 splined_basis = spliner.compute()
-xgrid = [p["position"] for p in splined_basis["TabulatedRadialIntegral"]["points"]]
+grid = [p["position"] for p in splined_basis["TabulatedRadialIntegral"]["points"]]
 values = np.array(
     [
         np.array(p["values"]["data"]).reshape(p["values"]["dim"])
@@ -73,10 +72,10 @@ values = np.array(
     ]
 )
 
-plt.plot(xgrid, values[:, 1, 1], "b-", label="l=1, n=1")
-plt.plot(xgrid, values[:, 4, 1], "r-", label="l=4, n=1")
-plt.plot(xgrid, values[:, 1, 4], "g-", label="l=1, n=4")
-plt.plot(xgrid, values[:, 4, 4], "y-", label="l=4, n=4")
+plt.plot(grid, values[:, 1, 1], "b-", label="l=1, n=1")
+plt.plot(grid, values[:, 4, 1], "r-", label="l=4, n=1")
+plt.plot(grid, values[:, 1, 4], "g-", label="l=1, n=4")
+plt.plot(grid, values[:, 4, 4], "y-", label="l=4, n=4")
 plt.xlabel("$r$")
 plt.ylabel(r"$R_{nl}$")
 plt.legend()
@@ -84,86 +83,119 @@ plt.show()
 
 # %%
 #
-# Now off to using the splines to evaluate spherical expansion coefficients
+# We can use this spline basis in a :py:class:`SphericalExpansion` calculator to
+# evaluate spherical expansion coefficients.
 
 calculator = rascaline.SphericalExpansion(
     cutoff=cutoff,
-    max_radial=n_max,
-    max_angular=l_max,
+    max_radial=max_radial,
+    max_angular=max_angular,
     center_atom_weight=1.0,
-    radial_basis=spliner.compute(),
+    radial_basis=splined_basis,
     atomic_gaussian_width=-1.0,  # will not be used due to the delta density above
     cutoff_function={"ShiftedCosine": {"width": 0.5}},
 )
 
-spherical_expansion = calculator.compute(structures)
+# %%
+#
+# This calculator defaults to the "traditional" basis function selection, so we have the
+# same maximal ``n`` value for all ``l``.
+
+structures = ase.io.read("dataset.xyz", ":10")
+descriptor = calculator.compute(structures)
+descriptor = descriptor.keys_to_properties("species_neighbor")
+descriptor = descriptor.keys_to_samples("species_center")
+
+for key, block in descriptor.items():
+    n_max = np.max(block.properties["n"]) + 1
+    print(f"l = {key['spherical_harmonics_l']}, n_max = {n_max}")
 
 # %%
 #
-# Now we will calculate the same basis with an eigenvalue threshold (more involved),
-# which affords a better accuracy/cost ratio, using property selection.
-# The idea is to treat on the same footings the radial and angular dimension, and
-# select all functions with a mean Laplacian below a certain threshold. This is similar
-# to the common practice in plane-wave electronic-structure methods to use a
-# kinetic energy cutoff where ``k_x**2+k_y**2+k_z**2<k_max**2``
+# **Selecting basis with an eigenvalue threshold**
+#
+# Now we will calculate the same basis with an eigenvalue threshold. The idea is to
+# treat on the same footings the radial and angular dimension, and select all functions
+# with a mean Laplacian below a certain threshold. This is similar to the common
+# practice in plane-wave electronic-structure methods to use a kinetic energy cutoff
+# where :math:`k_x^2 + k_y^2 + k_z^2 < k_\text{max}^2`
 
-E_max = 400  # eigenvalue threshold
+eigenvalue_threshold = 20
 
 # %%
 #
-# Computation of the spherical Bessel zeros and Laplacian eigenvalues
+# Let's start by computing a lot of Laplacian eigenvalues, which are related to the
+# squares of the zeros of spherical Bessel functions.
 
-l_max_large = 50  # just used to get the eigenvalues
+l_max_large = 49  # just used to get the eigenvalues
 n_max_large = 50  # just used to get the eigenvalues
 
-# compute the zeroth of the spherical Bessel functions
-z_ln = rascaline.utils.SphericalBesselBasis.compute_zeros(l_max_large, n_max_large)
-
-# calculate the Laplacian eigenvalues, up to a constant factor
-# (the Laplacian eigenvalues are z_ln**2 / cutoff**2). These are directly
-# related to the "resolution" of the corresponding basis functions
-E_ln = z_ln**2
+# compute the zeros of the spherical Bessel functions
+zeros_ln = rascaline.utils.SphericalBesselBasis.compute_zeros(l_max_large, n_max_large)
 
 # %%
 #
-# Determine the l_max, n_max parameters that will certainly contain all the desired
-# terms
+# We have a 50x50 array containing the position of the zero of the different spherical
+# Bessel functions, indexed by ``l`` and ``n``.
 
-n_max_l = []
+print("zeros_ln.shape =", zeros_ln.shape)
+print("zeros_ln =", zeros_ln[:3, :3])
+
+# calculate the Laplacian eigenvalues
+eigenvalues_ln = zeros_ln**2 / cutoff**2
+
+# %%
+#
+# We can now determine the set of ``l, n`` pairs to include all eigenvalues below the
+# threshold.
+
+max_radial_by_angular = []
 for ell in range(l_max_large + 1):
-    # for each l, calculate how many basis functions
-    n_max_l.append(len(np.where(E_ln[ell] < E_max)[0]))
-    if n_max_l[-1] == 0:
+    # for each l, calculate how many radial basis functions we want to include
+    max_radial = len(np.where(eigenvalues_ln[ell] < eigenvalue_threshold)[0])
+    max_radial_by_angular.append(max_radial)
+    if max_radial_by_angular[-1] == 0:
         # all eigenvalues for this `l` are over the threshold
-        n_max_l.pop()
-        l_max = ell - 1
+        max_radial_by_angular.pop()
+        max_angular = ell - 1
         break
 
-n_max = n_max_l[0]
-
 # %%
 #
-# Comparing this l-dependent threshold with the one based on ``l_max`` and ``n_max``, we
-# see that the eigenvalue thresholding leads to a gradual decrease of ``n_max`` for high
+# Comparing this eigenvalues threshold with the one based on a square selection, we see
+# that the eigenvalues threshold leads to a gradual decrease of ``max_radial`` for high
 # ``l`` values
 
+square_max_angular = 10
+square_max_radial = 4
 plt.fill_between(
-    [0, 10], [4, 4], label=r"$l_\mathrm{max}$, $n_\mathrm{max}$ threshold", color="gray"
+    [0, square_max_angular],
+    [square_max_radial, square_max_radial],
+    label=r"$l_\mathrm{max}$, $n_\mathrm{max}$ threshold "
+    + f"({(square_max_angular + 1) * square_max_radial} functions)",
+    color="gray",
 )
-plt.fill_between(np.arange(l_max + 1), n_max_l, label="Eigenvalue threshold", alpha=0.5)
-plt.xlabel("$l$")
-plt.ylabel(r"$n_\mathrm{max}$")
-plt.ylim(-0.5, n_max_l[0] + 0.5)
+plt.fill_between(
+    np.arange(max_angular + 1),
+    max_radial_by_angular,
+    label=f"Eigenvalues threshold ({sum(max_radial_by_angular)} functions)",
+    alpha=0.5,
+)
+plt.xlabel(r"$\ell$")
+plt.ylabel("n radial basis functions")
+plt.ylim(-0.5, max_radial_by_angular[0] + 0.5)
 plt.legend()
 plt.show()
 
 # %%
 #
-# Set up a TensorMap for property selection. This allows to compute
-# only a subset of the ``properties`` axis of the descriptors
-# (see :ref:`userdoc-how-to-property-selection` for more details.).
+# **Using a subset of basis functions with rascaline**
+#
+# We can tweak the default basis selection of rascaline by specifying a larger total
+# basis; and then only asking for a subset of properties to be computed. See
+# :ref:`userdoc-how-to-property-selection` for more details on properties selection.
 
-# extract all the species from the small dataset
+# extract all the species from our dataset
 all_species = list(
     np.unique(np.concatenate([structure.numbers for structure in structures]))
 )
@@ -172,17 +204,16 @@ keys = []
 blocks = []
 for center_species in all_species:
     for neighbor_species in all_species:
-        for ell in range(l_max + 1):
+        for ell in range(max_angular + 1):
+            max_radial = max_radial_by_angular[ell]
+
             keys.append([ell, center_species, neighbor_species])
             blocks.append(
                 TensorBlock(
-                    values=np.empty((1, n_max_l[ell])),
-                    samples=Labels.single(),
+                    values=np.zeros((0, max_radial)),
+                    samples=Labels.empty("_"),
                     components=[],
-                    properties=Labels(
-                        names=["n"],
-                        values=np.arange(n_max_l[ell]).reshape(n_max_l[ell], 1),
-                    ),
+                    properties=Labels("n", np.arange(max_radial).reshape(-1, 1)),
                 )
             )
 
@@ -196,16 +227,21 @@ selected_properties = TensorMap(
 
 # %%
 #
-# Build a calculator and calculate the spherical expansion coefficents
+# With this, we can build a calculator and calculate the spherical expansion
+# coefficients
 
-# set up a spliner object for the spherical Bessel functions
-# this radial basis will be used to compute the spherical expansion
+# the biggest max_radial will be for l=0
+max_radial = max_radial_by_angular[0]
+
+
+# set up a spliner object for the spherical Bessel functions this radial basis will be
+# used to compute the spherical expansion
 spliner = rascaline.utils.SoapSpliner(
     cutoff=cutoff,
-    max_radial=n_max,
-    max_angular=l_max,
+    max_radial=max_radial,
+    max_angular=max_angular,
     basis=rascaline.utils.SphericalBesselBasis(
-        cutoff=cutoff, max_radial=n_max, max_angular=l_max
+        cutoff=cutoff, max_radial=max_radial, max_angular=max_angular
     ),
     density=rascaline.utils.DeltaDensity(),
     accuracy=1e-8,
@@ -213,20 +249,32 @@ spliner = rascaline.utils.SoapSpliner(
 
 calculator = rascaline.SphericalExpansion(
     cutoff=cutoff,
-    max_radial=n_max,
-    max_angular=l_max,
+    max_radial=max_radial,
+    max_angular=max_angular,
     center_atom_weight=1.0,
     radial_basis=spliner.compute(),
     atomic_gaussian_width=-1.0,  # will not be used due to the delta density above
     cutoff_function={"ShiftedCosine": {"width": 0.5}},
 )
 
-spherical_expansion = calculator.compute(
+# %%
+#
+# And check that we do get the expected Eigenvalues truncation for the calculated
+# features!
+
+descriptor = calculator.compute(
     structures,
+    # we tell the calculator to only compute the selected properties
+    # (the desired set of (l,n) expansion coefficients
     selected_properties=selected_properties,
-    # we tell the calculator to only compute the selected properties (the
-    # desired set of (l,n) expansion coefficients
 )
+
+descriptor = descriptor.keys_to_properties("species_neighbor")
+descriptor = descriptor.keys_to_samples("species_center")
+
+for key, block in descriptor.items():
+    n_max = np.max(block.properties["n"]) + 1
+    print(f"l = {key['spherical_harmonics_l']}, n_max = {n_max}")
 
 # %%
 #

@@ -4,7 +4,8 @@ Splined radial integral
 =======================
 
 This examples shows how to feed custom radial integrals (as splines) to the Rust
-calculators.
+calculators that use radial integrals: the SOAP and LODE spherical expansions,
+and any other calculator based on these.
 
 .. tabs::
 
@@ -23,15 +24,3 @@ calculators.
         .. include:: ../examples/splined-radial-integral.rst
             :start-after: start-body
             :end-before: end-body
-
-    .. group-tab:: Rust
-
-        To be done
-
-    .. group-tab:: C++
-
-        To be done
-
-    .. group-tab:: C
-
-        To be done

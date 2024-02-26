@@ -3,7 +3,8 @@
 Laplacian eigenstate basis
 ==========================
 
-This examples shows how to calculate a spherical expansion using a Laplacian eigenstate basis.
+This examples shows how to calculate a spherical expansion using a Laplacian
+eigenstate basis.
 
 .. tabs::
 
@@ -22,15 +23,3 @@ This examples shows how to calculate a spherical expansion using a Laplacian eig
         .. include:: ../examples/le-basis.rst
             :start-after: start-body
             :end-before: end-body
-
-    .. group-tab:: Rust
-
-        To be done
-
-    .. group-tab:: C++
-
-        To be done
-
-    .. group-tab:: C
-
-        To be done
