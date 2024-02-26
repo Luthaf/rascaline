@@ -11,9 +11,9 @@ eigenstate (LE) basis (https://doi.org/10.1063/5.0124363), both using truncation
 ``l_max``, ``n_max`` hyper-parameters and with an eigenvalue threshold.
 The main ideas behind this approach are:
 
-1. use a basis of controllable _smoothness_ (intended in the same sense as the 
-   smoothness of a low-pass-truncated Fourier expansion) 
-2. apply a "ragged truncation" strategy in which different ``l`` channels are 
+1. use a basis of controllable _smoothness_ (intended in the same sense as the
+   smoothness of a low-pass-truncated Fourier expansion)
+2. apply a "ragged truncation" strategy in which different ``l`` channels are
    truncated at a different ``n_max``, so as to obtain more balanced smoothness
    level in the radial and angular direction, for a given number of basis functions.
 
