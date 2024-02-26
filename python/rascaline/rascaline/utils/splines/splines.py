@@ -424,8 +424,8 @@ class RadialIntegralFromFunction(RadialIntegralSplinerBase):
     The ``atomic_gaussian_width`` parameter is required by the calculator but will be
     will be ignored during the feature computation.
 
-    A more in depth example using a "rectangular" Laplacian eigenstate basis is provided
-    in the :ref:`example section<example-splines>`.
+    A more in depth example using a "rectangular" Laplacian eigenstate (LE) basis is
+    provided in the :ref:`userdoc-how-to-splined-radial-integral` how-to guide.
     """
 
     def __init__(
@@ -546,6 +546,9 @@ class SoapSpliner(RadialIntegralSplinerBase):
     You can now use ``calculator`` to obtain the spherical expansion coefficients of
     your systems. Note that the the spliner based used here will produce the same
     coefficients as if ``radial_basis={"Gto": {}}`` would be used.
+
+    An additional example using a "rectangular" Laplacian eigenstate (LE) basis is
+    provided in the :ref:`userdoc-how-to-le-basis`.
 
     .. seealso::
         :class:`LodeSpliner` for a spliner class that works with
