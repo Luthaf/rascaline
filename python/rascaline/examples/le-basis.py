@@ -23,7 +23,7 @@ The main ideas behind the LE basis are:
 
 Here we use :class:`rascaline.utils.SphericalBesselBasis` to create a spline of the
 radial integral corresponding to the LE basis. An detailed how-to guide how to construct
-radial integrals is given in :ref:`userdoc-tutorials-splined-radial-integrals`.
+radial integrals is given in :ref:`userdoc-how-to-splined-radial-integral`.
 """
 
 import ase.io

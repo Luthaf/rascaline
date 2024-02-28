@@ -1,7 +1,4 @@
 """
-
-.. _userdoc-tutorials-splined-radial-integrals:
-
 Splined radial integrals
 ========================
 
@@ -13,7 +10,7 @@ the example, i.e, a LE basis truncated with ``l_max``, ``n_max`` hyper-parameter
 
 Note that the same basis is also directly available through
 :class:`rascaline.utils.SphericalBesselBasis` with an how-to guide given in
-:ref:`userdoc-how-to-splined-radial-integral`.
+:ref:`userdoc-how-to-le-basis`.
 """
 
 # %%
