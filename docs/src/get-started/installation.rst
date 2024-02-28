@@ -35,7 +35,7 @@ of building the package with a Rust compiler from the source code.
 .. code-block:: bash
 
     pip install --upgrade pip
-    pip install --extra-index-url https://luthaf.fr/temporary-wheels/ rascaline
+    pip install --extra-index-url https://luthaf.fr/nightly-wheels/ rascaline
 
 
 .. _install-c-lib:
