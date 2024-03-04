@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 import io
 import os
-from typing import Any, List
 
-import ase.io
 import metatensor.torch
 import pytest
 import torch
-from metatensor.torch import Labels, TensorBlock, TensorMap  # noqa
+from metatensor.torch import Labels
+from metatensor.torch.atomistic import System
 
 import rascaline.torch
 from rascaline.torch.utils.clebsch_gordan.correlate_density import DensityCorrelations
@@ -15,13 +14,6 @@ from rascaline.torch.utils.clebsch_gordan.correlate_density import DensityCorrel
 
 DATA_ROOT = os.path.join(os.path.dirname(__file__), "data")
 
-
-@torch.jit.script
-def is_tensor_map(obj: Any):
-    return isinstance(obj, TensorMap)
-
-
-is_tensor_map = torch.jit.script(is_tensor_map)
 
 SPHERICAL_EXPANSION_HYPERS = {
     "cutoff": 2.5,
@@ -36,23 +28,24 @@ SPHERICAL_EXPANSION_HYPERS = {
 SELECTED_KEYS = Labels(names=["o3_lambda"], values=torch.tensor([1, 3]).reshape(-1, 1))
 
 
-def h2o_isolated():
-    return [
-        ase.Atoms(
-            symbols=["O", "H", "H"],
-            positions=[
+def system():
+    return System(
+        types=torch.tensor([8, 1, 1]),
+        positions=torch.tensor(
+            [
                 [2.56633400, 2.50000000, 2.50370100],
                 [1.97361700, 1.73067300, 2.47063400],
                 [1.97361700, 3.26932700, 2.47063400],
-            ],
-        )
-    ]
+            ]
+        ),
+        cell=torch.zeros((3, 3)),
+    )
 
 
-def spherical_expansion(frames: List[ase.Atoms]):
+def spherical_expansion():
     """Returns a rascaline SphericalExpansion"""
     calculator = rascaline.torch.SphericalExpansion(**SPHERICAL_EXPANSION_HYPERS)
-    return calculator.compute(rascaline.torch.systems_to_torch(frames))
+    return calculator.compute(system())
 
 
 # copy of def test_correlate_density_angular_selection(
@@ -66,8 +59,7 @@ def test_torch_script_correlate_density_angular_selection(
     Tests that the correct angular channels are output based on the specified
     ``selected_keys``.
     """
-    frames = h2o_isolated()
-    nu_1 = spherical_expansion(frames)
+    nu_1 = spherical_expansion()
     correlation_order = 2
     corr_calculator = DensityCorrelations(
         max_angular=SPHERICAL_EXPANSION_HYPERS["max_angular"] * correlation_order,

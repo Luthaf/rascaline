@@ -33,11 +33,7 @@ def _create_random_system(n_atoms, cell_size):
 
 
 def _compute_spherical_expansion(types, positions, cell):
-    system = System(
-        species=types,
-        positions=positions,
-        cell=cell,
-    )
+    system = System(types=types, positions=positions, cell=cell)
 
     calculator = SphericalExpansion(**HYPERS)
     descriptor = calculator(system)
@@ -51,11 +47,7 @@ def _compute_spherical_expansion(types, positions, cell):
 
 
 def _compute_power_spectrum(types, positions, cell):
-    system = System(
-        species=types,
-        positions=positions,
-        cell=cell,
-    )
+    system = System(types=types, positions=positions, cell=cell)
 
     calculator = SoapPowerSpectrum(**HYPERS)
     descriptor = calculator(system)
@@ -119,11 +111,7 @@ def test_power_spectrum_positions_grad_register_autograd():
     assert precomputed.block(0).values.grad_fn is None
 
     def compute(positions, cell):
-        system = System(
-            species=types,
-            positions=positions,
-            cell=cell,
-        )
+        system = System(types=types, positions=positions, cell=cell)
 
         descriptor = rascaline.torch.register_autograd(system, precomputed)
         descriptor = descriptor.keys_to_samples("center_type")

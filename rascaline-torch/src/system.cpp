@@ -6,7 +6,7 @@
 using namespace rascaline_torch;
 
 SystemAdapter::SystemAdapter(metatensor_torch::System system): system_(std::move(system)) {
-    this->types_ = system_->species().to(torch::kCPU).contiguous();
+    this->types_ = system_->types().to(torch::kCPU).contiguous();
     this->positions_ = system_->positions().to(torch::kCPU).to(torch::kDouble).contiguous();
     this->cell_ = system_->cell().to(torch::kCPU).to(torch::kDouble).contiguous();
 
@@ -46,7 +46,7 @@ SystemAdapter::SystemAdapter(metatensor_torch::System system): system_(std::move
                     pairs.emplace_back(pair);
                 }
 
-                this->set_precomputed_pairs(options->model_cutoff(), std::move(pairs));
+                this->set_precomputed_pairs(options->cutoff(), std::move(pairs));
                 continue;
             }
         }
