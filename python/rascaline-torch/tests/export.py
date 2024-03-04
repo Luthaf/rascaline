@@ -6,6 +6,7 @@ from metatensor.torch import Labels, TensorBlock, TensorMap
 from metatensor.torch.atomistic import (
     MetatensorAtomisticModel,
     ModelCapabilities,
+    ModelMetadata,
     ModelOutput,
     System,
 )
@@ -49,11 +50,6 @@ class Model(torch.nn.Module):
 
         options = outputs["energy"]
 
-        if selected_atoms is not None:
-            # TODO: change rascaline names to match metatensor
-            selected_atoms = selected_atoms.rename("system", "system")
-            selected_atoms = selected_atoms.rename("atom", "atom")
-
         soap = self.calculator(
             systems=systems,
             selected_samples=selected_atoms,
@@ -68,9 +64,6 @@ class Model(torch.nn.Module):
 
         if options.per_atom:
             samples = soap.block().samples
-            # TODO: change rascaline names to match metatensor
-            samples = samples.rename("system", "system")
-            samples = samples.rename("atom", "atom")
         else:
             features = soap.block().values.sum(dim=0, keepdim=True)
             samples = Labels(
@@ -94,12 +87,16 @@ def test_export_as_metatensor_model(tmpdir):
     model = Model(types=[1, 6, 8])
     model.eval()
 
-    export = MetatensorAtomisticModel(model, ModelCapabilities())
+    capabilities = ModelCapabilities(
+        supported_devices=["cpu"],
+        interaction_range=HYPERS["cutoff"],
+    )
+    export = MetatensorAtomisticModel(model, ModelMetadata(), capabilities)
 
     # Check we are requesting the right set of neighbors
     neighbors = export.requested_neighbors_lists()
     assert len(neighbors) == 1
-    assert neighbors[0].model_cutoff == HYPERS["cutoff"]
+    assert neighbors[0].cutoff == HYPERS["cutoff"]
     assert not neighbors[0].full_list
     assert neighbors[0].requestors() == ["rascaline", "Model.calculator"]
 

@@ -28,7 +28,11 @@ build_sdist = build_meta.build_sdist
 
 def get_requires_for_build_wheel(config_settings=None):
     defaults = build_meta.get_requires_for_build_wheel(config_settings)
-    return defaults + [RASCALINE_DEP]
+    return defaults + [
+        "torch >= 1.11",
+        "metatensor-torch >=0.3.0,<0.4.0",
+        RASCALINE_DEP,
+    ]
 
 
 def get_requires_for_build_sdist(config_settings=None):

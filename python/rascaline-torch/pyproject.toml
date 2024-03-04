@@ -37,8 +37,6 @@ requires = [
     "setuptools >=61",
     "wheel >=0.38",
     "cmake",
-    "torch >= 1.11",
-    "metatensor-torch >=0.2.0,<0.3.0",
 ]
 
 # use a custom build backend to add a dependency on the right version of rascaline

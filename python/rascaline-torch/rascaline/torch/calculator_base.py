@@ -88,7 +88,7 @@ class CalculatorModule(torch.nn.Module):
         for cutoff in self.cutoffs:
             options.append(
                 NeighborsListOptions(
-                    model_cutoff=cutoff,
+                    cutoff=cutoff,
                     full_list=False,
                     requestor="rascaline",
                 )

@@ -17,10 +17,10 @@ def test_system_conversion_from_ase():
 
     assert isinstance(system, torch.ScriptObject)
 
-    assert isinstance(system.species, torch.Tensor)
-    assert torch.all(system.species == torch.tensor([6, 8]))
-    assert system.species.dtype == torch.int32
-    assert not system.species.requires_grad
+    assert isinstance(system.types, torch.Tensor)
+    assert torch.all(system.types == torch.tensor([6, 8]))
+    assert system.types.dtype == torch.int32
+    assert not system.types.requires_grad
 
     assert isinstance(system.positions, torch.Tensor)
     assert torch.all(system.positions == torch.tensor([(0, 0, 0), (0, 0, 2)]))
