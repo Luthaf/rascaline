@@ -1,5 +1,5 @@
 use ndarray::{Array, ArrayViewMut, azip};
-use log::info;
+use log::debug;
 
 use crate::Error;
 
@@ -168,7 +168,7 @@ impl<D: ndarray::Dimension> HermitCubicSpline<D> {
             mean_relative_error /= error_count as f64;
 
             if mean_absolute_error < accuracy || mean_relative_error < accuracy {
-                info!(
+                debug!(
                     "spline reached requested accuracy ({:.3e}) with {} reference points (max absolute error is {:.3e})",
                     accuracy, spline.len(), max_absolute_error,
                 );
