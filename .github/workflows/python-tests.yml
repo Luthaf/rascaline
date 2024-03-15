@@ -42,7 +42,9 @@ jobs:
       - name: install python dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install tox
+          # https://github.com/tox-dev/tox/issues/3238
+          python -m pip install tox==4.14.0
+
           echo "tox_version=$(python -c 'import tox; print(tox.__version__)')" >> $GITHUB_ENV
 
       - name: Setup sccache
@@ -94,7 +96,9 @@ jobs:
       - name: install python dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install tox
+          # https://github.com/tox-dev/tox/issues/3238
+          python -m pip install tox==4.14.0
+
           echo "tox_version=$(python -c 'import tox; print(tox.__version__)')" >> $GITHUB_ENV
 
       - name: cache tox environments
