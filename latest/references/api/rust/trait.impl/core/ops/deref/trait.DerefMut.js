@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"rascaline":[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.77.0/core/ops/deref/trait.DerefMut.html\" title=\"trait core::ops::deref::DerefMut\">DerefMut</a> for <a class=\"struct\" href=\"rascaline/types/struct.Matrix3.html\" title=\"struct rascaline::types::Matrix3\">Matrix3</a>"],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.77.0/core/ops/deref/trait.DerefMut.html\" title=\"trait core::ops::deref::DerefMut\">DerefMut</a> for <a class=\"struct\" href=\"rascaline/types/struct.Vector3D.html\" title=\"struct rascaline::types::Vector3D\">Vector3D</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

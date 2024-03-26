@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["RadialBasis"],"mod":["lode","soap"],"struct":["AtomicComposition","GtoRadialBasis","NeighborList","SortedDistances"],"trait":["CalculatorBase"]};

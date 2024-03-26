@@ -1,0 +1,70 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="A `SoapRadialIntegral` computes the SOAP radial integral on a given radial basis."><title>SoapRadialIntegral in rascaline::calculators::soap - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-5bc39a1768837dd0.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rascaline" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0 (aedd173a2 2024-03-17)" data-channel="1.77.0" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-4c98445ec4002617.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../static.files/main-48f368f3872407c8.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.2/dist/katex.min.css" integrity="sha384-bYdxxUwYipFNohQlHt0bjN/LCpueqWz13HufFEV1SUatKs1cm4L6fFgCi1jT643X" crossorigin="anonymous">
+
+<!-- The loading of KaTeX is deferred to speed up page rendering -->
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.2/dist/katex.min.js" integrity="sha384-Qsn9KnoKISj6dI8g7p1HBlNpVx0I8p1SvlwOldgi3IorMle61nQy4zEahWYtljaz" crossorigin="anonymous"></script>
+
+<!-- To automatically render math in text elements, include the auto-render extension: -->
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.2/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"
+    onload="renderMathInElement(document.body);"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+          // customised options
+          delimiters: [
+              {left: '$$', right: '$$', display: true},
+              {left: '$', right: '$', display: false},
+              {left: '\\(', right: '\\)', display: false},
+              {left: '\\[', right: '\\]', display: true}
+          ],
+          throwOnError : false
+        });
+    });
+</script>
+
+</head><body class="rustdoc trait"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../rascaline/index.html">rascaline</a><span class="version">0.1.0</span></h2></div><h2 class="location"><a href="#">SoapRadialIntegral</a></h2><div class="sidebar-elems"><section><h3><a href="#required-methods">Required Methods</a></h3><ul class="block"><li><a href="#tymethod.compute">compute</a></li></ul><h3><a href="#implementors">Implementors</a></h3></section><h2><a href="index.html">In rascaline::calculators::soap</a></h2></div></nav><div class="sidebar-resizer"></div>
+    <main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../rascaline/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Trait <a href="../../index.html">rascaline</a>::<wbr><a href="../index.html">calculators</a>::<wbr><a href="index.html">soap</a>::<wbr><a class="trait" href="#">SoapRadialIntegral</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="src" href="../../../src/rascaline/calculators/soap/radial_integral/mod.rs.html#18-54">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><pre class="rust item-decl"><code>pub trait SoapRadialIntegral: <a class="trait" href="https://doc.rust-lang.org/1.77.0/core/panic/unwind_safe/trait.RefUnwindSafe.html" title="trait core::panic::unwind_safe::RefUnwindSafe">RefUnwindSafe</a> + <a class="trait" href="https://doc.rust-lang.org/1.77.0/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> {
+    // Required method
+    fn <a href="#tymethod.compute" class="fn">compute</a>(
+        &amp;self,
+        rij: <a class="primitive" href="https://doc.rust-lang.org/1.77.0/std/primitive.f64.html">f64</a>,
+        values: <a class="type" href="https://docs.rs/ndarray/0.15/ndarray/aliases/type.ArrayViewMut2.html" title="type ndarray::aliases::ArrayViewMut2">ArrayViewMut2</a>&lt;'_, <a class="primitive" href="https://doc.rust-lang.org/1.77.0/std/primitive.f64.html">f64</a>&gt;,
+        gradients: <a class="enum" href="https://doc.rust-lang.org/1.77.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="type" href="https://docs.rs/ndarray/0.15/ndarray/aliases/type.ArrayViewMut2.html" title="type ndarray::aliases::ArrayViewMut2">ArrayViewMut2</a>&lt;'_, <a class="primitive" href="https://doc.rust-lang.org/1.77.0/std/primitive.f64.html">f64</a>&gt;&gt;
+    );
+}</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>A <code>SoapRadialIntegral</code> computes the SOAP radial integral on a given radial
+basis.</p>
+<p>See equations 5 to 8 of <a href="https://doi.org/10.1063/5.0044689">this paper</a> for
+mor information on the radial integral.</p>
+<p><code>std::panic::RefUnwindSafe</code> is a required super-trait to enable passing
+radial integrals across the C API. <code>Send</code> is a required super-trait to
+enable passing radial integrals between threads.</p>
+</div></details><h2 id="required-methods" class="section-header">Required Methods<a href="#required-methods" class="anchor">§</a></h2><div class="methods"><details class="toggle method-toggle" open><summary><section id="tymethod.compute" class="method"><a class="src rightside" href="../../../src/rascaline/calculators/soap/radial_integral/mod.rs.html#53">source</a><h4 class="code-header">fn <a href="#tymethod.compute" class="fn">compute</a>(
+    &amp;self,
+    rij: <a class="primitive" href="https://doc.rust-lang.org/1.77.0/std/primitive.f64.html">f64</a>,
+    values: <a class="type" href="https://docs.rs/ndarray/0.15/ndarray/aliases/type.ArrayViewMut2.html" title="type ndarray::aliases::ArrayViewMut2">ArrayViewMut2</a>&lt;'_, <a class="primitive" href="https://doc.rust-lang.org/1.77.0/std/primitive.f64.html">f64</a>&gt;,
+    gradients: <a class="enum" href="https://doc.rust-lang.org/1.77.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="type" href="https://docs.rs/ndarray/0.15/ndarray/aliases/type.ArrayViewMut2.html" title="type ndarray::aliases::ArrayViewMut2">ArrayViewMut2</a>&lt;'_, <a class="primitive" href="https://doc.rust-lang.org/1.77.0/std/primitive.f64.html">f64</a>&gt;&gt;
+)</h4></section></summary><div class="docblock"><p>Compute the radial integral for a single <code>distance</code> between two atoms
+and store the resulting data in the <code>(max_angular + 1) x max_radial</code>
+array <code>values</code>. If <code>gradients</code> is <code>Some</code>, also compute and store
+gradients there.</p>
+<p>The radial integral $I_{nl}$ is defined as “the non-spherical harmonics
+part of the spherical expansion”. Depending on the atomic density,
+different expressions can be used.</p>
+<p>For a delta density, the radial integral is simply the radial basis
+function $R_{nl}$ evaluated at the pair distance:</p>
+<p>$$ I_{nl}(r_{ij}) = R_{nl}(r_{ij}) $$</p>
+<p>For a Gaussian atomic density with a width of $\sigma$, the radial
+integral reduces to:</p>
+<p>$$
+I_{nl}(r_{ij}) = \frac{4\pi}{(\pi \sigma^2)^{3/4}} e^{-\frac{r_{ij}^2}{2\sigma^2}}
+\int_0^\infty \mathrm{d}r r^2 R_{nl}(r) e^{-\frac{r^2}{2\sigma^2}} i_l\left(\frac{rr_{ij}}{\sigma^2}\right)
+$$</p>
+<p>where $i_l$ is the modified spherical Bessel function of the first kind
+of order $l$.</p>
+<p>Finally, for an arbitrary spherically symmetric atomic density <code>g(r)</code>,
+the radial integral is</p>
+<p>$$
+I_{nl}(r_{ij}) = 2\pi \int_0^\infty \mathrm{d}r r^2 R_{nl}(r)
+\int_{-1}^1 \mathrm{d}u P_l(u) g(\sqrt{r^2+r_{ij}^2-2rr_{ij}u})
+$$</p>
+<p>where $P_l$ is the l-th Legendre polynomial.</p>
+</div></details></div><h2 id="implementors" class="section-header">Implementors<a href="#implementors" class="anchor">§</a></h2><div id="implementors-list"><section id="impl-SoapRadialIntegral-for-SoapRadialIntegralGto" class="impl"><a class="src rightside" href="../../../src/rascaline/calculators/soap/radial_integral/gto.rs.html#97-198">source</a><a href="#impl-SoapRadialIntegral-for-SoapRadialIntegralGto" class="anchor">§</a><h3 class="code-header">impl <a class="trait" href="trait.SoapRadialIntegral.html" title="trait rascaline::calculators::soap::SoapRadialIntegral">SoapRadialIntegral</a> for <a class="struct" href="struct.SoapRadialIntegralGto.html" title="struct rascaline::calculators::soap::SoapRadialIntegralGto">SoapRadialIntegralGto</a></h3></section><section id="impl-SoapRadialIntegral-for-SoapRadialIntegralSpline" class="impl"><a class="src rightside" href="../../../src/rascaline/calculators/soap/radial_integral/spline.rs.html#92-97">source</a><a href="#impl-SoapRadialIntegral-for-SoapRadialIntegralSpline" class="anchor">§</a><h3 class="code-header">impl <a class="trait" href="trait.SoapRadialIntegral.html" title="trait rascaline::calculators::soap::SoapRadialIntegral">SoapRadialIntegral</a> for <a class="struct" href="struct.SoapRadialIntegralSpline.html" title="struct rascaline::calculators::soap::SoapRadialIntegralSpline">SoapRadialIntegralSpline</a></h3></section></div><script src="../../../trait.impl/rascaline/calculators/soap/radial_integral/trait.SoapRadialIntegral.js" async></script></section></div></main></body></html>
