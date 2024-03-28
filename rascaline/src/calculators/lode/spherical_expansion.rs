@@ -85,6 +85,8 @@ pub struct LodeSphericalExpansion {
     /// The vector contains different l values, and the Array is indexed by
     /// `m, n, k`.
     k_vector_to_m_n: ThreadLocal<RefCell<Vec<Array3<f64>>>>,
+    /// Cached allocation for everything that only depends on the k vector
+    k_dependent_values: ThreadLocal<RefCell<Array1<f64>>>,
 }
 
 /// Compute the trigonometric functions for LODE coefficients
@@ -172,6 +174,24 @@ impl std::fmt::Debug for LodeSphericalExpansion {
     }
 }
 
+/// Resize a 3D ndarray while keeping existing allocation
+fn resize_array3(array: &mut ndarray::Array3<f64>, shape: (usize, usize, usize)) {
+    let tmp_array = std::mem::take(array);
+
+    let mut data = tmp_array.into_raw_vec();
+    data.resize(shape.0 * shape.1 * shape.2, 0.0);
+    *array = Array3::from_shape_vec(shape, data).expect("wrong shape");
+}
+
+/// Resize a 1D ndarray while keeping existing allocation
+fn resize_array1(array: &mut ndarray::Array1<f64>, shape: usize) {
+    let tmp_array = std::mem::take(array);
+
+    let mut data = tmp_array.into_raw_vec();
+    data.resize(shape, 0.0);
+    *array = Array1::from_shape_vec(shape, data).expect("wrong shape");
+}
+
 impl LodeSphericalExpansion {
     pub fn new(parameters: LodeSphericalExpansionParameters) -> Result<LodeSphericalExpansion, Error> {
         if parameters.potential_exponent >= 10 {
@@ -199,6 +219,7 @@ impl LodeSphericalExpansion {
             spherical_harmonics: ThreadLocal::new(),
             radial_integral: ThreadLocal::new(),
             k_vector_to_m_n: ThreadLocal::new(),
+            k_dependent_values: ThreadLocal::new(),
         });
     }
 
@@ -214,15 +235,7 @@ impl LodeSphericalExpansion {
 
         for o3_lambda in 0..=self.parameters.max_angular {
             let shape = (2 * o3_lambda + 1, self.parameters.max_radial, k_vectors.len());
-
-            // resize the arrays while keeping existing allocations
-            let array = std::mem::take(&mut k_vector_to_m_n[o3_lambda]);
-
-            let mut data = array.into_raw_vec();
-            data.resize(shape.0 * shape.1 * shape.2, 0.0);
-            let array = Array3::from_shape_vec(shape, data).expect("wrong shape");
-
-            k_vector_to_m_n[o3_lambda] = array;
+            resize_array3(&mut k_vector_to_m_n[o3_lambda], shape);
         }
 
         let mut radial_integral = self.radial_integral.get_or(|| {
@@ -578,8 +591,25 @@ impl CalculatorBase for LodeSphericalExpansion {
 
         let mut descriptors_by_system = split_tensor_map_by_system(descriptor, systems.len());
 
+        // pick either parallelization over systems (if we have a lot of
+        // systems) or parallelization over samples.
+        //
+        // The parallelization over samples has a slightly higher overhead, so
+        // if we can avoid it we try to!
+        //
+        // Trying to use both at the same time would require additional
+        // synchronisation to ensure the right threads access per-system
+        // pre-computed data (i.e. anything that depends on k-vectors).
+        let (parallel_systems, parallel_samples) = if systems.len() > rayon::current_num_threads() {
+            (true, false)
+        } else {
+            (false, true)
+        };
+        let n_systems = systems.len();
+
         systems.par_iter_mut()
             .zip_eq(&mut descriptors_by_system)
+            .with_min_len(if parallel_systems {1} else {n_systems})
             .enumerate()
             .try_for_each(|(system_i, (system, descriptor))| {
                 let types = system.types()?;
@@ -639,157 +669,191 @@ impl CalculatorBase for LodeSphericalExpansion {
                     .expect("k_vector_to_m_n should have been created")
                     .borrow();
 
-                // Main loop: Iterate over all atoms to evaluate the projection coefficients
-                for o3_lambda in 0..=self.parameters.max_angular {
+                // Main loop: Iterate over all blocks, and then all samples in
+                // each block (in parallel) to evaluate the projection
+                // coefficients
+                for (key, mut block) in descriptor.iter_mut() {
+                    if block.samples().is_empty() {
+                        continue;
+                    }
+
+                    let o3_lambda = key[0].usize();
+                    let center_type = key[2].i32();
+                    let neighbor_type = key[3].i32();
+
                     let phase = if o3_lambda % 2 == 0 {
                         (-1.0_f64).powi(o3_lambda as i32 / 2)
                     } else {
                         (-1.0_f64).powi((o3_lambda as i32 + 1) / 2)
                     };
 
+                    let sf_per_center_real = &structure_factors.real_per_center[&neighbor_type];
+                    let sf_per_center_imag = &structure_factors.imag_per_center[&neighbor_type];
+
                     let sf_per_center = if o3_lambda % 2 == 0 {
-                        &structure_factors.real_per_center
+                        sf_per_center_real
                     } else {
-                        &structure_factors.imag_per_center
+                        sf_per_center_imag
                     };
 
                     let k_vector_to_m_n = &k_vector_to_m_n[o3_lambda];
 
-                    for (&neighbor_type, sf_per_center) in sf_per_center {
-                        for center_i in 0..system.size()? {
-                            let block_i = descriptor.keys().position(&[
-                                o3_lambda.into(),
-                                1.into(),
-                                types[center_i].into(),
-                                neighbor_type.into(),
-                            ]);
+                    let data = block.data_mut();
+                    let samples = &*data.samples;
+                    let properties = &*data.properties;
 
-                            if block_i.is_none() {
-                                continue;
+                    array_mut_for_system(data.values)
+                        .axis_iter_mut(ndarray::Axis(0))
+                        .into_par_iter()
+                        .with_min_len(if parallel_samples {1} else {samples.count()})
+                        .zip_eq(samples.par_iter())
+                        .for_each(|(mut row, sample)| {
+                            let center_i = sample[1].usize();
+
+                            if types[center_i] != center_type {
+                                // this can happen with sample selection if the
+                                // user adds extra samples
+                                return;
                             }
-                            let block_i = block_i.expect("we just checked");
 
+                            let sf_center = &sf_per_center.slice(s![center_i, ..]);
 
-                            let mut block = descriptor.block_mut_by_id(block_i);
-                            let data = block.data_mut();
-                            let mut array = array_mut_for_system(data.values);
+                            let mut k_dependent_values = self.k_dependent_values
+                                .get_or(|| RefCell::new(Array1::zeros(0)))
+                                .borrow_mut();
 
-                            let sample = [system_i.into(), center_i.into()];
-                            let sample_i = match data.samples.position(&sample) {
-                                Some(s) => s,
-                                None => continue
-                            };
+                            resize_array1(&mut k_dependent_values, k_vectors.len());
+                            ndarray::azip!((value in &mut *k_dependent_values, &df in &density_fourier, &sf in sf_center) {
+                                *value = global_factor * phase * df * sf;
+                            });
 
                             for m in 0..(2 * o3_lambda + 1) {
-                                for (property_i, [n]) in data.properties.iter_fixed_size().enumerate() {
+                                for (property_i, [n]) in properties.iter_fixed_size().enumerate() {
                                     let n = n.usize();
 
                                     let mut value = 0.0;
                                     for ik in 0..k_vectors.len() {
-                                        // Use unsafe to remove bound checking in
-                                        // release mode with `uget` (everything is
-                                        // still bound checked in debug mode).
+                                        // Use unsafe to remove bound checking in release mode with `uget`
+                                        // (everything is still bound checked in debug mode).
                                         //
-                                        // This divides the calculation time by two
-                                        // for values.
+                                        // This divides the calculation time by two for values.
                                         unsafe {
-                                            value += global_factor * phase
-                                                * density_fourier.uget(ik)
-                                                * sf_per_center.uget([center_i, ik])
-                                                * k_vector_to_m_n.uget([m, n, ik]);
+                                            value += k_dependent_values.uget(ik)
+                                                   * k_vector_to_m_n.uget([m, n, ik]);
                                         }
                                     }
-                                    array[[sample_i, m, property_i]] += value;
+                                    row[[m, property_i]] += value;
                                 }
                             }
+                        });
 
-                            if let Some(mut gradient) = block.gradient_mut("positions") {
-                                let gradient = gradient.data_mut();
-                                let mut array = array_mut_for_system(gradient.values);
+                    if let Some(mut gradient) = block.gradient_mut("positions") {
+                        let gradient = gradient.data_mut();
+                        let gradient_samples = &*gradient.samples;
 
-                                for (neighbor_i, &current_neighbor_type) in types.iter().enumerate() {
-                                    if neighbor_i == center_i {
-                                        continue;
+                        array_mut_for_system(gradient.values)
+                            .axis_iter_mut(ndarray::Axis(0))
+                            .into_par_iter()
+                            .with_min_len(if parallel_samples {1} else {gradient_samples.count()})
+                            .zip_eq(gradient_samples.par_iter())
+                            .for_each(|(mut grad_row, grad_sample)| {
+                                let sample_i = grad_sample[0].usize();
+                                let neighbor_i = grad_sample[2].usize();
+
+                                let sample = &samples[sample_i];
+                                let center_i = sample[1].usize();
+
+                                if center_i != neighbor_i {
+                                    assert!(types[neighbor_i] == neighbor_type);
+                                }
+                                assert!(types[center_i] == center_type);
+
+                                let cosines = &structure_factors.real;
+                                let sines = &structure_factors.imag;
+
+                                let mut sf_grad_pair = self.k_dependent_values
+                                    .get_or(|| RefCell::new(Array1::zeros(0)))
+                                    .borrow_mut();
+
+                                resize_array1(&mut sf_grad_pair, k_vectors.len());
+
+                                if o3_lambda % 2 == 0 {
+                                    // real part of i*e^{i k (ri - rj)}
+                                    for ik in 0..k_vectors.len() {
+                                        let factor = sines[[center_i, ik]] * cosines[[neighbor_i, ik]]
+                                                   - cosines[[center_i, ik]] * sines[[neighbor_i, ik]];
+                                        sf_grad_pair[ik] = 2.0 * factor;
                                     }
-
-                                    if current_neighbor_type != neighbor_type {
-                                        continue;
+                                } else {
+                                    // imaginary part of i*e^{i k (ri - rj)}
+                                    for ik in 0..k_vectors.len() {
+                                        let factor = cosines[[center_i, ik]] * cosines[[neighbor_i, ik]]
+                                                   + sines[[center_i, ik]] * sines[[neighbor_i, ik]];
+                                        sf_grad_pair[ik] = -2.0 * factor;
                                     }
+                                }
 
-                                    let grad_sample_self_i = gradient.samples.position(&[
-                                        sample_i.into(), system_i.into(), center_i.into()
-                                    ]).expect("missing self gradient sample");
-
-                                    let grad_sample_other_i = gradient.samples.position(&[
-                                        sample_i.into(), system_i.into(), neighbor_i.into()
-                                    ]).expect("missing gradient sample");
-
-                                    let mut sf_grad = Vec::with_capacity(k_vectors.len());
-                                    let cosines = &structure_factors.real;
-                                    let sines = &structure_factors.imag;
-                                    if o3_lambda % 2 == 0 {
-                                        let i = center_i;
-                                        let j = neighbor_i;
-                                        // real part of i*e^{i k (rj - ri)}
-                                        for ik in 0..k_vectors.len() {
-                                            let factor = sines[[i, ik]] * cosines[[j, ik]]
-                                                - cosines[[i, ik]] * sines[[j, ik]];
-                                            sf_grad.push(2.0 * factor);
-                                        }
+                                if center_i == neighbor_i {
+                                    // We want the real/imaginary part of `-\sum_{j != i} i*e^{i k (rj - ri)}`
+                                    // for which we try to reuse the structure factor per center from
+                                    // the values calculation
+                                    let (sf_phase, sf_grad) = if o3_lambda % 2 == 0 {
+                                        (1.0, sf_per_center_imag)
                                     } else {
-                                        let i = center_i;
-                                        let j = neighbor_i;
-                                        // imaginary part of i*e^{i k (rj - ri)}
-                                        for ik in 0..k_vectors.len() {
-                                            let factor = cosines[[i, ik]] * cosines[[j, ik]]
-                                                + sines[[i, ik]] * sines[[j, ik]];
-                                            sf_grad.push(-2.0 * factor);
-                                        }
-                                    }
-                                    let sf_grad = Array1::from(sf_grad);
+                                        (-1.0, sf_per_center_real)
+                                    };
 
-                                    for m in 0..(2 * o3_lambda + 1) {
-                                        for (property_i, [n]) in gradient.properties.iter_fixed_size().enumerate() {
-                                            let n = n.usize();
+                                    let sf_center = &sf_grad.slice(s![center_i, ..]);
 
-                                            let mut grad = Vector3D::zero();
-                                            for (ik, k_vector) in k_vectors.iter().enumerate() {
-                                                // Use unsafe to remove bound
-                                                // checking in release mode with
-                                                // `uget` (everything is still bound
-                                                // checked in debug mode).
-                                                //
-                                                // This divides the calculation time
-                                                // by ten for gradients.
-                                                unsafe {
-                                                    grad += global_factor * phase
-                                                        * density_fourier.uget(ik)
-                                                        * sf_grad.uget(ik)
-                                                        * k_vector_to_m_n.uget([m, n, ik])
-                                                        * k_vector.norm
-                                                        * k_vector.direction;
-                                                }
-                                            }
-
-                                            array[[grad_sample_other_i, 0, m, property_i]] += grad[0];
-                                            array[[grad_sample_other_i, 1, m, property_i]] += grad[1];
-                                            array[[grad_sample_other_i, 2, m, property_i]] += grad[2];
-
-                                            array[[grad_sample_self_i, 0, m, property_i]] -= grad[0];
-                                            array[[grad_sample_self_i, 1, m, property_i]] -= grad[1];
-                                            array[[grad_sample_self_i, 2, m, property_i]] -= grad[2];
-                                        }
+                                    // #[allow(clippy::assign_op_pattern)]
+                                    if neighbor_type == center_type {
+                                        // we need to remove the contribution from the i-i pair
+                                        ndarray::azip!((pair in &mut *sf_grad_pair, &center in sf_center) {
+                                            *pair = -(sf_phase * center - *pair);
+                                        });
+                                    } else {
+                                        ndarray::azip!((pair in &mut *sf_grad_pair, &center in sf_center) {
+                                            *pair = -sf_phase * center;
+                                        });
                                     }
                                 }
-                            }
-                        }
+
+                                // pre-combine everything that only depends on k
+                                let mut k_dependent_values = sf_grad_pair;
+                                ndarray::azip!((value in &mut *k_dependent_values, &df in &density_fourier) {
+                                    *value *= global_factor * phase * df;
+                                });
+
+                                for m in 0..(2 * o3_lambda + 1) {
+                                    for (property_i, [n]) in properties.iter_fixed_size().enumerate() {
+                                        let n = n.usize();
+
+                                        let mut grad = Vector3D::zero();
+                                        for (ik, k_vector) in k_vectors.iter().enumerate() {
+                                            // Use unsafe to remove bound checking in release mode with `uget`
+                                            // (everything is still bound checked in debug mode).
+                                            //
+                                            // This divides the calculation time by ten for gradients.
+                                            unsafe {
+                                                grad += k_dependent_values.uget(ik)
+                                                      * k_vector_to_m_n.uget([m, n, ik])
+                                                      * k_vector.norm
+                                                      * k_vector.direction;
+                                            }
+                                        }
+
+                                        grad_row[[0, m, property_i]] = grad[0];
+                                        grad_row[[1, m, property_i]] = grad[1];
+                                        grad_row[[2, m, property_i]] = grad[2];
+                                    }
+                                }
+                            });
                     }
                 }
 
                 return Ok(());
             }
         )?;
-
 
         Ok(())
     }
