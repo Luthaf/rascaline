@@ -242,7 +242,7 @@ if __name__ == "__main__":
             authors = fd.read().splitlines()
 
     install_requires = [
-        "torch >= 1.11",
+        "torch >= 1.12",
         "metatensor-torch >=0.3.0,<0.4.0",
     ]
     if os.path.exists(RASCALINE_C_API):

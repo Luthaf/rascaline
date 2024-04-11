@@ -53,7 +53,7 @@ find_package(rascaline ${REQUIRED_RASCALINE_VERSION} CONFIG REQUIRED)
 # fixed version in `cmake/FindCUDNN.cmake`
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
 
-find_package(Torch 1.11 REQUIRED)
+find_package(Torch 1.12 REQUIRED)
 
 # ============================================================================ #
 # Setup metatensor_torch
