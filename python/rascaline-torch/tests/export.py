@@ -90,6 +90,7 @@ def test_export_as_metatensor_model(tmpdir):
     capabilities = ModelCapabilities(
         supported_devices=["cpu"],
         interaction_range=HYPERS["cutoff"],
+        dtype="float64",
     )
     export = MetatensorAtomisticModel(model, ModelMetadata(), capabilities)
 
