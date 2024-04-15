@@ -16,3 +16,4 @@ are a total beginner, you can go to :ref:`userdoc-get-started` section.
     keys-selection
     le-basis
     splined-radial-integral
+    long-range
