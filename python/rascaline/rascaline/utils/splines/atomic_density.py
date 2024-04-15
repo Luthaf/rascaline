@@ -33,6 +33,7 @@ are provided, and you can implement your own by defining a new class.
 
 """
 
+import warnings
 from abc import ABC, abstractmethod
 from typing import Union
 
@@ -52,10 +53,20 @@ class AtomicDensityBase(ABC):
 
     @abstractmethod
     def compute(self, positions: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
-        """Compute the atomic density arising from atoms at ``positions``
+        """Compute the atomic density arising from atoms at ``positions``.
 
         :param positions: positions to evaluate the atomic densities
         :returns: evaluated atomic density
+        """
+
+    @abstractmethod
+    def compute_derivative(
+        self, positions: Union[float, np.ndarray]
+    ) -> Union[float, np.ndarray]:
+        """Derivative of the atomic density arising from atoms at ``positions``.
+
+        :param positions: positions to evaluate the derivatives atomic densities
+        :returns: evaluated derivative of the atomic density with respect to positions
         """
 
 
@@ -65,6 +76,14 @@ class DeltaDensity(AtomicDensityBase):
     def compute(self, positions: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         raise ValueError(
             "Compute function of the delta density should never called directly."
+        )
+
+    def compute_derivative(
+        self, positions: Union[float, np.ndarray]
+    ) -> Union[float, np.ndarray]:
+        raise ValueError(
+            "Compute derivative function of the delta density should never called "
+            "directly."
         )
 
 
@@ -83,6 +102,14 @@ class GaussianDensity(AtomicDensityBase):
 
             \|g\|^2 = \int \mathrm{d}^3\boldsymbol{r} |g(r)|^2 = 1\,,
 
+    The derivatives of the Gaussian atomic density with respect to the position is
+
+    .. math::
+
+        g^\prime(r) =
+            \frac{\partial g(r)}{\partial r} = \frac{-r}{\sigma^2(\pi
+            \sigma^2)^{3/4}}e^{-\frac{r^2}{2\sigma^2}} \,.
+
     :param atomic_gaussian_width: Width of the atom-centered gaussian used to create the
         atomic density
     """
@@ -90,11 +117,26 @@ class GaussianDensity(AtomicDensityBase):
     def __init__(self, atomic_gaussian_width: float):
         self.atomic_gaussian_width = atomic_gaussian_width
 
-    def compute(self, positions: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+    def _compute(
+        self, positions: Union[float, np.ndarray], derivative: bool = False
+    ) -> Union[float, np.ndarray]:
         atomic_gaussian_width_sq = self.atomic_gaussian_width**2
-        return np.exp(-0.5 * positions**2 / atomic_gaussian_width_sq) / (
-            np.pi * atomic_gaussian_width_sq
-        ) ** (3 / 4)
+        x = positions**2 / (2 * atomic_gaussian_width_sq)
+
+        density = np.exp(-x) / (np.pi * atomic_gaussian_width_sq) ** (3 / 4)
+
+        if derivative:
+            density *= -positions / atomic_gaussian_width_sq
+
+        return density
+
+    def compute(self, positions: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+        return self._compute(positions=positions, derivative=False)
+
+    def compute_derivative(
+        self, positions: Union[float, np.ndarray]
+    ) -> Union[float, np.ndarray]:
+        return self._compute(positions=positions, derivative=True)
 
 
 class LodeDensity(AtomicDensityBase):
@@ -108,10 +150,11 @@ class LodeDensity(AtomicDensityBase):
                \frac{\gamma\left( \frac{p}{2}, \frac{r^2}{2\sigma^2} \right)}
                     {r^p},
 
-    where :math:`\Gamma(z)` is the Gamma function and :math:`\gamma(a, x)` is the
-    incomplete lower Gamma function. However its evaluation at :math:`r=0` is
-    problematic because :math:`g(r)` is of the form :math:`0/0`. For practical
-    implementations, it is thus more convenient to rewrite the density as
+    where :math:`p` is the potential exponent, :math:`\Gamma(z)` is the Gamma function
+    and :math:`\gamma(a, x)` is the incomplete lower Gamma function. However its
+    evaluation at :math:`r=0` is problematic because :math:`g(r)` is of the form
+    :math:`0/0`. For practical implementations, it is thus more convenient to rewrite
+    the density as
 
     .. math::
 
@@ -123,10 +166,10 @@ class LodeDensity(AtomicDensityBase):
                         & x \geq 10^{-5}
                 \end{cases}
 
-    It is convenient to use the expression for sufficiently small :math:`x` since the
-    relative weight of the first neglected term is on the order of :math:`1/6x^3`.
-    Therefore, the threshold :math:`x = 10^{-5}` leads to relative errors on the order
-    of the machine epsilon.
+    where :math:`a=p/2`. It is convenient to use the expression for sufficiently small
+    :math:`x` since the relative weight of the first neglected term is on the order of
+    :math:`1/6x^3`. Therefore, the threshold :math:`x = 10^{-5}` leads to relative
+    errors on the order of the machine epsilon.
 
     :param atomic_gaussian_width: Width of the atom-centered gaussian used to create the
         atomic density
@@ -141,27 +184,61 @@ class LodeDensity(AtomicDensityBase):
         if not HAS_SCIPY:
             raise ValueError("LodeDensity requires scipy to be installed")
 
-        self.potential_exponent = potential_exponent
         self.atomic_gaussian_width = atomic_gaussian_width
+        self.potential_exponent = potential_exponent
 
-    def _short_range(self, a, x):
-        return 1 / a - x / (a + 1) + x**2 / (2 * (a + 2))
+    def _short_range(
+        self, a: float, x: Union[float, np.ndarray], derivative: bool = False
+    ):
+        if derivative:
+            return -1 / (a + 1) + x / (a + 2)
+        else:
+            return 1 / a - x / (a + 1) + x**2 / (2 * (a + 2))
 
-    def _long_range(self, a, x):
-        return gamma(a) * gammainc(a, x) / x**a
+    def _long_range(
+        self, a: float, x: Union[float, np.ndarray], derivative: bool = False
+    ):
+        if derivative:
+            return (np.exp(-x) - a * gamma(a) * gammainc(a, x) / x**a) / x
+        else:
+            return gamma(a) * gammainc(a, x) / x**a
 
-    def compute(self, positions: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+    def _compute(
+        self, positions: Union[float, np.ndarray], derivative: bool = False
+    ) -> Union[float, np.ndarray]:
         if self.potential_exponent == 0:
-            return GaussianDensity.compute(self, positions=positions)
+            return GaussianDensity._compute(
+                self, positions=positions, derivative=derivative
+            )
         else:
             atomic_gaussian_width_sq = self.atomic_gaussian_width**2
             a = self.potential_exponent / 2
             x = positions**2 / (2 * atomic_gaussian_width_sq)
 
-            prefac = 1 / gamma(a) / (2 * atomic_gaussian_width_sq) ** a
+            # Even though we use `np.where` to apply the `_short_range` method for small
+            # `x`, the `_long_range` method will also evaluated for small `x` and
+            # issueing RuntimeWarnings. We filter these warnings to avoid that these are
+            # presented to the user.
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=RuntimeWarning)
+                density = np.where(
+                    x < 1e-5,
+                    self._short_range(a, x, derivative=derivative),
+                    self._long_range(a, x, derivative=derivative),
+                )
 
-            return prefac * np.where(
-                x < 1e-5,
-                self._short_range(a, x),
-                self._long_range(a, x),
-            )
+            density *= 1 / gamma(a) / (2 * atomic_gaussian_width_sq) ** a
+
+            # add inner derivative: ∂x/∂r
+            if derivative:
+                density *= positions / atomic_gaussian_width_sq
+
+            return density
+
+    def compute(self, positions: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+        return self._compute(positions=positions, derivative=False)
+
+    def compute_derivative(
+        self, positions: Union[float, np.ndarray]
+    ) -> Union[float, np.ndarray]:
+        return self._compute(positions=positions, derivative=True)

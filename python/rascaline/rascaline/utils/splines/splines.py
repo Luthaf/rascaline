@@ -43,8 +43,8 @@ import numpy as np
 
 
 try:
-    from scipy.integrate import quad, quad_vec
-    from scipy.special import spherical_in, spherical_jn
+    from scipy.integrate import dblquad, quad, quad_vec
+    from scipy.special import legendre, spherical_in, spherical_jn
 
     HAS_SCIPY = True
 except ImportError:
@@ -593,7 +593,7 @@ class SoapSpliner(RadialIntegralSplinerBase):
         elif type(self.density) is GaussianDensity:
             return self._radial_integral_gaussian_derivative(n, ell, positions)
         else:
-            return self._radial_integral_custom_derivative(n, ell, positions)
+            return self._radial_integral_custom(n, ell, positions, derivative=True)
 
     def _radial_integral_delta(
         self, n: int, ell: int, positions: np.ndarray
@@ -632,15 +632,24 @@ class SoapSpliner(RadialIntegralSplinerBase):
         return (
             prefactor
             * quad_vec(
-                f=lambda x: integrand(x, n, ell, positions),
+                f=integrand,
                 a=0,
                 b=self.basis.integration_radius,
+                args=(n, ell, positions),
             )[0]
         )
 
     def _radial_integral_gaussian_derivative(
         self, n: int, ell: int, positions: np.ndarray
     ) -> np.ndarray:
+        # The derivative here for `positions=0`, any `n` and `ell=1` are wrong due to a
+        # bug in Scipy: https://github.com/scipy/scipy/issues/20506
+        #
+        # However, this is not problematic because the derivative at zero is only
+        # required if two atoms are VERY close and we have checks that should prevent
+        # very small distances between atoms. The center contribution is also not
+        # affected becuase it only needs the values but not derivatives of the radial
+        # integral.
         atomic_gaussian_width_sq = self.density.atomic_gaussian_width**2
 
         prefactor = (
@@ -666,26 +675,71 @@ class SoapSpliner(RadialIntegralSplinerBase):
         return atomic_gaussian_width_sq**-1 * (
             prefactor
             * quad_vec(
-                f=lambda x: integrand(x, n, ell, positions),
+                f=integrand,
                 a=0,
                 b=self.basis.integration_radius,
+                args=(n, ell, positions),
             )[0]
             - positions * self._radial_integral_gaussian(n, ell, positions)
         )
 
     def _radial_integral_custom(
-        self, n: int, ell: int, positions: np.ndarray, derivative: bool
+        self, n: int, ell: int, positions: np.ndarray, derivative: bool = False
     ) -> np.ndarray:
-        raise NotImplementedError(
-            "Radial integral with custom atomic densities is not implemented yet!"
-        )
 
-    def _radial_integral_custom_derivative(
-        self, n: int, ell: int, positions: np.ndarray, derivative: bool
-    ) -> np.ndarray:
-        raise NotImplementedError(
-            "Radial integral with custom atomic densities is not implemented yet!"
-        )
+        P_ell = legendre(ell)
+
+        if derivative:
+
+            def integrand(
+                u: float, integrand_position: float, n: int, ell: int, position: float
+            ) -> float:
+                arg = np.sqrt(
+                    integrand_position**2
+                    + position**2
+                    - 2 * integrand_position * position * u
+                )
+
+                return (
+                    integrand_position**2
+                    * self.basis.compute(n, ell, integrand_position)
+                    * P_ell(u)
+                    * (position - u * integrand_position)
+                    * self.density.compute_derivative(arg)
+                    / arg
+                )
+
+        else:
+
+            def integrand(
+                u: float, integrand_position: float, n: int, ell: int, position: float
+            ) -> float:
+                arg = np.sqrt(
+                    integrand_position**2
+                    + position**2
+                    - 2 * integrand_position * position * u
+                )
+
+                return (
+                    integrand_position**2
+                    * self.basis.compute(n, ell, integrand_position)
+                    * P_ell(u)
+                    * self.density.compute(arg)
+                )
+
+        radial_integral = np.zeros(len(positions))
+
+        for i, position in enumerate(positions):
+            radial_integral[i], _ = dblquad(
+                func=integrand,
+                a=0,
+                b=self.basis.integration_radius,
+                gfun=-1,
+                hfun=1,
+                args=(n, ell, position),
+            )
+
+        return 2 * np.pi * radial_integral
 
 
 class LodeSpliner(RadialIntegralSplinerBase):
@@ -799,9 +853,10 @@ class LodeSpliner(RadialIntegralSplinerBase):
             )
 
         return quad_vec(
-            f=lambda x: integrand(x, n, ell, positions),
+            f=integrand,
             a=0,
             b=self.basis.integration_radius,
+            args=(n, ell, positions),
         )[0]
 
     def radial_integral_derivative(
@@ -817,9 +872,10 @@ class LodeSpliner(RadialIntegralSplinerBase):
             )
 
         return quad_vec(
-            f=lambda x: integrand(x, n, ell, positions),
+            f=integrand,
             a=0,
             b=self.basis.integration_radius,
+            args=(n, ell, positions),
         )[0]
 
     @property
@@ -848,5 +904,5 @@ class LodeSpliner(RadialIntegralSplinerBase):
             func=integrand,
             a=0,
             b=self.basis.integration_radius,
-            args=(n),
+            args=(n,),
         )[0]
