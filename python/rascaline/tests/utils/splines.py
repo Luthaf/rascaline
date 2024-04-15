@@ -326,3 +326,58 @@ def test_center_contribution_gto_gaussian():
     center_contr_analytical *= normalization * 2 * np.pi / np.sqrt(4 * np.pi)
 
     assert_allclose(spliner.center_contribution, center_contr_analytical, rtol=1e-14)
+
+
+def test_custom_radial_integral():
+    cutoff = 2.0
+    max_radial = 3
+    max_angular = 2
+    atomic_gaussian_width = 1.2
+    n_spline_points = 20
+
+    spliner_args = {
+        "max_radial": max_radial,
+        "max_angular": max_angular,
+        "cutoff": cutoff,
+        "basis": GtoBasis(cutoff=cutoff, max_radial=max_radial),
+    }
+
+    spliner_analytical = SoapSpliner(
+        density=GaussianDensity(atomic_gaussian_width),
+        **spliner_args,
+    )
+
+    # Create a custom density that has not type "GaussianDensity" to trigger full
+    # numerical evaluation of the radial integral.
+    class mydensity(GaussianDensity):
+        pass
+
+    spliner_numerical = SoapSpliner(
+        density=mydensity(atomic_gaussian_width),
+        **spliner_args,
+    )
+
+    splines_analytic = spliner_analytical.compute(n_spline_points)
+    splines_numerical = spliner_numerical.compute(n_spline_points)
+
+    n_points = len(splines_analytic["TabulatedRadialIntegral"]["points"])
+
+    for point in range(n_points):
+        point_analytical = splines_analytic["TabulatedRadialIntegral"]["points"][point]
+        point_numerical = splines_numerical["TabulatedRadialIntegral"]["points"][point]
+
+        assert point_numerical["position"] == point_analytical["position"]
+
+        assert_allclose(
+            point_analytical["values"]["data"],
+            point_numerical["values"]["data"],
+            atol=1e-9,
+        )
+
+        # exlude r=0 because there is a Scipy bug: see comment in
+        # `SoapSpliner._radial_integral_gaussian_derivative` for details
+        if point != 0:
+            assert_allclose(
+                point_analytical["derivatives"]["data"],
+                point_numerical["derivatives"]["data"],
+            )

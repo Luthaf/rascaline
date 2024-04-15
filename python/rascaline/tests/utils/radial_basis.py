@@ -69,6 +69,8 @@ def test_radial_basis_orthornormalization():
 def test_derivative(analytical_basis: RadialBasisBase):
     """Finite difference test for testing the derivative of a radial basis"""
 
+    # Define a helper class that used the numerical derivatives from `RadialBasisBase`
+    # instead of the explictly implemented analytical ones in the child classes.
     class NumericalRadialBasis(RadialBasisBase):
         def compute(
             self, n: int, ell: int, integrand_positions: Union[float, np.ndarray]
