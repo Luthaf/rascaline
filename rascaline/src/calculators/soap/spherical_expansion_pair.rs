@@ -97,12 +97,13 @@ impl std::fmt::Debug for SphericalExpansionByPair {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct GradientsOptions {
     pub positions: bool,
+    pub cell: bool,
     pub strain: bool,
 }
 
 impl GradientsOptions {
     pub fn any(self) -> bool {
-        return self.positions || self.strain;
+        return self.positions || self.cell || self.strain;
     }
 }
 
@@ -505,6 +506,34 @@ impl SphericalExpansionByPair {
                         }
                     }
                 }
+
+                if do_gradients.cell {
+                    let mut gradient = block.gradient_mut("cell").expect("missing cell gradients");
+                    let gradient = gradient.data_mut();
+
+                    debug_assert_eq!(gradient.samples.names(), ["sample"]);
+                    assert_eq!(gradient.samples[sample_i][0].usize(), sample_i);
+
+                    let shifts = [
+                        sample[3].i32() as f64,
+                        sample[4].i32() as f64,
+                        sample[5].i32() as f64,
+                    ];
+
+                    let array = gradient.values.to_array_mut();
+                    for abc in 0..3 {
+                        for xyz in 0..3 {
+                            for m in 0..(2 * o3_lambda + 1) {
+                                for (property_i, [n]) in gradient.properties.iter_fixed_size().enumerate() {
+                                    unsafe {
+                                        let out = array.uget_mut([sample_i, abc, xyz, m, property_i]);
+                                        *out += shifts[abc] * contribution_gradients.uget([xyz, lm_start + m, n.usize()]);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -609,7 +638,7 @@ impl CalculatorBase for SphericalExpansionByPair {
 
     fn supports_gradient(&self, parameter: &str) -> bool {
         match parameter {
-            "positions" | "strain" => true,
+            "positions" | "strain" | "cell" => true,
             _ => false,
         }
     }
@@ -682,6 +711,7 @@ impl CalculatorBase for SphericalExpansionByPair {
         let do_gradients = GradientsOptions {
             positions: descriptor.block_by_id(0).gradient("positions").is_some(),
             strain: descriptor.block_by_id(0).gradient("strain").is_some(),
+            cell: descriptor.block_by_id(0).gradient("cell").is_some(),
         };
 
         self.do_self_contributions(systems, descriptor)?;
@@ -816,6 +846,28 @@ mod tests {
             epsilon: 1e-16,
         };
         crate::calculators::tests_utils::finite_differences_positions(calculator, &system, options);
+    }
+
+    #[test]
+    fn finite_differences_cell() {
+        let calculator = Calculator::from(Box::new(SphericalExpansionByPair::new(
+            SphericalExpansionParameters {
+                cutoff: 15.0,
+                atomic_gaussian_width: 0.5,
+                max_angular: 3,
+                ..parameters()
+            }
+        ).unwrap()) as Box<dyn CalculatorBase>);
+
+        let system = test_system("water");
+        let options = crate::calculators::tests_utils::FinalDifferenceOptions {
+            displacement: 1e-6,
+            // this is pretty high, we should decrease the cell size to get a
+            // better agreement
+            max_relative: 5e-2,
+            epsilon: 1e-12,
+        };
+        crate::calculators::tests_utils::finite_differences_cell(calculator, &system, options);
     }
 
     #[test]

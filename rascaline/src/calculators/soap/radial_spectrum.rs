@@ -165,7 +165,7 @@ impl CalculatorBase for SoapRadialSpectrum {
 
     fn supports_gradient(&self, parameter: &str) -> bool {
         match parameter {
-            "positions" | "strain" => true,
+            "positions" | "cell" | "strain" => true,
             _ => false,
         }
     }
@@ -214,6 +214,9 @@ impl CalculatorBase for SoapRadialSpectrum {
         if descriptor.block_by_id(0).gradient("positions").is_some() {
             gradients.push("positions");
         }
+        if descriptor.block_by_id(0).gradient("cell").is_some() {
+            gradients.push("cell");
+        }
         if descriptor.block_by_id(0).gradient("strain").is_some() {
             gradients.push("strain");
         }
@@ -257,6 +260,22 @@ impl CalculatorBase for SoapRadialSpectrum {
 
                 let array_spx_reshaped = array_spx.view().into_shape(
                     (shape[0], shape[1], shape[3])
+                ).expect("wrong shape");
+                array.assign(&array_spx_reshaped);
+            }
+
+            if let Some(mut gradient) = block.gradient_mut("cell") {
+                let gradient_spx = block_spx.gradient("cell").expect("missing spherical expansion gradients");
+                debug_assert_eq!(gradient.samples(), gradient_spx.samples());
+
+                let array = gradient.values_mut().to_array_mut();
+                let array_spx = gradient_spx.values().to_array();
+                let shape = array_spx.shape();
+                // shape[2] is the m component
+                debug_assert_eq!(shape[3], 1);
+
+                let array_spx_reshaped = array_spx.view().into_shape(
+                    (shape[0], shape[1], shape[2], shape[4])
                 ).expect("wrong shape");
                 array.assign(&array_spx_reshaped);
             }
@@ -348,6 +367,26 @@ mod tests {
             epsilon: 1e-16,
         };
         crate::calculators::tests_utils::finite_differences_strain(calculator, &system, options);
+    }
+
+    #[test]
+    fn finite_differences_cell() {
+        let calculator = Calculator::from(Box::new(SoapRadialSpectrum::new(
+            RadialSpectrumParameters {
+                cutoff: 15.0,
+                atomic_gaussian_width: 0.5,
+                max_radial: 3,
+                ..parameters()
+            }
+        ).unwrap()) as Box<dyn CalculatorBase>);
+
+        let system = test_system("water");
+        let options = crate::calculators::tests_utils::FinalDifferenceOptions {
+            displacement: 1e-6,
+            max_relative: 1e-5,
+            epsilon: 1e-9,
+        };
+        crate::calculators::tests_utils::finite_differences_cell(calculator, &system, options);
     }
 
     #[test]

@@ -112,13 +112,14 @@ pub fn split_tensor_map_by_system(descriptor: &mut TensorMap, n_systems: usize) 
     #[derive(Debug, Clone, Copy, PartialEq)]
     struct GradientPosition {
         positions: usize,
+        cell: usize,
         strain: usize,
     }
 
     let mut descriptor_by_system = Vec::new();
 
     let mut values_end = vec![0; descriptor.keys().count()];
-    let mut gradients_end = vec![GradientPosition { positions: 0, strain: 0 }; descriptor.keys().count()];
+    let mut gradients_end = vec![GradientPosition { positions: 0, cell: 0, strain: 0 }; descriptor.keys().count()];
     for system_i in 0..n_systems {
         let blocks = descriptor.par_iter_mut()
             .zip_eq(&mut values_end)
@@ -188,6 +189,7 @@ pub fn split_tensor_map_by_system(descriptor: &mut TensorMap, n_systems: usize) 
 
                     let system_end_grad = match parameter {
                         "positions" => &mut system_end_grad.positions,
+                        "cell" => &mut system_end_grad.cell,
                         "strain" => &mut system_end_grad.strain,
                         other => panic!("unsupported gradient parameter {}", other)
                     };

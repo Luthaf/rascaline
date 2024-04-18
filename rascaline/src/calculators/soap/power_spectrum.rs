@@ -406,6 +406,8 @@ struct SphericalExpansionBlock<'a> {
     values: &'a ndarray::ArrayD<f64>,
     /// spherical expansion position gradients
     positions_gradients: Option<&'a ndarray::ArrayD<f64>>,
+    /// spherical expansion cell gradients
+    cell_gradients: Option<&'a ndarray::ArrayD<f64>>,
     /// spherical expansion strain gradients
     strain_gradients: Option<&'a ndarray::ArrayD<f64>>,
 }
@@ -501,7 +503,7 @@ impl CalculatorBase for SoapPowerSpectrum {
 
     fn supports_gradient(&self, parameter: &str) -> bool {
         match parameter {
-            "positions" | "strain" => true,
+            "positions" | "cell" | "strain" => true,
             _ => false,
         }
     }
@@ -535,6 +537,9 @@ impl CalculatorBase for SoapPowerSpectrum {
         if descriptor.block_by_id(0).gradient("positions").is_some() {
             gradients.push("positions");
         }
+        if descriptor.block_by_id(0).gradient("cell").is_some() {
+            gradients.push("cell");
+        }
         if descriptor.block_by_id(0).gradient("strain").is_some() {
             gradients.push("strain");
         }
@@ -560,6 +565,7 @@ impl CalculatorBase for SoapPowerSpectrum {
                 properties: block.properties(),
                 values: block.values().to_array(),
                 positions_gradients: block.gradient("positions").map(|g| g.values().to_array()),
+                cell_gradients: block.gradient("cell").map(|g| g.values().to_array()),
                 strain_gradients: block.gradient("strain").map(|g| g.values().to_array()),
             };
 
@@ -600,13 +606,12 @@ impl CalculatorBase for SoapPowerSpectrum {
                         }
 
                         if neighbor_1_type != neighbor_2_type {
-                            // We only store values for `neighbor_1_type <
-                            // neighbor_2_type` because the values are the
-                            // same for pairs `neighbor_1_type <->
-                            // neighbor_2_type` and `neighbor_2_type <->
-                            // neighbor_1_type`. To ensure the final kernels
-                            // are correct, we have to multiply the
-                            // corresponding values.
+                            // We only store values for `neighbor_1_type < neighbor_2_type`
+                            // because the values are the same for pairs
+                            // `neighbor_1_type <-> neighbor_2_type` and
+                            // `neighbor_2_type <-> neighbor_1_type`.
+                            // To ensure the final kernels are correct, we have
+                            // to multiply the corresponding values.
                             sum *= std::f64::consts::SQRT_2;
                         }
 
@@ -676,75 +681,89 @@ impl CalculatorBase for SoapPowerSpectrum {
                     });
             }
 
-            // gradients with respect to the strain
-            if let Some(mut gradient) = block.gradient_mut("strain") {
-                let gradient = gradient.data_mut();
+            // gradients with respect to the strain/cell
+            for parameter in ["cell", "strain"] {
+                if let Some(mut gradient) = block.gradient_mut(parameter) {
+                    let gradient = gradient.data_mut();
 
-                gradient.values.to_array_mut()
-                    .axis_iter_mut(ndarray::Axis(0))
-                    .into_par_iter()
-                    .zip_eq(gradient.samples.par_iter())
-                    .for_each(|(mut values, gradient_sample)| {
-                        for (property_i, spx) in properties_to_combine.iter().enumerate() {
-                            let SpxPropertiesToCombine { spx_1, spx_2, ..} = spx;
+                    gradient.values.to_array_mut()
+                        .axis_iter_mut(ndarray::Axis(0))
+                        .into_par_iter()
+                        .zip_eq(gradient.samples.par_iter())
+                        .for_each(|(mut values, gradient_sample)| {
+                            for (property_i, spx) in properties_to_combine.iter().enumerate() {
+                                let SpxPropertiesToCombine { spx_1, spx_2, ..} = spx;
 
-                            let spx_1_gradient = spx_1.strain_gradients.expect("missing spherical expansion gradients");
-                            let spx_2_gradient = spx_2.strain_gradients.expect("missing spherical expansion gradients");
+                                let (spx_1_gradient, spx_2_gradient) = if parameter == "cell" {
+                                    let spx_1_gradient = spx_1.cell_gradients.expect("missing spherical expansion gradients");
+                                    let spx_2_gradient = spx_2.cell_gradients.expect("missing spherical expansion gradients");
 
-                            let sample_i = gradient_sample[0].usize();
-                            let (spx_sample_1, spx_sample_2) = mapping.values[sample_i];
+                                    (spx_1_gradient, spx_2_gradient)
+                                } else if parameter == "strain" {
+                                    let spx_1_gradient = spx_1.strain_gradients.expect("missing spherical expansion gradients");
+                                    let spx_2_gradient = spx_2.strain_gradients.expect("missing spherical expansion gradients");
 
-                            let mut sum = [
-                                [0.0, 0.0, 0.0],
-                                [0.0, 0.0, 0.0],
-                                [0.0, 0.0, 0.0],
-                            ];
+                                    (spx_1_gradient, spx_2_gradient)
+                                } else {
+                                    panic!("invalid gradient parameter: {}", parameter);
+                                };
 
-                            // accumulate \grad SPX_1 * SPX_2
-                            for m in 0..(2 * spx.o3_lambda + 1) {
-                                // SAFETY: see same loop for values
-                                unsafe {
-                                    let value_2 = spx_2.values.uget([spx_sample_2, m, spx.property_2]);
-                                    for xyz_1 in 0..3 {
-                                        for xyz_2 in 0..3 {
-                                            sum[xyz_1][xyz_2] += value_2 * spx_1_gradient.uget([spx_sample_1, xyz_1, xyz_2, m, spx.property_1]);
+
+                                let sample_i = gradient_sample[0].usize();
+                                let (spx_sample_1, spx_sample_2) = mapping.values[sample_i];
+
+                                let mut sum = [
+                                    [0.0, 0.0, 0.0],
+                                    [0.0, 0.0, 0.0],
+                                    [0.0, 0.0, 0.0],
+                                ];
+
+                                // accumulate \grad SPX_1 * SPX_2
+                                for m in 0..(2 * spx.o3_lambda + 1) {
+                                    // SAFETY: see same loop for values
+                                    unsafe {
+                                        let value_2 = spx_2.values.uget([spx_sample_2, m, spx.property_2]);
+                                        for xyz_1 in 0..3 {
+                                            for xyz_2 in 0..3 {
+                                                sum[xyz_1][xyz_2] += value_2 * spx_1_gradient.uget([spx_sample_1, xyz_1, xyz_2, m, spx.property_1]);
+                                            }
                                         }
                                     }
                                 }
-                            }
 
-                            // accumulate \grad SPX_2 * SPX_1
-                            for m in 0..(2 * spx.o3_lambda + 1) {
-                                // SAFETY: see same loop for values
-                                unsafe {
-                                    let value_1 = spx_1.values.uget([spx_sample_1, m, spx.property_1]);
-                                    for xyz_1 in 0..3 {
-                                        for xyz_2 in 0..3 {
-                                            sum[xyz_1][xyz_2] += value_1 * spx_2_gradient.uget([spx_sample_2, xyz_1, xyz_2, m, spx.property_2]);
+                                // accumulate \grad SPX_2 * SPX_1
+                                for m in 0..(2 * spx.o3_lambda + 1) {
+                                    // SAFETY: see same loop for values
+                                    unsafe {
+                                        let value_1 = spx_1.values.uget([spx_sample_1, m, spx.property_1]);
+                                        for xyz_1 in 0..3 {
+                                            for xyz_2 in 0..3 {
+                                                sum[xyz_1][xyz_2] += value_1 * spx_2_gradient.uget([spx_sample_2, xyz_1, xyz_2, m, spx.property_2]);
+                                            }
                                         }
                                     }
                                 }
-                            }
 
-                            if neighbor_1_type != neighbor_2_type {
-                                // see above
+                                if neighbor_1_type != neighbor_2_type {
+                                    // see above
+                                    for xyz_1 in 0..3 {
+                                        for xyz_2 in 0..3 {
+                                            sum[xyz_1][xyz_2] *= std::f64::consts::SQRT_2;
+                                        }
+                                    }
+                                }
+
+                                // store accumulated gradient in output
                                 for xyz_1 in 0..3 {
                                     for xyz_2 in 0..3 {
-                                        sum[xyz_1][xyz_2] *= std::f64::consts::SQRT_2;
+                                        unsafe {
+                                            *values.uget_mut([xyz_1, xyz_2, property_i]) = sum[xyz_1][xyz_2] / spx.normalization;
+                                        }
                                     }
                                 }
                             }
-
-                            // store accumulated gradient in output
-                            for xyz_1 in 0..3 {
-                                for xyz_2 in 0..3 {
-                                    unsafe {
-                                        *values.uget_mut([xyz_1, xyz_2, property_i]) = sum[xyz_1][xyz_2] / spx.normalization;
-                                    }
-                                }
-                            }
-                        }
-                    });
+                        });
+                }
             }
         }
 
@@ -826,9 +845,33 @@ mod tests {
     }
 
     #[test]
+    fn finite_differences_cell() {
+        let calculator = Calculator::from(Box::new(SoapPowerSpectrum::new(
+            PowerSpectrumParameters {
+                cutoff: 15.0,
+                max_radial: 3,
+                max_angular: 3,
+                atomic_gaussian_width: 0.5,
+                ..parameters()
+            }
+        ).unwrap()) as Box<dyn CalculatorBase>);
+
+        let system = test_system("water");
+        let options = crate::calculators::tests_utils::FinalDifferenceOptions {
+            displacement: 1e-5,
+            max_relative: 1e-4,
+            epsilon: 1e-10,
+        };
+        crate::calculators::tests_utils::finite_differences_cell(calculator, &system, options);
+    }
+
+    #[test]
     fn finite_differences_strain() {
         let calculator = Calculator::from(Box::new(SoapPowerSpectrum::new(
-            parameters()
+            PowerSpectrumParameters {
+                cutoff: 5.5,
+                ..parameters()
+            }
         ).unwrap()) as Box<dyn CalculatorBase>);
 
         let system = test_system("water");

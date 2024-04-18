@@ -33,13 +33,13 @@ List of implemented representations
      - Atoms are represented by the expansion of their neighbor's density on
        radial basis and spherical harmonics. This is the core of representations
        in SOAP (Smooth Overlap of Atomic Positions)
-     - positions, strain
+     - positions, strain, cell
    * - SOAP radial spectrum
      - Atoms are represented by 2-body correlations of their neighbors' density
-     - positions, strain
+     - positions, strain, cell
    * - SOAP power spectrum
      - Atoms are represented by 3-body correlations of their neighbors' density
-     - positions, strain
+     - positions, strain, cell
    * - LODE Spherical Expansion
      - Core of representations in LODE (Long distance equivariant)
      - positions
@@ -53,7 +53,7 @@ List of implemented representations
      - positions
    * - AtomicComposition
      - Obtaining the stoichiometric information of a system
-     - positions, strain
+     - positions, strain, cell
 
 .. inclusion-marker-representations-end
 

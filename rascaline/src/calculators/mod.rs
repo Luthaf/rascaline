@@ -32,7 +32,8 @@ pub trait CalculatorBase: std::panic::RefUnwindSafe {
     fn samples(&self, keys: &Labels, systems: &mut [Box<dyn System>]) -> Result<Vec<Labels>, Error>;
 
     /// Can this calculator compute gradients with respect to the `parameter`?
-    /// Right now, `parameter` can be either `"positions"` or `"strain"`.
+    /// Right now, `parameter` can be either `"positions"`, `"strain"` or
+    /// `"cell"`.
     fn supports_gradient(&self, parameter: &str) -> bool;
 
     /// Get the samples for gradients with respect to positions, corresponding

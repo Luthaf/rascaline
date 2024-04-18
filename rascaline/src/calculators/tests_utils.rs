@@ -318,6 +318,66 @@ pub fn finite_differences_positions(mut calculator: Calculator, system: &SimpleS
     }
 }
 
+/// Check that analytical gradients with respect to cell agree with a
+/// finite difference calculation of the gradients.
+pub fn finite_differences_cell(mut calculator: Calculator, system: &SimpleSystem, options: FinalDifferenceOptions) {
+    let calculation_options = CalculationOptions {
+        gradients: &["cell"],
+        ..Default::default()
+    };
+    let reference = calculator.compute(&mut [Box::new(system.clone())], calculation_options).unwrap();
+    let original_cell = system.cell().unwrap().matrix();
+
+    for abc in 0..3 {
+        for xyz in 0..3 {
+            let mut deformed_cell = original_cell;
+            deformed_cell[abc][xyz] += options.displacement / 2.0;
+            let mut system_pos = system.clone();
+            system_pos.set_cell(UnitCell::from(deformed_cell));
+            let updated_pos = calculator.compute(&mut [Box::new(system_pos)], Default::default()).unwrap();
+
+            deformed_cell[abc][xyz] -= options.displacement;
+            let mut system_neg = system.clone();
+            system_neg.set_cell(UnitCell::from(deformed_cell));
+            let updated_neg = calculator.compute(&mut [Box::new(system_neg)], Default::default()).unwrap();
+
+            for (block_i, (_, block)) in reference.iter().enumerate() {
+                let gradients = &block.gradient("cell").unwrap();
+                let block_pos = &updated_pos.block_by_id(block_i);
+                let block_neg = &updated_neg.block_by_id(block_i);
+
+                for (gradient_i, [sample_i]) in gradients.samples().iter_fixed_size().enumerate() {
+                    let sample_i = sample_i.usize();
+
+                    // check that the same sample is here in both descriptors
+                    let sample_pos_i = block_pos.samples().position(&block.samples()[sample_i]).unwrap();
+                    let sample_neg_i = block_neg.samples().position(&block.samples()[sample_i]).unwrap();
+
+                    let value_pos = block_pos.values().to_array().index_axis(Axis(0), sample_pos_i);
+                    let value_neg = block_neg.values().to_array().index_axis(Axis(0), sample_neg_i);
+                    let gradient = gradients.values().to_array().index_axis(Axis(0), gradient_i);
+                    let gradient = gradient.index_axis(Axis(0), abc);
+                    let gradient = gradient.index_axis(Axis(0), xyz);
+
+                    assert_eq!(value_pos.shape(), gradient.shape());
+                    assert_eq!(value_neg.shape(), gradient.shape());
+
+                    let mut finite_difference = value_pos.to_owned().clone();
+                    finite_difference -= &value_neg;
+                    finite_difference /= options.displacement;
+
+                    assert_relative_eq!(
+                        finite_difference, gradient,
+                        epsilon=options.epsilon,
+                        max_relative=options.max_relative,
+                    );
+                }
+            }
+        }
+    }
+}
+
+
 
 /// Check that analytical gradients with respect to strain agree with a
 /// finite difference calculation of the gradients.
