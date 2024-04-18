@@ -6,8 +6,7 @@ use rayon::prelude::*;
 use metatensor::{LabelsBuilder, Labels, LabelValue, TensorBlockRefMut};
 use metatensor::TensorMap;
 
-use crate::{Error, System, Vector3D, Matrix3};
-use crate::systems::CellShape;
+use crate::{Error, System};
 
 use crate::labels::{SamplesBuilder, AtomicTypeFilter, AtomCenteredSamples};
 use crate::labels::{KeysBuilder, CenterSingleNeighborsTypesKeys};
@@ -118,18 +117,6 @@ impl SphericalExpansion {
             types_mapping.entry(atomic_type).or_insert(next_idx);
         }
 
-        let inverse_cell = if do_gradients.cell {
-            let cell = system.cell()?;
-            if cell.shape() == CellShape::Infinite {
-                return Err(Error::InvalidParameter(
-                    "can not compute cell gradients for non periodic systems".into()
-                ));
-            }
-            cell.matrix().inverse()
-        } else {
-            Matrix3::zero()
-        };
-
         let atoms_mapping = (0..system_size).map(|atom_i| {
             requested_atoms.iter().position(|&atom| atom == atom_i)
         }).collect::<Vec<_>>();
@@ -137,7 +124,7 @@ impl SphericalExpansion {
 
         let max_angular = self.by_pair.parameters().max_angular;
         let max_radial = self.by_pair.parameters().max_radial;
-        let mut contribution = PairContribution::new(max_radial, max_angular, do_gradients.either());
+        let mut contribution = PairContribution::new(max_radial, max_angular, do_gradients.any());
 
         // total number of joined (l, m) indices
         let lm_shape = (max_angular + 1) * (max_angular + 1);
@@ -158,7 +145,7 @@ impl SphericalExpansion {
             } else {
                 None
             },
-            cell_gradients: if do_gradients.cell {
+            strain_gradients: if do_gradients.strain {
                 Some(ndarray::Array6::from_elem(
                     (types_mapping.len(), requested_atoms.len(), 3, 3, lm_shape, max_radial),
                     0.0)
@@ -176,12 +163,6 @@ impl SphericalExpansion {
 
             let direction = pair.vector / pair.distance;
             self.by_pair.compute_for_pair(pair.distance, direction, do_gradients, &mut contribution);
-
-            let inverse_cell_pair_vector = Vector3D::new(
-                pair.vector[0] * inverse_cell[0][0] + pair.vector[1] * inverse_cell[1][0] + pair.vector[2] * inverse_cell[2][0],
-                pair.vector[0] * inverse_cell[0][1] + pair.vector[1] * inverse_cell[1][1] + pair.vector[2] * inverse_cell[2][1],
-                pair.vector[0] * inverse_cell[0][2] + pair.vector[1] * inverse_cell[1][2] + pair.vector[2] * inverse_cell[2][2],
-            );
 
             if let Some(mapped_center) = result.atoms_mapping[pair.first] {
                 // add the pair contribution to the atomic environnement
@@ -208,28 +189,23 @@ impl SphericalExpansion {
                         gradients -= contribution_gradients;
                     }
 
-                    if let Some(ref mut cell_gradients) = result.cell_gradients {
-                        let mut cell_gradients = cell_gradients.slice_mut(
+                    if let Some(ref mut strain_gradients) = result.strain_gradients {
+                        let mut strain_gradients = strain_gradients.slice_mut(
                             s![neighbor_type_i, mapped_center, .., .., .., ..]
                         );
 
-                        for spatial_1 in 0..3 {
-                            for spatial_2 in 0..3 {
-                                let inverse_cell_pair_vector_2 = inverse_cell_pair_vector[spatial_2];
-
+                        for xyz_1 in 0..3 {
+                            for xyz_2 in 0..3 {
                                 let mut lm_index = 0;
                                 for o3_lambda in 0..=max_angular {
                                     for _m in 0..(2 * o3_lambda + 1) {
                                         for n in 0..max_radial {
-                                            // SAFETY: we are doing in-bounds
-                                            // access, and removing the bounds
-                                            // checks is a significant speed-up
-                                            // for this code. There is also a
-                                            // bounds check when running tests
-                                            // in debug mode.
+                                            // SAFETY: we are doing in-bounds access, and removing the bounds
+                                            // checks is a significant speed-up for this code. The bounds are
+                                            // still checked in debug mode
                                             unsafe {
-                                                let out = cell_gradients.uget_mut([spatial_1, spatial_2, lm_index, n]);
-                                                *out += inverse_cell_pair_vector_2 * contribution_gradients.uget([spatial_1, lm_index, n]);
+                                                let out = strain_gradients.uget_mut([xyz_1, xyz_2, lm_index, n]);
+                                                *out += pair.vector[xyz_1] * contribution_gradients.uget([xyz_2, lm_index, n]);
                                             }
                                         }
                                         lm_index += 1;
@@ -267,25 +243,21 @@ impl SphericalExpansion {
                         gradients -= contribution_gradients;
                     }
 
-                    if let Some(ref mut cell_gradients) = result.cell_gradients {
-                        let inverse_cell_pair_vector = -inverse_cell_pair_vector;
-
-                        let mut cell_gradients = cell_gradients.slice_mut(
+                    if let Some(ref mut strain_gradients) = result.strain_gradients {
+                        let mut strain_gradients = strain_gradients.slice_mut(
                             s![neighbor_type_i, mapped_center, .., .., .., ..]
                         );
 
-                        for spatial_1 in 0..3 {
-                            for spatial_2 in 0..3 {
-                                let inverse_cell_pair_vector_2 = inverse_cell_pair_vector[spatial_2];
-
+                        for xyz_1 in 0..3 {
+                            for xyz_2 in 0..3 {
                                 let mut lm_index = 0;
                                 for o3_lambda in 0..=max_angular {
                                     for _m in 0..(2 * o3_lambda + 1) {
                                         for n in 0..max_radial {
                                             // SAFETY: as above
                                             unsafe {
-                                                let out = cell_gradients.uget_mut([spatial_1, spatial_2, lm_index, n]);
-                                                *out += inverse_cell_pair_vector_2 * contribution_gradients.uget([spatial_1, lm_index, n]);
+                                                let out = strain_gradients.uget_mut([xyz_1, xyz_2, lm_index, n]);
+                                                *out = -pair.vector[xyz_1] * contribution_gradients.uget([xyz_2, lm_index, n]);
                                             }
                                         }
                                         lm_index += 1;
@@ -422,14 +394,14 @@ impl SphericalExpansion {
                 let mapped_atom = result.atoms_mapping[atom_i.usize()]
                     .expect("this atom should be part of the requested atoms");
 
-                for spatial in 0..3 {
+                for xyz in 0..3 {
                     for m in 0..(2 * o3_lambda + 1) {
                         for (property_i, [n]) in gradient.properties.iter_fixed_size().enumerate() {
                             // SAFETY: same as above
                             unsafe {
-                                let out = array.uget_mut([grad_sample_i, spatial, m, property_i]);
+                                let out = array.uget_mut([grad_sample_i, xyz, m, property_i]);
                                 *out = *positions_gradients_self.uget(
-                                    [neighbor_type_i, mapped_atom, spatial, lm_start + m, n.usize()]
+                                    [neighbor_type_i, mapped_atom, xyz, lm_start + m, n.usize()]
                                 );
                             }
                         }
@@ -451,13 +423,13 @@ impl SphericalExpansion {
                         -m_1_pow_l
                     };
 
-                    for spatial in 0..3 {
+                    for xyz in 0..3 {
                         for m in 0..(2 * o3_lambda + 1) {
                             for (property_i, [n]) in gradient.properties.iter_fixed_size().enumerate() {
                                 // SAFETY: same as above
                                 unsafe {
-                                    let out = array.uget_mut([grad_sample_i, spatial, m, property_i]);
-                                    *out += factor * *positions_gradients_by_pair.uget([pair_id, spatial, lm_start + m, n.usize()]);
+                                    let out = array.uget_mut([grad_sample_i, xyz, m, property_i]);
+                                    *out += factor * *positions_gradients_by_pair.uget([pair_id, xyz, lm_start + m, n.usize()]);
                                 }
                             }
                         }
@@ -472,14 +444,14 @@ impl SphericalExpansion {
     /// Move the pre-computed spherical expansion gradients w.r.t. cell to
     /// a single metatensor block
     #[allow(clippy::unused_self)]
-    fn cell_gradients_to_metatensor(
+    fn strain_gradients_to_metatensor(
         &self,
         key: &[LabelValue],
         block: &mut TensorBlockRefMut,
         system: &dyn System,
         result: &PairAccumulationResult,
     ) -> Result<(), Error> {
-        let contributions = if let Some(ref data) = result.cell_gradients {
+        let contributions = if let Some(ref data) = result.strain_gradients {
             data
         } else {
             // no cell gradients, return early
@@ -502,7 +474,7 @@ impl SphericalExpansion {
         };
 
         let values_samples = block.samples();
-        let mut gradient = block.gradient_mut("cell").expect("missing cell gradients");
+        let mut gradient = block.gradient_mut("strain").expect("missing strain gradients");
         let gradient = gradient.data_mut();
         let mut array = array_mut_for_system(gradient.values);
 
@@ -515,14 +487,14 @@ impl SphericalExpansion {
             debug_assert!(atom_i.usize() < system_size && types[atom_i.usize()] == center_type);
             let mapped_atom = result.atoms_mapping[atom_i.usize()].expect("this atom should be part of the mapping");
 
-            for spatial_1 in 0..3 {
-                for spatial_2 in 0..3 {
+            for xyz_1 in 0..3 {
+                for xyz_2 in 0..3 {
                     for m in 0..(2 * o3_lambda + 1) {
                         for (property_i, [n]) in gradient.properties.iter_fixed_size().enumerate() {
                             // SAFETY: same as above
                             unsafe {
-                                let out = array.uget_mut([grad_sample_i, spatial_1, spatial_2, m, property_i]);
-                                *out += *contributions.uget([neighbor_type_i, mapped_atom, spatial_1, spatial_2, lm_start + m, n.usize()]);
+                                let out = array.uget_mut([grad_sample_i, xyz_1, xyz_2, m, property_i]);
+                                *out += *contributions.uget([neighbor_type_i, mapped_atom, xyz_1, xyz_2, lm_start + m, n.usize()]);
                             }
                         }
                     }
@@ -544,23 +516,23 @@ struct PairAccumulationResult {
     /// calculation. This is used for gradients of a given center representation
     /// with respect to one of the neighbors
     ///
-    /// the shape is `[pair_id, spatial, lm_index, n]`
+    /// the shape is `[pair_id, xyz, lm_index, n]`
     positions_gradients_by_pair: Option<ndarray::Array4<f64>>,
     /// gradient of spherical expansion w.r.t. the position of the central atom
     ///
     /// this is separate from `positions_gradients_by_pair` because it can be
     /// summed while computing each pair contributions.
     ///
-    /// the shape is `[neighbor_type, mapped_center, spatial, lm_index, n]`
+    /// the shape is `[neighbor_type, mapped_center, xyz, lm_index, n]`
     positions_gradients_self: Option<ndarray::Array5<f64>>,
-    /// gradients of the spherical expansion w.r.t. cell
+    /// gradients of the spherical expansion w.r.t. strain
     ///
-    /// the shape is `[neighbor_type, mapped_center, spatial_1, spatial_2, lm_index, n]`
-    cell_gradients: Option<ndarray::Array6<f64>>,
+    /// the shape is `[neighbor_type, mapped_center, xyz_1, xyz_2, lm_index, n]`
+    strain_gradients: Option<ndarray::Array6<f64>>,
 
-    /// Mapping from atomic types to the first dimension of values/cell gradients
+    /// Mapping from atomic types to the first dimension of values/strain gradients
     types_mapping: BTreeMap<i32, usize>,
-    /// Mapping from the atomic index to the second dimension of values/cell gradients
+    /// Mapping from the atomic index to the second dimension of values/strain gradients
     atoms_mapping: Vec<Option<usize>>,
     /// Mapping from couples of atoms to (potentially multiple) `pair_id` (first
     /// dimension of `positions_gradients_by_pair`).
@@ -639,8 +611,7 @@ impl CalculatorBase for SphericalExpansion {
 
     fn supports_gradient(&self, parameter: &str) -> bool {
         match parameter {
-            "positions" => true,
-            "cell" => true,
+            "positions" | "strain" => true,
             _ => false,
         }
     }
@@ -714,7 +685,7 @@ impl CalculatorBase for SphericalExpansion {
 
         let do_gradients = GradientsOptions {
             positions: descriptor.block_by_id(0).gradient("positions").is_some(),
-            cell: descriptor.block_by_id(0).gradient("cell").is_some(),
+            strain: descriptor.block_by_id(0).gradient("strain").is_some(),
         };
         self.do_self_contributions(systems, descriptor)?;
         let mut descriptors_by_system = split_tensor_map_by_system(descriptor, systems.len());
@@ -742,7 +713,7 @@ impl CalculatorBase for SphericalExpansion {
                 for (key, mut block) in descriptor.iter_mut() {
                     self.values_to_metatensor(key, &mut block, system, &accumulated)?;
                     self.position_gradients_to_metatensor(key, &mut block, system, &accumulated)?;
-                    self.cell_gradients_to_metatensor(key, &mut block, system, &accumulated)?;
+                    self.strain_gradients_to_metatensor(key, &mut block, system, &accumulated)?;
                 }
 
                 Ok::<_, Error>(())
@@ -824,7 +795,7 @@ mod tests {
     }
 
     #[test]
-    fn finite_differences_cell() {
+    fn finite_differences_strain() {
         let calculator = Calculator::from(Box::new(SphericalExpansion::new(
             parameters()
         ).unwrap()) as Box<dyn CalculatorBase>);
@@ -835,7 +806,7 @@ mod tests {
             max_relative: 1e-5,
             epsilon: 1e-16,
         };
-        crate::calculators::tests_utils::finite_differences_cell(calculator, &system, options);
+        crate::calculators::tests_utils::finite_differences_strain(calculator, &system, options);
     }
 
     #[test]

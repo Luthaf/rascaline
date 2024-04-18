@@ -75,8 +75,7 @@ impl CalculatorBase for AtomicComposition {
 
     fn supports_gradient(&self, parameter: &str) -> bool {
         match parameter {
-            "positions" => true,
-            "cell" => true,
+            "positions" | "strain" => true,
             _ => false,
         }
     }

@@ -258,8 +258,8 @@ Gradients
 Finally, we have metadata related to the gradients. First, the
 ``supports_gradient`` function should return which if any of the gradients can
 be computed by the current calculator. Typically ``parameter`` is either
-``"positions"`` or ``"cell"``. Here we only support computing the gradients with
-respect to positions.
+``"positions"`` or ``"strain"``. Here we only support computing the gradients
+with respect to positions.
 
 .. literalinclude:: ../../../../rascaline/src/tutorials/moments/s2_metadata.rs
    :language: rust
@@ -274,19 +274,18 @@ they are the same between the values and the gradients. The components are also
 similar, with some additional components added at the beginning depending on the
 kind of gradient. For example, if a calculator uses ``[first, second]`` as it's
 set of components, the ``"positions"`` gradient would use ``[xyz, first,
-second]``, where ``xyz`` contains 3 entries. The ``"cell"`` gradients would use
-``[abc, xyz, first, second]``, where ``abc`` contain the index of the cell
-vector.
+second]``, where ``xyz`` contains 3 entries. Similarly, the ``"strain"``
+gradients would use ``[xyz_1, xyz_2, first, second]``.
 
-Finally, the samples needs to be defined. For the ``"cell"`` gradients, there is
-always exactly one gradient sample per value sample. For the ``"positions"``
+Finally, the samples needs to be defined. For the ``"strain"`` gradients, there
+is always exactly one gradient sample per value sample. For the ``"positions"``
 gradient samples, we could have one gradient sample for each atom in the same
-system for each value sample. However, this would create a very large number
-of gradient samples (number of atoms squared), and a lot of entries would be
-filled with zeros. Instead, each calculator which supports positions gradients
-must implement the ``positions_gradient_samples`` function, and use it to return
-only the sample associated with non-zero gradients. This function get as input
-the set of keys, the list of samples associated with each key, and the list of
+system for each value sample. However, this would create a very large number of
+gradient samples (number of atoms squared), and a lot of entries would be filled
+with zeros. Instead, each calculator which supports positions gradients must
+implement the ``positions_gradient_samples`` function, and use it to return only
+the sample associated with non-zero gradients. This function get as input the
+set of keys, the list of samples associated with each key, and the list of
 systems on which we want to run the calculation.
 
 We are again using the ``AtomCenteredSamples`` here to share code between

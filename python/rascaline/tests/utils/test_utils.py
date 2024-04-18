@@ -31,13 +31,13 @@ def finite_differences_positions(
     reference = calculator.compute(system, gradients=["positions"])
 
     for atom_i in range(len(system)):
-        for spatial in range(3):
+        for xyz in range(3):
             system_pos = system.copy()
-            system_pos.positions[atom_i, spatial] += displacement / 2
+            system_pos.positions[atom_i, xyz] += displacement / 2
             updated_pos = calculator.compute(system_pos)
 
             system_neg = system.copy()
-            system_neg.positions[atom_i, spatial] -= displacement / 2
+            system_neg.positions[atom_i, xyz] -= displacement / 2
             updated_neg = calculator.compute(system_neg)
 
             assert updated_pos.keys == reference.keys
@@ -59,7 +59,7 @@ def finite_differences_positions(
 
                     value_pos = block_pos.values[sample_i]
                     value_neg = block_neg.values[sample_i]
-                    gradient = gradients.values[gradient_i, spatial]
+                    gradient = gradients.values[gradient_i, xyz]
 
                     assert value_pos.shape == gradient.shape
                     assert value_neg.shape == gradient.shape

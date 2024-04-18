@@ -4,7 +4,7 @@ use approx::{assert_relative_eq, assert_ulps_eq};
 use metatensor::{Labels, TensorMap, LabelsBuilder};
 
 use crate::calculator::LabelsSelection;
-use crate::{CalculationOptions, Calculator};
+use crate::{CalculationOptions, Calculator, Matrix3};
 use crate::systems::{System, SimpleSystem, UnitCell};
 
 /// Check that computing a partial subset of features/samples works as intended
@@ -268,13 +268,13 @@ pub fn finite_differences_positions(mut calculator: Calculator, system: &SimpleS
     let reference = calculator.compute(&mut [Box::new(system.clone())], calculation_options).unwrap();
 
     for atom_i in 0..system.size().unwrap() {
-        for spatial in 0..3 {
+        for xyz in 0..3 {
             let mut system_pos = system.clone();
-            system_pos.positions_mut()[atom_i][spatial] += options.displacement / 2.0;
+            system_pos.positions_mut()[atom_i][xyz] += options.displacement / 2.0;
             let updated_pos = calculator.compute(&mut [Box::new(system_pos)], Default::default()).unwrap();
 
             let mut system_neg = system.clone();
-            system_neg.positions_mut()[atom_i][spatial] -= options.displacement / 2.0;
+            system_neg.positions_mut()[atom_i][xyz] -= options.displacement / 2.0;
             let updated_neg = calculator.compute(&mut [Box::new(system_neg)], Default::default()).unwrap();
 
             assert_eq!(updated_pos.keys(), reference.keys());
@@ -298,7 +298,7 @@ pub fn finite_differences_positions(mut calculator: Calculator, system: &SimpleS
                     let value_pos = block_pos.values().to_array().index_axis(Axis(0), sample_i);
                     let value_neg = block_neg.values().to_array().index_axis(Axis(0), sample_i);
                     let gradient = gradients.values().to_array().index_axis(Axis(0), gradient_i);
-                    let gradient = gradient.index_axis(Axis(0), spatial);
+                    let gradient = gradient.index_axis(Axis(0), xyz);
 
                     assert_eq!(value_pos.shape(), gradient.shape());
                     assert_eq!(value_neg.shape(), gradient.shape());
@@ -319,40 +319,37 @@ pub fn finite_differences_positions(mut calculator: Calculator, system: &SimpleS
 }
 
 
-/// Check that analytical gradients with respect to cell agree with a
+/// Check that analytical gradients with respect to strain agree with a
 /// finite difference calculation of the gradients.
-pub fn finite_differences_cell(mut calculator: Calculator, system: &SimpleSystem, options: FinalDifferenceOptions) {
+pub fn finite_differences_strain(mut calculator: Calculator, system: &SimpleSystem, options: FinalDifferenceOptions) {
     let calculation_options = CalculationOptions {
-        gradients: &["cell"],
+        gradients: &["strain"],
         ..Default::default()
     };
     let reference = calculator.compute(&mut [Box::new(system.clone())], calculation_options).unwrap();
     let original_cell = system.cell().unwrap().matrix();
-    let original_cell_inverse = original_cell.inverse();
 
-    for spatial_1 in 0..3 {
-        for spatial_2 in 0..3 {
-            let mut deformed_cell = original_cell;
-            deformed_cell[spatial_1][spatial_2] += options.displacement / 2.0;
-
+    for xyz_1 in 0..3 {
+        for xyz_2 in 0..3 {
+            let mut strain = Matrix3::one();
+            strain[xyz_1][xyz_2] += options.displacement / 2.0;
             let mut system_pos = system.clone();
-            system_pos.set_cell(UnitCell::from(deformed_cell));
+            system_pos.set_cell(UnitCell::from(original_cell * strain));
             for position in system_pos.positions_mut() {
-                *position = deformed_cell * (original_cell_inverse * *position);
+                *position = *position * strain;
             }
             let updated_pos = calculator.compute(&mut [Box::new(system_pos)], Default::default()).unwrap();
 
-            deformed_cell[spatial_1][spatial_2] -= options.displacement;
-
+            strain[xyz_1][xyz_2] -= options.displacement;
             let mut system_neg = system.clone();
-            system_neg.set_cell(UnitCell::from(deformed_cell));
+            system_neg.set_cell(UnitCell::from(original_cell * strain));
             for position in system_neg.positions_mut() {
-                *position = deformed_cell * (original_cell_inverse * *position);
+                *position = *position * strain;
             }
             let updated_neg = calculator.compute(&mut [Box::new(system_neg)], Default::default()).unwrap();
 
             for (block_i, (_, block)) in reference.iter().enumerate() {
-                let gradients = &block.gradient("cell").unwrap();
+                let gradients = &block.gradient("strain").unwrap();
                 let block_pos = &updated_pos.block_by_id(block_i);
                 let block_neg = &updated_neg.block_by_id(block_i);
 
@@ -366,8 +363,8 @@ pub fn finite_differences_cell(mut calculator: Calculator, system: &SimpleSystem
                     let value_pos = block_pos.values().to_array().index_axis(Axis(0), sample_i);
                     let value_neg = block_neg.values().to_array().index_axis(Axis(0), sample_i);
                     let gradient = gradients.values().to_array().index_axis(Axis(0), gradient_i);
-                    let gradient = gradient.index_axis(Axis(0), spatial_1);
-                    let gradient = gradient.index_axis(Axis(0), spatial_2);
+                    let gradient = gradient.index_axis(Axis(0), xyz_1);
+                    let gradient = gradient.index_axis(Axis(0), xyz_2);
 
                     assert_eq!(value_pos.shape(), gradient.shape());
                     assert_eq!(value_neg.shape(), gradient.shape());

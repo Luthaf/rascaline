@@ -165,7 +165,7 @@ impl CalculatorBase for SoapRadialSpectrum {
 
     fn supports_gradient(&self, parameter: &str) -> bool {
         match parameter {
-            "positions" | "cell" => true,
+            "positions" | "strain" => true,
             _ => false,
         }
     }
@@ -214,8 +214,8 @@ impl CalculatorBase for SoapRadialSpectrum {
         if descriptor.block_by_id(0).gradient("positions").is_some() {
             gradients.push("positions");
         }
-        if descriptor.block_by_id(0).gradient("cell").is_some() {
-            gradients.push("cell");
+        if descriptor.block_by_id(0).gradient("strain").is_some() {
+            gradients.push("strain");
         }
 
         let selected = SoapRadialSpectrum::selected_spx_labels(descriptor);
@@ -261,8 +261,8 @@ impl CalculatorBase for SoapRadialSpectrum {
                 array.assign(&array_spx_reshaped);
             }
 
-            if let Some(mut gradient) = block.gradient_mut("cell") {
-                let gradient_spx = block_spx.gradient("cell").expect("missing spherical expansion gradients");
+            if let Some(mut gradient) = block.gradient_mut("strain") {
+                let gradient_spx = block_spx.gradient("strain").expect("missing spherical expansion gradients");
                 debug_assert_eq!(gradient.samples(), gradient_spx.samples());
 
                 let array = gradient.values_mut().to_array_mut();
@@ -336,7 +336,7 @@ mod tests {
     }
 
     #[test]
-    fn finite_differences_cell() {
+    fn finite_differences_strain() {
         let calculator = Calculator::from(Box::new(
             SoapRadialSpectrum::new(parameters()).unwrap()
         ) as Box<dyn CalculatorBase>);
@@ -347,7 +347,7 @@ mod tests {
             max_relative: 5e-5,
             epsilon: 1e-16,
         };
-        crate::calculators::tests_utils::finite_differences_cell(calculator, &system, options);
+        crate::calculators::tests_utils::finite_differences_strain(calculator, &system, options);
     }
 
     #[test]

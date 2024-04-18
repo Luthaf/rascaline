@@ -308,11 +308,11 @@ print(gradient_position.properties)
 
 # %%
 #
-# Rascaline can also calculate gradients with respect to the cell. For this, you
-# have to add ``"cell"`` to the list parsed to the ``gradients`` parameter of
-# the :py:func:`rascaline.calculators.CalculatorBase.compute()` method. Cell
-# gradients are useful when computing the stress and the pressure.
+# Rascaline can also calculate gradients with respect to the strain (i.e. the virial).
+# For this, you have to add ``"strain"`` to the list parsed to the ``gradients``
+# parameter of the :py:func:`rascaline.calculators.CalculatorBase.compute()` method.
+# Strain gradients/virial are useful when computing the stress and the pressure.
 #
-# If you want to know about the effect of changing hypers take a look at the
-# next tutorial. If you want to solve an explicit problem our
-# :ref:`userdoc-how-to` might help you.
+# If you want to know about the effect of changing hypers take a look at the next
+# tutorial. If you want to solve an explicit problem our :ref:`userdoc-how-to` might
+# help you.

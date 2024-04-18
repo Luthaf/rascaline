@@ -143,15 +143,15 @@ impl CellList {
             n_cells[2] as usize,
         ];
 
-        for spatial in 0..3 {
-            if n_search[spatial] < 1 {
-                n_search[spatial] = 1;
+        for xyz in 0..3 {
+            if n_search[xyz] < 1 {
+                n_search[xyz] = 1;
             }
 
             // don't look for neighboring cells if we have only one cell and no
             // periodic boundary condition
-            if n_cells[spatial] == 1 && unit_cell.is_infinite() {
-                n_search[spatial] = 0;
+            if n_cells[xyz] == 1 && unit_cell.is_infinite() {
+                n_search[xyz] = 0;
             }
         }
 

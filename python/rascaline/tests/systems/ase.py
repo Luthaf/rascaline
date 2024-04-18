@@ -177,11 +177,11 @@ def test_same_spherical_expansion():
     )
 
     rascaline_nl = calculator.compute(
-        system, gradients=["positions", "cell"], use_native_system=True
+        system, gradients=["positions", "strain"], use_native_system=True
     )
 
     ase_nl = calculator.compute(
-        system, gradients=["positions", "cell"], use_native_system=False
+        system, gradients=["positions", "strain"], use_native_system=False
     )
 
     for key, block in rascaline_nl.items():
@@ -191,7 +191,7 @@ def test_same_spherical_expansion():
         # Since the pairs are in a different order, the values are slightly different
         assert np.allclose(ase_block.values, block.values, atol=1e-16, rtol=1e-9)
 
-        for parameter in ["cell", "positions"]:
+        for parameter in ["positions", "strain"]:
             gradient = block.gradient(parameter)
             ase_gradient = ase_block.gradient(parameter)
 
