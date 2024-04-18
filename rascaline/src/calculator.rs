@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 
+use log::warn;
 use once_cell::sync::Lazy;
 
 use metatensor::{Labels, LabelsBuilder};
@@ -203,6 +204,13 @@ pub struct CalculationOptions<'a> {
     ///
     ///   $$ \frac{\partial \langle q \vert A_i \rangle} {\partial \mathbf{\epsilon}} $$
     ///
+    /// - ``"cell"``, for gradients of the representation with respect to the
+    ///    system's cell parameters. These gradients are computed at fixed positions,
+    ///    and often not what you want when computing gradients explicitly (they are
+    ///    mainly used in ``rascaline.torch`` to integrate with backward
+    ///    propagation).
+    ///
+    ///    $$ \left. \frac{\partial \langle q \vert A_i \rangle} {\partial \mathbf{H}} \right |_\mathbf{r} $$
     pub gradients: &'a[&'a str],
     /// Copy the data from systems into native `SimpleSystem`. This can be
     /// faster than having to cross the FFI boundary too often.
@@ -313,12 +321,12 @@ impl Calculator {
         )?;
 
         for &parameter in options.gradients {
-            if parameter == "positions" || parameter == "strain" {
+            if parameter == "positions" || parameter == "strain" || parameter == "cell" {
                 continue;
             }
 
             return Err(Error::InvalidParameter(format!(
-                "unexpected gradient \"{}\", should be one of \"positions\" or \"strain\"",
+                "unexpected gradient \"{}\", should be one of \"positions\", \"cell\", or \"strain\"",
                 parameter
             )));
         }
@@ -332,6 +340,37 @@ impl Calculator {
             }
 
             Some(self.implementation.positions_gradient_samples(&keys, &samples, systems)?)
+        } else {
+            None
+        };
+
+        let cell_gradient_samples = if options.gradients.contains(&"cell") {
+            if !self.implementation.supports_gradient("cell") {
+                return Err(Error::InvalidParameter(format!(
+                    "the {} calculator does not support gradients with respect to cell",
+                    self.name()
+                )));
+            }
+
+            if std::env::var("RASCALINE_NO_WARN_CELL_GRADIENTS").is_err() {
+                // TODO: remove this warning around November 2024 (~6 months
+                // after this change)
+                warn!(
+                    "The meaning of \"cell\" gradients has changed recently, \
+                    you likely want \"strain\" gradients instead. Please review \
+                    the documentation carefully."
+                );
+            }
+
+            let mut cell_gradient_samples = Vec::new();
+            for samples in &samples {
+                let mut builder = LabelsBuilder::new(vec!["sample"]);
+                for sample_i in 0..samples.count() {
+                    builder.add(&[sample_i]);
+                }
+                cell_gradient_samples.push(builder.finish());
+            }
+            Some(cell_gradient_samples)
         } else {
             None
         };
@@ -373,6 +412,7 @@ impl Calculator {
         assert_eq!(keys.count(), properties.len());
 
         let xyz = Labels::new(["xyz"], &[[0], [1], [2]]);
+        let abc = Labels::new(["abc"], &[[0], [1], [2]]);
         let xyz_1 = Labels::new(["xyz_1"], &[[0], [1], [2]]);
         let xyz_2 = Labels::new(["xyz_2"], &[[0], [1], [2]]);
 
@@ -401,6 +441,28 @@ impl Calculator {
 
                 new_block.add_gradient(
                     "positions",
+                    TensorBlock::new(
+                        ArrayD::from_elem(shape, 0.0),
+                        gradient_samples,
+                        &components,
+                        &properties
+                    ).expect("generated invalid gradient")
+                ).expect("generated invalid gradient");
+            }
+
+            if let Some(ref gradient_samples) = cell_gradient_samples {
+                let gradient_samples = &gradient_samples[block_i];
+
+                // add the components for cell gradients
+                let mut components = components.clone();
+                components.insert(0, abc.clone());
+                components.insert(0, xyz.clone());
+                let shape = shape_from_labels(
+                    gradient_samples, &components, &properties
+                );
+
+                new_block.add_gradient(
+                    "cell",
                     TensorBlock::new(
                         ArrayD::from_elem(shape, 0.0),
                         gradient_samples,

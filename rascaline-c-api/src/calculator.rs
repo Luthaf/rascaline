@@ -309,7 +309,8 @@ pub struct rascal_calculation_options_t {
     /// The following gradients are available:
     ///
     /// - ``"positions"``, for gradients of the representation with respect to
-    ///   atomic positions. Positions gradients are computed as
+    ///   atomic positions, with fixed cell matrix parameters. Positions
+    ///   gradients are computed as
     ///
     ///   .. math::
     ///       \frac{\partial \langle q \vert A_i \rangle}
@@ -339,6 +340,17 @@ pub struct rascal_calculation_options_t {
     ///
     ///   .. math::
     ///       \frac{\partial \langle q \vert A_i \rangle} {\partial \mathbf{\epsilon}}
+    ///
+    /// - ``"cell"``, for gradients of the representation with respect to the
+    ///   system's cell parameters. These gradients are computed at fixed
+    ///   positions, and often not what you want when computing gradients
+    ///   explicitly (they are mainly used in ``rascaline.torch`` to integrate
+    ///   with backward propagation). If you are trying to compute the virial
+    ///   or the stress, you should use ``"strain"`` gradients instead.
+    ///
+    ///   .. math::
+    ///       \left. \frac{\partial \langle q \vert A_i \rangle}
+    ///            {\partial \mathbf{H}} \right |_\mathbf{r}
     ///
     /// @endverbatim
     gradients: *const *const c_char,

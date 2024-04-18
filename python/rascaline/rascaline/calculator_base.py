@@ -210,11 +210,12 @@ class CalculatorBase:
         :param gradients: List of gradients to compute. If this is :py:obj:`None` or an
             empty list ``[]``, no gradients are computed. Gradients are stored inside
             the different blocks, and can be accessed with
-            ``descriptor.block(...).gradient(<parameter>)``, where ``<parameter>`` is
-            ``"positions"`` or ``"strain"``. The following gradients are available:
+            ``descriptor.block(...).gradient(<parameter>)``, where ``<parameter>`` is a
+            string describing the gradients. The following gradients are available:
 
             - ``"positions"``, for gradients of the representation with respect to
-              atomic positions. Positions gradients are computed as
+              atomic positions, with fixed cell matrix parameters. Positions gradients
+              are computed as
 
               .. math::
                   \frac{\partial \langle q \vert A_i \rangle}
@@ -244,6 +245,17 @@ class CalculatorBase:
               .. math::
                   \frac{\partial \langle q \vert A_i \rangle}
                        {\partial \mathbf{\epsilon}}
+
+            - ``"cell"``, for gradients of the representation with respect to the
+              system's cell parameters. These gradients are computed at fixed positions,
+              and often not what you want when computing gradients explicitly (they are
+              mainly used in ``rascaline.torch`` to integrate with backward
+              propagation). If you are trying to compute the virial or the stress, you
+              should use ``"strain"`` gradients instead.
+
+              .. math::
+                  \left. \frac{\partial \langle q \vert A_i \rangle}
+                       {\partial \mathbf{H}} \right |_\mathbf{r}
 
         :param selected_samples: Set of samples on which to run the calculation. Use
             :py:obj:`None` to run the calculation on all samples in the ``systems``

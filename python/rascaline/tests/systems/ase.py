@@ -177,11 +177,11 @@ def test_same_spherical_expansion():
     )
 
     rascaline_nl = calculator.compute(
-        system, gradients=["positions", "strain"], use_native_system=True
+        system, gradients=["positions", "strain", "cell"], use_native_system=True
     )
 
     ase_nl = calculator.compute(
-        system, gradients=["positions", "strain"], use_native_system=False
+        system, gradients=["positions", "strain", "cell"], use_native_system=False
     )
 
     for key, block in rascaline_nl.items():
