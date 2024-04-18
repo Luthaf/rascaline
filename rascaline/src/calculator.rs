@@ -183,28 +183,26 @@ pub struct CalculationOptions<'a> {
     ///   atom $i$ and $\mathbf{r_j}$ is the position vector of the
     ///   atom $j$.
     ///
-    ///   **Note**: Position gradients of an atom are computed with respect to all
-    ///   other atoms within the representation. To recover the force one has to
-    ///   accumulate all pairs associated with atom $i$.
+    ///   **Note**: Position gradients of an atom are computed with respect to
+    ///   all other atoms within the representation. To recover the force one
+    ///   has to accumulate all pairs associated with atom $i$.
     ///
-    /// - ``"cell"``, for gradients of the representation with respect to cell
-    ///   vectors. Cell gradients are computed as
+    /// - ``"strain"``, for gradients of the representation with respect to
+    ///   strain. These gradients are typically used to compute the virial, and
+    ///   from there the pressure acting on a system. To compute them, we
+    ///   pretend that all the positions $\mathbf{r}$ and unit cell $\mathbf{H}$
+    ///   have been scaled by a strain matrix $\epsilon$:
     ///
-    ///   $$ \frac{\partial \langle q \vert A_i \rangle}
-    ///            {\partial \mathbf{h}} $$
+    ///   $$
+    ///      \mathbf r &\rightarrow \mathbf r \left(\mathbb{1} + \epsilon \right)\\
+    ///      \mathbf H &\rightarrow \mathbf H \left(\mathbb{1} + \epsilon \right)
+    ///   $$
     ///
-    ///   where $\mathbf{h}$ is the cell matrix.
+    ///   and then take the gradients of the representation with respect to this
+    ///   matrix:
     ///
-    ///   **Note**: When computing the virial, one often needs to evaluate
-    ///   the gradient of the representation with respect to the strain
-    ///   $\epsilon$. To recover the typical expression from the cell
-    ///   gradient one has to multiply the cell gradients with the cell
-    ///   matrix $\mathbf{h}$
+    ///   $$ \frac{\partial \langle q \vert A_i \rangle} {\partial \mathbf{\epsilon}} $$
     ///
-    ///   $$ -\frac{\partial \langle q \vert A \rangle}
-    ///            {\partial\epsilon}
-    ///        = -\frac{\partial \langle q \vert A \rangle}
-    ///                {\partial \mathbf{h}} \cdot \mathbf{h} $$
     pub gradients: &'a[&'a str],
     /// Copy the data from systems into native `SimpleSystem`. This can be
     /// faster than having to cross the FFI boundary too often.
@@ -315,12 +313,12 @@ impl Calculator {
         )?;
 
         for &parameter in options.gradients {
-            if parameter == "positions" || parameter == "cell" {
+            if parameter == "positions" || parameter == "strain" {
                 continue;
             }
 
             return Err(Error::InvalidParameter(format!(
-                "unexpected gradient \"{}\", should be one of \"positions\" or \"cell\"",
+                "unexpected gradient \"{}\", should be one of \"positions\" or \"strain\"",
                 parameter
             )));
         }
@@ -338,23 +336,23 @@ impl Calculator {
             None
         };
 
-        let cell_gradient_samples = if options.gradients.contains(&"cell") {
-            if !self.implementation.supports_gradient("cell") {
+        let strain_gradient_samples = if options.gradients.contains(&"strain") {
+            if !self.implementation.supports_gradient("strain") {
                 return Err(Error::InvalidParameter(format!(
-                    "the {} calculator does not support gradients with respect to the cell",
+                    "the {} calculator does not support gradients with respect to strain",
                     self.name()
                 )));
             }
 
-            let mut cell_gradient_samples = Vec::new();
+            let mut strain_gradient_samples = Vec::new();
             for samples in &samples {
                 let mut builder = LabelsBuilder::new(vec!["sample"]);
                 for sample_i in 0..samples.count() {
                     builder.add(&[sample_i]);
                 }
-                cell_gradient_samples.push(builder.finish());
+                strain_gradient_samples.push(builder.finish());
             }
-            Some(cell_gradient_samples)
+            Some(strain_gradient_samples)
         } else {
             None
         };
@@ -375,7 +373,8 @@ impl Calculator {
         assert_eq!(keys.count(), properties.len());
 
         let xyz = Labels::new(["xyz"], &[[0], [1], [2]]);
-        let abc = Labels::new(["abc"], &[[0], [1], [2]]);
+        let xyz_1 = Labels::new(["xyz_1"], &[[0], [1], [2]]);
+        let xyz_2 = Labels::new(["xyz_2"], &[[0], [1], [2]]);
 
         let mut blocks = Vec::new();
         for (block_i, ((samples, components), properties)) in samples.into_iter().zip(components).zip(properties).enumerate() {
@@ -411,19 +410,19 @@ impl Calculator {
                 ).expect("generated invalid gradient");
             }
 
-            if let Some(ref gradient_samples) = cell_gradient_samples {
+            if let Some(ref gradient_samples) = strain_gradient_samples {
                 let gradient_samples = &gradient_samples[block_i];
 
-                // add the components for cell gradients
+                // add the components for strain gradients
                 let mut components = components;
-                components.insert(0, abc.clone());
-                components.insert(0, xyz.clone());
+                components.insert(0, xyz_1.clone());
+                components.insert(0, xyz_2.clone());
                 let shape = shape_from_labels(
                     gradient_samples, &components, &properties
                 );
 
                 new_block.add_gradient(
-                    "cell",
+                    "strain",
                     TensorBlock::new(
                         ArrayD::from_elem(shape, 0.0),
                         gradient_samples,

@@ -7,8 +7,7 @@ use thread_local::ThreadLocal;
 
 use metatensor::{Labels, LabelsBuilder, LabelValue, TensorMap, TensorBlockRefMut};
 
-use crate::{Error, System, Vector3D, Matrix3};
-use crate::systems::CellShape;
+use crate::{Error, System, Vector3D};
 
 use crate::math::SphericalHarmonicsCache;
 
@@ -98,12 +97,12 @@ impl std::fmt::Debug for SphericalExpansionByPair {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct GradientsOptions {
     pub positions: bool,
-    pub cell: bool,
+    pub strain: bool,
 }
 
 impl GradientsOptions {
-    pub fn either(self) -> bool {
-        return self.positions || self.cell;
+    pub fn any(self) -> bool {
+        return self.positions || self.strain;
     }
 }
 
@@ -154,13 +153,13 @@ impl PairContribution {
         }
 
         if let Some(ref mut gradients) = self.gradients {
-            for spatial in 0..3 {
+            for xyz in 0..3 {
                 let mut lm_index = 0;
                 for o3_lambda in 0..=max_angular {
                     let factor = -m_1_pow_l[o3_lambda];
                     for _m in 0..(2 * o3_lambda + 1) {
                         for n in 0..max_radial {
-                            gradients[[spatial, lm_index, n]] *= factor;
+                            gradients[[xyz, lm_index, n]] *= factor;
                         }
                         lm_index += 1;
                     }
@@ -354,8 +353,8 @@ impl SphericalExpansionByPair {
             RefCell::new(SphericalHarmonicsCache::new(self.parameters.max_angular))
         }).borrow_mut();
 
-        radial_integral.compute(distance, do_gradients.either());
-        spherical_harmonics.compute(direction, do_gradients.either());
+        radial_integral.compute(distance, do_gradients.any());
+        spherical_harmonics.compute(direction, do_gradients.any());
 
         let f_scaling = self.scaling_functions(distance);
         let f_scaling_grad = self.scaling_functions_gradient(distance);
@@ -423,7 +422,7 @@ impl SphericalExpansionByPair {
         sample: &[LabelValue],
         contribution: &PairContribution,
         do_gradients: GradientsOptions,
-        inverse_cell_pair_vector: Vector3D,
+        pair_vector: Vector3D,
     ) {
         let data = block.data_mut();
         let array = data.values.to_array_mut();
@@ -456,12 +455,12 @@ impl SphericalExpansionByPair {
                         sample_i.into(), /* system */ sample[0], /* pair.first */ sample[1]
                     ]).expect("missing first gradient sample");
 
-                    for spatial in 0..3 {
+                    for xyz in 0..3 {
                         for m in 0..(2 * o3_lambda + 1) {
                             for (property_i, [n]) in gradient.properties.iter_fixed_size().enumerate() {
                                 unsafe {
-                                    let out = array.uget_mut([first_grad_sample_i, spatial, m, property_i]);
-                                    *out -= contribution_gradients.uget([spatial, lm_start + m, n.usize()]);
+                                    let out = array.uget_mut([first_grad_sample_i, xyz, m, property_i]);
+                                    *out -= contribution_gradients.uget([xyz, lm_start + m, n.usize()]);
                                 }
                             }
                         }
@@ -473,35 +472,33 @@ impl SphericalExpansionByPair {
                         sample_i.into(), /* system */ sample[0], /* pair.second */ sample[2]
                     ]).expect("missing second gradient sample");
 
-                    for spatial in 0..3 {
+                    for xyz in 0..3 {
                         for m in 0..(2 * o3_lambda + 1) {
                             for (property_i, [n]) in gradient.properties.iter_fixed_size().enumerate() {
                                 unsafe {
-                                    let out = array.uget_mut([second_grad_sample_i, spatial, m, property_i]);
-                                    *out += contribution_gradients.uget([spatial, lm_start + m, n.usize()]);
+                                    let out = array.uget_mut([second_grad_sample_i, xyz, m, property_i]);
+                                    *out += contribution_gradients.uget([xyz, lm_start + m, n.usize()]);
                                 }
                             }
                         }
                     }
                 }
 
-                if do_gradients.cell {
-                    let mut gradient = block.gradient_mut("cell").expect("missing cell gradients");
+                if do_gradients.strain {
+                    let mut gradient = block.gradient_mut("strain").expect("missing strain gradients");
                     let gradient = gradient.data_mut();
 
                     debug_assert_eq!(gradient.samples.names(), ["sample"]);
                     assert_eq!(gradient.samples[sample_i][0].usize(), sample_i);
 
                     let array = gradient.values.to_array_mut();
-                    for spatial_1 in 0..3 {
-                        for spatial_2 in 0..3 {
-                            let inverse_cell_pair_vector_2 = inverse_cell_pair_vector[spatial_2];
-
+                    for xyz_1 in 0..3 {
+                        for xyz_2 in 0..3 {
                             for m in 0..(2 * o3_lambda + 1) {
                                 for (property_i, [n]) in gradient.properties.iter_fixed_size().enumerate() {
                                     unsafe {
-                                        let out = array.uget_mut([sample_i, spatial_1, spatial_2, m, property_i]);
-                                        *out += inverse_cell_pair_vector_2 * contribution_gradients.uget([spatial_1, lm_start + m, n.usize()]);
+                                        let out = array.uget_mut([sample_i, xyz_1, xyz_2, m, property_i]);
+                                        *out += pair_vector[xyz_1] * contribution_gradients.uget([xyz_2, lm_start + m, n.usize()]);
                                     }
                                 }
                             }
@@ -612,8 +609,7 @@ impl CalculatorBase for SphericalExpansionByPair {
 
     fn supports_gradient(&self, parameter: &str) -> bool {
         match parameter {
-            "positions" => true,
-            "cell" => true,
+            "positions" | "strain" => true,
             _ => false,
         }
     }
@@ -685,7 +681,7 @@ impl CalculatorBase for SphericalExpansionByPair {
 
         let do_gradients = GradientsOptions {
             positions: descriptor.block_by_id(0).gradient("positions").is_some(),
-            cell: descriptor.block_by_id(0).gradient("cell").is_some(),
+            strain: descriptor.block_by_id(0).gradient("strain").is_some(),
         };
 
         self.do_self_contributions(systems, descriptor)?;
@@ -694,33 +690,15 @@ impl CalculatorBase for SphericalExpansionByPair {
 
         let max_angular = self.parameters.max_angular;
         let max_radial = self.parameters.max_radial;
-        let mut contribution = PairContribution::new(max_radial, max_angular, do_gradients.either());
+        let mut contribution = PairContribution::new(max_radial, max_angular, do_gradients.any());
 
         for (system_i, system) in systems.iter_mut().enumerate() {
             system.compute_neighbors(self.parameters.cutoff)?;
             let types = system.types()?;
 
-            let inverse_cell = if do_gradients.cell {
-                let cell = system.cell()?;
-                if cell.shape() == CellShape::Infinite {
-                    return Err(Error::InvalidParameter(
-                        "can not compute cell gradients for non periodic systems".into()
-                    ));
-                }
-                cell.matrix().inverse()
-            } else {
-                Matrix3::zero()
-            };
-
             for pair in system.pairs()? {
                 let direction = pair.vector / pair.distance;
                 self.compute_for_pair(pair.distance, direction, do_gradients, &mut contribution);
-
-                let inverse_cell_pair_vector = Vector3D::new(
-                    pair.vector[0] * inverse_cell[0][0] + pair.vector[1] * inverse_cell[1][0] + pair.vector[2] * inverse_cell[2][0],
-                    pair.vector[0] * inverse_cell[0][1] + pair.vector[1] * inverse_cell[1][1] + pair.vector[2] * inverse_cell[2][1],
-                    pair.vector[0] * inverse_cell[0][2] + pair.vector[1] * inverse_cell[1][2] + pair.vector[2] * inverse_cell[2][2],
-                );
 
                 let cell_shift_a = pair.cell_shift_indices[0];
                 let cell_shift_b = pair.cell_shift_indices[1];
@@ -752,7 +730,7 @@ impl CalculatorBase for SphericalExpansionByPair {
                             sample,
                             &contribution,
                             do_gradients,
-                            inverse_cell_pair_vector,
+                            pair.vector,
                         );
                     }
                 }
@@ -784,7 +762,7 @@ impl CalculatorBase for SphericalExpansionByPair {
                             sample,
                             &contribution,
                             do_gradients,
-                            -inverse_cell_pair_vector,
+                            -pair.vector,
                         );
                     }
                 }
@@ -841,7 +819,7 @@ mod tests {
     }
 
     #[test]
-    fn finite_differences_cell() {
+    fn finite_differences_strain() {
         let calculator = Calculator::from(Box::new(SphericalExpansionByPair::new(
             parameters()
         ).unwrap()) as Box<dyn CalculatorBase>);
@@ -852,7 +830,7 @@ mod tests {
             max_relative: 1e-5,
             epsilon: 1e-16,
         };
-        crate::calculators::tests_utils::finite_differences_cell(calculator, &system, options);
+        crate::calculators::tests_utils::finite_differences_strain(calculator, &system, options);
     }
 
     #[test]

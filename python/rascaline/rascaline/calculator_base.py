@@ -197,22 +197,21 @@ class CalculatorBase:
         r"""Runs a calculation with this calculator on the given ``systems``.
 
         :param systems: single system or list of systems on which to run the
-            calculation. The systems will automatically be wrapped into
-            compatible classes (using :py:func:`rascaline.systems.wrap_system`).
-            Multiple types of systems are supported, see the documentation of
+            calculation. The systems will automatically be wrapped into compatible
+            classes (using :py:func:`rascaline.systems.wrap_system`). Multiple types of
+            systems are supported, see the documentation of
             :py:class:`rascaline.IntoSystem` to get the full list.
 
         :param use_native_system: If :py:obj:`True` (this is the default), copy data
-            from the ``systems`` into Rust ``SimpleSystem``. This can be a lot
-            faster than having to cross the FFI boundary often when accessing
-            the neighbor list. Otherwise the Python neighbor list is used.
+            from the ``systems`` into Rust ``SimpleSystem``. This can be a lot faster
+            than having to cross the FFI boundary often when accessing the neighbor
+            list. Otherwise the Python neighbor list is used.
 
-        :param gradients: List of gradients to compute. If this is :py:obj:`None` or
-            an empty list ``[]``, no gradients are computed. Gradients are
-            stored inside the different blocks, and can be accessed with
-            ``descriptor.block(...).gradient(<parameter>)``, where
-            ``<parameter>`` is ``"positions"`` or ``"cell"``. The following
-            gradients are available:
+        :param gradients: List of gradients to compute. If this is :py:obj:`None` or an
+            empty list ``[]``, no gradients are computed. Gradients are stored inside
+            the different blocks, and can be accessed with
+            ``descriptor.block(...).gradient(<parameter>)``, where ``<parameter>`` is
+            ``"positions"`` or ``"strain"``. The following gradients are available:
 
             - ``"positions"``, for gradients of the representation with respect to
               atomic positions. Positions gradients are computed as
@@ -222,75 +221,68 @@ class CalculatorBase:
                        {\partial \mathbf{r_j}}
 
               where :math:`\langle q \vert A_i \rangle` is the representation around
-              atom :math:`i` and :math:`\mathbf{r_j}` is the position vector of the
-              atom :math:`j`.
+              atom :math:`i` and :math:`\mathbf{r_j}` is the position vector of the atom
+              :math:`j`.
 
               **Note**: Position gradients of an atom are computed with respect to all
               other atoms within the representation. To recover the force one has to
               accumulate all pairs associated with atom :math:`i`.
 
-            - ``"cell"``, for gradients of the representation with respect to cell
-              vectors. Cell gradients are computed as
+            - ``"strain"``, for gradients of the representation with respect to strain.
+              These gradients are typically used to compute the virial, and from there
+              the pressure acting on a system. To compute them, we pretend that all the
+              positions :math:`\mathbf r` and unit cell :math:`\mathbf H` have been
+              scaled by a strain matrix :math:`\epsilon`:
+
+              .. math::
+                 \mathbf r &\rightarrow \mathbf r \left(\mathbb{1} + \epsilon \right)\\
+                 \mathbf H &\rightarrow \mathbf H \left(\mathbb{1} + \epsilon \right)
+
+              and then take the gradients of the representation with respect to this
+              matrix:
 
               .. math::
                   \frac{\partial \langle q \vert A_i \rangle}
-                       {\partial \mathbf{h}}
+                       {\partial \mathbf{\epsilon}}
 
-              where :math:`\mathbf{h}` is the cell matrix.
+        :param selected_samples: Set of samples on which to run the calculation. Use
+            :py:obj:`None` to run the calculation on all samples in the ``systems``
+            (this is the default).
 
-              **Note**: When computing the virial, one often needs to evaluate
-              the gradient of the representation with respect to the strain
-              :math:`\epsilon`. To recover the typical expression from the cell
-              gradient one has to multiply the cell gradients with the cell
-              matrix :math:`\mathbf{h}`
+            If ``selected_samples`` is an :py:class:`metatensor.TensorMap`, then the
+            samples for each key will be used as-is when computing the representation.
 
-              .. math::
-                  -\frac{\partial \langle q \vert A \rangle}
-                        {\partial\epsilon}
-                   = -\frac{\partial \langle q \vert A \rangle}
-                           {\partial \mathbf{h}} \cdot \mathbf{h}
-
-        :param selected_samples: Set of samples on which to run the calculation.
-            Use :py:obj:`None` to run the calculation on all samples in the
-            ``systems`` (this is the default).
-
-            If ``selected_samples`` is an :py:class:`metatensor.TensorMap`, then
-            the samples for each key will be used as-is when computing the
-            representation.
-
-            If ``selected_samples`` is a set of :py:class:`metatensor.Labels`
-            containing the same variables as the default set of samples for this
-            calculator, then only entries from the full set that also appear in
-            ``selected_samples`` will be used.
-
-            If ``selected_samples`` is a set of :py:class:`metatensor.Labels`
-            containing a subset of the variables of the default set of samples,
-            then only samples from the default set with the same values for
-            these variables as one of the entries in ``selected_samples`` will
+            If ``selected_samples`` is a set of :py:class:`metatensor.Labels` containing
+            the same variables as the default set of samples for this calculator, then
+            only entries from the full set that also appear in ``selected_samples`` will
             be used.
 
-        :param selected_properties: Set of properties to compute. Use :py:obj:`None`
-            to run the calculation on all properties (this is the default).
+            If ``selected_samples`` is a set of :py:class:`metatensor.Labels` containing
+            a subset of the variables of the default set of samples, then only samples
+            from the default set with the same values for these variables as one of the
+            entries in ``selected_samples`` will be used.
 
-            If ``selected_properties`` is an :py:class:`metatensor.TensorMap`,
-            then the properties for each key will be used as-is when computing
-            the representation.
+        :param selected_properties: Set of properties to compute. Use :py:obj:`None` to
+            run the calculation on all properties (this is the default).
+
+            If ``selected_properties`` is an :py:class:`metatensor.TensorMap`, then the
+            properties for each key will be used as-is when computing the
+            representation.
 
             If ``selected_properties`` is a set of :py:class:`metatensor.Labels`
-            containing the same variables as the default set of properties for
-            this calculator, then only entries from the full set that also
-            appear in ``selected_properties`` will be used.
-
-            If ``selected_properties`` is a set of :py:class:`metatensor.Labels`
-            containing a subset of the variables of the default set of
-            properties, then only properties from the default set with the same
-            values for these variables as one of the entries in
+            containing the same variables as the default set of properties for this
+            calculator, then only entries from the full set that also appear in
             ``selected_properties`` will be used.
 
-        :param selected_keys: Selection for the keys to include in the output.
-            If this is :py:obj:`None`, the default set of keys (as determined by the
-            calculator) will be used. Note that this default set of keys can
-            depend on which systems we are running the calculation on.
+            If ``selected_properties`` is a set of :py:class:`metatensor.Labels`
+            containing a subset of the variables of the default set of properties, then
+            only properties from the default set with the same values for these
+            variables as one of the entries in ``selected_properties`` will be used.
+
+        :param selected_keys: Selection for the keys to include in the output. If this
+            is :py:obj:`None`, the default set of keys (as determined by the calculator)
+            will be used. Note that this default set of keys can depend on which systems
+            we are running the calculation on.
         """
 
         c_systems = _convert_systems(systems)

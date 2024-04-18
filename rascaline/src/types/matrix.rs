@@ -396,6 +396,17 @@ impl_arithmetic!(
     }
 );
 
+impl_arithmetic!(
+    Vector3D, Matrix3, Mul, mul, Vector3D,
+    self, other,
+    {
+        let x = self[0] * other[0][0] + self[1] * other[1][0] + self[2] * other[2][0];
+        let y = self[0] * other[0][1] + self[1] * other[1][1] + self[2] * other[2][1];
+        let z = self[0] * other[0][2] + self[1] * other[1][2] + self[2] * other[2][2];
+        Vector3D::new(x, y, z)
+    }
+);
+
 lsh_scal_arithmetic!(
     Matrix3, Mul, mul, Matrix3,
     self, other,
@@ -686,6 +697,7 @@ mod tests {
 
         let vec = Vector3D::new(1.0, 1.5, -2.0);
         assert_eq!(a * vec, Vector3D::new(-2.0, -0.5, 1.5));
+        assert_eq!(vec * a, Vector3D::new(-9.0, -8.5, -8.0));
 
         let unit = Matrix3::one();
         let vec = Vector3D::new(567.45, 356.8, 215673.12);

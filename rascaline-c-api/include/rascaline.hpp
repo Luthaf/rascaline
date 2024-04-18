@@ -488,26 +488,23 @@ public:
     ///   other atoms within the representation. To recover the force one has to
     ///   accumulate all pairs associated with atom :math:`i`.
     ///
-    /// - ``"cell"``, for gradients of the representation with respect to cell
-    ///   vectors. Cell gradients are computed as
+    /// - ``"strain"``, for gradients of the representation with respect to
+    ///   strain. These gradients are typically used to compute the virial, and
+    ///   from there the pressure acting on a system. To compute them, we
+    ///   pretend that all the positions :math:`\mathbf r` and unit cell
+    ///   :math:`\mathbf H` have been scaled by a strain matrix
+    ///   :math:`\epsilon`:
     ///
     ///   .. math::
-    ///       \frac{\partial \langle q \vert A_i \rangle}
-    ///            {\partial \mathbf{h}}
+    ///      \mathbf r &\rightarrow \mathbf r \left(\mathbb{1} + \epsilon \right)\\
+    ///      \mathbf H &\rightarrow \mathbf H \left(\mathbb{1} + \epsilon \right)
     ///
-    ///   where :math:`\mathbf{h}` is the cell matrix.
-    ///
-    ///   **Note**: When computing the virial, one often needs to evaluate
-    ///   the gradient of the representation with respect to the strain
-    ///   :math:`\epsilon`. To recover the typical expression from the cell
-    ///   gradient one has to multiply the cell gradients with the cell
-    ///   matrix :math:`\mathbf{h}`
+    ///   and then take the gradients of the representation with respect to this
+    ///   matrix:
     ///
     ///   .. math::
-    ///       -\frac{\partial \langle q \vert A \rangle}
-    ///             {\partial\epsilon}
-    ///         = -\frac{\partial \langle q \vert A \rangle}
-    ///                 {\partial \mathbf{h}} \cdot \mathbf{h}
+    ///       \frac{\partial \langle q \vert A_i \rangle} {\partial \mathbf{\epsilon}}
+    ///
     /// @endverbatim
     std::vector<const char*> gradients;
 

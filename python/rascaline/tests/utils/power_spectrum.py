@@ -150,7 +150,7 @@ def test_power_spectrum_unknown_gradient() -> None:
 
     msg = "PowerSpectrum currently only supports gradients w.r.t. to positions"
     with pytest.raises(NotImplementedError, match=msg):
-        PowerSpectrum(calculator).compute(SystemForTests(), gradients=["cell"])
+        PowerSpectrum(calculator).compute(SystemForTests(), gradients=["strain"])
 
 
 def test_fill_neighbor_type() -> None:

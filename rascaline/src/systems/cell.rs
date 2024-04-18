@@ -25,9 +25,7 @@ pub enum CellShape {
 pub struct UnitCell {
     /// Unit cell matrix
     matrix: Matrix3,
-    /// Transpose of the unit cell matrix, cached from matrix
-    transpose: Matrix3,
-    /// Inverse of the transpose of the unit cell matrix, cached from matrix
+    /// Inverse of the unit cell matrix, cached from matrix
     inverse: Matrix3,
     /// Unit cell shape
     shape: CellShape,
@@ -56,8 +54,7 @@ impl From<Matrix3> for UnitCell {
 
         return UnitCell {
             matrix: matrix,
-            transpose: matrix.transposed(),
-            inverse: matrix.transposed().inverse(),
+            inverse: matrix.inverse(),
             shape: shape
         }
     }
@@ -68,7 +65,6 @@ impl UnitCell {
     pub fn infinite() -> UnitCell {
         UnitCell {
             matrix: Matrix3::zero(),
-            transpose: Matrix3::zero(),
             inverse: Matrix3::zero(),
             shape: CellShape::Infinite,
         }
@@ -84,7 +80,6 @@ impl UnitCell {
         ]);
         UnitCell {
             matrix: matrix,
-            transpose: matrix,
             inverse: matrix.inverse(),
             shape: CellShape::Orthorhombic,
         }
@@ -221,17 +216,13 @@ impl UnitCell {
 
     /// Get the fractional representation of the `vector` in this cell
     pub fn fractional(&self, vector: Vector3D) -> Vector3D {
-        // this needs to use the inverse of the transpose of the matrix, since
-        // we only have code to multiply a vector by a matrix on the left
-        return self.inverse * vector;
+        return vector * self.inverse;
     }
 
     /// Get the Cartesian representation of the `fractional` vector in this
     /// cell
     pub fn cartesian(&self, fractional: Vector3D) -> Vector3D {
-        // this needs to use the inverse of the transpose of the matrix, since
-        // we only have code to multiply a vector by a matrix on the left
-        return self.transpose * fractional;
+        return fractional * self.matrix;
     }
 }
 
