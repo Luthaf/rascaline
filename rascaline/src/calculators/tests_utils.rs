@@ -267,14 +267,14 @@ pub fn finite_differences_positions(mut calculator: Calculator, system: &SimpleS
     };
     let reference = calculator.compute(&mut [Box::new(system.clone())], calculation_options).unwrap();
 
-    for atom_i in 0..system.size().unwrap() {
+    for neighbor_i in 0..system.size().unwrap() {
         for xyz in 0..3 {
             let mut system_pos = system.clone();
-            system_pos.positions_mut()[atom_i][xyz] += options.displacement / 2.0;
+            system_pos.positions_mut()[neighbor_i][xyz] += options.displacement / 2.0;
             let updated_pos = calculator.compute(&mut [Box::new(system_pos)], Default::default()).unwrap();
 
             let mut system_neg = system.clone();
-            system_neg.positions_mut()[atom_i][xyz] -= options.displacement / 2.0;
+            system_neg.positions_mut()[neighbor_i][xyz] -= options.displacement / 2.0;
             let updated_neg = calculator.compute(&mut [Box::new(system_neg)], Default::default()).unwrap();
 
             assert_eq!(updated_pos.keys(), reference.keys());
@@ -285,18 +285,20 @@ pub fn finite_differences_positions(mut calculator: Calculator, system: &SimpleS
                 let block_pos = &updated_pos.block_by_id(block_i);
                 let block_neg = &updated_neg.block_by_id(block_i);
 
-                for (gradient_i, [sample_i, _, atom]) in gradients.samples().iter_fixed_size().enumerate() {
-                    if atom.usize() != atom_i {
+                for (gradient_i, [sample_i, _, neighbor]) in gradients.samples().iter_fixed_size().enumerate() {
+                    if neighbor.usize() != neighbor_i {
                         continue;
                     }
+
                     let sample_i = sample_i.usize();
+                    let sample = &block.samples()[sample_i];
 
-                    // check that the same sample is here in both descriptors
-                    assert_eq!(block_pos.samples()[sample_i], block.samples()[sample_i]);
-                    assert_eq!(block_neg.samples()[sample_i], block.samples()[sample_i]);
+                    // find the corresponding sample in both descriptors
+                    let sample_pos_i = block_pos.samples().position(sample).expect("missing sample in pos");
+                    let sample_neg_i = block_neg.samples().position(sample).expect("missing sample in neg");
 
-                    let value_pos = block_pos.values().to_array().index_axis(Axis(0), sample_i);
-                    let value_neg = block_neg.values().to_array().index_axis(Axis(0), sample_i);
+                    let value_pos = block_pos.values().to_array().index_axis(Axis(0), sample_pos_i);
+                    let value_neg = block_neg.values().to_array().index_axis(Axis(0), sample_neg_i);
                     let gradient = gradients.values().to_array().index_axis(Axis(0), gradient_i);
                     let gradient = gradient.index_axis(Axis(0), xyz);
 
@@ -348,10 +350,11 @@ pub fn finite_differences_cell(mut calculator: Calculator, system: &SimpleSystem
 
                 for (gradient_i, [sample_i]) in gradients.samples().iter_fixed_size().enumerate() {
                     let sample_i = sample_i.usize();
+                    let sample = &block.samples()[sample_i];
 
                     // check that the same sample is here in both descriptors
-                    let sample_pos_i = block_pos.samples().position(&block.samples()[sample_i]).unwrap();
-                    let sample_neg_i = block_neg.samples().position(&block.samples()[sample_i]).unwrap();
+                    let sample_pos_i = block_pos.samples().position(sample).expect("missing sample in pos");
+                    let sample_neg_i = block_neg.samples().position(sample).expect("missing sample in neg");
 
                     let value_pos = block_pos.values().to_array().index_axis(Axis(0), sample_pos_i);
                     let value_neg = block_neg.values().to_array().index_axis(Axis(0), sample_neg_i);
@@ -415,13 +418,14 @@ pub fn finite_differences_strain(mut calculator: Calculator, system: &SimpleSyst
 
                 for (gradient_i, [sample_i]) in gradients.samples().iter_fixed_size().enumerate() {
                     let sample_i = sample_i.usize();
+                    let sample = &block.samples()[sample_i];
 
-                    // check that the same sample is here in both descriptors
-                    assert_eq!(block_pos.samples()[sample_i], block.samples()[sample_i]);
-                    assert_eq!(block_neg.samples()[sample_i], block.samples()[sample_i]);
+                    // find the corresponding sample in both descriptors
+                    let sample_pos_i = block_pos.samples().position(sample).expect("missing sample in pos");
+                    let sample_neg_i = block_neg.samples().position(sample).expect("missing sample in neg");
 
-                    let value_pos = block_pos.values().to_array().index_axis(Axis(0), sample_i);
-                    let value_neg = block_neg.values().to_array().index_axis(Axis(0), sample_i);
+                    let value_pos = block_pos.values().to_array().index_axis(Axis(0), sample_pos_i);
+                    let value_neg = block_neg.values().to_array().index_axis(Axis(0), sample_neg_i);
                     let gradient = gradients.values().to_array().index_axis(Axis(0), gradient_i);
                     let gradient = gradient.index_axis(Axis(0), xyz_1);
                     let gradient = gradient.index_axis(Axis(0), xyz_2);

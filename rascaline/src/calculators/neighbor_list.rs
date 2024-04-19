@@ -677,13 +677,15 @@ mod tests {
         let block = descriptor.block_by_id(1);
         assert_eq!(block.samples(), Labels::new(
             ["system", "first_atom", "second_atom", "cell_shift_a", "cell_shift_b", "cell_shift_c"],
-            // we have one H-H pair
-            &[[0, 1, 2, 0, 0, 0]]
+            // we have one H-H pair in the main image, and one more with
+            // periodic images
+            &[[0, 1, 2, 0, 0, 0], [0, 1, 2, 0, 1, 0]]
         ));
 
         let array = block.values().to_array();
         let expected = &ndarray::arr3(&[
-            [[0.0], [-1.5109], [0.0]]
+            [[0.0], [-1.5109], [0.0]],
+            [[0.0], [1.4891], [0.0]],
         ]).into_dyn();
         assert_relative_eq!(array, expected, max_relative=1e-6);
     }
@@ -749,14 +751,19 @@ mod tests {
         let block = descriptor.block_by_id(2);
         assert_eq!(block.samples(), Labels::new(
             ["system", "first_atom", "second_atom", "cell_shift_a", "cell_shift_b", "cell_shift_c"],
-            // we have one H-H pair, twice
-            &[[0, 1, 2, 0, 0, 0], [0, 2, 1, 0, 0, 0]]
+            // we have one H-H pair, four times (including with periodic images)
+            &[
+                [0, 1, 2, 0, 0, 0], [0, 2, 1, 0, 0, 0],
+                [0, 1, 2, 0, 1, 0], [0, 2, 1, 0, -1, 0],
+            ]
         ));
 
         let array = block.values().to_array();
         let expected = &ndarray::arr3(&[
             [[0.0], [-1.5109], [0.0]],
-            [[0.0], [1.5109], [0.0]]
+            [[0.0], [1.5109], [0.0]],
+            [[0.0], [1.4891], [0.0]],
+            [[0.0], [-1.4891], [0.0]],
         ]).into_dyn();
         assert_relative_eq!(array, expected, max_relative=1e-6);
     }
@@ -919,9 +926,12 @@ mod tests {
         assert_eq!(*block.samples, Labels::new(
             ["system", "first_atom", "second_atom", "cell_shift_a", "cell_shift_b", "cell_shift_c"],
             &[
-                // we have one H-H pair and two self-pairs
+                // we have two H-H pair in the main cell, two self-pairs and two
+                // pairs between different periodic images.
                 [0, 1, 2, 0, 0, 0],
                 [0, 2, 1, 0, 0, 0],
+                [0, 1, 2, 0, 1, 0],
+                [0, 2, 1, 0, -1, 0],
                 [0, 1, 1, 0, 0, 0],
                 [0, 2, 2, 0, 0, 0],
             ]

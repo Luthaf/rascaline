@@ -28,7 +28,7 @@ fn get_methane() -> SimpleSystem {
 }
 
 fn get_water() -> SimpleSystem {
-    let mut system = SimpleSystem::new(UnitCell::cubic(10.0));
+    let mut system = SimpleSystem::new(UnitCell::cubic(3.0));
     // atomic types do not have to be atomic number
     system.add_atom(-42, Vector3D::new(0.0, 0.0, 0.0));
     system.add_atom(1, Vector3D::new(0.0, 0.75545, -0.58895));
@@ -44,15 +44,15 @@ fn get_ch() -> SimpleSystem {
 }
 
 fn get_ethanol() -> SimpleSystem {
-    let mut system = SimpleSystem::new(UnitCell::cubic(6.0));
-    system.add_atom(1, Vector3D::new(1.8853, -0.0401, 1.0854));
-    system.add_atom(6, Vector3D::new(1.2699, -0.0477, 0.1772));
-    system.add_atom(1, Vector3D::new(1.5840, 0.8007, -0.4449));
-    system.add_atom(1, Vector3D::new(1.5089, -0.9636, -0.3791));
-    system.add_atom(6, Vector3D::new(-0.2033, 0.0282, 0.5345));
-    system.add_atom(1, Vector3D::new(-0.4993, -0.8287, 1.1714));
-    system.add_atom(1, Vector3D::new(-0.4235, 0.9513, 1.1064));
-    system.add_atom(8, Vector3D::new(-0.9394, 0.0157, -0.6674));
-    system.add_atom(1, Vector3D::new(-1.8540, 0.0626, -0.4252));
+    let mut system = SimpleSystem::new(UnitCell::cubic(5.0));
+    system.add_atom(1, Vector3D::new(3.8853, 1.9599, 3.0854));
+    system.add_atom(6, Vector3D::new(3.2699, 1.9523, 2.1772));
+    system.add_atom(1, Vector3D::new(3.5840, 2.8007, 1.5551));
+    system.add_atom(1, Vector3D::new(3.5089, 1.0364, 1.6209));
+    system.add_atom(6, Vector3D::new(1.7967, 2.0282, 2.5345));
+    system.add_atom(1, Vector3D::new(1.5007, 1.1713, 3.1714));
+    system.add_atom(1, Vector3D::new(1.5765, 2.9513, 3.1064));
+    system.add_atom(8, Vector3D::new(1.0606, 2.0157, 1.3326));
+    system.add_atom(1, Vector3D::new(0.1460, 2.0626, 1.5748));
     return system;
 }

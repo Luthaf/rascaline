@@ -874,10 +874,7 @@ mod tests {
 
     #[test]
     fn finite_differences_positions() {
-        let mut system = test_system("water");
-        // FIXME: doing this in the "water" system definition breaks all tests,
-        // it should not.
-        system.cell = UnitCell::cubic(3.0);
+        let system = test_system("water");
 
         for p in 0..=6 {
             let calculator = Calculator::from(Box::new(LodeSphericalExpansion::new(
