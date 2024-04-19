@@ -198,8 +198,8 @@ mod tests {
     #[test]
     fn values() {
         let mut calculator = Calculator::from(Box::new(SortedDistances {
-            cutoff: 1.5,
-            max_neighbors: 3,
+            cutoff: 1.7,
+            max_neighbors: 4,
             separate_neighbor_types: false
         }) as Box<dyn CalculatorBase>);
 
@@ -212,11 +212,11 @@ mod tests {
         assert_eq!(descriptor.blocks().len(), 1);
         let block = descriptor.block_by_id(0);
         let values = block.values().to_array();
-        assert_eq!(values.shape(), [3, 3]);
+        assert_eq!(values.shape(), [3, 4]);
 
-        assert_eq!(values.slice(s![0, ..]), aview1(&[0.957897074324794, 0.957897074324794, 1.5]));
-        assert_eq!(values.slice(s![1, ..]), aview1(&[0.957897074324794, 1.5, 1.5]));
-        assert_eq!(values.slice(s![2, ..]), aview1(&[0.957897074324794, 1.5, 1.5]));
+        assert_eq!(values.slice(s![0, ..]), aview1(&[0.957897074324794, 0.957897074324794, 1.7, 1.7]));
+        assert_eq!(values.slice(s![1, ..]), aview1(&[0.957897074324794, 1.4891, 1.5109, 1.7]));
+        assert_eq!(values.slice(s![2, ..]), aview1(&[0.957897074324794, 1.4891, 1.5109, 1.7]));
     }
 
     #[test]

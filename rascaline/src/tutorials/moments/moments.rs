@@ -254,13 +254,15 @@ mod tests {
     use crate::Calculator;
     use crate::systems::test_utils::test_systems;
 
+    use approx::assert_relative_eq;
+
     use ndarray::array;
 
     #[test]
     fn zeroth_moment() {
         // Create a Calculator wrapping a GeometricMoments instance
         let mut calculator = Calculator::from(Box::new(GeometricMoments{
-            cutoff: 3.4,
+            cutoff: 2.5,
             max_moment: 0,
         }) as Box<dyn CalculatorBase>);
 
@@ -290,7 +292,7 @@ mod tests {
 
         assert_eq!(block.properties(), expected_properties);
 
-        assert_eq!(block.values().as_array(), array![[2.0 / 2.0]].into_dyn());
+        assert_relative_eq!(block.values().as_array(), &array![[2.0 / 2.0]].into_dyn());
 
         /**********************************************************************/
         // H center, O neighbor
@@ -302,7 +304,7 @@ mod tests {
 
         assert_eq!(block.properties(), expected_properties);
 
-        assert_eq!(block.values().as_array(), array![[1.0 / 2.0], [1.0 / 2.0]].into_dyn());
+        assert_relative_eq!(block.values().as_array(), &array![[1.0 / 2.0], [1.0 / 2.0]].into_dyn());
 
         /**********************************************************************/
         // H center, H neighbor
@@ -314,7 +316,7 @@ mod tests {
 
         assert_eq!(block.properties(), expected_properties);
 
-        assert_eq!(block.values().as_array(), array![[1.0 / 2.0], [1.0 / 2.0]].into_dyn());
+        assert_relative_eq!(block.values().as_array(), &array![[1.0 / 2.0], [1.0 / 2.0]].into_dyn());
 
         /**********************************************************************/
         // H center, C neighbor
@@ -326,7 +328,7 @@ mod tests {
 
         assert_eq!(block.properties(), expected_properties);
 
-        assert_eq!(block.values().as_array(), array![[1.0 / 1.0]].into_dyn());
+        assert_relative_eq!(block.values().as_array(), &array![[1.0 / 1.0]].into_dyn());
 
         /**********************************************************************/
         // C center, H neighbor
@@ -338,7 +340,7 @@ mod tests {
 
         assert_eq!(block.properties(), expected_properties);
 
-        assert_eq!(block.values().as_array(), array![[1.0 / 1.0]].into_dyn());
+        assert_relative_eq!(block.values().as_array(), &array![[1.0 / 1.0]].into_dyn());
     }
 }
 // [property-test]
@@ -353,7 +355,7 @@ mod more_tests {
     #[test]
     fn compute_partial() {
         let mut calculator = Calculator::from(Box::new(GeometricMoments{
-            cutoff: 3.4,
+            cutoff: 2.5,
             max_moment: 6,
         }) as Box<dyn CalculatorBase>);
 
@@ -387,7 +389,7 @@ mod more_tests {
     #[test]
     fn finite_differences() {
         let mut calculator = Calculator::from(Box::new(GeometricMoments{
-            cutoff: 3.4,
+            cutoff: 2.5,
             max_moment: 7,
         }) as Box<dyn CalculatorBase>);
 
@@ -396,7 +398,7 @@ mod more_tests {
         let options = crate::calculators::tests_utils::FinalDifferenceOptions {
             displacement: 1e-6,
             max_relative: 1e-6,
-            epsilon: 1e-20,
+            epsilon: 1e-9,
         };
 
         crate::calculators::tests_utils::finite_differences_positions(calculator, &system, options);

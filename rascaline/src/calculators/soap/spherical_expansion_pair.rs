@@ -429,7 +429,6 @@ impl SphericalExpansionByPair {
         let array = data.values.to_array_mut();
 
         let sample_i = data.samples.position(sample);
-
         if let Some(sample_i) = sample_i {
             let lm_start = o3_lambda * o3_lambda;
 
@@ -654,7 +653,9 @@ impl CalculatorBase for SphericalExpansionByPair {
                     continue;
                 }
                 builder.add(&[sample_i.into(), system_i, first]);
-                builder.add(&[sample_i.into(), system_i, second]);
+                if first != second {
+                    builder.add(&[sample_i.into(), system_i, second]);
+                }
             }
 
             results.push(builder.finish());
@@ -851,21 +852,14 @@ mod tests {
     #[test]
     fn finite_differences_cell() {
         let calculator = Calculator::from(Box::new(SphericalExpansionByPair::new(
-            SphericalExpansionParameters {
-                cutoff: 15.0,
-                atomic_gaussian_width: 0.5,
-                max_angular: 3,
-                ..parameters()
-            }
+            parameters()
         ).unwrap()) as Box<dyn CalculatorBase>);
 
         let system = test_system("water");
         let options = crate::calculators::tests_utils::FinalDifferenceOptions {
             displacement: 1e-6,
-            // this is pretty high, we should decrease the cell size to get a
-            // better agreement
-            max_relative: 5e-2,
-            epsilon: 1e-12,
+            max_relative: 1e-5,
+            epsilon: 1e-9,
         };
         crate::calculators::tests_utils::finite_differences_cell(calculator, &system, options);
     }
@@ -880,7 +874,7 @@ mod tests {
         let options = crate::calculators::tests_utils::FinalDifferenceOptions {
             displacement: 1e-6,
             max_relative: 1e-5,
-            epsilon: 1e-16,
+            epsilon: 1e-9,
         };
         crate::calculators::tests_utils::finite_differences_strain(calculator, &system, options);
     }

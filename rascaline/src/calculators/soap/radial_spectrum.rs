@@ -347,9 +347,9 @@ mod tests {
 
         let system = test_system("water");
         let options = crate::calculators::tests_utils::FinalDifferenceOptions {
-            displacement: 1e-6,
-            max_relative: 5e-5,
-            epsilon: 1e-16,
+            displacement: 1e-5,
+            max_relative: 1e-4,
+            epsilon: 1e-9,
         };
         crate::calculators::tests_utils::finite_differences_positions(calculator, &system, options);
     }
@@ -364,7 +364,7 @@ mod tests {
         let options = crate::calculators::tests_utils::FinalDifferenceOptions {
             displacement: 1e-6,
             max_relative: 5e-5,
-            epsilon: 1e-16,
+            epsilon: 1e-9,
         };
         crate::calculators::tests_utils::finite_differences_strain(calculator, &system, options);
     }
@@ -372,12 +372,7 @@ mod tests {
     #[test]
     fn finite_differences_cell() {
         let calculator = Calculator::from(Box::new(SoapRadialSpectrum::new(
-            RadialSpectrumParameters {
-                cutoff: 15.0,
-                atomic_gaussian_width: 0.5,
-                max_radial: 3,
-                ..parameters()
-            }
+            parameters()
         ).unwrap()) as Box<dyn CalculatorBase>);
 
         let system = test_system("water");

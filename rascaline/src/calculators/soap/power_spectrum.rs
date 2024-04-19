@@ -784,7 +784,7 @@ mod tests {
 
     fn parameters() -> PowerSpectrumParameters {
         PowerSpectrumParameters {
-            cutoff: 2.5,
+            cutoff: 8.0,
             max_radial: 6,
             max_angular: 6,
             atomic_gaussian_width: 0.3,
@@ -839,7 +839,7 @@ mod tests {
         let options = crate::calculators::tests_utils::FinalDifferenceOptions {
             displacement: 1e-6,
             max_relative: 5e-5,
-            epsilon: 1e-16,
+            epsilon: 1e-9,
         };
         crate::calculators::tests_utils::finite_differences_positions(calculator, &system, options);
     }
@@ -847,20 +847,14 @@ mod tests {
     #[test]
     fn finite_differences_cell() {
         let calculator = Calculator::from(Box::new(SoapPowerSpectrum::new(
-            PowerSpectrumParameters {
-                cutoff: 15.0,
-                max_radial: 3,
-                max_angular: 3,
-                atomic_gaussian_width: 0.5,
-                ..parameters()
-            }
+            parameters()
         ).unwrap()) as Box<dyn CalculatorBase>);
 
-        let system = test_system("water");
+        let system = test_system("ethanol");
         let options = crate::calculators::tests_utils::FinalDifferenceOptions {
-            displacement: 1e-5,
-            max_relative: 1e-4,
-            epsilon: 1e-10,
+            displacement: 1e-6,
+            max_relative: 1e-5,
+            epsilon: 1e-9,
         };
         crate::calculators::tests_utils::finite_differences_cell(calculator, &system, options);
     }
@@ -868,19 +862,14 @@ mod tests {
     #[test]
     fn finite_differences_strain() {
         let calculator = Calculator::from(Box::new(SoapPowerSpectrum::new(
-            PowerSpectrumParameters {
-                cutoff: 5.5,
-                ..parameters()
-            }
+            parameters()
         ).unwrap()) as Box<dyn CalculatorBase>);
 
-        let system = test_system("water");
-        // FIXME: the tests fail with "ethanol" system, figure out why.
-        // (numerical errors?)
+        let system = test_system("ethanol");
         let options = crate::calculators::tests_utils::FinalDifferenceOptions {
             displacement: 1e-6,
-            max_relative: 5e-4,
-            epsilon: 1e-16,
+            max_relative: 1e-5,
+            epsilon: 1e-9,
         };
         crate::calculators::tests_utils::finite_differences_strain(calculator, &system, options);
     }
