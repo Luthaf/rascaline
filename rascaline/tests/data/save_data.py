@@ -30,6 +30,7 @@ def save_json(path, data):
             sort_keys=True,
             indent=2,
         )
+        fd.write("\n")
 
 
 def validate_frames(frames):

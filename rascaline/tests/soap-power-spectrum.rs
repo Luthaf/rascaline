@@ -3,7 +3,7 @@ use ndarray::{ArrayD, Axis, s};
 
 use metatensor::{Labels, TensorBlockRef};
 
-use rascaline::{Calculator, CalculationOptions};
+use rascaline::{CalculationOptions, Calculator};
 
 mod data;
 
@@ -24,9 +24,7 @@ fn values() {
     let block = &descriptor.block_by_id(0);
     let array = block.values().to_array();
 
-    let mut expected = data::load_expected_values("soap-power-spectrum-values.npy.gz");
-    correct_factor(&mut expected, block.properties());
-
+    let expected = &data::load_expected_values("soap-power-spectrum-values.npy.gz");
     assert_relative_eq!(array, &expected, max_relative=1e-5);
 }
 
@@ -37,7 +35,7 @@ fn gradients() {
 
     let mut calculator = Calculator::new("soap_power_spectrum", parameters).unwrap();
     let options = CalculationOptions {
-        gradients: &["positions", "cell"],
+        gradients: &["positions", "strain", "cell"],
         ..Default::default()
     };
     let descriptor = calculator.compute(&mut systems, options).expect("failed to run calculation");
@@ -53,15 +51,18 @@ fn gradients() {
     let gradients = block.gradient("positions").unwrap();
     let array = sum_gradients(n_atoms, gradients);
 
-    let mut expected = data::load_expected_values("soap-power-spectrum-positions-gradient.npy.gz");
-    correct_factor(&mut expected, block.properties());
-    assert_relative_eq!(array, &expected, max_relative=1e-6);
+    let expected = &data::load_expected_values("soap-power-spectrum-positions-gradient.npy.gz");
+    assert_relative_eq!(array, expected, max_relative=1e-6);
+
+    let gradient = block.gradient("strain").unwrap();
+    let array = gradient.values().to_array();
+    let expected = &data::load_expected_values("soap-power-spectrum-strain-gradient.npy.gz");
+    assert_relative_eq!(array, expected, max_relative=1e-6);
 
     let gradient = block.gradient("cell").unwrap();
     let array = gradient.values().to_array();
-    let mut expected = data::load_expected_values("soap-power-spectrum-cell-gradient.npy.gz");
-    correct_factor(&mut expected, block.properties());
-    assert_relative_eq!(array, &expected, max_relative=1e-6);
+    let expected = &data::load_expected_values("soap-power-spectrum-cell-gradient.npy.gz");
+    assert_relative_eq!(array, expected, max_relative=1e-6);
 }
 
 fn sum_gradients(n_atoms: usize, gradients: TensorBlockRef<'_>) -> ArrayD<f64> {
@@ -75,16 +76,4 @@ fn sum_gradients(n_atoms: usize, gradients: TensorBlockRef<'_>) -> ArrayD<f64> {
     }
 
     sum
-}
-
-
-// Add back the missing (-1)^l factor to the reference data
-fn correct_factor(reference: &mut ndarray::ArrayD<f64>, properties: Labels) {
-    assert!(properties.names() == [ "neighbor_1_type", "neighbor_2_type", "l", "n_1", "n_2"]);
-
-    let last_axis = reference.shape().len() - 1;
-
-    for (&[_, _, l, _, _], mut column) in properties.iter_fixed_size().zip(reference.axis_iter_mut(Axis(last_axis))) {
-        column *= (-1.0_f64).powi(l.i32());
-    }
 }

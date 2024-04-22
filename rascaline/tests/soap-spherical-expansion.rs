@@ -3,7 +3,7 @@ use ndarray::{ArrayD, Axis, s};
 
 use metatensor::{Labels, TensorBlockRef};
 
-use rascaline::{Calculator, CalculationOptions};
+use rascaline::{CalculationOptions, Calculator};
 
 mod data;
 
@@ -65,7 +65,7 @@ fn gradients() {
     let mut calculator = Calculator::new("spherical_expansion", parameters).unwrap();
 
     let options = CalculationOptions {
-        gradients: &["positions", "cell"],
+        gradients: &["positions", "strain", "cell"],
         ..Default::default()
     };
     let descriptor = calculator.compute(&mut systems, options).expect("failed to run calculation");
@@ -86,6 +86,11 @@ fn gradients() {
     let array = sum_gradients(n_atoms, gradient);
 
     let expected = &data::load_expected_values("spherical-expansion-positions-gradient.npy.gz");
+    assert_relative_eq!(array, expected, max_relative=1e-6);
+
+    let gradient = block.gradient("strain").unwrap();
+    let array = gradient.values().to_array();
+    let expected = &data::load_expected_values("spherical-expansion-strain-gradient.npy.gz");
     assert_relative_eq!(array, expected, max_relative=1e-6);
 
     let gradient = block.gradient("cell").unwrap();
