@@ -5,7 +5,6 @@ import numpy as np
 from ase import io  # noqa
 
 from rascaline import SphericalExpansion
-
 from save_data import save_calculator_input, save_numpy_array
 
 
@@ -27,7 +26,7 @@ frame = ase.Atoms(
 )
 
 hyperparameters = {
-    "cutoff": 3.5,
+    "cutoff": 5.5,
     "max_radial": 8,
     "max_angular": 8,
     "atomic_gaussian_width": 0.3,
@@ -47,10 +46,10 @@ hyperparameters = {
 calculator = SphericalExpansion(**hyperparameters)
 descriptor = calculator.compute(frame, use_native_system=True)
 
-descriptor.keys_to_samples("center_type")
-descriptor.keys_to_properties("neighbor_type")
-descriptor.components_to_properties("o3_mu")
-descriptor.keys_to_properties("o3_lambda")
+descriptor = descriptor.keys_to_samples("center_type")
+descriptor = descriptor.keys_to_properties("neighbor_type")
+descriptor = descriptor.components_to_properties("o3_mu")
+descriptor = descriptor.keys_to_properties("o3_lambda")
 
 save_calculator_input("spherical-expansion-values", frame, hyperparameters)
 save_numpy_array("spherical-expansion-values", descriptor.block().values)
@@ -61,7 +60,7 @@ def sum_gradient(descriptor):
     gradient = descriptor.block().gradient("positions")
 
     result = np.zeros((len(frame), 3, len(gradient.properties)))
-    for sample, row in zip(gradient.samples, gradient.data):
+    for sample, row in zip(gradient.samples, gradient.values):
         result[sample["atom"], :, :] += row[:, :]
 
     return result
@@ -77,17 +76,21 @@ calculator = SphericalExpansion(**hyperparameters)
 descriptor = calculator.compute(
     frame,
     use_native_system=True,
-    gradients=["positions", "cell"],
+    gradients=["positions", "strain", "cell"],
 )
 
-descriptor.keys_to_samples("center_type")
-descriptor.keys_to_properties("neighbor_type")
-descriptor.components_to_properties("o3_mu")
-descriptor.keys_to_properties("o3_lambda")
+descriptor = descriptor.keys_to_samples("center_type")
+descriptor = descriptor.keys_to_properties("neighbor_type")
+descriptor = descriptor.components_to_properties("o3_mu")
+descriptor = descriptor.keys_to_properties("o3_lambda")
 
 save_calculator_input("spherical-expansion-gradients", frame, hyperparameters)
 save_numpy_array("spherical-expansion-positions-gradient", sum_gradient(descriptor))
-cell_gradient = descriptor.block().gradient("cell").data
+
+strain_gradient = descriptor.block().gradient("strain").values
+save_numpy_array("spherical-expansion-strain-gradient", strain_gradient)
+
+cell_gradient = descriptor.block().gradient("cell").values
 save_numpy_array("spherical-expansion-cell-gradient", cell_gradient)
 
 # structure with periodic boundary condition. Some atoms in this structure are
@@ -125,10 +128,10 @@ hyperparameters = {
 calculator = SphericalExpansion(**hyperparameters)
 descriptor = calculator.compute(frame, use_native_system=True)
 
-descriptor.keys_to_samples("center_type")
-descriptor.keys_to_properties("neighbor_type")
-descriptor.components_to_properties("o3_mu")
-descriptor.keys_to_properties("o3_lambda")
+descriptor = descriptor.keys_to_samples("center_type")
+descriptor = descriptor.keys_to_properties("neighbor_type")
+descriptor = descriptor.components_to_properties("o3_mu")
+descriptor = descriptor.keys_to_properties("o3_lambda")
 
 save_calculator_input("spherical-expansion-pbc-values", frame, hyperparameters)
 save_numpy_array("spherical-expansion-pbc-values", descriptor.block().values)

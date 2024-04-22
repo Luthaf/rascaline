@@ -2,7 +2,6 @@ import ase
 import numpy as np
 
 from rascaline import SoapPowerSpectrum
-
 from save_data import save_calculator_input, save_numpy_array
 
 
@@ -23,7 +22,7 @@ frame = ase.Atoms(
 )
 
 hyperparameters = {
-    "cutoff": 3.5,
+    "cutoff": 5.5,
     "max_radial": 8,
     "max_angular": 8,
     "atomic_gaussian_width": 0.3,
@@ -42,14 +41,14 @@ hyperparameters = {
 
 calculator = SoapPowerSpectrum(**hyperparameters)
 descriptor = calculator.compute(frame, use_native_system=True)
-descriptor.keys_to_samples("center_type")
-descriptor.keys_to_properties(["neighbor_1_type", "neighbor_2_type"])
+descriptor = descriptor.keys_to_samples("center_type")
+descriptor = descriptor.keys_to_properties(["neighbor_1_type", "neighbor_2_type"])
 
 save_calculator_input("soap-power-spectrum-values", frame, hyperparameters)
 save_numpy_array("soap-power-spectrum-values", descriptor.block().values)
 
 # Use less values for gradients to keep the file size low
-hyperparameters["max_radial"] = 4
+hyperparameters["max_radial"] = 3
 hyperparameters["max_angular"] = 4
 
 frame.cell = [6.0, 6.0, 6.0]
@@ -59,10 +58,10 @@ calculator = SoapPowerSpectrum(**hyperparameters)
 descriptor = calculator.compute(
     frame,
     use_native_system=True,
-    gradients=["positions", "cell"],
+    gradients=["positions", "strain", "cell"],
 )
-descriptor.keys_to_samples("center_type")
-descriptor.keys_to_properties(["neighbor_1_type", "neighbor_2_type"])
+descriptor = descriptor.keys_to_samples("center_type")
+descriptor = descriptor.keys_to_properties(["neighbor_1_type", "neighbor_2_type"])
 
 
 def sum_gradient(descriptor):
@@ -70,7 +69,7 @@ def sum_gradient(descriptor):
     gradient = descriptor.block().gradient("positions")
 
     result = np.zeros((len(frame), 3, len(gradient.properties)))
-    for sample, gradient in zip(gradient.samples, gradient.data):
+    for sample, gradient in zip(gradient.samples, gradient.values):
         result[sample["atom"]] += gradient
 
     return result
@@ -78,5 +77,9 @@ def sum_gradient(descriptor):
 
 save_calculator_input("soap-power-spectrum-gradients", frame, hyperparameters)
 save_numpy_array("soap-power-spectrum-positions-gradient", sum_gradient(descriptor))
-cell_gradient = descriptor.block().gradient("cell").data
+
+strain_gradient = descriptor.block().gradient("strain").values
+save_numpy_array("soap-power-spectrum-strain-gradient", strain_gradient)
+
+cell_gradient = descriptor.block().gradient("cell").values
 save_numpy_array("soap-power-spectrum-cell-gradient", cell_gradient)
