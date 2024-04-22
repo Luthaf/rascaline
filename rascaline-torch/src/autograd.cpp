@@ -447,7 +447,7 @@ std::vector<torch::Tensor> CellGrad<scalar_t>::forward(
             for (int64_t xyz_2=0; xyz_2<3; xyz_2++) {
                 auto dot = 0.0;
                 for (int64_t i=0; i<n_features; i++) {
-                    auto sample_component_row = (grad_sample_i * 3 + xyz_2) * 3 + xyz_1;
+                    auto sample_component_row = (grad_sample_i * 3 + xyz_1) * 3 + xyz_2;
                     dot += (
                         dA_dX_ptr[sample_i * n_features + i]
                         * dX_dH_ptr[sample_component_row * n_features + i]
@@ -536,7 +536,7 @@ std::vector<torch::Tensor> CellGrad<scalar_t>::backward(
                 for (int64_t xyz_1=0; xyz_1<3; xyz_1++) {
                     for (int64_t xyz_2=0; xyz_2<3; xyz_2++) {
                         auto idx_1 = (system_i * 3 + xyz_1) * 3 + xyz_2;
-                        auto idx_2 = (grad_sample_i * 3 + xyz_2) * 3 + xyz_1;
+                        auto idx_2 = (grad_sample_i * 3 + xyz_1) * 3 + xyz_2;
 
                         dot += dB_d_dA_dH_ptr[idx_1] * dX_dH_ptr[idx_2 * n_features + i];
                     }

@@ -10,7 +10,7 @@ from rascaline.torch import SoapPowerSpectrum, SphericalExpansion
 
 
 HYPERS = {
-    "cutoff": 3,
+    "cutoff": 8,
     "max_radial": 10,
     "max_angular": 5,
     "atomic_gaussian_width": 0.3,
@@ -70,20 +70,10 @@ def test_spherical_expansion_positions_grad():
 
 def test_spherical_expansion_cell_grad():
     types, positions, cell = _create_random_system(n_atoms=75, cell_size=5.0)
-
-    original_cell = cell.clone()
     cell.requires_grad = True
 
-    def compute(types, positions, cell):
-        # modifying the cell for numerical gradients should also displace
-        # the atoms
-        fractional = positions @ torch.linalg.inv(original_cell)
-        positions = fractional @ cell.detach()
-
-        return _compute_spherical_expansion(types, positions, cell)
-
     assert torch.autograd.gradcheck(
-        compute,
+        _compute_spherical_expansion,
         (types, positions, cell),
         fast_mode=True,
     )
@@ -100,20 +90,41 @@ def test_power_spectrum_positions_grad():
     )
 
 
-def test_power_spectrum_positions_grad_register_autograd():
+def test_power_spectrum_cell_grad():
+    types, positions, cell = _create_random_system(n_atoms=75, cell_size=5.0)
+    cell.requires_grad = True
+
+    assert torch.autograd.gradcheck(
+        _compute_power_spectrum,
+        (types, positions, cell),
+        fast_mode=True,
+    )
+
+
+def test_power_spectrum_register_autograd():
     # check autograd when registering the graph after pre-computing a representation
     types, positions, cell = _create_random_system(n_atoms=75, cell_size=5.0)
 
     calculator = SoapPowerSpectrum(**HYPERS)
-    precomputed = calculator(System(types, positions, cell), gradients=["positions"])
+    precomputed = calculator(
+        System(types, positions, cell), gradients=["positions", "cell"]
+    )
 
     # no grad_fn for now
     assert precomputed.block(0).values.grad_fn is None
 
-    def compute(positions, cell):
+    def compute(new_positions, new_cell):
+        same_positions = (new_positions - positions).norm() < 1e-30
+        same_cell = (new_cell - cell).norm() < 1e-30
+
         system = System(types=types, positions=positions, cell=cell)
 
-        descriptor = rascaline.torch.register_autograd(system, precomputed)
+        if same_positions and same_cell:
+            # we can only re-use the calculation when working with the same input
+            descriptor = rascaline.torch.register_autograd(system, precomputed)
+        else:
+            descriptor = calculator(system)
+
         descriptor = descriptor.keys_to_samples("center_type")
         descriptor = descriptor.keys_to_properties(
             ["neighbor_1_type", "neighbor_2_type"]
@@ -125,29 +136,10 @@ def test_power_spectrum_positions_grad_register_autograd():
         return descriptor.block(0).values
 
     positions.requires_grad = True
-    assert torch.autograd.gradcheck(
-        compute,
-        (positions, cell),
-        fast_mode=True,
-    )
-
-
-def test_power_spectrum_cell_grad():
-    types, positions, cell = _create_random_system(n_atoms=75, cell_size=5.0)
-
-    original_cell = cell.clone()
     cell.requires_grad = True
-
-    def compute(types, positions, cell):
-        # modifying the cell for numerical gradients should also displace
-        # the atoms
-        fractional = positions @ torch.linalg.inv(original_cell)
-        positions = fractional @ cell.detach()
-        return _compute_power_spectrum(types, positions, cell)
-
     assert torch.autograd.gradcheck(
         compute,
-        (types, positions, cell),
+        (positions.clone(), cell.clone()),
         fast_mode=True,
     )
 

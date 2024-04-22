@@ -1,3 +1,5 @@
+#include <cstdlib>
+
 #include <metatensor/torch.hpp>
 #include <rascaline.hpp>
 
@@ -7,6 +9,35 @@
 
 using namespace metatensor_torch;
 using namespace rascaline_torch;
+
+class DisableRascalineCellGradientWarning {
+public:
+    DisableRascalineCellGradientWarning() {
+        this->modify_env = std::getenv("RASCALINE_NO_WARN_CELL_GRADIENTS") == nullptr;
+
+
+        if (this->modify_env) {
+#ifdef WIN32
+            _putenv_s("RASCALINE_NO_WARN_CELL_GRADIENTS", "1");
+#else
+            setenv("RASCALINE_NO_WARN_CELL_GRADIENTS", "1", static_cast<int>(false));
+#endif
+        }
+
+    }
+
+    ~DisableRascalineCellGradientWarning() {
+        if (this->modify_env) {
+#ifdef WIN32
+            _putenv_s("RASCALINE_NO_WARN_CELL_GRADIENTS", "");
+#else
+            unsetenv("RASCALINE_NO_WARN_CELL_GRADIENTS");
+#endif
+        }
+    }
+
+    bool modify_env;
+};
 
 // move a block created by rascaline to torch
 static TorchTensorBlock block_to_torch(
@@ -233,9 +264,15 @@ metatensor_torch::TorchTensorMap CalculatorHolder::compute(
     options.selected_properties = torch_options->selected_properties_rascaline();
 
     // ============ run the calculation and move data to torch ============== //
-    auto raw_descriptor = std::make_shared<metatensor::TensorMap>(
-        calculator_.compute(rascaline_systems, options)
-    );
+    auto raw_descriptor = std::shared_ptr<metatensor::TensorMap>();
+    {
+        // do not warn when using "cell" gradients
+        auto guard = DisableRascalineCellGradientWarning();
+
+        raw_descriptor= std::make_shared<metatensor::TensorMap>(
+            calculator_.compute(rascaline_systems, options)
+        );
+    }
 
     // move all data to torch
     auto blocks = std::vector<TorchTensorBlock>();
