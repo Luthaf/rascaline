@@ -95,7 +95,7 @@ def test_export_as_metatensor_model(tmpdir):
     export = MetatensorAtomisticModel(model, ModelMetadata(), capabilities)
 
     # Check we are requesting the right set of neighbors
-    neighbors = export.requested_neighbors_lists()
+    neighbors = export.requested_neighbor_lists()
     assert len(neighbors) == 1
     assert neighbors[0].cutoff == HYPERS["cutoff"]
     assert not neighbors[0].full_list
