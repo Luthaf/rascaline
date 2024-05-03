@@ -57,6 +57,7 @@ class cmake_ext(build_ext):
 
         cmake_options = [
             f"-DCMAKE_INSTALL_PREFIX={install_dir}",
+            "-DCMAKE_INSTALL_LIBDIR=lib",
             f"-DCMAKE_BUILD_TYPE={RASCALINE_BUILD_TYPE}",
             # do not include chemfiles inside rascaline, instead users should
             # use chemfiles python bindings directly

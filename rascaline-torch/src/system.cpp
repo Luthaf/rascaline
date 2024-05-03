@@ -11,10 +11,10 @@ SystemAdapter::SystemAdapter(metatensor_torch::System system): system_(std::move
     this->cell_ = system_->cell().to(torch::kCPU).to(torch::kDouble).contiguous();
 
     // convert all neighbors list that where requested by rascaline
-    for (const auto& options: system_->known_neighbors_lists()) {
+    for (const auto& options: system_->known_neighbor_lists()) {
         for (const auto& requestor: options->requestors()) {
             if (requestor == "rascaline") {
-                auto neighbors = system->get_neighbors_list(options);
+                auto neighbors = system->get_neighbor_list(options);
                 auto samples_values = neighbors->samples()->values().to(torch::kCPU).contiguous();
                 auto samples = samples_values.accessor<int32_t, 2>();
 
