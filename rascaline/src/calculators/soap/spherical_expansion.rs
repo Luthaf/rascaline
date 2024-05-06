@@ -538,32 +538,32 @@ impl SphericalExpansion {
 struct PairAccumulationResult {
     /// values of the spherical expansion
     ///
-    /// the shape is [neighbor_type, mapped_center, lm_index, n]
+    /// the shape is `[neighbor_type, mapped_center, lm_index, n]`
     values: ndarray::Array4<f64>,
     /// gradients w.r.t. positions associated with each pair used in the
     /// calculation. This is used for gradients of a given center representation
     /// with respect to one of the neighbors
     ///
-    /// the shape is [pair_id, spatial, lm_index, n]
+    /// the shape is `[pair_id, spatial, lm_index, n]`
     positions_gradients_by_pair: Option<ndarray::Array4<f64>>,
     /// gradient of spherical expansion w.r.t. the position of the central atom
     ///
     /// this is separate from `positions_gradients_by_pair` because it can be
     /// summed while computing each pair contributions.
     ///
-    /// the shape is [neighbor_type, mapped_center, spatial, lm_index, n]
+    /// the shape is `[neighbor_type, mapped_center, spatial, lm_index, n]`
     positions_gradients_self: Option<ndarray::Array5<f64>>,
     /// gradients of the spherical expansion w.r.t. cell
     ///
-    /// the shape is [neighbor_type, mapped_center, spatial_1, spatial_2, lm_index, n]
+    /// the shape is `[neighbor_type, mapped_center, spatial_1, spatial_2, lm_index, n]`
     cell_gradients: Option<ndarray::Array6<f64>>,
 
-    /// Mapping from atomic types to the first dimension of values/cell_gradients
+    /// Mapping from atomic types to the first dimension of values/cell gradients
     types_mapping: BTreeMap<i32, usize>,
-    /// Mapping from the atomic index to the second dimension of values/cell_gradients
+    /// Mapping from the atomic index to the second dimension of values/cell gradients
     atoms_mapping: Vec<Option<usize>>,
-    /// Mapping from couples of atoms to (potentially multiple) pair_id (first
-    /// dimension of positions_gradients_by_pair).
+    /// Mapping from couples of atoms to (potentially multiple) `pair_id` (first
+    /// dimension of `positions_gradients_by_pair`).
     ///
     /// Two atoms can have more than one pair between them, so we need to be
     /// able store more than one pair id.

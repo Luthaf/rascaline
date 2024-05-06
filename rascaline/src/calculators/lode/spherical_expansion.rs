@@ -57,10 +57,10 @@ pub struct LodeSphericalExpansionParameters {
     /// Radial basis to use for the radial integral
     pub radial_basis: RadialBasis,
     /// Potential exponent of the decorated atom density. Currently only
-    /// implemented for potential_exponent < 10. Some exponents can be connected
-    /// to SOAP or physics-based quantities: p=0 uses Gaussian densities as in
-    /// SOAP, p=1 uses 1/r Coulomb like densities, p=6 uses 1/r^6 dispersion
-    /// like densities."
+    /// implemented for `potential_exponent < 10`. Some exponents can be
+    /// connected to SOAP or physics-based quantities: p=0 uses Gaussian
+    /// densities as in SOAP, p=1 uses 1/r Coulomb like densities, p=6 uses
+    /// 1/r^6 dispersion like densities."
     pub potential_exponent: usize,
 }
 
@@ -81,7 +81,7 @@ pub struct LodeSphericalExpansion {
     spherical_harmonics: ThreadLocal<RefCell<SphericalHarmonicsCache>>,
     /// implementation + cached allocation to compute the radial integral
     radial_integral: ThreadLocal<RefCell<LodeRadialIntegralCache>>,
-    /// Cached allocations for the k_vector => nlm projection coefficients.
+    /// Cached allocations for the k-vector to nlm projection coefficients.
     /// The vector contains different l values, and the Array is indexed by
     /// `m, n, k`.
     k_vector_to_m_n: ThreadLocal<RefCell<Vec<Array3<f64>>>>,

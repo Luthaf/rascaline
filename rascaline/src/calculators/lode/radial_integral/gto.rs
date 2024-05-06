@@ -52,7 +52,7 @@ impl LodeRadialIntegralGtoParameters {
 #[derive(Debug, Clone)]
 pub struct LodeRadialIntegralGto {
     parameters: LodeRadialIntegralGtoParameters,
-    /// σ_n GTO gaussian width, i.e. `cutoff * max(√n, 1) / n_max`
+    /// `sigma_n` GTO gaussian width, i.e. `cutoff * max(√n, 1) / n_max`
     gto_gaussian_widths: Vec<f64>,
     /// `n_max * n_max` matrix to orthonormalize the GTO
     gto_orthonormalization: Array2<f64>,

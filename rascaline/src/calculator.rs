@@ -166,6 +166,7 @@ impl<'a> LabelsSelection<'a> {
 
 /// Parameters specific to a single call to `compute`
 #[derive(Debug, Clone, Copy)]
+#[allow(clippy::doc_markdown)]
 pub struct CalculationOptions<'a> {
     /// List of gradients that should be computed. If this list is empty no
     /// gradients are computed.

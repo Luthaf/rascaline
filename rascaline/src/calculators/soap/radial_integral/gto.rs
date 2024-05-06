@@ -50,11 +50,12 @@ impl SoapRadialIntegralGtoParameters {
 #[derive(Debug, Clone)]
 pub struct SoapRadialIntegralGto {
     parameters: SoapRadialIntegralGtoParameters,
-    /// σ^2, with σ the atomic density gaussian width
+    /// `σ^2`, with σ the atomic density gaussian width
     atomic_gaussian_width_2: f64,
-    /// 1/2σ^2, with σ the atomic density gaussian width
+    /// `1/2σ^2`, with σ the atomic density gaussian width
     atomic_gaussian_constant: f64,
-    /// 1/2σ_n^2, with σ_n the GTO gaussian width, i.e. `cutoff * max(√n, 1) / n_max`
+    /// `1/2σ_n^2`, with `σ_n` the GTO gaussian width, i.e. `cutoff * max(√n, 1)
+    /// / n_max`
     gto_gaussian_constants: Vec<f64>,
     /// `n_max * n_max` matrix to orthonormalize the GTO
     gto_orthonormalization: Array2<f64>,
