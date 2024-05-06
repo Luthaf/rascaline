@@ -25,3 +25,14 @@
    fun:mkl_serv_domain_get_max_threads
    ...
 }
+
+{
+   gotoblas intialization
+   Memcheck:Leak
+   fun:malloc
+   ...
+   fun:get_num_procs
+   fun:blas_get_cpu_number
+   fun:gotoblas_init
+   ...
+}
