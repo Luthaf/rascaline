@@ -159,8 +159,12 @@ impl<'a> System for &'a mut rascal_system_t {
             });
         }
 
-        unsafe {
-            return Ok(std::slice::from_raw_parts(ptr, self.size()?));
+        if size == 0 {
+            return Ok(&[])
+        } else {
+            unsafe {
+                return Ok(std::slice::from_raw_parts(ptr, self.size()?));
+            }
         }
     }
 
@@ -189,8 +193,12 @@ impl<'a> System for &'a mut rascal_system_t {
             });
         }
 
-        unsafe {
-            return Ok(std::slice::from_raw_parts(ptr.cast(), self.size()?));
+        if size == 0 {
+            return Ok(&[])
+        } else {
+            unsafe {
+                return Ok(std::slice::from_raw_parts(ptr.cast(), self.size()?));
+            }
         }
     }
 
@@ -262,9 +270,14 @@ impl<'a> System for &'a mut rascal_system_t {
                 message: "rascal_system_t.pairs returned a NULL pointer with non zero size".into(),
             });
         }
-        unsafe {
-            // SAFETY: ptr is non null, and Pair / rascal_pair_t have the same layout
-            return Ok(std::slice::from_raw_parts(ptr.cast(), count));
+
+        if count == 0 {
+            return Ok(&[])
+        } else {
+            unsafe {
+                // SAFETY: ptr is non null, and Pair / rascal_pair_t have the same layout
+                return Ok(std::slice::from_raw_parts(ptr.cast(), count));
+            }
         }
     }
 
@@ -293,9 +306,14 @@ impl<'a> System for &'a mut rascal_system_t {
                 message: "rascal_system_t.pairs_containing returned a NULL pointer with non zero size".into(),
             });
         }
-        unsafe {
-            // SAFETY: ptr is non null, and Pair / rascal_pair_t have the same layout
-            return Ok(std::slice::from_raw_parts(ptr.cast(), count));
+
+        if count == 0 {
+            return Ok(&[])
+        } else {
+            unsafe {
+                // SAFETY: ptr is non null, and Pair / rascal_pair_t have the same layout
+                return Ok(std::slice::from_raw_parts(ptr.cast(), count));
+            }
         }
     }
 }
