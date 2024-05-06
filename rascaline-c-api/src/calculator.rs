@@ -394,13 +394,23 @@ pub unsafe extern fn rascal_calculator_compute(
         check_pointers!(calculator, descriptor, systems);
 
         // Create a Vec<Box<dyn System>> from the passed systems
-        let c_systems = std::slice::from_raw_parts_mut(systems, systems_count);
+        let c_systems = if systems_count == 0 {
+            &mut []
+        } else {
+            assert_ne!(systems, std::ptr::null_mut());
+            std::slice::from_raw_parts_mut(systems, systems_count)
+        };
         let mut systems = Vec::with_capacity(c_systems.len());
         for system in c_systems {
             systems.push(Box::new(system) as Box<dyn System>);
         }
 
-        let c_gradients = std::slice::from_raw_parts(options.gradients, options.gradients_count);
+        let c_gradients = if options.gradients_count == 0 {
+            &[]
+        } else {
+            assert_ne!(options.gradients, std::ptr::null());
+            std::slice::from_raw_parts(options.gradients, options.gradients_count)
+        };
         let mut gradients = Vec::new();
         for &parameter in c_gradients {
             gradients.push(CStr::from_ptr(parameter).to_str()?);
