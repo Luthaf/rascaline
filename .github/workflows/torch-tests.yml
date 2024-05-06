@@ -23,19 +23,18 @@ jobs:
             cargo-test-flags: --release
 
           - os: ubuntu-20.04
-            # These should be updated to torch 2.2 and Python 3.12 once
-            # https://github.com/pytorch/pytorch/issues/118862 is solved
-            torch-version: 2.1.*
-            python-version: "3.11"
+            torch-version: 2.3.*
+            python-version: "3.12"
             cargo-test-flags: --release
             do-valgrind: true
 
-          - os: macos-11
-            torch-version: 2.1.*
-            python-version: "3.11"
+          - os: macos-14
+            torch-version: 2.3.*
+            python-version: "3.12"
             cargo-test-flags: --release
 
           - os: windows-2019
+            # Torch 2.3.0 is broken on Windows, and 2.2 has https://github.com/pytorch/pytorch/issues/118862
             torch-version: 2.1.*
             python-version: "3.11"
             cargo-test-flags: --release
