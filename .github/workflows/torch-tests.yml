@@ -17,12 +17,12 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             torch-version: 1.12.*
             python-version: "3.8"
             cargo-test-flags: --release
 
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             torch-version: 2.3.*
             python-version: "3.12"
             cargo-test-flags: --release
