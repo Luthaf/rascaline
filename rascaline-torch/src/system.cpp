@@ -21,7 +21,7 @@ SystemAdapter::SystemAdapter(metatensor_torch::System system): system_(std::move
                 auto distances_tensor = neighbors->values().reshape({-1, 3}).to(torch::kCPU).to(torch::kDouble).contiguous();
                 auto distances = distances_tensor.accessor<double, 2>();
 
-                auto n_pairs = samples.size(1);
+                auto n_pairs = samples.size(0);
 
                 auto pairs = std::vector<rascal_pair_t>();
                 pairs.reserve(static_cast<size_t>(n_pairs));
@@ -33,6 +33,9 @@ SystemAdapter::SystemAdapter(metatensor_torch::System system): system_(std::move
                     auto pair = rascal_pair_t {};
                     pair.first = static_cast<uintptr_t>(samples[i][0]);
                     pair.second = static_cast<uintptr_t>(samples[i][1]);
+
+                    assert(pair.first < this->size());
+                    assert(pair.second < this->size());
 
                     pair.distance = std::sqrt(x*x + y*y + z*z);
                     pair.vector[0] = x;
