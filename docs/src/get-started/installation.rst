@@ -124,7 +124,7 @@ Building from source:
     pip install --upgrade pip
 
     # alternatively, the same thing in a single command
-    pip install git+https://github.com/luthaf/rascaline#subdirectory=python/rascaline-torch
+    pip install --extra-index-url https://download.pytorch.org/whl/cpu git+https://github.com/luthaf/rascaline#subdirectory=python/rascaline-torch
 
 
 For usage from C++
