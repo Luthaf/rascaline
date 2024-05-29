@@ -61,8 +61,8 @@ For details, tutorials, and examples, please have a look at our `documentation`_
 
 .. _`documentation`: https://luthaf.fr/rascaline/index.html
 
-.. |test| image:: https://img.shields.io/github/checks-status/luthaf/rascaline/master
-    :alt: Github Actions tests status
+.. |test| image:: https://img.shields.io/github/check-runs/Luthaf/rascaline/master?logo=github&label=tests
+    :alt: Tests status
     :target: https://github.com/Luthaf/rascaline/actions?query=branch%3Amaster
 
 .. |docs| image:: https://img.shields.io/badge/documentation-latest-sucess
