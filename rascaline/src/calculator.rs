@@ -294,6 +294,10 @@ impl Calculator {
     #[time_graph::instrument(name="Calculator::prepare")]
     fn prepare(&mut self, systems: &mut [Box<dyn System>], options: CalculationOptions) -> Result<TensorMap, Error> {
         let default_keys = self.implementation.keys(systems)?;
+        if default_keys.count() == 0 {
+            return Ok(TensorMap::new(default_keys, vec![])?)
+        }
+
         let keys = match options.selected_keys {
             Some(keys) if keys.is_empty() => {
                 return Err(Error::InvalidParameter("selected keys can not be empty".into()));
