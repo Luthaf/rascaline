@@ -56,7 +56,9 @@ impl<'a> LabelsSelection<'a> {
               G: FnOnce(&Labels) -> Result<Vec<Labels>, Error>,
               H: Fn(TensorBlockRef<'_>) -> Labels,
     {
-        assert_ne!(keys.count(), 0);
+        if keys.count() == 0 {
+            return Ok(vec![]);
+        }
 
         match *self {
             LabelsSelection::All => {
@@ -294,9 +296,6 @@ impl Calculator {
     #[time_graph::instrument(name="Calculator::prepare")]
     fn prepare(&mut self, systems: &mut [Box<dyn System>], options: CalculationOptions) -> Result<TensorMap, Error> {
         let default_keys = self.implementation.keys(systems)?;
-        if default_keys.count() == 0 {
-            return Ok(TensorMap::new(default_keys, vec![])?)
-        }
 
         let keys = match options.selected_keys {
             Some(keys) if keys.is_empty() => {
