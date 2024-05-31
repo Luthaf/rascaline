@@ -95,6 +95,7 @@ set(RASCALINE_TORCH_HEADERS
 set(RASCALINE_TORCH_SOURCE
     "src/system.cpp"
     "src/autograd.cpp"
+    "src/openmp.cpp"
     "src/calculator.cpp"
     "src/register.cpp"
 )
@@ -133,6 +134,26 @@ generate_export_header(rascaline_torch
 )
 target_compile_definitions(rascaline_torch PRIVATE rascaline_torch_EXPORTS)
 
+find_package(OpenMP)
+if (OpenMP_CXX_FOUND)
+    # Torch bundles its own copy of the OpenMP runtime library, and if we
+    # compile and link against the system version as well this can lead to
+    # crashes during initialization on macOS.
+    #
+    # So on this plaftorm we instead compile the code with OpenMP flags, and
+    # leave the corresponding symbols undefined in `rascaline_torch`, hopping
+    # that when Torch is loaded we'll get these symbols in the global namespace.
+    #
+    # On other platforms, this seems to be less of an issue, maybe because torch
+    # adds a hash to the library name it bundles (i.e. `libgomp-de42aff.so`)
+    if (APPLE)
+        string(REPLACE " " ";" omp_cxx_flags_list ${OpenMP_CXX_FLAGS})
+        target_compile_options(rascaline_torch PRIVATE ${omp_cxx_flags_list})
+        target_link_libraries(rascaline_torch PRIVATE -Wl,-undefined,dynamic_lookup)
+    else()
+        target_link_libraries(rascaline_torch PRIVATE OpenMP::OpenMP_CXX)
+    endif()
+endif()
 
 if (RASCALINE_TORCH_TESTS)
     enable_testing()

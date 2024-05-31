@@ -1,4 +1,3 @@
-#include <c10/util/intrusive_ptr.h>
 #include <torch/torch.h>
 
 #include <rascaline.hpp>

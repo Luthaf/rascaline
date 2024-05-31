@@ -3,6 +3,8 @@
 #include "metatensor/torch/tensor.hpp"
 #include "rascaline/torch/autograd.hpp"
 
+#include "./openmp.hpp"
+
 using namespace metatensor_torch;
 using namespace rascaline_torch;
 
@@ -252,10 +254,6 @@ std::vector<torch::Tensor> PositionsGrad<scalar_t>::forward(
     always_assert(samples->names()[2] == "atom");
 
     // ========================= extract pointers =========================== //
-    auto dA_dr = torch::zeros_like(all_positions);
-    always_assert(dA_dr.is_contiguous() && dA_dr.is_cpu());
-    auto* dA_dr_ptr = dA_dr.data_ptr<scalar_t>();
-
     // TODO: remove all CPU <=> device data movement by rewriting the VJP
     // below with torch primitives
     auto dX_dr_values = dX_dr->values().to(torch::kCPU);
@@ -274,24 +272,41 @@ std::vector<torch::Tensor> PositionsGrad<scalar_t>::forward(
     }
 
     // =========================== compute dA_dr ============================ //
-    for (int64_t grad_sample_i=0; grad_sample_i<samples->count(); grad_sample_i++) {
-        auto sample_i = sample_ptr[grad_sample_i * 3 + 0];
-        auto system_i = sample_ptr[grad_sample_i * 3 + 1];
-        auto atom_i = sample_ptr[grad_sample_i* 3 + 2];
+    // For OpenMP parallelization, we allocate a temporary output on each thread
+    // with ThreadLocalTensor, then let each thread write to their own copy &
+    // finally sum each of the thread local results.
+    auto dA_dr_multiple = ThreadLocalTensor();
+    #pragma omp parallel
+    {
+        #pragma omp single
+        dA_dr_multiple.init(omp_get_num_threads(), all_positions.sizes(), all_positions.options());
 
-        auto global_atom_i = systems_start[system_i] + atom_i;
+        auto dA_dr_local = dA_dr_multiple.get();
+        always_assert(dA_dr_local.is_contiguous() && dA_dr_local.is_cpu());
+        auto dA_dr_ptr = dA_dr_local.data_ptr<scalar_t>();
 
-        for (int64_t xyz=0; xyz<3; xyz++) {
-            auto dot = 0.0;
-            for (int64_t i=0; i<n_features; i++) {
-                dot += (
-                    dX_dr_ptr[(grad_sample_i * 3 + xyz) * n_features + i]
-                    * dA_dX_ptr[sample_i * n_features + i]
-                );
+        #pragma omp for
+        for (int64_t grad_sample_i=0; grad_sample_i<samples->count(); grad_sample_i++) {
+            auto sample_i = sample_ptr[grad_sample_i * 3 + 0];
+            auto system_i = sample_ptr[grad_sample_i * 3 + 1];
+            auto atom_i = sample_ptr[grad_sample_i * 3 + 2];
+
+            auto global_atom_i = systems_start[system_i] + atom_i;
+
+            for (int64_t xyz=0; xyz<3; xyz++) {
+                auto dot = 0.0;
+                for (int64_t i=0; i<n_features; i++) {
+                    dot += (
+                        dX_dr_ptr[(grad_sample_i * 3 + xyz) * n_features + i]
+                        * dA_dX_ptr[sample_i * n_features + i]
+                    );
+                }
+                dA_dr_ptr[global_atom_i * 3 + xyz] += dot;
             }
-            dA_dr_ptr[global_atom_i * 3 + xyz] += dot;
         }
     }
+    auto dA_dr = dA_dr_multiple.sum();
+
 
     // ===================== data for double backward ======================= //
     ctx->save_for_backward({all_positions, dA_dX});
@@ -359,31 +374,42 @@ std::vector<torch::Tensor> PositionsGrad<scalar_t>::backward(
     // ============ gradient of B w.r.t. dA/dX (input of forward) =========== //
     auto dB_d_dA_dX = torch::Tensor();
     if (dA_dX.requires_grad()) {
-        dB_d_dA_dX = torch::zeros_like(dA_dX_cpu);
-        always_assert(dB_d_dA_dX.is_contiguous() && dB_d_dA_dX.is_cpu());
-        auto* dB_d_dA_dX_ptr = dB_d_dA_dX.data_ptr<scalar_t>();
+        auto dB_d_dA_dX_multiple = ThreadLocalTensor();
 
-        // dX_dr.shape      == [positions gradient samples, 3, features...]
-        // dB_d_dA_dr.shape == [n_atoms, 3]
-        // dB_d_dA_dX.shape == [samples, features...]
-        for (int64_t grad_sample_i=0; grad_sample_i<samples->count(); grad_sample_i++) {
-            auto sample_i = sample_ptr[grad_sample_i * 3 + 0];
-            auto system_i = sample_ptr[grad_sample_i * 3 + 1];
-            auto atom_i = sample_ptr[grad_sample_i* 3 + 2];
+        #pragma omp parallel
+        {
+            #pragma omp single
+            dB_d_dA_dX_multiple.init(omp_get_num_threads(), dA_dX_cpu.sizes(), dA_dX_cpu.options());
 
-            auto global_atom_i = systems_start[system_i] + atom_i;
+            auto dB_d_dA_dX_local = dB_d_dA_dX_multiple.get();
+            always_assert(dB_d_dA_dX_local.is_contiguous() && dB_d_dA_dX_local.is_cpu());
+            auto* dB_d_dA_dX_ptr = dB_d_dA_dX_local.data_ptr<scalar_t>();
 
-            for (int64_t i=0; i<n_features; i++) {
-                auto dot = 0.0;
-                for (int64_t xyz=0; xyz<3; xyz++) {
-                    dot += (
-                        dX_dr_ptr[(grad_sample_i * 3 + xyz) * n_features + i]
-                        * dB_d_dA_dr_ptr[global_atom_i * 3 + xyz]
-                    );
+            // dX_dr.shape      == [positions gradient samples, 3, features...]
+            // dB_d_dA_dr.shape == [n_atoms, 3]
+            // dB_d_dA_dX.shape == [samples, features...]
+            #pragma omp for
+            for (int64_t grad_sample_i=0; grad_sample_i<samples->count(); grad_sample_i++) {
+                auto sample_i = sample_ptr[3 * grad_sample_i + 0];
+                auto system_i = sample_ptr[3 * grad_sample_i + 1];
+                auto atom_i = sample_ptr[3 * grad_sample_i + 2];
+
+                auto global_atom_i = systems_start[system_i] + atom_i;
+
+                for (int64_t i=0; i<n_features; i++) {
+                    auto dot = 0.0;
+                    for (int64_t xyz=0; xyz<3; xyz++) {
+                        dot += (
+                            dX_dr_ptr[(grad_sample_i * 3 + xyz) * n_features + i]
+                            * dB_d_dA_dr_ptr[global_atom_i * 3 + xyz]
+                        );
+                    }
+                    dB_d_dA_dX_ptr[sample_i * n_features + i] += dot;
                 }
-                dB_d_dA_dX_ptr[sample_i * n_features + i] += dot;
             }
         }
+
+        dB_d_dA_dX = dB_d_dA_dX_multiple.sum();
     }
 
     return {
@@ -409,9 +435,6 @@ std::vector<torch::Tensor> CellGrad<scalar_t>::forward(
 ) {
     // ====================== input parameters checks ======================= //
     always_assert(all_cells.requires_grad());
-    auto cell_grad = torch::zeros_like(all_cells);
-    always_assert(cell_grad.is_contiguous() && cell_grad.is_cpu());
-    auto* cell_grad_ptr = cell_grad.data_ptr<scalar_t>();
 
     auto samples = dX_dH->samples();
     const auto* sample_ptr = samples->as_metatensor().values().data();
@@ -438,31 +461,44 @@ std::vector<torch::Tensor> CellGrad<scalar_t>::forward(
     }
 
     // =========================== compute dA_dH ============================ //
-    for (int64_t grad_sample_i=0; grad_sample_i<samples->count(); grad_sample_i++) {
-        auto sample_i = sample_ptr[grad_sample_i];
-        // we get the system index from the samples of the values
-        auto system_i = static_cast<int64_t>(systems[sample_i].item<int32_t>());
+    auto dA_dH_multiple = ThreadLocalTensor();
+    #pragma omp parallel
+    {
+        #pragma omp single
+        dA_dH_multiple.init(omp_get_num_threads(), all_cells.sizes(), all_cells.options());
 
-        for (int64_t xyz_1=0; xyz_1<3; xyz_1++) {
-            for (int64_t xyz_2=0; xyz_2<3; xyz_2++) {
-                auto dot = 0.0;
-                for (int64_t i=0; i<n_features; i++) {
-                    auto sample_component_row = (grad_sample_i * 3 + xyz_1) * 3 + xyz_2;
-                    dot += (
-                        dA_dX_ptr[sample_i * n_features + i]
-                        * dX_dH_ptr[sample_component_row * n_features + i]
-                    );
+        auto dA_dH_local = dA_dH_multiple.get();
+        always_assert(dA_dH_local.is_contiguous() && dA_dH_local.is_cpu());
+        auto dA_dH_ptr = dA_dH_local.data_ptr<scalar_t>();
+
+        #pragma omp for
+        for (int64_t grad_sample_i=0; grad_sample_i<samples->count(); grad_sample_i++) {
+            auto sample_i = sample_ptr[grad_sample_i];
+            // we get the system index from the samples of the values
+            auto system_i = static_cast<int64_t>(systems[sample_i].item<int32_t>());
+
+            for (int64_t xyz_1=0; xyz_1<3; xyz_1++) {
+                for (int64_t xyz_2=0; xyz_2<3; xyz_2++) {
+                    auto dot = 0.0;
+                    for (int64_t i=0; i<n_features; i++) {
+                        auto sample_component_row = (grad_sample_i * 3 + xyz_1) * 3 + xyz_2;
+                        dot += (
+                            dA_dX_ptr[sample_i * n_features + i]
+                            * dX_dH_ptr[sample_component_row * n_features + i]
+                        );
+                    }
+                    dA_dH_ptr[(system_i * 3 + xyz_1) * 3 + xyz_2] += dot;
                 }
-                cell_grad_ptr[(system_i * 3 + xyz_1) * 3 + xyz_2] += dot;
             }
         }
     }
+    auto dA_dH = dA_dH_multiple.sum();
 
     // ===================== data for double backward ======================= //
     ctx->save_for_backward({all_cells, dA_dX, systems});
     ctx->saved_data.emplace("cell_gradients", dX_dH);
 
-    return {cell_grad};
+    return {dA_dH};
 }
 
 
@@ -520,30 +556,41 @@ std::vector<torch::Tensor> CellGrad<scalar_t>::backward(
     // ============ gradient of B w.r.t. dA/dX (input of forward) =========== //
     auto dB_d_dA_dX = torch::Tensor();
     if (dA_dX.requires_grad()) {
-        dB_d_dA_dX = torch::zeros_like(dA_dX_cpu);
-        always_assert(dB_d_dA_dX.is_contiguous() && dB_d_dA_dX.is_cpu());
-        auto* dB_d_dA_dX_ptr = dB_d_dA_dX.data_ptr<scalar_t>();
+        auto dB_d_dA_dX_multiple = ThreadLocalTensor();
 
-        // dX_dH.shape      == [cell gradient samples, 3, 3, features...]
-        // dB_d_dA_dH.shape == [systems, 3, 3]
-        // dB_d_dA_dX.shape == [samples, features...]
-        for (int64_t grad_sample_i=0; grad_sample_i<samples->count(); grad_sample_i++) {
-            auto sample_i = sample_ptr[grad_sample_i];
-            auto system_i = static_cast<int64_t>(systems[sample_i].item<int32_t>());
+        #pragma omp parallel
+        {
+            #pragma omp single
+            dB_d_dA_dX_multiple.init(omp_get_num_threads(), dA_dX_cpu.sizes(), dA_dX_cpu.options());
 
-            for (int64_t i=0; i<n_features; i++) {
-                auto dot = 0.0;
-                for (int64_t xyz_1=0; xyz_1<3; xyz_1++) {
-                    for (int64_t xyz_2=0; xyz_2<3; xyz_2++) {
-                        auto idx_1 = (system_i * 3 + xyz_1) * 3 + xyz_2;
-                        auto idx_2 = (grad_sample_i * 3 + xyz_1) * 3 + xyz_2;
+            auto dB_d_dA_dX_local = dB_d_dA_dX_multiple.get();
+            always_assert(dB_d_dA_dX_local.is_contiguous() && dB_d_dA_dX_local.is_cpu());
+            auto* dB_d_dA_dX_ptr = dB_d_dA_dX_local.data_ptr<scalar_t>();
 
-                        dot += dB_d_dA_dH_ptr[idx_1] * dX_dH_ptr[idx_2 * n_features + i];
+            // dX_dH.shape      == [cell gradient samples, 3, 3, features...]
+            // dB_d_dA_dH.shape == [systems, 3, 3]
+            // dB_d_dA_dX.shape == [samples, features...]
+            #pragma omp for
+            for (int64_t grad_sample_i=0; grad_sample_i<samples->count(); grad_sample_i++) {
+                auto sample_i = sample_ptr[grad_sample_i];
+                auto system_i = static_cast<int64_t>(systems[sample_i].item<int32_t>());
+
+                for (int64_t i=0; i<n_features; i++) {
+                    auto dot = 0.0;
+                    for (int64_t xyz_1=0; xyz_1<3; xyz_1++) {
+                        for (int64_t xyz_2=0; xyz_2<3; xyz_2++) {
+                            auto idx_1 = (system_i * 3 + xyz_1) * 3 + xyz_2;
+                            auto idx_2 = (grad_sample_i * 3 + xyz_1) * 3 + xyz_2;
+
+                            dot += dB_d_dA_dH_ptr[idx_1] * dX_dH_ptr[idx_2 * n_features + i];
+                        }
                     }
+                    dB_d_dA_dX_ptr[sample_i * n_features + i] += dot;
                 }
-                dB_d_dA_dX_ptr[sample_i * n_features + i] += dot;
             }
         }
+
+        dB_d_dA_dX = dB_d_dA_dX_multiple.sum();
     }
 
     return {
