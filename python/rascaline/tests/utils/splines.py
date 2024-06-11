@@ -210,9 +210,9 @@ def test_real_space_spliner():
     max_angular = 9
     atomic_gaussian_width = 1.2
 
-    # We choose an accuracy that is larger then the default one (1e-8) to limit the time
-    # consumption of the test.
-    accuracy = 1e-4
+    # We choose an accuracy that is lower then the default one (1e-8)
+    # to limit the time taken by this test.
+    accuracy = 1e-6
 
     spliner = SoapSpliner(
         cutoff=cutoff,
@@ -242,7 +242,7 @@ def test_real_space_spliner():
     for key, block_analytic in analytic.items():
         block_splined = splined.block(key)
         assert_allclose(
-            block_splined.values, block_analytic.values, rtol=5e-4, atol=2e-5
+            block_splined.values, block_analytic.values, rtol=1e-5, atol=1e-5
         )
 
 
