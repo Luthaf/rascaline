@@ -938,4 +938,21 @@ mod tests {
         ));
 
     }
+    #[test]
+    fn check_empty_response() {
+        let mut calculator = Calculator::from(Box::new(NeighborList {
+            cutoff: 0.1,
+            full_neighbor_list: true,
+            self_pairs: false,
+        }) as Box<dyn CalculatorBase>);
+        let mut systems = test_systems(&["water"]);
+
+        let descriptor = calculator.compute(&mut systems, Default::default()).unwrap();
+
+        // cutoff too low, TensorMap is empty!
+        assert_eq!(descriptor.keys(), &Labels::new::<i32,2>(
+            ["first_atom_type", "second_atom_type"],
+            &[],
+        ));
+    }
 }
