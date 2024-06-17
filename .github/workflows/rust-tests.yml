@@ -47,7 +47,7 @@ jobs:
             extra-name: / cmake 3.16
             working-directory: /__w/rascaline/rascaline
 
-          - os: macos-11
+          - os: macos-13
             rust-version: stable
             rust-target: x86_64-apple-darwin
             build-type: debug
