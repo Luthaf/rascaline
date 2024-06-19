@@ -19,7 +19,7 @@ from .._backend import (
     torch_jit_export,
     torch_jit_is_scripting,
 )
-from . import _cg_cache, _clebsch_gordan
+from . import _coefficients, _utils
 
 
 try:
@@ -184,7 +184,7 @@ class DensityCorrelations(TorchModule):
                 "Must be greater equal 0."
             )
         self._max_angular = max_angular
-        self._cg_coefficients = _cg_cache.calculate_cg_coefficients(
+        self._cg_coefficients = _coefficients.calculate_cg_coefficients(
             lambda_max=self._max_angular,
             sparse=(self._cg_backend in ["python-sparse", "mops"]),
             use_torch=(arrays_backend == "torch"),
@@ -204,18 +204,16 @@ class DensityCorrelations(TorchModule):
         elif arrays_backend == "numpy":
             array_like = np.empty(0)
 
-        self._selected_keys: List[Union[Labels, None]] = (
-            _clebsch_gordan._parse_selected_keys(
-                n_iterations=n_iterations,
-                array_like=array_like,
-                angular_cutoff=self._angular_cutoff,
-                selected_keys=selected_keys,
-            )
+        self._selected_keys: List[Union[Labels, None]] = _utils.parse_selected_keys(
+            n_iterations=n_iterations,
+            array_like=array_like,
+            angular_cutoff=self._angular_cutoff,
+            selected_keys=selected_keys,
         )
         # Parse the bool flags that control skipping of redundant CG combinations
         # and TensorMap output from each iteration
         self._skip_redundant, self._output_selection = (
-            _clebsch_gordan._parse_bool_iteration_filters(
+            _utils.parse_bool_iteration_filters(
                 n_iterations,
                 skip_redundant=skip_redundant,
                 output_selection=output_selection,
@@ -291,7 +289,7 @@ class DensityCorrelations(TorchModule):
                 "input `density` must have a single component" " axis with name `o3_mu`"
             )
         n_iterations = self._correlation_order - 1  # num iterations
-        density = _clebsch_gordan._standardize_keys(density)  # standardize metadata
+        density = _utils.standardize_keys(density)  # standardize metadata
         density_correlation = density  # create a copy to combine with itself
 
         # TODO: implement combinations of gradients too
@@ -305,7 +303,7 @@ class DensityCorrelations(TorchModule):
                 " Use metatensor.remove_gradients to remove gradients from the input."
             )
         # Pre-compute the keys needed to perform each CG iteration
-        key_metadata = _clebsch_gordan._precompute_keys(
+        key_metadata = _utils.precompute_keys(
             density.keys,
             density.keys,
             n_iterations=n_iterations,
@@ -345,7 +343,7 @@ class DensityCorrelations(TorchModule):
                 key_1: LabelsEntry = key_metadata_i[0][j]
                 key_2: LabelsEntry = key_metadata_i[1][j]
                 lambda_out: int = int(key_metadata_i[2].column("o3_lambda")[j])
-                block_out = _clebsch_gordan._combine_blocks_same_samples(
+                block_out = _utils.combine_blocks_same_samples(
                     density_correlation.block(key_1),
                     density.block(key_2),
                     lambda_out,

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import os
 from typing import List
 
@@ -9,9 +8,9 @@ from metatensor import Labels, TensorBlock, TensorMap
 
 import rascaline
 from rascaline.utils import PowerSpectrum, _dispatch
-from rascaline.utils.clebsch_gordan._cg_cache import calculate_cg_coefficients
-from rascaline.utils.clebsch_gordan._clebsch_gordan import _standardize_keys
-from rascaline.utils.clebsch_gordan.correlate_density import DensityCorrelations
+from rascaline.utils.clebsch_gordan import DensityCorrelations
+from rascaline.utils.clebsch_gordan._coefficients import calculate_cg_coefficients
+from rascaline.utils.clebsch_gordan._utils import standardize_keys
 
 
 # Try to import some modules
@@ -329,7 +328,7 @@ def test_correlate_density_norm(correlation_order):
 
     # Standardize the features by passing through the CG combination code but with
     # no iterations (i.e. body order 1 -> 1)
-    nu1 = _standardize_keys(nu1)
+    nu1 = standardize_keys(nu1)
 
     # Make only lambda and sigma part of keys
     nu1 = nu1.keys_to_samples(["center_type"])

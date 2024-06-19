@@ -8,7 +8,7 @@ from typing import List, Optional, Tuple, Union
 
 from .. import _dispatch
 from .._backend import Array, Labels, LabelsEntry, TensorBlock, TensorMap, is_labels
-from . import _cg_cache
+from . import _coefficients
 
 
 # ==================================================================
@@ -16,7 +16,7 @@ from . import _cg_cache
 # ==================================================================
 
 
-def _standardize_keys(tensor: TensorMap) -> TensorMap:
+def standardize_keys(tensor: TensorMap) -> TensorMap:
     """
     Takes a nu=1 tensor and standardizes its metadata. This involves: 1) moving
     the "neighbor_type" key to properties, if present as a dimension in the
@@ -44,7 +44,7 @@ def _standardize_keys(tensor: TensorMap) -> TensorMap:
     return TensorMap(keys=keys, blocks=[b.copy() for b in tensor.blocks()])
 
 
-def _parse_selected_keys(
+def parse_selected_keys(
     n_iterations: int,
     array_like: Array,
     angular_cutoff: Optional[int] = None,
@@ -147,7 +147,7 @@ def _parse_selected_keys(
     return selected_keys_
 
 
-def _parse_bool_iteration_filters(
+def parse_bool_iteration_filters(
     n_iterations: int,
     skip_redundant: Union[bool, List[bool]] = False,
     output_selection: Optional[Union[bool, List[bool]]] = None,
@@ -189,7 +189,7 @@ def _parse_bool_iteration_filters(
     return skip_redundant_, output_selection
 
 
-def _precompute_keys(
+def precompute_keys(
     keys_1: Labels,
     keys_2: Labels,
     n_iterations: int,
@@ -509,7 +509,7 @@ def _remove_redundant_keys(
 # ==================================================================
 
 
-def _combine_blocks_same_samples(
+def combine_blocks_same_samples(
     block_1: TensorBlock,
     block_2: TensorBlock,
     lambda_: int,
@@ -525,7 +525,7 @@ def _combine_blocks_same_samples(
     """
 
     # Do the CG combination - single center so no shape pre-processing required
-    combined_values = _cg_cache.combine_arrays(
+    combined_values = _coefficients.combine_arrays(
         block_1.values, block_2.values, lambda_, cg_coefficients, cg_backend
     )
 
