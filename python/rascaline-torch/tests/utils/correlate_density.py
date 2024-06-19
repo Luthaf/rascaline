@@ -9,7 +9,7 @@ from metatensor.torch import Labels
 from metatensor.torch.atomistic import System
 
 import rascaline.torch
-from rascaline.torch.utils.clebsch_gordan.correlate_density import DensityCorrelations
+from rascaline.torch.utils.clebsch_gordan import DensityCorrelations
 
 
 DATA_ROOT = os.path.join(os.path.dirname(__file__), "data")
