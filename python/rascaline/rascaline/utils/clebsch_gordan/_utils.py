@@ -186,12 +186,24 @@ def parse_bool_iteration_filters(
     return skip_redundant_, output_selection
 
 
+class Combination:
+    """
+    Small class to store together the index of two blocks to combine and the
+    set of ``o3_lambdas`` created by this combination.
+    """
+
+    def __init__(self, first: int, second: int, o3_lambdas: List[int]):
+        self.first = first
+        self.second = second
+        self.o3_lambdas = o3_lambdas
+
+
 def precompute_keys(
     keys_1: Labels,
     keys_2: Labels,
     selected_keys: Optional[Labels],
     skip_redundant: bool,
-) -> Tuple[Labels, List[Tuple[int, int]]]:
+) -> Tuple[Labels, List[Combination]]:
     """
     Pre-compute the output keys after a single CG iteration combining ``keys_1`` and
     ``key2_1``.
@@ -225,6 +237,64 @@ def precompute_keys(
             nu_1=keys_1.column("order_nu")[0],
             nu_2=keys_2.column("order_nu")[0],
         )
+
+    output_keys, combinations = _group_combinations_of_same_blocks(
+        output_keys, combinations
+    )
+
+    return output_keys, combinations
+
+
+def _group_combinations_of_same_blocks(
+    output_keys: Labels,
+    combinations: List[Tuple[int, int]],
+) -> Tuple[Labels, List[Combination]]:
+    """
+    Re-order output keys in such a way that we have all the different ``o3_lambda``
+    created by the same pair of block consecutive in ``output_keys``.
+
+    This function simultaneously returns the new ``output_keys``, and a list of
+    combinations in the same order as the keys. Iterating over the returned combinations
+    and then over the ``o3_lambdas`` for each combination will produce blocks in the
+    same order as the output keys.
+    """
+    # (block_1, block_2) => list of index in the output keys
+    # this is emulating a dict by separating keys & values since TorchScript does not
+    # support Tuple[int, int] as Dict keys. `groups` is the dict keys and `groups_keys`
+    # the dict values.
+    groups: List[Tuple[int, int]] = []
+    groups_keys: List[List[int]] = []
+    for key_i, blocks in enumerate(combinations):
+        group_id = -1
+        for existing_id, existing in enumerate(groups):
+            if existing == blocks:
+                group_id = existing_id
+                break
+
+        if group_id == -1:
+            group_id = len(groups)
+            groups.append(blocks)
+            keys_idx: List[int] = []
+            groups_keys.append(keys_idx)
+
+        groups_keys[group_id].append(key_i)
+
+    all_o3_lambdas = output_keys.column("o3_lambda")
+
+    keys_values: List[List[int]] = []
+    combinations: List[Combination] = []
+    for (block_1, block_2), keys_idx in zip(groups, groups_keys):
+        o3_lambdas: List[int] = []
+        for key_i in keys_idx:
+            keys_values.append(_dispatch.to_int_list(output_keys.values[key_i]))
+            o3_lambdas.append(int(all_o3_lambdas[key_i]))
+
+        combinations.append(Combination(block_1, block_2, o3_lambdas))
+
+    output_keys = Labels(
+        output_keys.names,
+        _dispatch.int_array_like(keys_values, like=output_keys.values),
+    )
 
     return output_keys, combinations
 
@@ -485,29 +555,26 @@ def _remove_redundant_keys(
     return output_keys, combinations
 
 
-# ==================================================================
-# ===== Functions to perform the CG combinations of blocks
-# ==================================================================
+# ======================================================================= #
+# ======== Functions to perform the CG tensor products of blocks ======== #
+# ======================================================================= #
 
 
-def combine_blocks_same_samples(
+def cg_tensor_product_blocks_same_samples(
     block_1: TensorBlock,
     block_2: TensorBlock,
-    lambda_: int,
+    o3_lambdas: List[int],
     cg_coefficients: TensorMap,
     cg_backend: str,
-) -> TensorBlock:
+) -> List[TensorBlock]:
     """
-    For a given pair of TensorBlocks and desired angular channel, combines the
-    values arrays and returns a new TensorBlock.
-
-    If cg_coefficients are None, tensor blocks with empty arrays are returned that only
-    contain the metadata.
+    For a given pair of TensorBlocks and desired angular channels, combines the values
+    arrays and returns a new TensorBlock.
     """
 
     # Do the CG combination - single center so no shape pre-processing required
-    combined_values = _coefficients.combine_arrays(
-        block_1.values, block_2.values, lambda_, cg_coefficients, cg_backend
+    combined_values = _coefficients.cg_tensor_product(
+        block_1.values, block_2.values, o3_lambdas, cg_coefficients, cg_backend
     )
 
     # Infer the new nu value: block 1's properties are nu pairs of
@@ -536,30 +603,36 @@ def combine_blocks_same_samples(
             0, len(block_1.properties.values), like=block_1.values
         ),
     )
-
-    # Create a TensorBlock
-    combined_block = TensorBlock(
-        values=combined_values,
-        samples=block_1.samples,
-        components=[
-            Labels(
-                names=["o3_mu"],
-                values=_dispatch.int_range_like(
-                    min_val=-lambda_, max_val=lambda_ + 1, like=block_1.samples.values
-                ).reshape(-1, 1),
-            ),
-        ],
-        properties=Labels(
-            names=property_names,
-            values=_dispatch.int_array_like(
-                [
-                    _dispatch.to_int_list(block_2.properties.values[indices[0]])
-                    + _dispatch.to_int_list(block_1.properties.values[indices[1]])
-                    for indices in block_1_block_2_product_idx
-                ],
-                block_1.samples.values,
-            ),
+    properties = Labels(
+        names=property_names,
+        values=_dispatch.int_array_like(
+            [
+                _dispatch.to_int_list(block_2.properties.values[indices[0]])
+                + _dispatch.to_int_list(block_1.properties.values[indices[1]])
+                for indices in block_1_block_2_product_idx
+            ],
+            block_1.samples.values,
         ),
     )
 
-    return combined_block
+    # Create the TensorBlocks
+    results: List[TensorBlock] = []
+    for values, o3_lambda in zip(combined_values, o3_lambdas):
+        block = TensorBlock(
+            values=values,
+            samples=block_1.samples,
+            components=[
+                Labels(
+                    names=["o3_mu"],
+                    values=_dispatch.int_range_like(
+                        min_val=-o3_lambda,
+                        max_val=o3_lambda + 1,
+                        like=block_1.samples.values,
+                    ).reshape(-1, 1),
+                ),
+            ],
+            properties=properties,
+        )
+        results.append(block)
+
+    return results

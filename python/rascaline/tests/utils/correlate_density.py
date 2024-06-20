@@ -30,12 +30,7 @@ try:
     HAS_SYMPY = True
 except ImportError:
     HAS_SYMPY = False
-try:
-    from mops import sparse_accumulation_of_products as sap  # noqa F401
 
-    HAS_MOPS = True
-except ImportError:
-    HAS_MOPS = False
 
 if HAS_SYMPY:
     from .rotations import WignerDReal, transform_frame_o3, transform_frame_so3
@@ -477,34 +472,6 @@ def test_correlate_density_dense_sparse_agree():
     n_body_dense = corr_calculator_dense.compute(density)
 
     assert metatensor.allclose(n_body_sparse, n_body_dense, atol=1e-8, rtol=1e-8)
-
-
-@pytest.mark.skipif(not HAS_MOPS, reason="mops is not installed")
-def test_correlate_density_mops_python_sparse_agree():
-    """
-    Tests for agreement between nu=2 tensors built using both "python-sparse"
-    and "mops" CG backend.
-    """
-    frames = h2o_periodic()
-    density = spherical_expansion_small(frames)
-
-    correlation_order = 2
-    corr_calculator_python = DensityCorrelations(
-        max_angular=SPHEX_HYPERS_SMALL["max_angular"] * correlation_order,
-        correlation_order=correlation_order,
-        cg_backend="python-sparse",
-    )
-    corr_calculator_mops = DensityCorrelations(
-        max_angular=SPHEX_HYPERS_SMALL["max_angular"] * correlation_order,
-        correlation_order=correlation_order,
-        cg_backend="mops",
-    )
-    # NOTE: testing the private function here so we can control the use of
-    # sparse v dense CG cache
-    n_body_python = corr_calculator_python.compute(density)
-    n_body_mops = corr_calculator_mops.compute(density)
-
-    assert metatensor.allclose(n_body_python, n_body_mops, atol=1e-8, rtol=1e-8)
 
 
 # ============ Test metadata  ============

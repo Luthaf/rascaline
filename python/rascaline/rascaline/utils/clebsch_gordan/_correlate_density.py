@@ -22,13 +22,6 @@ from . import _coefficients, _utils
 
 
 try:
-    import mops  # noqa F401
-
-    HAS_MOPS = True
-except ImportError:
-    HAS_MOPS = False
-
-try:
     import torch
 
     HAS_TORCH = True
@@ -89,19 +82,17 @@ class DensityCorrelations(TorchModule):
         iteration is output.
     :param arrays_backend: Determines the array backend, either ``"numpy"`` or
         ``"torch"``.
-    :param cg_backend: Determines the backend for the CG combination. It can be even
-        ``"python-sparse"``, ``"python-dense"`` or ``"mops"``. If the CG combination
+    :param cg_backend: Determines the backend for the CG combination. It can be
+        ``"python-sparse"``, or ``"python-dense"``. If the CG combination
         performs on the sparse coefficients, it means that for each ``(l1, l2, lambda)``
         block the ``(m1, m2, mu)`` coefficients are stored in a sparse format only
-        storing the nonzero coefficients. If the parameter are None, the most optimal
+        storing the nonzero coefficients. If this is not given, the most optimal
         choice is determined given available packages and ``arrays_backend``.
 
         - ``"python-dense"``: Uses the python implementation performing the combinations
           with the dense CG coefficients.
         - ``"python-sparse"``: Uses the python implementation performing the
           combinations with the sparse CG coefficients.
-        - ``"mops"``: Uses the ``mops`` package to optimize the sparse combinations. At
-          the moment it is only available with ``arrays_backend="numpy"``
 
     :return: A :py:class:`list` of :py:class:`TensorMap` corresponding to the density
         correlations output from the specified iterations. If the output from a single
@@ -148,34 +139,10 @@ class DensityCorrelations(TorchModule):
         if cg_backend is None:
             if arrays_backend == "torch":
                 self._cg_backend = "python-dense"
-            if arrays_backend == "numpy" and HAS_MOPS:
-                self._cg_backend = "mops"
             else:
                 self._cg_backend = "python-sparse"
-        elif cg_backend == "python-dense":
-            self._cg_backend = "python-dense"
-        elif cg_backend == "python-sparse":
-            self._cg_backend = "python-sparse"
-        elif cg_backend == "mops":
-            if arrays_backend == "torch":
-                raise NotImplementedError(
-                    "'torch' was determined or given as `arrays_backend` "
-                    "and 'mops' was given as `cg_backend`, "
-                    "but mops does not support torch backend yet"
-                )
-            else:
-                assert arrays_backend == "numpy"
-                if not HAS_MOPS:
-                    raise ImportError(
-                        "mops is not installed, but 'mops' was given as `cg_backend`"
-                    )
-                self._cg_backend = "mops"
-
         else:
-            raise ValueError(
-                f"Unknown `cg_backend` {cg_backend}."
-                "Only 'python-dense', 'python-sparse' and 'mops' are supported."
-            )
+            self._cg_backend = cg_backend
 
         if max_angular < 0:
             raise ValueError(
@@ -185,7 +152,7 @@ class DensityCorrelations(TorchModule):
         self._max_angular = max_angular
         self._cg_coefficients = _coefficients.calculate_cg_coefficients(
             lambda_max=self._max_angular,
-            sparse=(self._cg_backend in ["python-sparse", "mops"]),
+            sparse=self._cg_backend == "python-sparse",
             use_torch=(arrays_backend == "torch"),
         )
 
@@ -298,8 +265,8 @@ class DensityCorrelations(TorchModule):
         )
         if contains_gradients:
             raise NotImplementedError(
-                "Clebsch Gordan combinations with gradients not yet implemented."
-                " Use metatensor.remove_gradients to remove gradients from the input."
+                "Clebsch Gordan combinations with gradients not yet implemented. "
+                "Use `metatensor.remove_gradients` to remove gradients from the input."
             )
 
         max_angular = _dispatch.max(density.keys.column("o3_lambda"))
@@ -316,6 +283,8 @@ class DensityCorrelations(TorchModule):
             cg_backend = "metadata"
         else:
             cg_backend = self._cg_backend
+
+        cg_coefficients = self._cg_coefficients.to(dtype=density.dtype)
 
         keys_iter = density.keys
         for iteration in range(n_iterations):
@@ -338,8 +307,7 @@ class DensityCorrelations(TorchModule):
                     " `selected_keys` args and try again."
                 )
 
-            o3_lambdas = keys_iter.column("o3_lambda")
-            max_angular = _dispatch.max(o3_lambdas)
+            max_angular = _dispatch.max(keys_iter.column("o3_lambda"))
             if max_angular > self._max_angular:
                 raise ValueError(
                     "correlations of this density would require a `max_angular` of "
@@ -348,13 +316,13 @@ class DensityCorrelations(TorchModule):
                 )
 
             blocks_iter: List[TensorBlock] = []
-            for o3_lambda, (block_1, block_2) in zip(o3_lambdas, combinations):
-                blocks_iter.append(
-                    _utils.combine_blocks_same_samples(
-                        density_correlation.block(block_1),
-                        density.block(block_2),
-                        o3_lambda,
-                        self._cg_coefficients,
+            for combination in combinations:
+                blocks_iter.extend(
+                    _utils.cg_tensor_product_blocks_same_samples(
+                        density_correlation.block(combination.first),
+                        density.block(combination.second),
+                        combination.o3_lambdas,
+                        cg_coefficients,
                         cg_backend,
                     )
                 )
