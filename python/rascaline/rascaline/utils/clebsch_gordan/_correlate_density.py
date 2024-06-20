@@ -11,7 +11,6 @@ import numpy as np
 from .. import _dispatch
 from .._backend import (
     Labels,
-    LabelsEntry,
     TensorBlock,
     TensorMap,
     TorchModule,
@@ -302,27 +301,13 @@ class DensityCorrelations(TorchModule):
                 "Clebsch Gordan combinations with gradients not yet implemented."
                 " Use metatensor.remove_gradients to remove gradients from the input."
             )
-        # Pre-compute the keys needed to perform each CG iteration
-        key_metadata = _utils.precompute_keys(
-            density.keys,
-            density.keys,
-            n_iterations=n_iterations,
-            selected_keys=self._selected_keys,
-            skip_redundant=self._skip_redundant,
-        )
-        max_angular = max(
-            _dispatch.max(density.keys.column("o3_lambda")),
-            max(
-                [
-                    int(_dispatch.max(mdata[2].column("o3_lambda")))
-                    for mdata in key_metadata
-                ]
-            ),
-        )
-        if self._max_angular < max_angular:
+
+        max_angular = _dispatch.max(density.keys.column("o3_lambda"))
+        if max_angular > self._max_angular:
             raise ValueError(
-                f"The density you provide requires max_angular={max_angular} "
-                f"but on initialization max_angular={self._max_angular} was given"
+                "the largest `o3_lambda` in the density to correlate is "
+                f"{max_angular}, but this class was initialized with "
+                f"`max_angular={self._max_angular}`"
             )
 
         # Perform iterative CG tensor products
@@ -332,27 +317,49 @@ class DensityCorrelations(TorchModule):
         else:
             cg_backend = self._cg_backend
 
+        keys_iter = density.keys
         for iteration in range(n_iterations):
             # Define the correlation order of the current iteration
             correlation_order_it = iteration + 2
 
-            # Combine block pairs
-            blocks_out: List[TensorBlock] = []
-            key_metadata_i = key_metadata[iteration]
-            for j in range(len(key_metadata_i[0])):
-                key_1: LabelsEntry = key_metadata_i[0][j]
-                key_2: LabelsEntry = key_metadata_i[1][j]
-                lambda_out: int = int(key_metadata_i[2].column("o3_lambda")[j])
-                block_out = _utils.combine_blocks_same_samples(
-                    density_correlation.block(key_1),
-                    density.block(key_2),
-                    lambda_out,
-                    self._cg_coefficients,
-                    cg_backend,
+            # check which keys will need to be combined
+            keys_iter, combinations = _utils.precompute_keys(
+                keys_iter,
+                density.keys,
+                self._selected_keys[iteration],
+                self._skip_redundant[iteration],
+            )
+
+            # Check that some keys are produced as a result of the combination
+            if len(keys_iter) == 0:
+                raise ValueError(
+                    f"invalid selections: iteration {iteration + 1} produces no"
+                    " valid combinations. Check the `angular_cutoff` and"
+                    " `selected_keys` args and try again."
                 )
-                blocks_out.append(block_out)
-            keys_out = key_metadata[iteration][2]
-            density_correlation = TensorMap(keys=keys_out, blocks=blocks_out)
+
+            o3_lambdas = keys_iter.column("o3_lambda")
+            max_angular = _dispatch.max(o3_lambdas)
+            if max_angular > self._max_angular:
+                raise ValueError(
+                    "correlations of this density would require a `max_angular` of "
+                    f"{max_angular}, but this class was initialized with "
+                    f"`max_angular={self._max_angular}`"
+                )
+
+            blocks_iter: List[TensorBlock] = []
+            for o3_lambda, (block_1, block_2) in zip(o3_lambdas, combinations):
+                blocks_iter.append(
+                    _utils.combine_blocks_same_samples(
+                        density_correlation.block(block_1),
+                        density.block(block_2),
+                        o3_lambda,
+                        self._cg_coefficients,
+                        cg_backend,
+                    )
+                )
+
+            density_correlation = TensorMap(keys=keys_iter, blocks=blocks_iter)
 
             # If this tensor is to be included in the output, move the [l1, l2, ...]
             # keys to properties and store

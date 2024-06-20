@@ -1,13 +1,13 @@
 """
 Private module containing helper functions for public module
-:py:mod:`correlate_density` that compute Clebsch-gordan tensor products on
-metatensor :py:class:`TensorMap` objects.
+:py:mod:`_correlate_density` that compute Clebsch-gordan tensor products of
+:py:class:`TensorMap`.
 """
 
 from typing import List, Optional, Tuple, Union
 
 from .. import _dispatch
-from .._backend import Array, Labels, LabelsEntry, TensorBlock, TensorMap, is_labels
+from .._backend import Array, Labels, TensorBlock, TensorMap, is_labels
 from . import _coefficients
 
 
@@ -18,17 +18,15 @@ from . import _coefficients
 
 def standardize_keys(tensor: TensorMap) -> TensorMap:
     """
-    Takes a nu=1 tensor and standardizes its metadata. This involves: 1) moving
-    the "neighbor_type" key to properties, if present as a dimension in the
-    keys, and 2) adding dimensions in the keys for tracking the body order
-    ("order_nu").
+    Takes a ``nu=1`` tensor and standardizes its metadata. This involves: (1) moving the
+    ``"neighbor_type"`` key to properties, if present as a dimension in the keys, and
+    (2) adding dimensions in the keys for tracking the body order (``"order_nu"``).
 
-    Checking for the presence of the "neighbor_type" key in the keys allows
-    the option of the user pre-moving this key to the properties before calling
-    `n_body_iteration_single_center`, allowing sparsity in a set of global
-    neighbors to be created if desired.
+    Checking for the presence of the ``"neighbor_type"`` key in the keys allows the
+    option of the user pre-moving this key to the properties before calling us, allowing
+    sparsity in a set of global neighbors to be created if desired.
 
-    Assumes that the input `tensor` is nu=1.
+    Assumes that the input ``tensor`` is nu=1.
     """
 
     if "neighbor_type" in tensor.keys.names:
@@ -51,10 +49,9 @@ def parse_selected_keys(
     selected_keys: Optional[Union[Labels, List[Labels]]] = None,
 ) -> List[Labels]:
     """
-    Parses the `selected_keys` argument passed to public functions. Checks the
-    values and returns a :py:class:`list` of :py:class:`Labels` objects, one for
-    each iteration of CG combination.The `:param array_like:` determines the
-    array backend of the Labels created
+    Parses the ``selected_keys`` argument passed to public functions. Checks the values
+    and returns a list of :py:class:`Labels` objects, one for each iteration of CG
+    iteration. ``array_like`` determines the array backend of the created Labels.
     """
     # Check the selected_keys
     if (
@@ -153,7 +150,7 @@ def parse_bool_iteration_filters(
     output_selection: Optional[Union[bool, List[bool]]] = None,
 ) -> Tuple[List[bool], List[bool]]:
     """
-    Parses the `skip_redundant` and `output_selection` arguments passed to
+    Parses the ``skip_redundant`` and ``output_selection`` arguments passed to
     public functions.
     """
     if isinstance(skip_redundant, bool):
@@ -192,79 +189,66 @@ def parse_bool_iteration_filters(
 def precompute_keys(
     keys_1: Labels,
     keys_2: Labels,
-    n_iterations: int,
-    selected_keys: List[Union[Labels, None]],
-    skip_redundant: List[bool],
-) -> List[Tuple[List[LabelsEntry], List[LabelsEntry], Labels]]:
+    selected_keys: Optional[Labels],
+    skip_redundant: bool,
+) -> Tuple[Labels, List[Tuple[int, int]]]:
     """
-    Computes all the keys metadata needed to perform `n_iterations` of CG
-    combination steps.
+    Pre-compute the output keys after a single CG iteration combining ``keys_1`` and
+    ``key2_1``.
 
-    At each iteration, a full product of the keys of two tensors, i.e. `keys_1`
-    and `keys_2` is computed. Then, key selections are applied according to the
-    user-defined settings: the maximum angular channel cutoff
-    (`angular_cutoff`), and angular and/or parity selections specified in
-    `selected_keys`.
+    This function returns the computed keys, and a list of tuple of integers, indicating
+    for each entries in the output keys which entry of the two set of input keys should
+    be combined together.
 
-    If `skip_redundant` is True, then keys that represent redundant CG
-    operations are not included in the output keys at each step.
+    The output keys are generated from a full product of ``keys_1`` and ``keys_2``.
+    Then, key are selected according to the angular and/or parity selections specified
+    in ``selected_keys``.
+
+    If ``skip_redundant`` is True, then keys that represent redundant CG operations are
+    not included in the output keys at each step.
     """
-    keys_metadata: List[Tuple[List[LabelsEntry], List[LabelsEntry], Labels]] = []
-    keys_out = keys_1
-    for iteration in range(n_iterations):
-        # Get the keys metadata for the combination of the 2 tensors
-        keys_1_entries, keys_2_entries, keys_out = _precompute_keys_full_product(
-            keys_1=keys_out,
-            keys_2=keys_2,
+
+    # Get the keys metadata for the combination of the 2 tensors
+    output_keys, combinations = _precompute_keys_full_product(keys_1, keys_2)
+
+    if selected_keys is not None:
+        output_keys, combinations = _apply_key_selection(
+            output_keys,
+            combinations,
+            selected_keys,
         )
-        # For TorchScript to determine the type correctly so we can subscript it
-        selected_keys_i = selected_keys[iteration]
-        if selected_keys_i is not None:
-            keys_1_entries, keys_2_entries, keys_out = _apply_key_selection(
-                keys_1_entries,
-                keys_2_entries,
-                keys_out,
-                selected_keys=selected_keys_i,
-            )
 
-        if skip_redundant[iteration]:
-            keys_1_entries, keys_2_entries, keys_out = _remove_redundant_keys(
-                keys_1_entries, keys_2_entries, keys_out
-            )
+    if skip_redundant:
+        output_keys, combinations = _remove_redundant_keys(
+            output_keys,
+            combinations,
+            nu_1=keys_1.column("order_nu")[0],
+            nu_2=keys_2.column("order_nu")[0],
+        )
 
-        # Check that some keys are produced as a result of the combination
-        if len(keys_out) == 0:
-            raise ValueError(
-                f"invalid selections: iteration {iteration + 1} produces no"
-                " valid combinations. Check the `angular_cutoff` and"
-                " `selected_keys` args and try again."
-            )
-
-        keys_metadata.append((keys_1_entries, keys_2_entries, keys_out))
-
-    return keys_metadata
+    return output_keys, combinations
 
 
 def _precompute_keys_full_product(
-    keys_1: Labels, keys_2: Labels
-) -> Tuple[List[LabelsEntry], List[LabelsEntry], Labels]:
-    # Due to TorchScript we cannot use List[LabelsEntry]
+    keys_1: Labels,
+    keys_2: Labels,
+) -> Tuple[Labels, List[Tuple[int, int]]]:
     """
     Given the keys of 2 TensorMaps, returns the keys that would be present after a full
     CG product of these TensorMaps.
 
-    Assumes that `keys_1` corresponds to a TensorMap with arbitrary body order, while
-    `keys_2` corresponds to a TensorMap with body order 1. `keys_1`  must follow the key
-    name convention:
+    Assumes that ``keys_1`` corresponds to a TensorMap with arbitrary body order, while
+    `keys_2` corresponds to a TensorMap with body order 1. ``keys_1``  must follow the
+    key name convention:
 
-    ["order_nu", "o3_sigma", "o3_lambda", "center_type", "l1", "l2", ..., f"l{`nu`}",
-    "k2", ..., f"k{`nu`-1}"]. The "lx" columns track the l values of the nu=1 blocks
-    that were previously combined. The "kx" columns tracks the intermediate lambda
-    values of nu > 1 blocks that have been combined.
+    ["order_nu", "o3_sigma", "o3_lambda", "center_type", "l1", "l2", ..., "l<nu>", "k2",
+    ..., "k<nu-1>"]. The "lx" columns track the l values of the nu=1 blocks that were
+    previously combined. The "kx" columns tracks the intermediate lambda values of nu >
+    1 blocks that have been combined.
 
-    For instance, a TensorMap of body order nu=4 will have key names ["order_nu",
-    "o3_sigma", "o3_lambda", "center_type", "l1", "l2", "l3", "l4", "k2", "k3"]. Two
-    nu=1 TensorMaps with blocks of order "l1" and "l2" were combined to form a nu=2
+    For instance, a TensorMap of body order ``nu=4`` will have key names ``["order_nu",
+    "o3_sigma", "o3_lambda", "center_type", "l1", "l2", "l3", "l4", "k2", "k3"]``. Two
+    ``nu=1`` TensorMaps with blocks of order "l1" and "l2" were combined to form a nu=2
     TensorMap with blocks of order "k2". This was combined with a nu=1 TensorMap with
     blocks of order "l3" to form a nu=3 TensorMap with blocks of order "k3". Finally,
     this was combined with a nu=1 TensorMap with blocks of order "l4" to form a nu=4.
@@ -276,8 +260,8 @@ def _precompute_keys_full_product(
             l_{\\nu} k_{\\nu}; \\lambda
         } \\ket{ \\rho^{\\otimes \\nu}; \\lambda M }
 
-    `keys_2` must follow the key name convention: ["order_nu", "o3_sigma", "o3_lambda",
-    "center_type"]
+    ``keys_2`` must follow the key name convention: ``["order_nu", "o3_sigma",
+    "o3_lambda", "center_type"]``
 
     The first two lists of the returned value correspond to the LabelsEntry objects of
     the keys being combined. The third element is a Labels object corresponding to the
@@ -338,13 +322,11 @@ def _precompute_keys_full_product(
     )
 
     new_key_values: List[List[int]] = []
-    # Types are actually LabelsEntry, but TorchScript does not understand this.
-    keys_1_entries: List[LabelsEntry] = []
-    keys_2_entries: List[LabelsEntry] = []
-    for i in range(len(keys_1)):
-        for j in range(len(keys_2)):
-            key_1 = keys_1.entry(i)
-            key_2 = keys_2.entry(j)
+    combinations: List[Tuple[int, int]] = []
+    for key_1_i in range(len(keys_1)):
+        for key_2_i in range(len(keys_2)):
+            key_1 = keys_1.entry(key_1_i)
+            key_2 = keys_2.entry(key_2_i)
             # Unpack relevant key values
             sigma_1 = int(key_1["o3_sigma"])
             l_1 = int(key_1["o3_lambda"])
@@ -372,8 +354,8 @@ def _precompute_keys_full_product(
                 o3_sigma = int(sigma_1 * sigma_2 * (-1) ** (l_1 + l_2 + o3_lambda))
 
                 # Extract the l and k lists from keys_1
-                l_list = _dispatch.to_int_list(keys_1.values[i, 4 : 4 + nu_1])
-                k_list = _dispatch.to_int_list(keys_1.values[i, 4 + nu_1 :])
+                l_list = _dispatch.to_int_list(keys_1.values[key_1_i, 4 : 4 + nu_1])
+                k_list = _dispatch.to_int_list(keys_1.values[key_1_i, 4 + nu_1 :])
 
                 # Build the new keys values. l{nu} is `lambda_2`` (i.e.
                 # "o3_lambda" of the key from `keys_2`. k{nu-1} is
@@ -382,95 +364,95 @@ def _precompute_keys_full_product(
                     [nu, o3_lambda, o3_sigma, type_1] + l_list + [l_2] + k_list + [l_1]
                 )
                 new_key_values.append(new_vals)
-                keys_1_entries.append(key_1)
-                keys_2_entries.append(key_2)
+                combinations.append((key_1_i, key_2_i))
 
     # Define new keys as the full product of keys_1 and keys_2
-    keys_out = Labels(
+    output_keys = Labels(
         names=new_names,
         values=_dispatch.int_array_like(new_key_values, like=keys_1.values),
     )
 
-    return keys_1_entries, keys_2_entries, keys_out
+    return output_keys, combinations
 
 
 def _apply_key_selection(
-    keys_1_entries: List[LabelsEntry],
-    keys_2_entries: List[LabelsEntry],
-    keys_out: Labels,
+    output_keys: Labels,
+    combinations: List[Tuple[int, int]],
     selected_keys: Labels,
-) -> Tuple[List[LabelsEntry], List[LabelsEntry], Labels]:
+) -> Tuple[Labels, List[Tuple[int, int]]]:
     """
-    Applies a selection according to `selected_keys` to the keys of an output
-    TensorMap `keys_out` produced by combination of blocks indexed by keys
-    entries in `keys_1_entries` and `keys_2_entries` lists.
+    Applies a selection according to ``selected_keys`` to the keys of an output
+    TensorMap ``output_keys`` produced by the provided ``combinations`` of blocks.
 
-    After application of the selections, returned is a reduced set of keys and
-    set of corresponding parents key entries.
+    After application of the selections, returned is a reduced set of keys and set of
+    corresponding parents key entries.
 
-    If a selection in `selected_keys` is not valid based on the keys in
-    `keys_out`, an error is raised.
+    If a selection in ``selected_keys`` is not valid based on the keys in
+    ``output_keys``, we raise an error.
     """
     # Extract the relevant columns from `selected_keys` that the selection will be
     # performed on
     col_idx = _dispatch.int_array_like(
-        [keys_out.names.index(name) for name in selected_keys.names], keys_out.values
+        [output_keys.names.index(name) for name in selected_keys.names],
+        output_keys.values,
     )
-    keys_out_vals = keys_out.values[:, col_idx]
+    output_keys_values = output_keys.values[:, col_idx]
 
     # First check that all of the selected keys exist in the output keys
     for selected in selected_keys.values:
         if not any(
-            [bool(all(selected == keys_out_vals[i])) for i in range(len(keys_out_vals))]
+            [
+                bool(all(selected == output_keys_values[i]))
+                for i in range(len(output_keys_values))
+            ]
         ):
             raise ValueError(
-                f"selected key {selected_keys.names} = {selected} not found"
-                " in the output keys. Check the `selected_keys` argument."
+                f"selected key {selected_keys.names} = {selected} not found "
+                "in the output keys"
             )
 
     # Build a mask of the selected keys
     mask = _dispatch.bool_array_like(
-        [any([bool(all(i == j)) for j in selected_keys.values]) for i in keys_out_vals],
+        [
+            any([bool(all(i == j)) for j in selected_keys.values])
+            for i in output_keys_values
+        ],
         like=selected_keys.values,
     )
 
     mask_indices = _dispatch.int_array_like(
-        list(range(len(keys_1_entries))), like=selected_keys.values
+        list(range(len(combinations))), like=selected_keys.values
     )[mask]
-    # Apply the mask to key entries and keys and return
-    keys_1_entries = [keys_1_entries[i] for i in mask_indices]
-    keys_2_entries = [keys_2_entries[i] for i in mask_indices]
-    keys_out = Labels(names=keys_out.names, values=keys_out.values[mask])
+    # Apply the mask to combinations and keys
+    combinations = [combinations[i] for i in mask_indices]
+    output_keys = Labels(names=output_keys.names, values=output_keys.values[mask])
 
-    return keys_1_entries, keys_2_entries, keys_out
+    return output_keys, combinations
 
 
 def _remove_redundant_keys(
-    keys_1_entries: List[LabelsEntry],
-    keys_2_entries: List[LabelsEntry],
-    keys_out: Labels,
-) -> Tuple[List[LabelsEntry], List[LabelsEntry], Labels]:
+    output_keys: Labels,
+    combinations: List[Tuple[int, int]],
+    nu_1: int,
+    nu_2: int,
+) -> Tuple[Labels, List[Tuple[int, int]]]:
     """
-    For a Labels object `keys_out` that corresponds to the keys of a TensorMap
-    formed by combined of the blocks described by the entries in the lists
-    `keys_1_entries` and `keys_2_entries`, removes redundant keys.
+    Remove redundant keys from the ``output_keys`` produced by the provided
+    ``combinations`` of blocks.
 
-    These are the keys that correspond to blocks that have the same sorted l
-    list. The block where the l values are already sorted (i.e. l1 <= l2 <= ...
-    <= ln) is kept.
+    These are the keys that correspond to blocks that have the same sorted l list. The
+    block where the l values are already sorted (i.e. l1 <= l2 <= ... <= ln) is kept.
     """
     # Get and check the correlation order of the input keys
-    nu1 = keys_1_entries[0]["order_nu"]
-    nu2 = keys_2_entries[0]["order_nu"]
-    assert nu2 == 1
+    assert nu_2 == 1
 
     # Get the correlation order of the output TensorMap
-    nu = nu1 + 1
+    nu = nu_1 + 1
 
     # Identify keys of redundant blocks and remove them
     key_idxs_to_keep: List[int] = []
-    for key_idx in range(len(keys_out)):
-        key = keys_out.entry(key_idx)
+    for key_idx in range(len(output_keys)):
+        key = output_keys.entry(key_idx)
         # Get the important key values. This is all of the keys, except the k
         # list.
         key_vals_slice: List[int] = _dispatch.to_int_list(key.values[: 4 + (nu + 1)])
@@ -490,18 +472,17 @@ def _remove_redundant_keys(
             key_idxs_to_keep.append(key_idx)
 
     # Build a reduced Labels object for the combined keys, with redundancies removed
-    keys_out_red = Labels(
-        names=keys_out.names,
-        values=keys_out.values[
-            _dispatch.int_array_like(key_idxs_to_keep, like=keys_out.values)
+    output_keys = Labels(
+        names=output_keys.names,
+        values=output_keys.values[
+            _dispatch.int_array_like(key_idxs_to_keep, like=output_keys.values)
         ],
     )
 
     # Store the list of reduced entries that combine to form the reduced output keys
-    keys_1_entries_red = [keys_1_entries[idx] for idx in key_idxs_to_keep]
-    keys_2_entries_red = [keys_2_entries[idx] for idx in key_idxs_to_keep]
+    combinations = [combinations[i] for i in key_idxs_to_keep]
 
-    return keys_1_entries_red, keys_2_entries_red, keys_out_red
+    return output_keys, combinations
 
 
 # ==================================================================
