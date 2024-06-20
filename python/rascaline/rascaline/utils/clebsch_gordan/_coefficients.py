@@ -546,7 +546,9 @@ def sparse_combine(
 
         # Get the corresponding Clebsch-Gordan coefficients
         # Fill in each mu component of the output array in turn
-        cg_l1l2lam = cg_coefficients.block({"l1": l1, "l2": l2, "lambda": o3_lambda})
+        cg_l1l2lam = cg_coefficients.block(
+            {"l1": l1, "l2": l2, "lambda": int(o3_lambda)}
+        )
         for i in range(len(cg_l1l2lam.samples)):
             m1m2mu_key = cg_l1l2lam.samples.entry(i)
             m1 = m1m2mu_key[0]
