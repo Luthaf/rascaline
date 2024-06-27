@@ -63,12 +63,11 @@ def concatenate(arrays: List[TorchTensor], axis: int):
 
 def empty_like(array, shape: Optional[List[int]] = None, requires_grad: bool = False):
     """
-    Create an uninitialized array, with the given ``shape``, and similar dtype,
-    device and other options as ``array``.
+    Create an uninitialized array, with the given ``shape``, and similar dtype, device
+    and other options as ``array``.
 
-    If ``shape`` is :py:obj:`None`, the array shape is used instead.
-    ``requires_grad`` is only used for torch tensors, and set the corresponding
-    value on the returned array.
+    If ``shape`` is ``None``, the array shape is used instead. ``requires_grad`` is only
+    used for torch tensors, and set the corresponding value on the returned array.
 
     This is the equivalent to ``np.empty_like(array, shape=shape)``.
     """
@@ -143,12 +142,11 @@ def unique(array, axis: Optional[int] = None):
 
 def zeros_like(array, shape: Optional[List[int]] = None, requires_grad: bool = False):
     """
-    Create an array filled with zeros, with the given ``shape``, and similar
-    dtype, device and other options as ``array``.
+    Create an array filled with zeros, with the given ``shape``, and similar dtype,
+    device and other options as ``array``.
 
-    If ``shape`` is :py:obj:`None`, the array shape is used instead.
-    ``requires_grad`` is only used for torch tensors, and set the corresponding
-    value on the returned array.
+    If ``shape`` is ``None``, the array shape is used instead. ``requires_grad`` is only
+    used for torch tensors, and set the corresponding value on the returned array.
 
     This is the equivalent to ``np.zeros_like(array, shape=shape)``.
     """

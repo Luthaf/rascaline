@@ -39,14 +39,13 @@ def systems_to_torch(
         this function converts them all and returns a list of converted systems.
 
     :param positions_requires_grad: The value of ``requires_grad`` on the output
-        ``positions``. If :py:obj:`None`` and the positions of the input is already a
+        ``positions``. If ``None`` and the positions of the input is already a
         :py:class:`torch.Tensor`, ``requires_grad`` is kept the same. Otherwise it is
-        initialized to :py:obj:`False`.
+        initialized to ``False``.
 
     :param cell_requires_grad: The value of ``requires_grad`` on the output ``cell``. If
-        :py:obj:`None` and the positions of the input is already a
-        :py:class:`torch.Tensor`, ``requires_grad`` is kept the same. Otherwise it is
-        initialized to :py:obj:`False`.
+        ``None`` and the positions of the input is already a :py:class:`torch.Tensor`,
+        ``requires_grad`` is kept the same. Otherwise it is initialized to ``False``.
     """
 
     try:

@@ -355,12 +355,12 @@ requested by the user.
 
 To find blocks and check for samples, we can use the `Labels::position`_
 function on the keys and the samples `Labels`_. This function returns an
-``Option<usize>``, which will be :py:obj:`None` is the label (key or sample)
-was not found, and ``Some(position)`` where ``position`` is an unsigned integer
-if the label was found. For the keys, we know the blocks must exists, so we
-again use ``expect`` to immediately extract the value of the block index and
-access the block. For the samples, we keep them as ``Option<usize>`` and will
-deal with missing samples later.
+``Option<usize>``, which will be ``None`` is the label (key or sample) was not
+found, and ``Some(position)`` where ``position`` is an unsigned integer if the
+label was found. For the keys, we know the blocks must exists, so we again use
+``expect`` to immediately extract the value of the block index and access the
+block. For the samples, we keep them as ``Option<usize>`` and will deal with
+missing samples later.
 
 One thing to keep in mind is that a given pair can participate to two different
 samples. If two atoms ``i`` and ``j`` are closer than the cutoff, the list of

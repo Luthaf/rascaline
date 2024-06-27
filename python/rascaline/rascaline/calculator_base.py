@@ -202,14 +202,14 @@ class CalculatorBase:
             systems are supported, see the documentation of
             :py:class:`rascaline.IntoSystem` to get the full list.
 
-        :param use_native_system: If :py:obj:`True` (this is the default), copy data
-            from the ``systems`` into Rust ``SimpleSystem``. This can be a lot faster
-            than having to cross the FFI boundary often when accessing the neighbor
-            list. Otherwise the Python neighbor list is used.
+        :param use_native_system: If ``True`` (this is the default), copy data from the
+            ``systems`` into Rust ``SimpleSystem``. This can be a lot faster than having
+            to cross the FFI boundary often when accessing the neighbor list. Otherwise
+            the Python neighbor list is used.
 
-        :param gradients: List of gradients to compute. If this is :py:obj:`None` or an
-            empty list ``[]``, no gradients are computed. Gradients are stored inside
-            the different blocks, and can be accessed with
+        :param gradients: List of gradients to compute. If this is ``None`` or an empty
+            list ``[]``, no gradients are computed. Gradients are stored inside the
+            different blocks, and can be accessed with
             ``descriptor.block(...).gradient(<parameter>)``, where ``<parameter>`` is a
             string describing the gradients. The following gradients are available:
 
@@ -258,8 +258,8 @@ class CalculatorBase:
                        {\partial \mathbf{H}} \right |_\mathbf{r}
 
         :param selected_samples: Set of samples on which to run the calculation. Use
-            :py:obj:`None` to run the calculation on all samples in the ``systems``
-            (this is the default).
+            ``None`` to run the calculation on all samples in the ``systems`` (this is
+            the default).
 
             If ``selected_samples`` is an :py:class:`metatensor.TensorMap`, then the
             samples for each key will be used as-is when computing the representation.
@@ -274,8 +274,8 @@ class CalculatorBase:
             from the default set with the same values for these variables as one of the
             entries in ``selected_samples`` will be used.
 
-        :param selected_properties: Set of properties to compute. Use :py:obj:`None` to
-            run the calculation on all properties (this is the default).
+        :param selected_properties: Set of properties to compute. Use ``None`` to run
+            the calculation on all properties (this is the default).
 
             If ``selected_properties`` is an :py:class:`metatensor.TensorMap`, then the
             properties for each key will be used as-is when computing the
@@ -292,9 +292,9 @@ class CalculatorBase:
             variables as one of the entries in ``selected_properties`` will be used.
 
         :param selected_keys: Selection for the keys to include in the output. If this
-            is :py:obj:`None`, the default set of keys (as determined by the calculator)
-            will be used. Note that this default set of keys can depend on which systems
-            we are running the calculation on.
+            is ``None``, the default set of keys (as determined by the calculator) will
+            be used. Note that this default set of keys can depend on which systems we
+            are running the calculation on.
         """
 
         c_systems = _convert_systems(systems)
