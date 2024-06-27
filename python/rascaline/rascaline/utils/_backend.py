@@ -39,6 +39,8 @@ except ImportError:
 
 Array = Union[np.ndarray, TorchTensor]
 
+BACKEND_IS_METATENSOR_TORCH = False
+
 __all__ = [
     "Array",
     "CalculatorBase",
@@ -53,4 +55,5 @@ __all__ = [
     "torch_jit_is_scripting",
     "torch_jit_export",
     "is_labels",
+    "BACKEND_IS_METATENSOR_TORCH",
 ]

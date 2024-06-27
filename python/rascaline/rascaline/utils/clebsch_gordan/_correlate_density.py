@@ -152,7 +152,7 @@ class DensityCorrelations(TorchModule):
         self._max_angular = max_angular
         self._cg_coefficients = _coefficients.calculate_cg_coefficients(
             lambda_max=self._max_angular,
-            sparse=self._cg_backend == "python-sparse",
+            cg_backend=self._cg_backend,
             use_torch=(arrays_backend == "torch"),
         )
 

@@ -1,6 +1,10 @@
 import os
 
-from .clebsch_gordan import DensityCorrelations  # noqa
+from .clebsch_gordan import (  # noqa
+    DensityCorrelations,
+    calculate_cg_coefficients,
+    cartesian_to_spherical,
+)
 from .power_spectrum import PowerSpectrum  # noqa
 from .splines import (  # noqa
     AtomicDensityBase,
