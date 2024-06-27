@@ -42,11 +42,10 @@ class PowerSpectrum(TorchModule):
 
     :param calculator_1: first calculator
     :param calculator_1: second calculator
-    :param types: List of ``"neighbor_type"`` to use in the properties of the
-        output. This option might be useful when running the calculation on subset of a
-        whole dataset and trying to join along the ``sample`` dimension after the
-        calculation. If :py:obj:`None` blocks are filled with ``"neighbor_type"``
-        found in the systems.
+    :param types: List of ``"neighbor_type"`` to use in the properties of the output.
+        This option might be useful when running the calculation on subset of a whole
+        dataset and trying to join along the ``sample`` dimension after the calculation.
+        If ``None``, blocks are filled with ``"neighbor_type"`` found in the systems.
     :raises ValueError: If other calculators than
         :py:class:`rascaline.SphericalExpansion` or
         :py:class:`rascaline.LodeSphericalExpansion` are used.

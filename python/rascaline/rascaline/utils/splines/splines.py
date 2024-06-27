@@ -371,9 +371,9 @@ class RadialIntegralFromFunction(RadialIntegralSplinerBase):
     :parameter max_radial: number of angular components
     :parameter max_angular: number of radial components
     :parameter radial_integral_derivative: The derivative of the radial integral taking
-        the same parameters as ``radial_integral``. If it is :py:obj:`None` (default),
-        finite differences are used to calculate the derivative of the radial integral.
-        It is recommended to provide this parameter if possible. Derivatives from finite
+        the same parameters as ``radial_integral``. If it is ``None`` (default), finite
+        differences are used to calculate the derivative of the radial integral. It is
+        recommended to provide this parameter if possible. Derivatives from finite
         differences can cause problems when evaluating at the edges of the domain (i.e.,
         at ``0`` and ``spline_cutoff``) because the function might not be defined
         outside of the domain.
