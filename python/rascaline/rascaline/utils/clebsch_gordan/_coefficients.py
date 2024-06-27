@@ -10,7 +10,13 @@ import numpy as np
 import wigners
 
 from .. import _dispatch
-from .._backend import Array, Labels, TensorBlock, TensorMap
+from .._backend import (
+    BACKEND_IS_METATENSOR_TORCH,
+    Array,
+    Labels,
+    TensorBlock,
+    TensorMap,
+)
 
 
 try:
@@ -41,37 +47,34 @@ UNKNOWN_ARRAY_TYPE = (
 
 def calculate_cg_coefficients(
     lambda_max: int,
-    sparse: bool = True,
-    use_torch: bool = False,
+    cg_backend: str,
+    use_torch: bool = BACKEND_IS_METATENSOR_TORCH,
 ) -> TensorMap:
     """
-    Calculates the Clebsch-Gordan coefficients for all possible combination of l1 and
-    l2, up to ``lambda_max``. Returns them in :py:class:`TensorMap` format.
+    Calculates the Clebsch-Gordan coefficients for all possible combination of angular
+    momenta up to ``lambda_max``.
 
-    The output data structure of the output :py:class:`TensorMap` depends on whether the
-    backend used to perform CG tensor products uses sparse or dense operations.
+    The structure of the returned :py:class:`TensorMap` depends on whether the backend
+    used to perform CG tensor products uses sparse or dense operations.
 
     Dense:
-        - samples: `_`, i.e. a dummy sample.
-        - components: `[(m1,), (m2,), (mu,)]`, i.e. on separate components axes,
-          where `m1` and `m2` are the m component values for the two arrays
-          being combined and `mu` is the m component value for the resulting
-          array.
-        - properties: `cg_coefficient`
+        - samples: ``_``, i.e. a dummy sample.
+        - components: ``[m1, m2, mu]`` on separate components axes, where ``m1`` and
+          ``m2`` are the m component values for the two arrays being combined and ``mu``
+          is the m component value for the resulting array.
+        - properties: ``cg_coefficient = [0]``
 
     Sparse:
-        - samples: `(m1, m2, mu)`, where `m1` and `m2` are the m component
-          values for the two arrays being combined and `mu` is the m component
-          value for the resulting array.
-        - components: `[]`, i.e. no components axis.
-        - properties: `cg_coefficient`
-
+        - samples: ``(m1, m2, mu)``, where ``m1`` and ``m2`` are the m component values
+          for the two arrays being combined and ``mu`` is the m component value for the
+          resulting array.
+        - components: ``[]``, i.e. no components axis.
+        - properties: ``cg_coefficient = [0]``
 
     :param lambda_max: maximum angular momentum value to compute CG coefficients for.
-    :param sparse: whether to store the CG coefficients in sparse format.
-    :param use_torch: whether torch tensor or numpy arrays should be used for the cg
-        coeffs
-
+    :param cg_backend: TODO
+    :param use_torch: whether torch tensor or numpy arrays should be used to store the
+        coefficients
     :returns: :py:class:`TensorMap` of the Clebsch-Gordan coefficients.
     """
     # Build some 'like' arrays for the backend dispatch
@@ -97,14 +100,19 @@ def calculate_cg_coefficients(
     # Build the CG cache depending on whether the CG backend is sparse or dense. The
     # dispatching of the arrays backends are accounted for by `double_like` and
     # `labels_values_like`.
-    if sparse:
+    if cg_backend == "python-sparse":
         return _cg_coeff_dict_to_tensormap_sparse(
             cg_coeff_dict, double_like, labels_values_like
         )
-
-    return _cg_coeff_dict_to_tensormap_dense(
-        cg_coeff_dict, double_like, labels_values_like
-    )
+    elif cg_backend == "python-dense":
+        return _cg_coeff_dict_to_tensormap_dense(
+            cg_coeff_dict, double_like, labels_values_like
+        )
+    else:
+        raise ValueError(
+            f"invalid `cg_backend`, got '{cg_backend}', "
+            "only 'python-dense', or 'python-sparse' are supported"
+        )
 
 
 def _build_dense_cg_coeff_dict(
@@ -395,6 +403,83 @@ def _complex_clebsch_gordan_matrix(l1: int, l2: int, o3_lambda: int, like: Array
 # ================================================================ #
 
 
+def cg_couple(
+    array: Array,
+    o3_lambdas: List[int],
+    cg_coefficients: TensorMap,
+    cg_backend: str,
+) -> List[Array]:
+    """
+    Go from an uncoupled product basis that behave like a product of spherical harmonics
+    to a coupled basis that behaves like a single spherical harmonic.
+
+    The ``array`` shape should be ``(n_samples, 2 * l1 + 1, 2 * l2 + 1, n_q)``.
+    ``n_samples`` is the number of samples, and ``n_q`` is the number of properties.
+
+    This function will output a list of arrays, whose shape will be ``[n_samples, (2 *
+    o3_lambda+1), n_q]``, with the requested ``o3_lambdas``.
+
+    These arrays will contain the result of projecting from a product of spherical
+    harmonic with degree ``l1`` and ``l2`` to a single spherical harmonic of degree
+    ``o3_lambdas``; using Clebsch-Gordan coefficients. The values for ``l1`` and ``l2``
+    are inferred from the size of the middle axis of the input array.
+
+    The Clebsch-Gordan coefficients are cached in ``cg_coefficients``. These must be
+    computed by :py:func:`calculate_cg_coefficients`.
+
+    The operation is dispatched such that numpy arrays or torch tensors are
+    automatically handled.
+
+    :param array: input array with shape ``[n_samples, 2 * l1 + 1, 2 * l2 + 1, n_q]``
+    :param o3_lambdas: list of degrees of spherical harmonics to compute
+    :param cg_coefficients: CG coefficients as returned by
+        :py:func:`calculate_cg_coefficients` with the same ``cg_backed`` given to this
+        function
+    :param cg_backend: specifies the backend to use for the calculation. It can be
+        ``"python-dense"``, or ``"python-sparse"``.
+
+    :return: A list of array, one for each ``o3_lambda``
+    """
+
+    assert len(array.shape) == 4
+
+    l1 = (array.shape[1] - 1) // 2
+    l2 = (array.shape[2] - 1) // 2
+
+    if cg_backend == "python-sparse":
+        arrays = {}
+        for m1 in range(2 * l1 + 1):
+            for m2 in range(2 * l2 + 1):
+                arrays[str((m1, m2))] = array[:, m1, m2, :]
+
+        return [
+            _cg_couple_sparse(arrays, l1, l2, o3_lambda, cg_coefficients)
+            for o3_lambda in o3_lambdas
+        ]
+    elif cg_backend == "python-dense":
+        results = []
+
+        n_samples = array.shape[0]
+        n_properties = array.shape[3]
+
+        array = array.swapaxes(1, 3)
+        array = array.reshape(n_samples * n_properties, 2 * l2 + 1, 2 * l1 + 1)
+
+        for o3_lambda in o3_lambdas:
+            result = _cg_couple_dense(array, o3_lambda, cg_coefficients)
+            result = result.reshape(n_samples, n_properties, -1)
+            result = result.swapaxes(1, 2)
+            results.append(result)
+
+        return results
+
+    else:
+        raise ValueError(
+            f"invalid `cg_backend`, got '{cg_backend}', "
+            "only 'python-dense', or 'python-sparse' are supported"
+        )
+
+
 def _cg_couple_sparse(
     arrays: Dict[str, Array],
     l1: int,
@@ -414,7 +499,7 @@ def _cg_couple_sparse(
         ``[samples, properties]`` and correspond to a single ``(m1, m2)`` pair.
     :param o3_lambda: value of lambda for the output spherical harmonic
     :param cg_coefficients: CG coefficients as returned by
-        :py:func:`calculate_cg_coefficients` with ``sparse=True``
+        :py:func:`calculate_cg_coefficients` with ``cg_backed="python-sparse"``
     """
 
     array = list(arrays.values())[0]
@@ -450,7 +535,7 @@ def _cg_couple_dense(
     :param array: input array, we expect a shape of ``[samples, 2*l1 + 1, 2*l2 + 1]``
     :param o3_lambda: value of lambda for the output spherical harmonic
     :param cg_coefficients: CG coefficients as returned by
-        :py:func:`calculate_cg_coefficients` with ``sparse=False``
+        :py:func:`calculate_cg_coefficients` with ``cg_backed="python-dense"``
     """
     assert len(array.shape) == 3
 
@@ -490,7 +575,7 @@ def cg_tensor_product(
     samples in both array must be the same.
 
     This function will output a list of arrays, whose shape will be ``[n_samples, (2 *
-    o3_lambda+1), n_q * n_p]``, with the specified ``o3_lambdas``. These arrays will
+    o3_lambda+1), n_q * n_p]``, with the requested ``o3_lambdas``. These arrays will
     contain the result of computing a tensor product of ``array_1`` and ``array_2``,
     followed by a projection from the product of spherical harmonic with degree ``l1``
     and ``l2`` to a single spherical harmonic of degree ``o3_lambdas``; using
@@ -516,11 +601,11 @@ def cg_tensor_product(
         :py:func:`calculate_cg_coefficients`. Only used if ``cg_backend`` is not
         ``"metadata"``.
     :param cg_backend: specifies the backend to use for the calculation. It can be
-        ``"python-dense"``, ``"python-sparse"``, and ``"metadata"``. If
+        ``"python-dense"``, ``"python-sparse"``, or ``"metadata"``. If
         ``"python-dense"`` or ``"python-sparse"`` is chosen, a dense or sparse
-        combination (respectively) of the arrays is performed using either numpy or
-        torch, depending on the arrays. If ``"metadata"`` is chosen, no combination is
-        performed, and an empty array of the correct shape is returned instead.
+        combination (respectively) of the arrays is performed. If ``"metadata"`` is
+        chosen, no combination is performed, and an empty array of the correct shape is
+        returned instead.
 
     :returns: list of arrays of shape ``[n_samples, (2*o3_lambda+1), n_q * n_p]``
     """
@@ -537,8 +622,8 @@ def cg_tensor_product(
         return _cg_tensor_product_dense(array_1, array_2, o3_lambdas, cg_coefficients)
     else:
         raise ValueError(
-            f"Wrong cg_backend, got '{cg_backend}', "
-            "but only support 'metadata', 'python-dense', or 'python-sparse'"
+            f"invalid `cg_backend`, got '{cg_backend}', "
+            "only 'python-dense', 'python-sparse', or 'metadata' are supported"
         )
 
 

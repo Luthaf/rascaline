@@ -437,12 +437,25 @@ def imag(array):
     """
     Takes the imag part of the array
 
-    This function has the same behavior as
-    ``np.imag(array)`` or ``torch.imag(array)``.
+    This function has the same behavior as ``np.imag(array)`` or ``torch.imag(array)``.
     """
     if isinstance(array, TorchTensor):
         return torch.imag(array)
     elif isinstance(array, np.ndarray):
         return np.imag(array)
+    else:
+        raise TypeError(UNKNOWN_ARRAY_TYPE)
+
+
+def roll(array, shifts: List[int], axis: List[int]):
+    """
+    Roll array elements along a given axis.
+
+    This function has the same behavior as ``np.roll(array)`` or ``torch.roll(array)``.
+    """
+    if isinstance(array, TorchTensor):
+        return torch.roll(array, shifts=shifts, dims=axis)
+    elif isinstance(array, np.ndarray):
+        return np.roll(array, shift=shifts, axis=axis)
     else:
         raise TypeError(UNKNOWN_ARRAY_TYPE)

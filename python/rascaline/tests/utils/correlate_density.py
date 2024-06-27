@@ -376,7 +376,9 @@ def test_clebsch_gordan_orthogonality(l1, l2, arrays_backend):
     for details.
     """
     cg_coeffs = calculate_cg_coefficients(
-        lambda_max=5, sparse=False, use_torch=arrays_backend == "torch"
+        lambda_max=5,
+        cg_backend="python-dense",
+        use_torch=arrays_backend == "torch",
     )
 
     lam_min = abs(l1 - l2)

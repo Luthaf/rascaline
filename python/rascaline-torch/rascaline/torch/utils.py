@@ -38,6 +38,7 @@ module.__dict__["TorchScriptClass"] = torch.ScriptClass
 module.__dict__["Array"] = torch.Tensor
 module.__dict__["CalculatorBase"] = CalculatorModule
 module.__dict__["IntoSystem"] = System
+module.__dict__["BACKEND_IS_METATENSOR_TORCH"] = True
 
 
 def is_labels(obj: Any):
