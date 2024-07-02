@@ -1,0 +1,226 @@
+:orphan:
+
+Rascaline Python Examples
+=========================
+
+This folder consists of introductory examples and examples demonstrating
+specific features of rascaline using its Python API.
+
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbnails">
+
+.. thumbnail-parent-div-open
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Computing SOAP features">
+
+.. only:: html
+
+  .. image:: /examples/images/thumb/sphx_glr_compute-soap_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_examples_compute-soap.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Computing SOAP features</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Profiling calculation">
+
+.. only:: html
+
+  .. image:: /examples/images/thumb/sphx_glr_profiling_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_examples_profiling.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Profiling calculation</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This is an introduction to the rascaline interface using a molecular crystals dataset using the...">
+
+.. only:: html
+
+  .. image:: /examples/images/thumb/sphx_glr_first-calculation_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_examples_first-calculation.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">First descriptor computation</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Keys Selection">
+
+.. only:: html
+
+  .. image:: /examples/images/thumb/sphx_glr_keys-selection_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_examples_keys-selection.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Keys Selection</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Sample Selection">
+
+.. only:: html
+
+  .. image:: /examples/images/thumb/sphx_glr_sample-selection_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_examples_sample-selection.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Sample Selection</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Property Selection">
+
+.. only:: html
+
+  .. image:: /examples/images/thumb/sphx_glr_property-selection_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_examples_property-selection.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Property Selection</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This example illustrates how to generate splined radial basis functions/integrals, using a &quot;rec...">
+
+.. only:: html
+
+  .. image:: /examples/images/thumb/sphx_glr_splined-radial-integral_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_examples_splined-radial-integral.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Splined radial integrals</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This example illustrates how to generate a spherical expansion using the Laplacian eigenstate (...">
+
+.. only:: html
+
+  .. image:: /examples/images/thumb/sphx_glr_le-basis_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_examples_le-basis.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">LE basis</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="We start the example by loading the required packages">
+
+.. only:: html
+
+  .. image:: /examples/images/thumb/sphx_glr_long-range-descriptor_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_examples_long-range-descriptor.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Long-range only LODE descriptor</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="In the first userdoc-tutorials-get-started we show how to calculate a descriptor using default ...">
+
+.. only:: html
+
+  .. image:: /examples/images/thumb/sphx_glr_understanding-hypers_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_examples_understanding-hypers.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Changing SOAP hyper parameters</div>
+    </div>
+
+
+.. thumbnail-parent-div-close
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /examples/compute-soap
+   /examples/profiling
+   /examples/first-calculation
+   /examples/keys-selection
+   /examples/sample-selection
+   /examples/property-selection
+   /examples/splined-radial-integral
+   /examples/le-basis
+   /examples/long-range-descriptor
+   /examples/understanding-hypers
+
+
+.. only:: html
+
+  .. container:: sphx-glr-footer sphx-glr-footer-gallery
+
+    .. container:: sphx-glr-download sphx-glr-download-python
+
+      :download:`Download all examples in Python source code: examples_python.zip </examples/examples_python.zip>`
+
+    .. container:: sphx-glr-download sphx-glr-download-jupyter
+
+      :download:`Download all examples in Jupyter notebooks: examples_jupyter.zip </examples/examples_jupyter.zip>`
+
+
+.. only:: html
+
+ .. rst-class:: sphx-glr-signature
+
+    `Gallery generated by Sphinx-Gallery <https://sphinx-gallery.github.io>`_
