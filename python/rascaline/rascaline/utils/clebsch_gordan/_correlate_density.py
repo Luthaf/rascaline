@@ -90,9 +90,10 @@ class DensityCorrelations(TorchModule):
         correspond to intermediary spherical components created during the calculation,
         i.e. a ``k_{i}`` used to be ``o3_lambda``.
 
-        This defaults to false for TensorMaps output at each requested iteration, such
-        that the keys are moved to properties. If wanting to use the output of this
-        class for further CG tensor products, this should be set to True.
+        This defaults to ``False`` for :py:class:`TensorMap` output at each requested
+        iteration, such that the keys are moved to properties. If you want to use the
+        output of this class for further CG tensor products, this should be set to
+        ``True``.
     :param arrays_backend: Determines the array backend, either ``"numpy"`` or
         ``"torch"``.
     :param cg_backend: Determines the backend for the CG combination. It can be
