@@ -73,21 +73,34 @@ class DensityCorrelations(TorchModule):
     :param skip_redundant: Whether to skip redundant CG combinations. Defaults to False,
         which means all combinations are performed. If a :py:class:`list` of
         :py:class:`bool` is passed, this is applied to each iteration. If a single
-        :py:class:`bool` is passed, this is applied to all iterations.
+        :py:class:`bool` is passed, this is applied to all iterations. Note that when
+        redundant combinations are skipped in a CG tensor product step, the norm of the
+        output tensor is not preserved.
     :param output_selection: A :py:class:`list` of :py:class:`bool` specifying whether
         to output a :py:class:`TensorMap` for each iteration. If a single
         :py:class:`bool` is passed as True, outputs from all iterations will be
         returned. If a :py:class:`list` of :py:class:`bool` is passed, this controls the
         output at each corresponding iteration. If None is passed, only the final
         iteration is output.
+    :param keep_l_in_keys: should the metadata that tracks values of angular momenta
+        that were combined together be kept in the keys or moved to the properties?
+
+        Keys named ``l_{i}`` correspond to the input ``components``, with ``l_1`` being
+        the last entry in ``components`` and ``l_N`` the first one. Keys named ``k_{i}``
+        correspond to intermediary spherical components created during the calculation,
+        i.e. a ``k_{i}`` used to be ``o3_lambda``.
+
+        This defaults to false for TensorMaps output at each requested iteration, such
+        that the keys are moved to properties. If wanting to use the output of this
+        class for further CG tensor products, this should be set to True.
     :param arrays_backend: Determines the array backend, either ``"numpy"`` or
         ``"torch"``.
     :param cg_backend: Determines the backend for the CG combination. It can be
-        ``"python-sparse"``, or ``"python-dense"``. If the CG combination
-        performs on the sparse coefficients, it means that for each ``(l1, l2, lambda)``
-        block the ``(m1, m2, mu)`` coefficients are stored in a sparse format only
-        storing the nonzero coefficients. If this is not given, the most optimal
-        choice is determined given available packages and ``arrays_backend``.
+        ``"python-sparse"``, or ``"python-dense"``. If the CG combination performs on
+        the sparse coefficients, it means that for each ``(l1, l2, lambda)`` block the
+        ``(m1, m2, mu)`` coefficients are stored in a sparse format only storing the
+        nonzero coefficients. If this is not given, the most optimal choice is
+        determined given available packages and ``arrays_backend``.
 
         - ``"python-dense"``: Uses the python implementation performing the combinations
           with the dense CG coefficients.
@@ -109,9 +122,10 @@ class DensityCorrelations(TorchModule):
         selected_keys: Optional[Union[Labels, List[Labels]]] = None,
         skip_redundant: Optional[Union[bool, List[bool]]] = False,
         output_selection: Optional[Union[bool, List[bool]]] = None,
+        keep_l_in_keys: Optional[Union[bool, List[bool]]] = False,
         arrays_backend: Optional[str] = None,
         cg_backend: Optional[str] = None,
-    ):
+    ) -> None:
         super().__init__()
         if arrays_backend is None:
             if torch_jit_is_scripting():
@@ -178,11 +192,12 @@ class DensityCorrelations(TorchModule):
         )
         # Parse the bool flags that control skipping of redundant CG combinations
         # and TensorMap output from each iteration
-        self._skip_redundant, self._output_selection = (
+        self._skip_redundant, self._output_selection, self._keep_l_in_keys = (
             _utils.parse_bool_iteration_filters(
                 n_iterations,
                 skip_redundant=skip_redundant,
                 output_selection=output_selection,
+                keep_l_in_keys=keep_l_in_keys,
             )
         )
 
@@ -329,26 +344,18 @@ class DensityCorrelations(TorchModule):
 
             density_correlation = TensorMap(keys=keys_iter, blocks=blocks_iter)
 
-            # If this tensor is to be included in the output, move the [l1, l2, ...]
-            # keys to properties and store
+            # If this tensor is to be included in the output, and if requested, move the
+            # [l1, l2, ...] keys to properties and store
             if self._output_selection[iteration]:
-                density_correlations.append(
-                    density_correlation.keys_to_properties(
-                        [f"l_{i}" for i in range(1, correlation_order_it + 1)]
-                        + [f"k_{i}" for i in range(2, correlation_order_it)]
+                if self._keep_l_in_keys[iteration]:
+                    density_correlations.append(density_correlation)
+                else:  # move 'l' and 'k' keys to properties
+                    density_correlations.append(
+                        density_correlation.keys_to_properties(
+                            [f"l_{i}" for i in range(1, correlation_order_it + 1)]
+                            + [f"k_{i}" for i in range(2, correlation_order_it)]
+                        )
                     )
-                )
-
-        # Drop redundant key names. TODO: these should be part of the global
-        # metadata associated with the TensorMap. Awaiting this functionality in
-        # metatensor.
-        for i, tensor in enumerate(density_correlations):
-            keys = tensor.keys
-            if len(_dispatch.unique(tensor.keys.column("order_nu"))) == 1:
-                keys = keys.remove(name="order_nu")
-            density_correlations[i] = TensorMap(
-                keys=keys, blocks=[b.copy() for b in tensor.blocks()]
-            )
 
         # Return a single TensorMap in the simple case
         if len(density_correlations) == 1:

@@ -261,6 +261,7 @@ def test_lambda_soap_vs_powerspectrum():
     lsoap = calculator.compute(density)
     keys = lsoap.keys.remove(name="o3_lambda")
     keys = keys.remove("o3_sigma")
+    keys = keys.remove("order_nu")
 
     # Manipulate metadata to match that of PowerSpectrum:
     # 1) remove components axis

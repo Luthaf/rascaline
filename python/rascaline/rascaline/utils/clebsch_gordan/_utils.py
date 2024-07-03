@@ -148,6 +148,7 @@ def parse_bool_iteration_filters(
     n_iterations: int,
     skip_redundant: Union[bool, List[bool]] = False,
     output_selection: Optional[Union[bool, List[bool]]] = None,
+    keep_l_in_keys: Optional[Union[bool, List[bool]]] = None,
 ) -> Tuple[List[bool], List[bool]]:
     """
     Parses the ``skip_redundant`` and ``output_selection`` arguments passed to
@@ -183,7 +184,22 @@ def parse_bool_iteration_filters(
     if not all([isinstance(v, bool) for v in output_selection]):
         raise TypeError("`output_selection` must be passed as a `list` of `bool`")
 
-    return skip_redundant_, output_selection
+    if isinstance(keep_l_in_keys, bool):
+        keep_l_in_keys_ = [
+            keep_l_in_keys if output else False for output in output_selection
+        ]
+    else:
+        keep_l_in_keys_ = keep_l_in_keys
+
+    if not all([isinstance(val, bool) for val in keep_l_in_keys_]):
+        raise TypeError("`keep_l_in_keys` must be a `bool` or `list` of `bool`")
+    if not len(keep_l_in_keys_) == n_iterations:
+        raise ValueError(
+            "`keep_l_in_keys` must be a bool or `list` of `bool` of length"
+            " `correlation_order` - 1"
+        )
+
+    return skip_redundant_, output_selection, keep_l_in_keys_
 
 
 class Combination:
