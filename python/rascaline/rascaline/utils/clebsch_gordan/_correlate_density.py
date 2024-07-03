@@ -36,14 +36,14 @@ except ImportError:
 class DensityCorrelations(TorchModule):
     """
     Takes iterative Clebsch-Gordan (CG) tensor products of a density descriptor with
-    itself up to the desired correlation order. Returns :py:class:`TensorMap`
+    itself up to the desired body order. Returns :py:class:`TensorMap`
     corresponding to the density correlations output from the specified iteration(s).
 
     The input density descriptor necessarily is body order 2 (i.e. correlation order 1),
     but can be single- or multi-center. The output is a :py:class:`list` of density
     correlations for each iteration specified in ``output_selection``, up to the target
-    order passed in ``correlation_order``. By default only the last correlation (i.e.
-    the correlation of order ``correlation_order``) is returned.
+    body order passed in ``body_order``. By default only the output tensor from the last
+    correlation step is returned.
 
     As a density is being correlated with itself, some redundant CG tensor products can
     be skipped with the ``skip_redundant`` keyword.
@@ -56,12 +56,12 @@ class DensityCorrelations(TorchModule):
         computed and stored. This must be large enough to cover the maximum angular
         order reached in the CG iterations on a density input to the :py:meth:`compute`
         method.
-    :param correlation_order: The desired correlation order of the output descriptor.
-        Must be >= 1. The resulting final :py:class:`TensorMap` will have be of
-        body-order ``correlation_order + 1``.
+    :param body_order: The desired correlation order of the output descriptor. Must be
+        >= 2. The resulting final :py:class:`TensorMap` will be of body-order
+        ``body_order``, or correlation order ``body_order - 1``.
     :param angular_cutoff: The maximum angular channel to compute at any given CG
-        iteration, applied globally to all iterations until the target correlation order
-        is reached.
+        iteration, applied globally to all iterations until the target body order is
+        reached.
     :param selected_keys: :py:class:`Labels` or list of :py:class:`Labels` specifying
         the angular and/or parity channels to output at each iteration. All
         :py:class:`Labels` objects passed here must only contain key names
@@ -70,15 +70,16 @@ class DensityCorrelations(TorchModule):
         :py:class:`Labels` is given, each is applied to its corresponding iteration. If
         None is passed, all angular and parity channels are kept at each iteration, with
         the global ``angular_cutoff`` applied if specified.
-    :param skip_redundant: Whether to skip redundant CG combinations. Defaults to False,
-        which means all combinations are performed. If a :py:class:`list` of
+    :param skip_redundant: Whether to skip redundant CG combinations. Defaults to
+        ``True``, which means all combinations are performed. If a :py:class:`list` of
         :py:class:`bool` is passed, this is applied to each iteration. If a single
         :py:class:`bool` is passed, this is applied to all iterations. Note that when
         redundant combinations are skipped in a CG tensor product step, the norm of the
-        output tensor is not preserved.
+        output tensor is not preserved. To preserve the norm, set this flag to
+        ``False``.
     :param output_selection: A :py:class:`list` of :py:class:`bool` specifying whether
         to output a :py:class:`TensorMap` for each iteration. If a single
-        :py:class:`bool` is passed as True, outputs from all iterations will be
+        :py:class:`bool` is passed as ``True``, outputs from all iterations will be
         returned. If a :py:class:`list` of :py:class:`bool` is passed, this controls the
         output at each corresponding iteration. If None is passed, only the final
         iteration is output.
@@ -118,10 +119,10 @@ class DensityCorrelations(TorchModule):
     def __init__(
         self,
         max_angular: int,
-        correlation_order: int,
+        body_order: int,
         angular_cutoff: Optional[int] = None,
         selected_keys: Optional[Union[Labels, List[Labels]]] = None,
-        skip_redundant: Optional[Union[bool, List[bool]]] = False,
+        skip_redundant: Optional[Union[bool, List[bool]]] = True,
         output_selection: Optional[Union[bool, List[bool]]] = None,
         keep_l_in_keys: Optional[Union[bool, List[bool]]] = False,
         arrays_backend: Optional[str] = None,
@@ -172,34 +173,35 @@ class DensityCorrelations(TorchModule):
         )
 
         # Check inputs
-        if correlation_order <= 1:
-            raise ValueError("`correlation_order` must be > 1")
+        if body_order <= 2:
+            raise ValueError("`body_order` must be > 2")
+        correlation_order = body_order - 1  # use correlation order internally
         self._correlation_order = correlation_order
 
         n_iterations = correlation_order - 1  # num iterations
+
         # Parse the selected keys
         self._angular_cutoff = angular_cutoff
-
         if arrays_backend == "torch":
             array_like = torch.empty(0)
         elif arrays_backend == "numpy":
             array_like = np.empty(0)
-
         self._selected_keys: List[Union[Labels, None]] = _utils.parse_selected_keys(
             n_iterations=n_iterations,
             array_like=array_like,
             angular_cutoff=self._angular_cutoff,
             selected_keys=selected_keys,
         )
-        # Parse the bool flags that control skipping of redundant CG combinations
-        # and TensorMap output from each iteration
-        self._skip_redundant, self._output_selection, self._keep_l_in_keys = (
-            _utils.parse_bool_iteration_filters(
-                n_iterations,
-                skip_redundant=skip_redundant,
-                output_selection=output_selection,
-                keep_l_in_keys=keep_l_in_keys,
-            )
+
+        # Parse the bool flags that are applied at each iteration
+        self._skip_redundant = _utils.parse_bool_iteration_filter(
+            n_iterations, skip_redundant, "skip_redundant"
+        )
+        self._output_selection = _utils.parse_bool_iteration_filter(
+            n_iterations, output_selection, "output_selection"
+        )
+        self._keep_l_in_keys = _utils.parse_bool_iteration_filter(
+            n_iterations, keep_l_in_keys, "keep_l_in_keys"
         )
 
     def forward(self, density: TensorMap) -> Union[TensorMap, List[TensorMap]]:
@@ -357,6 +359,17 @@ class DensityCorrelations(TorchModule):
                             + [f"k_{i}" for i in range(2, correlation_order_it)]
                         )
                     )
+
+        # Replace "order_nu" key dimension used internally with "body_order"
+        for i, tensor in enumerate(density_correlations):
+            keys = tensor.keys
+            tmp_body_order = tensor.keys.column("order_nu") + 1
+            assert len(_dispatch.unique(tmp_body_order)) == 1
+            keys = keys.insert(name="body_order", values=tmp_body_order, index=0)
+            keys = keys.remove(name="order_nu")
+            density_correlations[i] = TensorMap(
+                keys=keys, blocks=[b.copy() for b in tensor.blocks()]
+            )
 
         # Return a single TensorMap in the simple case
         if len(density_correlations) == 1:

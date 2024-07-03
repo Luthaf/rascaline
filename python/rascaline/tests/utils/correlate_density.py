@@ -187,15 +187,20 @@ def test_so3_equivariance():
     Tests that the output of :py:func:`correlate_density` is equivariant under
     SO(3) transformations.
     """
-    frames, nu_target, angular_cutoff, selected_keys = (h2o_periodic(), 2, 3, None)
-    wig = wigner_d_matrices(nu_target * SPHEX_HYPERS["max_angular"])
+    frames, body_order_target, angular_cutoff, selected_keys = (
+        h2o_periodic(),
+        3,
+        3,
+        None,
+    )
+    wig = wigner_d_matrices(body_order_target * SPHEX_HYPERS["max_angular"])
     frames_so3 = [transform_frame_so3(frame, wig.angles) for frame in frames]
 
     nu_1 = spherical_expansion(frames)
     nu_1_so3 = spherical_expansion(frames_so3)
     calculator = DensityCorrelations(
         max_angular=3,
-        correlation_order=nu_target,
+        body_order=body_order_target,
         angular_cutoff=angular_cutoff,
         selected_keys=selected_keys,
     )
@@ -215,8 +220,13 @@ def test_o3_equivariance():
     Tests that the output of :py:func:`correlate_density` is equivariant under
     O(3) transformations.
     """
-    frames, nu_target, angular_cutoff, selected_keys = (h2_isolated(), 2, 3, None)
-    wig = wigner_d_matrices(nu_target * SPHEX_HYPERS["max_angular"])
+    frames, body_order_target, angular_cutoff, selected_keys = (
+        h2_isolated(),
+        3,
+        3,
+        None,
+    )
+    wig = wigner_d_matrices(body_order_target * SPHEX_HYPERS["max_angular"])
     frames_o3 = [transform_frame_o3(frame, wig.angles) for frame in frames]
 
     nu_1 = spherical_expansion(frames)
@@ -224,7 +234,7 @@ def test_o3_equivariance():
 
     calculator = DensityCorrelations(
         max_angular=angular_cutoff,
-        correlation_order=nu_target,
+        body_order=body_order_target,
         angular_cutoff=angular_cutoff,
         selected_keys=selected_keys,
     )
@@ -255,13 +265,13 @@ def test_lambda_soap_vs_powerspectrum():
     density = spherical_expansion(frames)
     calculator = DensityCorrelations(
         max_angular=SPHEX_HYPERS["max_angular"],
-        correlation_order=2,
+        body_order=3,
         selected_keys=Labels(names=["o3_lambda"], values=np.array([0]).reshape(-1, 1)),
     )
     lsoap = calculator.compute(density)
     keys = lsoap.keys.remove(name="o3_lambda")
     keys = keys.remove("o3_sigma")
-    keys = keys.remove("order_nu")
+    keys = keys.remove("body_order")
 
     # Manipulate metadata to match that of PowerSpectrum:
     # 1) remove components axis
@@ -291,8 +301,8 @@ def test_lambda_soap_vs_powerspectrum():
 @pytest.mark.skipif(
     not HAS_METATENSOR_OPERATIONS, reason="metatensor-operations is not installed"
 )
-@pytest.mark.parametrize("correlation_order", [2, 4])
-def test_correlate_density_norm(correlation_order):
+@pytest.mark.parametrize("body_order", [3, 5])
+def test_correlate_density_norm(body_order):
     """
     Checks \\|ρ^\\nu\\| =  \\|ρ\\|^\\nu in the case where l lists are not
     sorted. If l lists are sorted, thus saving computation of redundant block
@@ -305,15 +315,15 @@ def test_correlate_density_norm(correlation_order):
 
     # Build higher body order tensor without sorting the l lists
     calculator = DensityCorrelations(
-        max_angular=SPHEX_HYPERS_SMALL["max_angular"] * correlation_order,
-        correlation_order=correlation_order,
+        max_angular=SPHEX_HYPERS_SMALL["max_angular"] * (body_order - 1),
+        body_order=body_order,
         angular_cutoff=None,
         selected_keys=None,
         skip_redundant=False,
     )
     corr_calculator_skip_redundant = DensityCorrelations(
-        max_angular=SPHEX_HYPERS_SMALL["max_angular"] * correlation_order,
-        correlation_order=correlation_order,
+        max_angular=SPHEX_HYPERS_SMALL["max_angular"] * (body_order - 1),
+        body_order=body_order,
         angular_cutoff=None,
         selected_keys=None,
         skip_redundant=True,
@@ -352,7 +362,7 @@ def test_correlate_density_norm(correlation_order):
         nux_sorted_sliced = metatensor.slice(nux_sorted_l, "samples", labels=sample)
 
         # Calculate norms
-        norm_nu1 += get_norm(nu1_sliced) ** correlation_order
+        norm_nu1 += get_norm(nu1_sliced) ** (body_order - 1)
         norm_nux += get_norm(nux_sliced)
         norm_nux_sorted_l += get_norm(nux_sorted_sliced)
 
@@ -458,15 +468,15 @@ def test_correlate_density_dense_sparse_agree():
     frames = h2o_periodic()
     density = spherical_expansion_small(frames)
 
-    correlation_order = 2
+    body_order = 3
     corr_calculator_sparse = DensityCorrelations(
-        max_angular=SPHEX_HYPERS_SMALL["max_angular"] * correlation_order,
-        correlation_order=correlation_order,
+        max_angular=SPHEX_HYPERS_SMALL["max_angular"] * (body_order - 1),
+        body_order=body_order,
         cg_backend="python-sparse",
     )
     corr_calculator_dense = DensityCorrelations(
-        max_angular=SPHEX_HYPERS_SMALL["max_angular"] * correlation_order,
-        correlation_order=correlation_order,
+        max_angular=SPHEX_HYPERS_SMALL["max_angular"] * (body_order - 1),
+        body_order=body_order,
         cg_backend="python-dense",
     )
     # NOTE: testing the private function here so we can control the use of
@@ -497,7 +507,7 @@ def test_correlate_density_metadata_agree():
     ]:
         calculator = DensityCorrelations(
             max_angular=max_angular,
-            correlation_order=3,
+            body_order=4,
             angular_cutoff=3,
             selected_keys=None,
             skip_redundant=skip_redundant,
@@ -526,10 +536,10 @@ def test_correlate_density_angular_selection(
     frames = h2o_isolated()
     nu_1 = spherical_expansion(frames)
 
-    correlation_order = 2
+    body_order = 3
     calculator = DensityCorrelations(
-        max_angular=SPHEX_HYPERS["max_angular"] * correlation_order,
-        correlation_order=correlation_order,
+        max_angular=SPHEX_HYPERS["max_angular"] * (body_order - 1),
+        body_order=body_order,
         angular_cutoff=None,
         selected_keys=selected_keys,
         skip_redundant=skip_redundant,

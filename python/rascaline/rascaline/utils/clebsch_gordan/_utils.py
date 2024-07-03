@@ -102,8 +102,7 @@ def parse_selected_keys(
 
     if not len(selected_keys_) == n_iterations:
         raise ValueError(
-            "`selected_keys` must be a List[Labels] of length"
-            " `correlation_order` - 1"
+            "`selected_keys` must be a List[Labels] of length" " `body_order` - 2"
         )
 
     # Now iterate over each of the Labels (or None) in the list and check
@@ -144,62 +143,28 @@ def parse_selected_keys(
     return selected_keys_
 
 
-def parse_bool_iteration_filters(
-    n_iterations: int,
-    skip_redundant: Union[bool, List[bool]] = False,
-    output_selection: Optional[Union[bool, List[bool]]] = None,
-    keep_l_in_keys: Optional[Union[bool, List[bool]]] = None,
-) -> Tuple[List[bool], List[bool]]:
+def parse_bool_iteration_filter(
+    n_iterations: int, bool_filter: Union[bool, List[bool]], filter_name: str
+) -> List[bool]:
     """
-    Parses the ``skip_redundant`` and ``output_selection`` arguments passed to
-    public functions.
+    Parses the ``bool_filter`` argument passed to public functions.
     """
-    if isinstance(skip_redundant, bool):
-        skip_redundant_ = [skip_redundant] * n_iterations
+    if bool_filter is None:
+        bool_filter = [False] * (n_iterations - 1) + [True]
+    if isinstance(bool_filter, bool):
+        bool_filter_ = [bool_filter] * n_iterations
     else:
-        skip_redundant_ = skip_redundant
+        bool_filter_ = bool_filter
 
-    if not all([isinstance(val, bool) for val in skip_redundant_]):
-        raise TypeError("`skip_redundant` must be a `bool` or `list` of `bool`")
-    if not len(skip_redundant_) == n_iterations:
+    if not all([isinstance(val, bool) for val in bool_filter_]):
+        raise TypeError(f"`{filter_name}` must be a `bool` or `list` of `bool`")
+    if not len(bool_filter_) == n_iterations:
         raise ValueError(
-            "`skip_redundant` must be a bool or `list` of `bool` of length"
-            " `correlation_order` - 1"
-        )
-    if output_selection is None:
-        output_selection = [False] * (n_iterations - 1) + [True]
-    else:
-        if isinstance(output_selection, bool):
-            output_selection = [output_selection] * n_iterations
-        if not isinstance(output_selection, list):
-            raise TypeError("`output_selection` must be passed as `list` of `bool`")
-
-    if not len(output_selection) == n_iterations:
-        raise ValueError(
-            "`output_selection` must be a ``list`` of ``bool`` of length"
-            " corresponding to the number of CG iterations"
-        )
-    if not all([isinstance(v, bool) for v in output_selection]):
-        raise TypeError("`output_selection` must be passed as a `list` of `bool`")
-    if not all([isinstance(v, bool) for v in output_selection]):
-        raise TypeError("`output_selection` must be passed as a `list` of `bool`")
-
-    if isinstance(keep_l_in_keys, bool):
-        keep_l_in_keys_ = [
-            keep_l_in_keys if output else False for output in output_selection
-        ]
-    else:
-        keep_l_in_keys_ = keep_l_in_keys
-
-    if not all([isinstance(val, bool) for val in keep_l_in_keys_]):
-        raise TypeError("`keep_l_in_keys` must be a `bool` or `list` of `bool`")
-    if not len(keep_l_in_keys_) == n_iterations:
-        raise ValueError(
-            "`keep_l_in_keys` must be a bool or `list` of `bool` of length"
-            " `correlation_order` - 1"
+            f"`{filter_name}` must be a bool or `list` of `bool` of length"
+            " corresponding to the number of iterations, i.e. `body_order` - 2"
         )
 
-    return skip_redundant_, output_selection, keep_l_in_keys_
+    return bool_filter_
 
 
 class Combination:
@@ -222,7 +187,7 @@ def precompute_keys(
 ) -> Tuple[Labels, List[Combination]]:
     """
     Pre-compute the output keys after a single CG iteration combining ``keys_1`` and
-    ``key2_1``.
+    ``keys_2``.
 
     This function returns the computed keys, and a list of tuple of integers, indicating
     for each entries in the output keys which entry of the two set of input keys should
