@@ -45,20 +45,20 @@ class DensityCorrelations(TorchModule):
     order passed in ``correlation_order``. By default only the last correlation (i.e.
     the correlation of order ``correlation_order``) is returned.
 
-    This function is an iterative special case of the more general
-    :py:func:`correlate_tensors`. As a density is being correlated with itself, some
-    redundant CG tensor products can be skipped with the ``skip_redundant`` keyword.
+    As a density is being correlated with itself, some redundant CG tensor products can
+    be skipped with the ``skip_redundant`` keyword.
 
-    Selections on the angular and parity channels at each iteration can also be
-    controlled with arguments ``angular_cutoff``, ``angular_selection`` and
-    ``parity_selection``.
+    Global selections on the maximum angular channel computed at each iteration can be
+    set with the ``angular_cutoff`` argument, while ``selected_keys`` allows control
+    over computation of specific combinations of angular and parity channels.
 
     :param max_angular: The maximum angular order for which CG coefficients should be
         computed and stored. This must be large enough to cover the maximum angular
         order reached in the CG iterations on a density input to the :py:meth:`compute`
         method.
     :param correlation_order: The desired correlation order of the output descriptor.
-        Must be >= 1.
+        Must be >= 1. The resulting final :py:class:`TensorMap` will have be of
+        body-order ``correlation_order + 1``.
     :param angular_cutoff: The maximum angular channel to compute at any given CG
         iteration, applied globally to all iterations until the target correlation order
         is reached.
