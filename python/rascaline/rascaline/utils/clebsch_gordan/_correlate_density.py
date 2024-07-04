@@ -45,6 +45,9 @@ class DensityCorrelations(TorchModule):
     body order passed in ``body_order``. By default only the output tensor from the last
     correlation step is returned.
 
+    Key dimensions can be matched with the ``match_keys`` argument. Products are only
+    taken between pairs of keys with equal values in the specified dimensions.
+
     As a density is being correlated with itself, some redundant CG tensor products can
     be skipped with the ``skip_redundant`` keyword.
 
@@ -70,6 +73,9 @@ class DensityCorrelations(TorchModule):
         :py:class:`Labels` is given, each is applied to its corresponding iteration. If
         None is passed, all angular and parity channels are kept at each iteration, with
         the global ``angular_cutoff`` applied if specified.
+    :param match_keys: A :py:class:`list` of :py:class:`str` specifying the names of key
+        dimensions to match when performing CG tensor products. At each iteration, only
+        products of keys with equal values in these specified dimensions are computed.
     :param skip_redundant: Whether to skip redundant CG combinations. Defaults to
         ``True``, which means all combinations are performed. If a :py:class:`list` of
         :py:class:`bool` is passed, this is applied to each iteration. If a single
@@ -122,6 +128,7 @@ class DensityCorrelations(TorchModule):
         body_order: int,
         angular_cutoff: Optional[int] = None,
         selected_keys: Optional[Union[Labels, List[Labels]]] = None,
+        match_keys: Optional[List[str]] = None,
         skip_redundant: Optional[Union[bool, List[bool]]] = True,
         output_selection: Optional[Union[bool, List[bool]]] = None,
         keep_l_in_keys: Optional[Union[bool, List[bool]]] = False,
@@ -192,6 +199,9 @@ class DensityCorrelations(TorchModule):
             angular_cutoff=self._angular_cutoff,
             selected_keys=selected_keys,
         )
+        if match_keys is None:
+            match_keys = []
+        self._match_keys = match_keys
 
         # Parse the bool flags that are applied at each iteration
         self._skip_redundant = _utils.parse_bool_iteration_filter(
@@ -257,23 +267,31 @@ class DensityCorrelations(TorchModule):
         self, density: TensorMap, compute_metadata: bool
     ) -> Union[TensorMap, List[TensorMap]]:
 
+        n_iterations = self._correlation_order - 1  # num iterations
+        density = _utils.standardize_keys(density)  # standardize metadata
+
         # Check metadata
-        if not (
-            density.keys.names == ["o3_lambda", "o3_sigma", "center_type"]
-            or density.keys.names
-            == ["o3_lambda", "o3_sigma", "center_type", "neighbor_type"]
-        ):
-            raise ValueError(
-                "input `density` must have key names"
-                " ['o3_lambda', 'o3_sigma', 'center_type'] or"
-                " ['o3_lambda', 'o3_sigma', 'center_type', 'neighbor_type']"
-            )
+        assert density.keys.names[:3] == [
+            "order_nu",
+            "o3_lambda",
+            "o3_sigma",
+        ]  # the 'standard' keys
+
+        # As we are combining a density with itself, all other
+        # dimensions must be 'matched' dimensions. If they are not, raise an error.
+        for name in density.keys.names[3:]:
+            if name not in self._match_keys:
+                raise ValueError(
+                    f"dimension '{name}' in `density` is not a 'match_key' dimension."
+                    " As this function performs self-correlations, any key dimensions"
+                    " that are not 'o3_lambda' or 'o3_sigma' must be matched."
+                )
+        # Check components
         if not density.component_names == ["o3_mu"]:
             raise ValueError(
                 "input `density` must have a single component" " axis with name `o3_mu`"
             )
-        n_iterations = self._correlation_order - 1  # num iterations
-        density = _utils.standardize_keys(density)  # standardize metadata
+
         density_correlation = density  # create a copy to combine with itself
 
         # TODO: implement combinations of gradients too
@@ -313,8 +331,9 @@ class DensityCorrelations(TorchModule):
             keys_iter, combinations = _utils.precompute_keys(
                 keys_iter,
                 density.keys,
-                self._selected_keys[iteration],
-                self._skip_redundant[iteration],
+                selected_keys=self._selected_keys[iteration],
+                match_keys=self._match_keys,
+                skip_redundant=self._skip_redundant[iteration],
             )
 
             # Check that some keys are produced as a result of the combination

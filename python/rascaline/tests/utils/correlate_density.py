@@ -203,6 +203,7 @@ def test_so3_equivariance():
         body_order=body_order_target,
         angular_cutoff=angular_cutoff,
         selected_keys=selected_keys,
+        match_keys=["center_type"],
     )
     nu_3 = calculator.compute(nu_1)
     nu_3_so3 = calculator.compute(nu_1_so3)
@@ -237,6 +238,7 @@ def test_o3_equivariance():
         body_order=body_order_target,
         angular_cutoff=angular_cutoff,
         selected_keys=selected_keys,
+        match_keys=["center_type"],
     )
     nu_3 = calculator.compute(nu_1)
     nu_3_o3 = calculator.compute(nu_1_o3)
@@ -267,6 +269,7 @@ def test_lambda_soap_vs_powerspectrum():
         max_angular=SPHEX_HYPERS["max_angular"],
         body_order=3,
         selected_keys=Labels(names=["o3_lambda"], values=np.array([0]).reshape(-1, 1)),
+        match_keys=["center_type"],
     )
     lsoap = calculator.compute(density)
     keys = lsoap.keys.remove(name="o3_lambda")
@@ -319,6 +322,7 @@ def test_correlate_density_norm(body_order):
         body_order=body_order,
         angular_cutoff=None,
         selected_keys=None,
+        match_keys=["center_type"],
         skip_redundant=False,
     )
     corr_calculator_skip_redundant = DensityCorrelations(
@@ -326,6 +330,7 @@ def test_correlate_density_norm(body_order):
         body_order=body_order,
         angular_cutoff=None,
         selected_keys=None,
+        match_keys=["center_type"],
         skip_redundant=True,
     )
     nux = calculator.compute(nu1)
@@ -473,11 +478,13 @@ def test_correlate_density_dense_sparse_agree():
         max_angular=SPHEX_HYPERS_SMALL["max_angular"] * (body_order - 1),
         body_order=body_order,
         cg_backend="python-sparse",
+        match_keys=["center_type"],
     )
     corr_calculator_dense = DensityCorrelations(
         max_angular=SPHEX_HYPERS_SMALL["max_angular"] * (body_order - 1),
         body_order=body_order,
         cg_backend="python-dense",
+        match_keys=["center_type"],
     )
     # NOTE: testing the private function here so we can control the use of
     # sparse v dense CG cache
@@ -510,6 +517,7 @@ def test_correlate_density_metadata_agree():
             body_order=4,
             angular_cutoff=3,
             selected_keys=None,
+            match_keys=["center_type"],
             skip_redundant=skip_redundant,
         )
         # Build higher body order tensor with CG computation
@@ -542,6 +550,7 @@ def test_correlate_density_angular_selection(
         body_order=body_order,
         angular_cutoff=None,
         selected_keys=selected_keys,
+        match_keys=["center_type"],
         skip_redundant=skip_redundant,
         arrays_backend=arrays_backend,
     )
