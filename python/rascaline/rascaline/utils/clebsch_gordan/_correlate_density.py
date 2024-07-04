@@ -6,7 +6,6 @@ equivalent.
 
 from typing import List, Optional, Union
 
-import metatensor as mts
 import numpy as np
 
 from .. import _dispatch
@@ -16,6 +15,7 @@ from .._backend import (
     TensorMap,
     TorchModule,
     TorchScriptClass,
+    operations,
     torch_jit_export,
     torch_jit_is_scripting,
 )
@@ -273,7 +273,7 @@ class DensityCorrelations(TorchModule):
         n_iterations = self._correlation_order - 1  # num iterations
 
         # Add "order_nu" to the keys metadata
-        density = mts.insert_dimension(density, "keys", 0, "order_nu", 1)
+        density = operations.insert_dimension(density, "keys", 0, "order_nu", 1)
         # density = _utils.standardize_keys(density)  # standardize metadata
 
         # Check metadata
@@ -305,7 +305,7 @@ class DensityCorrelations(TorchModule):
         # this point carry the property name suffix "_1", but the suffix of `density`
         # will be incremented in the iterative combination loop below.
         for name in density.property_names:
-            density = mts.rename_dimension(
+            density = operations.rename_dimension(
                 density,
                 "properties",
                 name,
@@ -377,7 +377,7 @@ class DensityCorrelations(TorchModule):
             # Increment the numeric suffix of the properties names of the nu=1 density
             # to "_{nu}", where nu is the current correlation order.
             for name in density.property_names:
-                density = mts.rename_dimension(
+                density = operations.rename_dimension(
                     density,
                     "properties",
                     name,

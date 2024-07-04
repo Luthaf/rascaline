@@ -4,7 +4,6 @@ Private module containing helper functions for public module
 :py:class:`TensorMap`.
 """
 
-import re
 from typing import List, Optional, Tuple, Union
 
 from .. import _dispatch
@@ -400,14 +399,15 @@ def _precompute_keys_full_product(
         other_keys_2.remove(match_key)
 
     # 4) Other keys. Check the intersection between keys_1 and keys_2 is zero
+    for other_key in other_keys_1:
+        if other_key in other_keys_2:
+            raise ValueError(
+                "The other key names must not be shared by keys_1 and keys_2."
+                f" Other keys found in ``keys_1``: {other_keys_1} and in"
+                f" ``keys_2``: {other_keys_2}. Please rename these dimensions"
+                " or pass them in ``match_keys``."
+            )
     new_other_keys: List[str] = other_keys_1 + other_keys_2
-    if len(set(new_other_keys)) != len(new_other_keys):
-        raise ValueError(
-            "The other key names must not be shared by keys_1 and keys_2."
-            f" Other keys found in ``keys_1``: {other_keys_1} and in ``keys_2``:"
-            f" {other_keys_2}. Please rename these dimensions or pass them in"
-            " ``match_keys``."
-        )
 
     # Now create the new key names (i.e. for the combined TensorMap)...
     new_names: List[str] = (
@@ -622,7 +622,7 @@ def _remove_redundant_keys(
 def _compute_labels_full_cartesian_product(
     labels_1: Labels,
     labels_2: Labels,
-) -> Tuple[Labels, List[Tuple[int, int]]]:
+) -> Labels:
     """
     Computes the full cartesian product of two arbitrary :py:class:`Labels` objects.
 
@@ -663,15 +663,39 @@ def _increment_numeric_suffix(name: str) -> str:
     and increments the integer by 1. Returns the new name.
 
     If the string is not suffixed by "_{x}", then "_1" is appended to the string.
+
+    The only special cases are names suffixed by "_type", in which case the numeric
+    index is inserted and incremented before the "_type" suffix.
+
+    Examples:
+        - "n" -> "n_1"
+        - "n_1" -> "n_2"
+        - "center_type" -> "center_1_type"
+        - "first_atom_1_type" -> "first_atom_2_type"
+        - "center_type_1_type" -> "center_type_2_type"
     """
-    pattern = r"_(\d+)$"
-    match = re.search(pattern, name)
-    if match:
-        suffix = match.group(1)
-        new_suffix = str(int(suffix) + 1)
-        new_name = re.sub(pattern, "_" + new_suffix, name)
-    else:
+    add_type_suffix = False
+    if name.endswith("type"):
+        # Special name case: remove the "_type" suffix and add it back on at the end
+        name = name[: name.rfind("_type")]
+        add_type_suffix = True
+
+    if name.rfind("_") == -1:  # no "_" thus no suffix: add "_1"
         new_name = name + "_1"
+        if add_type_suffix:
+            new_name += "_type"
+        return new_name
+
+    number = name[name.rfind("_") + 1 :]  # attempt to extract the numeric suffix
+    if number.isdigit():  # increment the number if found
+        name = name[: name.rfind("_")]
+        number = str(int(number) + 1)
+    else:  # no numeric suffix, add one
+        number = "1"
+
+    new_name = name + "_" + number
+    if add_type_suffix:
+        new_name += "_type"
     return new_name
 
 

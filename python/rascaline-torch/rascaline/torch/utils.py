@@ -4,7 +4,7 @@ import sys
 from typing import Any
 
 import torch
-from metatensor.torch import Labels, LabelsEntry, TensorBlock, TensorMap
+from metatensor.torch import Labels, LabelsEntry, TensorBlock, TensorMap, operations
 
 import rascaline.utils
 
@@ -39,6 +39,7 @@ module.__dict__["Array"] = torch.Tensor
 module.__dict__["CalculatorBase"] = CalculatorModule
 module.__dict__["IntoSystem"] = System
 module.__dict__["BACKEND_IS_METATENSOR_TORCH"] = True
+module.__dict__["operations"] = operations
 
 
 def is_labels(obj: Any):

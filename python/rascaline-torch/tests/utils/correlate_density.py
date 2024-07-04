@@ -60,6 +60,7 @@ def test_torch_script_correlate_density_angular_selection(
     ``selected_keys``.
     """
     nu_1 = spherical_expansion()
+    nu_1 = nu_1.keys_to_properties("neighbor_type")
     body_order = 3
     corr_calculator = DensityCorrelations(
         max_angular=SPHERICAL_EXPANSION_HYPERS["max_angular"] * (body_order - 1),
