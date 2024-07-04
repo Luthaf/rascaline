@@ -290,8 +290,6 @@ def test_lambda_soap_vs_powerspectrum():
         new_props = block.properties
         new_props = new_props.remove(name="l_1")
         new_props = new_props.rename(old="l_2", new="l")
-        new_props = new_props.rename(old="neighbor_type_1", new="neighbor_1_type")
-        new_props = new_props.rename(old="neighbor_type_2", new="neighbor_2_type")
         blocks.append(
             TensorBlock(
                 values=block.values.reshape((n_samples, n_props)),
