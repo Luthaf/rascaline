@@ -699,9 +699,64 @@ def _increment_numeric_suffix(name: str) -> str:
     return new_name
 
 
+def _broadcast_first_block_samples(
+    block_1: TensorBlock, block_2: TensorBlock, match_samples: List[str]
+) -> TensorBlock:
+    """
+    Broadcasts the values tensor of ``block_1`` along the samples dimension to match
+    those of ``block_2`` and returns the modified :py:class:`TensorBlock`.
+    
+    Assumes that ``block_1`` has samples that are a subset of those of ``block_2``, and
+    are matching in the dimensions named in ``match_samples``. 
+    
+    Returns ``block_1`` with the same samples metadata as ``block_2`` and broadcasted
+    values along this axis.
+    """
+    # Broadcast the values of block_1 along the samples dimensions to match those of
+    # block_2
+    dims_1 = [block_1.samples.names.index(name) for name in match_samples]
+    dims_2 = [block_2.samples.names.index(name) for name in match_samples]
+    matches = _dispatch.where(
+        _dispatch.all(
+            block_2.samples.values[:, dims_2][:, None]
+            == block_1.samples.values[:, dims_1],
+            axis=2,
+        )
+    )[1].tolist()
+
+    return TensorBlock(
+        values=block_1.values[matches],
+        samples=block_2.samples,
+        components=block_1.components,
+        properties=block_1.properties,
+    )
+
+
 # ======================================================================= #
 # ======== Functions to perform the CG tensor products of blocks ======== #
 # ======================================================================= #
+
+
+def cg_tensor_product_blocks_different_samples(
+    block_1: TensorBlock,
+    block_2: TensorBlock,
+    match_samples: List[str],
+    o3_lambdas: List[int],
+    cg_coefficients: TensorMap,
+    cg_backend: str,
+) -> List[TensorBlock]:
+    """
+    For a given pair of TensorBlocks and desired angular channels, combines the values
+    arrays and returns a new TensorBlock.
+
+    Assumes that the samples of the two blocks are different
+    """
+    # Broadcast the samples of block_1 to match those of block_2
+    block_1 = _broadcast_first_block_samples(block_1, block_2, match_samples)
+
+    return cg_tensor_product_blocks_same_samples(
+        block_1, block_2, o3_lambdas, cg_coefficients, cg_backend
+    )
 
 
 def cg_tensor_product_blocks_same_samples(

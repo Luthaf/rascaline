@@ -1,7 +1,7 @@
 """
-Module for computing Clebsch-gordan tensor product iterations on density (i.e.
-correlation order 1) tensors in TensorMap form, where the samples are
-equivalent.
+Module for computing a Clebsch-Gordan tensor product between a tensor of arbitrary body
+order and a density (i.e. correlation order 1) in TensorMap form, where the samples are
+different.
 """
 
 from typing import List, Optional, Union
@@ -34,11 +34,13 @@ except ImportError:
 # ======================================================================
 
 
-class DensityCorrelations(TorchModule):
+class CorrelateTensorWithDensity(TorchModule):
     """
-    Takes iterative Clebsch-Gordan (CG) tensor products of a density descriptor with
-    itself up to the desired body order. Returns :py:class:`TensorMap`
-    corresponding to the density correlations output from the specified iteration(s).
+    Takes a single Clebsch-Gordan (CG) tensor products of a tensor descriptor with a
+    density descriptor. Returns :py:class:`TensorMap` corresponding to the correlated
+    output.
+
+    TODO: edit docstring
 
     The input density descriptor necessarily is body order 2 (i.e. correlation order 1),
     but can be single- or multi-center. The output is a :py:class:`list` of density
@@ -49,20 +51,14 @@ class DensityCorrelations(TorchModule):
     Key dimensions can be matched with the ``match_keys`` argument. Products are only
     taken between pairs of keys with equal values in the specified dimensions.
 
-    As a density is being correlated with itself, some redundant CG tensor products can
-    be skipped with the ``skip_redundant`` keyword.
-
-    Global selections on the maximum angular channel computed at each iteration can be
-    set with the ``angular_cutoff`` argument, while ``selected_keys`` allows control
-    over computation of specific combinations of angular and parity channels.
+    Global selections on the maximum angular channel computed can be set with the
+    ``angular_cutoff`` argument, while ``selected_keys`` allows control over computation
+    of specific combinations of angular and parity channels.
 
     :param max_angular: The maximum angular order for which CG coefficients should be
         computed and stored. This must be large enough to cover the maximum angular
         order reached in the CG iterations on a density input to the :py:meth:`compute`
         method.
-    :param body_order: The desired correlation order of the output descriptor. Must be
-        >= 2. The resulting final :py:class:`TensorMap` will be of body-order
-        ``body_order``, or correlation order ``body_order - 1``.
     :param angular_cutoff: The maximum angular channel to compute at any given CG
         iteration, applied globally to all iterations until the target body order is
         reached.
@@ -77,19 +73,6 @@ class DensityCorrelations(TorchModule):
     :param match_keys: A :py:class:`list` of :py:class:`str` specifying the names of key
         dimensions to match when performing CG tensor products. At each iteration, only
         products of keys with equal values in these specified dimensions are computed.
-    :param skip_redundant: Whether to skip redundant CG combinations. Defaults to
-        ``True``, which means all combinations are performed. If a :py:class:`list` of
-        :py:class:`bool` is passed, this is applied to each iteration. If a single
-        :py:class:`bool` is passed, this is applied to all iterations. Note that when
-        redundant combinations are skipped in a CG tensor product step, the norm of the
-        output tensor is not preserved. To preserve the norm, set this flag to
-        ``False``.
-    :param output_selection: A :py:class:`list` of :py:class:`bool` specifying whether
-        to output a :py:class:`TensorMap` for each iteration. If a single
-        :py:class:`bool` is passed as ``True``, outputs from all iterations will be
-        returned. If a :py:class:`list` of :py:class:`bool` is passed, this controls the
-        output at each corresponding iteration. If None is passed, only the final
-        iteration is output.
     :param keep_l_in_keys: should the metadata that tracks values of angular momenta
         that were combined together be kept in the keys or moved to the properties?
 
@@ -121,18 +104,16 @@ class DensityCorrelations(TorchModule):
         iteration is requested, a :py:class:`TensorMap` is returned instead.
     """
 
-    _selected_keys: List[Union[Labels, None]]
+    _selected_keys: Union[Labels, None]
 
     def __init__(
         self,
         max_angular: int,
-        body_order: int,
         angular_cutoff: Optional[int] = None,
-        selected_keys: Optional[Union[Labels, List[Labels]]] = None,
+        selected_keys: Optional[Labels] = None,
         match_keys: Optional[List[str]] = None,
-        skip_redundant: Optional[Union[bool, List[bool]]] = True,
-        output_selection: Optional[Union[bool, List[bool]]] = None,
-        keep_l_in_keys: Optional[Union[bool, List[bool]]] = False,
+        match_samples: Optional[List[str]] = None,
+        keep_l_in_keys: Optional[bool] = False,
         arrays_backend: Optional[str] = None,
         cg_backend: Optional[str] = None,
         cg_coefficients: Optional[TensorMap] = None,
@@ -175,7 +156,7 @@ class DensityCorrelations(TorchModule):
                 "Must be greater equal 0."
             )
         self._max_angular = max_angular
-        if cg_coefficients is None:
+        if cg_coefficients is None:  # compute CG coefficients
             self._cg_coefficients = _coefficients.calculate_cg_coefficients(
                 lambda_max=self._max_angular,
                 cg_backend=self._cg_backend,
@@ -184,14 +165,6 @@ class DensityCorrelations(TorchModule):
         else:  # using a pre-computed set of CG coefficients
             self._cg_coefficients = cg_coefficients
 
-        # Check inputs
-        if body_order <= 2:
-            raise ValueError("`body_order` must be > 2")
-        correlation_order = body_order - 1  # use correlation order internally
-        self._correlation_order = correlation_order
-
-        n_iterations = correlation_order - 1  # num iterations
-
         # Parse the selected keys
         self._angular_cutoff = angular_cutoff
         if arrays_backend == "torch":
@@ -199,38 +172,37 @@ class DensityCorrelations(TorchModule):
         elif arrays_backend == "numpy":
             array_like = np.empty(0)
         self._selected_keys: List[Union[Labels, None]] = _utils.parse_selected_keys(
-            n_iterations=n_iterations,
+            n_iterations=1,
             array_like=array_like,
             angular_cutoff=self._angular_cutoff,
             selected_keys=selected_keys,
-        )
+        )[
+            0
+        ]  # only 1 iteration
         if match_keys is None:
             match_keys = []
         self._match_keys = match_keys
+        if match_samples is None:
+            match_samples = []
+        self._match_samples = match_samples
 
         # Parse the bool flags that are applied at each iteration
-        self._skip_redundant = _utils.parse_bool_iteration_filter(
-            n_iterations, skip_redundant, "skip_redundant"
-        )
-        if output_selection is None:
-            output_selection = [False] * (n_iterations - 1) + [True]
-        self._output_selection = _utils.parse_bool_iteration_filter(
-            n_iterations, output_selection, "output_selection"
-        )
         self._keep_l_in_keys = _utils.parse_bool_iteration_filter(
-            n_iterations, keep_l_in_keys, "keep_l_in_keys"
-        )
+            n_iterations=1, bool_filter=keep_l_in_keys, filter_name="keep_l_in_keys"
+        )[
+            0
+        ]  # only 1 iteration
 
-    def forward(self, density: TensorMap) -> Union[TensorMap, List[TensorMap]]:
+    def forward(self, tensor: TensorMap, density: TensorMap) -> TensorMap:
         """
-        Calls the :py:meth:`DensityCorrelations.compute` function.
+        Calls the :py:meth:`CorrelateTensorWithDensity.compute` function.
 
         This is intended for :py:class:`torch.nn.Module` compatibility, and should be
         ignored in pure Python mode.
         """
         return self.compute(density)
 
-    def compute(self, density: TensorMap) -> Union[TensorMap, List[TensorMap]]:
+    def compute(self, tensor: TensorMap, density: TensorMap) -> TensorMap:
         """
         Computes the density correlations by taking iterative Clebsch-Gordan (CG) tensor
         products of the input `density` descriptor with itself.
@@ -241,16 +213,14 @@ class DensityCorrelations(TorchModule):
             Alternatively, this could be multi-center descriptor, such as a pair
             density.
         """
-        return self._correlate_density(
+        return self._correlate_tensor_with_density(
+            tensor,
             density,
             compute_metadata=False,
         )
 
     @torch_jit_export
-    def compute_metadata(
-        self,
-        density: TensorMap,
-    ) -> Union[TensorMap, List[TensorMap]]:
+    def compute_metadata(self, tensor: TensorMap, density: TensorMap) -> TensorMap:
         """
         Returns the metadata-only :py:class:`TensorMap` that would be output by the
         function :py:meth:`compute` for the same calculator under the same settings,
@@ -262,7 +232,8 @@ class DensityCorrelations(TorchModule):
             Alternatively, this could be multi-center descriptor, such as a pair
             density.
         """
-        return self._correlate_density(
+        return self._correlate_tensor_with_density(
+            tensor,
             density,
             compute_metadata=True,
         )
@@ -270,66 +241,50 @@ class DensityCorrelations(TorchModule):
     # ====================================================================
     # ===== Private functions that do the work on the TensorMap level
     # ====================================================================
-    def _correlate_density(
-        self, density: TensorMap, compute_metadata: bool
-    ) -> Union[TensorMap, List[TensorMap]]:
+    def _correlate_tensor_with_density(
+        self, tensor: TensorMap, density: TensorMap, compute_metadata: bool
+    ) -> TensorMap:
 
-        n_iterations = self._correlation_order - 1  # num iterations
+        # Check metadata - the 'standard' keys
+        if tensor.keys.names[:3] != ["order_nu", "o3_lambda", "o3_sigma"]:
+            raise ValueError(
+                "the first three key dimensions of `tensor` must 'order_nu',"
+                " 'o3_lambda', and 'o3_sigma'"
+            )
+        if density.keys.names[:3] != ["order_nu", "o3_lambda", "o3_sigma"]:
+            raise ValueError(
+                "the first three key dimensions of `tensor` must 'order_nu',"
+                " 'o3_lambda', and 'o3_sigma'"
+            )
 
-        # Add "order_nu" to the keys metadata
-        density = operations.insert_dimension(density, "keys", 0, "order_nu", 1)
-
-        # Check metadata
-        assert density.keys.names[:3] == [
-            "order_nu",
-            "o3_lambda",
-            "o3_sigma",
-        ]  # the 'standard' keys
-
-        # As we are combining a density with itself, all other
-        # dimensions must be 'matched' dimensions. If they are not, raise an error.
-        for name in density.keys.names[3:]:
-            if name not in self._match_keys:
-                raise ValueError(
-                    f"dimension '{name}' in `density` is not a 'match_key' dimension."
-                    " As this function performs self-correlations, any key dimensions"
-                    " that are not 'o3_lambda' or 'o3_sigma' must be matched. To"
-                    " correlate dimensions not matched, move them to properties."
-                )
         # Check components
+        if not tensor.component_names == ["o3_mu"]:
+            raise ValueError(
+                "input `tensor` must have a single component" " axis with name `o3_mu`"
+            )
         if not density.component_names == ["o3_mu"]:
             raise ValueError(
                 "input `density` must have a single component" " axis with name `o3_mu`"
             )
 
-        # As the density will be correlated with itself, the properties dimensions need
-        # distinct names. This will be achieved through use of a numeric suffix,
-        # starting at "_1". As `density_correlation` is copied from `density`, both at
-        # this point carry the property name suffix "_1", but the suffix of `density`
-        # will be incremented in the iterative combination loop below.
-        for name in density.property_names:
-            density = operations.rename_dimension(
-                density,
-                "properties",
-                name,
-                _utils._increment_numeric_suffix(
-                    name
-                ),  # adds a "_1" suffix as not present
-            )
-        density_correlation = density
-
         # TODO: implement combinations of gradients too.
         # We have to create a bool array with dispatch to be TorchScript compatible
-        contains_gradients = all(
+        contains_gradients_tensor = all(
+            [len(list(block.gradients())) > 0 for _, block in tensor.items()]
+        )
+        contains_gradients_density = all(
             [len(list(block.gradients())) > 0 for _, block in density.items()]
         )
-        if contains_gradients:
+        if contains_gradients_tensor or contains_gradients_density:
             raise NotImplementedError(
                 "Clebsch Gordan combinations with gradients not yet implemented. "
                 "Use `metatensor.remove_gradients` to remove gradients from the input."
             )
 
-        max_angular = _dispatch.max(density.keys.column("o3_lambda"))
+        max_angular = max(
+            _dispatch.max(density.keys.column("o3_lambda")),
+            _dispatch.max(density.keys.column("o3_lambda")),
+        )
         if max_angular > self._max_angular:
             raise ValueError(
                 "the largest `o3_lambda` in the density to correlate is "
@@ -338,96 +293,61 @@ class DensityCorrelations(TorchModule):
             )
 
         # Perform iterative CG tensor products
-        density_correlations: List[TensorMap] = []
+        # density_correlations: List[TensorMap] = []
         if compute_metadata:
             cg_backend = "metadata"
         else:
             cg_backend = self._cg_backend
 
-        cg_coefficients = self._cg_coefficients.to(dtype=density.dtype)
+        cg_coefficients = self._cg_coefficients.to(dtype=tensor.dtype)
 
-        keys_iter = density.keys
-        for iteration in range(n_iterations):
-            # Define the correlation order of the current iteration
-            correlation_order_it = iteration + 2
+        # Compute the keys from all combinations
+        new_keys, combinations = _utils.precompute_keys(
+            tensor.keys,
+            density.keys,
+            selected_keys=self._selected_keys,
+            match_keys=self._match_keys,
+            skip_redundant=False,
+        )
 
-            # check which keys will need to be combined
-            keys_iter, combinations = _utils.precompute_keys(
-                keys_iter,
-                density.keys,
-                selected_keys=self._selected_keys[iteration],
-                match_keys=self._match_keys,
-                skip_redundant=self._skip_redundant[iteration],
+        # Check that some keys are produced as a result of the combination
+        if len(new_keys) == 0:
+            raise ValueError(
+                f"invalid selections: combination produces no"
+                " valid combinations. Check the `angular_cutoff` and"
+                " `selected_keys` args and try again."
             )
 
-            # Check that some keys are produced as a result of the combination
-            if len(keys_iter) == 0:
-                raise ValueError(
-                    f"invalid selections: iteration {iteration + 1} produces no"
-                    " valid combinations. Check the `angular_cutoff` and"
-                    " `selected_keys` args and try again."
-                )
-
-            # Check that the maximum angular order is not exceeded
-            max_angular = _dispatch.max(keys_iter.column("o3_lambda"))
-            if max_angular > self._max_angular:
-                raise ValueError(
-                    "correlations of this density would require a `max_angular` of "
-                    f"{max_angular}, but this class was initialized with "
-                    f"`max_angular={self._max_angular}`"
-                )
-
-            # Increment the numeric suffix of the properties names of the nu=1 density
-            # to "_{nu}", where nu is the current correlation order.
-            for name in density.property_names:
-                density = operations.rename_dimension(
-                    density,
-                    "properties",
-                    name,
-                    _utils._increment_numeric_suffix(name),  # increments suffix
-                )
-
-            # Do the CG combinations and build the new TensorMap
-            blocks_iter: List[TensorBlock] = []
-            for combination in combinations:
-                blocks_iter.extend(
-                    _utils.cg_tensor_product_blocks_same_samples(
-                        density_correlation.block(combination.first),
-                        density.block(combination.second),
-                        combination.o3_lambdas,
-                        cg_coefficients,
-                        cg_backend,
-                    )
-                )
-            density_correlation = TensorMap(keys=keys_iter, blocks=blocks_iter)
-
-            # If this tensor is to be included in the output, and if requested, move the
-            # [l1, l2, ...] keys to properties and store
-            if self._output_selection[iteration]:
-                if self._keep_l_in_keys[iteration]:
-                    density_correlations.append(density_correlation)
-                else:  # move 'l' and 'k' keys to properties
-                    density_correlations.append(
-                        density_correlation.keys_to_properties(
-                            [f"l_{i}" for i in range(1, correlation_order_it + 1)]
-                            + [f"k_{i}" for i in range(2, correlation_order_it)]
-                        )
-                    )
-
-        # Replace "order_nu" key dimension used internally with "body_order"
-        for i, tensor in enumerate(density_correlations):
-            keys = tensor.keys
-            tmp_body_order = tensor.keys.column("order_nu") + 1
-            assert len(_dispatch.unique(tmp_body_order)) == 1
-            keys = keys.insert(name="body_order", values=tmp_body_order, index=0)
-            keys = keys.remove(name="order_nu")
-            density_correlations[i] = TensorMap(
-                keys=keys, blocks=[b.copy() for b in tensor.blocks()]
+        # Check that the maximum angular order is not exceeded
+        max_angular = _dispatch.max(new_keys.column("o3_lambda"))
+        if max_angular > self._max_angular:
+            raise ValueError(
+                "correlations of this density would require a `max_angular` of "
+                f"{max_angular}, but this class was initialized with "
+                f"`max_angular={self._max_angular}`"
             )
 
-        # Return a single TensorMap in the simple case
-        if len(density_correlations) == 1:
-            return density_correlations[0]
+        # Do the CG combinations and build the new TensorMap
+        new_blocks: List[TensorBlock] = []
+        for combination in combinations:
+            new_blocks.extend(
+                _utils.cg_tensor_product_blocks_different_samples(
+                    tensor.block(combination.first),
+                    density.block(combination.second),
+                    self._match_samples,
+                    combination.o3_lambdas,
+                    cg_coefficients,
+                    cg_backend,
+                )
+            )
+        tensor_correlation = TensorMap(keys=new_keys, blocks=new_blocks)
 
-        # Otherwise return a list of TensorMaps
-        return density_correlations
+        # Move the "l" and "k" keys to properties if requested
+        new_correlation_order = tensor_correlation.keys.column("order_nu")[0]
+        if not self._keep_l_in_keys:
+            tensor_correlation = tensor_correlation.keys_to_properties(
+                [f"l_{i}" for i in range(1, new_correlation_order + 1)]
+                + [f"k_{i}" for i in range(2, new_correlation_order)]
+            )
+
+        return tensor_correlation
