@@ -283,7 +283,6 @@ def test_lambda_soap_vs_powerspectrum():
     # Manipulate metadata to match that of PowerSpectrum:
     # 1) remove components axis
     # 2) change "l1" and "l2" properties dimensions to just "l" (as l1 == l2)
-    # 3) rename properties dimensions "neighbor_type_{x}" -> "neighbor_{x}_type"
     blocks = []
     for block in lsoap.blocks():
         n_samples, n_props = block.values.shape[0], block.values.shape[2]
@@ -623,21 +622,21 @@ def test_correlate_density_match_keys():
     lsoap_2 = calculator_2.compute(density_2)
 
     # Now do manual matching by slicing the properties dimension of lsoap_2,
-    # i.e. identifying where "neighbor_type_1" == "neighbor_type_2"
+    # i.e. identifying where "neighbor_1_type_1" == "neighbor_2_type"
     lsoap_2 = metatensor.rename_dimension(
-        lsoap_2, "properties", "neighbor_type_1", "neighbor_type"
+        lsoap_2, "properties", "neighbor_1_type", "neighbor_type"
     )
     lsoap_2 = metatensor.permute_dimensions(lsoap_2, "properties", [2, 4, 0, 1, 3, 5])
     new_blocks = []
     for block in lsoap_2:
         properties_filter = block.properties.column(
             "neighbor_type"
-        ) == block.properties.column("neighbor_type_2")
+        ) == block.properties.column("neighbor_2_type")
         new_properties = Labels(
             names=block.properties.names,
             values=block.properties.values[properties_filter],
         )
-        new_properties = new_properties.remove("neighbor_type_2")
+        new_properties = new_properties.remove("neighbor_2_type")
         new_blocks.append(
             TensorBlock(
                 values=block.values[:, :, properties_filter],
