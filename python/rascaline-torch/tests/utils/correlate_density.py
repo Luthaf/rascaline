@@ -66,6 +66,7 @@ def test_torch_script_correlate_density_angular_selection(
         body_order=body_order,
         angular_cutoff=None,
         selected_keys=selected_keys,
+        match_keys=["center_type"],
         skip_redundant=skip_redundant,
     )
 
@@ -87,6 +88,7 @@ def test_jit_save_load():
         max_angular=2,
         body_order=3,
         angular_cutoff=1,
+        match_keys=["center_type"],
     )
     scripted_correlate_density = torch.jit.script(corr_calculator)
     with io.BytesIO() as buffer:
@@ -104,6 +106,7 @@ def test_save_load():
         body_order=3,
         angular_cutoff=1,
         cg_backend="python-dense",
+        match_keys=["center_type"],
     )
     with io.BytesIO() as buffer:
         torch.save(corr_calculator, buffer)

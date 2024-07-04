@@ -673,7 +673,7 @@ def cg_tensor_product_blocks_same_samples(
     combined_nu = int((len(block_1.properties.names) / 2) + 1)
 
     # TODO: this should be generalized not to hard-code the property dimension names
-    # here. 
+    # here.
     # Define the new property names for "n_<i>" and "neighbor_<i>_type"
     n_names = [f"n_{i}" for i in range(1, combined_nu + 1)]
     neighbor_names = [f"neighbor_{i}_type" for i in range(1, combined_nu + 1)]
