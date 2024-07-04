@@ -6,6 +6,7 @@ equivalent.
 
 from typing import List, Optional, Union
 
+import metatensor as mts
 import numpy as np
 
 from .. import _dispatch
@@ -207,6 +208,8 @@ class DensityCorrelations(TorchModule):
         self._skip_redundant = _utils.parse_bool_iteration_filter(
             n_iterations, skip_redundant, "skip_redundant"
         )
+        if output_selection is None:
+            output_selection = [False] * (n_iterations - 1) + [True]
         self._output_selection = _utils.parse_bool_iteration_filter(
             n_iterations, output_selection, "output_selection"
         )
@@ -268,7 +271,10 @@ class DensityCorrelations(TorchModule):
     ) -> Union[TensorMap, List[TensorMap]]:
 
         n_iterations = self._correlation_order - 1  # num iterations
-        density = _utils.standardize_keys(density)  # standardize metadata
+
+        # Add "order_nu" to the keys metadata
+        density = mts.insert_dimension(density, "keys", 0, "order_nu", 1)
+        # density = _utils.standardize_keys(density)  # standardize metadata
 
         # Check metadata
         assert density.keys.names[:3] == [
@@ -284,7 +290,8 @@ class DensityCorrelations(TorchModule):
                 raise ValueError(
                     f"dimension '{name}' in `density` is not a 'match_key' dimension."
                     " As this function performs self-correlations, any key dimensions"
-                    " that are not 'o3_lambda' or 'o3_sigma' must be matched."
+                    " that are not 'o3_lambda' or 'o3_sigma' must be matched. To"
+                    " correlate dimensions not matched, move them to properties."
                 )
         # Check components
         if not density.component_names == ["o3_mu"]:
@@ -292,10 +299,24 @@ class DensityCorrelations(TorchModule):
                 "input `density` must have a single component" " axis with name `o3_mu`"
             )
 
-        density_correlation = density  # create a copy to combine with itself
+        # As the density will be correlated with itself, the properties dimensions need
+        # distinct names. This will be achieved through use of a numeric suffix,
+        # starting at "_1". As `density_correlation` is copied from `density`, both at
+        # this point carry the property name suffix "_1", but the suffix of `density`
+        # will be incremented in the iterative combination loop below.
+        for name in density.property_names:
+            density = mts.rename_dimension(
+                density,
+                "properties",
+                name,
+                _utils._increment_numeric_suffix(
+                    name
+                ),  # adds a "_1" suffix as not present
+            )
+        density_correlation = density
 
-        # TODO: implement combinations of gradients too
-        # we have to create a bool array with dispatch to be TorchScript compatible
+        # TODO: implement combinations of gradients too.
+        # We have to create a bool array with dispatch to be TorchScript compatible
         contains_gradients = all(
             [len(list(block.gradients())) > 0 for _, block in density.items()]
         )
@@ -344,6 +365,7 @@ class DensityCorrelations(TorchModule):
                     " `selected_keys` args and try again."
                 )
 
+            # Check that the maximum angular order is not exceeded
             max_angular = _dispatch.max(keys_iter.column("o3_lambda"))
             if max_angular > self._max_angular:
                 raise ValueError(
@@ -352,6 +374,17 @@ class DensityCorrelations(TorchModule):
                     f"`max_angular={self._max_angular}`"
                 )
 
+            # Increment the numeric suffix of the properties names of the nu=1 density
+            # to "_{nu}", where nu is the current correlation order.
+            for name in density.property_names:
+                density = mts.rename_dimension(
+                    density,
+                    "properties",
+                    name,
+                    _utils._increment_numeric_suffix(name),  # increments suffix
+                )
+
+            # Do the CG combinations and build the new TensorMap
             blocks_iter: List[TensorBlock] = []
             for combination in combinations:
                 blocks_iter.extend(
@@ -363,7 +396,6 @@ class DensityCorrelations(TorchModule):
                         cg_backend,
                     )
                 )
-
             density_correlation = TensorMap(keys=keys_iter, blocks=blocks_iter)
 
             # If this tensor is to be included in the output, and if requested, move the

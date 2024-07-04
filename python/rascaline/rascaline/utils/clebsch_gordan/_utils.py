@@ -4,6 +4,7 @@ Private module containing helper functions for public module
 :py:class:`TensorMap`.
 """
 
+import re
 from typing import List, Optional, Tuple, Union
 
 from .. import _dispatch
@@ -14,32 +15,6 @@ from . import _coefficients
 # ==================================================================
 # ===== Functions to handle metadata
 # ==================================================================
-
-
-def standardize_keys(tensor: TensorMap) -> TensorMap:
-    """
-    Takes a ``nu=1`` tensor and standardizes its metadata. This involves: (1) moving the
-    ``"neighbor_type"`` key to properties, if present as a dimension in the keys, and
-    (2) adding dimensions in the keys for tracking the body order (``"order_nu"``).
-
-    Checking for the presence of the ``"neighbor_type"`` key in the keys allows the
-    option of the user pre-moving this key to the properties before calling us, allowing
-    sparsity in a set of global neighbors to be created if desired.
-
-    Assumes that the input ``tensor`` is nu=1.
-    """
-
-    if "neighbor_type" in tensor.keys.names:
-        tensor = tensor.keys_to_properties(keys_to_move="neighbor_type")
-
-    keys = tensor.keys.insert(
-        index=0,
-        name="order_nu",
-        values=_dispatch.int_array_like(
-            len(tensor.keys.values) * [1], like=tensor.keys.values
-        ),
-    )
-    return TensorMap(keys=keys, blocks=[b.copy() for b in tensor.blocks()])
 
 
 def parse_selected_keys(
@@ -149,8 +124,6 @@ def parse_bool_iteration_filter(
     """
     Parses the ``bool_filter`` argument passed to public functions.
     """
-    if bool_filter is None:
-        bool_filter = [False] * (n_iterations - 1) + [True]
     if isinstance(bool_filter, bool):
         bool_filter_ = [bool_filter] * n_iterations
     else:
@@ -646,6 +619,62 @@ def _remove_redundant_keys(
     return output_keys, combinations
 
 
+def _compute_labels_full_cartesian_product(
+    labels_1: Labels,
+    labels_2: Labels,
+) -> Tuple[Labels, List[Tuple[int, int]]]:
+    """
+    Computes the full cartesian product of two arbitrary :py:class:`Labels` objects.
+
+    In contrast to the :py:func:`_precompute_keys_full_product` function, this function
+    has no awareness of angular channel combination rules or value matching. It simply
+    takes all combinations of the labels entries in ``labels_1`` and ``labels_2``.
+
+    This function assumes that there are no shared labels dimension names between
+    ``labels_1`` and ``labels_2``.
+    """
+    # Create the new labels names by concatenating the names of the two input labels
+    labels_names: List[str] = labels_1.names + labels_2.names
+
+    # create cross product list of indices in a torch-scriptable way of
+    # [[i, j] for i in range(len(labels_1.values)) for j in
+    #             range(len(labels_2.values))]
+    # [0, 1, 2], [0, 1] -> [[0, 1], [0, 2], [1, 0], [1, 1], [2, 0], [2, 1]]
+    labels_1_labels_2_product_idx = _dispatch.cartesian_prod(
+        _dispatch.int_range_like(0, len(labels_2.values), like=labels_2.values),
+        _dispatch.int_range_like(0, len(labels_1.values), like=labels_1.values),
+    )
+    return Labels(
+        names=labels_names,
+        values=_dispatch.int_array_like(
+            [
+                _dispatch.to_int_list(labels_2.values[indices[0]])
+                + _dispatch.to_int_list(labels_1.values[indices[1]])
+                for indices in labels_1_labels_2_product_idx
+            ],
+            like=labels_1.values,
+        ),
+    )
+
+
+def _increment_numeric_suffix(name: str) -> str:
+    """
+    Takes a string name that is suffix by "_{x}", where "x" is a non-negative integer,
+    and increments the integer by 1. Returns the new name.
+
+    If the string is not suffixed by "_{x}", then "_1" is appended to the string.
+    """
+    pattern = r"_(\d+)$"
+    match = re.search(pattern, name)
+    if match:
+        suffix = match.group(1)
+        new_suffix = str(int(suffix) + 1)
+        new_name = re.sub(pattern, "_" + new_suffix, name)
+    else:
+        new_name = name + "_1"
+    return new_name
+
+
 # ======================================================================= #
 # ======== Functions to perform the CG tensor products of blocks ======== #
 # ======================================================================= #
@@ -662,50 +691,14 @@ def cg_tensor_product_blocks_same_samples(
     For a given pair of TensorBlocks and desired angular channels, combines the values
     arrays and returns a new TensorBlock.
     """
+    # Compute the new properties dimensions for the output TensorBlocks
+    properties = _compute_labels_full_cartesian_product(
+        block_1.properties, block_2.properties
+    )
 
     # Do the CG combination - single center so no shape pre-processing required
     combined_values = _coefficients.cg_tensor_product(
         block_1.values, block_2.values, o3_lambdas, cg_coefficients, cg_backend
-    )
-
-    # Infer the new nu value: block 1's properties are nu pairs of
-    # "neighbor_type_x" and "nx".
-    combined_nu = int((len(block_1.properties.names) / 2) + 1)
-
-    # TODO: this should be generalized not to hard-code the property dimension names
-    # here.
-    # Define the new property names for "n_<i>" and "neighbor_<i>_type"
-    n_names = [f"n_{i}" for i in range(1, combined_nu + 1)]
-    neighbor_names = [f"neighbor_{i}_type" for i in range(1, combined_nu + 1)]
-    property_names_zip = [
-        [neighbor_names[i], n_names[i]] for i in range(len(neighbor_names))
-    ]
-    property_names: List[str] = []
-    for i in range(len(property_names_zip)):
-        property_names.extend(property_names_zip[i])
-
-    # create cross product list of indices in a torch-scriptable way of
-    # [[i, j] for i in range(len(block_1.properties.values)) for j in
-    #             range(len(block_2.properties.values))]
-    # [0, 1, 2], [0, 1] -> [[0, 1], [0, 2], [1, 0], [1, 1], [2, 0], [2, 1]]
-    block_1_block_2_product_idx = _dispatch.cartesian_prod(
-        _dispatch.int_range_like(
-            0, len(block_2.properties.values), like=block_2.values
-        ),
-        _dispatch.int_range_like(
-            0, len(block_1.properties.values), like=block_1.values
-        ),
-    )
-    properties = Labels(
-        names=property_names,
-        values=_dispatch.int_array_like(
-            [
-                _dispatch.to_int_list(block_2.properties.values[indices[0]])
-                + _dispatch.to_int_list(block_1.properties.values[indices[1]])
-                for indices in block_1_block_2_product_idx
-            ],
-            block_1.samples.values,
-        ),
     )
 
     # Create the TensorBlocks
