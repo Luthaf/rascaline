@@ -183,10 +183,8 @@ class DensityCorrelations(TorchModule):
         # Check inputs
         if body_order <= 2:
             raise ValueError("`body_order` must be > 2")
-        correlation_order = body_order - 1  # use correlation order internally
-        self._correlation_order = correlation_order
-
-        n_iterations = correlation_order - 1  # num iterations
+        self._body_order = body_order
+        n_iterations = body_order - 2  # num iterations
 
         # Parse the selected keys
         self._angular_cutoff = angular_cutoff
@@ -270,22 +268,17 @@ class DensityCorrelations(TorchModule):
         self, density: TensorMap, compute_metadata: bool
     ) -> Union[TensorMap, List[TensorMap]]:
 
-        n_iterations = self._correlation_order - 1  # num iterations
-
-        # Add "order_nu" to the keys metadata
-        density = operations.insert_dimension(density, "keys", 0, "order_nu", 1)
-        # density = _utils.standardize_keys(density)  # standardize metadata
+        n_iterations = self._body_order - 2  # num iterations
 
         # Check metadata
-        assert density.keys.names[:3] == [
-            "order_nu",
+        assert density.keys.names[:2] == [
             "o3_lambda",
             "o3_sigma",
         ]  # the 'standard' keys
 
         # As we are combining a density with itself, all other
         # dimensions must be 'matched' dimensions. If they are not, raise an error.
-        for name in density.keys.names[3:]:
+        for name in density.keys.names[2:]:
             if name not in self._match_keys:
                 raise ValueError(
                     f"dimension '{name}' in `density` is not a 'match_key' dimension."
@@ -345,6 +338,7 @@ class DensityCorrelations(TorchModule):
 
         keys_iter = density.keys
         for iteration in range(n_iterations):
+
             # Define the correlation order of the current iteration
             correlation_order_it = iteration + 2
 
@@ -410,17 +404,6 @@ class DensityCorrelations(TorchModule):
                             + [f"k_{i}" for i in range(2, correlation_order_it)]
                         )
                     )
-
-        # Replace "order_nu" key dimension used internally with "body_order"
-        for i, tensor in enumerate(density_correlations):
-            keys = tensor.keys
-            tmp_body_order = tensor.keys.column("order_nu") + 1
-            assert len(_dispatch.unique(tmp_body_order)) == 1
-            keys = keys.insert(name="body_order", values=tmp_body_order, index=0)
-            keys = keys.remove(name="order_nu")
-            density_correlations[i] = TensorMap(
-                keys=keys, blocks=[b.copy() for b in tensor.blocks()]
-            )
 
         # Return a single TensorMap in the simple case
         if len(density_correlations) == 1:

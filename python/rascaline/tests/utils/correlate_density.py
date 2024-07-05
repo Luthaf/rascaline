@@ -278,7 +278,6 @@ def test_lambda_soap_vs_powerspectrum():
     lsoap = calculator.compute(density)
     keys = lsoap.keys.remove(name="o3_lambda")
     keys = keys.remove("o3_sigma")
-    keys = keys.remove("body_order")
 
     # Manipulate metadata to match that of PowerSpectrum:
     # 1) remove components axis
@@ -339,12 +338,9 @@ def test_correlate_density_norm(body_order):
         skip_redundant=True,
     )
     nux = calculator.compute(nu1)
+
     # Build higher body order tensor *with* sorting the l lists
     nux_sorted_l = corr_calculator_skip_redundant.compute(nu1)
-
-    # Standardize the features by passing through the CG combination code but with
-    # no iterations (i.e. body order 1 -> 1)
-    nu1 = metatensor.insert_dimension(nu1, "keys", 0, "order_nu", 1)
 
     # Make only lambda and sigma part of keys
     nu1 = nu1.keys_to_samples(["center_type"])

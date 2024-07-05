@@ -176,10 +176,10 @@ def precompute_keys(
     ``keys_2``.
 
     For any key dimensions present in ``keys_1`` or ``keys_2`` that are not either a)
-    the special CG keys: "order_nu", "o3_lambda", "o3_sigma", nor b) named in
-    ``match_keys``, the full tensor product of these dimensions are computed. These
-    'other' dimensions must therefore not have the same names in ``keys_1`` and
-    ``keys_2``.
+    the standard CG keys: "o3_lambda" and "o3_sigma", nor b) the CG combination keys,
+    i.e. "l" and "k" lists, nor c) named in ``match_keys``, the full tensor product of
+    these dimensions are computed. These 'other' dimensions must therefore not have the
+    same names in ``keys_1`` and ``keys_2``.
 
     If ``skip_redundant`` is True, then keys that represent redundant CG operations are
     not included in the output keys at each step. This is only applicable for use in the
@@ -199,12 +199,7 @@ def precompute_keys(
         )
 
     if skip_redundant:
-        output_keys, combinations = _remove_redundant_keys(
-            output_keys,
-            combinations,
-            nu_1=keys_1.column("order_nu")[0],
-            nu_2=keys_2.column("order_nu")[0],
-        )
+        output_keys, combinations = _remove_redundant_keys(output_keys, combinations)
 
     output_keys, combinations = _group_combinations_of_same_blocks(
         output_keys, combinations
@@ -279,14 +274,14 @@ def _precompute_keys_full_product(
     This function assumes that ``keys_1`` corresponds to a TensorMap with arbitrary body
     order, while `keys_2` corresponds to a TensorMap with body order 1.
 
-    ``keys_1``  must follow the key name convention: ["order_nu", "o3_lambda",
-    "o3_sigma", "l1", "l2", ..., "l<nu>", "k2", ..., "k<nu-1>", *other_keys].
+    ``keys_1``  must follow the key name convention: ["o3_lambda", "o3_sigma", "l1",
+    "l2", ..., "l<nu>", "k2", ..., "k<nu-1>", *other_keys].
 
-    ``keys_2`` must follow the key name convention: ``["order_nu", "o3_sigma",
-    "o3_lambda", *other_keys]``.
+    ``keys_2`` must follow the key name convention: ``["o3_lambda", "o3_sigma",
+    *other_keys]``.
 
-    In both ``keys_1`` and ``keys_2``, the first 3 dimensions of the keys correspond to
-    the standard keys, i.e. "order_nu", "o3_lambda" and "o3_sigma".
+    In both ``keys_1`` and ``keys_2``, the first 2 dimensions of the keys correspond to
+    the standard keys, i.e. "o3_lambda" and "o3_sigma".
 
     In ``keys_1``, the "l" and "k" lists, respectively, follow. The "lx" columns track
     the l values of the nu=1 blocks that were previously combined. The "kx" columns
@@ -299,14 +294,14 @@ def _precompute_keys_full_product(
     share a name in ``keys_1`` and ``keys_2``, and only the product of pairs of keys
     with matching values in these dimension are taken.
 
-    For instance, a TensorMap of body order ``nu=4`` will have key names ``["order_nu",
-    "o3_sigma", "o3_lambda", "l1", "l2", "l3", "l4", "k2", "k3", *match_keys,
-    *other_keys]``. Two ``nu=1`` TensorMaps with blocks of order "l1" and "l2" were
-    combined to form a nu=2 TensorMap with blocks of order "k2". This was combined with
-    a nu=1 TensorMap with blocks of order "l3" to form a nu=3 TensorMap with blocks of
-    order "k3". Finally, this was combined with a nu=1 TensorMap with blocks of order
-    "l4" to form a nu=4. If ``match_keys=["center_type"]``, for instance, only products
-    of keys with the same center type will be taken.
+    For instance, a TensorMap of body order ``nu=4`` will have key names ``["o3_lambda",
+    "o3_sigma", "l1", "l2", "l3", "l4", "k2", "k3", *match_keys, *other_keys]``. Two
+    ``nu=1`` TensorMaps with blocks of order "l1" and "l2" were combined to form a nu=2
+    TensorMap with blocks of order "k2". This was combined with a nu=1 TensorMap with
+    blocks of order "l3" to form a nu=3 TensorMap with blocks of order "k3". Finally,
+    this was combined with a nu=1 TensorMap with blocks of order "l4" to form a nu=4. If
+    ``match_keys=["center_type"]``, for instance, only products of keys with the same
+    center type will be taken.
 
     .. math ::
 
@@ -322,23 +317,29 @@ def _precompute_keys_full_product(
     ``keys_1`` and ``keys_2`` that were combined to form each key in the output
     TensorMap.
     """
-    # Get the correlation order of the first TensorMap.
-    unique_nu = _dispatch.unique(keys_1.column("order_nu"))
-    if len(unique_nu) > 1:
-        raise ValueError(
-            "keys_1 must correspond to a tensor of a single correlation order."
-            f" Found {len(unique_nu)} body orders: {unique_nu}"
-        )
-    nu_1 = int(unique_nu[0])
+    # Infer the correlation order of the first tensor by the length of the "l" list
+    # present in the ``keys_1``
+    nu_1, present = 1, True
+    while present:
+        if f"l_{nu_1 + 1}" in keys_1.names:
+            nu_1 += 1
+        else:
+            present = False
+    assert all([f"k_{k}" in keys_1.names for k in range(2, nu_1)])
 
-    # Define new correlation order of output TensorMap
-    nu = nu_1 + 1
+    # Check there are no "l" or "k" lists in the second TensorMap
+    for name in keys_2.names:
+        if name.startswith("l_") or name.startswith("k_"):
+            raise ValueError(
+                "The second TensorMap must be of correlation order nu = 1,"
+                " so must not have any angular channel combination keys, "
+                " i.e. 'l_{x}' or 'k_{x}' columns."
+            )
 
-    # The correlation order of the second TensorMap should be nu = 1.
-    assert _dispatch.all(keys_2.column("order_nu") == 1)
+    nu = nu_1 + 1  # `nu` is the new correlation order of the output tensor
 
     # Categorise key names into:
-    #     1) standard keys: ["order_nu", "o3_lambda", "o3_sigma"]
+    #     1) standard keys: ["o3_lambda", "o3_sigma"]
     #     2) cg combination keys (i.e. "l" and "k" lists):
     #            ["lambda_1", "lambda_2", ..., "l_{nu-1}"]
     #            and ["k_2", ..., "k_{nu-1}"].
@@ -346,7 +347,7 @@ def _precompute_keys_full_product(
     #     4) other keys: all other key dimensions to take the full product of
 
     # 1) Standard keys
-    standard_keys: List[str] = ["order_nu", "o3_lambda", "o3_sigma"]
+    standard_keys: List[str] = ["o3_lambda", "o3_sigma"]
 
     # 2) "l" list
     if nu_1 == 1:  # no "l_{x}" columns yet
@@ -483,11 +484,11 @@ def _precompute_keys_full_product(
                     sigma_1 * sigma_2 * (-1) ** (lambda_1 + lambda_2 + o3_lambda)
                 )
 
-                # Build the new keys values. l{nu} is `lambda_2`` (i.e.
-                # "o3_lambda" of the key from `keys_2`. k{nu-1} is
+                # Build the new keys values. l_{nu} is `lambda_2`` (i.e.
+                # "o3_lambda" of the key from `keys_2`. k_{nu-1} is
                 # `lambda_1` (i.e. "o3_lambda" of the key from `keys_1`).
                 new_vals: List[int] = (
-                    [nu, o3_lambda, o3_sigma]
+                    [o3_lambda, o3_sigma]
                     + l_list
                     + [lambda_2]
                     + k_list
@@ -565,8 +566,6 @@ def _apply_key_selection(
 def _remove_redundant_keys(
     output_keys: Labels,
     combinations: List[Tuple[int, int]],
-    nu_1: int,
-    nu_2: int,
 ) -> Tuple[Labels, List[Tuple[int, int]]]:
     """
     Remove redundant keys from the ``output_keys`` produced by the provided
@@ -575,21 +574,25 @@ def _remove_redundant_keys(
     These are the keys that correspond to blocks that have the same sorted l list. The
     block where the l values are already sorted (i.e. l1 <= l2 <= ... <= ln) is kept.
     """
-    # Get and check the correlation order of the input keys
-    assert nu_2 == 1
-
-    # Get the correlation order of the output TensorMap
-    nu = nu_1 + 1
+    # Infer the correlation order of the output TensorMap by the length of the "l" list
+    # present in the keys
+    nu_target, present = 1, True
+    while present:
+        if f"l_{nu_target + 1}" in output_keys.names:
+            nu_target += 1
+        else:
+            present = False
+    assert all([f"k_{k}" in output_keys.names for k in range(2, nu_target)])
 
     # Identify keys of redundant blocks and remove them
     key_idxs_to_keep: List[int] = []
-    standard_names: List[str] = ["order_nu", "o3_lambda", "o3_sigma"]
+    standard_names: List[str] = ["o3_lambda", "o3_sigma"]
     for key_idx in range(len(output_keys)):
         key = output_keys.entry(key_idx)
         # Get the list of "l" values and sort
         standard_vals = _dispatch.to_int_list(key.values[: len(standard_names)])
         l_list = _dispatch.to_int_list(
-            key.values[len(standard_names) : len(standard_names) + nu]
+            key.values[len(standard_names) : len(standard_names) + nu_target]
         )
         l_list_sorted = sorted(l_list)
 
