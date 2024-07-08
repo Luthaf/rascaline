@@ -8,11 +8,10 @@ from typing import List, Optional, Union
 
 import numpy as np
 
+from ...calculators import SphericalExpansion, SphericalExpansionByPair
 from .. import _dispatch
 from .._backend import (
     Labels,
-    SphericalExpansion,
-    SphericalExpansionByPair,
     TensorBlock,
     TensorMap,
     TorchModule,
@@ -222,12 +221,14 @@ class LambdaSoapXSphExByPair(TorchModule):
             )
         density = density.keys_to_properties(keys_to_move)
 
-        # Compute the nu = 2 lambda-SOAP descriptor
-        lsoap = self._density_correlations_calc.compute(density)
+        density = operations.insert_dimension(density, "keys", 0, "order_nu", 1)
 
-        # Change "body_order" to "order_nu"
-        lsoap = operations.insert_dimension(lsoap, "keys", 0, "order_nu", 2)
-        lsoap = operations.remove_dimension(lsoap, "keys", "body_order")
+        # # Compute the nu = 2 lambda-SOAP descriptor
+        # lsoap = self._density_correlations_calc.compute(density)
+
+        # # Change "body_order" to "order_nu"
+        # lsoap = operations.insert_dimension(lsoap, "keys", 0, "order_nu", 2)
+        # lsoap = operations.remove_dimension(lsoap, "keys", "body_order")
 
         # Compute the nu = 2 SphericalExpansionByPair descriptor
         pair_density = self._spherical_expansion_by_pair_calc.compute(frames)
@@ -250,14 +251,23 @@ class LambdaSoapXSphExByPair(TorchModule):
                 ).reshape(-1, 1),
             )
         )
+        # pair_density = operations.insert_dimension(
+        #     pair_density, axis="keys", index=0, name="order_nu", values=1
+        # )
+        # pair_density = operations.rename_dimension(
+        #     pair_density, "properties", "neighbor_type", "neighbor_3_type"
+        # )
+        # pair_density = operations.rename_dimension(
+        #     pair_density, "properties", "n", "n_3"
+        # )
         pair_density = operations.insert_dimension(
             pair_density, axis="keys", index=0, name="order_nu", values=1
         )
         pair_density = operations.rename_dimension(
-            pair_density, "properties", "neighbor_type", "neighbor_3_type"
+            pair_density, "properties", "neighbor_type", "neighbor_2_type"
         )
         pair_density = operations.rename_dimension(
-            pair_density, "properties", "n", "n_3"
+            pair_density, "properties", "n", "n_2"
         )
 
         # Initialize the CorrelateTensorWithDensity calculator. Re-use the CG
@@ -279,10 +289,16 @@ class LambdaSoapXSphExByPair(TorchModule):
             cg_coefficients=self._density_correlations_calc._cg_coefficients,
         )
 
+        # # Compute the CG tensor product of the two descriptors
+        # if compute_metadata:
+        #     tensor_correlation = tensor_correlator_calc.compute_metadata(lsoap, pair_density)
+        # else:
+        #     tensor_correlation = tensor_correlator_calc.compute(lsoap, pair_density)
+
         # Compute the CG tensor product of the two descriptors
         if compute_metadata:
-            tensor_correlation = tensor_correlator_calc.compute_metadata(lsoap, pair_density)
+            tensor_correlation = tensor_correlator_calc.compute_metadata(density, pair_density)
         else:
-            tensor_correlation = tensor_correlator_calc.compute(lsoap, pair_density)
+            tensor_correlation = tensor_correlator_calc.compute(density, pair_density)
 
         return tensor_correlation

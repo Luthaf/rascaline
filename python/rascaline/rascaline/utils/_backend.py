@@ -4,7 +4,6 @@ import numpy as np
 from metatensor import Labels, LabelsEntry, TensorBlock, TensorMap, operations
 
 from ..calculator_base import CalculatorBase
-from ..calculators import SphericalExpansion, SphericalExpansionByPair
 from ..systems import IntoSystem
 
 
