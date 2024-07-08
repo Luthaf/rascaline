@@ -732,6 +732,59 @@ def _broadcast_first_block_samples(
     )
 
 
+def _symmetrise_permutations(pairs: TensorMap) -> TensorMap:
+    """
+    Symmetrise the permutations of the samples in the pairwise SphericalExpansion.
+    """
+    raise NotImplementedError("This function is not yet implemented.")
+    new_pairs = operations.insert_dimension(pairs, axis="samples", index=len(pairs.sample_names), name="sign", values=1)
+
+    new_blocks = []
+
+    for key, block in pairs.items():
+        same_types = key["first_atom_type"] == key["second_atom_type"]
+
+        if not same_types:
+            new_blocks.append(block)
+            continue
+
+        new_values, new_samples = [], []
+        for i_sample, sample in enumerate(samples):
+
+            A, i, j, x, y, z, sign = sample
+
+            # Always include the positive permutation
+            new_samples.append(sample.values)
+            new_values.append(block.values[i_sample])
+
+            if i == j and x == 0 and y == 0 and z == 0:  # on-site
+                continue
+            
+            # Create the negative label and append the negative permutation
+            negative_label = torch.tensor([A, j, i, x, y, z, -sign], dtype=torch.int32)
+            new_samples.append(sample.values)
+            new_values.append(block.values[i_sample])
+
+            # TODO: finish this function
+
+            # new_samples.append(negative_label)
+            # new_values.append(block.values[block.samples.])
+
+
+        new_block = mts.TensorBlock(
+            values=new_values,
+            samples=new_samples,
+            components=block.components,
+            properties=block.properties,
+        )
+        new_blocks.append(new_block)
+
+
+    new_pairs = mts.TensorMap(pairs.keys, new_blocks)
+
+    return mts.sort(new_pairs)
+
+
 # ======================================================================= #
 # ======== Functions to perform the CG tensor products of blocks ======== #
 # ======================================================================= #

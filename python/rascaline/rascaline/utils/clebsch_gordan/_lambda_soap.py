@@ -1,6 +1,6 @@
 """
 Module containing a convenience calculator that returns the output of a CG tensor
-product between :py:call:`LambdaSoap` and :py:class:`SphericalExpansionByPair`
+product between :py:call:`EquivariantPowerSpectrum` and :py:class:`SphericalExpansionByPair`
 equivariant descriptors.
 """
 
@@ -37,7 +37,7 @@ except ImportError:
 # ======================================================================
 
 
-class LambdaSoap(TorchModule):
+class EquivariantPowerSpectrum(TorchModule):
     """
     Computes a Lambda-SOAP equivariant descriptor.
     """
@@ -75,7 +75,7 @@ class LambdaSoap(TorchModule):
 
     def forward(self, frames) -> TensorMap:
         """
-        Calls the :py:meth:`LambdaSoap.compute` function.
+        Calls the :py:meth:`EquivariantPowerSpectrum.compute` function.
 
         This is intended for :py:class:`torch.nn.Module` compatibility, and should be
         ignored in pure Python mode.
@@ -107,7 +107,7 @@ class LambdaSoap(TorchModule):
         return lsoap
 
 
-class LambdaSoapXSphExByPair(TorchModule):
+class EquivariantPowerSpectrumByPair(TorchModule):
     """
     Computes a Lambda-SOAP equivariant descriptor and takes the CG tensor product with a
     SphericalExansionByPair descriptor.
@@ -160,7 +160,7 @@ class LambdaSoapXSphExByPair(TorchModule):
 
     def forward(self, frames) -> TensorMap:
         """
-        Calls the :py:meth:`LambdaSoapXSphExByPair.compute` function.
+        Calls the :py:meth:`EquivariantPowerSpectrumByPair.compute` function.
 
         This is intended for :py:class:`torch.nn.Module` compatibility, and should be
         ignored in pure Python mode.
@@ -270,6 +270,9 @@ class LambdaSoapXSphExByPair(TorchModule):
             pair_density, "properties", "n", "n_2"
         )
 
+        # Symmetrise permutations. TODO: finish function
+        pair_density = _utils._symmetrise_permutations(pair_density)
+
         # Initialize the CorrelateTensorWithDensity calculator. Re-use the CG
         # coefficients computed by the DensityCorrelations constructor in when this
         # class was initialized.
@@ -302,3 +305,6 @@ class LambdaSoapXSphExByPair(TorchModule):
             tensor_correlation = tensor_correlator_calc.compute(density, pair_density)
 
         return tensor_correlation
+
+
+
