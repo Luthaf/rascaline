@@ -270,7 +270,7 @@ class EquivariantPowerSpectrumByPair(TorchModule):
             pair_density, "properties", "n", "n_2"
         )
 
-        # Symmetrise permutations. TODO: finish function
+        # Symmetrise permutations. TODO: to remove
         pair_density = _utils._symmetrise_permutations(pair_density)
 
         # Initialize the CorrelateTensorWithDensity calculator. Re-use the CG

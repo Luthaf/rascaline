@@ -736,14 +736,13 @@ def _symmetrise_permutations(pairs: TensorMap) -> TensorMap:
     """
     Symmetrise the permutations of the samples in the pairwise SphericalExpansion.
     """
-    raise NotImplementedError("This function is not yet implemented.")
+    # raise NotImplementedError("This function is not yet implemented.")
     new_pairs = operations.insert_dimension(
         pairs, axis="samples", index=len(pairs.sample_names), name="sign", values=1
     )
 
     new_blocks = []
-
-    for key, block in pairs.items():
+    for key, block in new_pairs.items():
         same_types = key["first_atom_type"] == key["second_atom_type"]
 
         if not same_types:
@@ -751,38 +750,37 @@ def _symmetrise_permutations(pairs: TensorMap) -> TensorMap:
             continue
 
         new_values, new_samples = [], []
+        samples = block.samples
         for i_sample, sample in enumerate(samples):
 
             A, i, j, x, y, z, sign = sample
+
+            if i == j and x == 0 and y == 0 and z == 0:  # on-site
+                continue
 
             # Always include the positive permutation
             new_samples.append(sample.values)
             new_values.append(block.values[i_sample])
 
-            if i == j and x == 0 and y == 0 and z == 0:  # on-site
-                continue
+            # Create the negative sample label inverting i,j and changing sign
+            new_samples.append(_dispatch.int_array_like([A, j, i, x, y, z, -sign], like = sample.values))
 
-            # Create the negative label and append the negative permutation
-            negative_label = torch.tensor([A, j, i, x, y, z, -sign], dtype=torch.int32)
-            new_samples.append(sample.values)
-            new_values.append(block.values[i_sample])
+            # Find the index of the negative sample label, defined inverting i,j and changing sign to x,y,z
+            neg_i_sample = samples.position(_dispatch.int_array_like([A, j, i, -x, -y, -z, sign], like = sample.values))
+            assert isinstance(neg_i_sample, int), f"Negative sample label not found for key={key}, neg_i_sample={neg_i_sample}"
+            new_values.append(block.values[neg_i_sample])
 
-            # TODO: finish this function
-
-            # new_samples.append(negative_label)
-            # new_values.append(block.values[block.samples.])
-
-        new_block = mts.TensorBlock(
-            values=new_values,
-            samples=new_samples,
-            components=block.components,
-            properties=block.properties,
+        new_block = TensorBlock(
+            values = _dispatch.stack(new_values, axis = 0),
+            samples = Labels(samples.names, _dispatch.stack(new_samples, axis = 0)),
+            components = block.components,
+            properties = block.properties,
         )
         new_blocks.append(new_block)
 
-    new_pairs = mts.TensorMap(pairs.keys, new_blocks)
+    new_pairs = TensorMap(pairs.keys, new_blocks)
 
-    return mts.sort(new_pairs)
+    return operations.sort(new_pairs)
 
 
 # ======================================================================= #
