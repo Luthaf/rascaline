@@ -7,7 +7,7 @@ Private module containing helper functions for public module
 from typing import List, Optional, Tuple, Union
 
 from .. import _dispatch
-from .._backend import Array, Labels, TensorBlock, TensorMap, is_labels
+from .._backend import Array, Labels, TensorBlock, TensorMap, is_labels, operations
 from . import _coefficients
 
 
@@ -361,10 +361,28 @@ def _group_combinations_of_same_blocks(
     return output_keys, combinations
 
 
-def _increment_numeric_suffix(name: str) -> str:
+def _increment_property_name_suffices(
+    tensor: TensorMap, increment_by: Optional[int] = None
+) -> TensorMap:
     """
-    Takes a string name that is suffix by "_{x}", where "x" is a non-negative integer,
-    and increments the integer by 1. Returns the new name.
+    Uses the :py:func:`_increment_numeric_suffix` function to increment all the property
+    dimension names by ``increment_by`` and returns the resulting :py:class:`TensorMap`.
+    """
+    for name in tensor.property_names:
+        tensor = operations.rename_dimension(
+            tensor,
+            "properties",
+            name,
+            _increment_numeric_suffix(name, increment_by),
+        )
+
+    return tensor
+
+
+def _increment_numeric_suffix(name: str, increment_by: Optional[int] = 1) -> str:
+    """
+    Takes a string name that is suffix by "_{x}", where "x" is an integer,
+    and increments the integer by ``increment_by``. Returns the new name.
 
     If the string is not suffixed by "_{x}", then "_1" is appended to the string.
 
@@ -372,36 +390,34 @@ def _increment_numeric_suffix(name: str) -> str:
     index is inserted and incremented before the "_type" suffix.
 
     Examples:
-        - "n" -> "n_1"
-        - "n_1" -> "n_2"
-        - "center_type" -> "center_1_type"
-        - "first_atom_1_type" -> "first_atom_2_type"
-        - "center_type_1_type" -> "center_type_2_type"
+        - fn("n", 1) -> "n_1"
+        - fn("n", 0) -> "n_0"
+        - fn("n_1", 1) -> "n_2"
+        - fn("center_type", 3) -> "center_3_type"
+        - fn("first_atom_1_type") -> "first_atom_2_type"
+        - fn("center_type_1_type", 7) -> "center_type_8_type"
     """
-    add_type_suffix = False
+    if not isinstance(increment_by, int):
+        raise ValueError("`increment_by` must be an integer.")
     if name.endswith("type"):
         # Special name case: remove the "_type" suffix and add it back on at the end
-        name = name[: name.rfind("_type")]
-        add_type_suffix = True
+        prefix = name[: name.rfind("_type")]
+        suffix = "_type"
+    else:
+        prefix = name
+        suffix = ""
 
-    if name.rfind("_") == -1:  # no "_" thus no suffix: add "_1"
-        new_name = name + "_1"
-        if add_type_suffix:
-            new_name += "_type"
-        return new_name
+    if prefix.rfind("_") == -1:  # no suffix present
+        number = 0
+    else:
+        number = prefix[prefix.rfind("_") + 1 :]
+        if number.isdigit():  # number found
+            number = int(number)
+            prefix = prefix[: prefix.rfind("_")]
+        else:
+            number = 0
 
-    number = name[name.rfind("_") + 1 :]  # attempt to extract the numeric suffix
-    if number.isdigit():  # increment the number if found
-        name = name[: name.rfind("_")]
-        number = str(int(number) + 1)
-    else:  # no numeric suffix, add one
-        number = "1"
-
-    new_name = name + "_" + number
-    if add_type_suffix:
-        new_name += "_type"
-
-    return new_name
+    return prefix + "_" + str(number + increment_by) + suffix
 
 
 # ======================================================================= #

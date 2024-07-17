@@ -130,13 +130,7 @@ class _PowerSpectrumByPair(TorchModule):
                 )
 
         # Ensure ``density`` has a "_1" prefix for all property dimensions
-        for name in density.property_names:
-            density = operations.rename_dimension(
-                density,
-                "properties",
-                name,
-                _utils._increment_numeric_suffix(name),
-            )
+        density = _utils._increment_property_name_suffices(density, 1)
 
         # Compute ``density_to_combine`` as the SphericalExpansionByPair of the frames
         density_to_combine = self._spherical_expansion_by_pair_calculator.compute(
@@ -159,17 +153,10 @@ class _PowerSpectrumByPair(TorchModule):
                     )
                 )
 
-        # Ensure ``density`` has a "_2" prefix (i.e. apply increment twice) for all
-        # property dimensions
-        for name in density_to_combine.property_names:
-            density_to_combine = operations.rename_dimension(
-                density_to_combine,
-                "properties",
-                name,
-                _utils._increment_numeric_suffix(
-                    _utils._increment_numeric_suffix(name)
-                ),
-            )
+        # Ensure ``density`` has a "_2" prefix for all property dimensions
+        density_to_combine = _utils._increment_property_name_suffices(
+            density_to_combine, 2
+        )
 
         return density, density_to_combine
 

@@ -24,13 +24,34 @@ class DensityCorrelations(TorchModule):
     """
     Iterative products of a density to form higher arbitrary body order tensors.
 
+
+    :param n_correlations: :py:class:`int`, the number of iterative CG tensor products
+        to perform.
+    :param angular_cutoff: :py:class:`int`, the maximum angular momentum of output
+        blocks to compute at any CG tensor product iteration. If ``None``, the maximum
+        angular momentum is determined by the combination of the angular order of the
+        tensor input to :py:meth:`compute` and the number of iterations.
+    :param skip_redundant: :py:class:`bool`, whether to skip redundant computations on
+        intermediate iterations. This parameter should only be set to ``True`` if
+        performing density auto-correlations and should not be used otherwise.
+    :param tensor_correlator: :py:class:`TensorCorrelator`, the calculator to use for
+        the CG tensor product. If ``None``, a new :py:class:`TensorCorrelator` is
+        initialized with the provided or default settings. Passing this arguments saves
+        re-computation of CG coefficients. If passed, the ``max_angular`` used to
+        initialize it must be high enough to handle all tensor products performed by
+        this calculator.
     :param max_angular: :py:class:`int`, the maximum angular momentum to compute CG
-        coefficients for.
+        coefficients for. Used to initialize a new :py:class:`TensorCorrelator`, and so
+        should only be passed if ``tensor_correlator`` is ``None``.
     :param arrays_backend: :py:class:`str`, the backend to use for array operations. If
         ``None``, the backend is automatically selected based on the environment.
-        Possible values are "numpy" and "torch".
+        Possible values are "numpy" and "torch". Used to initialize a new
+        :py:class:`TensorCorrelator`, and so should only be passed if
+        ``tensor_correlator`` is ``None``.
     :param cg_backend: :py:class:`str`, the backend to use for the CG tensor product. If
         ``None``, the backend is automatically selected based on the arrays backend.
+        Used to initialize a new :py:class:`TensorCorrelator`, and so should only be
+        passed if ``tensor_correlator`` is ``None``.
     """
     def __init__(
         self,
@@ -77,7 +98,7 @@ class DensityCorrelations(TorchModule):
     def forward(
         self,
         tensor: TensorMap,
-        density: TensorMap,
+        density: TensorMap = None,
         selected_keys: Optional[Labels] = None,
     ) -> TensorMap:
         """
@@ -98,7 +119,7 @@ class DensityCorrelations(TorchModule):
     def compute_metadata(
         self,
         tensor: TensorMap,
-        density: TensorMap,
+        density: TensorMap = None,
         selected_keys: Optional[Labels] = None,
     ) -> TensorMap:
         """
@@ -118,7 +139,7 @@ class DensityCorrelations(TorchModule):
     def compute(
         self,
         tensor: TensorMap,
-        density: TensorMap,
+        density: TensorMap = None,
         selected_keys: Optional[Labels] = None,
     ) -> TensorMap:
         """
@@ -137,6 +158,9 @@ class DensityCorrelations(TorchModule):
         As the density is by definition a correlation order 1 tensor, the correlation
         order of ``tensor`` will be increased by ``n_correlations`` from its original
         correlation order.
+
+        If ``density=None``, the input ``tensor`` is assumed to be a density tensor, and
+        is copied for auto-correlations.
 
         ``tensor`` and ``density`` must have metadata that is compatible for a CG tensor
         product by the :py:class:`TensorCorrelator` class. For every iteration after the
@@ -171,7 +195,7 @@ class DensityCorrelations(TorchModule):
     def _density_correlations(
         self,
         tensor: TensorMap,
-        density: TensorMap,
+        density: TensorMap = None,
         selected_keys: Optional[Labels] = None,
         compute_metadata: bool = False,
     ) -> TensorMap:
@@ -183,20 +207,18 @@ class DensityCorrelations(TorchModule):
             self._n_correlations, selected_keys, self._angular_cutoff
         )
 
+        # Prepare the tensors
+        density_correlations = tensor
+        if density is None:
+            density = _utils._increment_property_name_suffices(tensor, 1)
+
         # Perform iterative CG tensor products
         new_lambda_names = []
-        density_correlations = tensor
         for i_correlation in range(self._n_correlations):
 
             # Rename density property dimensions
             if i_correlation > 0:  # metadata assumed ok on first iteration
-                for name in density.property_names:
-                    density = operations.rename_dimension(
-                        density,
-                        "properties",
-                        name,
-                        _utils._increment_numeric_suffix(name),
-                    )
+                density = _utils._increment_property_name_suffices(density, 1)
 
             # Define new key dimension names for tracking intermediate correlations
             if i_correlation == 0:

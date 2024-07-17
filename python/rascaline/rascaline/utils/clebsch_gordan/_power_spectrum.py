@@ -83,7 +83,7 @@ class _PowerSpectrum(TorchModule):
             tensor_correlator=self._tensor_correlator,
         )
 
-    def _prepare_densities(self, frames) -> Tuple[TensorMap]:
+    def _prepare_density(self, frames) -> TensorMap:
         """
         Generates a :py:class:`SphericalExpansion` and manipulates its metadata ready
         for CG tensor products.
@@ -106,26 +106,9 @@ class _PowerSpectrum(TorchModule):
                 )
 
         # Modify the names of property dimensions to carry a "_1" suffix
-        for name in density.property_names:
-            density = operations.rename_dimension(
-                density,
-                "properties",
-                name,
-                _utils._increment_numeric_suffix(name),
-            )
+        density = _utils._increment_property_name_suffices(density, 1)
 
-        # Copy the density (as this is an auto-correlation) and modify the names of the
-        # property dimensions again, this time with a "_2" suffix
-        density_to_combine = density
-        for name in density_to_combine.property_names:
-            density_to_combine = operations.rename_dimension(
-                density_to_combine,
-                "properties",
-                name,
-                _utils._increment_numeric_suffix(name),
-            )
-
-        return density, density_to_combine
+        return density
 
     def _power_spectrum(
         self, frames, selected_keys: Optional[Labels], compute_metadata: bool
@@ -133,12 +116,11 @@ class _PowerSpectrum(TorchModule):
         """Generate the power spectrum for a set of frames."""
 
         # Get the staring densities
-        density, density_to_combine = self._prepare_densities(frames)
+        density = self._prepare_densities(frames)
 
         # Compute the power spectrum
         power_spectrum = self._density_correlations_calculator._density_correlations(
-            density,
-            density_to_combine,
+            tensor=density,
             selected_keys=selected_keys,
             compute_metadata=compute_metadata,
         )
