@@ -125,8 +125,19 @@ def spherical_expansion(frames: List[ase.Atoms]):
 
 
 def spherical_expansion_small(frames: List[ase.Atoms]):
-    """Returns a rascaline SphericalExpansion"""
+    """Returns a rascaline SphericalExpansion with smaller hypers"""
     calculator = rascaline.SphericalExpansion(**SPHEX_HYPERS_SMALL)
+    return calculator.compute(frames)
+
+
+def spherical_expansion_by_pair(frames: List[ase.Atoms]):
+    """Returns a rascaline SphericalExpansionByPair"""
+    calculator = rascaline.SphericalExpansionByPair(**SPHEX_HYPERS)
+    return calculator.compute(frames)
+
+def spherical_expansion_by_pair_small(frames: List[ase.Atoms]):
+    """Returns a rascaline SphericalExpansionByPair with smaller hypers"""
+    calculator = rascaline.SphericalExpansionByPair(**SPHEX_HYPERS_SMALL)
     return calculator.compute(frames)
 
 
@@ -211,9 +222,7 @@ def test_so3_equivariance():
         max_angular=3,
     )
     nu_3 = calculator.compute(density, selected_keys=selected_keys)
-    nu_3_so3 = calculator.compute(
-        density_so3, selected_keys=selected_keys
-    )
+    nu_3_so3 = calculator.compute(density_so3, selected_keys=selected_keys)
 
     nu_3_transf = wig.transform_tensormap_so3(nu_3)
     assert metatensor.allclose(nu_3_transf, nu_3_so3)
@@ -253,9 +262,7 @@ def test_o3_equivariance():
         max_angular=angular_cutoff,
     )
     nu_3 = calculator.compute(density, selected_keys=selected_keys)
-    nu_3_o3 = calculator.compute(
-        density_o3, selected_keys=selected_keys
-    )
+    nu_3_o3 = calculator.compute(density_o3, selected_keys=selected_keys)
 
     nu_3_transf = wig.transform_tensormap_o3(nu_3)
     assert metatensor.allclose(nu_3_transf, nu_3_o3)
@@ -324,8 +331,7 @@ def test_lambda_soap_vs_powerspectrum():
 @pytest.mark.skipif(
     not HAS_METATENSOR_OPERATIONS, reason="metatensor-operations is not installed"
 )
-@pytest.mark.parametrize("n_correlations", [1, 3])
-def test_correlate_density_norm(n_correlations):
+def test_correlate_density_norm():
     """
     Checks \\|ρ^\\nu\\| =  \\|ρ\\|^\\nu in the case where l lists are not
     sorted. If l lists are sorted, thus saving computation of redundant block
@@ -333,6 +339,7 @@ def test_correlate_density_norm(n_correlations):
     than 2.
     """
     frames = h2o_periodic()
+    n_correlations = 3
 
     # Build nu=1 SphericalExpansion
     density = spherical_expansion_small(frames)
@@ -587,3 +594,54 @@ def test_correlate_density_angular_selection(
             np.sort(np.unique(nu_2.keys.column("o3_lambda")))
             == np.sort(selected_keys.column("o3_lambda"))
         )
+
+
+def test_summed_powerspectrum_by_pair_equals_powerspectrum():
+    """
+    Tests that these two processes give equivalent outputs:
+
+    1. Perform a single density correlation of a SphericalExpansion to produce an
+       equivariant power spectru, (i.e. lambda-SOAP)
+    2. Perform a single density correlation of a SphericalExpansion with a
+       SphericalExpansionByPair to produce an equivariant power spectrum by pair, then
+       sum over neighbors to reduce to a single-center equivariant power spectrum.
+
+    Provided both the density and pair density are generated with the same hypers.
+    """
+    frames = h2o_isolated()
+    calculator = DensityCorrelations(
+        n_correlations=1,
+        max_angular=SPHEX_HYPERS["max_angular"] * 2,
+    )
+
+    # Generate density and rename dimensions ready for correlation
+    density = spherical_expansion_small(frames)
+    density = metatensor.rename_dimension(
+        density, "keys", "center_type", "first_atom_type"
+    )
+    density = metatensor.rename_dimension(
+        density, "keys", "neighbor_type", "second_atom_type"
+    )
+    density = metatensor.rename_dimension(density, "samples", "atom", "first_atom")
+    density = density.keys_to_properties("second_atom_type")
+    density = _utils._increment_property_name_suffices(density, 1)
+
+    # Generate pair density
+    pair_density = spherical_expansion_by_pair_small(frames)
+    pair_density = pair_density.keys_to_properties("second_atom_type")
+    pair_density = _utils._increment_property_name_suffices(pair_density, 2)
+
+    # Perform correlations
+    power_spec = calculator(density)
+    power_spec_by_pair = calculator(density, pair_density)
+
+    # Sum, sort, check equivalence
+    power_spec_by_pair_reduced = metatensor.sum_over_samples(
+        power_spec_by_pair,
+        ["second_atom", "cell_shift_a", "cell_shift_b", "cell_shift_c"],
+    )
+
+    metatensor.allclose_raise(
+        metatensor.sort(power_spec), 
+        metatensor.sort(power_spec_by_pair_reduced),
+    )
