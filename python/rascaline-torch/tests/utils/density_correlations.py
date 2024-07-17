@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import io
-import os
 
 import metatensor.torch
 import pytest
@@ -10,9 +9,6 @@ from metatensor.torch.atomistic import System
 
 import rascaline.torch
 from rascaline.torch.utils.clebsch_gordan import DensityCorrelations
-
-
-DATA_ROOT = os.path.join(os.path.dirname(__file__), "data")
 
 
 SPHERICAL_EXPANSION_HYPERS = {
@@ -48,64 +44,42 @@ def spherical_expansion():
     return calculator.compute(system())
 
 
-# copy of def test_correlate_density_angular_selection(
 @pytest.mark.parametrize("selected_keys", [None, SELECTED_KEYS])
 @pytest.mark.parametrize("skip_redundant", [True, False])
 def test_torch_script_correlate_density_angular_selection(
     selected_keys: Labels,
     skip_redundant: bool,
 ):
-    """
-    Tests that the correct angular channels are output based on the specified
-    ``selected_keys``.
-    """
     nu_1 = spherical_expansion()
-    correlation_order = 2
-    corr_calculator = DensityCorrelations(
-        max_angular=SPHERICAL_EXPANSION_HYPERS["max_angular"] * correlation_order,
-        correlation_order=correlation_order,
-        angular_cutoff=None,
-        selected_keys=selected_keys,
+
+    # Initialize the calculator and scripted calculator
+    calculator = DensityCorrelations(
+        n_correlations=1,
+        max_angular=SPHERICAL_EXPANSION_HYPERS["max_angular"] * 2,
         skip_redundant=skip_redundant,
     )
+    scripted_calculator = torch.jit.script(calculator)
 
-    ref_nu_2 = corr_calculator.compute(nu_1)
-    scripted_corr_calculator = torch.jit.script(corr_calculator)
-
-    # Test compute
-    scripted_nu_2 = scripted_corr_calculator.compute(nu_1)
+    # Compute the reference and scripted results
+    ref_nu_2 = calculator.compute(nu_1, selected_keys=selected_keys)
+    scripted_nu_2 = scripted_calculator.compute(nu_1, selected_keys=selected_keys)
     metatensor.torch.equal_metadata_raise(scripted_nu_2, ref_nu_2)
     assert metatensor.torch.allclose(scripted_nu_2, ref_nu_2)
 
-    # Test compute_metadata
-    scripted_nu_2 = scripted_corr_calculator.compute_metadata(nu_1)
-    assert metatensor.torch.equal_metadata(scripted_nu_2, ref_nu_2)
 
-
-def test_jit_save_load():
-    corr_calculator = DensityCorrelations(
-        max_angular=2,
-        correlation_order=2,
-        angular_cutoff=1,
+@pytest.mark.parametrize("cg_backend", ["python-dense", "python-sparse"])
+def test_jit_save_load(cg_backend: str):
+    calculator = torch.jit.script(
+        DensityCorrelations(
+            n_correlations=1,
+            max_angular=2,
+            cg_backend=cg_backend,
+            # FIXME: we should be able to save/load modules with other dtypes, but they
+            # currently crash in metatensor serialization
+            dtype=torch.float64,
+        )
     )
-    scripted_correlate_density = torch.jit.script(corr_calculator)
     with io.BytesIO() as buffer:
-        torch.jit.save(scripted_correlate_density, buffer)
+        torch.jit.save(calculator, buffer)
         buffer.seek(0)
         torch.jit.load(buffer)
-
-
-def test_save_load():
-    """Tests for saving and loading with cg_backend="python-dense",
-    which makes the DensityCorrelations object non-scriptable due to
-    a non-contiguous CG cache."""
-    corr_calculator = DensityCorrelations(
-        max_angular=2,
-        correlation_order=2,
-        angular_cutoff=1,
-        cg_backend="python-dense",
-    )
-    with io.BytesIO() as buffer:
-        torch.save(corr_calculator, buffer)
-        buffer.seek(0)
-        torch.load(buffer)

@@ -1,10 +1,16 @@
 from typing import Any, Union
 
 import numpy as np
-from metatensor import Labels, LabelsEntry, TensorBlock, TensorMap
+from metatensor import (  # noqa F401
+    Labels,
+    LabelsEntry,
+    TensorBlock,
+    TensorMap,
+    operations,
+)
 
-from ..calculator_base import CalculatorBase
-from ..systems import IntoSystem
+from ..calculator_base import CalculatorBase  # noqa F401
+from ..systems import IntoSystem  # noqa F401
 
 
 def torch_jit_is_scripting():
@@ -22,6 +28,8 @@ def is_labels(obj: Any):
 try:
     from torch import ScriptClass as TorchScriptClass
     from torch import Tensor as TorchTensor
+    from torch import device as TorchDevice
+    from torch import dtype as TorchDType
     from torch.nn import Module as TorchModule
 except ImportError:
 
@@ -36,24 +44,15 @@ except ImportError:
     class TorchScriptClass:
         pass
 
+    class TorchDevice:
+        pass
+
+    class TorchDType:
+        pass
+
 
 Array = Union[np.ndarray, TorchTensor]
+DType = Union[np.dtype, TorchDType]
+Device = Union[str, TorchDevice]
 
 BACKEND_IS_METATENSOR_TORCH = False
-
-__all__ = [
-    "Array",
-    "CalculatorBase",
-    "IntoSystem",
-    "Labels",
-    "TensorBlock",
-    "TensorMap",
-    "TorchTensor",
-    "TorchModule",
-    "TorchScriptClass",
-    "LabelsEntry",
-    "torch_jit_is_scripting",
-    "torch_jit_export",
-    "is_labels",
-    "BACKEND_IS_METATENSOR_TORCH",
-]

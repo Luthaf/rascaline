@@ -3,8 +3,8 @@ import os
 import sys
 from typing import Any
 
+import metatensor.torch
 import torch
-from metatensor.torch import Labels, LabelsEntry, TensorBlock, TensorMap
 
 import rascaline.utils
 
@@ -26,23 +26,35 @@ module = importlib.util.module_from_spec(spec)
 # This module only exposes a handful of things, defined here. Any changes here MUST also
 # be made to the `metatensor/operations/_classes.py` file, which is used in non
 # TorchScript mode.
-module.__dict__["Labels"] = Labels
-module.__dict__["TensorBlock"] = TensorBlock
-module.__dict__["TensorMap"] = TensorMap
-module.__dict__["LabelsEntry"] = LabelsEntry
-module.__dict__["torch_jit_is_scripting"] = torch.jit.is_scripting
-module.__dict__["torch_jit_export"] = torch.jit.export
+module.__dict__["BACKEND_IS_METATENSOR_TORCH"] = True
+
+module.__dict__["Labels"] = metatensor.torch.Labels
+module.__dict__["TensorBlock"] = metatensor.torch.TensorBlock
+module.__dict__["TensorMap"] = metatensor.torch.TensorMap
+module.__dict__["LabelsEntry"] = metatensor.torch.LabelsEntry
+
+module.__dict__["CalculatorBase"] = CalculatorModule
+module.__dict__["IntoSystem"] = System
+
 module.__dict__["TorchTensor"] = torch.Tensor
 module.__dict__["TorchModule"] = torch.nn.Module
 module.__dict__["TorchScriptClass"] = torch.ScriptClass
 module.__dict__["Array"] = torch.Tensor
-module.__dict__["CalculatorBase"] = CalculatorModule
-module.__dict__["IntoSystem"] = System
-module.__dict__["BACKEND_IS_METATENSOR_TORCH"] = True
+module.__dict__["DType"] = torch.dtype
+module.__dict__["Device"] = torch.device
+
+module.__dict__["torch_jit_is_scripting"] = torch.jit.is_scripting
+module.__dict__["torch_jit_export"] = torch.jit.export
+
+if os.environ.get("METATENSOR_IMPORT_FOR_SPHINX", "0") == "0":
+    module.__dict__["operations"] = metatensor.torch.operations
+else:
+    # FIXME: we can remove this hack once metatensor-operations v0.2.4 is released
+    module.__dict__["operations"] = None
 
 
 def is_labels(obj: Any):
-    return isinstance(obj, Labels)
+    return isinstance(obj, metatensor.torch.Labels)
 
 
 if os.environ.get("RASCALINE_IMPORT_FOR_SPHINX") is None:

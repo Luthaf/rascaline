@@ -13,6 +13,8 @@ from .. import _dispatch
 from .._backend import (
     BACKEND_IS_METATENSOR_TORCH,
     Array,
+    Device,
+    DType,
     Labels,
     TensorBlock,
     TensorMap,
@@ -21,23 +23,8 @@ from .._backend import (
 
 try:
     import torch
-    from torch import Tensor as TorchTensor
-
-    torch_dtype = torch.dtype
-    torch_device = torch.device
-
-    HAS_TORCH = True
 except ImportError:
-    HAS_TORCH = False
-
-    class TorchTensor:
-        pass
-
-    class torch_dtype:
-        pass
-
-    class torch_device:
-        pass
+    pass
 
 
 UNKNOWN_ARRAY_TYPE = (
@@ -48,7 +35,9 @@ UNKNOWN_ARRAY_TYPE = (
 def calculate_cg_coefficients(
     lambda_max: int,
     cg_backend: str,
-    use_torch: bool = BACKEND_IS_METATENSOR_TORCH,
+    arrays_backend: str,
+    dtype: DType,
+    device: Device,
 ) -> TensorMap:
     """
     Calculates the Clebsch-Gordan coefficients for all possible combination of angular
@@ -72,41 +61,71 @@ def calculate_cg_coefficients(
         - properties: ``cg_coefficient = [0]``
 
     :param lambda_max: maximum angular momentum value to compute CG coefficients for.
-    :param cg_backend: TODO
-    :param use_torch: whether torch tensor or numpy arrays should be used to store the
-        coefficients
+    :param cg_backend: whether to use ``"python-spare"`` or ``"python-dense"`` format
+        for storing the CG coefficients.
+    :param arrays_backend: whether to use ``"numpy"`` or ``"torch"`` arrays to store the
+        coefficients.
+    :param dtype: the scalar type to use to store coefficients
+    :param device: the computational device to use for calculations. This must be
+        ``"cpu"`` if ``array_backend="numpy"``.
     :returns: :py:class:`TensorMap` of the Clebsch-Gordan coefficients.
     """
-    # Build some 'like' arrays for the backend dispatch
-    if use_torch:
-        complex_like = torch.empty(0, dtype=torch.complex128)
-        double_like = torch.empty(0, dtype=torch.double)
-        if isinstance(Labels, torch.ScriptClass):
-            labels_values_like = torch.empty(0, dtype=torch.double)
+    # Build some 'like' arrays for dispatch
+    if arrays_backend == "torch":
+        if dtype == torch.float32:
+            complex_dtype = torch.complex64
+        elif dtype == torch.float64:
+            complex_dtype = torch.complex128
         else:
-            labels_values_like = np.empty(0, dtype=np.double)
+            raise ValueError(
+                f"invalid dtype ({dtype}), only torch.float32 and torch.float64 are "
+                "supported"
+            )
+
+        complex_like = torch.empty(0, dtype=complex_dtype, device=device)
+        real_like = torch.empty(0, dtype=dtype, device=device)
+        if BACKEND_IS_METATENSOR_TORCH:
+            labels_values_like = torch.empty(0, dtype=torch.int32, device=device)
+        else:
+            # we are using metatensor-core with torch arrays
+            labels_values_like = np.empty(0, dtype=np.int32)
     else:
-        complex_like = np.empty(0, dtype=np.complex128)
-        double_like = np.empty(0, dtype=np.double)
-        labels_values_like = np.empty(0, dtype=np.double)
+        assert arrays_backend == "numpy"
+        if dtype == np.float32:
+            complex_dtype = np.complex64
+        elif dtype == np.float64:
+            complex_dtype = np.complex128
+        else:
+            raise ValueError(
+                f"invalid dtype ({dtype}), only np.float32 and np.float64 are supported"
+            )
+
+        complex_like = np.empty(0, dtype=complex_dtype)
+        real_like = np.empty(0, dtype=dtype)
+        labels_values_like = np.empty(0, dtype=np.int32)
 
     # Calculate the CG coefficients, stored as a dict of dense arrays. This is the
     # starting point for the conversion to a TensorMap of different formats depending on
     # the backend options.
     cg_coeff_dict = _build_dense_cg_coeff_dict(
-        lambda_max, complex_like, double_like, labels_values_like
+        lambda_max,
+        complex_like,
+        labels_values_like,
+        arrays_backend=arrays_backend,
+        dtype=dtype,
+        device=device,
     )
 
     # Build the CG cache depending on whether the CG backend is sparse or dense. The
-    # dispatching of the arrays backends are accounted for by `double_like` and
+    # dispatching of the arrays backends are accounted for by `real_like` and
     # `labels_values_like`.
     if cg_backend == "python-sparse":
         return _cg_coeff_dict_to_tensormap_sparse(
-            cg_coeff_dict, double_like, labels_values_like
+            cg_coeff_dict, real_like, labels_values_like
         )
     elif cg_backend == "python-dense":
         return _cg_coeff_dict_to_tensormap_dense(
-            cg_coeff_dict, double_like, labels_values_like
+            cg_coeff_dict, real_like, labels_values_like
         )
     else:
         raise ValueError(
@@ -116,7 +135,12 @@ def calculate_cg_coefficients(
 
 
 def _build_dense_cg_coeff_dict(
-    lambda_max: int, complex_like: Array, double_like: Array, labels_values_like: Array
+    lambda_max: int,
+    complex_like: Array,
+    labels_values_like: Array,
+    arrays_backend: str,
+    dtype: DType,
+    device: Device,
 ) -> Dict[int, Array]:
     """
     Calculates the CG coefficients and stores them as dense arrays in a dictionary.
@@ -127,18 +151,13 @@ def _build_dense_cg_coeff_dict(
     {
         (l1, l2, lambda):
             array(
-                cg_{m1, m2, mu}^{l1, l2, lambda}
-                ...
-                for m1 in range(-l1, l1 + 1),
-                for m2 in range(-l2, l2 + 1),
-                for mu in range(-lambda, lambda + 1),
+                cg_{m1, m2, mu}^{l1, l2, lambda} ... for m1 in range(-l1, l1 + 1), for
+                m2 in range(-l2, l2 + 1), for mu in range(-lambda, lambda + 1),
 
                 shape=(2 * l1 + 1, 2 * l2 + 1, 2 * lambda + 1),
             )
-        ...
-        for l1 in range(0, l1_list)
-        for l2 in range(0, l2_list)
-        for lambda in range(0, range(|l1 - l2|, ..., |l1 + l2|))
+        ... for l1 in range(0, l1_list) for l2 in range(0, l2_list) for lambda in
+        range(0, range(|l1 - l2|, ..., |l1 + l2|))
     }
 
     where `cg_{m1, m2, mu}^{l1, l2, lambda}` is the Clebsch-Gordan coefficient that
@@ -151,7 +170,8 @@ def _build_dense_cg_coeff_dict(
     :param lambda_max: maximum angular momentum  value to compute CG coefficients for.
     :param complex_like: an empty array of dtype complex, used for dispatching
         operations
-    :param double_like: an empty array of dtype double, used for dispatching operations
+    :param real_like: an empty array of floating points data, used for dispatching
+        operations
     :param labels_values_like: an empty array of dtype int32, used for dispatching
         operations
 
@@ -171,8 +191,12 @@ def _build_dense_cg_coeff_dict(
             for o3_lambda in range(
                 max(l1, l2) - min(l1, l2), min(lambda_max, (l1 + l2)) + 1
             ):
-                complex_cg = _complex_clebsch_gordan_matrix(
-                    l1, l2, o3_lambda, complex_like
+
+                complex_cg = _dispatch.to(
+                    wigners.clebsch_gordan_array(l1, l2, o3_lambda),
+                    backend=arrays_backend,
+                    device=device,
+                    dtype=complex_like.dtype,
                 )
 
                 real_cg = (r2c[l1].T @ complex_cg.reshape(2 * l1 + 1, -1)).reshape(
@@ -192,13 +216,17 @@ def _build_dense_cg_coeff_dict(
                 else:
                     cg_l1l2lam_dense = _dispatch.imag(real_cg)
 
-                coeff_dict[(l1, l2, o3_lambda)] = cg_l1l2lam_dense
+                coeff_dict[(l1, l2, o3_lambda)] = _dispatch.to(
+                    cg_l1l2lam_dense,
+                    dtype=dtype,
+                    device=device,
+                )
 
     return coeff_dict
 
 
 def _cg_coeff_dict_to_tensormap_dense(
-    coeff_dict: Dict, double_like: Array, labels_values_like: Array
+    coeff_dict: Dict, real_like: Array, labels_values_like: Array
 ) -> TensorMap:
     """
     Converts the dictionary of dense CG coefficients coefficients to
@@ -246,7 +274,7 @@ def _cg_coeff_dict_to_tensormap_dense(
 
 
 def _cg_coeff_dict_to_tensormap_sparse(
-    coeff_dict: Dict, double_like: Array, labels_values_like: Array
+    coeff_dict: Dict, real_like: Array, labels_values_like: Array
 ) -> TensorMap:
     """
     Converts the dictionary of dense CG coefficients coefficients to
@@ -256,7 +284,7 @@ def _cg_coeff_dict_to_tensormap_sparse(
     dict_keys = list(coeff_dict.keys())
     keys = Labels(
         ["l1", "l2", "lambda"],
-        _dispatch.int_array_like(list(dict_keys), labels_values_like),
+        _dispatch.int_array_like(dict_keys, labels_values_like),
     )
     blocks = []
 
@@ -281,8 +309,8 @@ def _cg_coeff_dict_to_tensormap_sparse(
         for m1m2mu_key in cg_l1l2lam_sparse.keys():
             l1l2lam_sample_values.append(m1m2mu_key)
         # extending shape by samples and properties
-        values = _dispatch.double_array_like(
-            [*cg_l1l2lam_sparse.values()], double_like
+        values = _dispatch.real_array_like(
+            [*cg_l1l2lam_sparse.values()], real_like
         ).reshape(-1, 1)
         l1l2lam_sample_values = _dispatch.int_array_like(
             l1l2lam_sample_values, labels_values_like
@@ -325,7 +353,7 @@ def _real2complex(o3_lambda: int, like: Array) -> Array:
 
     for m in range(-o3_lambda, o3_lambda + 1):
         if m < 0:
-            # Positve part
+            # Positive part
             result[o3_lambda + m, o3_lambda + m] = i_sqrt_2
             # Negative part
             result[o3_lambda - m, o3_lambda + m] = -i_sqrt_2 * ((-1) ** m)
@@ -350,52 +378,6 @@ def _complex2real(o3_lambda: int, like) -> Array:
     Operations are dispatched to the corresponding array type given by ``like``
     """
     return _dispatch.conjugate(_real2complex(o3_lambda, like)).T
-
-
-def _complex_clebsch_gordan_matrix(l1: int, l2: int, o3_lambda: int, like: Array):
-    r"""clebsch-gordan matrix
-    Computes the Clebsch-Gordan (CG) matrix for
-    transforming complex-valued spherical harmonics.
-    The CG matrix is computed as a 3D array of elements
-        < l1 m1 l2 m2 | o3_lambda mu >
-    where the first axis loops over m1, the second loops over m2,
-    and the third one loops over mu. The matrix is real.
-    For example, using the relation:
-        | l1 l2 o3_lambda mu > =
-            \sum_{m1, m2}
-            <l1 m1 l2 m2 | o3_lambda mu > | l1 m1 > | l2 m2 >
-    (https://en.wikipedia.org/wiki/Clebsch–Gordan_coefficients, section
-    "Formal definition of Clebsch-Gordan coefficients", eq 2)
-    one can obtain the spherical harmonics o3_lambda from two sets of
-    spherical harmonics with l1 and l2 (up to a normalization factor).
-    E.g.:
-    Args:
-        l1: l number for the first set of spherical harmonics
-        l2: l number for the second set of spherical harmonics
-        o3_lambda: l number For the third set of spherical harmonics
-        like: Operations are dispatched to the corresponding this arguments array type
-    Returns:
-        cg: CG matrix for transforming complex-valued spherical harmonics
-    >>> from scipy.special import sph_harm
-    >>> import numpy as np
-    >>> import wigners
-    >>> C_112 = _complex_clebsch_gordan_matrix(1, 1, 2, np.empty(0))
-    >>> comp_sph_1 = np.array([sph_harm(m, 1, 0.2, 0.2) for m in range(-1, 1 + 1)])
-    >>> comp_sph_2 = np.array([sph_harm(m, 1, 0.2, 0.2) for m in range(-1, 1 + 1)])
-    >>> # obtain the (unnormalized) spherical harmonics
-    >>> # with l = 2 by contraction over m1 and m2
-    >>> comp_sph_2_u = np.einsum("ijk,i,j->k", C_112, comp_sph_1, comp_sph_2)
-    >>> # we can check that they differ from the spherical harmonics
-    >>> # by a constant factor
-    >>> comp_sph_2 = np.array([sph_harm(m, 2, 0.2, 0.2) for m in range(-2, 2 + 1)])
-    >>> ratio = comp_sph_2 / comp_sph_2_u
-    >>> np.allclose(ratio[0], ratio)
-    True
-    """
-    if abs(l1 - l2) > o3_lambda or abs(l1 + l2) < o3_lambda:
-        return _dispatch.zeros_like(like, (2 * l1 + 1, 2 * l2 + 1, 2 * o3_lambda + 1))
-    else:
-        return wigners.clebsch_gordan_array(l1, l2, o3_lambda)
 
 
 # ================================================================ #
