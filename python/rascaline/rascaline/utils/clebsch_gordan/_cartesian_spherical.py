@@ -60,7 +60,7 @@ def cartesian_to_spherical(
     :param components: components of the input tensor to transform into spherical
         components
     :param keep_l_in_keys: should the output contains the values of angular momenta that
-        where combined together? This defaults to ``False`` for rank 1 and 2 tensors,
+        were combined together? This defaults to ``False`` for rank 1 and 2 tensors,
         and ``True`` for all other tensors.
 
         Keys named ``l_{i}`` correspond to the input ``components``, with ``l_1`` being
@@ -139,22 +139,25 @@ def cartesian_to_spherical(
             "`keep_l_in_keys` must be `True` for tensors of rank 3 and above"
         )
 
-    if torch_jit_is_scripting():
-        use_torch = True
+    if isinstance(tensor.block(0).values, TorchTensor):
+        arrays_backend = "torch"
+        values = tensor.block(0).values
+        dtype = values.dtype
+        device = values.device
+    elif isinstance(tensor.block(0).values, np.ndarray):
+        arrays_backend = "numpy"
+        values = tensor.block(0).values
+        dtype = values.dtype
+        device = "cpu"
     else:
-        if isinstance(tensor.block(0).values, TorchTensor):
-            use_torch = True
-        elif isinstance(tensor.block(0).values, np.ndarray):
-            use_torch = False
-        else:
-            raise TypeError(
-                f"unknown array type in tensor ({type(tensor.block(0).values)}), "
-                "only numpy and torch are supported"
-            )
+        raise TypeError(
+            f"unknown array type in tensor ({type(tensor.block(0).values)}), "
+            "only numpy and torch are supported"
+        )
 
     if cg_backend is None:
         # TODO: benchmark & change the default?
-        if use_torch:
+        if arrays_backend == "torch":
             cg_backend = "python-dense"
         else:
             cg_backend = "python-sparse"
@@ -253,7 +256,9 @@ def cartesian_to_spherical(
             cg_coefficients = _coefficients.calculate_cg_coefficients(
                 lambda_max=len(axes_to_convert),
                 cg_backend=cg_backend,
-                use_torch=use_torch,
+                arrays_backend=arrays_backend,
+                dtype=dtype,
+                device=device,
             )
 
     iteration_index = 0

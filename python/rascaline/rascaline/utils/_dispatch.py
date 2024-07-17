@@ -9,6 +9,8 @@ from typing import List, Optional, Union
 
 import numpy as np
 
+from ._backend import Device, DType, torch_jit_is_scripting
+
 
 try:
     import torch
@@ -272,15 +274,15 @@ def int_array_like(int_list: Union[List[int], List[List[int]]], like):
         raise TypeError(UNKNOWN_ARRAY_TYPE)
 
 
-def double_array_like(int_list: List[float], like):
+def real_array_like(float_list: List[float], like):
     """
     Converts the input list of float to a numpy array or torch tensor
     based on the array type of `like`.
     """
     if isinstance(like, TorchTensor):
-        return torch.tensor(int_list, dtype=torch.float64, device=like.device)
+        return torch.tensor(float_list, dtype=torch.float64, device=like.device)
     elif isinstance(like, np.ndarray):
-        return np.array(int_list).astype(np.float64)
+        return np.array(float_list).astype(np.float64)
     else:
         raise TypeError(UNKNOWN_ARRAY_TYPE)
 
@@ -457,5 +459,51 @@ def roll(array, shifts: List[int], axis: List[int]):
         return torch.roll(array, shifts=shifts, dims=axis)
     elif isinstance(array, np.ndarray):
         return np.roll(array, shift=shifts, axis=axis)
+    else:
+        raise TypeError(UNKNOWN_ARRAY_TYPE)
+
+
+def to(
+    array,
+    backend: Optional[str] = None,
+    dtype: Optional[DType] = None,
+    device: Optional[Union[str, Device]] = None,
+):
+    """Convert the array to the specified backend, dtype, and device"""
+    if isinstance(array, TorchTensor):
+        if backend is None:
+            backend = "torch"
+
+        if dtype is None:
+            dtype = array.dtype
+        if device is None:
+            device = array.device
+        if isinstance(device, str):
+            device = torch.device(device)
+
+        if backend == "torch":
+            return array.to(dtype=dtype).to(device=device)
+
+        elif backend == "numpy":
+            if torch_jit_is_scripting():
+                raise ValueError("cannot call numpy conversion when torch-scripting")
+            else:
+                return array.detach().cpu().numpy()
+
+        else:
+            raise ValueError(f"Unknown backend: {backend}")
+
+    elif isinstance(array, np.ndarray):
+        if backend is None:
+            backend = "numpy"
+
+        if backend == "numpy":
+            return np.array(array, dtype=dtype)
+
+        elif backend == "torch":
+            return torch.tensor(array, dtype=dtype, device=device)
+        else:
+            raise ValueError(f"Unknown backend: {backend}")
+
     else:
         raise TypeError(UNKNOWN_ARRAY_TYPE)
