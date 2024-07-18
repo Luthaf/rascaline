@@ -60,7 +60,7 @@ def cartesian_to_spherical(
     :param components: components of the input tensor to transform into spherical
         components
     :param keep_l_in_keys: should the output contains the values of angular momenta that
-        where combined together? This defaults to ``False`` for rank 1 and 2 tensors,
+        were combined together? This defaults to ``False`` for rank 1 and 2 tensors,
         and ``True`` for all other tensors.
 
         Keys named ``l_{i}`` correspond to the input ``components``, with ``l_1`` being
