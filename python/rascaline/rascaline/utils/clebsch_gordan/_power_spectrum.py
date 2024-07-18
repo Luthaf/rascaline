@@ -116,7 +116,7 @@ class _PowerSpectrum(TorchModule):
         """Generate the power spectrum for a set of frames."""
 
         # Get the staring densities
-        density = self._prepare_densities(frames)
+        density = self._prepare_density(frames)
 
         # Compute the power spectrum
         power_spectrum = self._density_correlations_calculator._density_correlations(
