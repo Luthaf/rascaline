@@ -4,7 +4,7 @@ use std::convert::TryFrom;
 use log::warn;
 use once_cell::sync::Lazy;
 
-use metatensor::{Labels, LabelsBuilder};
+use metatensor::{LabelValue, Labels, LabelsBuilder};
 use metatensor::{TensorBlockRef, TensorBlock, TensorMap};
 use ndarray::ArrayD;
 
@@ -80,7 +80,7 @@ impl<'a> LabelsSelection<'a> {
                         results.push(builder.finish());
                     }
                 } else {
-                    let mut variables_to_match = Vec::new();
+                    let mut dimensions_to_match = Vec::new();
                     for variable in selection.names() {
                         let i = match default_names.iter().position(|&v| v == variable) {
                             Some(index) => index,
@@ -91,29 +91,23 @@ impl<'a> LabelsSelection<'a> {
                                 )))
                             }
                         };
-                        variables_to_match.push(i);
+                        dimensions_to_match.push(i);
                     }
 
+                    let mut candidate = vec![LabelValue::new(0); dimensions_to_match.len()];
                     for labels in default_labels {
                         let mut builder = LabelsBuilder::new(default_names.clone());
                         for entry in &labels {
-                            for selected in selection {
-                                let mut matches = true;
-                                for (i, &v) in variables_to_match.iter().enumerate() {
-                                    if selected[i] != entry[v] {
-                                        matches = false;
-                                        break;
-                                    }
-                                }
+                            for (i, &v) in dimensions_to_match.iter().enumerate() {
+                                candidate[i] = entry[v];
+                            }
 
-                                if matches {
-                                    builder.add(entry);
-                                }
+                            if selection.contains(&candidate) {
+                                builder.add(entry);
                             }
                         }
                         results.push(builder.finish());
                     }
-
                 }
 
                 return Ok(results);
