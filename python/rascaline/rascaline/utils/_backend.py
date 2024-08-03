@@ -1,7 +1,7 @@
 from typing import Any, Union
 
 import numpy as np
-from metatensor import Labels, LabelsEntry, TensorBlock, TensorMap
+from metatensor import Labels, LabelsEntry, TensorBlock, TensorMap, operations
 
 from ..calculator_base import CalculatorBase
 from ..systems import IntoSystem
@@ -56,4 +56,5 @@ __all__ = [
     "torch_jit_export",
     "is_labels",
     "BACKEND_IS_METATENSOR_TORCH",
+    "operations",
 ]

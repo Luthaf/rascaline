@@ -59,6 +59,26 @@ def concatenate(arrays: List[TorchTensor], axis: int):
         return np.concatenate(arrays, axis)
     else:
         raise TypeError(UNKNOWN_ARRAY_TYPE)
+    
+def stack(arrays: List[TorchTensor], axis: int):
+    """
+    Stack a group of arrays along a new axis.
+
+    This function has the same behavior as ``numpy.stack(arrays, axis)``
+    and ``torch.stack(arrays, axis)``.
+
+    Passing `axis` as ``0`` is equivalent to stacking arrays along the first
+    dimension, ``1`` along the second dimension, and so on.
+    """
+    if isinstance(arrays[0], TorchTensor):
+        _check_all_torch_tensor(arrays)
+        return torch.stack(arrays, axis)
+    elif isinstance(arrays[0], np.ndarray):
+        _check_all_np_ndarray(arrays)
+        return np.stack(arrays, axis)
+    else:
+        raise TypeError(UNKNOWN_ARRAY_TYPE)
+
 
 
 def empty_like(array, shape: Optional[List[int]] = None, requires_grad: bool = False):

@@ -60,12 +60,14 @@ def test_torch_script_correlate_density_angular_selection(
     ``selected_keys``.
     """
     nu_1 = spherical_expansion()
-    correlation_order = 2
+    nu_1 = nu_1.keys_to_properties("neighbor_type")
+    body_order = 3
     corr_calculator = DensityCorrelations(
-        max_angular=SPHERICAL_EXPANSION_HYPERS["max_angular"] * correlation_order,
-        correlation_order=correlation_order,
+        max_angular=SPHERICAL_EXPANSION_HYPERS["max_angular"] * (body_order - 1),
+        body_order=body_order,
         angular_cutoff=None,
         selected_keys=selected_keys,
+        match_keys=["center_type"],
         skip_redundant=skip_redundant,
     )
 
@@ -85,8 +87,9 @@ def test_torch_script_correlate_density_angular_selection(
 def test_jit_save_load():
     corr_calculator = DensityCorrelations(
         max_angular=2,
-        correlation_order=2,
+        body_order=3,
         angular_cutoff=1,
+        match_keys=["center_type"],
     )
     scripted_correlate_density = torch.jit.script(corr_calculator)
     with io.BytesIO() as buffer:
@@ -101,9 +104,10 @@ def test_save_load():
     a non-contiguous CG cache."""
     corr_calculator = DensityCorrelations(
         max_angular=2,
-        correlation_order=2,
+        body_order=3,
         angular_cutoff=1,
         cg_backend="python-dense",
+        match_keys=["center_type"],
     )
     with io.BytesIO() as buffer:
         torch.save(corr_calculator, buffer)

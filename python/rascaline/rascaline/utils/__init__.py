@@ -2,6 +2,7 @@ import os
 
 from .clebsch_gordan import (  # noqa
     DensityCorrelations,
+    CorrelateTensorWithDensity,
     calculate_cg_coefficients,
     cartesian_to_spherical,
 )
