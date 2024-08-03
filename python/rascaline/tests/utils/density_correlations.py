@@ -8,9 +8,8 @@ from metatensor import Labels, TensorBlock, TensorMap
 
 import rascaline
 from rascaline.utils import PowerSpectrum, _dispatch
-from rascaline.utils.clebsch_gordan import DensityCorrelations
+from rascaline.utils.clebsch_gordan import DensityCorrelations, TensorCorrelator, _utils
 from rascaline.utils.clebsch_gordan._coefficients import calculate_cg_coefficients
-from rascaline.utils.clebsch_gordan._utils import standardize_keys
 
 
 # Try to import some modules
@@ -126,8 +125,20 @@ def spherical_expansion(frames: List[ase.Atoms]):
 
 
 def spherical_expansion_small(frames: List[ase.Atoms]):
-    """Returns a rascaline SphericalExpansion"""
+    """Returns a rascaline SphericalExpansion with smaller hypers"""
     calculator = rascaline.SphericalExpansion(**SPHEX_HYPERS_SMALL)
+    return calculator.compute(frames)
+
+
+def spherical_expansion_by_pair(frames: List[ase.Atoms]):
+    """Returns a rascaline SphericalExpansionByPair"""
+    calculator = rascaline.SphericalExpansionByPair(**SPHEX_HYPERS)
+    return calculator.compute(frames)
+
+
+def spherical_expansion_by_pair_small(frames: List[ase.Atoms]):
+    """Returns a rascaline SphericalExpansionByPair with smaller hypers"""
+    calculator = rascaline.SphericalExpansionByPair(**SPHEX_HYPERS_SMALL)
     return calculator.compute(frames)
 
 
@@ -187,20 +198,32 @@ def test_so3_equivariance():
     Tests that the output of :py:func:`correlate_density` is equivariant under
     SO(3) transformations.
     """
-    frames, nu_target, angular_cutoff, selected_keys = (h2o_periodic(), 2, 3, None)
-    wig = wigner_d_matrices(nu_target * SPHEX_HYPERS["max_angular"])
+    frames, n_correlations, angular_cutoff, selected_keys = (
+        h2o_periodic(),
+        2,
+        3,
+        None,
+    )
+    wig = wigner_d_matrices((n_correlations + 1) * SPHEX_HYPERS["max_angular"])
     frames_so3 = [transform_frame_so3(frame, wig.angles) for frame in frames]
 
-    nu_1 = spherical_expansion(frames)
-    nu_1_so3 = spherical_expansion(frames_so3)
+    # Generate density
+    density = spherical_expansion(frames)
+    density = density.keys_to_properties("neighbor_type")
+    density = _utils._increment_property_name_suffices(density, 1)
+
+    # Generate density_so3
+    density_so3 = spherical_expansion(frames_so3)
+    density_so3 = density_so3.keys_to_properties("neighbor_type")
+    density_so3 = _utils._increment_property_name_suffices(density_so3, 1)
+
     calculator = DensityCorrelations(
-        max_angular=3,
-        correlation_order=nu_target,
+        n_correlations=n_correlations,
         angular_cutoff=angular_cutoff,
-        selected_keys=selected_keys,
+        max_angular=3,
     )
-    nu_3 = calculator.compute(nu_1)
-    nu_3_so3 = calculator.compute(nu_1_so3)
+    nu_3 = calculator.compute(density, selected_keys=selected_keys)
+    nu_3_so3 = calculator.compute(density_so3, selected_keys=selected_keys)
 
     nu_3_transf = wig.transform_tensormap_so3(nu_3)
     assert metatensor.allclose(nu_3_transf, nu_3_so3)
@@ -215,21 +238,32 @@ def test_o3_equivariance():
     Tests that the output of :py:func:`correlate_density` is equivariant under
     O(3) transformations.
     """
-    frames, nu_target, angular_cutoff, selected_keys = (h2_isolated(), 2, 3, None)
-    wig = wigner_d_matrices(nu_target * SPHEX_HYPERS["max_angular"])
+    frames, n_correlations, angular_cutoff, selected_keys = (
+        h2_isolated(),
+        2,
+        3,
+        None,
+    )
+    wig = wigner_d_matrices((n_correlations + 1) * SPHEX_HYPERS["max_angular"])
     frames_o3 = [transform_frame_o3(frame, wig.angles) for frame in frames]
 
-    nu_1 = spherical_expansion(frames)
-    nu_1_o3 = spherical_expansion(frames_o3)
+    # Generate density
+    density = spherical_expansion(frames)
+    density = density.keys_to_properties("neighbor_type")
+    density = _utils._increment_property_name_suffices(density, 1)
+
+    # Generate density_o3
+    density_o3 = spherical_expansion(frames_o3)
+    density_o3 = density_o3.keys_to_properties("neighbor_type")
+    density_o3 = _utils._increment_property_name_suffices(density_o3, 1)
 
     calculator = DensityCorrelations(
-        max_angular=angular_cutoff,
-        correlation_order=nu_target,
+        n_correlations=n_correlations,
         angular_cutoff=angular_cutoff,
-        selected_keys=selected_keys,
+        max_angular=angular_cutoff,
     )
-    nu_3 = calculator.compute(nu_1)
-    nu_3_o3 = calculator.compute(nu_1_o3)
+    nu_3 = calculator.compute(density, selected_keys=selected_keys)
+    nu_3_o3 = calculator.compute(density_o3, selected_keys=selected_keys)
 
     nu_3_transf = wig.transform_tensormap_o3(nu_3)
     assert metatensor.allclose(nu_3_transf, nu_3_o3)
@@ -248,17 +282,25 @@ def test_lambda_soap_vs_powerspectrum():
     rascaline utils.
     """
     frames = h2_isolated()
+
     # Build a PowerSpectrum
     ps = power_spectrum(frames)
 
-    # Build a lambda-SOAP
+    # Build density
     density = spherical_expansion(frames)
+    density = density.keys_to_properties("neighbor_type")
+    density = _utils._increment_property_name_suffices(density, 1)
+
+    n_correlations = 1
     calculator = DensityCorrelations(
-        max_angular=SPHEX_HYPERS["max_angular"],
-        correlation_order=2,
+        n_correlations=n_correlations,
+        max_angular=SPHEX_HYPERS["max_angular"] * (n_correlations + 1),
+    )
+    lsoap = calculator.compute(
+        density,
         selected_keys=Labels(names=["o3_lambda"], values=np.array([0]).reshape(-1, 1)),
     )
-    lsoap = calculator.compute(density)
+    lsoap = lsoap.keys_to_properties(["l_1", "l_2"])
     keys = lsoap.keys.remove(name="o3_lambda")
     keys = keys.remove("o3_sigma")
 
@@ -290,8 +332,7 @@ def test_lambda_soap_vs_powerspectrum():
 @pytest.mark.skipif(
     not HAS_METATENSOR_OPERATIONS, reason="metatensor-operations is not installed"
 )
-@pytest.mark.parametrize("correlation_order", [2, 4])
-def test_correlate_density_norm(correlation_order):
+def test_correlate_density_norm():
     """
     Checks \\|ρ^\\nu\\| =  \\|ρ\\|^\\nu in the case where l lists are not
     sorted. If l lists are sorted, thus saving computation of redundant block
@@ -299,38 +340,40 @@ def test_correlate_density_norm(correlation_order):
     than 2.
     """
     frames = h2o_periodic()
+    n_correlations = 3
+
     # Build nu=1 SphericalExpansion
-    nu1 = spherical_expansion_small(frames)
+    density = spherical_expansion_small(frames)
+    density = density.keys_to_properties("neighbor_type")
+    density = _utils._increment_property_name_suffices(density, 1)
+
+    # Initialize the CG calculator (and therefore compute CG coeffs) only once
+    tensor_correlator = TensorCorrelator(
+        max_angular=SPHEX_HYPERS_SMALL["max_angular"] * (n_correlations + 1),
+    )
 
     # Build higher body order tensor without sorting the l lists
     calculator = DensityCorrelations(
-        max_angular=SPHEX_HYPERS_SMALL["max_angular"] * correlation_order,
-        correlation_order=correlation_order,
-        angular_cutoff=None,
-        selected_keys=None,
+        n_correlations=n_correlations,
         skip_redundant=False,
+        tensor_correlator=tensor_correlator,
     )
     corr_calculator_skip_redundant = DensityCorrelations(
-        max_angular=SPHEX_HYPERS_SMALL["max_angular"] * correlation_order,
-        correlation_order=correlation_order,
-        angular_cutoff=None,
-        selected_keys=None,
+        n_correlations=n_correlations,
         skip_redundant=True,
+        tensor_correlator=tensor_correlator,
     )
-    nux = calculator.compute(nu1)
-    # Build higher body order tensor *with* sorting the l lists
-    nux_sorted_l = corr_calculator_skip_redundant.compute(nu1)
+    nux = calculator.compute(density)
 
-    # Standardize the features by passing through the CG combination code but with
-    # no iterations (i.e. body order 1 -> 1)
-    nu1 = standardize_keys(nu1)
+    # Build higher body order tensor *with* sorting the l lists
+    nux_sorted_l = corr_calculator_skip_redundant.compute(density)
 
     # Make only lambda and sigma part of keys
-    nu1 = nu1.keys_to_samples(["center_type"])
+    density = density.keys_to_samples(["center_type"])
     nux = nux.keys_to_samples(["center_type"])
     nux_sorted_l = nux_sorted_l.keys_to_samples(["center_type"])
 
-    # The norm shoudl be calculated for each sample. First find the unqiue
+    # The norm should be calculated for each sample. First find the unqiue
     # samples
     uniq_samples = metatensor.unique_metadata(
         nux, "samples", names=["system", "atom", "center_type"]
@@ -346,12 +389,12 @@ def test_correlate_density_norm(correlation_order):
     norm_nux_sorted_l = 0.0
     for sample in grouped_labels:
         # Slice the TensorMaps
-        nu1_sliced = metatensor.slice(nu1, "samples", labels=sample)
+        nu1_sliced = metatensor.slice(density, "samples", labels=sample)
         nux_sliced = metatensor.slice(nux, "samples", labels=sample)
         nux_sorted_sliced = metatensor.slice(nux_sorted_l, "samples", labels=sample)
 
         # Calculate norms
-        norm_nu1 += get_norm(nu1_sliced) ** correlation_order
+        norm_nu1 += get_norm(nu1_sliced) ** (n_correlations + 1)
         norm_nux += get_norm(nux_sliced)
         norm_nux_sorted_l += get_norm(nux_sorted_sliced)
 
@@ -362,7 +405,7 @@ def test_correlate_density_norm(correlation_order):
     assert not np.allclose(norm_nu1, norm_nux_sorted_l)
 
 
-# ============ Test CG cache  ============
+# ============ Test computation of CG coefficients  ============
 
 
 @pytest.mark.parametrize("l1, l2", [(1, 2), (2, 3), (0, 5)])
@@ -456,16 +499,17 @@ def test_correlate_density_dense_sparse_agree():
     """
     frames = h2o_periodic()
     density = spherical_expansion_small(frames)
+    density = density.keys_to_properties("neighbor_type")
 
-    correlation_order = 2
+    n_correlations = 1
     corr_calculator_sparse = DensityCorrelations(
-        max_angular=SPHEX_HYPERS_SMALL["max_angular"] * correlation_order,
-        correlation_order=correlation_order,
+        n_correlations=n_correlations,
+        max_angular=SPHEX_HYPERS_SMALL["max_angular"] * (n_correlations + 1),
         cg_backend="python-sparse",
     )
     corr_calculator_dense = DensityCorrelations(
-        max_angular=SPHEX_HYPERS_SMALL["max_angular"] * correlation_order,
-        correlation_order=correlation_order,
+        max_angular=SPHEX_HYPERS_SMALL["max_angular"] * (n_correlations + 1),
+        n_correlations=n_correlations,
         cg_backend="python-dense",
     )
     # NOTE: testing the private function here so we can control the use of
@@ -488,18 +532,18 @@ def test_correlate_density_metadata_agree():
     :py:func:`correlate_density_metadata` agree.
     """
     frames = h2o_isolated()
-    skip_redundant = True
 
     for max_angular, nu_1 in [
         (2, spherical_expansion_small(frames)),
         (3, spherical_expansion(frames)),
     ]:
+        nu_1 = nu_1.keys_to_properties("neighbor_type")
+        nu_1 = _utils._increment_property_name_suffices(nu_1, 1)
         calculator = DensityCorrelations(
             max_angular=max_angular,
-            correlation_order=3,
-            angular_cutoff=3,
-            selected_keys=None,
-            skip_redundant=skip_redundant,
+            n_correlations=2,
+            angular_cutoff=max_angular,
+            skip_redundant=True,
         )
         # Build higher body order tensor with CG computation
         nu_x = calculator.compute(nu_1)
@@ -524,19 +568,19 @@ def test_correlate_density_angular_selection(
     """
     frames = h2o_isolated()
     nu_1 = spherical_expansion(frames)
+    nu_1 = nu_1.keys_to_properties("neighbor_type")
+    nu_1 = _utils._increment_property_name_suffices(nu_1, 1)
 
-    correlation_order = 2
+    n_correlations = 1
     calculator = DensityCorrelations(
-        max_angular=SPHEX_HYPERS["max_angular"] * correlation_order,
-        correlation_order=correlation_order,
-        angular_cutoff=None,
-        selected_keys=selected_keys,
+        max_angular=SPHEX_HYPERS["max_angular"] * (n_correlations + 1),
+        n_correlations=n_correlations,
         skip_redundant=skip_redundant,
         arrays_backend=arrays_backend,
     )
     if arrays_backend is not None:
         nu_1 = nu_1.to(arrays=arrays_backend)
-    nu_2 = calculator.compute(nu_1)
+    nu_2 = calculator.compute(nu_1, selected_keys=selected_keys)
 
     if selected_keys is None:
         assert np.all(
@@ -551,3 +595,54 @@ def test_correlate_density_angular_selection(
             np.sort(np.unique(nu_2.keys.column("o3_lambda")))
             == np.sort(selected_keys.column("o3_lambda"))
         )
+
+
+def test_summed_powerspectrum_by_pair_equals_powerspectrum():
+    """
+    Tests that these two processes give equivalent outputs:
+
+    1. Perform a single density correlation of a SphericalExpansion to produce an
+       equivariant power spectru, (i.e. lambda-SOAP)
+    2. Perform a single density correlation of a SphericalExpansion with a
+       SphericalExpansionByPair to produce an equivariant power spectrum by pair, then
+       sum over neighbors to reduce to a single-center equivariant power spectrum.
+
+    Provided both the density and pair density are generated with the same hypers.
+    """
+    frames = h2o_isolated()
+    calculator = DensityCorrelations(
+        n_correlations=1,
+        max_angular=SPHEX_HYPERS["max_angular"] * 2,
+    )
+
+    # Generate density and rename dimensions ready for correlation
+    density = spherical_expansion_small(frames)
+    density = metatensor.rename_dimension(
+        density, "keys", "center_type", "first_atom_type"
+    )
+    density = metatensor.rename_dimension(
+        density, "keys", "neighbor_type", "second_atom_type"
+    )
+    density = metatensor.rename_dimension(density, "samples", "atom", "first_atom")
+    density = density.keys_to_properties("second_atom_type")
+    density = _utils._increment_property_name_suffices(density, 1)
+
+    # Generate pair density
+    pair_density = spherical_expansion_by_pair_small(frames)
+    pair_density = pair_density.keys_to_properties("second_atom_type")
+    pair_density = _utils._increment_property_name_suffices(pair_density, 2)
+
+    # Perform correlations
+    power_spec = calculator(density)
+    power_spec_by_pair = calculator(density, pair_density)
+
+    # Sum, sort, check equivalence
+    power_spec_by_pair_reduced = metatensor.sum_over_samples(
+        power_spec_by_pair,
+        ["second_atom", "cell_shift_a", "cell_shift_b", "cell_shift_c"],
+    )
+
+    metatensor.allclose_raise(
+        metatensor.sort(power_spec),
+        metatensor.sort(power_spec_by_pair_reduced),
+    )
