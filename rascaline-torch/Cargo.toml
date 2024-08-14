@@ -14,3 +14,7 @@ which = "5"
 
 # This is the last version supporting rustc 1.65
 home = "=0.5.5"
+
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin)'] }
