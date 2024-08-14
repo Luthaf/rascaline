@@ -7,7 +7,7 @@
 /// Compute exponential integral E1(x)
 pub fn exp1(x: f64) -> f64 {
     if x == 0.0 {
-        return std::f64::INFINITY;
+        return f64::INFINITY;
     } else if x <= 1.0 {
         let mut e1 = 1.0;
         let mut r = 1.0;
@@ -35,7 +35,7 @@ pub fn exp1(x: f64) -> f64 {
 /// Compute exponential integral Ei(x)
 pub fn expi(x: f64) -> f64 {
     if x == 0.0 {
-        return -std::f64::INFINITY;
+        return -f64::INFINITY;
     } else if x < 0.0 {
         return -exp1(-x);
     } else if f64::abs(x) <= 40.0 {
@@ -73,7 +73,7 @@ mod tests {
     fn test_exp1() {
         // Reference values from scipy.special.exp1
         assert!(exp1(-1.).is_nan());
-        assert_eq!(exp1(0.), std::f64::INFINITY);
+        assert_eq!(exp1(0.), f64::INFINITY);
         assert_relative_eq!(exp1(1e-05), 10.935719800043696, max_relative=1e-15);
         assert_relative_eq!(exp1(0.33), 0.8361011614550026, max_relative=1e-15);
         assert_relative_eq!(exp1(1.), 0.21938393439552062, max_relative=1e-15);
@@ -86,7 +86,7 @@ mod tests {
         // Reference values from scipy.special.expi
         assert_relative_eq!(expi(-42.), -1.3377908810011776e-20, max_relative=1e-15);
         assert_relative_eq!(expi(-1.), -0.21938393439552062, max_relative=1e-15);
-        assert_eq!(expi(0.), -std::f64::INFINITY);
+        assert_eq!(expi(0.), -f64::INFINITY);
         assert_relative_eq!(expi(1e-05), -10.935699800043697, max_relative=1e-15);
         assert_relative_eq!(expi(0.33), -0.1720950921354428, max_relative=1e-15);
         assert_relative_eq!(expi(1.), 1.8951178163559368, max_relative=1e-15);

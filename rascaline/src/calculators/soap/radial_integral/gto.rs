@@ -233,7 +233,7 @@ mod tests {
         SoapRadialIntegralGto::new(SoapRadialIntegralGtoParameters {
             max_radial: 10,
             max_angular: 4,
-            cutoff: std::f64::INFINITY,
+            cutoff: f64::INFINITY,
             atomic_gaussian_width: 0.5
         }).unwrap();
     }
@@ -256,7 +256,7 @@ mod tests {
             max_radial: 10,
             max_angular: 4,
             cutoff: 3.0,
-            atomic_gaussian_width: std::f64::INFINITY,
+            atomic_gaussian_width: f64::INFINITY,
         }).unwrap();
     }
 
