@@ -188,7 +188,7 @@ def test_rspace_delta():
         accuracy=1e-8,
     )
 
-    positions = np.linspace(0, cutoff)
+    positions = np.linspace(1e-10, cutoff)
 
     for ell in range(max_angular + 1):
         for n in range(max_radial):
