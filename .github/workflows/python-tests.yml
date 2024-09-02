@@ -42,10 +42,7 @@ jobs:
       - name: install python dependencies
         run: |
           python -m pip install --upgrade pip
-          # https://github.com/tox-dev/tox/issues/3238
-          python -m pip install tox==4.14.0
-
-          echo "tox_version=$(python -c 'import tox; print(tox.__version__)')" >> $GITHUB_ENV
+          python -m pip install tox
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.3
@@ -58,12 +55,6 @@ jobs:
           echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
           echo "CMAKE_C_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
           echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
-
-      - name: cache tox environments
-        uses: actions/cache@v3
-        with:
-          path: .tox
-          key: tox-py${{matrix.python-version}}-${{ hashFiles('pyproject.toml', 'setup.cfg', 'tox.ini') }}
 
       - name: run tox
         run: tox
@@ -97,12 +88,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install tox
-
-      - name: cache tox environments
-        uses: actions/cache@v3
-        with:
-          path: .tox
-          key: tox-py${{matrix.python-version}}-${{ hashFiles('pyproject.toml', 'setup.cfg', 'tox.ini') }}
 
       - name: python build tests
         run: tox -e build-python
