@@ -1,3 +1,4 @@
+import os
 from typing import List, Optional, Union
 
 import pytest
@@ -180,7 +181,7 @@ def test_different_device_dtype_errors(system):
 
     # Different devices
     custom_device = None
-    if torch.backends.mps.is_available() and torch.backends.mps.is_built():
+    if can_use_mps_backend():
         custom_device = torch.device("mps:0")
 
     if torch.cuda.is_available():
@@ -234,3 +235,13 @@ def test_script(tmpdir):
     with tmpdir.as_cwd():
         torch.jit.save(module, "test-save.torch")
         module = torch.jit.load("test-save.torch")
+
+
+def can_use_mps_backend():
+    return (
+        # Github Actions M1 runners don't have a GPU accessible
+        os.environ.get("GITHUB_ACTIONS") is None
+        and hasattr(torch.backends, "mps")
+        and torch.backends.mps.is_built()
+        and torch.backends.mps.is_available()
+    )

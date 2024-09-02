@@ -1,3 +1,4 @@
+import os
 import warnings
 
 import ase
@@ -220,13 +221,23 @@ def test_power_spectrum_cell_grad_grad():
         )
 
 
+def can_use_mps_backend():
+    return (
+        # Github Actions M1 runners don't have a GPU accessible
+        os.environ.get("GITHUB_ACTIONS") is None
+        and hasattr(torch.backends, "mps")
+        and torch.backends.mps.is_built()
+        and torch.backends.mps.is_available()
+    )
+
+
 def test_different_device_dtype():
     # check autograd if the data is on different devices/dtypes as well
     options = [
         (torch.device("cpu"), torch.float32),
         (torch.device("cpu"), torch.float64),
     ]
-    if torch.backends.mps.is_available() and torch.backends.mps.is_built():
+    if can_use_mps_backend():
         options.append((torch.device("mps:0"), torch.float32))
 
     if torch.cuda.is_available():
