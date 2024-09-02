@@ -105,7 +105,7 @@ def test_export_as_metatensor_model(tmpdir):
     assert requests[0].requestors() == ["rascaline", "Model.calculator"]
 
     # check we can save the model
-    export.export(os.path.join(tmpdir, "model.pt"))
+    export.save(os.path.join(tmpdir, "model.pt"))
 
     # check that we can run the model
     frame = ase.Atoms(
