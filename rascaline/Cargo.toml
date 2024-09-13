@@ -36,7 +36,7 @@ name = "soap-power-spectrum"
 harness = false
 
 [dependencies]
-metatensor = {version = "0.1", features = ["rayon"]}
+metatensor = {version = "0.1.6", features = ["rayon"]}
 
 ndarray = {version = "0.15", features = ["approx-0_5", "rayon", "serde"]}
 num-traits = "0.2"
