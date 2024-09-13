@@ -2,9 +2,10 @@ use std::collections::BTreeMap;
 use std::convert::TryFrom;
 
 use log::warn;
+use metatensor::c_api::MTS_INVALID_PARAMETER_ERROR;
 use once_cell::sync::Lazy;
 
-use metatensor::{LabelValue, Labels, LabelsBuilder};
+use metatensor::{Labels, LabelsBuilder};
 use metatensor::{TensorBlockRef, TensorBlock, TensorMap};
 use ndarray::ArrayD;
 
@@ -43,6 +44,30 @@ pub enum LabelsSelection<'a> {
     Predefined(&'a TensorMap),
 }
 
+fn map_selection_error<'a>(
+    default_names: &'a [&str],
+    selection_names: &'a [&str],
+    label_kind: &'a str
+) -> impl FnOnce(metatensor::Error) -> Error + 'a{
+    return move |err| {
+        match err.code {
+            Some(MTS_INVALID_PARAMETER_ERROR) => {
+                for name in selection_names {
+                    if !default_names.contains(name) {
+                        return Error::InvalidParameter(format!(
+                            "'{}' in {} selection is not part of the {} of this calculator",
+                            name, label_kind, label_kind
+                        ));
+                    }
+                }
+                // it was some other error, bubble it up
+                Error::from(err)
+            }
+            _ => Error::from(err)
+        }
+    };
+}
+
 impl<'a> LabelsSelection<'a> {
     fn select<'call, F, G, H>(
         &self,
@@ -69,45 +94,17 @@ impl<'a> LabelsSelection<'a> {
                 let default_names = get_default_names();
 
                 let mut results = Vec::new();
-                if selection.names() == default_names {
-                    for labels in default_labels {
-                        let mut builder = LabelsBuilder::new(default_names.clone());
-                        for entry in selection {
-                            if labels.contains(entry) {
-                                builder.add(entry);
-                            }
-                        }
-                        results.push(builder.finish());
-                    }
-                } else {
-                    let mut dimensions_to_match = Vec::new();
-                    for variable in selection.names() {
-                        let i = match default_names.iter().position(|&v| v == variable) {
-                            Some(index) => index,
-                            None => {
-                                return Err(Error::InvalidParameter(format!(
-                                    "'{}' in {} selection is not one of the {} of this calculator",
-                                    variable, label_kind, label_kind
-                                )))
-                            }
-                        };
-                        dimensions_to_match.push(i);
-                    }
+                for labels in default_labels {
+                    let mut builder = LabelsBuilder::new(default_names.clone());
 
-                    let mut candidate = vec![LabelValue::new(0); dimensions_to_match.len()];
-                    for labels in default_labels {
-                        let mut builder = LabelsBuilder::new(default_names.clone());
-                        for entry in &labels {
-                            for (i, &v) in dimensions_to_match.iter().enumerate() {
-                                candidate[i] = entry[v];
-                            }
+                    // better error message in case of un-matched names
+                    let matches = labels.select(selection)
+                        .map_err(map_selection_error(&default_names, &selection.names(), label_kind))?;
 
-                            if selection.contains(&candidate) {
-                                builder.add(entry);
-                            }
-                        }
-                        results.push(builder.finish());
+                    for entry in matches {
+                        builder.add(&labels[entry as usize]);
                     }
+                    results.push(builder.finish());
                 }
 
                 return Ok(results);
@@ -292,18 +289,20 @@ impl Calculator {
         let default_keys = self.implementation.keys(systems)?;
 
         let keys = match options.selected_keys {
-            Some(keys) if keys.is_empty() => {
-                return Err(Error::InvalidParameter("selected keys can not be empty".into()));
-            }
-            Some(keys) => {
-                if default_keys.names() == keys.names() {
-                    keys.clone()
+
+            Some(selection) => {
+                if selection.is_empty() {
+                    return Err(Error::InvalidParameter("selected keys can not be empty".into()));
+                } else if default_keys.names() == selection.names() {
+                    selection.clone()
                 } else {
-                    return Err(Error::InvalidParameter(format!(
-                        "names for the keys of the calculator [{}] and selected keys [{}] do not match",
-                        default_keys.names().join(", "),
-                        keys.names().join(", "))
-                    ));
+                    let mut builder = LabelsBuilder::new(default_keys.names());
+                    let matches = default_keys.select(selection)
+                        .map_err(map_selection_error(&default_keys.names(), &selection.names(), "keys"))?;
+                    for entry in matches {
+                        builder.add(&default_keys[entry as usize]);
+                    }
+                    builder.finish()
                 }
             }
             None => default_keys,

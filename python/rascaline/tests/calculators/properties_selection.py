@@ -150,7 +150,7 @@ def test_errors():
 
     message = (
         "invalid parameter: 'bad_name' in properties selection is not "
-        "one of the properties of this calculator"
+        "part of the properties of this calculator"
     )
     with pytest.raises(RascalError, match=message):
         calculator.compute(

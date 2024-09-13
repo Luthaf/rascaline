@@ -3,7 +3,7 @@ import pytest
 from metatensor import Labels, TensorBlock, TensorMap
 
 from rascaline import RascalError
-from rascaline.calculators import DummyCalculator
+from rascaline.calculators import DummyCalculator, SphericalExpansion
 
 from ..test_systems import SystemForTests
 
@@ -38,17 +38,54 @@ def test_selection_existing():
     system = SystemForTests()
     calculator = DummyCalculator(cutoff=3.2, delta=2, name="")
 
+    # no selection
+    descriptor = calculator.compute(system, selected_keys=None)
+    assert len(descriptor.keys) == 2
+    assert descriptor.keys.values.tolist() == [[1], [8]]
+
     # Manually select the keys
     selected_keys = Labels(
         names=["center_type"],
         values=np.array([[1]], dtype=np.int32),
     )
-    descriptor = calculator.compute(
-        system, use_native_system=False, selected_keys=selected_keys
-    )
+    descriptor = calculator.compute(system, selected_keys=selected_keys)
 
     assert len(descriptor.keys) == 1
-    assert tuple(descriptor.keys[0]) == (1,)
+    assert descriptor.keys[0].values.tolist() == [1]
+
+
+def test_selection_partial():
+    system = SystemForTests()
+    calculator = SphericalExpansion(
+        cutoff=2.5,
+        max_radial=1,
+        max_angular=1,
+        atomic_gaussian_width=0.2,
+        radial_basis={"Gto": {}},
+        cutoff_function={"ShiftedCosine": {"width": 0.5}},
+        center_atom_weight=1.0,
+    )
+
+    # Manually select the keys
+    selected_keys = Labels(
+        names=["center_type"],
+        values=np.array([[1]], dtype=np.int32),
+    )
+    descriptor = calculator.compute(system, selected_keys=selected_keys)
+
+    assert len(descriptor.keys) == 4
+    assert descriptor.keys.names == [
+        "o3_lambda",
+        "o3_sigma",
+        "center_type",
+        "neighbor_type",
+    ]
+    assert descriptor.keys.values.tolist() == [
+        [0, 1, 1, 1],
+        [1, 1, 1, 1],
+        [0, 1, 1, 8],
+        [1, 1, 1, 8],
+    ]
 
 
 def test_select_key_not_in_systems():
@@ -60,9 +97,7 @@ def test_select_key_not_in_systems():
         names=["center_type"],
         values=np.array([[4]], dtype=np.int32),
     )
-    descriptor = calculator.compute(
-        system, use_native_system=False, selected_keys=selected_keys
-    )
+    descriptor = calculator.compute(system, selected_keys=selected_keys)
 
     C_block = descriptor.block(center_type=4)
     assert C_block.values.shape == (0, 2)
@@ -97,7 +132,6 @@ def test_predefined_selection():
 
     descriptor = calculator.compute(
         system,
-        use_native_system=False,
         selected_properties=selected_properties,
         selected_keys=selected_keys,
     )
@@ -119,11 +153,11 @@ def test_name_errors():
     )
 
     message = (
-        "invalid parameter: names for the keys of the calculator "
-        "\\[center_type\\] and selected keys \\[bad_name\\] do not match"
+        "invalid parameter: 'bad_name' in keys selection is not "
+        "part of the keys of this calculator"
     )
     with pytest.raises(RascalError, match=message):
-        calculator.compute(system, use_native_system=False, selected_keys=selected_keys)
+        calculator.compute(system, selected_keys=selected_keys)
 
 
 def test_key_errors():
@@ -137,7 +171,7 @@ def test_key_errors():
 
     message = "invalid parameter: selected keys can not be empty"
     with pytest.raises(RascalError, match=message):
-        calculator.compute(system, use_native_system=False, selected_keys=selected_keys)
+        calculator.compute(system, selected_keys=selected_keys)
 
     # in the case where both selected_properties/selected_samples and
     # selected_keys are given, the selected keys must be in the keys of the
@@ -171,7 +205,6 @@ def test_key_errors():
     with pytest.raises(RascalError, match=message):
         calculator.compute(
             system,
-            use_native_system=False,
             selected_properties=selected_properties,
             selected_keys=selected_keys,
         )

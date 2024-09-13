@@ -145,7 +145,7 @@ def test_errors():
     )
 
     message = (
-        "invalid parameter: 'bad_name' in samples selection is not one "
+        "invalid parameter: 'bad_name' in samples selection is not part "
         "of the samples of this calculator"
     )
     with pytest.raises(RascalError, match=message):
