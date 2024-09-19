@@ -300,10 +300,10 @@ class ClebschGordanProduct(TorchModule):
 
         # 3. a) Apply key selections
         if selected_keys is not None:
-            output_keys, combinations = _utils._apply_key_selection(
-                output_keys,
-                combinations,
-                selected_keys,
+            selected_idx = output_keys.select(selected_keys)
+            combinations = [combinations[i] for i in selected_idx]
+            output_keys = Labels(
+                names=output_keys.names, values=output_keys.values[selected_idx]
             )
 
         # 3. b) Apply key filter
