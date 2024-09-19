@@ -3,23 +3,25 @@
 Laplacian eigenstate basis
 ==========================
 
-This examples shows how to calculate a spherical expansion using a Laplacian
-eigenstate basis.
+Temporarily deactivated example
 
-.. tabs::
+.. This examples shows how to calculate a spherical expansion using a Laplacian
+.. eigenstate basis.
 
-    .. group-tab:: Python
+.. .. tabs::
 
-        .. container:: sphx-glr-footer sphx-glr-footer-example
+..     .. group-tab:: Python
 
-            .. container:: sphx-glr-download sphx-glr-download-python
+..         .. container:: sphx-glr-footer sphx-glr-footer-example
 
-                :download:`Download Python source code for this example: le-basis.py <../examples/le-basis.py>`
+..             .. container:: sphx-glr-download sphx-glr-download-python
 
-            .. container:: sphx-glr-download sphx-glr-download-jupyter
+..                 :download:`Download Python source code for this example: le-basis.py <../examples/le-basis.py>`
 
-                :download:`Download Jupyter notebook for this example: le-basis.ipynb <../examples/le-basis.ipynb>`
+..             .. container:: sphx-glr-download sphx-glr-download-jupyter
 
-        .. include:: ../examples/le-basis.rst
-            :start-after: start-body
-            :end-before: end-body
+..                 :download:`Download Jupyter notebook for this example: le-basis.ipynb <../examples/le-basis.ipynb>`
+
+..         .. include:: ../examples/le-basis.rst
+..             :start-after: start-body
+..             :end-before: end-body

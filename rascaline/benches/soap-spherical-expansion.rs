@@ -44,13 +44,25 @@ fn run_spherical_expansion(mut group: BenchmarkGroup<WallTime>,
         }
 
         let parameters = format!(r#"{{
-            "max_radial": {max_radial},
-            "max_angular": {max_angular},
-            "cutoff": {cutoff},
-            "atomic_gaussian_width": 0.3,
-            "center_atom_weight": 1.0,
-            "radial_basis": {{ "Gto": {{}} }},
-            "cutoff_function": {{ "ShiftedCosine": {{ "width": 0.5 }} }}
+            "cutoff": {{
+                "radius": {cutoff},
+                "smoothing": {{
+                    "type": "ShiftedCosine",
+                    "width": 0.5
+                }}
+            }},
+            "density": {{
+                "type": "Gaussian",
+                "width": 0.3
+            }},
+            "basis": {{
+                "type": "TensorProduct",
+                "max_angular": {max_angular},
+                "radial": {{
+                    "type": "Gto",
+                    "max_radial": {max_radial}
+                }}
+            }}
         }}"#);
         let mut calculator = Calculator::new("spherical_expansion", parameters).unwrap();
 

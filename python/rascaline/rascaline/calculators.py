@@ -18,7 +18,7 @@ class AtomicComposition(CalculatorBase):
     system is saved. The only sample left is named ``system``.
     """
 
-    def __init__(self, per_system):
+    def __init__(self, *, per_system):
         parameters = {
             "per_system": per_system,
         }
@@ -26,7 +26,7 @@ class AtomicComposition(CalculatorBase):
 
 
 class DummyCalculator(CalculatorBase):
-    def __init__(self, cutoff, delta, name):
+    def __init__(self, *, cutoff, delta, name):
         parameters = {
             "cutoff": cutoff,
             "delta": delta,
@@ -59,6 +59,7 @@ class NeighborList(CalculatorBase):
 
     def __init__(
         self,
+        *,
         cutoff: float,
         full_neighbor_list: bool,
         self_pairs: bool = False,
@@ -86,7 +87,7 @@ class SortedDistances(CalculatorBase):
     :ref:`documentation <sorted-distances>`.
     """
 
-    def __init__(self, cutoff, max_neighbors, separate_neighbor_types):
+    def __init__(self, *, cutoff, max_neighbors, separate_neighbor_types):
         parameters = {
             "cutoff": cutoff,
             "max_neighbors": max_neighbors,
@@ -114,29 +115,15 @@ class SphericalExpansion(CalculatorBase):
     :ref:`documentation <spherical-expansion>`.
     """
 
-    def __init__(
-        self,
-        cutoff,
-        max_radial,
-        max_angular,
-        atomic_gaussian_width,
-        radial_basis,
-        center_atom_weight,
-        cutoff_function,
-        radial_scaling=None,
-    ):
+    def __init__(self, *, cutoff, density, basis, **kwargs):
+        if len(kwargs) != 0:
+            raise ValueError("TODO: old style parameters")
+
         parameters = {
             "cutoff": cutoff,
-            "max_radial": max_radial,
-            "max_angular": max_angular,
-            "atomic_gaussian_width": atomic_gaussian_width,
-            "center_atom_weight": center_atom_weight,
-            "radial_basis": radial_basis,
-            "cutoff_function": cutoff_function,
+            "density": density,
+            "basis": basis,
         }
-
-        if radial_scaling is not None:
-            parameters["radial_scaling"] = radial_scaling
 
         super().__init__("spherical_expansion", json.dumps(parameters))
 
@@ -174,29 +161,15 @@ class SphericalExpansionByPair(CalculatorBase):
     :ref:`documentation <spherical-expansion-by-pair>`.
     """
 
-    def __init__(
-        self,
-        cutoff,
-        max_radial,
-        max_angular,
-        atomic_gaussian_width,
-        radial_basis,
-        center_atom_weight,
-        cutoff_function,
-        radial_scaling=None,
-    ):
+    def __init__(self, *, cutoff, density, basis, **kwargs):
+        if len(kwargs) != 0:
+            raise ValueError("TODO: old style parameters")
+
         parameters = {
             "cutoff": cutoff,
-            "max_radial": max_radial,
-            "max_angular": max_angular,
-            "atomic_gaussian_width": atomic_gaussian_width,
-            "center_atom_weight": center_atom_weight,
-            "radial_basis": radial_basis,
-            "cutoff_function": cutoff_function,
+            "density": density,
+            "basis": basis,
         }
-
-        if radial_scaling is not None:
-            parameters["radial_scaling"] = radial_scaling
 
         super().__init__("spherical_expansion_by_pair", json.dumps(parameters))
 
@@ -218,27 +191,15 @@ class SoapRadialSpectrum(CalculatorBase):
     :ref:`documentation <soap-radial-spectrum>`.
     """
 
-    def __init__(
-        self,
-        cutoff,
-        max_radial,
-        atomic_gaussian_width,
-        center_atom_weight,
-        radial_basis,
-        cutoff_function,
-        radial_scaling=None,
-    ):
+    def __init__(self, *, cutoff, density, basis, **kwargs):
+        if len(kwargs) != 0:
+            raise ValueError("TODO: old style parameters")
+
         parameters = {
             "cutoff": cutoff,
-            "max_radial": max_radial,
-            "atomic_gaussian_width": atomic_gaussian_width,
-            "center_atom_weight": center_atom_weight,
-            "radial_basis": radial_basis,
-            "cutoff_function": cutoff_function,
+            "density": density,
+            "basis": basis,
         }
-
-        if radial_scaling is not None:
-            parameters["radial_scaling"] = radial_scaling
 
         super().__init__("soap_radial_spectrum", json.dumps(parameters))
 
@@ -264,29 +225,15 @@ class SoapPowerSpectrum(CalculatorBase):
         allows to compute the power spectrum from different spherical expansions.
     """
 
-    def __init__(
-        self,
-        cutoff,
-        max_radial,
-        max_angular,
-        atomic_gaussian_width,
-        center_atom_weight,
-        radial_basis,
-        cutoff_function,
-        radial_scaling=None,
-    ):
+    def __init__(self, *, cutoff, density, basis, **kwargs):
+        if len(kwargs) != 0:
+            raise ValueError("TODO: old style parameters")
+
         parameters = {
             "cutoff": cutoff,
-            "max_radial": max_radial,
-            "max_angular": max_angular,
-            "atomic_gaussian_width": atomic_gaussian_width,
-            "center_atom_weight": center_atom_weight,
-            "radial_basis": radial_basis,
-            "cutoff_function": cutoff_function,
+            "density": density,
+            "basis": basis,
         }
-
-        if radial_scaling is not None:
-            parameters["radial_scaling"] = radial_scaling
 
         super().__init__("soap_power_spectrum", json.dumps(parameters))
 
@@ -308,26 +255,14 @@ class LodeSphericalExpansion(CalculatorBase):
     :ref:`documentation <lode-spherical-expansion>`.
     """
 
-    def __init__(
-        self,
-        cutoff,
-        max_radial,
-        max_angular,
-        atomic_gaussian_width,
-        center_atom_weight,
-        potential_exponent,
-        radial_basis,
-        k_cutoff=None,
-    ):
+    def __init__(self, *, density, basis, k_cutoff=None, **kwargs):
+        if len(kwargs) != 0:
+            raise ValueError("TODO: old style parameters")
+
         parameters = {
-            "cutoff": cutoff,
             "k_cutoff": k_cutoff,
-            "max_radial": max_radial,
-            "max_angular": max_angular,
-            "atomic_gaussian_width": atomic_gaussian_width,
-            "center_atom_weight": center_atom_weight,
-            "potential_exponent": potential_exponent,
-            "radial_basis": radial_basis,
+            "density": density,
+            "basis": basis,
         }
 
         super().__init__("lode_spherical_expansion", json.dumps(parameters))

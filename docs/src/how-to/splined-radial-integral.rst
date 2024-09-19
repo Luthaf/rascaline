@@ -3,24 +3,26 @@
 Splined radial integral
 =======================
 
-This examples shows how to feed custom radial integrals (as splines) to the Rust
-calculators that use radial integrals: the SOAP and LODE spherical expansions,
-and any other calculator based on these.
+Temporarily deactivated example
 
-.. tabs::
+.. This examples shows how to feed custom radial integrals (as splines) to the Rust
+.. calculators that use radial integrals: the SOAP and LODE spherical expansions,
+.. and any other calculator based on these.
 
-    .. group-tab:: Python
+.. .. tabs::
 
-        .. container:: sphx-glr-footer sphx-glr-footer-example
+..     .. group-tab:: Python
 
-            .. container:: sphx-glr-download sphx-glr-download-python
+..         .. container:: sphx-glr-footer sphx-glr-footer-example
 
-                :download:`Download Python source code for this example: tabulated.py <../examples/splined-radial-integral.py>`
+..             .. container:: sphx-glr-download sphx-glr-download-python
 
-            .. container:: sphx-glr-download sphx-glr-download-jupyter
+..                 :download:`Download Python source code for this example: tabulated.py <../examples/splined-radial-integral.py>`
 
-                :download:`Download Jupyter notebook for this example: tabulated.ipynb <../examples/splined-radial-integral.ipynb>`
+..             .. container:: sphx-glr-download sphx-glr-download-jupyter
 
-        .. include:: ../examples/splined-radial-integral.rst
-            :start-after: start-body
-            :end-before: end-body
+..                 :download:`Download Jupyter notebook for this example: tabulated.ipynb <../examples/splined-radial-integral.ipynb>`
+
+..         .. include:: ../examples/splined-radial-integral.rst
+..             :start-after: start-body
+..             :end-before: end-body

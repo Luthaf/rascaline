@@ -22,20 +22,19 @@ frame = ase.Atoms(
 )
 
 hyperparameters = {
-    "cutoff": 5.5,
-    "max_radial": 8,
-    "max_angular": 8,
-    "atomic_gaussian_width": 0.3,
-    "center_atom_weight": 1.0,
-    "radial_basis": {
-        "Gto": {
-            "splined_radial_integral": False,
-        },
+    "cutoff": {
+        "radius": 5.5,
+        "smoothing": {"type": "ShiftedCosine", "width": 0.5},
     },
-    "cutoff_function": {
-        "ShiftedCosine": {
-            "width": 0.5,
-        }
+    "density": {
+        "type": "Gaussian",
+        "width": 0.3,
+    },
+    "basis": {
+        "type": "TensorProduct",
+        "max_angular": 8,
+        "radial": {"max_radial": 7, "type": "Gto"},
+        "spline_accuracy": None,
     },
 }
 
@@ -48,8 +47,8 @@ save_calculator_input("soap-power-spectrum-values", frame, hyperparameters)
 save_numpy_array("soap-power-spectrum-values", descriptor.block().values)
 
 # Use less values for gradients to keep the file size low
-hyperparameters["max_radial"] = 3
-hyperparameters["max_angular"] = 4
+hyperparameters["basis"]["radial"]["max_radial"] = 2
+hyperparameters["basis"]["max_angular"] = 4
 
 frame.cell = [6.0, 6.0, 6.0]
 frame.pbc = [True, True, True]

@@ -85,17 +85,16 @@ pub use self::sorted_distances::SortedDistances;
 mod neighbor_list;
 pub use self::neighbor_list::NeighborList;
 
-mod radial_basis;
-pub use self::radial_basis::{RadialBasis, GtoRadialBasis};
-
-mod descriptors_by_systems;
-pub(crate) use self::descriptors_by_systems::{array_mut_for_system, split_tensor_map_by_system};
+mod shared;
+pub use self::shared::{Density, DensityKind, DensityScaling};
+pub use self::shared::{SphericalExpansionBasis, TensorProductBasis};
+pub use self::shared::{SoapRadialBasis, LodeRadialBasis};
 
 pub mod soap;
 pub use self::soap::{SphericalExpansionByPair, SphericalExpansionParameters};
 pub use self::soap::SphericalExpansion;
-pub use self::soap::{SoapPowerSpectrum, PowerSpectrumParameters};
 pub use self::soap::{SoapRadialSpectrum, RadialSpectrumParameters};
+pub use self::soap::{SoapPowerSpectrum, PowerSpectrumParameters};
 
 pub mod lode;
 pub use self::lode::{LodeSphericalExpansion, LodeSphericalExpansionParameters};
