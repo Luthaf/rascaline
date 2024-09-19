@@ -1,3 +1,4 @@
+import copy
 import json
 import os
 
@@ -9,7 +10,7 @@ from myst_parser.config.main import MdParserConfig
 from myst_parser.mdit_to_docutils.base import DocutilsRenderer
 
 
-def markdow_to_docutils(text):
+def markdown_to_docutils(text):
     parser = MarkdownIt()
     tokens = parser.parse(text)
 
@@ -26,8 +27,9 @@ class JsonSchemaDirective(Directive):
 
     def __init__(self, *args, **kwargs):
         super(JsonSchemaDirective, self).__init__(*args, **kwargs)
-        self._inline_call_count = 0
         self.docs_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        # use Dict[str, None] as an ordered set
+        self._definitions = {}
 
     def run(self, *args, **kwargs):
         schema, content = self._load_schema()
@@ -39,13 +41,21 @@ class JsonSchemaDirective(Directive):
         schema_node += nodes.literal_block(text=content)
         section.insert(1, schema_node)
 
-        for name, definition in schema.get("definitions", {}).items():
+        # add missing entries to  self._definitions
+        for name in schema.get("definitions", {}).keys():
+            self._definition_used(name)
+
+        for name in self._definitions.keys():
+            definition = schema["definitions"][name]
             target, subsection = self._transform(definition, name)
 
             section += target
             section += subsection
 
         return [root_target, section]
+
+    def _definition_used(self, name):
+        self._definitions[name] = None
 
     def _transform(self, schema, name):
         target_id = _target_id(name)
@@ -57,7 +67,7 @@ class JsonSchemaDirective(Directive):
         section += nodes.title(text=name)
 
         description = schema.get("description", "")
-        section.extend(markdow_to_docutils(description))
+        section.extend(markdown_to_docutils(description))
 
         section += self._json_schema_to_nodes(schema)
 
@@ -80,11 +90,121 @@ class JsonSchemaDirective(Directive):
 
         return schema, content
 
-    def _json_schema_to_nodes(self, schema, inline=False):
+    def _json_schema_to_nodes(
+        self,
+        schema,
+        inline=False,
+        description=True,
+        optional=False,
+    ):
         """Transform the schema for a single type to docutils nodes"""
 
+        if optional:
+            # can only use optional for inline mode
+            assert inline
+
+        optional_str = "?" if optional else ""
+
+        if "$ref" in schema:
+            assert "properties" not in schema
+            assert "oneOf" not in schema
+            assert "anyOf" not in schema
+            assert "allOf" not in schema
+
+            ref = schema["$ref"]
+            assert ref.startswith("#/definitions/")
+            type_name = ref.split("/")[-1]
+
+            self._definition_used(type_name)
+
+            refid = _target_id(type_name)
+            container = nodes.generated()
+            container += nodes.reference(
+                internal=True,
+                refid=refid,
+                text=type_name + optional_str,
+            )
+
+            return container
+
+        # enums values are represented as allOf
+        if "allOf" in schema:
+            assert "properties" not in schema
+            assert "oneOf" not in schema
+            assert "anyOf" not in schema
+            assert "$ref" not in schema
+
+            assert len(schema["allOf"]) == 1
+            return self._json_schema_to_nodes(schema["allOf"][0])
+
+        # Enum variants uses "oneOf"
+        if "oneOf" in schema:
+            assert "anyOf" not in schema
+            assert "allOf" not in schema
+            assert "$ref" not in schema
+
+            container = nodes.paragraph()
+            container += nodes.Text(
+                'Pick one of the following according to its "type":'
+            )
+
+            global_properties = copy.deepcopy(schema.get("properties", {}))
+
+            for prop in global_properties.values():
+                prop["description"] = "See below."
+
+            bullet_list = nodes.bullet_list()
+            for possibility in schema["oneOf"]:
+                possibility = copy.deepcopy(possibility)
+                possibility["properties"].update(global_properties)
+
+                item = nodes.list_item()
+                item += self._json_schema_to_nodes(
+                    possibility, inline=True, description=False
+                )
+
+                description = possibility.get("description", "")
+                item.extend(markdown_to_docutils(description))
+
+                item += self._json_schema_to_nodes(possibility, inline=False)
+
+                bullet_list += item
+
+            container += bullet_list
+
+            global_properties = copy.deepcopy(schema)
+            global_properties.pop("oneOf")
+            if "properties" in global_properties:
+                container += nodes.transition()
+                container += self._json_schema_to_nodes(global_properties, inline=False)
+
+            return container
+
+        if "anyOf" in schema:
+            assert "properties" not in schema
+            assert "oneOf" not in schema
+            assert "allOf" not in schema
+            assert "$ref" not in schema
+
+            # only supported for Option<T>
+            assert len(schema["anyOf"]) == 2
+            assert schema["anyOf"][1]["type"] == "null"
+            return self._json_schema_to_nodes(
+                schema["anyOf"][0], inline=True, optional=optional
+            )
+
         if "type" in schema:
-            if schema["type"] == "object":
+            assert "oneOf" not in schema
+            assert "anyOf" not in schema
+            assert "allOf" not in schema
+            assert "$ref" not in schema
+
+            if schema["type"] == "null":
+                assert not optional
+                return nodes.literal(text="null")
+
+            elif schema["type"] == "object":
+                assert not optional
                 if not inline:
                     field_list = nodes.field_list()
                     for name, content in schema.get("properties", {}).items():
@@ -93,64 +213,75 @@ class JsonSchemaDirective(Directive):
                         if "default" in content:
                             name += nodes.Text("optional, ")
 
-                        name += self._json_schema_to_nodes(content, inline=True)
+                        name += self._json_schema_to_nodes(
+                            content, inline=True, optional=False
+                        )
 
                         field_list += name
-                        body = nodes.field_body()
 
-                        description = content.get("description", "")
-                        body.extend(markdow_to_docutils(description))
+                        if description:
+                            description_text = content.get("description", "")
 
-                        field_list += body
+                            description = markdown_to_docutils(description_text)
+                            body = nodes.field_body()
+                            body.extend(description)
+
+                            field_list += body
 
                     return field_list
                 else:
-                    self._inline_call_count += 1
-
                     object_node = nodes.inline()
 
-                    if self._inline_call_count > 1:
-                        object_node += nodes.Text("{")
+                    object_node += nodes.Text("{")
 
-                    for name, content in schema.get("properties", {}).items():
+                    fields_unordered = schema.get("properties", {})
+                    # put "type" first in the output
+                    fields = {}
+                    if "type" in fields_unordered:
+                        fields["type"] = fields_unordered.pop("type")
+                    fields.update(fields_unordered)
+
+                    n_fields = len(fields)
+                    for i_field, (name, content) in enumerate(fields.items()):
                         field = nodes.inline()
-                        field += nodes.Text(f"{name}: ")
+                        field += nodes.Text(f'"{name}": ')
 
-                        subfields = self._json_schema_to_nodes(content, inline=True)
+                        subfields = self._json_schema_to_nodes(
+                            content,
+                            inline=True,
+                            optional="default" in content,
+                        )
                         if isinstance(subfields, nodes.literal):
                             subfields = [subfields]
 
-                        for i, sf in enumerate(subfields):
-                            field += sf
+                        field += subfields
 
-                            if isinstance(sf, nodes.inline):
-                                if i != len(subfields) - 2:
-                                    # len(xxx) - 2 to account for the final }
-                                    field += nodes.Text(", ")
+                        if i_field != n_fields - 1:
+                            field += nodes.Text(", ")
+
                         object_node += field
 
-                    if self._inline_call_count > 1:
-                        object_node += nodes.Text("}")
+                    object_node += nodes.Text("}")
 
-                    self._inline_call_count -= 1
                     return object_node
 
             elif schema["type"] == "number":
                 assert schema["format"] == "double"
-                return nodes.literal(text="number")
+                return nodes.literal(text="number" + optional_str)
 
             elif schema["type"] == "integer":
                 if "format" not in schema:
-                    return nodes.literal(text="integer")
+                    return nodes.literal(text="integer" + optional_str)
 
                 if schema["format"].startswith("int"):
-                    return nodes.literal(text="integer")
+                    return nodes.literal(text="integer" + optional_str)
                 elif schema["format"].startswith("uint"):
-                    return nodes.literal(text="unsigned integer")
+                    return nodes.literal(text="positive integer" + optional_str)
                 else:
                     raise Exception(f"unknown integer format: {schema['format']}")
 
             elif schema["type"] == "string":
+                assert not optional
                 if "enum" in schema:
                     values = [f'"{v}"' for v in schema["enum"]]
                     return nodes.literal(text=" | ".join(values))
@@ -158,7 +289,10 @@ class JsonSchemaDirective(Directive):
                     return nodes.literal(text="string")
 
             elif schema["type"] == "boolean":
-                return nodes.literal(text="boolean")
+                if optional:
+                    return nodes.literal(text="boolean?")
+                else:
+                    return nodes.literal(text="boolean")
 
             elif isinstance(schema["type"], list):
                 # we only support list for Option<T>
@@ -166,44 +300,23 @@ class JsonSchemaDirective(Directive):
                 assert schema["type"][1] == "null"
 
                 schema["type"] = schema["type"][0]
-                return self._json_schema_to_nodes(schema, inline=True)
+                return self._json_schema_to_nodes(
+                    schema, inline=True, optional=optional
+                )
 
             elif schema["type"] == "array":
+                assert not optional
                 array_node = nodes.inline()
-                array_node += self._json_schema_to_nodes(schema["items"], inline=True)
-                array_node += nodes.Text("[]")
+                inner = self._json_schema_to_nodes(schema["items"], inline=True)
+                if isinstance(inner, nodes.literal):
+                    array_node += nodes.literal(text=inner.astext() + "[]")
+                else:
+                    array_node += inner
+                    array_node += nodes.Text("[]")
                 return array_node
 
             else:
                 raise Exception(f"unsupported JSON type ({schema['type']}) in schema")
-
-        if "$ref" in schema:
-            ref = schema["$ref"]
-            assert ref.startswith("#/definitions/")
-            type_name = ref.split("/")[-1]
-
-            refid = _target_id(type_name)
-
-            return nodes.reference(internal=True, refid=refid, text=type_name)
-
-        # enums values are represented as allOf
-        if "allOf" in schema:
-            assert len(schema["allOf"]) == 1
-            return self._json_schema_to_nodes(schema["allOf"][0])
-
-        # Enum variants uses "oneOf"
-        if "oneOf" in schema:
-            bullet_list = nodes.bullet_list()
-            for possibility in schema["oneOf"]:
-                item = nodes.list_item()
-                item += self._json_schema_to_nodes(possibility, inline=True)
-
-                description = possibility.get("description", "")
-                item.extend(markdow_to_docutils(description))
-
-                bullet_list += item
-
-            return bullet_list
 
         raise Exception(f"unsupported JSON schema: {schema}")
 

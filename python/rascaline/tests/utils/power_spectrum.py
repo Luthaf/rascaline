@@ -1,4 +1,5 @@
-# -*- coding: utf-8 -*-
+import copy
+
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_equal
@@ -13,43 +14,63 @@ from .test_utils import finite_differences_positions
 ase = pytest.importorskip("ase")
 
 
-HYPERS = hypers = {
-    "cutoff": 5.0,
-    "max_radial": 6,
-    "max_angular": 4,
-    "atomic_gaussian_width": 0.3,
-    "center_atom_weight": 1.0,
-    "radial_basis": {
-        "Gto": {},
+SOAP_HYPERS = {
+    "cutoff": {
+        "radius": 5.0,
+        "smoothing": {"type": "ShiftedCosine", "width": 0.5},
     },
-    "cutoff_function": {
-        "ShiftedCosine": {"width": 0.5},
+    "density": {
+        "type": "Gaussian",
+        "width": 0.3,
+    },
+    "basis": {
+        "type": "TensorProduct",
+        "max_angular": 4,
+        "radial": {"type": "Gto", "max_radial": 6},
     },
 }
+
+LODE_HYPERS = {
+    "density": {
+        "type": "SmearedPowerLaw",
+        "smearing": 0.3,
+        "exponent": 1,
+    },
+    "basis": {
+        "type": "TensorProduct",
+        "max_angular": 4,
+        "radial": {
+            "type": "Gto",
+            "max_radial": 6,
+            "radius": 5.0,
+        },
+    },
+}
+
 N_ATOMIC_TYPES = len(np.unique(SystemForTests().types()))
 
 
-def soap_calculator():
-    return rascaline.SphericalExpansion(**HYPERS)
+def soap_spx():
+    return rascaline.SphericalExpansion(**SOAP_HYPERS)
 
 
-def lode_calculator():
-    hypers = HYPERS.copy()
-    hypers.pop("cutoff_function")
-    hypers["potential_exponent"] = 1
+def soap_ps():
+    return rascaline.SoapPowerSpectrum(**SOAP_HYPERS)
 
-    return rascaline.LodeSphericalExpansion(**hypers)
+
+def lode_spx():
+    return rascaline.LodeSphericalExpansion(**LODE_HYPERS)
 
 
 def soap():
-    return soap_calculator().compute(SystemForTests())
+    return soap_spx().compute(SystemForTests())
 
 
 def power_spectrum():
-    return PowerSpectrum(soap_calculator()).compute(SystemForTests())
+    return PowerSpectrum(soap_spx()).compute(SystemForTests())
 
 
-@pytest.mark.parametrize("calculator", [soap_calculator(), lode_calculator()])
+@pytest.mark.parametrize("calculator", [soap_spx(), lode_spx()])
 def test_power_spectrum(calculator) -> None:
     """Test that power spectrum works and that the shape is correct."""
     ps_python = PowerSpectrum(calculator).compute(SystemForTests())
@@ -59,7 +80,9 @@ def test_power_spectrum(calculator) -> None:
     n_props_actual = len(ps_python.block().properties)
 
     n_props_expected = (
-        N_ATOMIC_TYPES**2 * HYPERS["max_radial"] ** 2 * (HYPERS["max_angular"] + 1)
+        N_ATOMIC_TYPES**2
+        * (SOAP_HYPERS["basis"]["radial"]["max_radial"] + 1) ** 2
+        * (SOAP_HYPERS["basis"]["max_angular"] + 1)
     )
 
     assert n_props_actual == n_props_expected
@@ -67,45 +90,42 @@ def test_power_spectrum(calculator) -> None:
 
 def test_error_max_angular():
     """Test error raise if max_angular are different."""
-    hypers_2 = HYPERS.copy()
-    hypers_2.update(max_radial=3, max_angular=1)
+    hypers_2 = copy.deepcopy(SOAP_HYPERS)
+    hypers_2["basis"]["radial"]["max_radial"] = 3
+    hypers_2["basis"]["max_angular"] = 2
 
     se_calculator2 = rascaline.SphericalExpansion(**hypers_2)
 
-    msg = "'max_angular' of both calculators must be the same!"
-    with pytest.raises(ValueError, match=msg):
-        PowerSpectrum(soap_calculator(), se_calculator2)
-
-    calculator = rascaline.SoapPowerSpectrum(**HYPERS)
-    with pytest.raises(ValueError, match="are supported for calculator_1"):
-        PowerSpectrum(calculator)
+    message = "'basis.max_angular' must be the same in both calculators"
+    with pytest.raises(ValueError, match=message):
+        PowerSpectrum(soap_spx(), se_calculator2)
 
 
-def test_wrong_calculator_1():
-    """Test error raise for wrong calculator_1."""
+def test_wrong_calculator():
+    message = (
+        "Only \\[lode_spherical_expansion, spherical_expansion\\] "
+        "are supported for `calculator_1`, got 'soap_power_spectrum'"
+    )
+    with pytest.raises(ValueError, match=message):
+        PowerSpectrum(soap_ps())
 
-    calculator = rascaline.SoapPowerSpectrum(**HYPERS)
-    with pytest.raises(ValueError, match="are supported for calculator_1"):
-        PowerSpectrum(calculator)
-
-
-def test_wrong_calculator_2():
-    """Test error raise for wrong calculator_2."""
-
-    calculator = rascaline.SoapPowerSpectrum(**HYPERS)
-    with pytest.raises(ValueError, match="are supported for calculator_2"):
-        PowerSpectrum(soap_calculator(), calculator)
+    message = (
+        "Only \\[lode_spherical_expansion, spherical_expansion\\] "
+        "are supported for `calculator_2`, got 'soap_power_spectrum'"
+    )
+    with pytest.raises(ValueError, match=message):
+        PowerSpectrum(soap_spx(), soap_ps())
 
 
 def test_power_spectrum_different_hypers() -> None:
     """Test that power spectrum works with different spherical expansions."""
 
-    hypers_2 = HYPERS.copy()
-    hypers_2.update(max_radial=3, max_angular=4)
+    hypers_2 = copy.deepcopy(SOAP_HYPERS)
+    hypers_2["basis"]["radial"]["max_radial"] = 3
 
-    se_calculator2 = rascaline.SphericalExpansion(**hypers_2)
+    soap_spx_2 = rascaline.SphericalExpansion(**hypers_2)
 
-    PowerSpectrum(soap_calculator(), se_calculator2).compute(SystemForTests())
+    PowerSpectrum(soap_spx(), soap_spx_2).compute(SystemForTests())
 
 
 def test_power_spectrum_rust() -> None:
@@ -117,7 +137,7 @@ def test_power_spectrum_rust() -> None:
         power_spectrum_python[0].values, power_spectrum_python[0].values.T
     )
 
-    power_spectrum_rust = rascaline.SoapPowerSpectrum(**HYPERS).compute(
+    power_spectrum_rust = rascaline.SoapPowerSpectrum(**SOAP_HYPERS).compute(
         SystemForTests()
     )
     power_spectrum_rust = power_spectrum_rust.keys_to_samples(["center_type"])
@@ -130,7 +150,7 @@ def test_power_spectrum_rust() -> None:
 
 def test_power_spectrum_gradients() -> None:
     """Test that gradients are correct using finite differences."""
-    calculator = PowerSpectrum(soap_calculator())
+    calculator = PowerSpectrum(soap_spx())
 
     # An ASE atoms object with the same properties as SystemForTests()
     atoms = ase.Atoms(
@@ -146,11 +166,9 @@ def test_power_spectrum_gradients() -> None:
 def test_power_spectrum_unknown_gradient() -> None:
     """Test error raise if an unknown gradient is present."""
 
-    calculator = rascaline.SphericalExpansion(**HYPERS)
-
-    msg = "PowerSpectrum currently only supports gradients w.r.t. to positions"
-    with pytest.raises(NotImplementedError, match=msg):
-        PowerSpectrum(calculator).compute(SystemForTests(), gradients=["strain"])
+    message = "PowerSpectrum currently only supports gradients w.r.t. to positions"
+    with pytest.raises(NotImplementedError, match=message):
+        PowerSpectrum(soap_spx()).compute(SystemForTests(), gradients=["strain"])
 
 
 def test_fill_neighbor_type() -> None:
@@ -162,8 +180,8 @@ def test_fill_neighbor_type() -> None:
     ]
 
     calculator = PowerSpectrum(
-        calculator_1=rascaline.SphericalExpansion(**HYPERS),
-        calculator_2=rascaline.SphericalExpansion(**HYPERS),
+        calculator_1=soap_spx(),
+        calculator_2=soap_spx(),
     )
 
     descriptor = calculator.compute(frames)
@@ -180,9 +198,7 @@ def test_fill_types_option() -> None:
     ]
 
     types = [1, 8, 10]
-    calculator = PowerSpectrum(
-        calculator_1=rascaline.SphericalExpansion(**HYPERS), types=types
-    )
+    calculator = PowerSpectrum(calculator_1=soap_spx(), types=types)
 
     descriptor = calculator.compute(frames)
 

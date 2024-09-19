@@ -83,19 +83,28 @@ print(
 # opposition to parameters of machine learning models. Hyper parameters are a
 # crucial part of calculating descriptors. Poorly selected hyper parameters will
 # lead to a poor description of your dataset as discussed in the `literature
-# <https://arxiv.org/abs/1502.02127>`_. The effect of changing some hyper
-# parameters is discussed in a :ref:`second tutorial
-# <userdoc-tutorials-understanding-hypers>`.
+# <https://arxiv.org/abs/1502.02127>`_.
 
-HYPER_PARAMETERS = {
-    "cutoff": 4.5,
-    "max_radial": 9,
-    "max_angular": 6,
-    "atomic_gaussian_width": 0.3,
-    "center_atom_weight": 1.0,
-    "radial_basis": {"Gto": {"spline_accuracy": 1e-6}},
-    "cutoff_function": {"ShiftedCosine": {"width": 0.5}},
-    "radial_scaling": {"Willatt2018": {"scale": 2.0, "rate": 1.0, "exponent": 4}},
+cutoff = {
+    "radius": 4.5,
+    "smoothing": {"type": "ShiftedCosine", "width": 0.5},
+}
+
+density = {
+    "type": "Gaussian",
+    "width": 0.3,
+    "radial_scaling": {
+        "type": "Willatt2018",
+        "scale": 2.0,
+        "rate": 1.0,
+        "exponent": 4,
+    },
+}
+
+basis = {
+    "type": "TensorProduct",
+    "max_angular": 5,
+    "radial": {"type": "Gto", "max_radial": 8},
 }
 
 # %%
@@ -105,7 +114,7 @@ HYPER_PARAMETERS = {
 # defined above and run the
 # :py:func:`rascaline.calculators.CalculatorBase.compute()` method.
 
-calculator = SphericalExpansion(**HYPER_PARAMETERS)
+calculator = SphericalExpansion(cutoff=cutoff, density=density, basis=basis)
 descriptor0 = calculator.compute(frame0)
 print(type(descriptor0))
 

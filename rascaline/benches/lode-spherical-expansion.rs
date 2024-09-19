@@ -26,26 +26,32 @@ fn run_spherical_expansion(mut group: BenchmarkGroup<WallTime>,
         systems.truncate(1);
     }
 
-    let cutoff = 4.0;
+    let gto_radius = 4.0;
     let mut n_centers = 0;
     for system in &mut systems {
         n_centers += system.size().unwrap();
-        system.compute_neighbors(cutoff).unwrap();
     }
 
-    for atomic_gaussian_width in &[1.5, 1.0, 0.5] {
+    for smearing in &[1.5, 1.0, 0.5] {
         let parameters = format!(r#"{{
-            "max_radial": 6,
-            "max_angular": 6,
-            "cutoff": {cutoff},
-            "atomic_gaussian_width": {atomic_gaussian_width},
-            "center_atom_weight": 1.0,
-            "radial_basis": {{ "Gto": {{}} }},
-            "potential_exponent": 1
+            "density": {{
+                "type": "SmearedPowerLaw",
+                "smearing": {smearing},
+                "exponent": 1
+            }},
+            "basis": {{
+                "type": "TensorProduct",
+                "max_angular": 6,
+                "radial": {{
+                    "type": "Gto",
+                    "max_radial": 6,
+                    "radius": {gto_radius}
+                }}
+            }}
         }}"#);
         let mut calculator = Calculator::new("lode_spherical_expansion", parameters).unwrap();
 
-        group.bench_function(format!("gaussian_width = {}", atomic_gaussian_width), |b| b.iter_custom(|repeat| {
+        group.bench_function(format!("smearing = {}", smearing), |b| b.iter_custom(|repeat| {
             let start = std::time::Instant::now();
 
             let options = CalculationOptions {

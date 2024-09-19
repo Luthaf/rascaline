@@ -9,65 +9,52 @@ use metatensor::{Labels, LabelsBuilder, LabelValue, TensorMap, TensorBlockRefMut
 
 use crate::{Error, System, Vector3D};
 
+use super::Cutoff;
+use super::super::shared::{Density, SoapRadialBasis, SphericalExpansionBasis};
+
 use crate::math::SphericalHarmonicsCache;
 
 use super::super::CalculatorBase;
 use super::super::neighbor_list::FullNeighborList;
 
-use super::{CutoffFunction, RadialScaling};
-
-use crate::calculators::radial_basis::RadialBasis;
 use super::SoapRadialIntegralCache;
-
-use super::radial_integral::SoapRadialIntegralParameters;
 
 /// Parameters for spherical expansion calculator.
 ///
 /// The spherical expansion is at the core of representations in the SOAP
-/// (Smooth Overlap of Atomic Positions) family. See [this review
-/// article](https://doi.org/10.1063/1.5090481) for more information on the SOAP
-/// representation, and [this paper](https://doi.org/10.1063/5.0044689) for
-/// information on how it is implemented in rascaline.
+/// (Smooth Overlap of Atomic Positions) family. The core idea is to define
+/// atom-centered environments using a spherical cutoff; create an atomic
+/// density according to all neighbors in a given environment; and finally
+/// expand this density on a given set of basis functions. The parameters for
+/// each of these steps can be defined separately below.
+///
+/// See [this review article](https://doi.org/10.1063/1.5090481) for more
+/// information on the SOAP representation, and [this
+/// paper](https://doi.org/10.1063/5.0044689) for information on how it is
+/// implemented in rascaline.
 #[derive(Debug, Clone)]
 #[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct SphericalExpansionParameters {
-    /// Spherical cutoff to use for atomic environments
-    pub cutoff: f64,
-    /// Number of radial basis function to use in the expansion
-    pub max_radial: usize,
-    /// Number of spherical harmonics to use in the expansion
-    pub max_angular: usize,
-    /// Width of the atom-centered gaussian used to create the atomic density
-    pub atomic_gaussian_width: f64,
-    /// Weight of the central atom contribution to the
-    /// features. If `1` the center atom contribution is weighted the same
-    /// as any other contribution. If `0` the central atom does not
-    /// contribute to the features at all.
-    pub center_atom_weight: f64,
-    /// Radial basis to use for the radial integral
-    pub radial_basis: RadialBasis,
-    /// Cutoff function used to smooth the behavior around the cutoff radius
-    pub cutoff_function: CutoffFunction,
-    /// radial scaling can be used to reduce the importance of neighbor atoms
-    /// further away from the center, usually improving the performance of the
-    /// model
-    #[serde(default)]
-    pub radial_scaling: RadialScaling,
+    /// Definition of the atomic environment within a cutoff, and how
+    /// neighboring atoms enter and leave the environment.
+    pub cutoff: Cutoff,
+    /// Definition of the density arising from atoms in the local environment.
+    pub density: Density,
+    /// Definition of the basis functions used to expand the atomic density
+    pub basis: SphericalExpansionBasis<SoapRadialBasis>,
 }
 
 impl SphericalExpansionParameters {
     /// Validate all the parameters
-    pub fn validate(&self) -> Result<(), Error> {
-        self.cutoff_function.validate()?;
-        self.radial_scaling.validate()?;
+    pub fn validate(&mut self) -> Result<(), Error> {
+        self.cutoff.validate()?;
+        if let Some(scaling) = self.density.scaling {
+            scaling.validate()?;
+        }
 
-        // try constructing a radial integral
-        SoapRadialIntegralCache::new(self.radial_basis.clone(), SoapRadialIntegralParameters {
-            max_radial: self.max_radial,
-            max_angular: self.max_angular,
-            atomic_gaussian_width: self.atomic_gaussian_width,
-            cutoff: self.cutoff,
-        })?;
+        // try constructing a radial integral to catch errors here
+        SoapRadialIntegralCache::new(self.cutoff.radius, self.density.kind, &self.basis)?;
 
         return Ok(());
     }
@@ -119,12 +106,12 @@ pub(super) struct PairContribution {
 }
 
 impl PairContribution {
-    pub fn new(max_radial: usize, max_angular: usize, do_gradients: bool) -> PairContribution {
+    pub fn new(radial_size: usize, max_angular: usize, do_gradients: bool) -> PairContribution {
         let lm_shape = (max_angular + 1) * (max_angular + 1);
         PairContribution {
-            values: ndarray::Array2::from_elem((lm_shape, max_radial), 0.0),
+            values: ndarray::Array2::from_elem((lm_shape, radial_size), 0.0),
             gradients: if do_gradients {
-                Some(ndarray::Array3::from_elem((3, lm_shape, max_radial), 0.0))
+                Some(ndarray::Array3::from_elem((3, lm_shape, radial_size), 0.0))
             } else {
                 None
             }
@@ -136,17 +123,17 @@ impl PairContribution {
     ///
     /// `m_1_pow_l` should contain the values of `(-1)^l` up to `max_angular`
     pub fn inverse_pair(&mut self, m_1_pow_l: &[f64]) {
-        let max_angular = m_1_pow_l.len() - 1;
-        let max_radial = self.values.shape()[1];
-        debug_assert_eq!(self.values.shape()[0], (max_angular + 1) * (max_angular + 1));
+        let angular_size = m_1_pow_l.len();
+        let radial_size = self.values.shape()[1];
+        debug_assert_eq!(self.values.shape()[0], angular_size * angular_size);
 
         // inverting the pair is equivalent to adding a (-1)^l factor to the
         // pair contribution values, and -(-1)^l to the gradients
         let mut lm_index = 0;
-        for o3_lambda in 0..=max_angular {
+        for o3_lambda in 0..angular_size {
             let factor = m_1_pow_l[o3_lambda];
             for _m in 0..(2 * o3_lambda + 1) {
-                for n in 0..max_radial {
+                for n in 0..radial_size {
                     self.values[[lm_index, n]] *= factor;
                 }
                 lm_index += 1;
@@ -156,10 +143,10 @@ impl PairContribution {
         if let Some(ref mut gradients) = self.gradients {
             for xyz in 0..3 {
                 let mut lm_index = 0;
-                for o3_lambda in 0..=max_angular {
+                for o3_lambda in 0..angular_size {
                     let factor = -m_1_pow_l[o3_lambda];
                     for _m in 0..(2 * o3_lambda + 1) {
-                        for n in 0..max_radial {
+                        for n in 0..radial_size {
                             gradients[[xyz, lm_index, n]] *= factor;
                         }
                         lm_index += 1;
@@ -172,10 +159,10 @@ impl PairContribution {
 
 
 impl SphericalExpansionByPair {
-    pub fn new(parameters: SphericalExpansionParameters) -> Result<SphericalExpansionByPair, Error> {
+    pub fn new(mut parameters: SphericalExpansionParameters) -> Result<SphericalExpansionByPair, Error> {
         parameters.validate()?;
 
-        let m_1_pow_l = (0..=parameters.max_angular)
+        let m_1_pow_l = parameters.basis.angular_channels()
             .map(|l| f64::powi(-1.0, l as i32))
             .collect::<Vec<f64>>();
 
@@ -183,7 +170,7 @@ impl SphericalExpansionByPair {
             parameters: parameters,
             radial_integral: ThreadLocal::new(),
             spherical_harmonics: ThreadLocal::new(),
-            m_1_pow_l,
+            m_1_pow_l: m_1_pow_l,
         })
     }
 
@@ -194,18 +181,24 @@ impl SphericalExpansionByPair {
 
     /// Compute the product of radial scaling & cutoff smoothing functions
     fn scaling_functions(&self, r: f64) -> f64 {
-        let cutoff = self.parameters.cutoff_function.compute(r, self.parameters.cutoff);
-        let scaling = self.parameters.radial_scaling.compute(r);
-        return cutoff * scaling;
+        let mut scaling = 1.0;
+        if let Some(scaler) = self.parameters.density.scaling {
+            scaling = scaler.compute(r);
+        }
+        return scaling * self.parameters.cutoff.smoothing(r);
     }
 
     /// Compute the gradient of the product of radial scaling & cutoff smoothing functions
     fn scaling_functions_gradient(&self, r: f64) -> f64 {
-        let cutoff = self.parameters.cutoff_function.compute(r, self.parameters.cutoff);
-        let cutoff_grad = self.parameters.cutoff_function.derivative(r, self.parameters.cutoff);
+        let mut scaling = 1.0;
+        let mut scaling_grad = 0.0;
+        if let Some(scaler) = self.parameters.density.scaling {
+            scaling = scaler.compute(r);
+            scaling_grad = scaler.gradient(r);
+        }
 
-        let scaling = self.parameters.radial_scaling.compute(r);
-        let scaling_grad = self.parameters.radial_scaling.derivative(r);
+        let cutoff = self.parameters.cutoff.smoothing(r);
+        let cutoff_grad = self.parameters.cutoff.smoothing_gradient(r);
 
         return cutoff_grad * scaling + cutoff * scaling_grad;
     }
@@ -222,20 +215,17 @@ impl SphericalExpansionByPair {
     /// not contributes to the gradients.
     pub(super) fn self_contribution(&self) -> PairContribution {
         let mut radial_integral = self.radial_integral.get_or(|| {
-            let radial_integral = SoapRadialIntegralCache::new(
-                self.parameters.radial_basis.clone(),
-                SoapRadialIntegralParameters {
-                    max_radial: self.parameters.max_radial,
-                    max_angular: self.parameters.max_angular,
-                    atomic_gaussian_width: self.parameters.atomic_gaussian_width,
-                    cutoff: self.parameters.cutoff,
-                }
-            ).expect("invalid radial integral parameters");
-            return RefCell::new(radial_integral);
+            RefCell::new(SoapRadialIntegralCache::new(
+                    self.parameters.cutoff.radius,
+                    self.parameters.density.kind,
+                    &self.parameters.basis
+                ).expect("invalid radial integral parameters")
+            )
         }).borrow_mut();
 
         let mut spherical_harmonics = self.spherical_harmonics.get_or(|| {
-            RefCell::new(SphericalHarmonicsCache::new(self.parameters.max_angular))
+            let max_angular = self.parameters.basis.angular_channels().max().unwrap_or(0);
+            RefCell::new(SphericalHarmonicsCache::new(max_angular))
         }).borrow_mut();
 
         // Compute the three factors that appear in the center contribution.
@@ -245,7 +235,7 @@ impl SphericalExpansionByPair {
         spherical_harmonics.compute(Vector3D::new(0.0, 0.0, 1.0), false);
         let f_scaling = self.scaling_functions(0.0);
 
-        let factor = self.parameters.center_atom_weight
+        let factor = self.parameters.density.center_atom_weight
             * f_scaling
             * spherical_harmonics.values[[0, 0]];
 
@@ -279,8 +269,9 @@ impl SphericalExpansionByPair {
             let data = block.data_mut();
             let array = data.values.to_array_mut();
 
-            // loop over all samples in this block, find self pairs
-            // (`pair_id` is -1), and fill the data using `self_contribution`
+            // loop over all samples in this block, find self pairs (`i == j`
+            // and `shift == [0, 0, 0]`), and fill the data using
+            // `self_contribution`
             for (sample_i, &[system, atom_1, atom_2, cell_a, cell_b, cell_c]) in data.samples.iter_fixed_size().enumerate() {
                 // it is possible that the samples from values.samples are not
                 // part of the systems (the user requested extra samples). In
@@ -338,21 +329,22 @@ impl SphericalExpansionByPair {
         }
 
         let mut radial_integral = self.radial_integral.get_or(|| {
-            let radial_integral = SoapRadialIntegralCache::new(
-                self.parameters.radial_basis.clone(),
-                SoapRadialIntegralParameters {
-                    max_radial: self.parameters.max_radial,
-                    max_angular: self.parameters.max_angular,
-                    atomic_gaussian_width: self.parameters.atomic_gaussian_width,
-                    cutoff: self.parameters.cutoff,
-                }
-            ).expect("invalid parameters");
-            return RefCell::new(radial_integral);
+            RefCell::new(SoapRadialIntegralCache::new(
+                    self.parameters.cutoff.radius,
+                    self.parameters.density.kind,
+                    &self.parameters.basis
+                ).expect("invalid radial integral parameters")
+            )
         }).borrow_mut();
 
         let mut spherical_harmonics = self.spherical_harmonics.get_or(|| {
-            RefCell::new(SphericalHarmonicsCache::new(self.parameters.max_angular))
+            let max_angular = self.parameters.basis.angular_channels().max().unwrap_or(0);
+            RefCell::new(SphericalHarmonicsCache::new(max_angular))
         }).borrow_mut();
+
+        let radial_basis = match self.parameters.basis {
+            SphericalExpansionBasis::TensorProduct(ref basis) => &basis.radial,
+        };
 
         radial_integral.compute(distance, do_gradients.any());
         spherical_harmonics.compute(direction, do_gradients.any());
@@ -362,7 +354,7 @@ impl SphericalExpansionByPair {
 
         let mut lm_index = 0;
         let mut lm_index_grad = 0;
-        for o3_lambda in 0..=self.parameters.max_angular {
+        for o3_lambda in self.parameters.basis.angular_channels() {
             let spherical_harmonics_grad = [
                 spherical_harmonics.gradients[0].slice(o3_lambda as isize),
                 spherical_harmonics.gradients[1].slice(o3_lambda as isize),
@@ -390,7 +382,7 @@ impl SphericalExpansionByPair {
                     let sph_grad_y = spherical_harmonics_grad[1][m];
                     let sph_grad_z = spherical_harmonics_grad[2][m];
 
-                    for n in 0..self.parameters.max_radial {
+                    for n in 0..radial_basis.size() {
                         let ri_value = radial_integral[n];
                         let ri_grad = radial_integral_grad[n];
 
@@ -549,14 +541,14 @@ impl CalculatorBase for SphericalExpansionByPair {
     }
 
     fn cutoffs(&self) -> &[f64] {
-        std::slice::from_ref(&self.parameters.cutoff)
+        std::slice::from_ref(&self.parameters.cutoff.radius)
     }
 
     fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
         // the atomic type part of the keys is the same for all l, and the same
         // as what a FullNeighborList with `self_pairs=True` produces.
         let full_neighbors_list_keys = FullNeighborList {
-            cutoff: self.parameters.cutoff,
+            cutoff: self.parameters.cutoff.radius,
             self_pairs: true,
         }.keys(systems)?;
 
@@ -568,8 +560,8 @@ impl CalculatorBase for SphericalExpansionByPair {
         ]);
 
         for &[first_type, second_type] in full_neighbors_list_keys.iter_fixed_size() {
-            for l in 0..=self.parameters.max_angular {
-                keys.add(&[l.into(), 1.into(), first_type, second_type]);
+            for o3_lambda in self.parameters.basis.angular_channels() {
+                keys.add(&[o3_lambda.into(), 1.into(), first_type, second_type]);
             }
         }
 
@@ -595,7 +587,7 @@ impl CalculatorBase for SphericalExpansionByPair {
         // for l=0, we want to include self pairs in the samples
         let mut samples_by_types_l0: BTreeMap<_, Labels> = BTreeMap::new();
         let full_neighbors_list_samples = FullNeighborList {
-            cutoff: self.parameters.cutoff,
+            cutoff: self.parameters.cutoff.radius,
             self_pairs: true,
         }.samples(&types_keys, systems)?;
 
@@ -609,16 +601,14 @@ impl CalculatorBase for SphericalExpansionByPair {
         // neighbor_type) => Labels map and then re-use them from this map as
         // needed.
         let mut samples_by_types: BTreeMap<_, Labels> = BTreeMap::new();
-        if self.parameters.max_angular > 0 {
-            let full_neighbors_list_samples = FullNeighborList {
-                cutoff: self.parameters.cutoff,
-                self_pairs: false,
-            }.samples(&types_keys, systems)?;
+        let full_neighbors_list_samples = FullNeighborList {
+            cutoff: self.parameters.cutoff.radius,
+            self_pairs: false,
+        }.samples(&types_keys, systems)?;
 
-            debug_assert_eq!(types_keys.count(), full_neighbors_list_samples.len());
-            for (&[first_type, second_type], samples) in types_keys.iter_fixed_size().zip(full_neighbors_list_samples) {
-                samples_by_types.insert((first_type, second_type), samples);
-            }
+        debug_assert_eq!(types_keys.count(), full_neighbors_list_samples.len());
+        for (&[first_type, second_type], samples) in types_keys.iter_fixed_size().zip(full_neighbors_list_samples) {
+            samples_by_types.insert((first_type, second_type), samples);
         }
 
         let mut result = Vec::new();
@@ -697,12 +687,16 @@ impl CalculatorBase for SphericalExpansionByPair {
     }
 
     fn properties(&self, keys: &Labels) -> Vec<Labels> {
-        let mut properties = LabelsBuilder::new(self.property_names());
-        for n in 0..self.parameters.max_radial {
-            properties.add(&[n]);
-        }
+        match self.parameters.basis {
+            SphericalExpansionBasis::TensorProduct(ref basis) => {
+                let mut properties = LabelsBuilder::new(self.property_names());
+                for n in 0..basis.radial.size() {
+                    properties.add(&[n]);
+                }
 
-        return vec![properties.finish(); keys.count()];
+                return vec![properties.finish(); keys.count()];
+            }
+        }
     }
 
     #[time_graph::instrument(name = "SphericalExpansionByPair::compute")]
@@ -720,12 +714,14 @@ impl CalculatorBase for SphericalExpansionByPair {
 
         let keys = descriptor.keys().clone();
 
-        let max_angular = self.parameters.max_angular;
-        let max_radial = self.parameters.max_radial;
-        let mut contribution = PairContribution::new(max_radial, max_angular, do_gradients.any());
+        let mut contribution = match self.parameters.basis {
+            SphericalExpansionBasis::TensorProduct(ref basis) => {
+                PairContribution::new(basis.radial.size(), basis.max_angular, do_gradients.any())
+            }
+        };
 
         for (system_i, system) in systems.iter_mut().enumerate() {
-            system.compute_neighbors(self.parameters.cutoff)?;
+            system.compute_neighbors(self.parameters.cutoff.radius)?;
             let types = system.types()?;
 
             for pair in system.pairs()? {
@@ -738,7 +734,7 @@ impl CalculatorBase for SphericalExpansionByPair {
 
                 let first_type = types[pair.first];
                 let second_type = types[pair.second];
-                for o3_lambda in 0..=self.parameters.max_angular {
+                for o3_lambda in self.parameters.basis.angular_channels() {
                     let block_i = keys.position(&[
                         o3_lambda.into(),
                         1.into(),
@@ -770,7 +766,7 @@ impl CalculatorBase for SphericalExpansionByPair {
                 // also check for the block with a reversed pair
                 contribution.inverse_pair(&self.m_1_pow_l);
 
-                for o3_lambda in 0..=self.parameters.max_angular {
+                for o3_lambda in self.parameters.basis.angular_channels() {
                     let block_i = keys.position(&[
                         o3_lambda.into(),
                         1.into(),
@@ -813,25 +809,40 @@ mod tests {
     use ndarray::{s, Axis};
     use approx::assert_ulps_eq;
 
+
     use crate::systems::test_utils::{test_system, test_systems};
     use crate::Calculator;
     use crate::calculators::{CalculatorBase, SphericalExpansion};
 
     use super::{SphericalExpansionByPair, SphericalExpansionParameters};
-    use super::super::{CutoffFunction, RadialScaling};
-    use crate::calculators::radial_basis::RadialBasis;
+    use crate::calculators::soap::{Cutoff, Smoothing};
+    use crate::calculators::shared::{Density, DensityKind, DensityScaling};
+    use crate::calculators::shared::{SoapRadialBasis, SphericalExpansionBasis, TensorProductBasis};
 
+    fn basis() -> TensorProductBasis<SoapRadialBasis> {
+        TensorProductBasis {
+            max_angular: 5,
+            radial: SoapRadialBasis::Gto { max_radial: 5 },
+            spline_accuracy: Some(1e-8),
+        }
+    }
 
     fn parameters() -> SphericalExpansionParameters {
         SphericalExpansionParameters {
-            cutoff: 7.3,
-            max_radial: 6,
-            max_angular: 6,
-            atomic_gaussian_width: 0.3,
-            center_atom_weight: 1.0,
-            radial_basis: RadialBasis::splined_gto(1e-8),
-            radial_scaling: RadialScaling::Willatt2018 { scale: 1.5, rate: 0.8, exponent: 2.0},
-            cutoff_function: CutoffFunction::ShiftedCosine { width: 0.5 },
+            cutoff: Cutoff {
+                radius: 7.3,
+                smoothing: Smoothing::ShiftedCosine { width: 0.5 }
+            },
+            density: Density {
+                kind: DensityKind::Gaussian { width: 0.3 },
+                scaling: Some(DensityScaling::Willatt2018 {
+                    scale: 1.5,
+                    rate: 0.8,
+                    exponent: 2.0
+                }),
+                center_atom_weight: 1.0,
+            },
+            basis: SphericalExpansionBasis::TensorProduct(basis()),
         }
     }
 
@@ -884,7 +895,10 @@ mod tests {
     fn compute_partial() {
         let calculator = Calculator::from(Box::new(SphericalExpansionByPair::new(
             SphericalExpansionParameters {
-                max_angular: 2,
+                basis: SphericalExpansionBasis::TensorProduct(TensorProductBasis {
+                    max_angular: 2,
+                    ..basis()
+                }),
                 ..parameters()
             }
         ).unwrap()) as Box<dyn CalculatorBase>);

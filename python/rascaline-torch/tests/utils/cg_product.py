@@ -12,13 +12,19 @@ from rascaline.torch.utils.clebsch_gordan import ClebschGordanProduct
 
 
 SPHERICAL_EXPANSION_HYPERS = {
-    "cutoff": 2.5,
-    "max_radial": 3,
-    "max_angular": 3,
-    "atomic_gaussian_width": 0.2,
-    "radial_basis": {"Gto": {}},
-    "cutoff_function": {"ShiftedCosine": {"width": 0.5}},
-    "center_atom_weight": 1.0,
+    "cutoff": {
+        "radius": 2.5,
+        "smoothing": {"type": "ShiftedCosine", "width": 0.5},
+    },
+    "density": {
+        "type": "Gaussian",
+        "width": 0.2,
+    },
+    "basis": {
+        "type": "TensorProduct",
+        "max_angular": 3,
+        "radial": {"type": "Gto", "max_radial": 3},
+    },
 }
 
 SELECTED_KEYS = Labels(names=["o3_lambda"], values=torch.tensor([1, 3]).reshape(-1, 1))
@@ -56,7 +62,7 @@ def test_torch_script_tensor_compute(selected_keys: Labels, keys_filter):
 
     # Initialize the calculator and scripted calculator
     calculator = ClebschGordanProduct(
-        max_angular=SPHERICAL_EXPANSION_HYPERS["max_angular"] * 2,
+        max_angular=SPHERICAL_EXPANSION_HYPERS["basis"]["max_angular"] * 2,
         keys_filter=keys_filter,
     )
     scripted_calculator = torch.jit.script(calculator)

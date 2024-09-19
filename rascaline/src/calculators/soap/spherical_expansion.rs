@@ -16,7 +16,8 @@ use super::super::CalculatorBase;
 use super::{SphericalExpansionByPair, SphericalExpansionParameters};
 use super::spherical_expansion_pair::{GradientsOptions, PairContribution};
 
-use super::super::{split_tensor_map_by_system, array_mut_for_system};
+use crate::calculators::shared::SphericalExpansionBasis;
+use super::super::shared::descriptors_by_systems::{array_mut_for_system, split_tensor_map_by_system};
 
 
 /// The actual calculator used to compute SOAP spherical expansion coefficients
@@ -31,7 +32,7 @@ pub struct SphericalExpansion {
 impl SphericalExpansion {
     /// Create a new `SphericalExpansion` calculator with the given parameters
     pub fn new(parameters: SphericalExpansionParameters) -> Result<SphericalExpansion, Error> {
-        let m_1_pow_l = (0..=parameters.max_angular)
+        let m_1_pow_l = parameters.basis.angular_channels()
             .map(|l| f64::powi(-1.0, l as i32))
             .collect::<Vec<f64>>();
 
@@ -122,32 +123,36 @@ impl SphericalExpansion {
         }).collect::<Vec<_>>();
 
 
-        let max_angular = self.by_pair.parameters().max_angular;
-        let max_radial = self.by_pair.parameters().max_radial;
-        let mut contribution = PairContribution::new(max_radial, max_angular, do_gradients.any());
+
+        let (radial_size, max_angular) = match self.by_pair.parameters.basis {
+            SphericalExpansionBasis::TensorProduct(ref basis) => {
+                (basis.radial.size(), basis.max_angular)
+            }
+        };
+        let mut contribution = PairContribution::new(radial_size, max_angular, do_gradients.any());
 
         // total number of joined (l, m) indices
         let lm_shape = (max_angular + 1) * (max_angular + 1);
         let mut result = PairAccumulationResult {
             values: ndarray::Array4::from_elem(
-                (types_mapping.len(), requested_atoms.len(), lm_shape, max_radial),
+                (types_mapping.len(), requested_atoms.len(), lm_shape, radial_size),
                 0.0
             ),
             positions_gradient_by_pair: if do_gradients.positions {
-                let shape = (pairs_count, 3, lm_shape, max_radial);
+                let shape = (pairs_count, 3, lm_shape, radial_size);
                 Some(ndarray::Array4::from_elem(shape, 0.0))
             } else {
                 None
             },
             self_positions_gradients: if do_gradients.positions {
-                let shape = (types_mapping.len(), requested_atoms.len(), 3, lm_shape, max_radial);
+                let shape = (types_mapping.len(), requested_atoms.len(), 3, lm_shape, radial_size);
                 Some(ndarray::Array5::from_elem(shape, 0.0))
             } else {
                 None
             },
             cell_gradients: if do_gradients.cell {
                 Some(ndarray::Array6::from_elem(
-                    (types_mapping.len(), requested_atoms.len(), 3, 3, lm_shape, max_radial),
+                    (types_mapping.len(), requested_atoms.len(), 3, 3, lm_shape, radial_size),
                     0.0)
                 )
             } else {
@@ -155,7 +160,7 @@ impl SphericalExpansion {
             },
             strain_gradients: if do_gradients.strain {
                 Some(ndarray::Array6::from_elem(
-                    (types_mapping.len(), requested_atoms.len(), 3, 3, lm_shape, max_radial),
+                    (types_mapping.len(), requested_atoms.len(), 3, 3, lm_shape, radial_size),
                     0.0)
                 )
             } else {
@@ -211,7 +216,7 @@ impl SphericalExpansion {
                                 let mut lm_index = 0;
                                 for o3_lambda in 0..=max_angular {
                                     for _m in 0..(2 * o3_lambda + 1) {
-                                        for n in 0..max_radial {
+                                        for n in 0..radial_size {
                                             // SAFETY: we are doing in-bounds access, and removing the bounds
                                             // checks is a significant speed-up for this code. The bounds are
                                             // still checked in debug mode
@@ -237,7 +242,7 @@ impl SphericalExpansion {
                                 let mut lm_index = 0;
                                 for o3_lambda in 0..=max_angular {
                                     for _m in 0..(2 * o3_lambda + 1) {
-                                        for n in 0..max_radial {
+                                        for n in 0..radial_size {
                                             // SAFETY: same as above
                                             unsafe {
                                                 let out = strain_gradients.uget_mut([xyz_1, xyz_2, lm_index, n]);
@@ -291,7 +296,7 @@ impl SphericalExpansion {
                                 let mut lm_index = 0;
                                 for o3_lambda in 0..=max_angular {
                                     for _m in 0..(2 * o3_lambda + 1) {
-                                        for n in 0..max_radial {
+                                        for n in 0..radial_size {
                                             // SAFETY: we are doing in-bounds access, and removing the bounds
                                             // checks is a significant speed-up for this code. The bounds are
                                             // still checked in debug mode
@@ -317,7 +322,7 @@ impl SphericalExpansion {
                                 let mut lm_index = 0;
                                 for o3_lambda in 0..=max_angular {
                                     for _m in 0..(2 * o3_lambda + 1) {
-                                        for n in 0..max_radial {
+                                        for n in 0..radial_size {
                                             // SAFETY: as above
                                             unsafe {
                                                 let out = strain_gradients.uget_mut([xyz_1, xyz_2, lm_index, n]);
@@ -639,14 +644,14 @@ impl CalculatorBase for SphericalExpansion {
 
     fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<Labels, Error> {
         let builder = CenterSingleNeighborsTypesKeys {
-            cutoff: self.by_pair.parameters().cutoff,
+            cutoff: self.by_pair.parameters().cutoff.radius,
             self_pairs: true,
         };
         let keys = builder.keys(systems)?;
 
         let mut builder = LabelsBuilder::new(vec!["o3_lambda", "o3_sigma", "center_type", "neighbor_type"]);
         for &[center_type, neighbor_type] in keys.iter_fixed_size() {
-            for o3_lambda in 0..=self.by_pair.parameters().max_angular {
+            for o3_lambda in self.by_pair.parameters().basis.angular_channels() {
                 builder.add(&[o3_lambda.into(), 1.into(), center_type, neighbor_type]);
             }
         }
@@ -670,7 +675,7 @@ impl CalculatorBase for SphericalExpansion {
             }
 
             let builder = AtomCenteredSamples {
-                cutoff: self.by_pair.parameters().cutoff,
+                cutoff: self.by_pair.parameters().cutoff.radius,
                 center_type: AtomicTypeFilter::Single(center_type.i32()),
                 neighbor_type: AtomicTypeFilter::Single(neighbor_type.i32()),
                 self_pairs: true,
@@ -707,7 +712,7 @@ impl CalculatorBase for SphericalExpansion {
             // TODO: we don't need to rebuild the gradient samples for different
             // o3_lambda
             let builder = AtomCenteredSamples {
-                cutoff: self.by_pair.parameters().cutoff,
+                cutoff: self.by_pair.parameters().cutoff.radius,
                 center_type: AtomicTypeFilter::Single(center_type.i32()),
                 neighbor_type: AtomicTypeFilter::Single(neighbor_type.i32()),
                 self_pairs: true,
@@ -752,13 +757,16 @@ impl CalculatorBase for SphericalExpansion {
     }
 
     fn properties(&self, keys: &Labels) -> Vec<Labels> {
-        let mut properties = LabelsBuilder::new(self.property_names());
-        for n in 0..self.by_pair.parameters().max_radial {
-            properties.add(&[n]);
-        }
-        let properties = properties.finish();
+        match self.by_pair.parameters.basis {
+            SphericalExpansionBasis::TensorProduct(ref basis) => {
+                let mut properties = LabelsBuilder::new(self.property_names());
+                for n in 0..basis.radial.size() {
+                    properties.add(&[n]);
+                }
 
-        return vec![properties; keys.count()];
+                return vec![properties.finish(); keys.count()];
+            }
+        }
     }
 
     #[time_graph::instrument(name = "SphericalExpansion::compute")]
@@ -777,7 +785,7 @@ impl CalculatorBase for SphericalExpansion {
         systems.par_iter_mut()
             .zip_eq(&mut descriptors_by_system)
             .try_for_each(|(system, descriptor)| {
-                system.compute_neighbors(self.by_pair.parameters().cutoff)?;
+                system.compute_neighbors(self.by_pair.parameters().cutoff.radius)?;
                 let system = &**system;
 
                 // we will only run the calculation on pairs where one of the
@@ -819,20 +827,35 @@ mod tests {
     use crate::calculators::CalculatorBase;
 
     use super::{SphericalExpansion, SphericalExpansionParameters};
-    use super::super::{CutoffFunction, RadialScaling};
-    use crate::calculators::radial_basis::RadialBasis;
+    use crate::calculators::soap::{Cutoff, Smoothing};
+    use crate::calculators::shared::{Density, DensityKind, DensityScaling};
+    use crate::calculators::shared::{SoapRadialBasis, SphericalExpansionBasis, TensorProductBasis};
 
+
+    fn basis() -> TensorProductBasis<SoapRadialBasis> {
+        TensorProductBasis {
+            max_angular: 6,
+            radial: SoapRadialBasis::Gto { max_radial: 5 },
+            spline_accuracy: Some(1e-8),
+        }
+    }
 
     fn parameters() -> SphericalExpansionParameters {
         SphericalExpansionParameters {
-            cutoff: 7.3,
-            max_radial: 6,
-            max_angular: 6,
-            atomic_gaussian_width: 0.3,
-            center_atom_weight: 1.0,
-            radial_basis: RadialBasis::splined_gto(1e-8),
-            radial_scaling: RadialScaling::Willatt2018 { scale: 1.5, rate: 0.8, exponent: 2.0},
-            cutoff_function: CutoffFunction::ShiftedCosine { width: 0.5 },
+            cutoff: Cutoff {
+                radius: 7.3,
+                smoothing: Smoothing::ShiftedCosine { width: 0.5 }
+            },
+            density: Density {
+                kind: DensityKind::Gaussian { width: 0.3 },
+                scaling: Some(DensityScaling::Willatt2018 {
+                    scale: 1.5,
+                    rate: 0.8,
+                    exponent: 2.0
+                }),
+                center_atom_weight: 1.0,
+            },
+            basis: SphericalExpansionBasis::TensorProduct(basis()),
         }
     }
 
@@ -913,7 +936,10 @@ mod tests {
     fn compute_partial() {
         let calculator = Calculator::from(Box::new(SphericalExpansion::new(
             SphericalExpansionParameters {
-                max_angular: 2,
+                basis: SphericalExpansionBasis::TensorProduct(TensorProductBasis {
+                    max_angular: 2,
+                    ..basis()
+                }),
                 ..parameters()
             }
         ).unwrap()) as Box<dyn CalculatorBase>);
@@ -971,10 +997,10 @@ mod tests {
 
         let mut keys = LabelsBuilder::new(vec!["o3_lambda", "o3_sigma", "center_type", "neighbor_type"]);
         let mut blocks = Vec::new();
-        for l in 0..(parameters().max_angular + 1) as isize {
+        for o3_lambda in parameters().basis.angular_channels() {
             for center_type in [1, -42] {
                 for neighbor_type in [1, -42] {
-                    keys.add(&[l, 1, center_type, neighbor_type]);
+                    keys.add(&[o3_lambda as i32, 1, center_type, neighbor_type]);
                     blocks.push(block.as_ref().try_clone().unwrap());
                 }
             }

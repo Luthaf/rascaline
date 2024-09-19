@@ -17,31 +17,43 @@ fn lode_vs_soap() {
 
     // reduce max_radial/max_angular for debug builds to make this test faster
     let (max_radial, max_angular) = if cfg!(debug_assertions) {
-        (3, 0)
+        (2, 0)
     } else {
-        (6, 2)
+        (5, 2)
     };
 
     let lode_parameters = format!(r#"{{
-        "cutoff": 3.0,
         "k_cutoff": 16.0,
-        "max_radial": {},
-        "max_angular": {},
-        "center_atom_weight": 1.0,
-        "atomic_gaussian_width": 0.3,
-        "potential_exponent": 0,
-        "radial_basis": {{"Gto": {{"splined_radial_integral": false}}}}
-    }}"#, max_radial, max_angular);
+        "density": {{
+            "type": "SmearedPowerLaw",
+            "smearing": 0.3,
+            "exponent": 0
+        }},
+        "basis": {{
+            "type": "TensorProduct",
+            "max_angular": {},
+            "radial": {{"max_radial": {}, "type": "Gto", "radius": 3.0}},
+            "spline_accuracy": null
+        }}
+    }}"#, max_angular, max_radial);
 
     let soap_parameters = format!(r#"{{
-        "cutoff": 3.0,
-        "max_radial": {},
-        "max_angular": {},
-        "center_atom_weight": 1.0,
-        "atomic_gaussian_width": 0.3,
-        "radial_basis": {{"Gto": {{"splined_radial_integral": false}}}},
-        "cutoff_function": {{"Step": {{}}}}
-    }}"#, max_radial, max_angular);
+        "cutoff": {{
+            "radius": 3.0,
+            "smoothing": {{ "type": "Step" }}
+        }},
+        "density": {{
+            "type": "Gaussian",
+            "width": 0.3
+        }},
+        "basis": {{
+            "type": "TensorProduct",
+            "max_angular": {},
+            "radial": {{"max_radial": {}, "type": "Gto"}},
+            "spline_accuracy": null
+        }}
+    }}"#, max_angular, max_radial);
+
 
     let mut lode_calculator = Calculator::new(
         "lode_spherical_expansion",

@@ -71,26 +71,36 @@ class PowerSpectrum(TorchModule):
     Define the hyper parameters for the short-range spherical expansion
 
     >>> sr_hypers = {
-    ...     "cutoff": 1.0,
-    ...     "max_radial": 6,
-    ...     "max_angular": 2,
-    ...     "atomic_gaussian_width": 0.3,
-    ...     "center_atom_weight": 1.0,
-    ...     "radial_basis": {
-    ...         "Gto": {},
+    ...     "cutoff": {
+    ...         "radius": 1.0,
+    ...         "smoothing": {"type": "ShiftedCosine", "width": 0.5},
     ...     },
-    ...     "cutoff_function": {
-    ...         "ShiftedCosine": {"width": 0.5},
+    ...     "density": {
+    ...         "type": "Gaussian",
+    ...         "width": 0.3,
+    ...     },
+    ...     "basis": {
+    ...         "type": "TensorProduct",
+    ...         "max_angular": 2,
+    ...         "radial": {"type": "Gto", "max_radial": 5},
     ...     },
     ... }
 
     Define the hyper parameters for the long-range LODE spherical expansion from the
     hyper parameters of the short-range spherical expansion
 
-    >>> lr_hypers = sr_hypers.copy()
-    >>> lr_hypers.pop("cutoff_function")
-    {'ShiftedCosine': {'width': 0.5}}
-    >>> lr_hypers["potential_exponent"] = 1
+    >>> lr_hypers = {
+    ...     "density": {
+    ...         "type": "SmearedPowerLaw",
+    ...         "smearing": 0.3,
+    ...         "exponent": 1,
+    ...     },
+    ...     "basis": {
+    ...         "type": "TensorProduct",
+    ...         "max_angular": 2,
+    ...         "radial": {"type": "Gto", "max_radial": 5, "radius": 1.0},
+    ...     },
+    ... }
 
     Construct the calculators
 
@@ -139,21 +149,36 @@ class PowerSpectrum(TorchModule):
 
         if self.calculator_1.c_name not in supported_calculators:
             raise ValueError(
-                f"Only {','.join(supported_calculators)} are supported for "
-                "calculator_1!"
+                f"Only [{', '.join(supported_calculators)}] are supported for "
+                f"`calculator_1`, got '{self.calculator_1.c_name}'"
             )
 
         if self.calculator_2 is not None:
             if self.calculator_2.c_name not in supported_calculators:
                 raise ValueError(
-                    f"Only {','.join(supported_calculators)} are supported for "
-                    "calculator_2!"
+                    f"Only [{', '.join(supported_calculators)}] are supported for "
+                    f"`calculator_2`, got '{self.calculator_2.c_name}'"
                 )
 
             parameters_1 = json.loads(calculator_1.parameters)
             parameters_2 = json.loads(calculator_2.parameters)
-            if parameters_1["max_angular"] != parameters_2["max_angular"]:
-                raise ValueError("'max_angular' of both calculators must be the same!")
+            if parameters_1["basis"]["type"] != "TensorProduct":
+                raise ValueError(
+                    "only 'TensorProduct' basis is supported for calculator_1"
+                )
+
+            if parameters_2["basis"]["type"] != "TensorProduct":
+                raise ValueError(
+                    "only 'TensorProduct' basis is supported for calculator_2"
+                )
+
+            max_angular_1 = parameters_1["basis"]["max_angular"]
+            max_angular_2 = parameters_2["basis"]["max_angular"]
+            if max_angular_1 != max_angular_2:
+                raise ValueError(
+                    "'basis.max_angular' must be the same in both calculators, "
+                    f"got {max_angular_1} and {max_angular_2}"
+                )
 
     @property
     def name(self):

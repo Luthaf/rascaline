@@ -5,9 +5,14 @@ use crate::calculators::CalculatorBase;
 use crate::{CalculationOptions, Calculator, LabelsSelection};
 use crate::{Error, System};
 
-use super::SphericalExpansionParameters;
-use super::{CutoffFunction, RadialScaling, SphericalExpansion};
-use crate::calculators::radial_basis::RadialBasis;
+use super::{Cutoff, SphericalExpansionParameters, SphericalExpansion};
+use crate::calculators::shared::{
+    Density,
+    SoapRadialBasis,
+    SphericalExpansionBasis,
+    TensorProductBasis,
+};
+
 
 use crate::labels::AtomCenteredSamples;
 use crate::labels::{CenterSingleNeighborsTypesKeys, KeysBuilder};
@@ -25,27 +30,34 @@ use crate::labels::{SamplesBuilder, AtomicTypeFilter};
 #[derive(Debug, Clone)]
 #[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 pub struct RadialSpectrumParameters {
-    /// Spherical cutoff to use for atomic environments
-    pub cutoff: f64,
-    /// Number of radial basis function to use
-    pub max_radial: usize,
-    /// Width of the atom-centered gaussian creating the atomic density
-    pub atomic_gaussian_width: f64,
-    /// Weight of the central atom contribution to the
-    /// features. If `1` the center atom contribution is weighted the same
-    /// as any other contribution. If `0` the central atom does not
-    /// contribute to the features at all.
-    pub center_atom_weight: f64,
-    /// radial basis to use for the radial integral
-    pub radial_basis: RadialBasis,
-    /// cutoff function used to smooth the behavior around the cutoff radius
-    pub cutoff_function: CutoffFunction,
-    /// radial scaling can be used to reduce the importance of neighbor atoms
-    /// further away from the center, usually improving the performance of the
-    /// model
-    #[serde(default)]
-    pub radial_scaling: RadialScaling,
+    /// Definition of the atomic environment within a cutoff, and how
+    /// neighboring atoms enter and leave the environment.
+    pub cutoff: Cutoff,
+    /// Definition of the density arising from atoms in the local environment.
+    pub density: Density,
+    /// Definition of the basis functions used to expand the atomic density
+    pub basis: RadialSpectrumBasis,
 }
+
+/// Information about radial spectrum basis functions
+#[derive(Debug, Clone)]
+#[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct RadialSpectrumBasis {
+    /// Definition of the radial basis functions
+    pub radial: SoapRadialBasis,
+    /// Accuracy for splining the radial integral. Using splines is typically
+    /// faster than analytical implementations. If this is None, no splining is
+    /// done.
+    ///
+    /// The number of control points in the spline is automatically determined
+    /// to ensure the average absolute error is close to the requested accuracy.
+    #[serde(default = "serde_default_spline_accuracy")]
+    pub spline_accuracy: Option<f64>,
+}
+
+#[allow(clippy::unnecessary_wraps)]
+fn serde_default_spline_accuracy() -> Option<f64> { Some(1e-8) }
 
 /// Calculator implementing the Radial
 /// spectrum representation of atomistic systems.
@@ -64,13 +76,12 @@ impl SoapRadialSpectrum {
     pub fn new(parameters: RadialSpectrumParameters) -> Result<SoapRadialSpectrum, Error> {
         let expansion_parameters = SphericalExpansionParameters {
             cutoff: parameters.cutoff,
-            max_radial: parameters.max_radial,
-            max_angular: 0,
-            atomic_gaussian_width: parameters.atomic_gaussian_width,
-            center_atom_weight: parameters.center_atom_weight,
-            radial_basis: parameters.radial_basis.clone(),
-            cutoff_function: parameters.cutoff_function,
-            radial_scaling: parameters.radial_scaling,
+            density: parameters.density,
+            basis: SphericalExpansionBasis::TensorProduct(TensorProductBasis {
+                max_angular: 0,
+                radial: parameters.basis.radial.clone(),
+                spline_accuracy: parameters.basis.spline_accuracy,
+            })
         };
 
         let spherical_expansion = SphericalExpansion::new(expansion_parameters)?;
@@ -132,7 +143,7 @@ impl CalculatorBase for SoapRadialSpectrum {
 
     fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<metatensor::Labels, Error> {
         let builder = CenterSingleNeighborsTypesKeys {
-            cutoff: self.parameters.cutoff,
+            cutoff: self.parameters.cutoff.radius,
             self_pairs: true,
         };
         return builder.keys(systems);
@@ -151,7 +162,7 @@ impl CalculatorBase for SoapRadialSpectrum {
         let mut result = Vec::new();
         for [center_type, neighbor_type] in keys.iter_fixed_size() {
             let builder = AtomCenteredSamples {
-                cutoff: self.parameters.cutoff,
+                cutoff: self.parameters.cutoff.radius,
                 center_type: AtomicTypeFilter::Single(center_type.i32()),
                 neighbor_type: AtomicTypeFilter::Single(neighbor_type.i32()),
                 self_pairs: true,
@@ -177,7 +188,7 @@ impl CalculatorBase for SoapRadialSpectrum {
         let mut gradient_samples = Vec::new();
         for ([center_type, neighbor_type], samples) in keys.iter_fixed_size().zip(samples) {
             let builder = AtomCenteredSamples {
-                cutoff: self.parameters.cutoff,
+                cutoff: self.parameters.cutoff.radius,
                 center_type: AtomicTypeFilter::Single(center_type.i32()),
                 neighbor_type: AtomicTypeFilter::Single(neighbor_type.i32()),
                 self_pairs: true,
@@ -199,7 +210,7 @@ impl CalculatorBase for SoapRadialSpectrum {
 
     fn properties(&self, keys: &metatensor::Labels) -> Vec<Labels> {
         let mut properties = LabelsBuilder::new(self.property_names());
-        for n in 0..self.parameters.max_radial {
+        for n in 0..self.parameters.basis.radial.size() {
             properties.add(&[n]);
         }
         let properties = properties.finish();
@@ -313,15 +324,28 @@ mod tests {
     use super::*;
     use crate::calculators::CalculatorBase;
 
+     use crate::calculators::soap::{Cutoff, Smoothing};
+    use crate::calculators::shared::{Density, DensityKind};
+
+    fn basis() -> RadialSpectrumBasis {
+        RadialSpectrumBasis {
+            radial: SoapRadialBasis::Gto { max_radial: 5 },
+            spline_accuracy: Some(1e-8),
+        }
+    }
+
     fn parameters() -> RadialSpectrumParameters {
         RadialSpectrumParameters {
-            cutoff: 3.5,
-            max_radial: 6,
-            atomic_gaussian_width: 0.3,
-            center_atom_weight: 1.0,
-            radial_basis: RadialBasis::splined_gto(1e-8),
-            radial_scaling: RadialScaling::None {},
-            cutoff_function: CutoffFunction::ShiftedCosine { width: 0.5 },
+            cutoff: Cutoff {
+                radius: 3.5,
+                smoothing: Smoothing::ShiftedCosine { width: 0.5 }
+            },
+            density: Density {
+                kind: DensityKind::Gaussian { width: 0.3 },
+                scaling: None,
+                center_atom_weight: 1.0,
+            },
+            basis: basis(),
         }
     }
 

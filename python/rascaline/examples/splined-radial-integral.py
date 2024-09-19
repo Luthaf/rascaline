@@ -1,165 +1,168 @@
 """
 Splined radial integrals
 ========================
-
-.. start-body
-
-This example illustrates how to generate splined radial basis functions/integrals, using
-a "rectangular" Laplacian eigenstate (LE) basis (https://doi.org/10.1063/5.0124363) as
-the example, i.e, a LE basis truncated with ``l_max``, ``n_max`` hyper-parameters.
-
-Note that the same basis is also directly available through
-:class:`rascaline.utils.SphericalBesselBasis` with an how-to guide given in
-:ref:`userdoc-how-to-le-basis`.
 """
 
-# %%
+# .. start-body
 
-import ase
-import numpy as np
-import scipy as sp
-from scipy.special import spherical_jn as j_l
+# This example illustrates how to generate splined radial basis functions/integrals,
+# using a "rectangular" Laplacian eigenstate (LE) basis
+# (https://doi.org/10.1063/5.0124363) as the example, i.e, a LE basis truncated
+#  with ``l_max``, ``n_max`` hyper-parameters.
 
-from rascaline import SphericalExpansion
-from rascaline.utils import RadialIntegralFromFunction, SphericalBesselBasis
+# Note that the same basis is also directly available through
+# :class:`rascaline.utils.SphericalBesselBasis` with an how-to guide given in
+# :ref:`userdoc-how-to-le-basis`.
+# """
 
+# # %%
 
-# %%
-# Set some hyper-parameters
+# import ase
+# import numpy as np
+# import scipy as sp
+# from scipy.special import spherical_jn as j_l
 
-max_angular = 6
-max_radial = 8
-cutoff = 5.0
-
-# %%
-#
-# where ``cutoff`` is also the radius of the LE sphere. Now we compute the zeros of the
-# spherical bessel functions.
-
-z_ln = SphericalBesselBasis.compute_zeros(max_angular, max_radial)
-z_nl = z_ln.T
-
-# %%
-# and define the radial basis functions
+# from rascaline import SphericalExpansion
+# from rascaline.utils import RadialIntegralFromFunction, SphericalBesselBasis
 
 
-def R_nl(n, el, r):
-    # Un-normalized LE radial basis functions
-    return j_l(el, z_nl[n, el] * r / cutoff)
+# # %%
+# # Set some hyper-parameters
+
+# max_angular = 6
+# max_radial = 8
+# cutoff = 5.0
+
+# # %%
+# #
+# # where ``cutoff`` is also the radius of the LE sphere. Now we compute the zeros of
+# # the spherical bessel functions.
+
+# z_ln = SphericalBesselBasis.compute_zeros(max_angular, max_radial)
+# z_nl = z_ln.T
+
+# # %%
+# # and define the radial basis functions
 
 
-def N_nl(n, el):
-    # Normalization factor for LE basis functions, excluding the a**(-1.5) factor
-    def function_to_integrate_to_get_normalization_factor(x):
-        return j_l(el, x) ** 2 * x**2
-
-    integral, _ = sp.integrate.quadrature(
-        function_to_integrate_to_get_normalization_factor, 0.0, z_nl[n, el]
-    )
-    return (1.0 / z_nl[n, el] ** 3 * integral) ** (-0.5)
+# def R_nl(n, el, r):
+#     # Un-normalized LE radial basis functions
+#     return j_l(el, z_nl[n, el] * r / cutoff)
 
 
-def laplacian_eigenstate_basis(n, el, r):
-    R = np.zeros_like(r)
-    for i in range(r.shape[0]):
-        R[i] = R_nl(n, el, r[i])
-    return N_nl(n, el) * R * cutoff ** (-1.5)
+# def N_nl(n, el):
+#     # Normalization factor for LE basis functions, excluding the a**(-1.5) factor
+#     def function_to_integrate_to_get_normalization_factor(x):
+#         return j_l(el, x) ** 2 * x**2
+
+#     integral, _ = sp.integrate.quadrature(
+#         function_to_integrate_to_get_normalization_factor, 0.0, z_nl[n, el]
+#     )
+#     return (1.0 / z_nl[n, el] ** 3 * integral) ** (-0.5)
 
 
-# %%
-# Quick normalization check:
-
-normalization_check_integral, _ = sp.integrate.quadrature(
-    lambda x: laplacian_eigenstate_basis(1, 1, x) ** 2 * x**2,
-    0.0,
-    cutoff,
-)
-print(f"Normalization check (needs to be close to 1): {normalization_check_integral}")
+# def laplacian_eigenstate_basis(n, el, r):
+#     R = np.zeros_like(r)
+#     for i in range(r.shape[0]):
+#         R[i] = R_nl(n, el, r[i])
+#     return N_nl(n, el) * R * cutoff ** (-1.5)
 
 
-# %%
-# Now the derivatives (by finite differences):
+# # %%
+# # Quick normalization check:
+
+# normalization_check_integral, _ = sp.integrate.quadrature(
+#     lambda x: laplacian_eigenstate_basis(1, 1, x) ** 2 * x**2,
+#     0.0,
+#     cutoff,
+# )
+# print(f"Normalization check (needs to be close to 1): {normalization_check_integral}")
 
 
-def laplacian_eigenstate_basis_derivative(n, el, r):
-    delta = 1e-6
-    all_derivatives_except_at_zero = (
-        laplacian_eigenstate_basis(n, el, r[1:] + delta)
-        - laplacian_eigenstate_basis(n, el, r[1:] - delta)
-    ) / (2.0 * delta)
-    derivative_at_zero = (
-        laplacian_eigenstate_basis(n, el, np.array([delta / 10.0]))
-        - laplacian_eigenstate_basis(n, el, np.array([0.0]))
-    ) / (delta / 10.0)
-    return np.concatenate([derivative_at_zero, all_derivatives_except_at_zero])
+# # %%
+# # Now the derivatives (by finite differences):
 
 
-# %%
-# The radial basis functions and their derivatives can be input into a spline generator
-# class. This will output the positions of the spline points, the values of the basis
-# functions evaluated at the spline points, and the corresponding derivatives.
-
-spliner = RadialIntegralFromFunction(
-    radial_integral=laplacian_eigenstate_basis,
-    radial_integral_derivative=laplacian_eigenstate_basis_derivative,
-    spline_cutoff=cutoff,
-    max_radial=max_radial,
-    max_angular=max_angular,
-    accuracy=1e-5,
-)
-
-# %%
-# The, we feed the splines to the Rust calculator: Note that the
-# ``atomic_gaussian_width`` will be ignored since we are not uisng a Gaussian basis.
-
-hypers_spherical_expansion = {
-    "cutoff": cutoff,
-    "max_radial": max_radial,
-    "max_angular": max_angular,
-    "center_atom_weight": 0.0,
-    "radial_basis": spliner.compute(),
-    "atomic_gaussian_width": 1.0,  # ignored
-    "cutoff_function": {"Step": {}},
-}
-calculator = SphericalExpansion(**hypers_spherical_expansion)
-
-# %%
-#
-# Create dummy systems to test if the calculator outputs correct radial functions:
+# def laplacian_eigenstate_basis_derivative(n, el, r):
+#     delta = 1e-6
+#     all_derivatives_except_at_zero = (
+#         laplacian_eigenstate_basis(n, el, r[1:] + delta)
+#         - laplacian_eigenstate_basis(n, el, r[1:] - delta)
+#     ) / (2.0 * delta)
+#     derivative_at_zero = (
+#         laplacian_eigenstate_basis(n, el, np.array([delta / 10.0]))
+#         - laplacian_eigenstate_basis(n, el, np.array([0.0]))
+#     ) / (delta / 10.0)
+#     return np.concatenate([derivative_at_zero, all_derivatives_except_at_zero])
 
 
-def get_dummy_systems(r_array):
-    dummy_systems = []
-    for r in r_array:
-        dummy_systems.append(ase.Atoms("CH", positions=[(0, 0, 0), (0, 0, r)]))
-    return dummy_systems
+# # %%
+# # The radial basis functions and their derivatives can be input into a spline
+# # generator class. This will output the positions of the spline points, the values
+# # of the basis functions evaluated at the spline points, and the corresponding
+# # derivatives.
+
+# spliner = RadialIntegralFromFunction(
+#     radial_integral=laplacian_eigenstate_basis,
+#     radial_integral_derivative=laplacian_eigenstate_basis_derivative,
+#     spline_cutoff=cutoff,
+#     max_radial=max_radial,
+#     max_angular=max_angular,
+#     accuracy=1e-5,
+# )
+
+# # %%
+# # The, we feed the splines to the Rust calculator: Note that the
+# # ``atomic_gaussian_width`` will be ignored since we are not uisng a Gaussian basis.
+
+# hypers_spherical_expansion = {
+#     "cutoff": cutoff,
+#     "max_radial": max_radial,
+#     "max_angular": max_angular,
+#     "center_atom_weight": 0.0,
+#     "radial_basis": spliner.compute(),
+#     "atomic_gaussian_width": 1.0,  # ignored
+#     "cutoff_function": {"Step": {}},
+# }
+# calculator = SphericalExpansion(**hypers_spherical_expansion)
+
+# # %%
+# #
+# # Create dummy systems to test if the calculator outputs correct radial functions:
 
 
-r = np.linspace(0.1, 4.9, 20)
-systems = get_dummy_systems(r)
-spherical_expansion_coefficients = calculator.compute(systems)
-
-# %%
-# Extract ``l = 0`` features and check that the ``n = 2`` predictions are the same:
-
-block_C_l0 = spherical_expansion_coefficients.block(
-    center_type=6, o3_lambda=0, neighbor_type=1
-)
-block_C_l0_n2 = block_C_l0.values[:, :, 2].flatten()
-spherical_harmonics_0 = 1.0 / np.sqrt(4.0 * np.pi)
-
-# %%
-# radial function = feature / spherical harmonics function
-rascaline_output_radial_function = block_C_l0_n2 / spherical_harmonics_0
-
-assert np.allclose(
-    rascaline_output_radial_function,
-    laplacian_eigenstate_basis(2, 0, r),
-    atol=1e-5,
-)
-print("Assertion passed successfully!")
+# def get_dummy_systems(r_array):
+#     dummy_systems = []
+#     for r in r_array:
+#         dummy_systems.append(ase.Atoms("CH", positions=[(0, 0, 0), (0, 0, r)]))
+#     return dummy_systems
 
 
-# %%
-#
-# .. end-body
+# r = np.linspace(0.1, 4.9, 20)
+# systems = get_dummy_systems(r)
+# spherical_expansion_coefficients = calculator.compute(systems)
+
+# # %%
+# # Extract ``l = 0`` features and check that the ``n = 2`` predictions are the same:
+
+# block_C_l0 = spherical_expansion_coefficients.block(
+#     center_type=6, o3_lambda=0, neighbor_type=1
+# )
+# block_C_l0_n2 = block_C_l0.values[:, :, 2].flatten()
+# spherical_harmonics_0 = 1.0 / np.sqrt(4.0 * np.pi)
+
+# # %%
+# # radial function = feature / spherical harmonics function
+# rascaline_output_radial_function = block_C_l0_n2 / spherical_harmonics_0
+
+# assert np.allclose(
+#     rascaline_output_radial_function,
+#     laplacian_eigenstate_basis(2, 0, r),
+#     atol=1e-5,
+# )
+# print("Assertion passed successfully!")
+
+
+# # %%
+# #
+# # .. end-body

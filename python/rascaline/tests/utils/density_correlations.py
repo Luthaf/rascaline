@@ -47,24 +47,23 @@ if HAS_TORCH:
 else:
     ARRAYS_BACKEND = ["numpy"]
 
+MAX_ANGULAR = 2
 SPHEX_HYPERS = {
-    "cutoff": 2.5,  # Angstrom
-    "max_radial": 3,  # Exclusive
-    "max_angular": 3,  # Inclusive
-    "atomic_gaussian_width": 0.2,
-    "radial_basis": {"Gto": {}},
-    "cutoff_function": {"ShiftedCosine": {"width": 0.5}},
-    "center_atom_weight": 1.0,
-}
-
-SPHEX_HYPERS_SMALL = {
-    "cutoff": 2.5,  # Angstrom
-    "max_radial": 1,  # Exclusive
-    "max_angular": 2,  # Inclusive
-    "atomic_gaussian_width": 0.2,
-    "radial_basis": {"Gto": {}},
-    "cutoff_function": {"ShiftedCosine": {"width": 0.5}},
-    "center_atom_weight": 1.0,
+    "cutoff": {
+        "radius": 2.5,
+        "smoothing": {"type": "ShiftedCosine", "width": 0.5},
+    },
+    "density": {
+        "type": "Gaussian",
+        "width": 0.2,
+    },
+    "basis": {
+        "type": "TensorProduct",
+        # use a small basis to make the tests faster
+        # FIXME: setting max_angular=1 breaks the tests
+        "max_angular": MAX_ANGULAR,
+        "radial": {"type": "Gto", "max_radial": 1},
+    },
 }
 
 
@@ -111,19 +110,13 @@ def h2o_periodic():
     ]
 
 
-def wigner_d_matrices(lmax: int):
-    return WignerDReal(lmax=lmax)
+def wigner_d_matrices(max_angular: int):
+    return WignerDReal(max_angular=max_angular)
 
 
 def spherical_expansion(frames: List[ase.Atoms]):
     """Returns a rascaline SphericalExpansion"""
     calculator = rascaline.SphericalExpansion(**SPHEX_HYPERS)
-    return calculator.compute(frames)
-
-
-def spherical_expansion_small(frames: List[ase.Atoms]):
-    """Returns a rascaline SphericalExpansion with smaller hypers"""
-    calculator = rascaline.SphericalExpansion(**SPHEX_HYPERS_SMALL)
     return calculator.compute(frames)
 
 
@@ -133,24 +126,10 @@ def spherical_expansion_by_pair(frames: List[ase.Atoms]):
     return calculator.compute(frames)
 
 
-def spherical_expansion_by_pair_small(frames: List[ase.Atoms]):
-    """Returns a rascaline SphericalExpansionByPair with smaller hypers"""
-    calculator = rascaline.SphericalExpansionByPair(**SPHEX_HYPERS_SMALL)
-    return calculator.compute(frames)
-
-
 def power_spectrum(frames: List[ase.Atoms]):
     """Returns a rascaline PowerSpectrum constructed from a
     SphericalExpansion"""
     return PowerSpectrum(rascaline.SphericalExpansion(**SPHEX_HYPERS)).compute(frames)
-
-
-def power_spectrum_small(frames: List[ase.Atoms]):
-    """Returns a rascaline PowerSpectrum constructed from a
-    SphericalExpansion"""
-    return PowerSpectrum(rascaline.SphericalExpansion(**SPHEX_HYPERS_SMALL)).compute(
-        frames
-    )
 
 
 def get_norm(tensor: TensorMap):
@@ -195,7 +174,7 @@ def test_so3_equivariance():
     frames = h2o_periodic()
     n_correlations = 1
 
-    wig = wigner_d_matrices((n_correlations + 1) * SPHEX_HYPERS["max_angular"])
+    wig = wigner_d_matrices((n_correlations + 1) * MAX_ANGULAR)
     rotated_frames = [transform_frame_so3(frame, wig.angles) for frame in frames]
 
     # Generate density
@@ -208,7 +187,7 @@ def test_so3_equivariance():
 
     calculator = DensityCorrelations(
         n_correlations=n_correlations,
-        max_angular=SPHEX_HYPERS["max_angular"] * (n_correlations + 1),
+        max_angular=MAX_ANGULAR * (n_correlations + 1),
     )
     nu_3 = calculator.compute(density)
     nu_3_so3 = calculator.compute(density_so3)
@@ -229,7 +208,7 @@ def test_o3_equivariance():
     frames = h2_isolated()
     n_correlations = 1
     selected_keys = None
-    wig = wigner_d_matrices((n_correlations + 1) * SPHEX_HYPERS["max_angular"])
+    wig = wigner_d_matrices((n_correlations + 1) * MAX_ANGULAR)
     frames_o3 = [transform_frame_o3(frame, wig.angles) for frame in frames]
 
     # Generate density
@@ -242,7 +221,7 @@ def test_o3_equivariance():
 
     calculator = DensityCorrelations(
         n_correlations=n_correlations,
-        max_angular=SPHEX_HYPERS["max_angular"] * (n_correlations + 1),
+        max_angular=MAX_ANGULAR * (n_correlations + 1),
     )
     nu_3 = calculator.compute(density, selected_keys=selected_keys)
     nu_3_o3 = calculator.compute(density_o3, selected_keys=selected_keys)
@@ -275,7 +254,7 @@ def test_lambda_soap_vs_powerspectrum():
     n_correlations = 1
     calculator = DensityCorrelations(
         n_correlations=n_correlations,
-        max_angular=SPHEX_HYPERS["max_angular"] * (n_correlations + 1),
+        max_angular=MAX_ANGULAR * (n_correlations + 1),
     )
     lambda_soap = calculator.compute(
         density,
@@ -315,7 +294,7 @@ def test_lambda_soap_vs_powerspectrum():
 )
 def test_correlate_density_norm():
     """
-    Checks \\|\\rho^\\nu\\| =  \\|\\rho\\|^\\nu in the case where l lists are not
+    Checks \\|\\rho^\\nu\\| = \\|\\rho\\|^\\nu in the case where l lists are not
     sorted. If l lists are sorted, thus saving computation of redundant block
     combinations, the norm check will not hold for target body order greater than 2.
     """
@@ -323,13 +302,13 @@ def test_correlate_density_norm():
     n_correlations = 1
 
     # Build nu=1 SphericalExpansion
-    density = spherical_expansion_small(frames)
+    density = spherical_expansion(frames)
     density = density.keys_to_properties("neighbor_type")
 
     # Build higher body order tensor without sorting the l lists
     calculator = DensityCorrelations(
         n_correlations=n_correlations,
-        max_angular=SPHEX_HYPERS_SMALL["max_angular"] * (n_correlations + 1),
+        max_angular=MAX_ANGULAR * (n_correlations + 1),
         skip_redundant=False,
     )
     ps = calculator.compute(density)
@@ -337,7 +316,7 @@ def test_correlate_density_norm():
     # Build higher body order tensor *with* sorting the l lists
     calculator = DensityCorrelations(
         n_correlations=n_correlations,
-        max_angular=SPHEX_HYPERS_SMALL["max_angular"] * (n_correlations + 1),
+        max_angular=MAX_ANGULAR * (n_correlations + 1),
         skip_redundant=True,
     )
     ps_sorted = calculator.compute(density)
@@ -480,17 +459,17 @@ def test_correlate_density_dense_sparse_agree():
     CG coefficient caches.
     """
     frames = h2o_periodic()
-    density = spherical_expansion_small(frames)
+    density = spherical_expansion(frames)
     density = density.keys_to_properties("neighbor_type")
 
     n_correlations = 1
     calculator_sparse = DensityCorrelations(
         n_correlations=n_correlations,
-        max_angular=SPHEX_HYPERS_SMALL["max_angular"] * (n_correlations + 1),
+        max_angular=MAX_ANGULAR * (n_correlations + 1),
         cg_backend="python-sparse",
     )
     calculator_dense = DensityCorrelations(
-        max_angular=SPHEX_HYPERS_SMALL["max_angular"] * (n_correlations + 1),
+        max_angular=MAX_ANGULAR * (n_correlations + 1),
         n_correlations=n_correlations,
         cg_backend="python-dense",
     )
@@ -515,7 +494,7 @@ def test_correlate_density_metadata_agree():
     frames = h2o_isolated()
 
     for max_angular, nu_1 in [
-        (4, spherical_expansion_small(frames)),
+        (4, spherical_expansion(frames)),
         (6, spherical_expansion(frames)),
     ]:
         nu_1 = nu_1.keys_to_properties("neighbor_type")
@@ -553,7 +532,7 @@ def test_correlate_density_angular_selection(
     calculator = DensityCorrelations(
         n_correlations=n_correlations,
         skip_redundant=skip_redundant,
-        max_angular=SPHEX_HYPERS["max_angular"] * (n_correlations + 1),
+        max_angular=MAX_ANGULAR * (n_correlations + 1),
         arrays_backend=arrays_backend,
         dtype=torch.float64 if arrays_backend == "torch" else None,
     )
@@ -566,7 +545,7 @@ def test_correlate_density_angular_selection(
     if selected_keys is None:
         assert np.all(
             [
-                angular in np.arange(SPHEX_HYPERS["max_angular"] * 2 + 1)
+                angular in np.arange(MAX_ANGULAR * 2 + 1)
                 for angular in np.unique(nu_2.keys.column("o3_lambda"))
             ]
         )
@@ -593,15 +572,15 @@ def test_summed_powerspectrum_by_pair_equals_powerspectrum():
     frames = h2o_isolated()
     density_correlations = DensityCorrelations(
         n_correlations=1,
-        max_angular=SPHEX_HYPERS["max_angular"] * 2,
+        max_angular=MAX_ANGULAR * 2,
         skip_redundant=False,
     )
     cg_product = ClebschGordanProduct(
-        max_angular=SPHEX_HYPERS["max_angular"] * 2,
+        max_angular=MAX_ANGULAR * 2,
     )
 
     # Generate density and rename dimensions ready for correlation
-    density = spherical_expansion_small(frames)
+    density = spherical_expansion(frames)
     density = metatensor.rename_dimension(
         density, "keys", "center_type", "first_atom_type"
     )
@@ -621,7 +600,7 @@ def test_summed_powerspectrum_by_pair_equals_powerspectrum():
     )
 
     # Generate pair density
-    pair_density = spherical_expansion_by_pair_small(frames)
+    pair_density = spherical_expansion_by_pair(frames)
     pair_density = pair_density.keys_to_properties("second_atom_type")
     pair_density = metatensor.rename_dimension(pair_density, "properties", "n", "n_2")
     pair_density = metatensor.rename_dimension(
@@ -657,28 +636,27 @@ def test_angular_cutoff():
     """
     frames = h2o_isolated()
 
-    # Initialize the calculator with only max_angular = SPHEX_HYPERS["max_angular"] * 2.
+    # Initialize the calculator with only max_angular = MAX_ANGULAR * 2.
     # We will cutoff off the angular channels at 3 for all intermediate iterations, and
     # only on the final iteration do the full product, doubling the max angular order.
     n_correlations = 2
     calculator = DensityCorrelations(
         n_correlations=n_correlations,
-        max_angular=SPHEX_HYPERS_SMALL["max_angular"] * 2,
+        max_angular=MAX_ANGULAR * 2,
     )
 
     # Generate density
-    density = spherical_expansion_small(frames)
+    density = spherical_expansion(frames)
 
     # Perform 3 iterations of DensityCorrelations with `angular_cutoff`
     nu_4 = calculator.compute(
         density,
-        angular_cutoff=SPHEX_HYPERS_SMALL["max_angular"],
+        angular_cutoff=MAX_ANGULAR,
         selected_keys=None,
     )
 
     assert np.all(
-        np.sort(np.unique(nu_4.keys.column("o3_lambda")))
-        == np.arange(SPHEX_HYPERS_SMALL["max_angular"] + 1)
+        np.sort(np.unique(nu_4.keys.column("o3_lambda"))) == np.arange(MAX_ANGULAR + 1)
     )
 
 
@@ -690,23 +668,22 @@ def test_angular_cutoff_with_selected_keys():
     """
     frames = h2o_isolated()
 
-    # Initialize the calculator with only max_angular = SPHEX_HYPERS["max_angular"] * 2.
+    # Initialize the calculator with only max_angular = MAX_ANGULAR * 2.
     # We will cutoff off the angular channels at 3 for all intermediate iterations, and
     # only on the final iteration do the full product, doubling the max angular order.
     calculator = DensityCorrelations(
         n_correlations=2,
-        max_angular=SPHEX_HYPERS_SMALL["max_angular"] * 2,
+        max_angular=MAX_ANGULAR * 2,
     )
 
     # Generate density
-    density = spherical_expansion_small(frames)
+    density = spherical_expansion(frames)
 
     # Perform 3 iterations of DensityCorrelations with `angular_cutoff`
     nu_4 = calculator.compute(
         density,
-        angular_cutoff=SPHEX_HYPERS_SMALL[
-            "max_angular"
-        ],  # applies to all intermediate steps as selected_keys is specified
+        # `angular_cutoff` applies to all iterations as `selected_keys` is specified
+        angular_cutoff=MAX_ANGULAR,
         selected_keys=Labels(
             names=["o3_lambda"],
             values=np.arange(5).reshape(-1, 1),
@@ -725,20 +702,19 @@ def test_no_error_with_correct_angular_selection():
     frames = h2o_isolated()
     nu_1 = spherical_expansion(frames)
 
-    # Initialize the calculator with only max_angular = SPHEX_HYPERS["max_angular"]
-    max_angular = SPHEX_HYPERS["max_angular"]
+    # Initialize the calculator with only max_angular = MAX_ANGULAR
     density_correlations = DensityCorrelations(
         n_correlations=2,
-        max_angular=max_angular,
+        max_angular=MAX_ANGULAR,
     )
 
     # If `angular_cutoff` and `selected_keys` were not passed, this should error as
-    # max_angular = SPHEX_HYPERS["max_angular"] * 3 would be required.
+    # max_angular = MAX_ANGULAR * 3 would be required.
     density_correlations.compute(
         nu_1,
-        angular_cutoff=max_angular,
+        angular_cutoff=MAX_ANGULAR,
         selected_keys=Labels(
             names=["o3_lambda"],
-            values=np.arange(max_angular).reshape(-1, 1),
+            values=np.arange(MAX_ANGULAR).reshape(-1, 1),
         ),
     )

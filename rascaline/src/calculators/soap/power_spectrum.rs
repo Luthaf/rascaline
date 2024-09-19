@@ -9,9 +9,8 @@ use crate::calculators::CalculatorBase;
 use crate::{CalculationOptions, Calculator, LabelsSelection};
 use crate::{Error, System};
 
-use super::SphericalExpansionParameters;
-use super::{SphericalExpansion, CutoffFunction, RadialScaling};
-use crate::calculators::radial_basis::RadialBasis;
+use super::{Cutoff, SphericalExpansionParameters, SphericalExpansion};
+use crate::calculators::shared::{Density, SoapRadialBasis, SphericalExpansionBasis};
 
 use crate::labels::{AtomicTypeFilter, SamplesBuilder};
 use crate::labels::AtomCenteredSamples;
@@ -34,28 +33,13 @@ use crate::labels::{KeysBuilder, CenterTwoNeighborsTypesKeys};
 #[derive(Debug, Clone)]
 #[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 pub struct PowerSpectrumParameters {
-    /// Spherical cutoff to use for atomic environments
-    pub cutoff: f64,
-    /// Number of radial basis function to use
-    pub max_radial: usize,
-    /// Number of spherical harmonics to use
-    pub max_angular: usize,
-    /// Width of the atom-centered gaussian creating the atomic density
-    pub atomic_gaussian_width: f64,
-    /// Weight of the central atom contribution to the
-    /// features. If `1.0` the center atom contribution is weighted the same
-    /// as any other contribution. If `0.0` the central atom does not
-    /// contribute to the features at all.
-    pub center_atom_weight: f64,
-    /// radial basis to use for the radial integral
-    pub radial_basis: RadialBasis,
-    /// cutoff function used to smooth the behavior around the cutoff radius
-    pub cutoff_function: CutoffFunction,
-    /// radial scaling can be used to reduce the importance of neighbor atoms
-    /// further away from the center, usually improving the performance of the
-    /// model
-    #[serde(default)]
-    pub radial_scaling: RadialScaling,
+    /// Definition of the atomic environment within a cutoff, and how
+    /// neighboring atoms enter and leave the environment.
+    pub cutoff: Cutoff,
+    /// Definition of the density arising from atoms in the local environment.
+    pub density: Density,
+    /// Definition of the basis functions used to expand the atomic density
+    pub basis: SphericalExpansionBasis<SoapRadialBasis>,
 }
 
 /// Calculator implementing the Smooth Overlap of Atomic Position (SOAP) power
@@ -75,13 +59,8 @@ impl SoapPowerSpectrum {
     pub fn new(parameters: PowerSpectrumParameters) -> Result<SoapPowerSpectrum, Error> {
         let expansion_parameters = SphericalExpansionParameters {
             cutoff: parameters.cutoff,
-            max_radial: parameters.max_radial,
-            max_angular: parameters.max_angular,
-            atomic_gaussian_width: parameters.atomic_gaussian_width,
-            center_atom_weight: parameters.center_atom_weight,
-            radial_basis: parameters.radial_basis.clone(),
-            cutoff_function: parameters.cutoff_function,
-            radial_scaling: parameters.radial_scaling,
+            density: parameters.density,
+            basis: parameters.basis.clone(),
         };
 
         let spherical_expansion = SphericalExpansion::new(expansion_parameters)?;
@@ -190,7 +169,7 @@ impl SoapPowerSpectrum {
         // selection
         let mut missing_keys = BTreeSet::new();
         for &[center, neighbor_1, neighbor_2] in descriptor.keys().iter_fixed_size() {
-            for o3_lambda in 0..=(self.parameters.max_angular) {
+            for o3_lambda in self.parameters.basis.angular_channels() {
                 if !requested_o3_lambda.contains(&o3_lambda) {
                     missing_keys.insert([o3_lambda.into(), 1.into(), center, neighbor_1]);
                     missing_keys.insert([o3_lambda.into(), 1.into(), center, neighbor_2]);
@@ -443,7 +422,7 @@ impl CalculatorBase for SoapPowerSpectrum {
 
     fn keys(&self, systems: &mut [Box<dyn System>]) -> Result<metatensor::Labels, Error> {
         let builder = CenterTwoNeighborsTypesKeys {
-            cutoff: self.parameters.cutoff,
+            cutoff: self.parameters.cutoff.radius,
             self_pairs: true,
             symmetric: true,
         };
@@ -460,7 +439,7 @@ impl CalculatorBase for SoapPowerSpectrum {
         for [center_type, neighbor_1_type, neighbor_2_type] in keys.iter_fixed_size() {
 
             let builder = AtomCenteredSamples {
-                cutoff: self.parameters.cutoff,
+                cutoff: self.parameters.cutoff.radius,
                 center_type: AtomicTypeFilter::Single(center_type.i32()),
                 // we only want center with both neighbor types present
                 neighbor_type: AtomicTypeFilter::AllOf(
@@ -485,7 +464,7 @@ impl CalculatorBase for SoapPowerSpectrum {
         let mut gradient_samples = Vec::new();
         for ([center_type, neighbor_1_type, neighbor_2_type], samples) in keys.iter_fixed_size().zip(samples) {
             let builder = AtomCenteredSamples {
-                cutoff: self.parameters.cutoff,
+                cutoff: self.parameters.cutoff.radius,
                 center_type: AtomicTypeFilter::Single(center_type.i32()),
                 // gradients samples should contain either neighbor types
                 neighbor_type: AtomicTypeFilter::OneOf(vec![
@@ -517,17 +496,20 @@ impl CalculatorBase for SoapPowerSpectrum {
     }
 
     fn properties(&self, keys: &metatensor::Labels) -> Vec<Labels> {
-        let mut properties = LabelsBuilder::new(self.property_names());
-        for l in 0..=self.parameters.max_angular {
-            for n1 in 0..self.parameters.max_radial {
-                for n2 in 0..self.parameters.max_radial {
-                    properties.add(&[l, n1, n2]);
+        match self.parameters.basis {
+            SphericalExpansionBasis::TensorProduct(ref basis) => {
+                let mut properties = LabelsBuilder::new(self.property_names());
+                for l in 0..=basis.max_angular {
+                    for n1 in 0..basis.radial.size() {
+                        for n2 in 0..basis.radial.size() {
+                            properties.add(&[l, n1, n2]);
+                        }
+                    }
                 }
+
+                return vec![properties.finish(); keys.count()];
             }
         }
-        let properties = properties.finish();
-
-        return vec![properties; keys.count()];
     }
 
     #[time_graph::instrument(name = "SoapPowerSpectrum::compute")]
@@ -784,16 +766,31 @@ mod tests {
     use super::*;
     use crate::calculators::CalculatorBase;
 
+    use crate::calculators::soap::{Cutoff, Smoothing};
+    use crate::calculators::shared::{Density, DensityKind};
+    use crate::calculators::shared::{SoapRadialBasis, SphericalExpansionBasis, TensorProductBasis};
+
+
+    fn basis() -> TensorProductBasis<SoapRadialBasis> {
+        TensorProductBasis {
+            max_angular: 6,
+            radial: SoapRadialBasis::Gto { max_radial: 6 },
+            spline_accuracy: Some(1e-8),
+        }
+    }
+
     fn parameters() -> PowerSpectrumParameters {
         PowerSpectrumParameters {
-            cutoff: 8.0,
-            max_radial: 6,
-            max_angular: 6,
-            atomic_gaussian_width: 0.3,
-            center_atom_weight: 1.0,
-            radial_basis: RadialBasis::splined_gto(1e-8),
-            radial_scaling: RadialScaling::None {},
-            cutoff_function: CutoffFunction::ShiftedCosine { width: 0.5 },
+            cutoff: Cutoff {
+                radius: 8.0,
+                smoothing: Smoothing::ShiftedCosine { width: 0.5 }
+            },
+            density: Density {
+                kind: DensityKind::Gaussian { width: 0.3 },
+                scaling: None,
+                center_atom_weight: 1.0,
+            },
+            basis: SphericalExpansionBasis::TensorProduct(basis()),
         }
     }
 
@@ -984,16 +981,30 @@ mod tests {
     fn center_atom_weight() {
         let system = &mut test_systems(&["CH"]);
 
-        let mut parameters = parameters();
-        parameters.cutoff = 0.5;
-        parameters.center_atom_weight = 1.0;
+        let mut parameters = PowerSpectrumParameters {
+            cutoff: Cutoff {
+                radius: 0.5,
+                smoothing: Smoothing::ShiftedCosine { width: 0.5 }
+            },
+            density: Density {
+                kind: DensityKind::Gaussian { width: 0.3 },
+                scaling: None,
+                center_atom_weight: 1.0,
+            },
+            basis: SphericalExpansionBasis::TensorProduct( TensorProductBasis {
+                max_angular: 6,
+                radial: SoapRadialBasis::Gto { max_radial: 6 },
+                spline_accuracy: Some(1e-8),
+            }),
+        };
 
+        parameters.density.center_atom_weight = 1.0;
         let mut calculator = Calculator::from(Box::new(
             SoapPowerSpectrum::new(parameters.clone()).unwrap(),
         ) as Box<dyn CalculatorBase>);
         let descriptor = calculator.compute(system, Default::default()).unwrap();
 
-        parameters.center_atom_weight = 0.5;
+        parameters.density.center_atom_weight = 0.5;
         let mut calculator = Calculator::from(Box::new(
             SoapPowerSpectrum::new(parameters).unwrap(),
         ) as Box<dyn CalculatorBase>);

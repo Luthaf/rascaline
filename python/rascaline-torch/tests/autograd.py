@@ -11,13 +11,19 @@ from rascaline.torch import SoapPowerSpectrum, SphericalExpansion
 
 
 HYPERS = {
-    "cutoff": 8,
-    "max_radial": 10,
-    "max_angular": 5,
-    "atomic_gaussian_width": 0.3,
-    "center_atom_weight": 1.0,
-    "cutoff_function": {"ShiftedCosine": {"width": 0.5}},
-    "radial_basis": {"Gto": {}},
+    "cutoff": {
+        "radius": 8.0,
+        "smoothing": {"type": "ShiftedCosine", "width": 0.5},
+    },
+    "density": {
+        "type": "Gaussian",
+        "width": 0.3,
+    },
+    "basis": {
+        "type": "TensorProduct",
+        "max_angular": 5,
+        "radial": {"type": "Gto", "max_radial": 10},
+    },
 }
 
 

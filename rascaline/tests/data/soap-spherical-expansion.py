@@ -26,20 +26,19 @@ frame = ase.Atoms(
 )
 
 hyperparameters = {
-    "cutoff": 5.5,
-    "max_radial": 8,
-    "max_angular": 8,
-    "atomic_gaussian_width": 0.3,
-    "center_atom_weight": 1.0,
-    "radial_basis": {
-        "Gto": {
-            "splined_radial_integral": False,
-        },
+    "cutoff": {
+        "radius": 5.5,
+        "smoothing": {"type": "ShiftedCosine", "width": 0.5},
     },
-    "cutoff_function": {
-        "ShiftedCosine": {
-            "width": 0.5,
-        }
+    "density": {
+        "type": "Gaussian",
+        "width": 0.3,
+    },
+    "basis": {
+        "type": "TensorProduct",
+        "max_angular": 8,
+        "radial": {"max_radial": 7, "type": "Gto"},
+        "spline_accuracy": None,
     },
 }
 
@@ -67,8 +66,8 @@ def sum_gradient(descriptor):
 
 
 # Use smaller hypers for gradients to keep the file size low
-hyperparameters["max_radial"] = 4
-hyperparameters["max_angular"] = 4
+hyperparameters["basis"]["radial"]["max_radial"] = 3
+hyperparameters["basis"]["max_angular"] = 4
 frame.cell = [6.0, 6.0, 6.0]
 frame.pbc = [True, True, True]
 
@@ -108,20 +107,19 @@ for _ in range(20):
     frame.pop(5)
 
 hyperparameters = {
-    "cutoff": 4.5,
-    "max_radial": 6,
-    "max_angular": 6,
-    "atomic_gaussian_width": 0.5,
-    "center_atom_weight": 1.0,
-    "radial_basis": {
-        "Gto": {
-            "splined_radial_integral": False,
-        },
+    "cutoff": {
+        "radius": 4.5,
+        "smoothing": {"type": "ShiftedCosine", "width": 0.2},
     },
-    "cutoff_function": {
-        "ShiftedCosine": {
-            "width": 0.2,
-        }
+    "density": {
+        "type": "Gaussian",
+        "width": 0.5,
+    },
+    "basis": {
+        "type": "TensorProduct",
+        "max_angular": 6,
+        "radial": {"max_radial": 5, "type": "Gto"},
+        "spline_accuracy": None,
     },
 }
 

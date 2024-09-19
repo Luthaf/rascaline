@@ -7,7 +7,7 @@
 //! for reference values and detailed explanations on these constants.
 
 use approx::assert_relative_eq;
-use rascaline::calculators::RadialBasis;
+use rascaline::calculators::{Density, DensityKind, LodeRadialBasis, SphericalExpansionBasis, TensorProductBasis};
 use rascaline::calculators::{LodeSphericalExpansionParameters, CalculatorBase, LodeSphericalExpansion};
 use rascaline::systems::{System, SimpleSystem, UnitCell};
 use rascaline::{Calculator, Matrix3, Vector3D, CalculationOptions};
@@ -81,21 +81,27 @@ fn madelung() {
         CrystalParameters{systems: get_znso4(), charges: vec![1.0, -1.0, 1.0, -1.0], madelung: 1.6413 / f64::sqrt(3. / 8.)}
     ];
 
-    for cutoff in [0.01_f64, 0.027, 0.074, 0.2] {
-        let factor = -1.0 / (4.0 * std::f64::consts::PI * cutoff.powf(2.0)).powf(0.75);
-        for atomic_gaussian_width in [0.2, 0.1] {
+    for gto_radius in [0.01_f64, 0.027, 0.074, 0.2] {
+        let factor = -1.0 / (4.0 * std::f64::consts::PI * gto_radius.powf(2.0)).powf(0.75);
+        for smearing in [0.2, 0.1] {
 
             for crystal in crystals.iter_mut() {
 
                 let lode_parameters = LodeSphericalExpansionParameters {
-                    cutoff,
                     k_cutoff: None,
-                    max_radial: 1,
-                    max_angular: 0,
-                    atomic_gaussian_width,
-                    center_atom_weight: 0.0,
-                    potential_exponent: 1,
-                    radial_basis: RadialBasis::splined_gto(1e-8),
+                    density: Density {
+                        kind: DensityKind::SmearedPowerLaw {
+                            smearing,
+                            exponent: 1,
+                        },
+                        scaling: None,
+                        center_atom_weight: 0.0,
+                    },
+                    basis: SphericalExpansionBasis::TensorProduct(TensorProductBasis {
+                        max_angular: 0,
+                        radial: LodeRadialBasis::Gto { max_radial: 0, radius: gto_radius },
+                        spline_accuracy: Some(1e-8),
+                    })
                 };
 
                 let mut calculator = Calculator::from(Box::new(LodeSphericalExpansion::new(
@@ -128,19 +134,25 @@ fn madelung_high_accuracy() {
         CrystalParameters{systems: get_znso4(),  charges: vec![1.0, -1.0, 1.0, -1.0], madelung: 1.6413 / f64::sqrt(3. / 8.)}
     ];
 
-    let cutoff = 0.01_f64;
-    let factor = -1.0 / (4.0 * std::f64::consts::PI * cutoff.powf(2.0)).powf(0.75);
+    let gto_radius = 0.01_f64;
+    let factor = -1.0 / (4.0 * std::f64::consts::PI * gto_radius.powf(2.0)).powf(0.75);
 
     for crystal in crystals.iter_mut() {
         let lode_parameters = LodeSphericalExpansionParameters {
-            cutoff,
-            k_cutoff: Some(50.),
-            max_radial: 1,
-            max_angular: 0,
-            atomic_gaussian_width: 0.1,
-            center_atom_weight: 0.0,
-            potential_exponent: 1,
-            radial_basis: RadialBasis::splined_gto(1e-8),
+            k_cutoff: Some(50.0),
+            density: Density {
+                kind: DensityKind::SmearedPowerLaw {
+                    smearing: 0.1,
+                    exponent: 1,
+                },
+                scaling: None,
+                center_atom_weight: 0.0,
+            },
+            basis: SphericalExpansionBasis::TensorProduct(TensorProductBasis {
+                max_angular: 0,
+                radial: LodeRadialBasis::Gto { max_radial: 0, radius: gto_radius },
+                spline_accuracy: Some(1e-8),
+            })
         };
 
         let mut calculator = Calculator::from(Box::new(LodeSphericalExpansion::new(

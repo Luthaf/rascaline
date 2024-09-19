@@ -36,9 +36,9 @@ fn run_soap_power_spectrum(
         system.compute_neighbors(cutoff).unwrap();
     }
 
-    for &(max_radial, max_angular) in &[(2, 1), (8, 7), (15, 14)] {
+    for &max_basis in &[1, 7, 14] {
         // keep the memory requirements under control
-        if max_radial == 15 {
+        if max_basis == 14 {
             systems.truncate(10);
             n_centers = 0;
             for system in &mut systems {
@@ -47,17 +47,30 @@ fn run_soap_power_spectrum(
         }
 
         let parameters = format!(r#"{{
-            "max_radial": {max_radial},
-            "max_angular": {max_angular},
-            "cutoff": {cutoff},
-            "atomic_gaussian_width": 0.3,
-            "center_atom_weight": 1.0,
-            "radial_basis": {{ "Gto": {{}} }},
-            "cutoff_function": {{ "ShiftedCosine": {{ "width": 0.5 }} }}
+            "cutoff": {{
+                "radius": {cutoff},
+                "smoothing": {{
+                    "type": "ShiftedCosine",
+                    "width": 0.5
+                }}
+            }},
+            "density": {{
+                "type": "Gaussian",
+                "width": 0.3
+            }},
+            "basis": {{
+                "type": "TensorProduct",
+                "max_angular": {max_basis},
+                "radial": {{
+                    "type": "Gto",
+                    "max_radial": {max_basis}
+                }}
+            }}
         }}"#);
+
         let mut calculator = Calculator::new("soap_power_spectrum", parameters).unwrap();
 
-        group.bench_function(format!("n_max = {}, l_max = {}", max_radial, max_angular), |b| b.iter_custom(|repeat| {
+        group.bench_function(format!("max_radial = max_angular = {}", max_basis), |b| b.iter_custom(|repeat| {
             let start = std::time::Instant::now();
 
             let options = CalculationOptions {

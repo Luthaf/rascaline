@@ -45,13 +45,19 @@ else:
 
 MAX_ANGULAR = 3
 SPHEX_HYPERS = {
-    "cutoff": 3.0,  # Angstrom
-    "max_radial": 3,  # Exclusive
-    "max_angular": MAX_ANGULAR,  # Inclusive
-    "atomic_gaussian_width": 0.3,
-    "radial_basis": {"Gto": {}},
-    "cutoff_function": {"ShiftedCosine": {"width": 0.5}},
-    "center_atom_weight": 1.0,
+    "cutoff": {
+        "radius": 3.0,
+        "smoothing": {"type": "ShiftedCosine", "width": 0.5},
+    },
+    "basis": {
+        "type": "TensorProduct",
+        "max_angular": MAX_ANGULAR,
+        "radial": {"type": "Gto", "max_radial": 3},
+    },
+    "density": {
+        "type": "Gaussian",
+        "width": 0.3,
+    },
 }
 
 

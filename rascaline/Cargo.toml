@@ -20,10 +20,6 @@ name = "spherical-harmonics"
 harness = false
 
 [[bench]]
-name = "soap-radial-integral"
-harness = false
-
-[[bench]]
 name = "lode-spherical-expansion"
 harness = false
 
