@@ -1,55 +1,20 @@
 use std::f64;
 
-use ndarray::{Array2, ArrayViewMut2};
+use ndarray::{Array2, ArrayViewMut1};
 
-use crate::calculators::radial_basis::GtoRadialBasis;
-use crate::math::{gamma, DoubleRegularized1F1};
+use crate::calculators::shared::basis::radial::GtoRadialBasis;
+use crate::calculators::shared::{DensityKind, SoapRadialBasis};
+use crate::math::{gamma, hyp1f1};
 use crate::Error;
 
 use super::SoapRadialIntegral;
-
-/// Parameters controlling the SOAP radial integral with GTO radial basis
-#[derive(Debug, Clone, Copy)]
-pub struct SoapRadialIntegralGtoParameters {
-    /// Number of radial components
-    pub max_radial: usize,
-    /// Number of angular components
-    pub max_angular: usize,
-    /// atomic density gaussian width
-    pub atomic_gaussian_width: f64,
-    /// cutoff radius
-    pub cutoff: f64,
-}
-
-impl SoapRadialIntegralGtoParameters {
-    pub(crate) fn validate(&self) -> Result<(), Error> {
-        if self.max_radial == 0 {
-            return Err(Error::InvalidParameter(
-                "max_radial must be at least 1 for GTO radial integral".into()
-            ));
-        }
-
-        if self.cutoff <= 1e-16 || !self.cutoff.is_finite() {
-            return Err(Error::InvalidParameter(
-                "cutoff must be a positive number for GTO radial integral".into()
-            ));
-        }
-
-        if self.atomic_gaussian_width <= 1e-16 || !self.atomic_gaussian_width.is_finite() {
-            return Err(Error::InvalidParameter(
-                "atomic_gaussian_width must be a positive number for GTO radial integral".into()
-            ));
-        }
-
-        Ok(())
-    }
-}
 
 /// Implementation of the radial integral for GTO radial basis and gaussian
 /// atomic density.
 #[derive(Debug, Clone)]
 pub struct SoapRadialIntegralGto {
-    parameters: SoapRadialIntegralGtoParameters,
+    /// Which value of l/lambda is this radial integral for
+    o3_lambda: usize,
     /// `σ^2`, with σ the atomic density gaussian width
     atomic_gaussian_width_2: f64,
     /// `1/2σ^2`, with σ the atomic density gaussian width
@@ -59,18 +24,30 @@ pub struct SoapRadialIntegralGto {
     gto_gaussian_constants: Vec<f64>,
     /// `n_max * n_max` matrix to orthonormalize the GTO
     gto_orthonormalization: Array2<f64>,
-    /// Implementation of `Gamma(a) / Gamma(b) 1F1(a, b, z)`
-    double_regularized_1f1: DoubleRegularized1F1,
 }
 
 
 impl SoapRadialIntegralGto {
-    pub fn new(parameters: SoapRadialIntegralGtoParameters) -> Result<SoapRadialIntegralGto, Error> {
-        parameters.validate()?;
+    /// Create a new SOAP radial integral
+    pub fn new(cutoff: f64, density: DensityKind, basis: &SoapRadialBasis, o3_lambda: usize) -> Result<SoapRadialIntegralGto, Error> {
+        let gaussian_width = if let DensityKind::Gaussian { width } = density {
+            width
+        } else {
+            return Err(Error::Internal("density must be Gaussian for the GTO radial integral".into()));
+        };
+
+        let &max_radial = if let SoapRadialBasis::Gto { max_radial } = basis {
+            max_radial
+        } else {
+            return Err(Error::Internal("radial basis must be GTO for the GTO radial integral".into()));
+        };
+
+        // these should be checked before we reach this function
+        assert!(gaussian_width > 1e-16 && gaussian_width.is_finite());
 
         let basis = GtoRadialBasis {
-            max_radial: parameters.max_radial,
-            cutoff: parameters.cutoff,
+            size: max_radial + 1,
+            radius: cutoff,
         };
         let gto_gaussian_widths = basis.gaussian_widths();
         let gto_orthonormalization = basis.orthonormalization_matrix();
@@ -79,14 +56,11 @@ impl SoapRadialIntegralGto {
             .map(|&sigma| 1.0 / (2.0 * sigma * sigma))
             .collect::<Vec<_>>();
 
-        let atomic_gaussian_width_2 = parameters.atomic_gaussian_width * parameters.atomic_gaussian_width;
+        let atomic_gaussian_width_2 = gaussian_width * gaussian_width;
         let atomic_gaussian_constant = 1.0 / (2.0 * atomic_gaussian_width_2);
 
         return Ok(SoapRadialIntegralGto {
-            parameters: parameters,
-            double_regularized_1f1: DoubleRegularized1F1 {
-                max_angular: parameters.max_angular,
-            },
+            o3_lambda: o3_lambda,
             atomic_gaussian_width_2: atomic_gaussian_width_2,
             atomic_gaussian_constant: atomic_gaussian_constant,
             gto_gaussian_constants: gto_gaussian_constants,
@@ -95,26 +69,57 @@ impl SoapRadialIntegralGto {
     }
 }
 
+
+#[inline]
+fn hyp1f1_derivative(a: f64, b: f64, x: f64) -> f64 {
+    a / b * hyp1f1(a + 1.0, b + 1.0, x)
+}
+
+#[inline]
+#[allow(clippy::many_single_char_names)]
+/// Compute `G(a, b, z) = Gamma(a) / Gamma(b) 1F1(a, b, z)` for
+/// `a = 1/2 (n + l + 3)` and `b = l + 3/2`.
+///
+/// This is similar (but not the exact same) to the G function defined in
+/// appendix A in <https://doi.org/10.1063/5.0044689>.
+///
+/// The function is called "double regularized 1F1" by reference to the
+/// "regularized 1F1" function (i.e. `1F1(a, b, z) / Gamma(b)`)
+fn double_regularized_1f1(l: usize, n: usize, z: f64, value: &mut f64, gradient: Option<&mut f64>) {
+    let (a, b) = (0.5 * (n + l + 3) as f64, l as f64 + 1.5);
+    let ratio = gamma(a) / gamma(b);
+
+    *value = ratio * hyp1f1(a, b, z);
+    if let Some(gradient) = gradient {
+        *gradient = ratio * hyp1f1_derivative(a, b, z);
+    }
+}
+
+
+
 impl SoapRadialIntegral for SoapRadialIntegralGto {
+    fn size(&self) -> usize {
+        self.gto_gaussian_constants.len()
+    }
+
     #[time_graph::instrument(name = "GtoRadialIntegral::compute")]
     fn compute(
         &self,
         distance: f64,
-        mut values: ArrayViewMut2<f64>,
-        mut gradients: Option<ArrayViewMut2<f64>>
+        mut values: ArrayViewMut1<f64>,
+        mut gradients: Option<ArrayViewMut1<f64>>
     ) {
-        let expected_shape = [self.parameters.max_angular + 1, self.parameters.max_radial];
         assert_eq!(
-            values.shape(), expected_shape,
-            "wrong size for values array, expected [{}, {}] but got [{}, {}]",
-            expected_shape[0], expected_shape[1], values.shape()[0], values.shape()[1]
+            values.shape(), [self.size()],
+            "wrong size for values array, expected [{}] but got [{}]",
+            self.size(), values.shape()[0]
         );
 
         if let Some(ref gradients) = gradients {
             assert_eq!(
-                gradients.shape(), expected_shape,
-                "wrong size for gradients array, expected [{}, {}] but got [{}, {}]",
-                expected_shape[0], expected_shape[1], gradients.shape()[0], gradients.shape()[1]
+                gradients.shape(), [self.size()],
+                "wrong size for gradients array, expected [{}] but got [{}]",
+                self.size(), gradients.shape()[0]
             );
         }
 
@@ -133,39 +138,33 @@ impl SoapRadialIntegral for SoapRadialIntegralGto {
 
         let c = self.atomic_gaussian_constant;
         let c_rij = c * distance;
+        let c_rij_l = c_rij.powi(self.o3_lambda as i32);
         let exp_c_rij = f64::exp(-distance * c_rij);
 
-        for n in 0..self.parameters.max_radial {
+        // `global_factor * exp(-c rij^2) * (c * rij)^l`
+        let factor = global_factor * exp_c_rij * c_rij_l;
+
+        for n in 0..self.size() {
             let gto_constant = self.gto_gaussian_constants[n];
-            // `global_factor * exp(-c rij^2) * (c * rij)^l`
-            let mut factor = global_factor * exp_c_rij;
 
-            let z = c_rij * c_rij / (self.atomic_gaussian_constant + gto_constant);
+            let z = c_rij * c_rij / (c + gto_constant);
             // Calculate Gamma(a) / Gamma(b) 1F1(a, b, z)
-            self.double_regularized_1f1.compute(
-                z, n,
-                values.index_axis_mut(ndarray::Axis(1), n),
-                gradients.as_mut().map(|g| g.index_axis_mut(ndarray::Axis(1), n))
-            );
-
-            for l in 0..(self.parameters.max_angular + 1) {
-                let n_l_3_over_2 = 0.5 * (n + l) as f64 + 1.5;
-                let c_dn = (c + gto_constant).powf(-n_l_3_over_2);
-
-                if !values[[l, n]].is_finite() {
+            double_regularized_1f1(self.o3_lambda, n, z, &mut values[n], gradients.as_mut().map(|g| &mut g[n]));
+            if !values[n].is_finite() {
                     panic!(
                         "Failed to compute radial integral with GTO basis. \
-                        Try increasing decreasing the `cutoff`, or increasing `atomic_gaussian_width`."
+                        Try increasing decreasing the `cutoff`, or increasing \
+                        the Gaussian's `width`."
                     );
                 }
 
-                values[[l, n]] *= c_dn * factor;
-                if let Some(ref mut gradients) = gradients {
-                    gradients[[l, n]] *= c_dn * factor * 2.0 * z / distance;
-                    gradients[[l, n]] += values[[l, n]] * (l as f64 / distance - 2.0 * c_rij);
-                }
+            let n_l_3_over_2 = 0.5 * (n + self.o3_lambda) as f64 + 1.5;
+            let c_dn = (c + gto_constant).powf(-n_l_3_over_2);
 
-                factor *= c_rij;
+            values[n] *= c_dn * factor;
+            if let Some(ref mut gradients) = gradients {
+                gradients[n] *= c_dn * factor * 2.0 * z / distance;
+                gradients[n] += values[n] * (self.o3_lambda as f64 / distance - 2.0 * c_rij);
             }
         }
 
@@ -174,19 +173,18 @@ impl SoapRadialIntegral for SoapRadialIntegralGto {
         // analytical formula, the gradient is 0 everywhere expect for l=1
         if distance == 0.0 {
             if let Some(ref mut gradients) = gradients {
-                gradients.fill(0.0);
-
-                if self.parameters.max_angular >= 1 {
-                    let l = 1;
-                    for n in 0..self.parameters.max_radial {
+                if self.o3_lambda == 1 {
+                    for n in 0..self.size() {
                         let gto_constant = self.gto_gaussian_constants[n];
-                        let a = 0.5 * (n + l) as f64 + 1.5;
+                        let a = 0.5 * (n + self.o3_lambda) as f64 + 1.5;
                         let b = 2.5;
                         let c_dn = (c + gto_constant).powf(-a);
                         let factor = global_factor * c * c_dn;
 
-                        gradients[[l, n]] = gamma(a) / gamma(b) * factor;
+                        gradients[n] = gamma(a) / gamma(b) * factor;
                     }
+                } else {
+                    gradients.fill(0.0);
                 }
             }
         }
@@ -202,152 +200,84 @@ impl SoapRadialIntegral for SoapRadialIntegralGto {
 mod tests {
     use approx::assert_relative_eq;
 
-    use super::super::{SoapRadialIntegralGto, SoapRadialIntegralGtoParameters, SoapRadialIntegral};
-    use ndarray::Array2;
-
-    #[test]
-    #[should_panic = "max_radial must be at least 1"]
-    fn invalid_max_radial() {
-        SoapRadialIntegralGto::new(SoapRadialIntegralGtoParameters {
-            max_radial: 0,
-            max_angular: 4,
-            cutoff: 3.0,
-            atomic_gaussian_width: 0.5
-        }).unwrap();
-    }
-
-    #[test]
-    #[should_panic = "cutoff must be a positive number"]
-    fn negative_cutoff() {
-        SoapRadialIntegralGto::new(SoapRadialIntegralGtoParameters {
-            max_radial: 10,
-            max_angular: 4,
-            cutoff: -3.0,
-            atomic_gaussian_width: 0.5
-        }).unwrap();
-    }
-
-    #[test]
-    #[should_panic = "cutoff must be a positive number"]
-    fn infinite_cutoff() {
-        SoapRadialIntegralGto::new(SoapRadialIntegralGtoParameters {
-            max_radial: 10,
-            max_angular: 4,
-            cutoff: f64::INFINITY,
-            atomic_gaussian_width: 0.5
-        }).unwrap();
-    }
-
-    #[test]
-    #[should_panic = "atomic_gaussian_width must be a positive number"]
-    fn negative_atomic_gaussian_width() {
-        SoapRadialIntegralGto::new(SoapRadialIntegralGtoParameters {
-            max_radial: 10,
-            max_angular: 4,
-            cutoff: 3.0,
-            atomic_gaussian_width: -0.5
-        }).unwrap();
-    }
-
-    #[test]
-    #[should_panic = "atomic_gaussian_width must be a positive number"]
-    fn infinite_atomic_gaussian_width() {
-        SoapRadialIntegralGto::new(SoapRadialIntegralGtoParameters {
-            max_radial: 10,
-            max_angular: 4,
-            cutoff: 3.0,
-            atomic_gaussian_width: f64::INFINITY,
-        }).unwrap();
-    }
+    use super::*;
+    use super::super::SoapRadialIntegral;
+    use ndarray::Array1;
 
     #[test]
     #[should_panic = "radial overlap matrix is singular, try with a lower max_radial (current value is 30)"]
     fn ill_conditioned_orthonormalization() {
-        SoapRadialIntegralGto::new(SoapRadialIntegralGtoParameters {
-            max_radial: 30,
-            max_angular: 3,
-            cutoff: 5.0,
-            atomic_gaussian_width: 0.5,
-        }).unwrap();
+        let density = DensityKind::Gaussian { width: 0.4 };
+        let basis = SoapRadialBasis::Gto { max_radial: 30 };
+        SoapRadialIntegralGto::new(5.0, density, &basis, 0).unwrap();
     }
 
     #[test]
-    #[should_panic = "wrong size for values array, expected [4, 2] but got [3, 2]"]
+    #[should_panic = "wrong size for values array, expected [4] but got [3]"]
     fn values_array_size() {
-        let gto = SoapRadialIntegralGto::new(SoapRadialIntegralGtoParameters {
-            max_radial: 2,
-            max_angular: 3,
-            cutoff: 5.0,
-            atomic_gaussian_width: 0.5,
-        }).unwrap();
-        let mut values = Array2::from_elem((3, 2), 0.0);
+        let density = DensityKind::Gaussian { width: 0.4 };
+        let basis = SoapRadialBasis::Gto { max_radial: 3 };
+        let gto = SoapRadialIntegralGto::new(5.0, density, &basis, 0).unwrap();
+        let mut values = Array1::from_elem(3, 0.0);
 
         gto.compute(1.0, values.view_mut(), None);
     }
 
     #[test]
-    #[should_panic = "wrong size for gradients array, expected [4, 2] but got [3, 2]"]
+    #[should_panic = "wrong size for gradients array, expected [4] but got [3]"]
     fn gradient_array_size() {
-        let gto = SoapRadialIntegralGto::new(SoapRadialIntegralGtoParameters {
-            max_radial: 2,
-            max_angular: 3,
-            cutoff: 5.0,
-            atomic_gaussian_width: 0.5,
-        }).unwrap();
-        let mut values = Array2::from_elem((4, 2), 0.0);
-        let mut gradients = Array2::from_elem((3, 2), 0.0);
+        let density = DensityKind::Gaussian { width: 0.5 };
+        let basis = SoapRadialBasis::Gto { max_radial: 3 };
+        let gto = SoapRadialIntegralGto::new(5.0, density, &basis, 0).unwrap();
+
+        let mut values = Array1::from_elem(4, 0.0);
+        let mut gradients = Array1::from_elem(3, 0.0);
 
         gto.compute(1.0, values.view_mut(), Some(gradients.view_mut()));
     }
 
     #[test]
     fn gradients_near_zero() {
-        let max_radial = 8;
-        let max_angular = 8;
-        let gto = SoapRadialIntegralGto::new(SoapRadialIntegralGtoParameters {
-            max_radial: max_radial,
-            max_angular: max_angular,
-            cutoff: 5.0,
-            atomic_gaussian_width: 0.5,
-        }).unwrap();
+        let density = DensityKind::Gaussian { width: 0.5 };
+        let basis = SoapRadialBasis::Gto { max_radial: 7 };
 
-        let shape = (max_angular + 1, max_radial);
-        let mut values = Array2::from_elem(shape, 0.0);
-        let mut gradients = Array2::from_elem(shape, 0.0);
-        let mut gradients_plus = Array2::from_elem(shape, 0.0);
-        gto.compute(0.0, values.view_mut(), Some(gradients.view_mut()));
-        gto.compute(1e-12, values.view_mut(), Some(gradients_plus.view_mut()));
+        for l in 0..4 {
+            let gto_ri = SoapRadialIntegralGto::new(3.4, density, &basis, l).unwrap();
 
-        assert_relative_eq!(
-            gradients, gradients_plus, epsilon=1e-11, max_relative=1e-6,
-        );
+            let mut values = Array1::from_elem(8, 0.0);
+            let mut gradients = Array1::from_elem(8, 0.0);
+            let mut gradients_plus = Array1::from_elem(8, 0.0);
+            gto_ri.compute(0.0, values.view_mut(), Some(gradients.view_mut()));
+            gto_ri.compute(1e-12, values.view_mut(), Some(gradients_plus.view_mut()));
+
+            assert_relative_eq!(
+                gradients, gradients_plus, epsilon=1e-11, max_relative=1e-6,
+            );
+        }
     }
 
     #[test]
     fn finite_differences() {
-        let max_radial = 8;
-        let max_angular = 8;
-        let gto = SoapRadialIntegralGto::new(SoapRadialIntegralGtoParameters {
-            max_radial: max_radial,
-            max_angular: max_angular,
-            cutoff: 5.0,
-            atomic_gaussian_width: 0.5,
-        }).unwrap();
+        let density = DensityKind::Gaussian { width: 0.5 };
+        let basis = SoapRadialBasis::Gto { max_radial: 7 };
 
-        let rij = 3.4;
+        let x = 3.4;
         let delta = 1e-9;
 
-        let shape = (max_angular + 1, max_radial);
-        let mut values = Array2::from_elem(shape, 0.0);
-        let mut values_delta = Array2::from_elem(shape, 0.0);
-        let mut gradients = Array2::from_elem(shape, 0.0);
-        gto.compute(rij, values.view_mut(), Some(gradients.view_mut()));
-        gto.compute(rij + delta, values_delta.view_mut(), None);
+        for l in 0..=8 {
+            let gto_ri = SoapRadialIntegralGto::new(5.0, density, &basis, l).unwrap();
 
-        let finite_differences = (&values_delta - &values) / delta;
+            let mut values = Array1::from_elem(8, 0.0);
+            let mut values_delta = Array1::from_elem(8, 0.0);
+            let mut gradients = Array1::from_elem(8, 0.0);
+            gto_ri.compute(x, values.view_mut(), Some(gradients.view_mut()));
+            gto_ri.compute(x + delta, values_delta.view_mut(), None);
 
-        assert_relative_eq!(
-            finite_differences, gradients, max_relative=1e-4
-        );
+            let finite_differences = (&values_delta - &values) / delta;
+
+            assert_relative_eq!(
+                finite_differences, gradients, max_relative=1e-4
+            );
+        }
     }
 }

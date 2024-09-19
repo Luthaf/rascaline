@@ -57,13 +57,19 @@ def test_selection_existing():
 def test_selection_partial():
     system = SystemForTests()
     calculator = SphericalExpansion(
-        cutoff=2.5,
-        max_radial=1,
-        max_angular=1,
-        atomic_gaussian_width=0.2,
-        radial_basis={"Gto": {}},
-        cutoff_function={"ShiftedCosine": {"width": 0.5}},
-        center_atom_weight=1.0,
+        cutoff={
+            "radius": 2.5,
+            "smoothing": {"type": "ShiftedCosine", "width": 0.5},
+        },
+        density={
+            "type": "Gaussian",
+            "width": 0.2,
+        },
+        basis={
+            "type": "TensorProduct",
+            "max_angular": 1,
+            "radial": {"type": "Gto", "max_radial": 1},
+        },
     )
 
     # Manually select the keys

@@ -8,6 +8,8 @@ use ndarray::{Array1, Array2, Array3, s};
 use metatensor::TensorMap;
 use metatensor::{LabelsBuilder, Labels, LabelValue};
 
+use crate::calculators::shared::DensityKind::SmearedPowerLaw;
+use crate::calculators::shared::{Density, SphericalExpansionBasis};
 use crate::{Error, System, Vector3D};
 use crate::systems::UnitCell;
 
@@ -20,10 +22,10 @@ use crate::math::SphericalHarmonicsCache;
 use crate::math::{KVector, compute_k_vectors};
 use crate::math::{expi, erfc, gamma};
 
-use crate::calculators::radial_basis::RadialBasis;
-use super::radial_integral::{LodeRadialIntegralCache, LodeRadialIntegralParameters};
+use super::radial_integral::LodeRadialIntegralCache;
 
-use super::super::{split_tensor_map_by_system, array_mut_for_system};
+use super::super::shared::descriptors_by_systems::{split_tensor_map_by_system, array_mut_for_system};
+use super::super::shared::LodeRadialBasis;
 
 /// Parameters for LODE spherical expansion calculator.
 ///
@@ -34,41 +36,27 @@ use super::super::{split_tensor_map_by_system, array_mut_for_system};
 #[derive(Debug, Clone)]
 #[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 pub struct LodeSphericalExpansionParameters {
-    /// Spherical real space cutoff to use for atomic environments.
-    /// Note that this cutoff is only used for the projection of the density.
-    /// In contrast to SOAP, LODE also takes atoms outside of this cutoff into
-    /// account for the density.
-    pub cutoff: f64,
-    /// Spherical reciprocal cutoff. If `k_cutoff` is `None` a cutoff of `1.2 π
-    /// / atomic_gaussian_width`, which is a reasonable value for most systems,
-    /// is used.
+    /// Spherical reciprocal cutoff. If `k_cutoff` is `None`, a cutoff of
+    /// `1.2 π / SmearedPowerLaw.width`, which is a reasonable value for most
+    /// systems, is used.
     pub k_cutoff: Option<f64>,
-    /// Number of radial basis function to use in the expansion
-    pub max_radial: usize,
-    /// Number of spherical harmonics to use in the expansion
-    pub max_angular: usize,
-    /// Width of the atom-centered gaussian used to create the atomic density.
-    pub atomic_gaussian_width: f64,
-    /// Weight of the central atom contribution in the central image to the
-    /// features. If `1` the center atom contribution is weighted the same
-    /// as any other contribution. If `0` the central atom does not
-    /// contribute to the features at all.
-    pub center_atom_weight: f64,
-    /// Radial basis to use for the radial integral
-    pub radial_basis: RadialBasis,
-    /// Potential exponent of the decorated atom density. Currently only
-    /// implemented for `potential_exponent < 10`. Some exponents can be
-    /// connected to SOAP or physics-based quantities: p=0 uses Gaussian
-    /// densities as in SOAP, p=1 uses 1/r Coulomb like densities, p=6 uses
-    /// 1/r^6 dispersion like densities."
-    pub potential_exponent: usize,
+    /// Definition of the density arising from atoms in the whole system
+    pub density: Density,
+    /// Definition of the basis functions used to expand the atomic density in
+    /// local environments
+    pub basis: SphericalExpansionBasis<LodeRadialBasis>,
 }
 
 impl LodeSphericalExpansionParameters {
     /// Get the value of the k-space cutoff (either provided by the user or a
     /// default).
     pub fn get_k_cutoff(&self) -> f64 {
-        return self.k_cutoff.unwrap_or(1.2 * std::f64::consts::PI / self.atomic_gaussian_width);
+        match self.density.kind {
+            SmearedPowerLaw { smearing, .. } => {
+                return self.k_cutoff.unwrap_or(1.2 * std::f64::consts::PI / smearing);
+            },
+            _ => unreachable!()
+        }
     }
 }
 
@@ -198,24 +186,33 @@ fn resize_array1(array: &mut ndarray::Array1<f64>, shape: usize) {
 
 impl LodeSphericalExpansion {
     pub fn new(parameters: LodeSphericalExpansionParameters) -> Result<LodeSphericalExpansion, Error> {
-        if parameters.potential_exponent >= 10 {
+        match parameters.density.kind {
+            SmearedPowerLaw { exponent, .. } => {
+                if exponent >= 10 {
+                    return Err(Error::InvalidParameter(
+                        "LODE is only implemented for potential_exponent < 10".into()
+                    ));
+                }
+            }
+            _ => {
+                return Err(Error::InvalidParameter(
+                    "only SmearedPowerLaw density can be used with LODE".into()
+                ));
+            }
+        }
+
+        if parameters.density.scaling.is_some() {
             return Err(Error::InvalidParameter(
-                "LODE is only implemented for potential_exponent < 10".into()
+                "LODE does not support custom density scaling".into()
             ));
         }
 
         // validate the parameters once here, so we are sure we can construct
         // more radial integrals later
         LodeRadialIntegralCache::new(
-            parameters.radial_basis.clone(),
-            LodeRadialIntegralParameters {
-                max_radial: parameters.max_radial,
-                max_angular: parameters.max_angular,
-                atomic_gaussian_width: parameters.atomic_gaussian_width,
-                cutoff: parameters.cutoff,
-                k_cutoff: parameters.get_k_cutoff(),
-                potential_exponent: parameters.potential_exponent,
-            }
+            parameters.density.kind,
+            &parameters.basis,
+            parameters.get_k_cutoff()
         )?;
 
         return Ok(LodeSphericalExpansion {
@@ -228,40 +225,35 @@ impl LodeSphericalExpansion {
     }
 
     fn project_k_to_nlm(&self, k_vectors: &[KVector]) {
-        let mut k_vector_to_m_n = self.k_vector_to_m_n.get_or(|| {
-            let mut k_vector_to_m_n = Vec::new();
-            for _ in 0..=self.parameters.max_angular {
-                k_vector_to_m_n.push(Array3::from_elem((0, 0, 0), 0.0));
-            }
-
-            return RefCell::new(k_vector_to_m_n);
-        }).borrow_mut();
-
-        for o3_lambda in 0..=self.parameters.max_angular {
-            let shape = (2 * o3_lambda + 1, self.parameters.max_radial, k_vectors.len());
-            resize_array3(&mut k_vector_to_m_n[o3_lambda], shape);
-        }
-
         let mut radial_integral = self.radial_integral.get_or(|| {
             let radial_integral = LodeRadialIntegralCache::new(
-                self.parameters.radial_basis.clone(),
-                LodeRadialIntegralParameters {
-                    max_radial: self.parameters.max_radial,
-                    max_angular: self.parameters.max_angular,
-                    atomic_gaussian_width: self.parameters.atomic_gaussian_width,
-                    cutoff: self.parameters.cutoff,
-                    k_cutoff: self.parameters.get_k_cutoff(),
-                    potential_exponent: self.parameters.potential_exponent,
-                }
+                self.parameters.density.kind,
+                &self.parameters.basis,
+                self.parameters.get_k_cutoff()
             ).expect("could not create a radial integral");
 
             return RefCell::new(radial_integral);
         }).borrow_mut();
 
         let mut spherical_harmonics = self.spherical_harmonics.get_or(|| {
-            let spherical_harmonics = SphericalHarmonicsCache::new(self.parameters.max_angular);
-            return RefCell::new(spherical_harmonics);
+            let max_angular = self.parameters.basis.angular_channels().max().unwrap_or(0);
+            RefCell::new(SphericalHarmonicsCache::new(max_angular))
         }).borrow_mut();
+
+        let mut k_vector_to_m_n = self.k_vector_to_m_n.get_or(|| {
+            let mut k_vector_to_m_n = Vec::new();
+            for _ in self.parameters.basis.angular_channels() {
+                k_vector_to_m_n.push(Array3::from_elem((0, 0, 0), 0.0));
+            }
+
+            return RefCell::new(k_vector_to_m_n);
+        }).borrow_mut();
+
+        for o3_lambda in self.parameters.basis.angular_channels() {
+            let radial_size = radial_integral.radial_size(o3_lambda);
+            let shape = (2 * o3_lambda + 1, radial_size, k_vectors.len());
+            resize_array3(&mut k_vector_to_m_n[o3_lambda], shape);
+        }
 
         for (ik, k_vector) in k_vectors.iter().enumerate() {
             // we don't need the gradients of spherical harmonics/radial
@@ -269,13 +261,13 @@ impl LodeSphericalExpansion {
             radial_integral.compute(k_vector.norm, false);
             spherical_harmonics.compute(k_vector.direction, false);
 
-            for l in 0..=self.parameters.max_angular {
-                let spherical_harmonics = spherical_harmonics.values.slice(l as isize);
-                let radial_integral = radial_integral.values.slice(s![l, ..]);
+            for o3_lambda in self.parameters.basis.angular_channels() {
+                let spherical_harmonics = spherical_harmonics.values.slice(o3_lambda as isize);
+                let radial_integral = radial_integral.values.slice(s![o3_lambda, ..]);
 
                 for (m, sph_value) in spherical_harmonics.iter().enumerate() {
                     for (n, ri_value) in radial_integral.iter().enumerate() {
-                        k_vector_to_m_n[l][[m, n, ik]] = ri_value * sph_value;
+                        k_vector_to_m_n[o3_lambda][[m, n, ik]] = ri_value * sph_value;
                     }
                 }
             }
@@ -284,11 +276,14 @@ impl LodeSphericalExpansion {
 
     #[allow(clippy::float_cmp)]
     fn compute_density_fourier(&self, k_vectors: &[KVector]) -> Array1<f64> {
+        let (potential_exponent, smearing_squared) = match self.parameters.density.kind {
+            SmearedPowerLaw { smearing, exponent } => {
+                (exponent as f64, smearing * smearing)
+            },
+            _ => unreachable!()
+        };
+
         let mut fourier = Vec::with_capacity(k_vectors.len());
-
-        let potential_exponent = self.parameters.potential_exponent as f64;
-        let smearing_squared = self.parameters.atomic_gaussian_width * self.parameters.atomic_gaussian_width;
-
         if potential_exponent == 0.0 {
             let factor = (4.0 * std::f64::consts::PI * smearing_squared).powf(0.75);
 
@@ -346,49 +341,47 @@ impl LodeSphericalExpansion {
 
     /// Compute k = 0 contributions.
     ///
-    /// Values are only non zero for `potential_exponent` = 0 and > 3.
+    /// Values are only non zero for `exponent` = 0 and > 3.
     fn compute_k0_contributions(&self) -> Array1<f64> {
-        let atomic_gaussian_width = self.parameters.atomic_gaussian_width;
-
-        let mut k0_contrib = Vec::with_capacity(self.parameters.max_radial);
-        let factor = if self.parameters.potential_exponent == 0 {
-            let smearing_squared = atomic_gaussian_width * atomic_gaussian_width;
-
-            (2.0 * std::f64::consts::PI * smearing_squared).powf(1.5)
-                / (std::f64::consts::PI * smearing_squared).powf(0.75)
-                / f64::sqrt(4.0 * std::f64::consts::PI)
-
-        } else if self.parameters.potential_exponent > 3 {
-            let potential_exponent = self.parameters.potential_exponent;
-            let p_eff = 3. - potential_exponent as f64;
-
-            0.5 * std::f64::consts::PI * 2.0_f64.powf(p_eff)
-                / gamma(0.5 * potential_exponent as f64)
-                * 2.0_f64.powf((potential_exponent as f64 - 1.0) / 2.0) / -p_eff
-                * atomic_gaussian_width.powf(-p_eff)
-                / atomic_gaussian_width.powf(2.0 * potential_exponent as f64 - 6.0)
-        } else {
-            0.0
+        let (exponent, smearing) = match self.parameters.density.kind {
+            SmearedPowerLaw { exponent, smearing } => {
+                (exponent, smearing)
+            },
+            _ => unreachable!()
         };
 
         let mut radial_integral = self.radial_integral.get_or(|| {
             let radial_integral = LodeRadialIntegralCache::new(
-                self.parameters.radial_basis.clone(),
-                LodeRadialIntegralParameters {
-                    max_radial: self.parameters.max_radial,
-                    max_angular: self.parameters.max_angular,
-                    atomic_gaussian_width: self.parameters.atomic_gaussian_width,
-                    cutoff: self.parameters.cutoff,
-                    k_cutoff: self.parameters.get_k_cutoff(),
-                    potential_exponent: self.parameters.potential_exponent,
-                }
+                self.parameters.density.kind,
+                &self.parameters.basis,
+                self.parameters.get_k_cutoff()
             ).expect("could not create a radial integral");
 
             return RefCell::new(radial_integral);
         }).borrow_mut();
 
+        let mut k0_contrib = Vec::with_capacity(radial_integral.radial_size(0));
+        let factor = if exponent == 0 {
+            let smearing_squared = smearing * smearing;
+
+            (2.0 * std::f64::consts::PI * smearing_squared).powf(1.5)
+                / (std::f64::consts::PI * smearing_squared).powf(0.75)
+                / f64::sqrt(4.0 * std::f64::consts::PI)
+
+        } else if exponent > 3 {
+            let p_eff = 3.0 - exponent as f64;
+
+            0.5 * std::f64::consts::PI * 2.0_f64.powf(p_eff)
+                / gamma(0.5 * exponent as f64)
+                * 2.0_f64.powf((exponent as f64 - 1.0) / 2.0) / -p_eff
+                * smearing.powf(-p_eff)
+                / smearing.powf(2.0 * exponent as f64 - 6.0)
+        } else {
+            0.0
+        };
+
         radial_integral.compute(0.0, false);
-        for n in 0..self.parameters.max_radial {
+        for n in 0..radial_integral.radial_size(0) {
             k0_contrib.push(factor * radial_integral.values[[0, n]]);
         }
 
@@ -401,22 +394,13 @@ impl LodeSphericalExpansion {
     /// projection coefficients and only the neighbor type blocks that agrees
     /// with the center atom.
     fn do_center_contribution(&mut self, systems: &mut[Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
-        let mut radial_integral = self.radial_integral.get_or(|| {
+        let radial_integral = self.radial_integral.get_or(|| {
             let radial_integral = LodeRadialIntegralCache::new(
-                self.parameters.radial_basis.clone(),
-                LodeRadialIntegralParameters {
-                    max_radial: self.parameters.max_radial,
-                    max_angular: self.parameters.max_angular,
-                    atomic_gaussian_width: self.parameters.atomic_gaussian_width,
-                    cutoff: self.parameters.cutoff,
-                    k_cutoff: self.parameters.get_k_cutoff(),
-                    potential_exponent: self.parameters.potential_exponent,
-                }
+                self.parameters.density.kind, &self.parameters.basis, self.parameters.get_k_cutoff()
             ).expect("could not create a radial integral");
 
             return RefCell::new(radial_integral);
         }).borrow_mut();
-        radial_integral.compute_center_contribution();
 
         let central_atom_contrib = &radial_integral.center_contribution;
 
@@ -448,7 +432,7 @@ impl LodeSphericalExpansion {
 
                 for (property_i, [n]) in block.properties.iter_fixed_size().enumerate() {
                     let n = n.usize();
-                    array[[sample_i, 0, property_i]] -= (1.0 - self.parameters.center_atom_weight) * central_atom_contrib[n];
+                    array[[sample_i, 0, property_i]] -= (1.0 - self.parameters.density.center_atom_weight) * central_atom_contrib[n];
                 }
             }
         }
@@ -476,7 +460,7 @@ impl CalculatorBase for LodeSphericalExpansion {
 
         let mut builder = LabelsBuilder::new(vec!["o3_lambda", "o3_sigma", "center_type", "neighbor_type"]);
         for &[center_type, neighbor_type] in keys.iter_fixed_size() {
-            for o3_lambda in 0..=self.parameters.max_angular {
+            for o3_lambda in self.parameters.basis.angular_channels() {
                 builder.add(&[o3_lambda.into(), 1.into(), center_type, neighbor_type]);
             }
         }
@@ -578,13 +562,16 @@ impl CalculatorBase for LodeSphericalExpansion {
     }
 
     fn properties(&self, keys: &Labels) -> Vec<Labels> {
-        let mut properties = LabelsBuilder::new(self.property_names());
-        for n in 0..self.parameters.max_radial {
-            properties.add(&[n]);
-        }
-        let properties = properties.finish();
+        match self.parameters.basis {
+            SphericalExpansionBasis::TensorProduct(ref basis) => {
+                let mut properties = LabelsBuilder::new(self.property_names());
+                for n in 0..basis.radial.size() {
+                    properties.add(&[n]);
+                }
 
-        return vec![properties; keys.count()];
+                return vec![properties.finish(); keys.count()];
+            }
+        }
     }
 
     #[time_graph::instrument(name = "LodeSphericalExpansion::compute")]
@@ -610,6 +597,11 @@ impl CalculatorBase for LodeSphericalExpansion {
             (false, true)
         };
         let n_systems = systems.len();
+
+        let potential_exponent = match self.parameters.density.kind {
+            SmearedPowerLaw { exponent, .. } => exponent,
+            _ => unreachable!()
+        };
 
         systems.par_iter_mut()
             .zip_eq(&mut descriptors_by_system)
@@ -640,7 +632,7 @@ impl CalculatorBase for LodeSphericalExpansion {
                 let global_factor = 4.0 * std::f64::consts::PI / cell.volume();
 
                 // Add k = 0 contributions for (m, l) = (0, 0)
-                if self.parameters.potential_exponent == 0 || self.parameters.potential_exponent > 3 {
+                if potential_exponent == 0 || potential_exponent > 3 {
                     let k0_contrib = &self.compute_k0_contributions();
                     for &neighbor_type in types {
                         for center_i in 0..system.size()? {
@@ -867,7 +859,7 @@ impl CalculatorBase for LodeSphericalExpansion {
 #[cfg(test)]
 mod tests {
     use crate::Calculator;
-    use crate::calculators::CalculatorBase;
+    use crate::calculators::{CalculatorBase, DensityKind, LodeRadialBasis, TensorProductBasis};
     use crate::systems::test_utils::test_system;
 
     use Vector3D;
@@ -883,14 +875,20 @@ mod tests {
         for p in 0..=6 {
             let calculator = Calculator::from(Box::new(LodeSphericalExpansion::new(
                 LodeSphericalExpansionParameters {
-                    cutoff: 1.0,
                     k_cutoff: None,
-                    max_radial: 4,
-                    max_angular: 4,
-                    atomic_gaussian_width: 1.0,
-                    center_atom_weight: 1.0,
-                    radial_basis: RadialBasis::splined_gto(1e-8),
-                    potential_exponent: p,
+                    density: Density {
+                        kind: DensityKind::SmearedPowerLaw {
+                            smearing: 1.0,
+                            exponent: p,
+                        },
+                        scaling: None,
+                        center_atom_weight: 1.0,
+                    },
+                    basis: SphericalExpansionBasis::TensorProduct(TensorProductBasis {
+                        max_angular: 3,
+                        radial: LodeRadialBasis::Gto { max_radial: 3, radius: 1.0 },
+                        spline_accuracy: Some(1e-8),
+                    }),
                 }
             ).unwrap()) as Box<dyn CalculatorBase>);
 
@@ -907,14 +905,20 @@ mod tests {
     fn compute_partial() {
         let calculator = Calculator::from(Box::new(LodeSphericalExpansion::new(
             LodeSphericalExpansionParameters {
-                cutoff: 1.0,
                 k_cutoff: None,
-                max_radial: 4,
-                max_angular: 2,
-                atomic_gaussian_width: 1.0,
-                center_atom_weight: 1.0,
-                radial_basis: RadialBasis::splined_gto(1e-8),
-                potential_exponent: 1,
+                density: Density {
+                    kind: DensityKind::SmearedPowerLaw {
+                        smearing: 1.0,
+                        exponent: 1,
+                    },
+                    scaling: None,
+                    center_atom_weight: 1.0,
+                },
+                basis: SphericalExpansionBasis::TensorProduct(TensorProductBasis {
+                    max_angular: 2,
+                    radial: LodeRadialBasis::Gto { max_radial: 3, radius: 1.0 },
+                    spline_accuracy: Some(1e-8),
+                }),
             }
         ).unwrap()) as Box<dyn CalculatorBase>);
 
@@ -955,8 +959,10 @@ mod tests {
 
     #[test]
     fn compute_density_fourier() {
-        let k_vectors = [KVector{direction: Vector3D::zero(), norm: 1e-12},
-                                       KVector{direction: Vector3D::zero(), norm: 1e-11}];
+        let k_vectors = [
+            KVector { direction: Vector3D::zero(), norm: 1e-12 },
+            KVector { direction: Vector3D::zero(), norm: 1e-11 }
+        ];
 
         // Reference values taken from pyLODE
         let reference_vals = [
@@ -968,14 +974,20 @@ mod tests {
         for (i, &p) in [0, 4, 6].iter().enumerate(){
             let spherical_expansion = LodeSphericalExpansion::new(
                 LodeSphericalExpansionParameters {
-                    cutoff: 3.5,
                     k_cutoff: None,
-                    max_radial: 6,
-                    max_angular: 6,
-                    atomic_gaussian_width: 1.0,
-                    center_atom_weight: 1.0,
-                    radial_basis: RadialBasis::splined_gto(1e-8),
-                    potential_exponent: p,
+                    density: Density {
+                        kind: DensityKind::SmearedPowerLaw {
+                            smearing: 1.0,
+                            exponent: p,
+                        },
+                        scaling: None,
+                        center_atom_weight: 1.0,
+                    },
+                    basis: SphericalExpansionBasis::TensorProduct(TensorProductBasis {
+                        max_angular: 5,
+                        radial: LodeRadialBasis::Gto { max_radial: 5, radius: 3.5 },
+                        spline_accuracy: Some(1e-8),
+                    }),
                 }
             ).unwrap();
 
@@ -988,37 +1000,23 @@ mod tests {
     }
 
     #[test]
-    fn default_k_cutoff() {
-        let atomic_gaussian_width = 0.4;
-        let parameters = LodeSphericalExpansionParameters {
-            cutoff: 3.5,
-            k_cutoff: None,
-            max_radial: 6,
-            max_angular: 6,
-            atomic_gaussian_width: atomic_gaussian_width,
-            center_atom_weight: 1.0,
-            potential_exponent: 1,
-            radial_basis: RadialBasis::splined_gto(1e-8),
-        };
-
-        assert_eq!(
-            parameters.get_k_cutoff(),
-            1.2 * std::f64::consts::PI / atomic_gaussian_width
-        );
-    }
-
-    #[test]
     fn compute_k0_contributions_p0() {
         let spherical_expansion = LodeSphericalExpansion::new(
             LodeSphericalExpansionParameters {
-                cutoff: 3.5,
                 k_cutoff: None,
-                max_radial: 6,
-                max_angular: 6,
-                atomic_gaussian_width: 0.8,
-                center_atom_weight: 1.0,
-                potential_exponent: 0,
-                radial_basis: RadialBasis::splined_gto(1e-8),
+                density: Density {
+                    kind: DensityKind::SmearedPowerLaw {
+                        smearing: 0.8,
+                        exponent: 0,
+                    },
+                    scaling: None,
+                    center_atom_weight: 1.0,
+                },
+                basis: SphericalExpansionBasis::TensorProduct(TensorProductBasis {
+                    max_angular: 5,
+                    radial: LodeRadialBasis::Gto { max_radial: 5, radius: 3.5 },
+                    spline_accuracy: Some(1e-8),
+                }),
             }
         ).unwrap();
 
@@ -1031,16 +1029,24 @@ mod tests {
 
     #[test]
     fn compute_k0_contributions_p6() {
-        let spherical_expansion = LodeSphericalExpansion::new(LodeSphericalExpansionParameters {
-            cutoff: 3.5,
-            k_cutoff: None,
-            max_radial: 6,
-            max_angular: 6,
-            atomic_gaussian_width: 0.8,
-            center_atom_weight: 1.0,
-            potential_exponent: 6,
-            radial_basis: RadialBasis::splined_gto(1e-8),
-        }).unwrap();
+        let spherical_expansion = LodeSphericalExpansion::new(
+            LodeSphericalExpansionParameters {
+                k_cutoff: None,
+                density: Density {
+                    kind: DensityKind::SmearedPowerLaw {
+                        smearing: 0.8,
+                        exponent: 6,
+                    },
+                    scaling: None,
+                    center_atom_weight: 1.0,
+                },
+                basis: SphericalExpansionBasis::TensorProduct(TensorProductBasis {
+                    max_angular: 5,
+                    radial: LodeRadialBasis::Gto { max_radial: 5, radius: 3.5 },
+                    spline_accuracy: Some(1e-8),
+                }),
+            }
+        ).unwrap();
 
         assert_relative_eq!(
             spherical_expansion.compute_k0_contributions(),

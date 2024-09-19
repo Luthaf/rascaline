@@ -547,9 +547,11 @@ use crate::calculators::SortedDistances;
 use crate::calculators::NeighborList;
 use crate::calculators::{SphericalExpansionByPair, SphericalExpansionParameters};
 use crate::calculators::SphericalExpansion;
-use crate::calculators::{SoapPowerSpectrum, PowerSpectrumParameters};
 use crate::calculators::{SoapRadialSpectrum, RadialSpectrumParameters};
+use crate::calculators::{SoapPowerSpectrum, PowerSpectrumParameters};
 use crate::calculators::{LodeSphericalExpansion, LodeSphericalExpansionParameters};
+
+
 type CalculatorCreator = fn(&str) -> Result<Box<dyn CalculatorBase>, Error>;
 
 macro_rules! add_calculator {

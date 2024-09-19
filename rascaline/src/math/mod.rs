@@ -1,9 +1,6 @@
 /// Euler's constant
 pub const EULER: f64 = 0.5772156649015329;
 
-mod double_regularized_1f1;
-pub(crate) use self::double_regularized_1f1::DoubleRegularized1F1;
-
 mod eigen;
 pub(crate) use self::eigen::SymmetricEigen;
 

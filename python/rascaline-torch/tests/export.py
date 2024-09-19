@@ -18,13 +18,19 @@ from rascaline.torch import SoapPowerSpectrum, systems_to_torch
 
 
 HYPERS = {
-    "cutoff": 3.6,
-    "max_radial": 12,
-    "max_angular": 3,
-    "atomic_gaussian_width": 0.2,
-    "center_atom_weight": 1.0,
-    "radial_basis": {"Gto": {}},
-    "cutoff_function": {"ShiftedCosine": {"width": 0.3}},
+    "cutoff": {
+        "radius": 3.6,
+        "smoothing": {"type": "ShiftedCosine", "width": 0.3},
+    },
+    "density": {
+        "type": "Gaussian",
+        "width": 0.2,
+    },
+    "basis": {
+        "type": "TensorProduct",
+        "max_angular": 3,
+        "radial": {"type": "Gto", "max_radial": 11},
+    },
 }
 
 
@@ -37,9 +43,12 @@ class Model(torch.nn.Module):
             torch.tensor([(t1, t2) for t1 in types for t2 in types if t1 < t2]),
         )
 
-        n_max = HYPERS["max_radial"]
-        l_max = HYPERS["max_angular"]
-        in_features = (len(types) * (len(types) + 1) * n_max**2 // 4) * (l_max + 1)
+        n_types = len(types)
+        max_radial = HYPERS["basis"]["radial"]["max_radial"]
+        max_angular = HYPERS["basis"]["max_angular"]
+        in_features = (
+            (n_types * (n_types + 1)) * (max_radial + 1) ** 2 // 4 * (max_angular + 1)
+        )
 
         self.linear = torch.nn.Linear(
             in_features=in_features, out_features=1, dtype=torch.float64
@@ -91,7 +100,7 @@ def test_export_as_metatensor_model(tmpdir):
     capabilities = ModelCapabilities(
         supported_devices=["cpu"],
         length_unit="A",
-        interaction_range=HYPERS["cutoff"],
+        interaction_range=HYPERS["cutoff"]["radius"],
         atomic_types=[1, 6, 8],
         dtype="float64",
         outputs={"energy": energy_output},
@@ -101,7 +110,7 @@ def test_export_as_metatensor_model(tmpdir):
     # Check we are requesting the right set of neighbors
     requests = export.requested_neighbor_lists()
     assert len(requests) == 1
-    assert requests[0].cutoff == HYPERS["cutoff"]
+    assert requests[0].cutoff == HYPERS["cutoff"]["radius"]
     assert not requests[0].full_list
     assert requests[0].requestors() == ["rascaline", "Model.calculator"]
 

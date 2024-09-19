@@ -17,26 +17,20 @@ def system():
 
 def spherical_expansion_calculator():
     return SphericalExpansion(
-        cutoff=5.0,
-        max_radial=6,
-        max_angular=4,
-        atomic_gaussian_width=0.3,
-        center_atom_weight=1.0,
-        radial_basis={
-            "Gto": {},
+        cutoff={
+            "radius": 5.0,
+            "smoothing": {"type": "ShiftedCosine", "width": 0.5},
         },
-        cutoff_function={
-            "ShiftedCosine": {"width": 0.5},
+        density={
+            "type": "Gaussian",
+            "width": 0.3,
+        },
+        basis={
+            "type": "TensorProduct",
+            "max_angular": 4,
+            "radial": {"type": "Gto", "max_radial": 5},
         },
     )
-
-
-def test_forward() -> None:
-    """Test that forward results in the same as compute."""
-    ps_compute = PowerSpectrum(spherical_expansion_calculator()).compute(system())
-    ps_forward = PowerSpectrum(spherical_expansion_calculator()).forward(system())
-
-    assert ps_compute.keys == ps_forward.keys
 
 
 def check_operation(calculator):

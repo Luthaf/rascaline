@@ -1,12 +1,11 @@
-use ndarray::{ArrayViewMut2, Array2};
+use ndarray::{Array2, ArrayViewMut1, Axis};
 
-use log::warn;
-
+use crate::calculators::shared::DensityKind;
+use crate::calculators::shared::{SphericalExpansionBasis, SoapRadialBasis};
 use crate::Error;
-use crate::calculators::radial_basis::RadialBasis;
 
-/// A `SoapRadialIntegral` computes the SOAP radial integral on a given radial
-/// basis.
+/// A `SoapRadialIntegral` computes the SOAP radial integral for all radial
+/// basis functions and a single spherical harmonic `l` channel
 ///
 /// See equations 5 to 8 of [this paper](https://doi.org/10.1063/5.0044689) for
 /// mor information on the radial integral.
@@ -17,9 +16,8 @@ use crate::calculators::radial_basis::RadialBasis;
 #[allow(clippy::doc_markdown)]
 pub trait SoapRadialIntegral: std::panic::RefUnwindSafe + Send {
     /// Compute the radial integral for a single `distance` between two atoms
-    /// and store the resulting data in the `(max_angular + 1) x max_radial`
-    /// array `values`. If `gradients` is `Some`, also compute and store
-    /// gradients there.
+    /// and store the resulting data in the `values` array. If `gradients` is
+    /// `Some`, also compute and store gradients there.
     ///
     /// The radial integral $I_{nl}$ is defined as "the non-spherical harmonics
     /// part of the spherical expansion". Depending on the atomic density,
@@ -50,29 +48,26 @@ pub trait SoapRadialIntegral: std::panic::RefUnwindSafe + Send {
     /// $$
     ///
     /// where $P_l$ is the l-th Legendre polynomial.
-    fn compute(&self, rij: f64, values: ArrayViewMut2<f64>, gradients: Option<ArrayViewMut2<f64>>);
+    fn compute(&self, distance: f64, values: ArrayViewMut1<f64>, gradients: Option<ArrayViewMut1<f64>>);
+
+    /// Get how many basis functions are part of this integral. This is the
+    /// shape to use for the `values` and `gradients` parameters to `compute`.
+    fn size(&self) -> usize;
 }
 
 mod gto;
-pub use self::gto::{SoapRadialIntegralGto, SoapRadialIntegralGtoParameters};
+pub use self::gto::SoapRadialIntegralGto;
 
 mod spline;
-pub use self::spline::{SoapRadialIntegralSpline, SoapRadialIntegralSplineParameters};
+pub use self::spline::SoapRadialIntegralSpline;
 
-/// Parameters controlling the radial integral for SOAP
-#[derive(Debug, Clone, Copy)]
-pub struct SoapRadialIntegralParameters {
-    pub max_radial: usize,
-    pub max_angular: usize,
-    pub atomic_gaussian_width: f64,
-    pub cutoff: f64,
-}
-
-/// Store together a Radial integral implementation and cached allocation for
+/// Store together a radial integral implementation and cached allocation for
 /// values/gradients.
 pub struct SoapRadialIntegralCache {
-    /// Implementation of the radial integral
-    code: Box<dyn SoapRadialIntegral>,
+    /// Largest angular function to consider
+    max_angular: usize,
+    /// Implementations of the radial integrals for each `l` in `0..=max_angular`
+    implementations: Vec<Box<dyn SoapRadialIntegral>>,
     /// Cache for the radial integral values
     pub(crate) values: Array2<f64>,
     /// Cache for the radial integral gradient
@@ -80,74 +75,80 @@ pub struct SoapRadialIntegralCache {
 }
 
 impl SoapRadialIntegralCache {
-    /// Create a new `RadialIntegralCache` for the given radial basis & parameters
-    pub fn new(radial_basis: RadialBasis, parameters: SoapRadialIntegralParameters) -> Result<Self, Error> {
-        let code = match radial_basis {
-            RadialBasis::Gto {splined_radial_integral, spline_accuracy} => {
-                let parameters = SoapRadialIntegralGtoParameters {
-                    max_radial: parameters.max_radial,
-                    max_angular: parameters.max_angular,
-                    atomic_gaussian_width: parameters.atomic_gaussian_width,
-                    cutoff: parameters.cutoff,
-                };
-                let gto = SoapRadialIntegralGto::new(parameters)?;
+    /// Create a new `RadialIntegralCache` for the given radial basis & density
+    pub fn new(cutoff: f64, density: DensityKind, basis: &SphericalExpansionBasis<SoapRadialBasis>) -> Result<Self, Error> {
+        match basis {
+            SphericalExpansionBasis::TensorProduct(basis) => {
+                let mut implementations = Vec::new();
+                let mut radial_size = 0;
 
-                if splined_radial_integral {
-                    let parameters = SoapRadialIntegralSplineParameters {
-                        max_radial: parameters.max_radial,
-                        max_angular: parameters.max_angular,
-                        cutoff: parameters.cutoff,
+                for l in 0..=basis.max_angular {
+                    // We only support some specific combinations of density and basis
+                    let implementation = match (density, &basis.radial) {
+                        // Gaussian density + GTO basis
+                        (DensityKind::Gaussian {..}, &SoapRadialBasis::Gto { .. }) => {
+                            let gto = SoapRadialIntegralGto::new(cutoff, density, &basis.radial, l)?;
+
+                            if let Some(accuracy) = basis.spline_accuracy {
+                                Box::new(SoapRadialIntegralSpline::with_accuracy(
+                                    gto, cutoff, accuracy
+                                )?)
+                            } else {
+                                Box::new(gto) as Box<dyn SoapRadialIntegral>
+                            }
+                        },
+                        // Dirac density + tabulated basis (also used for
+                        // tabulated radial integral with a different density)
+                        (DensityKind::DiracDelta, SoapRadialBasis::Tabulated(tabulated)) => {
+                            Box::new(SoapRadialIntegralSpline::from_tabulated(
+                                tabulated.clone()
+                            )) as Box<dyn SoapRadialIntegral>
+                        }
+                        // Everything else is an error
+                        _ => {
+                            return Err(Error::InvalidParameter(
+                                "this combination of basis and density is not supported in SOAP".into()
+                            ))
+                        }
                     };
 
-                    Box::new(SoapRadialIntegralSpline::with_accuracy(
-                        parameters, spline_accuracy, gto
-                    )?)
-                } else {
-                    Box::new(gto) as Box<dyn SoapRadialIntegral>
-                }
-            }
-            RadialBasis::TabulatedRadialIntegral {points, center_contribution} => {
-                let parameters = SoapRadialIntegralSplineParameters {
-                    max_radial: parameters.max_radial,
-                    max_angular: parameters.max_angular,
-                    cutoff: parameters.cutoff,
-                };
-
-                if center_contribution.is_some() {
-                    warn!(
-                        "`center_contribution` is not used in SOAP radial \
-                        integral and will be ignored"
-                    );
+                    radial_size = implementation.size();
+                    implementations.push(implementation);
                 }
 
-                Box::new(SoapRadialIntegralSpline::from_tabulated(
-                    parameters, points
-                )?)
+                let shape = [basis.max_angular + 1, radial_size];
+                let values = Array2::from_elem(shape, 0.0);
+                let gradients = Array2::from_elem(shape, 0.0);
+
+                return Ok(SoapRadialIntegralCache {
+                    max_angular: basis.max_angular,
+                    implementations,
+                    values,
+                    gradients,
+                });
             }
-        };
-
-        let shape = (parameters.max_angular + 1, parameters.max_radial);
-        let values = Array2::from_elem(shape, 0.0);
-        let gradients = Array2::from_elem(shape, 0.0);
-
-        return Ok(SoapRadialIntegralCache { code, values, gradients });
+        }
     }
 
     /// Run the calculation, the results are stored inside `self.values` and
     /// `self.gradients`
     pub fn compute(&mut self, distance: f64, gradients: bool) {
         if gradients {
-            self.code.compute(
-                distance,
-                self.values.view_mut(),
-                Some(self.gradients.view_mut()),
-            );
+            for l in 0..=self.max_angular {
+                self.implementations[l].compute(
+                    distance,
+                    self.values.index_axis_mut(Axis(0), l),
+                    Some(self.gradients.index_axis_mut(Axis(0), l)),
+                );
+            }
         } else {
-            self.code.compute(
-                distance,
-                self.values.view_mut(),
-                None,
-            );
+            for l in 0..=self.max_angular {
+                self.implementations[l].compute(
+                    distance,
+                    self.values.index_axis_mut(Axis(0), l),
+                    None,
+                );
+            }
         }
     }
 }

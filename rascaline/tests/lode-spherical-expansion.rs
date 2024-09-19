@@ -12,9 +12,9 @@ mod data;
 
 #[test]
 fn values() {
-    for potential_exponent in [1, 2, 3, 4, 5, 6] {
+    for exponent in [1, 2, 3, 4, 5, 6] {
         let mut path = PathBuf::from("lode-spherical-expansion");
-        path.push(format!("potential_exponent-{}", potential_exponent));
+        path.push(format!("exponent-{}", exponent));
         path.push("values-input.json");
 
         let (mut systems, parameters) = data::load_calculator_input(path);
@@ -35,7 +35,7 @@ fn values() {
         let array = block.values().to_array();
 
         let mut path = PathBuf::from("lode-spherical-expansion");
-        path.push(format!("potential_exponent-{}", potential_exponent));
+        path.push(format!("exponent-{}", exponent));
         path.push("values.npy.gz");
         let expected = &data::load_expected_values(path);
 
@@ -45,9 +45,9 @@ fn values() {
 
 #[test]
 fn gradients() {
-    for potential_exponent in [1, 2, 3, 4, 5, 6] {
+    for exponent in [1, 2, 3, 4, 5, 6] {
         let mut path = PathBuf::from("lode-spherical-expansion");
-        path.push(format!("potential_exponent-{}", potential_exponent));
+        path.push(format!("exponent-{}", exponent));
         path.push("gradients-input.json");
 
         let (mut systems, parameters) = data::load_calculator_input(path);
@@ -75,7 +75,7 @@ fn gradients() {
         let array = sum_gradients(n_atoms, gradient);
 
         let mut path = PathBuf::from("lode-spherical-expansion");
-        path.push(format!("potential_exponent-{}", potential_exponent));
+        path.push(format!("exponent-{}", exponent));
         path.push("positions-gradient.npy.gz");
 
         let expected = &data::load_expected_values(path);
