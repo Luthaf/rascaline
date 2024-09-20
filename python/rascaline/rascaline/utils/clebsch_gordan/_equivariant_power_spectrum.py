@@ -97,8 +97,7 @@ class EquivariantPowerSpectrum(TorchModule):
             compute output blocks that match in these dimensions.
         :param neighbors_to_properties: :py:class:`bool`, if true, densifies the
             spherical expansion by moving key dimension "neighbor_type" to properties
-            prior to performing the Clebsch Gordan product step. Note: typically,
-            setting to true results in a speed up of the computation. Defaults to false.
+            prior to performing the Clebsch Gordan product step. Defaults to false.
 
         :return: :py:class:`TensorMap`, the output equivariant power spectrum.
         """
