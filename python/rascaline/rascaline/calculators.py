@@ -1,5 +1,7 @@
 import json
 
+from .utils import BadHyperParameters, convert_hypers
+
 
 try:
     # see rascaline-torch/calculators.py for the explanation of what's going on here
@@ -96,6 +98,27 @@ class SortedDistances(CalculatorBase):
         super().__init__("sorted_distances", json.dumps(parameters))
 
 
+def _check_for_old_hypers(calculator, hypers):
+    try:
+        new_hypers = convert_hypers(
+            origin="rascaline",
+            representation=calculator,
+            hypers=hypers,
+        )
+    except BadHyperParameters as e:
+        print(e)
+        raise ValueError(
+            f"invalid hyper parameters to {calculator}, "
+            "expected `density` and `basis` to be present"
+        )
+
+    raise ValueError(
+        f"{calculator} hyper parameter changed recently, "
+        "please update your code. Here are the new equivalent parameters:\n"
+        + new_hypers
+    )
+
+
 class SphericalExpansion(CalculatorBase):
     """Spherical expansion of Smooth Overlap of Atomic Positions (SOAP).
 
@@ -115,9 +138,9 @@ class SphericalExpansion(CalculatorBase):
     :ref:`documentation <spherical-expansion>`.
     """
 
-    def __init__(self, *, cutoff, density, basis, **kwargs):
-        if len(kwargs) != 0:
-            raise ValueError("TODO: old style parameters")
+    def __init__(self, *, cutoff=None, density=None, basis=None, **kwargs):
+        if len(kwargs) != 0 or density is None or basis is None:
+            _check_for_old_hypers("SphericalExpansion", {"cutoff": cutoff, **kwargs})
 
         parameters = {
             "cutoff": cutoff,
@@ -161,9 +184,11 @@ class SphericalExpansionByPair(CalculatorBase):
     :ref:`documentation <spherical-expansion-by-pair>`.
     """
 
-    def __init__(self, *, cutoff, density, basis, **kwargs):
-        if len(kwargs) != 0:
-            raise ValueError("TODO: old style parameters")
+    def __init__(self, *, cutoff=None, density=None, basis=None, **kwargs):
+        if len(kwargs) != 0 or density is None or basis is None:
+            _check_for_old_hypers(
+                "SphericalExpansionByPair", {"cutoff": cutoff, **kwargs}
+            )
 
         parameters = {
             "cutoff": cutoff,
@@ -191,9 +216,9 @@ class SoapRadialSpectrum(CalculatorBase):
     :ref:`documentation <soap-radial-spectrum>`.
     """
 
-    def __init__(self, *, cutoff, density, basis, **kwargs):
-        if len(kwargs) != 0:
-            raise ValueError("TODO: old style parameters")
+    def __init__(self, *, cutoff=None, density=None, basis=None, **kwargs):
+        if len(kwargs) != 0 or density is None or basis is None:
+            _check_for_old_hypers("SoapRadialSpectrum", {"cutoff": cutoff, **kwargs})
 
         parameters = {
             "cutoff": cutoff,
@@ -225,9 +250,9 @@ class SoapPowerSpectrum(CalculatorBase):
         allows to compute the power spectrum from different spherical expansions.
     """
 
-    def __init__(self, *, cutoff, density, basis, **kwargs):
-        if len(kwargs) != 0:
-            raise ValueError("TODO: old style parameters")
+    def __init__(self, *, cutoff=None, density=None, basis=None, **kwargs):
+        if len(kwargs) != 0 or density is None or basis is None:
+            _check_for_old_hypers("SoapPowerSpectrum", {"cutoff": cutoff, **kwargs})
 
         parameters = {
             "cutoff": cutoff,
@@ -255,9 +280,11 @@ class LodeSphericalExpansion(CalculatorBase):
     :ref:`documentation <lode-spherical-expansion>`.
     """
 
-    def __init__(self, *, density, basis, k_cutoff=None, **kwargs):
-        if len(kwargs) != 0:
-            raise ValueError("TODO: old style parameters")
+    def __init__(self, *, density=None, basis=None, k_cutoff=None, **kwargs):
+        if len(kwargs) != 0 or density is None or basis is None:
+            _check_for_old_hypers(
+                "LodeSphericalExpansion", {"k_cutoff": k_cutoff, **kwargs}
+            )
 
         parameters = {
             "k_cutoff": k_cutoff,
