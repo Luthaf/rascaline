@@ -8,7 +8,7 @@ from metatensor.torch import Labels
 from metatensor.torch.atomistic import System
 
 import rascaline.torch
-from rascaline.torch.utils.clebsch_gordan import ClebschGordanProduct
+from rascaline.torch.utils import ClebschGordanProduct
 
 
 SPHERICAL_EXPANSION_HYPERS = {

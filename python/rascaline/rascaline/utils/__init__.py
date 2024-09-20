@@ -3,6 +3,7 @@ import os
 from .clebsch_gordan import (  # noqa
     ClebschGordanProduct,
     DensityCorrelations,
+    EquivariantPowerSpectrum,
     calculate_cg_coefficients,
     cartesian_to_spherical,
 )

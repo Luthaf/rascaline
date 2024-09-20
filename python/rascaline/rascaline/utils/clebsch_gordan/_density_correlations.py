@@ -1,5 +1,5 @@
 """
-This module provides convenience calculators for preforming density correlations, i.e.
+This module provides a convenience calculator for preforming density correlations, i.e.
 the (iterative) CG tensor products of density (body order 2) tensors.
 
 All of these calculators wrap the :py:class:`ClebschGordanProduct` class, handling the
