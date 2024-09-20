@@ -6,6 +6,7 @@ from .clebsch_gordan import (  # noqa
     calculate_cg_coefficients,
     cartesian_to_spherical,
 )
+from .hypers import BadHyperParameters, convert_hypers  # noqa
 from .power_spectrum import PowerSpectrum  # noqa
 
 
