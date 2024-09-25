@@ -243,7 +243,7 @@ impl CalculatorBase for SoapRadialSpectrum {
             let shape = array_spx.shape();
             // shape[1] is the m component
             debug_assert_eq!(shape[1], 1);
-            let array_spx_reshaped = array_spx.view().into_shape(
+            let array_spx_reshaped = array_spx.view().into_shape_with_order(
                 (shape[0], shape[2])
             ).expect("wrong shape");
             array.assign(&array_spx_reshaped);
@@ -258,7 +258,7 @@ impl CalculatorBase for SoapRadialSpectrum {
                 // shape[2] is the m component
                 debug_assert_eq!(shape[2], 1);
 
-                let array_spx_reshaped = array_spx.view().into_shape(
+                let array_spx_reshaped = array_spx.view().into_shape_with_order(
                     (shape[0], shape[1], shape[3])
                 ).expect("wrong shape");
                 array.assign(&array_spx_reshaped);
@@ -274,7 +274,7 @@ impl CalculatorBase for SoapRadialSpectrum {
                 // shape[2] is the m component
                 debug_assert_eq!(shape[3], 1);
 
-                let array_spx_reshaped = array_spx.view().into_shape(
+                let array_spx_reshaped = array_spx.view().into_shape_with_order(
                     (shape[0], shape[1], shape[2], shape[4])
                 ).expect("wrong shape");
                 array.assign(&array_spx_reshaped);
@@ -290,7 +290,7 @@ impl CalculatorBase for SoapRadialSpectrum {
                 // shape[2] is the m component
                 debug_assert_eq!(shape[3], 1);
 
-                let array_spx_reshaped = array_spx.view().into_shape(
+                let array_spx_reshaped = array_spx.view().into_shape_with_order(
                     (shape[0], shape[1], shape[2], shape[4])
                 ).expect("wrong shape");
                 array.assign(&array_spx_reshaped);

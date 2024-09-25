@@ -590,7 +590,7 @@ rascal_status_t rascal_profiling_enable(bool enabled);
 rascal_status_t rascal_profiling_get(const char *format, char *buffer, uintptr_t bufflen);
 
 #ifdef __cplusplus
-} // extern "C"
-#endif // __cplusplus
+}  // extern "C"
+#endif  // __cplusplus
 
-#endif /* RASCALINE_H */
+#endif  /* RASCALINE_H */

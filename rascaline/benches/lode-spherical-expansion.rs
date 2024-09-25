@@ -45,7 +45,7 @@ fn run_spherical_expansion(mut group: BenchmarkGroup<WallTime>,
         }}"#);
         let mut calculator = Calculator::new("lode_spherical_expansion", parameters).unwrap();
 
-        group.bench_function(&format!("gaussian_width = {}", atomic_gaussian_width), |b| b.iter_custom(|repeat| {
+        group.bench_function(format!("gaussian_width = {}", atomic_gaussian_width), |b| b.iter_custom(|repeat| {
             let start = std::time::Instant::now();
 
             let options = CalculationOptions {

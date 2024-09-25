@@ -27,7 +27,7 @@ fn benchmark_radial_integral(
                 2.109, 2.266, 2.852, 2.942, 3.021, 3.247, 3.859, 4.462,
             ];
 
-            group.bench_function(&format!("n_max = {}, l_max = {}", max_radial, max_angular), |b| b.iter_custom(|repeat| {
+            group.bench_function(format!("n_max = {}, l_max = {}", max_radial, max_angular), |b| b.iter_custom(|repeat| {
                 let start = std::time::Instant::now();
                 for _ in 0..repeat {
                     for &distance in &distances {

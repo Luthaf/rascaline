@@ -178,7 +178,9 @@ impl std::fmt::Debug for LodeSphericalExpansion {
 fn resize_array3(array: &mut ndarray::Array3<f64>, shape: (usize, usize, usize)) {
     let tmp_array = std::mem::take(array);
 
-    let mut data = tmp_array.into_raw_vec();
+    let (mut data, offset) = tmp_array.into_raw_vec_and_offset();
+    debug_assert!(matches!(offset, Some(0) | None));
+
     data.resize(shape.0 * shape.1 * shape.2, 0.0);
     *array = Array3::from_shape_vec(shape, data).expect("wrong shape");
 }
@@ -187,7 +189,9 @@ fn resize_array3(array: &mut ndarray::Array3<f64>, shape: (usize, usize, usize))
 fn resize_array1(array: &mut ndarray::Array1<f64>, shape: usize) {
     let tmp_array = std::mem::take(array);
 
-    let mut data = tmp_array.into_raw_vec();
+    let (mut data, offset) = tmp_array.into_raw_vec_and_offset();
+    debug_assert!(matches!(offset, Some(0) | None));
+
     data.resize(shape, 0.0);
     *array = Array1::from_shape_vec(shape, data).expect("wrong shape");
 }
