@@ -32,7 +32,7 @@ fn spherical_harmonics(c: &mut Criterion) {
             *d /= d.norm();
         }
 
-        group.bench_function(&format!("l_max = {}", max_angular), |b| b.iter_custom(|repeat| {
+        group.bench_function(format!("l_max = {}", max_angular), |b| b.iter_custom(|repeat| {
             let start = std::time::Instant::now();
             for _ in 0..repeat {
                 for &direction in &directions {
@@ -78,7 +78,7 @@ fn spherical_harmonics_with_gradients(c: &mut Criterion) {
             *d /= d.norm();
         }
 
-        group.bench_function(&format!("l_max = {}", max_angular), |b| b.iter_custom(|repeat| {
+        group.bench_function(format!("l_max = {}", max_angular), |b| b.iter_custom(|repeat| {
             let start = std::time::Instant::now();
             for _ in 0..repeat {
                 for &direction in &directions {

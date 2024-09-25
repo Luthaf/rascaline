@@ -54,7 +54,7 @@ fn run_spherical_expansion(mut group: BenchmarkGroup<WallTime>,
         }}"#);
         let mut calculator = Calculator::new("spherical_expansion", parameters).unwrap();
 
-        group.bench_function(&format!("n_max = {}, l_max = {}", max_radial, max_angular), |b| b.iter_custom(|repeat| {
+        group.bench_function(format!("n_max = {}, l_max = {}", max_radial, max_angular), |b| b.iter_custom(|repeat| {
             let start = std::time::Instant::now();
 
             let options = CalculationOptions {

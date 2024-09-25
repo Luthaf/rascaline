@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Luthaf <luthaf@luthaf.fr>"]
 edition = "2021"
 publish = false
-rust-version = "1.65"
+rust-version = "1.74"
 
 [[bin]]
 name = "rascaline-json-schema"
