@@ -488,20 +488,21 @@ def _cg_couple_sparse(
     assert len(array.shape) == 2
 
     output = _dispatch.zeros_like(
-        array, (array.shape[0], 2 * o3_lambda + 1, array.shape[1])
+        array, (2 * o3_lambda + 1, array.shape[0], array.shape[1])
     )
 
     # Fill in each mu component of the output array in turn
     cg_l1l2lam = cg_coefficients.block({"l1": l1, "l2": l2, "lambda": o3_lambda})
-    for i in range(len(cg_l1l2lam.samples)):
-        m1m2mu = cg_l1l2lam.samples.entry(i)
+    cg_l1l2lam_samples = cg_l1l2lam.samples
+    for i in range(len(cg_l1l2lam_samples)):
+        m1m2mu = cg_l1l2lam_samples.entry(i)
         m1 = m1m2mu[0]
         m2 = m1m2mu[1]
         mu = m1m2mu[2]
         # Broadcast arrays, multiply together and with CG coeff
-        output[:, mu, :] += arrays[str((m1, m2))] * cg_l1l2lam.values[i, 0]
+        output[mu, :, :] += arrays[str((m1, m2))] * cg_l1l2lam.values[i, 0]
 
-    return output
+    return output.swapaxes(0, 1)
 
 
 def _cg_couple_dense(
