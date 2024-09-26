@@ -13,7 +13,7 @@ from .test_utils import finite_differences_positions
 ase = pytest.importorskip("ase")
 
 
-HYPERS = hypers = {
+HYPERS = {
     "cutoff": 5.0,
     "max_radial": 6,
     "max_angular": 4,
