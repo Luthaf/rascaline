@@ -199,17 +199,17 @@ def _build_dense_cg_coeff_dict(
                     dtype=complex_like.dtype,
                 )
 
-                real_cg = (r2c[l1].T @ complex_cg.reshape(2 * l1 + 1, -1)).reshape(
+                real_cg = (r2c[l1] @ complex_cg.reshape(2 * l1 + 1, -1)).reshape(
                     complex_cg.shape
                 )
 
                 real_cg = real_cg.swapaxes(0, 1)
-                real_cg = (r2c[l2].T @ real_cg.reshape(2 * l2 + 1, -1)).reshape(
+                real_cg = (r2c[l2] @ real_cg.reshape(2 * l2 + 1, -1)).reshape(
                     real_cg.shape
                 )
                 real_cg = real_cg.swapaxes(0, 1)
 
-                real_cg = real_cg @ c2r[o3_lambda].T
+                real_cg = real_cg @ c2r[o3_lambda]
 
                 if (l1 + l2 + o3_lambda) % 2 == 0:
                     cg_l1l2lam_dense = _dispatch.real(real_cg)
@@ -343,7 +343,7 @@ def _real2complex(o3_lambda: int, like: Array) -> Array:
     ``real2complex @ [-o3_lambda, ..., +o3_lambda]``.
 
     See https://en.wikipedia.org/wiki/Spherical_harmonics#Real_form for details on the
-    convention for how these tranformations are defined.
+    convention for how these transformations are defined.
 
     Operations are dispatched to the corresponding array type given by ``like``
     """
@@ -356,14 +356,14 @@ def _real2complex(o3_lambda: int, like: Array) -> Array:
             # Positive part
             result[o3_lambda + m, o3_lambda + m] = i_sqrt_2
             # Negative part
-            result[o3_lambda - m, o3_lambda + m] = -i_sqrt_2 * ((-1) ** m)
+            result[o3_lambda + m, o3_lambda - m] = -i_sqrt_2 * ((-1) ** m)
 
         if m == 0:
             result[o3_lambda, o3_lambda] = 1.0
 
         if m > 0:
             # Negative part
-            result[o3_lambda - m, o3_lambda + m] = inv_sqrt_2
+            result[o3_lambda + m, o3_lambda - m] = inv_sqrt_2
             # Positive part
             result[o3_lambda + m, o3_lambda + m] = inv_sqrt_2 * ((-1) ** m)
 
@@ -373,7 +373,7 @@ def _real2complex(o3_lambda: int, like: Array) -> Array:
 def _complex2real(o3_lambda: int, like) -> Array:
     """
     Converts from complex to real spherical harmonics. This is just given by the
-    conjugate tranpose of the real->complex transformation matrices.
+    conjugate transpose of the real->complex transformation matrices.
 
     Operations are dispatched to the corresponding array type given by ``like``
     """
