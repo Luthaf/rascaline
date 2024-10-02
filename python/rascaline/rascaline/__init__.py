@@ -17,6 +17,7 @@ from .log import set_logging_callback  # noqa
 from .profiling import Profiler  # noqa
 from .status import RascalError  # noqa
 from .systems import IntoSystem, SystemBase  # noqa
+from .utils import convert_hypers  # noqa
 from .version import __version__  # noqa
 
 

@@ -32,17 +32,18 @@ int main(int argc, char* argv[]) {
 
     // hyper-parameters for the calculation as JSON
     const char* parameters = "{\n"
-        "\"cutoff\": 5.0,\n"
-        "\"max_radial\": 6,\n"
-        "\"max_angular\": 4,\n"
-        "\"atomic_gaussian_width\": 0.3,\n"
-        "\"center_atom_weight\": 1.0,\n"
-        "\"gradients\": false,\n"
-        "\"radial_basis\": {\n"
-        "    \"Gto\": {}\n"
+        "\"cutoff\": {\n"
+        "    \"radius\": 5.0,\n"
+        "    \"smoothing\": {\"type\": \"ShiftedCosine\", \"width\": 0.5}\n"
         "},\n"
-        "\"cutoff_function\": {\n"
-        "    \"ShiftedCosine\": {\"width\": 0.5}\n"
+        "\"density\": {\n"
+        "    \"type\": \"Gaussian\",\n"
+        "    \"width\": 0.3\n"
+        "},\n"
+        "\"basis\": {\n"
+        "    \"type\": \"TensorProduct\",\n"
+        "    \"max_angular\": 6,\n"
+        "    \"radial\": {\"type\": \"Gto\", \"max_radial\": 6}\n"
         "}\n"
     "}";
 

@@ -34,16 +34,21 @@ fn compute_soap(path: &str) -> Result<TensorMap, Box<dyn std::error::Error>> {
         .collect::<Vec<_>>();
 
     let parameters = r#"{
-        "cutoff": 5.0,
-        "max_radial": 6,
-        "max_angular": 4,
-        "atomic_gaussian_width": 0.3,
-        "center_atom_weight": 1.0,
-        "radial_basis": {
-            "Gto": {}
+    "cutoff": {
+            "radius": 5.0,
+            "smoothing": {
+                "type": "ShiftedCosine",
+                "width": 0.5
+            }
         },
-        "cutoff_function": {
-            "ShiftedCosine": {"width": 0.5}
+        "density": {
+            "type": "Gaussian",
+            "width": 0.3
+        },
+        "basis": {
+            "type": "TensorProduct",
+            "max_angular": 4,
+            "radial": {"type": "Gto", "max_radial": 6}
         }
     }"#;
 

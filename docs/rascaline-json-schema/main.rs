@@ -20,7 +20,55 @@ macro_rules! generate_schema {
     };
 }
 
-fn save_schema(name: &str, schema: RootSchema) {
+static REFS_TO_RENAME: &[RenameRefInSchema] = &[
+    RenameRefInSchema {
+        in_code: "SphericalExpansionBasis_for_SoapRadialBasis",
+        in_docs: "SphericalExpansionBasis",
+    },
+    RenameRefInSchema {
+        in_code: "SphericalExpansionBasis_for_LodeRadialBasis",
+        in_docs: "SphericalExpansionBasis",
+    },
+    RenameRefInSchema {
+        in_code: "SoapRadialBasis",
+        in_docs: "RadialBasis",
+    },
+    RenameRefInSchema {
+        in_code: "LodeRadialBasis",
+        in_docs: "RadialBasis",
+    },
+];
+
+#[derive(Clone)]
+struct RenameRefInSchema {
+    in_code: &'static str,
+    in_docs: &'static str,
+}
+
+impl schemars::visit::Visitor for RenameRefInSchema {
+    fn visit_schema_object(&mut self, schema: &mut schemars::schema::SchemaObject) {
+        schemars::visit::visit_schema_object(self, schema);
+
+        let in_code_reference = format!("#/definitions/{}", self.in_code);
+
+        if let Some(reference) = &schema.reference {
+            if reference == &in_code_reference {
+                schema.reference = Some(format!("#/definitions/{}", self.in_docs));
+            }
+        }
+    }
+}
+
+fn save_schema(name: &str, mut schema: RootSchema) {
+    for transform in REFS_TO_RENAME {
+        if let Some(value) = schema.definitions.remove(transform.in_code) {
+            assert!(!schema.definitions.contains_key(transform.in_docs));
+            schema.definitions.insert(transform.in_docs.into(), value);
+
+            schemars::visit::visit_root_schema(&mut transform.clone(), &mut schema);
+        }
+    }
+
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     path.pop();
     path.push("build");

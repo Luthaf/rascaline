@@ -3,11 +3,11 @@
 SOAP and LODE radial integrals
 ===================================
 
-On this page, we describe the exact mathematical expression that are implemented in the
-radial integral and the splined radial integral classes i.e.
-:ref:`python-splined-radial-integral`. Note that this page assumes knowledge of
-spherical expansion & friends and currently serves as a reference page for
-the developers to support the implementation.
+On this page, we describe the exact mathematical expression that are implemented
+in the radial integral and the splined radial integral classes i.e.
+:ref:`python-utils-splines`. Note that this page assumes knowledge of spherical
+expansion & friends and currently serves as a reference page for the developers
+to support the implementation.
 
 Preliminaries
 -------------

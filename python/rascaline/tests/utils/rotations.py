@@ -87,16 +87,15 @@ class WignerDReal:
     real-valued coefficients.
     """
 
-    def __init__(self, lmax: int, angles: Sequence[float] = None):
+    def __init__(self, max_angular: int, angles: Sequence[float] = None):
         """
         Initialize the WignerDReal class.
 
-        :param lmax: int, the maximum angular momentum channel for which the
+        :param max_angular: int, the maximum angular momentum channel for which the
             Wigner D matrices are computed
-        :param angles: Sequence[float], the alpha, beta, gamma Euler angles, in
-            radians.
+        :param angles: Sequence[float], the alpha, beta, gamma Euler angles, in radians.
         """
-        self.lmax = lmax
+        self.max_angular = max_angular
         # Randomly generate Euler angles between 0 and 2 pi if none are provided
         if angles is None:
             angles = np.random.uniform(size=(3)) * 2 * np.pi
@@ -105,100 +104,24 @@ class WignerDReal:
 
         r2c_mats = {}
         c2r_mats = {}
-        for L in range(0, self.lmax + 1):
+        for L in range(0, self.max_angular + 1):
             r2c_mats[L] = np.hstack(
                 [_r2c(np.eye(2 * L + 1)[i])[:, np.newaxis] for i in range(2 * L + 1)]
             )
             c2r_mats[L] = np.conjugate(r2c_mats[L]).T
         self.matrices = {}
-        for L in range(0, self.lmax + 1):
+        for L in range(0, self.max_angular + 1):
             wig = _wigner_d(L, self.angles)
             self.matrices[L] = np.real(c2r_mats[L] @ np.conjugate(wig) @ r2c_mats[L])
 
-    def rotate_coeff_vector(
-        self,
-        atoms: ase.Atoms,
-        coeffs: np.ndarray,
-        lmax: dict,
-        nmax: dict,
-    ) -> np.ndarray:
-        """
-        Rotates the irreducible spherical components (ISCs) of basis set coefficients in
-        the spherical basis passed in as a flat vector.
-
-        Required is the basis set definition specified by ``lmax`` and ``nmax``. This
-        are dicts of the form:
-
-            lmax = {symbol: lmax_value, ...} nmax = {(symbol, l): nmax_value, ...}
-
-        where ``symbol`` is the chemical symbol of the atom, ``lmax_value`` is its
-        corresponding max l channel value. For each combination of species symbol and
-        lmax, there exists a max radial channel value ``nmax_value``.
-
-        Then, the assumed ordering of basis function coefficients follows a hierarchy,
-        which can be read as nested loops over the various indices. Be mindful that some
-        indices range are from 0 to x (exclusive) and others from 0 to x + 1
-        (exclusive). The ranges reported below are ordered.
-
-        1. Loop over atoms (index ``i``, of chemical species ``a``) in the system. ``i``
-           takes values 0 to N (** exclusive **), where N is the number of atoms in the
-           system.
-
-        2. Loop over spherical harmonics channel (index ``l``) for each atom. ``l``
-           takes values from 0 to ``lmax[a] + 1`` (** exclusive **), where ``a`` is the
-           chemical species of atom ``i``, given by the chemical symbol at the ``i``th
-           position of ``symbol_list``.
-
-        3. Loop over radial channel (index ``n``) for each atom ``i`` and spherical
-           harmonics channel ``l`` combination. ``n`` takes values from 0 to
-          ``nmax[(a, l)]`` (** exclusive **).
-
-        4. Loop over spherical harmonics component (index ``m``) for each atom. ``m``
-           takes values from ``-l`` to ``l`` (** inclusive **).
-
-        :param atoms: the atomic systems in ASE format for which the coefficients are
-            defined.
-        :param coeffs: the coefficients in the spherical basis, as a flat vector.
-        :param lmax: dict containing the maximum spherical harmonics (l) value for each
-            atom type.
-        :param nmax: dict containing the maximum radial channel (n) value for each
-            combination of atom type and l.
-
-        :return: the rotated coefficients in the spherical basis, as a flat vector with
-            the same order as the input vector.
-        """
-        # Initialize empty vector for storing the rotated ISCs
-        rot_vect = np.empty_like(coeffs)
-
-        # Iterate over atomic species of the atoms in the frame
-        curr_idx = 0
-        for symbol in atoms.get_chemical_symbols():
-            # Get the basis set lmax value for this species
-            sym_lmax = lmax[symbol]
-            for angular_l in range(sym_lmax + 1):
-                # Get the number of radial functions for this species and l value
-                sym_l_nmax = nmax[(symbol, angular_l)]
-                # Get the Wigner D Matrix for this l value
-                wig_mat = self.matrices[angular_l].T
-                for _n in range(sym_l_nmax):
-                    # Retrieve the irreducible spherical component
-                    isc = coeffs[curr_idx : curr_idx + (2 * angular_l + 1)]
-                    # Rotate the ISC and store
-                    rot_isc = isc @ wig_mat
-                    rot_vect[curr_idx : curr_idx + (2 * angular_l + 1)][:] = rot_isc[:]
-                    # Update the start index for the next ISC
-                    curr_idx += 2 * angular_l + 1
-
-        return rot_vect
-
-    def rotate_tensorblock(self, angular_l: int, block: TensorBlock) -> TensorBlock:
+    def rotate_tensorblock(self, o3_lambda: int, block: TensorBlock) -> TensorBlock:
         """
         Rotates a TensorBlock ``block``, represented in the spherical basis,
         according to the Wigner D Real matrices for the given ``l`` value.
         Assumes the components of the block are [("o3_mu",),].
         """
         # Get the Wigner matrix for this l value
-        wig = self.matrices[angular_l].T
+        wig = self.matrices[o3_lambda].T
 
         # Copy the block
         block_rotated = block.copy()
@@ -237,10 +160,10 @@ class WignerDReal:
         rotated_blocks = []
         for key in keys:
             # Retrieve the l value
-            angular_l = key[idx_l_value]
+            o3_lambda = key[idx_l_value]
 
             # Rotate the block and store
-            rotated_blocks.append(self.rotate_tensorblock(angular_l, tensor[key]))
+            rotated_blocks.append(self.rotate_tensorblock(o3_lambda, tensor[key]))
 
         return TensorMap(keys, rotated_blocks)
 
@@ -260,10 +183,10 @@ class WignerDReal:
         new_blocks = []
         for key in keys:
             # Retrieve the l value
-            angular_l = key[idx_l_value]
+            o3_lambda = key[idx_l_value]
 
             # Rotate the block
-            new_block = self.rotate_tensorblock(angular_l, tensor[key])
+            new_block = self.rotate_tensorblock(o3_lambda, tensor[key])
 
             # Work out the inversion multiplier according to the convention
             inversion_multiplier = 1
@@ -291,14 +214,13 @@ class WignerDReal:
 # ===== Helper functions for WignerDReal
 
 
-def _wigner_d(angular_l: int, angles: Sequence[float]) -> np.ndarray:
+def _wigner_d(o3_lambda: int, angles: Sequence[float]) -> np.ndarray:
     """
-    Computes the Wigner D matrix:
-        D^l_{mm'}(alpha, beta, gamma)
-    from sympy and converts it to numerical values.
+    Computes the Wigner D matrix: ``D^l_{mm'}(alpha, beta, gamma)`` from sympy and
+    converts it to numerical values.
 
-    `angles` are the alpha, beta, gamma Euler angles (radians, ZYZ convention)
-    and l the irrep.
+    ``angles`` are the alpha, beta, gamma Euler angles (radians, ZYZ convention) and l
+    the irrep.
     """
     try:
         from sympy.physics.wigner import wigner_d
@@ -306,7 +228,7 @@ def _wigner_d(angular_l: int, angles: Sequence[float]) -> np.ndarray:
         raise ModuleNotFoundError(
             "Calculation of Wigner D matrices requires a sympy installation"
         )
-    return np.complex128(wigner_d(angular_l, *angles))
+    return np.complex128(wigner_d(o3_lambda, *angles))
 
 
 def _r2c(sp):
@@ -317,12 +239,12 @@ def _r2c(sp):
 
     i_sqrt_2 = 1.0 / np.sqrt(2)
 
-    angular_l = (len(sp) - 1) // 2  # infers l from the vector size
+    o3_lambda = (len(sp) - 1) // 2  # infers l from the vector size
     rc = np.zeros(len(sp), dtype=np.complex128)
-    rc[angular_l] = sp[angular_l]
-    for m in range(1, angular_l + 1):
-        rc[angular_l + m] = (
-            (sp[angular_l + m] + 1j * sp[angular_l - m]) * i_sqrt_2 * (-1) ** m
+    rc[o3_lambda] = sp[o3_lambda]
+    for m in range(1, o3_lambda + 1):
+        rc[o3_lambda + m] = (
+            (sp[o3_lambda + m] + 1j * sp[o3_lambda - m]) * i_sqrt_2 * (-1) ** m
         )
-        rc[angular_l - m] = (sp[angular_l + m] - 1j * sp[angular_l - m]) * i_sqrt_2
+        rc[o3_lambda - m] = (sp[o3_lambda + m] - 1j * sp[o3_lambda - m]) * i_sqrt_2
     return rc

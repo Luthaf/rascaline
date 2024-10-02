@@ -6,21 +6,24 @@ from .clebsch_gordan import (  # noqa
     calculate_cg_coefficients,
     cartesian_to_spherical,
 )
+from .hypers import BadHyperParameters, convert_hypers  # noqa
 from .power_spectrum import PowerSpectrum  # noqa
-from .splines import (  # noqa
-    AtomicDensityBase,
-    DeltaDensity,
-    GaussianDensity,
-    GtoBasis,
-    LodeDensity,
-    LodeSpliner,
-    MonomialBasis,
-    RadialBasisBase,
-    RadialIntegralFromFunction,
-    RadialIntegralSplinerBase,
-    SoapSpliner,
-    SphericalBesselBasis,
-)
+
+
+# from .splines import (  # noqa
+#     AtomicDensityBase,
+#     DeltaDensity,
+#     GaussianDensity,
+#     GtoBasis,
+#     LodeDensity,
+#     LodeSpliner,
+#     MonomialBasis,
+#     RadialBasisBase,
+#     RadialIntegralFromFunction,
+#     RadialIntegralSplinerBase,
+#     SoapSpliner,
+#     SphericalBesselBasis,
+# )
 
 
 _HERE = os.path.dirname(__file__)

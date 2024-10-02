@@ -167,13 +167,19 @@ def test_same_spherical_expansion():
     calculator = SphericalExpansion(
         # make sure to choose a cutoff larger then the cell to test for pairs crossing
         # multiple periodic boundaries
-        cutoff=9,
-        max_radial=5,
-        max_angular=5,
-        atomic_gaussian_width=0.3,
-        radial_basis={"Gto": {}},
-        center_atom_weight=1.0,
-        cutoff_function={"Step": {}},
+        cutoff={
+            "radius": 9.0,
+            "smoothing": {"type": "Step"},
+        },
+        basis={
+            "type": "TensorProduct",
+            "max_angular": 4,
+            "radial": {"type": "Gto", "max_radial": 4},
+        },
+        density={
+            "type": "Gaussian",
+            "width": 0.3,
+        },
     )
 
     rascaline_nl = calculator.compute(

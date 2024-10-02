@@ -1,7 +1,7 @@
 mod radial_integral;
-pub use self::radial_integral::{LodeRadialIntegral, LodeRadialIntegralParameters};
-pub use self::radial_integral::{LodeRadialIntegralGto, LodeRadialIntegralGtoParameters};
-pub use self::radial_integral::{LodeRadialIntegralSpline, LodeRadialIntegralSplineParameters};
+pub use self::radial_integral::LodeRadialIntegral;
+pub use self::radial_integral::LodeRadialIntegralGto;
+pub use self::radial_integral::LodeRadialIntegralSpline;
 
 
 mod spherical_expansion;

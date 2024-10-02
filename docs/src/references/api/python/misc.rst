@@ -13,3 +13,5 @@ Miscellaneous
 .. autoclass:: rascaline.Profiler
     :members:
     :undoc-members:
+
+.. autofunction:: rascaline.convert_hypers

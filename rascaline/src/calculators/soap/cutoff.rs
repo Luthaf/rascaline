@@ -1,24 +1,39 @@
 use crate::Error;
 
+/// Definition of a local environment for SOAP calculations
+#[derive(Debug, Clone, Copy)]
+#[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct Cutoff {
+    /// Radius of the spherical cutoff to use for atomic environments
+    pub radius: f64,
+    /// Cutoff function used to smooth the behavior around the cutoff radius
+    pub smoothing: Smoothing,
+}
+
 /// Possible values for the smoothing cutoff function
 #[derive(Debug, Clone, Copy)]
 #[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
-pub enum CutoffFunction {
-    /// Step function, 1 if `r < cutoff` and 0 if `r >= cutoff`
-    Step{},
-    /// Shifted cosine switching function
+#[serde(deny_unknown_fields)]
+#[serde(tag = "type")]
+pub enum Smoothing {
+    /// Shifted cosine smoothing function
     /// `f(r) = 1/2 * (1 + cos(π (r - cutoff + width) / width ))`
     ShiftedCosine {
+        /// Width of the switching function
         width: f64,
     },
+    /// Step smoothing function (i.e. no smoothing). This is 1 inside the cutoff
+    /// and 0 outside, with a sharp step at the boundary.
+    Step,
 }
 
-impl CutoffFunction {
+impl Cutoff {
     pub fn validate(&self) -> Result<(), Error> {
-        match self {
-            CutoffFunction::Step {} => {},
-            CutoffFunction::ShiftedCosine { width } => {
-                if *width <= 0.0 {
+        match self.smoothing {
+            Smoothing::Step => {},
+            Smoothing::ShiftedCosine { width } => {
+                if width <= 0.0 || !width.is_finite() {
                     return Err(Error::InvalidParameter(format!(
                         "expected positive width for shifted cosine cutoff function, got {}",
                         width
@@ -29,115 +44,36 @@ impl CutoffFunction {
         return Ok(());
     }
 
-    /// Evaluate the cutoff function at the distance `r` for the given `cutoff`
-    pub fn compute(&self, r: f64, cutoff: f64) -> f64 {
-        match self {
-            CutoffFunction::Step{} => {
-                if r >= cutoff { 0.0 } else { 1.0 }
+    /// Evaluate the smoothing function at the distance `r`
+    pub fn smoothing(&self, r: f64) -> f64 {
+        match self.smoothing {
+            Smoothing::Step => {
+                if r >= self.radius { 0.0 } else { 1.0 }
             },
-            CutoffFunction::ShiftedCosine { width } => {
-                if r <= (cutoff - width) {
+            Smoothing::ShiftedCosine { width } => {
+                if r <= (self.radius - width) {
                     1.0
-                } else if r >= cutoff {
+                } else if r >= self.radius {
                     0.0
                 } else {
-                    let s = std::f64::consts::PI * (r - cutoff + width) / width;
+                    let s = std::f64::consts::PI * (r - self.radius + width) / width;
                     0.5 * (1. + f64::cos(s))
                 }
             }
         }
     }
 
-    /// Evaluate the derivative of the cutoff function at the distance `r` for the
-    /// given `cutoff`
-    pub fn derivative(&self, r: f64, cutoff: f64) -> f64 {
-        match self {
-            CutoffFunction::Step{} => 0.0,
-            CutoffFunction::ShiftedCosine { width } => {
-                if r <= (cutoff - width) || r >= cutoff {
+    /// Evaluate the gradient of the smoothing function at the distance `r`
+    pub fn smoothing_gradient(&self, r: f64) -> f64 {
+        match self.smoothing {
+            Smoothing::Step => 0.0,
+            Smoothing::ShiftedCosine { width } => {
+                if r <= (self.radius - width) || r >= self.radius {
                     0.0
                 } else {
-                    let s = std::f64::consts::PI * (r - cutoff + width) / width;
+                    let s = std::f64::consts::PI * (r - self.radius + width) / width;
                     return -0.5 * std::f64::consts::PI * f64::sin(s) / width;
                 }
-            }
-        }
-    }
-}
-
-/// Implemented options for radial scaling of the atomic density around an atom
-#[derive(Debug, Clone, Copy)]
-#[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
-pub enum RadialScaling {
-    /// No radial scaling
-    None {},
-    /// Use a long-range algebraic decay and smooth behavior at $r \rightarrow 0$
-    /// as introduced in <https://doi.org/10.1039/C8CP05921G>:
-    /// `f(r) = rate / (rate + (r / scale) ^ exponent)`
-    Willatt2018 {
-        scale: f64,
-        rate: f64,
-        exponent: f64,
-    },
-}
-
-impl Default for RadialScaling {
-    fn default() -> RadialScaling {
-        RadialScaling::None {}
-    }
-}
-
-impl RadialScaling {
-    pub fn validate(&self) -> Result<(), Error> {
-        match self {
-            RadialScaling::None {} => {},
-            RadialScaling::Willatt2018 { scale, rate, exponent } => {
-                if *scale <= 0.0 {
-                    return Err(Error::InvalidParameter(format!(
-                        "expected positive scale for Willatt2018 radial scaling function, got {}",
-                        scale
-                    )));
-                }
-
-                if *rate <= 0.0 {
-                    return Err(Error::InvalidParameter(format!(
-                        "expected positive rate for Willatt2018 radial scaling function, got {}",
-                        rate
-                    )));
-                }
-
-                if *exponent <= 0.0 {
-                    return Err(Error::InvalidParameter(format!(
-                        "expected positive exponent for Willatt2018 radial scaling function, got {}",
-                        exponent
-                    )));
-                }
-            }
-        }
-        return Ok(());
-    }
-
-    /// Evaluate the radial scaling function at the distance `r`
-    pub fn compute(&self, r: f64) -> f64 {
-        match self {
-            RadialScaling::None {} => 1.0,
-            RadialScaling::Willatt2018 { rate, scale, exponent } => {
-                rate / (rate + (r / scale).powf(*exponent))
-            }
-        }
-    }
-
-    /// Evaluate the derivative of the radial scaling function at the distance `r`
-    pub fn derivative(&self, r: f64) -> f64 {
-        match self {
-            RadialScaling::None {} => 0.0,
-            RadialScaling::Willatt2018 { scale, rate, exponent } => {
-                let rs = r / scale;
-                let rs_m1 = rs.powf(exponent - 1.0);
-                let rs_m = rs * rs_m1;
-                let factor = - rate * exponent / scale;
-
-                factor * rs_m1 / ((rate + rs_m) * (rate + rs_m))
             }
         }
     }
@@ -148,44 +84,30 @@ impl RadialScaling {
 mod tests {
     use super::*;
     #[test]
-    fn step() {
-        let function = CutoffFunction::Step{};
-        let cutoff = 4.0;
+    fn no_smoothing() {
+        let cutoff = Cutoff { radius: 4.0, smoothing: Smoothing::Step};
 
-        assert_eq!(function.compute(2.0, cutoff), 1.0);
-        assert_eq!(function.compute(5.0, cutoff), 0.0);
-    }
+        assert_eq!(cutoff.smoothing(2.0), 1.0);
+        assert_eq!(cutoff.smoothing(5.0), 0.0);
 
-    #[test]
-    fn step_gradient() {
-        let function = CutoffFunction::Step{};
-        let cutoff = 4.0;
-
-        assert_eq!(function.derivative(2.0, cutoff), 0.0);
-        assert_eq!(function.derivative(5.0, cutoff), 0.0);
+        assert_eq!(cutoff.smoothing_gradient(2.0), 0.0);
+        assert_eq!(cutoff.smoothing_gradient(5.0), 0.0);
     }
 
     #[test]
     fn shifted_cosine() {
-        let function = CutoffFunction::ShiftedCosine { width: 0.5 };
-        let cutoff = 4.0;
+        let cutoff = Cutoff { radius: 4.0, smoothing: Smoothing::ShiftedCosine { width: 0.5 }};
 
-        assert_eq!(function.compute(2.0, cutoff), 1.0);
-        assert_eq!(function.compute(3.5, cutoff), 1.0);
-        assert_eq!(function.compute(3.8, cutoff), 0.34549150281252683);
-        assert_eq!(function.compute(4.0, cutoff), 0.0);
-        assert_eq!(function.compute(5.0, cutoff), 0.0);
-    }
+        assert_eq!(cutoff.smoothing(2.0), 1.0);
+        assert_eq!(cutoff.smoothing(3.5), 1.0);
+        assert_eq!(cutoff.smoothing(3.8), 0.34549150281252683);
+        assert_eq!(cutoff.smoothing(4.0), 0.0);
+        assert_eq!(cutoff.smoothing(5.0), 0.0);
 
-    #[test]
-    fn shifted_cosine_gradient() {
-        let function = CutoffFunction::ShiftedCosine { width: 0.5 };
-        let cutoff = 4.0;
-
-        assert_eq!(function.derivative(2.0, cutoff), 0.0);
-        assert_eq!(function.derivative(3.5, cutoff), 0.0);
-        assert_eq!(function.derivative(3.8, cutoff), -2.987832164741557);
-        assert_eq!(function.derivative(4.0, cutoff), 0.0);
-        assert_eq!(function.derivative(5.0, cutoff), 0.0);
+        assert_eq!(cutoff.smoothing_gradient(2.0), 0.0);
+        assert_eq!(cutoff.smoothing_gradient(3.5), 0.0);
+        assert_eq!(cutoff.smoothing_gradient(3.8), -2.987832164741557);
+        assert_eq!(cutoff.smoothing_gradient(4.0), 0.0);
+        assert_eq!(cutoff.smoothing_gradient(5.0), 0.0);
     }
 }

@@ -206,8 +206,13 @@ impl<D: ndarray::Dimension> HermitCubicSpline<D> {
     }
 
     /// Get the number of control points in this spline
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.points.len()
+    }
+
+    /// Get the shape of the arrays returned by the splined function
+    pub fn shape(&self) -> &[usize] {
+        &self.parameters.shape
     }
 
     /// Get the position of the control points for this spline

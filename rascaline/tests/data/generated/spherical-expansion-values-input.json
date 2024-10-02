@@ -1,19 +1,24 @@
 {
   "hyperparameters": {
-    "atomic_gaussian_width": 0.3,
-    "center_atom_weight": 1.0,
-    "cutoff": 5.5,
-    "cutoff_function": {
-      "ShiftedCosine": {
+    "basis": {
+      "max_angular": 8,
+      "radial": {
+        "max_radial": 7,
+        "type": "Gto"
+      },
+      "spline_accuracy": null,
+      "type": "TensorProduct"
+    },
+    "cutoff": {
+      "radius": 5.5,
+      "smoothing": {
+        "type": "ShiftedCosine",
         "width": 0.5
       }
     },
-    "max_angular": 8,
-    "max_radial": 8,
-    "radial_basis": {
-      "Gto": {
-        "splined_radial_integral": false
-      }
+    "density": {
+      "type": "Gaussian",
+      "width": 0.3
     }
   },
   "systems": [
