@@ -1,7 +1,7 @@
 .. _radial-integral:
 
 SOAP and LODE radial integrals
-===================================
+==============================
 
 On this page, we describe the exact mathematical expression that are implemented
 in the radial integral and the splined radial integral classes i.e.

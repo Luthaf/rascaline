@@ -13,5 +13,9 @@ independently <install-python-lib>`. The functions and classes provided in
 
     systems
     calculators
-    utils/index
     misc
+
+    cutoff
+    density
+    basis
+    utils/index

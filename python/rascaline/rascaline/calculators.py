@@ -10,6 +10,22 @@ except NameError:
     from .calculator_base import CalculatorBase
 
 
+def _expand_hypers(hypers):
+    """
+    Starting from a Dict[str, Any], recursively expand all values in the dict by
+    calling their ``_rascaline_hypers`` method if such method exists.
+    """
+    cleaned = {}
+    for key, value in hypers.items():
+        if hasattr(value, "_rascaline_hypers"):
+            value = value._rascaline_hypers()
+
+        if isinstance(value, dict):
+            value = _expand_hypers(value)
+        cleaned[key] = value
+    return cleaned
+
+
 class AtomicComposition(CalculatorBase):
     """An atomic composition calculator for obtaining the stoichiometric information.
 
@@ -21,19 +37,23 @@ class AtomicComposition(CalculatorBase):
     """
 
     def __init__(self, *, per_system):
-        parameters = {
-            "per_system": per_system,
-        }
+        parameters = _expand_hypers(
+            {
+                "per_system": per_system,
+            }
+        )
         super().__init__("atomic_composition", json.dumps(parameters))
 
 
 class DummyCalculator(CalculatorBase):
     def __init__(self, *, cutoff, delta, name):
-        parameters = {
-            "cutoff": cutoff,
-            "delta": delta,
-            "name": name,
-        }
+        parameters = _expand_hypers(
+            {
+                "cutoff": cutoff,
+                "delta": delta,
+                "name": name,
+            }
+        )
         super().__init__("dummy_calculator", json.dumps(parameters))
 
 
@@ -59,18 +79,14 @@ class NeighborList(CalculatorBase):
     crossed to create this pair.
     """
 
-    def __init__(
-        self,
-        *,
-        cutoff: float,
-        full_neighbor_list: bool,
-        self_pairs: bool = False,
-    ):
-        parameters = {
-            "cutoff": cutoff,
-            "full_neighbor_list": full_neighbor_list,
-            "self_pairs": self_pairs,
-        }
+    def __init__(self, *, cutoff, full_neighbor_list, self_pairs=False):
+        parameters = _expand_hypers(
+            {
+                "cutoff": cutoff,
+                "full_neighbor_list": full_neighbor_list,
+                "self_pairs": self_pairs,
+            }
+        )
         super().__init__("neighbor_list", json.dumps(parameters))
 
 
@@ -90,11 +106,13 @@ class SortedDistances(CalculatorBase):
     """
 
     def __init__(self, *, cutoff, max_neighbors, separate_neighbor_types):
-        parameters = {
-            "cutoff": cutoff,
-            "max_neighbors": max_neighbors,
-            "separate_neighbor_types": separate_neighbor_types,
-        }
+        parameters = _expand_hypers(
+            {
+                "cutoff": cutoff,
+                "max_neighbors": max_neighbors,
+                "separate_neighbor_types": separate_neighbor_types,
+            }
+        )
         super().__init__("sorted_distances", json.dumps(parameters))
 
 
@@ -142,11 +160,13 @@ class SphericalExpansion(CalculatorBase):
         if len(kwargs) != 0 or density is None or basis is None:
             _check_for_old_hypers("SphericalExpansion", {"cutoff": cutoff, **kwargs})
 
-        parameters = {
-            "cutoff": cutoff,
-            "density": density,
-            "basis": basis,
-        }
+        parameters = _expand_hypers(
+            {
+                "cutoff": cutoff,
+                "density": density,
+                "basis": basis,
+            }
+        )
 
         super().__init__("spherical_expansion", json.dumps(parameters))
 
@@ -190,11 +210,13 @@ class SphericalExpansionByPair(CalculatorBase):
                 "SphericalExpansionByPair", {"cutoff": cutoff, **kwargs}
             )
 
-        parameters = {
-            "cutoff": cutoff,
-            "density": density,
-            "basis": basis,
-        }
+        parameters = _expand_hypers(
+            {
+                "cutoff": cutoff,
+                "density": density,
+                "basis": basis,
+            }
+        )
 
         super().__init__("spherical_expansion_by_pair", json.dumps(parameters))
 
@@ -220,11 +242,13 @@ class SoapRadialSpectrum(CalculatorBase):
         if len(kwargs) != 0 or density is None or basis is None:
             _check_for_old_hypers("SoapRadialSpectrum", {"cutoff": cutoff, **kwargs})
 
-        parameters = {
-            "cutoff": cutoff,
-            "density": density,
-            "basis": basis,
-        }
+        parameters = _expand_hypers(
+            {
+                "cutoff": cutoff,
+                "density": density,
+                "basis": basis,
+            }
+        )
 
         super().__init__("soap_radial_spectrum", json.dumps(parameters))
 
@@ -254,11 +278,13 @@ class SoapPowerSpectrum(CalculatorBase):
         if len(kwargs) != 0 or density is None or basis is None:
             _check_for_old_hypers("SoapPowerSpectrum", {"cutoff": cutoff, **kwargs})
 
-        parameters = {
-            "cutoff": cutoff,
-            "density": density,
-            "basis": basis,
-        }
+        parameters = _expand_hypers(
+            {
+                "cutoff": cutoff,
+                "density": density,
+                "basis": basis,
+            }
+        )
 
         super().__init__("soap_power_spectrum", json.dumps(parameters))
 
@@ -286,10 +312,12 @@ class LodeSphericalExpansion(CalculatorBase):
                 "LodeSphericalExpansion", {"k_cutoff": k_cutoff, **kwargs}
             )
 
-        parameters = {
-            "k_cutoff": k_cutoff,
-            "density": density,
-            "basis": basis,
-        }
+        parameters = _expand_hypers(
+            {
+                "k_cutoff": k_cutoff,
+                "density": density,
+                "basis": basis,
+            }
+        )
 
         super().__init__("lode_spherical_expansion", json.dumps(parameters))
