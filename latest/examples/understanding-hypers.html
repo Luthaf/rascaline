@@ -1,0 +1,852 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="How-to guides" href="../how-to/index.html" /><link rel="prev" title="First descriptor computation" href="first-calculation.html" />
+
+    <!-- Generated with Sphinx 7.2.6 and Furo 2024.08.06 -->
+        <title>Changing SOAP hyper parameters - Rascaline 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=354aac6f" />
+    <link rel="stylesheet" type="text/css" href="../_static/rascaline.css?v=191cc0c0" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=d2d258e8" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=302659d7" />
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/fontawesome.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/solid.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/brands.min.css" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">Rascaline 0.1.0 documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  
+  <span class="sidebar-brand-text">Rascaline 0.1.0 documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1 current has-children"><a class="reference internal" href="../get-started/index.html">Getting started</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of Getting started</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../get-started/rascaline.html">What is rascaline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../get-started/installation.html">Installation</a></li>
+<li class="toctree-l2 current has-children"><a class="reference internal" href="../get-started/tutorials.html">Tutorials: using rascaline from Python</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of Tutorials: using rascaline from Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="first-calculation.html">First descriptor computation</a></li>
+<li class="toctree-l3 current current-page"><a class="current reference internal" href="#">Changing SOAP hyper parameters</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../how-to/index.html">How-to guides</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of How-to guides</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/computing-soap.html">Computing SOAP features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/sample-selection.html">Sample Selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/property-selection.html">Property Selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/keys-selection.html">Keys selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/le-basis.html">Laplacian eigenstate basis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/splined-radial-integral.html">Splined radial integral</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/long-range.html">Long-range only LODE descriptor</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../references/index.html">Reference guides</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle navigation of Reference guides</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../references/calculators/index.html">Calculator reference</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation of Calculator reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../references/calculators/spherical-expansion.html">Spherical expansion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../references/calculators/spherical-expansion-by-pair.html">Spherical expansion by pair</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../references/calculators/lode-spherical-expansion.html">LODE spherical expansion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../references/calculators/soap-radial-spectrum.html">SOAP radial spectrum</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../references/calculators/soap-power-spectrum.html">SOAP power spectrum</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../references/calculators/atomic-composition.html">Atomic Composition</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../references/calculators/neighbor-list.html">Neighbor List</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../references/calculators/sorted-distances.html">Sorted distance vector</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../references/api/index.html">API documentation</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle navigation of API documentation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../references/api/python/index.html">Python</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle navigation of Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/python/systems.html">Available system implementation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/python/calculators.html">Available Calculators</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../references/api/python/utils/index.html">Utils</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle navigation of Utils</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="../references/api/python/utils/atomic-density.html">Atomic Density</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../references/api/python/utils/radial-basis.html">Radial Basis</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../references/api/python/utils/power-spectrum.html">PowerSpectrum</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../references/api/python/utils/splines.html">Splined radial integrals</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../references/api/python/utils/clebsch-gordan.html">Clebsch-Gordan products</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/python/misc.html">Miscellaneous</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../references/api/torch/index.html">TorchScript</a><input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><div class="visually-hidden">Toggle navigation of TorchScript</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/torch/systems.html">System</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/torch/calculators.html">Calculators</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../references/api/torch/utils/index.html">Utils</a><input class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><div class="visually-hidden">Toggle navigation of Utils</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="../references/api/torch/utils/power-spectrum.html">PowerSpectrum</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../references/api/torch/utils/clebsch-gordan.html">Clebsch-Gordan products</a></li>
+</ul>
+</li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../references/api/torch/cxx/index.html">TorchScript C++ API reference</a><input class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><div class="visually-hidden">Toggle navigation of TorchScript C++ API reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="../references/api/torch/cxx/calculators.html">Calculators</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../references/api/rust.html">Rust</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../references/api/c/index.html">C</a><input class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><div class="visually-hidden">Toggle navigation of C</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/c/systems.html">Defining systems</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/c/calculators.html">Dealing with calculators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/c/misc.html">Miscellaneous</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../references/api/cxx/index.html">C++</a><input class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><div class="visually-hidden">Toggle navigation of C++</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/cxx/systems.html">Defining systems</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/cxx/calculators.html">Dealing with calculators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/cxx/misc.html">Miscellaneous</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../explanations/index.html">Explanations</a><input class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><div class="visually-hidden">Toggle navigation of Explanations</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../explanations/concepts.html">Core concepts of rascaline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../explanations/soap.html">What is SOAP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../explanations/rotation_adapted.html">Rotation-Adapted Features</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../devdoc/index.html">Developer documentation</a><input class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><div class="visually-hidden">Toggle navigation of Developer documentation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../devdoc/get-started.html">Getting started</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../devdoc/how-to/index.html">How-to guides</a><input class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><div class="visually-hidden">Toggle navigation of How-to guides</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../devdoc/how-to/new-calculator.html">Adding a new calculator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../devdoc/how-to/profiling.html">Profiling calculation</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../devdoc/explanations/index.html">Explanations</a><input class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" role="switch" type="checkbox"/><label for="toctree-checkbox-17"><div class="visually-hidden">Toggle navigation of Explanations</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../devdoc/explanations/architecture.html">Code organization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../devdoc/explanations/interfaces.html">Python and C interface</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../devdoc/explanations/radial-integral.html">SOAP and LODE radial integrals</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../_sources/examples/understanding-hypers.rst.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference internal" href="#sphx-glr-download-examples-understanding-hypers-py"><span class="std std-ref">Go to the end</span></a>
+to download the full example code.</p>
+</div>
+<section class="sphx-glr-example-title" id="changing-soap-hyper-parameters">
+<span id="userdoc-tutorials-understanding-hypers"></span><span id="sphx-glr-examples-understanding-hypers-py"></span><h1>Changing SOAP hyper parameters<a class="headerlink" href="#changing-soap-hyper-parameters" title="Link to this heading">¶</a></h1>
+<p>In the first <a class="reference internal" href="first-calculation.html#userdoc-tutorials-get-started"><span class="std std-ref">tutorial</span></a> we show how to
+calculate a descriptor using default hyper parameters. Here we will look at how the
+change of some hyper parameters affects the values of the descriptor. The
+definition of every hyper parameter is given in the <a class="reference internal" href="../references/calculators/index.html#userdoc-calculators"><span class="std std-ref">Calculator reference</span></a> and
+background on the mathematical foundation of the spherical expansion is given in
+the <a class="reference internal" href="../explanations/index.html#userdoc-explanations"><span class="std std-ref">Explanations</span></a> section.</p>
+<p>We use the same molecular crystals dataset as in the first
+<a class="reference internal" href="first-calculation.html#userdoc-tutorials-get-started"><span class="std std-ref">tutorial</span></a> which can downloaded from our
+<a class="reference download internal" download="" href="../_downloads/baed817b984659f054f6dbda1066cc00/dataset.xyz"><code class="xref download docutils literal notranslate"><span class="pre">website</span></code></a>.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># We first import the crucial packages, load the dataset using chemfiles and</span>
+<span class="c1"># save the first frame in a variable.</span>
+
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="kn">import</span> <span class="nn">chemfiles</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">rascaline</span> <span class="kn">import</span> <span class="n">SphericalExpansion</span>
+
+
+<span class="k">with</span> <a href="https://chemfiles.org/chemfiles.py/latest/reference/trajectory.html#chemfiles.Trajectory" title="chemfiles.Trajectory" class="sphx-glr-backref-module-chemfiles sphx-glr-backref-type-py-class"><span class="n">chemfiles</span><span class="o">.</span><span class="n">Trajectory</span></a><span class="p">(</span><span class="s2">&quot;dataset.xyz&quot;</span><span class="p">)</span> <span class="k">as</span> <a href="https://chemfiles.org/chemfiles.py/latest/reference/trajectory.html#chemfiles.Trajectory" title="chemfiles.Trajectory" class="sphx-glr-backref-module-chemfiles sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">trajectory</span></a><span class="p">:</span>
+    <a href="https://docs.python.org/3/library/stdtypes.html#list" title="builtins.list" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">frames</span></a> <span class="o">=</span> <span class="p">[</span><span class="n">frame</span> <span class="k">for</span> <span class="n">frame</span> <span class="ow">in</span> <a href="https://chemfiles.org/chemfiles.py/latest/reference/trajectory.html#chemfiles.Trajectory" title="chemfiles.Trajectory" class="sphx-glr-backref-module-chemfiles sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">trajectory</span></a><span class="p">]</span>
+
+<a href="https://chemfiles.org/chemfiles.py/latest/reference/frame.html#chemfiles.Frame" title="chemfiles.Frame" class="sphx-glr-backref-module-chemfiles sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">frame0</span></a> <span class="o">=</span> <a href="https://docs.python.org/3/library/stdtypes.html#list" title="builtins.list" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">frames</span></a><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</pre></div>
+</div>
+<section id="increasing-max-radial-and-max-angular">
+<h2>Increasing <code class="docutils literal notranslate"><span class="pre">max_radial</span></code> and <code class="docutils literal notranslate"><span class="pre">max_angular</span></code><a class="headerlink" href="#increasing-max-radial-and-max-angular" title="Link to this heading">¶</a></h2>
+<p>As mentioned above changing <code class="docutils literal notranslate"><span class="pre">max_radial</span></code> has an effect on the accuracy of
+the descriptor and on the computation time. We now will increase the number of
+radial channels and angular channels. Note, that here we directly pass the
+parameters into the <code class="docutils literal notranslate"><span class="pre">SphericalExpansion</span></code> class without defining a
+<code class="docutils literal notranslate"><span class="pre">HYPERPARAMETERS</span></code> dictionary like we did in the previous tutorial.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">calculator_ext</span> <span class="o">=</span> <span class="n">SphericalExpansion</span><span class="p">(</span>
+    <a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">cutoff</span></a><span class="o">=</span><span class="mf">4.5</span><span class="p">,</span>
+    <span class="n">max_radial</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
+    <span class="n">max_angular</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+    <span class="n">atomic_gaussian_width</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+    <span class="n">center_atom_weight</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">radial_basis</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Gto&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;spline_accuracy&quot;</span><span class="p">:</span> <span class="mf">1e-6</span><span class="p">}},</span>
+    <span class="n">cutoff_function</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;ShiftedCosine&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;width&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">}},</span>
+    <span class="n">radial_scaling</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Willatt2018&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;scale&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span> <span class="s2">&quot;rate&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;exponent&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">}},</span>
+<span class="p">)</span>
+
+<a href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="metatensor.TensorMap" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">descriptor_ext</span></a> <span class="o">=</span> <span class="n">calculator_ext</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><a href="https://chemfiles.org/chemfiles.py/latest/reference/frame.html#chemfiles.Frame" title="chemfiles.Frame" class="sphx-glr-backref-module-chemfiles sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">frame0</span></a><span class="p">)</span>
+</pre></div>
+</div>
+<p>Compared to our previous set of hypers we now have 144 blocks instead of 112
+because we increased the number of angular channels.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><a href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap.blocks" title="metatensor.TensorMap.blocks" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-method"><span class="n">descriptor_ext</span><span class="o">.</span><span class="n">blocks</span></a><span class="p">()))</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>144
+</pre></div>
+</div>
+<p>The increase of the radial channels to 12 is reflected in the shape of the 0th
+block values.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><a href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap.block" title="metatensor.TensorMap.block" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-method"><span class="n">descriptor_ext</span><span class="o">.</span><span class="n">block</span></a><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>(8, 1, 12)
+</pre></div>
+</div>
+<p>Note that the increased number of radial and angular channels can increase the
+accuracy of your representation but will increase the computational time
+transforming the coordinates into a descriptor. A very simple time measurement
+of the computation shows that the extended calculator takes more time for
+the computation compared to a calculation using the default hyper parameters</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">start_time</span></a> <span class="o">=</span> <a href="https://docs.python.org/3/library/time.html#time.time" title="time.time" class="sphx-glr-backref-module-time sphx-glr-backref-type-py-function"><span class="n">time</span><span class="o">.</span><span class="n">time</span></a><span class="p">()</span>
+<span class="n">calculator_ext</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><a href="https://docs.python.org/3/library/stdtypes.html#list" title="builtins.list" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">frames</span></a><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Extended hypers took </span><span class="si">{</span><a href="https://docs.python.org/3/library/time.html#time.time" title="time.time" class="sphx-glr-backref-module-time sphx-glr-backref-type-py-function"><span class="n">time</span><span class="o">.</span><span class="n">time</span></a><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">start_time</span></a><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> s.&quot;</span><span class="p">)</span>
+
+<span class="c1"># using smaller max_radial and max_angular, everything else stays the same</span>
+<span class="n">calculator_small</span> <span class="o">=</span> <span class="n">SphericalExpansion</span><span class="p">(</span>
+    <a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">cutoff</span></a><span class="o">=</span><span class="mf">4.5</span><span class="p">,</span>
+    <span class="n">max_radial</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span>
+    <span class="n">max_angular</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+    <span class="n">atomic_gaussian_width</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+    <span class="n">center_atom_weight</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">radial_basis</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Gto&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;spline_accuracy&quot;</span><span class="p">:</span> <span class="mf">1e-6</span><span class="p">}},</span>
+    <span class="n">cutoff_function</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;ShiftedCosine&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;width&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">}},</span>
+    <span class="n">radial_scaling</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Willatt2018&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;scale&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span> <span class="s2">&quot;rate&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;exponent&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">}},</span>
+<span class="p">)</span>
+
+<a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">start_time</span></a> <span class="o">=</span> <a href="https://docs.python.org/3/library/time.html#time.time" title="time.time" class="sphx-glr-backref-module-time sphx-glr-backref-type-py-function"><span class="n">time</span><span class="o">.</span><span class="n">time</span></a><span class="p">()</span>
+<span class="n">calculator_small</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><a href="https://docs.python.org/3/library/stdtypes.html#list" title="builtins.list" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">frames</span></a><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Smaller hypers took </span><span class="si">{</span><a href="https://docs.python.org/3/library/time.html#time.time" title="time.time" class="sphx-glr-backref-module-time sphx-glr-backref-type-py-function"><span class="n">time</span><span class="o">.</span><span class="n">time</span></a><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">start_time</span></a><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> s.&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Extended hypers took 0.08 s.
+Smaller hypers took 0.07 s.
+</pre></div>
+</div>
+</section>
+<section id="reducing-the-cutoff-and-the-center-atom-weight">
+<h2>Reducing the <code class="docutils literal notranslate"><span class="pre">cutoff</span></code> and the <code class="docutils literal notranslate"><span class="pre">center_atom_weight</span></code><a class="headerlink" href="#reducing-the-cutoff-and-the-center-atom-weight" title="Link to this heading">¶</a></h2>
+<p>The cutoff controls how many neighboring atoms are taken into account for a
+descriptor. By decreasing the cutoff from 6 Å to 0.1 Å fewer and fewer atoms
+contribute to the descriptor which can be seen by the reduced range of the
+features.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">cutoff</span></a> <span class="ow">in</span> <span class="p">[</span><span class="mf">6.0</span><span class="p">,</span> <span class="mf">4.5</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">]:</span>
+    <span class="n">calculator_cutoff</span> <span class="o">=</span> <span class="n">SphericalExpansion</span><span class="p">(</span>
+        <a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">cutoff</span></a><span class="o">=</span><a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">cutoff</span></a><span class="p">,</span>
+        <span class="n">max_radial</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+        <span class="n">max_angular</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+        <span class="n">atomic_gaussian_width</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+        <span class="n">center_atom_weight</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">radial_basis</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Gto&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;spline_accuracy&quot;</span><span class="p">:</span> <span class="mf">1e-6</span><span class="p">}},</span>
+        <span class="n">cutoff_function</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;ShiftedCosine&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;width&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">}},</span>
+        <span class="n">radial_scaling</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Willatt2018&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;scale&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span> <span class="s2">&quot;rate&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;exponent&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">}},</span>
+    <span class="p">)</span>
+
+    <a href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="metatensor.TensorMap" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">descriptor</span></a> <span class="o">=</span> <span class="n">calculator_cutoff</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><a href="https://chemfiles.org/chemfiles.py/latest/reference/frame.html#chemfiles.Frame" title="chemfiles.Frame" class="sphx-glr-backref-module-chemfiles sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">frame0</span></a><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Descriptor for cutoff=</span><span class="si">{</span><a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">cutoff</span></a><span class="si">}</span><span class="s2"> Å: </span><span class="si">{</span><a href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap.block" title="metatensor.TensorMap.block" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-method"><span class="n">descriptor</span><span class="o">.</span><span class="n">block</span></a><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Descriptor for cutoff=6.0 Å: [[ 0.73193479 -0.29310529  0.20099337 -0.01685146  0.10192235 -0.00619106]]
+Descriptor for cutoff=4.5 Å: [[ 0.88696541 -0.27211242  0.12400786  0.03004326  0.13265605  0.00631962]]
+Descriptor for cutoff=3.0 Å: [[ 0.99735843  0.02421642 -0.01582201  0.07692315  0.0739584   0.02262702]]
+Descriptor for cutoff=1.0 Å: [[0.47066472 0.51914099 0.60560181 0.34760844 0.14044963 0.03946593]]
+Descriptor for cutoff=0.1 Å: [[0.00157192 0.00240957 0.00345497 0.00925635 0.00025653 0.02589691]]
+</pre></div>
+</div>
+<p>For a <code class="docutils literal notranslate"><span class="pre">cutoff</span></code> of 0.1 Å there is no neighboring atom within the cutoff and
+one could expect all features to be 0. This is not the case because the
+central atom also contributes to the descriptor. We can vary this contribution
+using the <code class="docutils literal notranslate"><span class="pre">center_atom_weight</span></code> parameter so that the descriptor finally is 0
+everywhere.</p>
+<p>..Add a sophisticated and referenced note on how the <code class="docutils literal notranslate"><span class="pre">center_atom_weight</span></code>
+could affect ML models.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">center_weight</span></a> <span class="ow">in</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]:</span>
+    <span class="n">calculator_cutoff</span> <span class="o">=</span> <span class="n">SphericalExpansion</span><span class="p">(</span>
+        <a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">cutoff</span></a><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+        <span class="n">max_radial</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+        <span class="n">max_angular</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+        <span class="n">atomic_gaussian_width</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+        <span class="n">center_atom_weight</span><span class="o">=</span><a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">center_weight</span></a><span class="p">,</span>
+        <span class="n">radial_basis</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Gto&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;spline_accuracy&quot;</span><span class="p">:</span> <span class="mf">1e-6</span><span class="p">}},</span>
+        <span class="n">cutoff_function</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;ShiftedCosine&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;width&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">}},</span>
+        <span class="n">radial_scaling</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Willatt2018&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;scale&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span> <span class="s2">&quot;rate&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;exponent&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">}},</span>
+    <span class="p">)</span>
+
+    <a href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="metatensor.TensorMap" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">descriptor</span></a> <span class="o">=</span> <span class="n">calculator_cutoff</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><a href="https://chemfiles.org/chemfiles.py/latest/reference/frame.html#chemfiles.Frame" title="chemfiles.Frame" class="sphx-glr-backref-module-chemfiles sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">frame0</span></a><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;Descriptor for center_weight=</span><span class="si">{</span><a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">center_weight</span></a><span class="si">}</span><span class="s2">: &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><a href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap.block" title="metatensor.TensorMap.block" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-method"><span class="n">descriptor</span><span class="o">.</span><span class="n">block</span></a><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Descriptor for center_weight=1.0: [[0.00157192 0.00240957 0.00345497 0.00925635 0.00025653 0.02589691]]
+Descriptor for center_weight=0.5: [[0.00078596 0.00120479 0.00172749 0.00462817 0.00012826 0.01294846]]
+Descriptor for center_weight=0.0: [[0. 0. 0. 0. 0. 0.]]
+</pre></div>
+</div>
+</section>
+<section id="choosing-the-cutoff-function">
+<h2>Choosing the <code class="docutils literal notranslate"><span class="pre">cutoff_function</span></code><a class="headerlink" href="#choosing-the-cutoff-function" title="Link to this heading">¶</a></h2>
+<p>In a naive descriptor approach all atoms within the cutoff are taken in into
+account equally and atoms without the cutoff are ignored. This behavior is
+implemented using the <code class="docutils literal notranslate"><span class="pre">cutoff_function={&quot;Step&quot;:</span> <span class="pre">{}}</span></code> parameter in each
+calculator. However, doing so means that small movements of an atom near the
+cutoff result in large changes in the descriptor: there is a discontinuity in
+the representation as atoms enter or leave the cutoff. A solution is to use
+some smoothing function to get rid of this discontinuity, such as a shifted
+cosine function:</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[\begin{split}f(r) = \begin{cases}
+      1 &amp;r &lt; r_c - w,\\
+      0.5 + 0.5 \cos[\pi (r - r_c + w) / w] &amp;r_c - w &lt; r &lt;= r_c, \\
+      0 &amp;r_c &lt; r,
+\end{cases}\end{split}\]</div>
+</div>
+<p>where <span class="math notranslate nohighlight">\(r_\mathrm{c}\)</span> is the cutoff distance and <span class="math notranslate nohighlight">\(w\)</span> the width.
+Such smoothing function is used as a multiplicative weight for the
+contribution to the representation coming from each neighbor one by one</p>
+<p>The following functions compute such a shifted cosine weighting.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">shifted_cosine</span><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">r</span></a><span class="p">,</span> <a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">cutoff</span></a><span class="p">,</span> <a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">width</span></a><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A shifted cosine switching function.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    r : float</span>
+<span class="sd">        distance between neighboring atoms in Å</span>
+<span class="sd">    cutoff : float</span>
+<span class="sd">        cutoff distance in Å</span>
+<span class="sd">    width : float</span>
+<span class="sd">        width of the switching in Å</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    float</span>
+<span class="sd">        weighting of the features</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">r</span></a> <span class="o">&lt;=</span> <span class="p">(</span><a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">cutoff</span></a> <span class="o">-</span> <a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">width</span></a><span class="p">):</span>
+        <span class="k">return</span> <span class="mf">1.0</span>
+    <span class="k">elif</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">r</span></a> <span class="o">&gt;=</span> <a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">cutoff</span></a><span class="p">:</span>
+        <span class="k">return</span> <span class="mf">0.0</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">s</span> <span class="o">=</span> <a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">np</span><span class="o">.</span><span class="n">pi</span></a> <span class="o">*</span> <span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">r</span></a> <span class="o">-</span> <a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">cutoff</span></a> <span class="o">+</span> <a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">width</span></a><span class="p">)</span> <span class="o">/</span> <a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">width</span></a>
+        <span class="k">return</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.ufunc.html#numpy.ufunc" title="numpy.ufunc" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">np</span><span class="o">.</span><span class="n">cos</span></a><span class="p">(</span><span class="n">s</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Let us plot the weighting for different widths.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">r</span></a> <span class="o">=</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.linspace.html#numpy.linspace" title="numpy.linspace" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-function"><span class="n">np</span><span class="o">.</span><span class="n">linspace</span></a><span class="p">(</span><span class="mf">1e-3</span><span class="p">,</span> <span class="mf">4.5</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+
+<a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.plot.html#matplotlib.pyplot.plot" title="matplotlib.pyplot.plot" class="sphx-glr-backref-module-matplotlib-pyplot sphx-glr-backref-type-py-function"><span class="n">plt</span><span class="o">.</span><span class="n">plot</span></a><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mf">4.5</span><span class="p">,</span> <span class="mf">4.5</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">c</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;Step function&quot;</span><span class="p">)</span>
+
+<span class="k">for</span> <a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">width</span></a> <span class="ow">in</span> <span class="p">[</span><span class="mf">4.5</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">]:</span>
+    <a href="https://docs.python.org/3/library/stdtypes.html#list" title="builtins.list" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">weighting_values</span></a> <span class="o">=</span> <span class="p">[</span><span class="n">shifted_cosine</span><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">r</span></a><span class="o">=</span><span class="n">r_i</span><span class="p">,</span> <a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">cutoff</span></a><span class="o">=</span><span class="mf">4.5</span><span class="p">,</span> <a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">width</span></a><span class="o">=</span><a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">width</span></a><span class="p">)</span> <span class="k">for</span> <span class="n">r_i</span> <span class="ow">in</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">r</span></a><span class="p">]</span>
+    <a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.plot.html#matplotlib.pyplot.plot" title="matplotlib.pyplot.plot" class="sphx-glr-backref-module-matplotlib-pyplot sphx-glr-backref-type-py-function"><span class="n">plt</span><span class="o">.</span><span class="n">plot</span></a><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">r</span></a><span class="p">,</span> <a href="https://docs.python.org/3/library/stdtypes.html#list" title="builtins.list" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">weighting_values</span></a><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Shifted cosine: $width=</span><span class="si">{</span><a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">width</span></a><span class="si">}</span><span class="se">\\</span><span class="s2">,Å$&quot;</span><span class="p">)</span>
+
+<a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.legend.html#matplotlib.pyplot.legend" title="matplotlib.pyplot.legend" class="sphx-glr-backref-module-matplotlib-pyplot sphx-glr-backref-type-py-function"><span class="n">plt</span><span class="o">.</span><span class="n">legend</span></a><span class="p">()</span>
+<a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.xlabel.html#matplotlib.pyplot.xlabel" title="matplotlib.pyplot.xlabel" class="sphx-glr-backref-module-matplotlib-pyplot sphx-glr-backref-type-py-function"><span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span></a><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;distance $r$ from the central atom in $Å$&quot;</span><span class="p">)</span>
+<a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.ylabel.html#matplotlib.pyplot.ylabel" title="matplotlib.pyplot.ylabel" class="sphx-glr-backref-module-matplotlib-pyplot sphx-glr-backref-type-py-function"><span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span></a><span class="p">(</span><span class="s2">&quot;feature weighting&quot;</span><span class="p">)</span>
+<a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.show.html#matplotlib.pyplot.show" title="matplotlib.pyplot.show" class="sphx-glr-backref-module-matplotlib-pyplot sphx-glr-backref-type-py-function"><span class="n">plt</span><span class="o">.</span><span class="n">show</span></a><span class="p">()</span>
+</pre></div>
+</div>
+<img src="../_images/sphx_glr_understanding-hypers_001.png" srcset="../_images/sphx_glr_understanding-hypers_001.png" alt="understanding hypers" class = "sphx-glr-single-img"/><p>From the plot we conclude that a larger <code class="docutils literal notranslate"><span class="pre">width</span></code> of the shifted cosine
+function will decrease the feature values already for smaller distances <code class="docutils literal notranslate"><span class="pre">r</span></code>
+from the central atom.</p>
+</section>
+<section id="choosing-the-radial-scaling">
+<h2>Choosing the <code class="docutils literal notranslate"><span class="pre">radial_scaling</span></code><a class="headerlink" href="#choosing-the-radial-scaling" title="Link to this heading">¶</a></h2>
+<p>As mentioned above all atoms within the cutoff are taken equally for a
+descriptor. This might limit the accuracy of a model, so it is sometimes
+useful to weigh neighbors that further away from the central atom less than
+neighbors closer to the central atom. This can be achieved by a
+<code class="docutils literal notranslate"><span class="pre">radial_scaling</span></code> function with a long-range algebraic decay and smooth
+behavior at <span class="math notranslate nohighlight">\(r \rightarrow 0\)</span>. The <code class="docutils literal notranslate"><span class="pre">'Willatt2018'</span></code> radial scaling
+available in rascaline corresponds to the function introduced in this
+<a class="reference external" href="https://doi.org/10.1039/C8CP05921G">publication</a>:</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[\begin{split}u(r) = \begin{cases}
+    1 / (r/r_0)^m       &amp;   \text{if c=0,} \\
+    1                   &amp;   \text{if m=0,} \\
+    c / (c+(r/r_0)^m)   &amp;   \text{else},
+\end{cases}\end{split}\]</div>
+</div>
+<p>where <span class="math notranslate nohighlight">\(c\)</span> is the <code class="docutils literal notranslate"><span class="pre">rate</span></code>, <span class="math notranslate nohighlight">\(r_0\)</span> is the <code class="docutils literal notranslate"><span class="pre">scale</span></code> parameter and
+<span class="math notranslate nohighlight">\(m\)</span> the <code class="docutils literal notranslate"><span class="pre">exponent</span></code> of the RadialScaling function.</p>
+<p>The following functions compute such a radial scaling.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">radial_scaling</span><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">r</span></a><span class="p">,</span> <span class="n">rate</span><span class="p">,</span> <span class="n">scale</span><span class="p">,</span> <span class="n">exponent</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Radial scaling function.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    r : float</span>
+<span class="sd">        distance between neighboring atoms in Å</span>
+<span class="sd">    rate : float</span>
+<span class="sd">        decay rate of the scaling</span>
+<span class="sd">    scale : float</span>
+<span class="sd">        scaling of the distance between atoms in Å</span>
+<span class="sd">    exponent : float</span>
+<span class="sd">        exponent of the decay</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    float</span>
+<span class="sd">        weighting of the features</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">rate</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">r</span></a> <span class="o">/</span> <span class="n">scale</span><span class="p">)</span> <span class="o">**</span> <span class="n">exponent</span>
+    <span class="k">if</span> <span class="n">exponent</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">1</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">rate</span> <span class="o">/</span> <span class="p">(</span><span class="n">rate</span> <span class="o">+</span> <span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">r</span></a> <span class="o">/</span> <span class="n">scale</span><span class="p">)</span> <span class="o">**</span> <span class="n">exponent</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In the following we show three different radial scaling functions, where the
+first one uses the parameters we use for the calculation of features in the
+<a class="reference internal" href="first-calculation.html#userdoc-tutorials-get-started"><span class="std std-ref">first tutorial</span></a>.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">r</span></a> <span class="o">=</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.linspace.html#numpy.linspace" title="numpy.linspace" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-function"><span class="n">np</span><span class="o">.</span><span class="n">linspace</span></a><span class="p">(</span><span class="mf">1e-3</span><span class="p">,</span> <span class="mf">4.5</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+
+<a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.axvline.html#matplotlib.pyplot.axvline" title="matplotlib.pyplot.axvline" class="sphx-glr-backref-module-matplotlib-pyplot sphx-glr-backref-type-py-function"><span class="n">plt</span><span class="o">.</span><span class="n">axvline</span></a><span class="p">(</span><span class="mf">4.5</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;cutoff&quot;</span><span class="p">)</span>
+
+<a href="https://docs.python.org/3/library/stdtypes.html#dict" title="builtins.dict" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">radial_scaling_params</span></a> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;scale&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span> <span class="s2">&quot;rate&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;exponent&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">}</span>
+<a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.plot.html#matplotlib.pyplot.plot" title="matplotlib.pyplot.plot" class="sphx-glr-backref-module-matplotlib-pyplot sphx-glr-backref-type-py-function"><span class="n">plt</span><span class="o">.</span><span class="n">plot</span></a><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">r</span></a><span class="p">,</span> <span class="n">radial_scaling</span><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">r</span></a><span class="p">,</span> <span class="o">**</span><a href="https://docs.python.org/3/library/stdtypes.html#dict" title="builtins.dict" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">radial_scaling_params</span></a><span class="p">),</span> <span class="n">label</span><span class="o">=</span><a href="https://docs.python.org/3/library/stdtypes.html#dict" title="builtins.dict" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">radial_scaling_params</span></a><span class="p">)</span>
+
+<a href="https://docs.python.org/3/library/stdtypes.html#dict" title="builtins.dict" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">radial_scaling_params</span></a> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;scale&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span> <span class="s2">&quot;rate&quot;</span><span class="p">:</span> <span class="mf">3.0</span><span class="p">,</span> <span class="s2">&quot;exponent&quot;</span><span class="p">:</span> <span class="mi">6</span><span class="p">}</span>
+<a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.plot.html#matplotlib.pyplot.plot" title="matplotlib.pyplot.plot" class="sphx-glr-backref-module-matplotlib-pyplot sphx-glr-backref-type-py-function"><span class="n">plt</span><span class="o">.</span><span class="n">plot</span></a><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">r</span></a><span class="p">,</span> <span class="n">radial_scaling</span><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">r</span></a><span class="p">,</span> <span class="o">**</span><a href="https://docs.python.org/3/library/stdtypes.html#dict" title="builtins.dict" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">radial_scaling_params</span></a><span class="p">),</span> <span class="n">label</span><span class="o">=</span><a href="https://docs.python.org/3/library/stdtypes.html#dict" title="builtins.dict" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">radial_scaling_params</span></a><span class="p">)</span>
+
+<a href="https://docs.python.org/3/library/stdtypes.html#dict" title="builtins.dict" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">radial_scaling_params</span></a> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;scale&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span> <span class="s2">&quot;rate&quot;</span><span class="p">:</span> <span class="mf">0.8</span><span class="p">,</span> <span class="s2">&quot;exponent&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">}</span>
+<a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.plot.html#matplotlib.pyplot.plot" title="matplotlib.pyplot.plot" class="sphx-glr-backref-module-matplotlib-pyplot sphx-glr-backref-type-py-function"><span class="n">plt</span><span class="o">.</span><span class="n">plot</span></a><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">r</span></a><span class="p">,</span> <span class="n">radial_scaling</span><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">r</span></a><span class="p">,</span> <span class="o">**</span><a href="https://docs.python.org/3/library/stdtypes.html#dict" title="builtins.dict" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">radial_scaling_params</span></a><span class="p">),</span> <span class="n">label</span><span class="o">=</span><a href="https://docs.python.org/3/library/stdtypes.html#dict" title="builtins.dict" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">radial_scaling_params</span></a><span class="p">)</span>
+
+<a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.legend.html#matplotlib.pyplot.legend" title="matplotlib.pyplot.legend" class="sphx-glr-backref-module-matplotlib-pyplot sphx-glr-backref-type-py-function"><span class="n">plt</span><span class="o">.</span><span class="n">legend</span></a><span class="p">()</span>
+<a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.xlabel.html#matplotlib.pyplot.xlabel" title="matplotlib.pyplot.xlabel" class="sphx-glr-backref-module-matplotlib-pyplot sphx-glr-backref-type-py-function"><span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span></a><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;distance $r$ from the central atom in $Å$&quot;</span><span class="p">)</span>
+<a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.ylabel.html#matplotlib.pyplot.ylabel" title="matplotlib.pyplot.ylabel" class="sphx-glr-backref-module-matplotlib-pyplot sphx-glr-backref-type-py-function"><span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span></a><span class="p">(</span><span class="s2">&quot;feature weighting&quot;</span><span class="p">)</span>
+<a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.show.html#matplotlib.pyplot.show" title="matplotlib.pyplot.show" class="sphx-glr-backref-module-matplotlib-pyplot sphx-glr-backref-type-py-function"><span class="n">plt</span><span class="o">.</span><span class="n">show</span></a><span class="p">()</span>
+</pre></div>
+</div>
+<img src="../_images/sphx_glr_understanding-hypers_002.png" srcset="../_images/sphx_glr_understanding-hypers_002.png" alt="understanding hypers" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>/home/runner/work/rascaline/rascaline/python/rascaline/examples/understanding-hypers.py:304: MatplotlibDeprecationWarning: Passing label as a length 3 sequence when plotting a single dataset is deprecated in Matplotlib 3.9 and will error in 3.11.  To keep the current behavior, cast the sequence to string before passing.
+  plt.plot(r, radial_scaling(r, **radial_scaling_params), label=radial_scaling_params)
+/home/runner/work/rascaline/rascaline/python/rascaline/examples/understanding-hypers.py:307: MatplotlibDeprecationWarning: Passing label as a length 3 sequence when plotting a single dataset is deprecated in Matplotlib 3.9 and will error in 3.11.  To keep the current behavior, cast the sequence to string before passing.
+  plt.plot(r, radial_scaling(r, **radial_scaling_params), label=radial_scaling_params)
+/home/runner/work/rascaline/rascaline/python/rascaline/examples/understanding-hypers.py:310: MatplotlibDeprecationWarning: Passing label as a length 3 sequence when plotting a single dataset is deprecated in Matplotlib 3.9 and will error in 3.11.  To keep the current behavior, cast the sequence to string before passing.
+  plt.plot(r, radial_scaling(r, **radial_scaling_params), label=radial_scaling_params)
+</pre></div>
+</div>
+<p>In the end the total weight is the product of <code class="docutils literal notranslate"><span class="pre">cutoff_function</span></code> and the
+<code class="docutils literal notranslate"><span class="pre">radial_scaling</span></code></p>
+<p>The shape of this function should be a “S” like but the optimal shape depends
+on each dataset.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">feature_scaling</span><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">r</span></a><span class="p">,</span> <a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">cutoff</span></a><span class="p">,</span> <a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">width</span></a><span class="p">,</span> <span class="n">rate</span><span class="p">,</span> <span class="n">scale</span><span class="p">,</span> <span class="n">exponent</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Features Scaling factor using cosine shifting and radial scaling.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    r : float</span>
+<span class="sd">        distance between neighboring atoms</span>
+<span class="sd">    cutoff : float</span>
+<span class="sd">        cutoff distance in Å</span>
+<span class="sd">    width : float</span>
+<span class="sd">        width of the decay in Å</span>
+<span class="sd">    rate : float</span>
+<span class="sd">        decay rate of the scaling</span>
+<span class="sd">    scale : float</span>
+<span class="sd">        scaling of the distance between atoms in Å</span>
+<span class="sd">    exponent : float</span>
+<span class="sd">        exponent of the decay</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    float</span>
+<span class="sd">        weighting of the features</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">radial_scaling</span><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">r</span></a><span class="p">,</span> <span class="n">rate</span><span class="p">,</span> <span class="n">scale</span><span class="p">,</span> <span class="n">exponent</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">*=</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.array.html#numpy.array" title="numpy.array" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-function"><span class="n">np</span><span class="o">.</span><span class="n">array</span></a><span class="p">([</span><span class="n">shifted_cosine</span><span class="p">(</span><span class="n">ri</span><span class="p">,</span> <a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">cutoff</span></a><span class="p">,</span> <a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">width</span></a><span class="p">)</span> <span class="k">for</span> <span class="n">ri</span> <span class="ow">in</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">r</span></a><span class="p">])</span>
+    <span class="k">return</span> <span class="n">s</span>
+
+
+<a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">r</span></a> <span class="o">=</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.linspace.html#numpy.linspace" title="numpy.linspace" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-function"><span class="n">np</span><span class="o">.</span><span class="n">linspace</span></a><span class="p">(</span><span class="mf">1e-3</span><span class="p">,</span> <span class="mf">4.5</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+
+<a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.axvline.html#matplotlib.pyplot.axvline" title="matplotlib.pyplot.axvline" class="sphx-glr-backref-module-matplotlib-pyplot sphx-glr-backref-type-py-function"><span class="n">plt</span><span class="o">.</span><span class="n">axvline</span></a><span class="p">(</span><span class="mf">4.5</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;$r_\mathrm</span><span class="si">{cut}</span><span class="s2">$&quot;</span><span class="p">)</span>
+
+<a href="https://docs.python.org/3/library/stdtypes.html#dict" title="builtins.dict" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">radial_scaling_params</span></a> <span class="o">=</span> <span class="p">{}</span>
+<a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.plot.html#matplotlib.pyplot.plot" title="matplotlib.pyplot.plot" class="sphx-glr-backref-module-matplotlib-pyplot sphx-glr-backref-type-py-function"><span class="n">plt</span><span class="o">.</span><span class="n">plot</span></a><span class="p">(</span>
+    <a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">r</span></a><span class="p">,</span>
+    <span class="n">feature_scaling</span><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">r</span></a><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">rate</span><span class="o">=</span><span class="mf">4.0</span><span class="p">,</span> <span class="n">exponent</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">cutoff</span></a><span class="o">=</span><span class="mf">4.5</span><span class="p">,</span> <a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">width</span></a><span class="o">=</span><span class="mf">0.5</span><span class="p">),</span>
+    <span class="n">label</span><span class="o">=</span><span class="s2">&quot;feature weighting function&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.legend.html#matplotlib.pyplot.legend" title="matplotlib.pyplot.legend" class="sphx-glr-backref-module-matplotlib-pyplot sphx-glr-backref-type-py-function"><span class="n">plt</span><span class="o">.</span><span class="n">legend</span></a><span class="p">()</span>
+<a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.xlabel.html#matplotlib.pyplot.xlabel" title="matplotlib.pyplot.xlabel" class="sphx-glr-backref-module-matplotlib-pyplot sphx-glr-backref-type-py-function"><span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span></a><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;distance $r$ from the central atom $[Å]$&quot;</span><span class="p">)</span>
+<a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.ylabel.html#matplotlib.pyplot.ylabel" title="matplotlib.pyplot.ylabel" class="sphx-glr-backref-module-matplotlib-pyplot sphx-glr-backref-type-py-function"><span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span></a><span class="p">(</span><span class="s2">&quot;feature weighting&quot;</span><span class="p">)</span>
+<a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.show.html#matplotlib.pyplot.show" title="matplotlib.pyplot.show" class="sphx-glr-backref-module-matplotlib-pyplot sphx-glr-backref-type-py-function"><span class="n">plt</span><span class="o">.</span><span class="n">show</span></a><span class="p">()</span>
+</pre></div>
+</div>
+<img src="../_images/sphx_glr_understanding-hypers_003.png" srcset="../_images/sphx_glr_understanding-hypers_003.png" alt="understanding hypers" class = "sphx-glr-single-img"/><p>Finally we see how the magnitude of the features further away from the central
+atom reduces when we apply both a <code class="docutils literal notranslate"><span class="pre">shifted_cosine</span></code> and a <code class="docutils literal notranslate"><span class="pre">radial_scaling</span></code>.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">calculator_step</span> <span class="o">=</span> <span class="n">SphericalExpansion</span><span class="p">(</span>
+    <a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">cutoff</span></a><span class="o">=</span><span class="mf">4.5</span><span class="p">,</span>
+    <span class="n">max_radial</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+    <span class="n">max_angular</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+    <span class="n">atomic_gaussian_width</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+    <span class="n">center_atom_weight</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">radial_basis</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Gto&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;spline_accuracy&quot;</span><span class="p">:</span> <span class="mf">1e-6</span><span class="p">}},</span>
+    <span class="n">cutoff_function</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Step&quot;</span><span class="p">:</span> <span class="p">{}},</span>
+<span class="p">)</span>
+
+<a href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="metatensor.TensorMap" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">descriptor_step</span></a> <span class="o">=</span> <span class="n">calculator_step</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><a href="https://chemfiles.org/chemfiles.py/latest/reference/frame.html#chemfiles.Frame" title="chemfiles.Frame" class="sphx-glr-backref-module-chemfiles sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">frame0</span></a><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Step cutoff: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><a href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap.block" title="metatensor.TensorMap.block" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-method"><span class="n">descriptor_step</span><span class="o">.</span><span class="n">block</span></a><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="si">:</span><span class="s2">&gt;97</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="n">calculator_cosine</span> <span class="o">=</span> <span class="n">SphericalExpansion</span><span class="p">(</span>
+    <a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">cutoff</span></a><span class="o">=</span><span class="mf">4.5</span><span class="p">,</span>
+    <span class="n">max_radial</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+    <span class="n">max_angular</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+    <span class="n">atomic_gaussian_width</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+    <span class="n">center_atom_weight</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">radial_basis</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Gto&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;spline_accuracy&quot;</span><span class="p">:</span> <span class="mf">1e-6</span><span class="p">}},</span>
+    <span class="n">cutoff_function</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;ShiftedCosine&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;width&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">}},</span>
+<span class="p">)</span>
+
+<a href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="metatensor.TensorMap" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">descriptor_cosine</span></a> <span class="o">=</span> <span class="n">calculator_cosine</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><a href="https://chemfiles.org/chemfiles.py/latest/reference/frame.html#chemfiles.Frame" title="chemfiles.Frame" class="sphx-glr-backref-module-chemfiles sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">frame0</span></a><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cosine smoothing: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><a href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap.block" title="metatensor.TensorMap.block" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-method"><span class="n">descriptor_cosine</span><span class="o">.</span><span class="n">block</span></a><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="si">:</span><span class="s2">&gt;92</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="n">calculator_rs</span> <span class="o">=</span> <span class="n">SphericalExpansion</span><span class="p">(</span>
+    <a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">cutoff</span></a><span class="o">=</span><span class="mf">4.5</span><span class="p">,</span>
+    <span class="n">max_radial</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+    <span class="n">max_angular</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+    <span class="n">atomic_gaussian_width</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+    <span class="n">center_atom_weight</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">radial_basis</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Gto&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;spline_accuracy&quot;</span><span class="p">:</span> <span class="mf">1e-6</span><span class="p">}},</span>
+    <span class="n">cutoff_function</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;ShiftedCosine&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;width&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">}},</span>
+    <span class="n">radial_scaling</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Willatt2018&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;scale&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span> <span class="s2">&quot;rate&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;exponent&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">}},</span>
+<span class="p">)</span>
+
+<a href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="metatensor.TensorMap" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">descriptor_rs</span></a> <span class="o">=</span> <span class="n">calculator_rs</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><a href="https://chemfiles.org/chemfiles.py/latest/reference/frame.html#chemfiles.Frame" title="chemfiles.Frame" class="sphx-glr-backref-module-chemfiles sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">frame0</span></a><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;cosine smoothing + radial scaling: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><a href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap.block" title="metatensor.TensorMap.block" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-method"><span class="n">descriptor_rs</span><span class="o">.</span><span class="n">block</span></a><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="si">:</span><span class="s2">&gt;50</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Step cutoff:                       [[ 0.87386968 -0.24311082  0.12200976  0.41940912  0.80347292  0.26559202]]
+Cosine smoothing:                  [[ 0.8728401  -0.24114056  0.11656053  0.43711707  0.77838565  0.22482755]]
+cosine smoothing + radial scaling: [[ 0.88696541 -0.27211242  0.12400786  0.03004326  0.13265605  0.00631962]]
+</pre></div>
+</div>
+<div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-examples-understanding-hypers-py">
+<div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/08b985c96711d158571cd9dd7ef9d241/understanding-hypers.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">understanding-hypers.ipynb</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-python docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/1ea175a310000e5e69ad132e5fc4c813/understanding-hypers.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">understanding-hypers.py</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-zip docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/6f3a7c4259176e65715d2c5a1a386b06/understanding-hypers.zip"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">zipped:</span> <span class="pre">understanding-hypers.zip</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="../how-to/index.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">How-to guides</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="first-calculation.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">First descriptor computation</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2024, Guillaume Fraux, Philip Loche, Sergei Kliavinek, Kevin Kazuki Huguenin-Dumittan, Davide Tisi, Alexander Goscinski
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            <div class="icons">
+              <a class="muted-link fa-brands fa-github fa-2x" href="https://github.com/Luthaf/rascaline" aria-label="GitHub"></a>
+              
+            </div>
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Changing SOAP hyper parameters</a><ul>
+<li><a class="reference internal" href="#increasing-max-radial-and-max-angular">Increasing <code class="docutils literal notranslate"><span class="pre">max_radial</span></code> and <code class="docutils literal notranslate"><span class="pre">max_angular</span></code></a></li>
+<li><a class="reference internal" href="#reducing-the-cutoff-and-the-center-atom-weight">Reducing the <code class="docutils literal notranslate"><span class="pre">cutoff</span></code> and the <code class="docutils literal notranslate"><span class="pre">center_atom_weight</span></code></a></li>
+<li><a class="reference internal" href="#choosing-the-cutoff-function">Choosing the <code class="docutils literal notranslate"><span class="pre">cutoff_function</span></code></a></li>
+<li><a class="reference internal" href="#choosing-the-radial-scaling">Choosing the <code class="docutils literal notranslate"><span class="pre">radial_scaling</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=01f34227"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/furo.js?v=5fa4622c"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    </body>
+</html>

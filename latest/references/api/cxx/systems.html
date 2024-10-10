@@ -1,0 +1,614 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../../">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="Dealing with calculators" href="calculators.html" /><link rel="prev" title="C++ API reference" href="index.html" />
+
+    <!-- Generated with Sphinx 7.2.6 and Furo 2024.08.06 -->
+        <title>Defining systems - Rascaline 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=354aac6f" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/rascaline.css?v=191cc0c0" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=d2d258e8" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=302659d7" />
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/fontawesome.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/solid.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/brands.min.css" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../../index.html"><div class="brand">Rascaline 0.1.0 documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
+  
+  
+  <span class="sidebar-brand-text">Rascaline 0.1.0 documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../get-started/index.html">Getting started</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of Getting started</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../get-started/rascaline.html">What is rascaline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../get-started/installation.html">Installation</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../get-started/tutorials.html">Tutorials: using rascaline from Python</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of Tutorials: using rascaline from Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../examples/first-calculation.html">First descriptor computation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../examples/understanding-hypers.html">Changing SOAP hyper parameters</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../how-to/index.html">How-to guides</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of How-to guides</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../how-to/computing-soap.html">Computing SOAP features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../how-to/sample-selection.html">Sample Selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../how-to/property-selection.html">Property Selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../how-to/keys-selection.html">Keys selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../how-to/le-basis.html">Laplacian eigenstate basis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../how-to/splined-radial-integral.html">Splined radial integral</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../how-to/long-range.html">Long-range only LODE descriptor</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="../../index.html">Reference guides</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle navigation of Reference guides</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../calculators/index.html">Calculator reference</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation of Calculator reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../calculators/spherical-expansion.html">Spherical expansion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../calculators/spherical-expansion-by-pair.html">Spherical expansion by pair</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../calculators/lode-spherical-expansion.html">LODE spherical expansion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../calculators/soap-radial-spectrum.html">SOAP radial spectrum</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../calculators/soap-power-spectrum.html">SOAP power spectrum</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../calculators/atomic-composition.html">Atomic Composition</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../calculators/neighbor-list.html">Neighbor List</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../calculators/sorted-distances.html">Sorted distance vector</a></li>
+</ul>
+</li>
+<li class="toctree-l2 current has-children"><a class="reference internal" href="../index.html">API documentation</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle navigation of API documentation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l3 has-children"><a class="reference internal" href="../python/index.html">Python</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle navigation of Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../python/systems.html">Available system implementation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../python/calculators.html">Available Calculators</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../python/utils/index.html">Utils</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle navigation of Utils</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="../python/utils/atomic-density.html">Atomic Density</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../python/utils/radial-basis.html">Radial Basis</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../python/utils/power-spectrum.html">PowerSpectrum</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../python/utils/splines.html">Splined radial integrals</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../python/utils/clebsch-gordan.html">Clebsch-Gordan products</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="../python/misc.html">Miscellaneous</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../torch/index.html">TorchScript</a><input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><div class="visually-hidden">Toggle navigation of TorchScript</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../torch/systems.html">System</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../torch/calculators.html">Calculators</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../torch/utils/index.html">Utils</a><input class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><div class="visually-hidden">Toggle navigation of Utils</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="../torch/utils/power-spectrum.html">PowerSpectrum</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../torch/utils/clebsch-gordan.html">Clebsch-Gordan products</a></li>
+</ul>
+</li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../torch/cxx/index.html">TorchScript C++ API reference</a><input class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><div class="visually-hidden">Toggle navigation of TorchScript C++ API reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="../torch/cxx/calculators.html">Calculators</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../rust.html">Rust</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../c/index.html">C</a><input class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><div class="visually-hidden">Toggle navigation of C</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../c/systems.html">Defining systems</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../c/calculators.html">Dealing with calculators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../c/misc.html">Miscellaneous</a></li>
+</ul>
+</li>
+<li class="toctree-l3 current has-children"><a class="reference internal" href="index.html">C++</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><div class="visually-hidden">Toggle navigation of C++</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l4 current current-page"><a class="current reference internal" href="#">Defining systems</a></li>
+<li class="toctree-l4"><a class="reference internal" href="calculators.html">Dealing with calculators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="misc.html">Miscellaneous</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../explanations/index.html">Explanations</a><input class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><div class="visually-hidden">Toggle navigation of Explanations</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../explanations/concepts.html">Core concepts of rascaline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../explanations/soap.html">What is SOAP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../explanations/rotation_adapted.html">Rotation-Adapted Features</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../devdoc/index.html">Developer documentation</a><input class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><div class="visually-hidden">Toggle navigation of Developer documentation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../devdoc/get-started.html">Getting started</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../devdoc/how-to/index.html">How-to guides</a><input class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><div class="visually-hidden">Toggle navigation of How-to guides</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../devdoc/how-to/new-calculator.html">Adding a new calculator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../devdoc/how-to/profiling.html">Profiling calculation</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../devdoc/explanations/index.html">Explanations</a><input class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" role="switch" type="checkbox"/><label for="toctree-checkbox-17"><div class="visually-hidden">Toggle navigation of Explanations</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../devdoc/explanations/architecture.html">Code organization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../devdoc/explanations/interfaces.html">Python and C interface</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../devdoc/explanations/radial-integral.html">SOAP and LODE radial integrals</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../../../_sources/references/api/cxx/systems.rst.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="defining-systems">
+<h1>Defining systems<a class="headerlink" href="#defining-systems" title="Link to this heading">¶</a></h1>
+<p>There are two ways you can define systems to pass to a
+<a class="reference internal" href="calculators.html#_CPPv4N9rascaline10CalculatorE" title="rascaline::Calculator"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">rascaline::Calculator</span></code></a>. The easy way is to use
+<a class="reference internal" href="#_CPPv4N9rascaline12BasicSystemsE" title="rascaline::BasicSystems"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">rascaline::BasicSystems</span></code></a> to read all systems defined in a file, and
+run the calculation on all these systems. The more complex but also more
+flexible way is to define a new child class of <a class="reference internal" href="#_CPPv4N9rascaline6SystemE" title="rascaline::System"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">rascaline::System</span></code></a>
+implementing all required functions; and then passing a vector of pointers to
+the child class instances to your <a class="reference internal" href="calculators.html#_CPPv4N9rascaline10CalculatorE" title="rascaline::Calculator"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">rascaline::Calculator</span></code></a>.</p>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline6SystemE">
+<span id="_CPPv3N9rascaline6SystemE"></span><span id="_CPPv2N9rascaline6SystemE"></span><span id="rascaline::System"></span><span class="target" id="classrascaline_1_1_system"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">System</span></span></span><a class="headerlink" href="#_CPPv4N9rascaline6SystemE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>A <code class="docutils literal notranslate"><a class="reference internal" href="#classrascaline_1_1_system"><span class="std std-ref"><span class="pre">System</span></span></a></code> deals with the storage of atoms and related information, as well as the computation of neighbor lists.</p>
+<p>This class only defines a pure virtual interface for <code class="docutils literal notranslate"><a class="reference internal" href="#classrascaline_1_1_system"><span class="std std-ref"><span class="pre">System</span></span></a></code>. In order to provide access to new system, users must create a child class implementing all virtual member functions. </p>
+<p>Subclassed by rascaline_torch::SystemAdapter</p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-types">Public Types</p>
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline6System10CellMatrixE">
+<span id="_CPPv3N9rascaline6System10CellMatrixE"></span><span id="_CPPv2N9rascaline6System10CellMatrixE"></span><span class="target" id="classrascaline_1_1_system_1a71b9ffdc32cbd5214971e1d36bb5e26e"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">CellMatrix</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">array</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">array</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">double</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">3</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">3</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N9rascaline6System10CellMatrixE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Unit cell representation as a 3x3 matrix. The cell should be written in row major order, i.e. <code class="docutils literal notranslate"><span class="pre">{{ax</span> <span class="pre">ay</span> <span class="pre">az},</span> <span class="pre">{bx</span> <span class="pre">by</span> <span class="pre">bz},</span> <span class="pre">{cx</span> <span class="pre">cy</span> <span class="pre">cz}}</span></code>, where a/b/c are the unit cell vectors. </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline6System6SystemERK6System">
+<span id="_CPPv3N9rascaline6System6SystemERK6System"></span><span id="_CPPv2N9rascaline6System6SystemERK6System"></span><span id="rascaline::System::System__SystemCR"></span><span class="target" id="classrascaline_1_1_system_1a1d19454e0372dfdf126cd2ff947741a1"></span><span class="sig-name descname"><span class="n"><span class="pre">System</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N9rascaline6System6SystemERK6System" title="rascaline::System::System"><span class="n"><span class="pre">System</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N9rascaline6System6SystemERK6System" title="Link to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classrascaline_1_1_system"><span class="std std-ref">System</span></a> is copy-constructible. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline6System6SystemERR6System">
+<span id="_CPPv3N9rascaline6System6SystemERR6System"></span><span id="_CPPv2N9rascaline6System6SystemERR6System"></span><span id="rascaline::System::System__SystemRR"></span><span class="target" id="classrascaline_1_1_system_1a291d0ff92119fbad54d9e083b086088c"></span><span class="sig-name descname"><span class="n"><span class="pre">System</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N9rascaline6System6SystemERR6System" title="rascaline::System::System"><span class="n"><span class="pre">System</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N9rascaline6System6SystemERR6System" title="Link to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classrascaline_1_1_system"><span class="std std-ref">System</span></a> is move-constructible. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline6SystemaSERK6System">
+<span id="_CPPv3N9rascaline6SystemaSERK6System"></span><span id="_CPPv2N9rascaline6SystemaSERK6System"></span><span id="rascaline::System::assign-operator__SystemCR"></span><span class="target" id="classrascaline_1_1_system_1a96c337ff74c5779f06a03bcf1e4704b5"></span><a class="reference internal" href="#_CPPv4N9rascaline6SystemE" title="rascaline::System"><span class="n"><span class="pre">System</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N9rascaline6SystemE" title="rascaline::System"><span class="n"><span class="pre">System</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N9rascaline6SystemaSERK6System" title="Link to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classrascaline_1_1_system"><span class="std std-ref">System</span></a> can be copy-assigned. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline6SystemaSERR6System">
+<span id="_CPPv3N9rascaline6SystemaSERR6System"></span><span id="_CPPv2N9rascaline6SystemaSERR6System"></span><span id="rascaline::System::assign-operator__SystemRR"></span><span class="target" id="classrascaline_1_1_system_1aeb5e01401b576995c29e5f4ccfe17489"></span><a class="reference internal" href="#_CPPv4N9rascaline6SystemE" title="rascaline::System"><span class="n"><span class="pre">System</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N9rascaline6SystemE" title="rascaline::System"><span class="n"><span class="pre">System</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N9rascaline6SystemaSERR6System" title="Link to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classrascaline_1_1_system"><span class="std std-ref">System</span></a> can be move-assigned. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK9rascaline6System4sizeEv">
+<span id="_CPPv3NK9rascaline6System4sizeEv"></span><span id="_CPPv2NK9rascaline6System4sizeEv"></span><span id="rascaline::System::sizeC"></span><span class="target" id="classrascaline_1_1_system_1a0a034f74694b03bca841552588a58c95"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="n"><span class="pre">uintptr_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">size</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0</span></span><a class="headerlink" href="#_CPPv4NK9rascaline6System4sizeEv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Get the number of atoms in this system. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK9rascaline6System5typesEv">
+<span id="_CPPv3NK9rascaline6System5typesEv"></span><span id="_CPPv2NK9rascaline6System5typesEv"></span><span id="rascaline::System::typesC"></span><span class="target" id="classrascaline_1_1_system_1a4763d515e205742be9253caeb1a2261b"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">types</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0</span></span><a class="headerlink" href="#_CPPv4NK9rascaline6System5typesEv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Get a pointer to the first element a contiguous array (typically <code class="docutils literal notranslate"><span class="pre">std::vector</span></code> or memory allocated with <code class="docutils literal notranslate"><span class="pre">new[]</span></code>) containing the atomic type of each atom in this system. Different atomics types should be identified with a different value. These values are usually the atomic number, but don’t have to be. The array should contain <code class="docutils literal notranslate"><a class="reference internal" href="#classrascaline_1_1_system_1a0a034f74694b03bca841552588a58c95"><span class="std std-ref"><span class="pre">System::size()</span></span></a></code> elements. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK9rascaline6System9positionsEv">
+<span id="_CPPv3NK9rascaline6System9positionsEv"></span><span id="_CPPv2NK9rascaline6System9positionsEv"></span><span id="rascaline::System::positionsC"></span><span class="target" id="classrascaline_1_1_system_1a990f6d4213c4d26c1e9e7069feda14d7"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">positions</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0</span></span><a class="headerlink" href="#_CPPv4NK9rascaline6System9positionsEv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Get a pointer to the first element of a contiguous array containing the atomic cartesian coordinates. <code class="docutils literal notranslate"><span class="pre">positions[0],</span> <span class="pre">positions[1],</span> <span class="pre">positions[2]</span></code> must contain the x, y, z cartesian coordinates of the first atom, and so on. The array should contain <code class="docutils literal notranslate"><span class="pre">3</span> <span class="pre">x</span> <a class="reference internal" href="#classrascaline_1_1_system_1a0a034f74694b03bca841552588a58c95"><span class="std std-ref"><span class="pre">System::size()</span></span></a></code> elements. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK9rascaline6System4cellEv">
+<span id="_CPPv3NK9rascaline6System4cellEv"></span><span id="_CPPv2NK9rascaline6System4cellEv"></span><span id="rascaline::System::cellC"></span><span class="target" id="classrascaline_1_1_system_1a6c145cb548a8b59c7133a7ea2b220218"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N9rascaline6System10CellMatrixE" title="rascaline::System::CellMatrix"><span class="n"><span class="pre">CellMatrix</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">cell</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0</span></span><a class="headerlink" href="#_CPPv4NK9rascaline6System4cellEv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Get the matrix describing the unit cell. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline6System17compute_neighborsEd">
+<span id="_CPPv3N9rascaline6System17compute_neighborsEd"></span><span id="_CPPv2N9rascaline6System17compute_neighborsEd"></span><span id="rascaline::System::compute_neighbors__double"></span><span class="target" id="classrascaline_1_1_system_1abec0b3af957ccbee9817164ecd980519"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">compute_neighbors</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">cutoff</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0</span></span><a class="headerlink" href="#_CPPv4N9rascaline6System17compute_neighborsEd" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Compute the neighbor list with the given <code class="docutils literal notranslate"><span class="pre">cutoff</span></code>, and store it for later access using <code class="docutils literal notranslate"><a class="reference internal" href="#classrascaline_1_1_system_1abfa16c0ecdca5bd621b1c85b1e8fb05c"><span class="std std-ref"><span class="pre">System::pairs</span></span></a></code> or <code class="docutils literal notranslate"><a class="reference internal" href="#classrascaline_1_1_system_1a67a5c37592d1478ba4622ce4a8884caf"><span class="std std-ref"><span class="pre">System::pairs_containing</span></span></a></code>. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK9rascaline6System5pairsEv">
+<span id="_CPPv3NK9rascaline6System5pairsEv"></span><span id="_CPPv2NK9rascaline6System5pairsEv"></span><span id="rascaline::System::pairsC"></span><span class="target" id="classrascaline_1_1_system_1abfa16c0ecdca5bd621b1c85b1e8fb05c"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">rascal_pair_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">pairs</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0</span></span><a class="headerlink" href="#_CPPv4NK9rascaline6System5pairsEv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Get the list of pairs in this system</p>
+<p>This list of pair should only contain each pair once (and not twice as <code class="docutils literal notranslate"><span class="pre">i-j</span></code> and <code class="docutils literal notranslate"><span class="pre">j-i</span></code>), should not contain self pairs (<code class="docutils literal notranslate"><span class="pre">i-i</span></code>); and should only contains pairs where the distance between atoms is actually bellow the cutoff passed in the last call to <code class="docutils literal notranslate"><a class="reference internal" href="#classrascaline_1_1_system_1abec0b3af957ccbee9817164ecd980519"><span class="std std-ref"><span class="pre">System::compute_neighbors</span></span></a></code>. This function is only valid to call after a call to <code class="docutils literal notranslate"><a class="reference internal" href="#classrascaline_1_1_system_1abec0b3af957ccbee9817164ecd980519"><span class="std std-ref"><span class="pre">System::compute_neighbors</span></span></a></code>. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK9rascaline6System16pairs_containingE9uintptr_t">
+<span id="_CPPv3NK9rascaline6System16pairs_containingE9uintptr_t"></span><span id="_CPPv2NK9rascaline6System16pairs_containingE9uintptr_t"></span><span id="rascaline::System::pairs_containing__uintptr_tC"></span><span class="target" id="classrascaline_1_1_system_1a67a5c37592d1478ba4622ce4a8884caf"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">rascal_pair_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">pairs_containing</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uintptr_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">atom</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0</span></span><a class="headerlink" href="#_CPPv4NK9rascaline6System16pairs_containingE9uintptr_t" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Get the list of pairs in this system containing the <code class="docutils literal notranslate"><span class="pre">atom</span></code> at the given index.</p>
+<p>The same restrictions on the list of pairs as <code class="docutils literal notranslate"><a class="reference internal" href="#classrascaline_1_1_system_1abfa16c0ecdca5bd621b1c85b1e8fb05c"><span class="std std-ref"><span class="pre">System::pairs</span></span></a></code> applies, with the additional condition that the pair <code class="docutils literal notranslate"><span class="pre">i-j</span></code> should be included both in the return of <code class="docutils literal notranslate"><span class="pre">System::pairs_containing(i)</span></code> and <code class="docutils literal notranslate"><span class="pre">System::pairs_containing(j)</span></code>. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline6System18as_rascal_system_tEv">
+<span id="_CPPv3N9rascaline6System18as_rascal_system_tEv"></span><span id="_CPPv2N9rascaline6System18as_rascal_system_tEv"></span><span id="rascaline::System::as_rascal_system_t"></span><span class="target" id="classrascaline_1_1_system_1a8ff071a81dd46392b8f40ea04ddfbda9"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">rascal_system_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">as_rascal_system_t</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9rascaline6System18as_rascal_system_tEv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Convert a child instance of the <code class="docutils literal notranslate"><a class="reference internal" href="#classrascaline_1_1_system"><span class="std std-ref"><span class="pre">System</span></span></a></code> class to a <code class="docutils literal notranslate"><a class="reference internal" href="../c/systems.html#structrascal__system__t"><span class="std std-ref"><span class="pre">rascal_system_t</span></span></a></code> to be passed to the rascaline functions.</p>
+<p>This is an advanced function that most users don’t need to call directly. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline12BasicSystemsE">
+<span id="_CPPv3N9rascaline12BasicSystemsE"></span><span id="_CPPv2N9rascaline12BasicSystemsE"></span><span id="rascaline::BasicSystems"></span><span class="target" id="classrascaline_1_1_basic_systems"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">BasicSystems</span></span></span><a class="headerlink" href="#_CPPv4N9rascaline12BasicSystemsE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>A collection of systems read from a file. This is a convenience class enabling the common use case of reading systems from a file and runnning a calculation on the systems. If you need more control or access to advanced functionalities, you should consider writing a new class extending <code class="docutils literal notranslate"><a class="reference internal" href="#classrascaline_1_1_system"><span class="std std-ref"><span class="pre">System</span></span></a></code>. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline12BasicSystems12BasicSystemsERKNSt6stringE">
+<span id="_CPPv3N9rascaline12BasicSystems12BasicSystemsERKNSt6stringE"></span><span id="_CPPv2N9rascaline12BasicSystems12BasicSystemsERKNSt6stringE"></span><span id="rascaline::BasicSystems::BasicSystems__ssCR"></span><span class="target" id="classrascaline_1_1_basic_systems_1a7374b5880c546e70f3030a77acabec55"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">BasicSystems</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">path</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9rascaline12BasicSystems12BasicSystemsERKNSt6stringE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Read all structures in the file at the given <code class="docutils literal notranslate"><span class="pre">path</span></code> using <a class="reference external" href="https://chemfiles.org/">chemfiles</a>.</p>
+<p>This function can read all <a class="reference external" href="https://chemfiles.org/chemfiles/latest/formats.html">formats supported by chemfiles</a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Throws<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span><span class="cpp-expr sig sig-inline cpp"><a class="reference internal" href="misc.html#_CPPv4N9rascaline14RascalineErrorE" title="rascaline::RascalineError"><span class="n">RascalineError</span></a></span></span> – if chemfiles can not read the file </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline12BasicSystems12BasicSystemsERK12BasicSystems">
+<span id="_CPPv3N9rascaline12BasicSystems12BasicSystemsERK12BasicSystems"></span><span id="_CPPv2N9rascaline12BasicSystems12BasicSystemsERK12BasicSystems"></span><span id="rascaline::BasicSystems::BasicSystems__BasicSystemsCR"></span><span class="target" id="classrascaline_1_1_basic_systems_1a7a90a95dd40fe0044bb95d202095162e"></span><span class="sig-name descname"><span class="n"><span class="pre">BasicSystems</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N9rascaline12BasicSystems12BasicSystemsERK12BasicSystems" title="rascaline::BasicSystems::BasicSystems"><span class="n"><span class="pre">BasicSystems</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">delete</span></span><a class="headerlink" href="#_CPPv4N9rascaline12BasicSystems12BasicSystemsERK12BasicSystems" title="Link to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classrascaline_1_1_basic_systems"><span class="std std-ref">BasicSystems</span></a> is <strong>NOT</strong> copy-constructible. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline12BasicSystemsaSERK12BasicSystems">
+<span id="_CPPv3N9rascaline12BasicSystemsaSERK12BasicSystems"></span><span id="_CPPv2N9rascaline12BasicSystemsaSERK12BasicSystems"></span><span id="rascaline::BasicSystems::assign-operator__BasicSystemsCR"></span><span class="target" id="classrascaline_1_1_basic_systems_1a2e060ab46e702a7370fe5c24da5b325e"></span><a class="reference internal" href="#_CPPv4N9rascaline12BasicSystemsE" title="rascaline::BasicSystems"><span class="n"><span class="pre">BasicSystems</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N9rascaline12BasicSystemsE" title="rascaline::BasicSystems"><span class="n"><span class="pre">BasicSystems</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">delete</span></span><a class="headerlink" href="#_CPPv4N9rascaline12BasicSystemsaSERK12BasicSystems" title="Link to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classrascaline_1_1_basic_systems"><span class="std std-ref">BasicSystems</span></a> can <strong>NOT</strong> be copy-assigned. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline12BasicSystems12BasicSystemsERR12BasicSystems">
+<span id="_CPPv3N9rascaline12BasicSystems12BasicSystemsERR12BasicSystems"></span><span id="_CPPv2N9rascaline12BasicSystems12BasicSystemsERR12BasicSystems"></span><span id="rascaline::BasicSystems::BasicSystems__BasicSystemsRR"></span><span class="target" id="classrascaline_1_1_basic_systems_1a20545bc03869087e0ffb3ee1782576ce"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">BasicSystems</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N9rascaline12BasicSystems12BasicSystemsERR12BasicSystems" title="rascaline::BasicSystems::BasicSystems"><span class="n"><span class="pre">BasicSystems</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4N9rascaline12BasicSystems12BasicSystemsERR12BasicSystems" title="Link to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classrascaline_1_1_basic_systems"><span class="std std-ref">BasicSystems</span></a> is move-constructible. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline12BasicSystemsaSERR12BasicSystems">
+<span id="_CPPv3N9rascaline12BasicSystemsaSERR12BasicSystems"></span><span id="_CPPv2N9rascaline12BasicSystemsaSERR12BasicSystems"></span><span id="rascaline::BasicSystems::assign-operator__BasicSystemsRR"></span><span class="target" id="classrascaline_1_1_basic_systems_1a24a6e7e68459f28f442e311f92c42002"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N9rascaline12BasicSystemsE" title="rascaline::BasicSystems"><span class="n"><span class="pre">BasicSystems</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N9rascaline12BasicSystemsE" title="rascaline::BasicSystems"><span class="n"><span class="pre">BasicSystems</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4N9rascaline12BasicSystemsaSERR12BasicSystems" title="Link to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classrascaline_1_1_basic_systems"><span class="std std-ref">BasicSystems</span></a> can be move-assigned. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9rascaline12BasicSystems7systemsEv">
+<span id="_CPPv3N9rascaline12BasicSystems7systemsEv"></span><span id="_CPPv2N9rascaline12BasicSystems7systemsEv"></span><span id="rascaline::BasicSystems::systems"></span><span class="target" id="classrascaline_1_1_basic_systems_1a87cd11a1d1c461d0ee94fb145cb17d84"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">rascal_system_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">systems</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9rascaline12BasicSystems7systemsEv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Get a pointer to the first element of the underlying array of systems</p>
+<p>This function is intended for internal use only. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK9rascaline12BasicSystems5countEv">
+<span id="_CPPv3NK9rascaline12BasicSystems5countEv"></span><span id="_CPPv2NK9rascaline12BasicSystems5countEv"></span><span id="rascaline::BasicSystems::countC"></span><span class="target" id="classrascaline_1_1_basic_systems_1af88e92a9565fbf176fecd5c08e49c9ca"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">uintptr_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">count</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK9rascaline12BasicSystems5countEv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Get the number of systems managed by this <code class="docutils literal notranslate"><a class="reference internal" href="#classrascaline_1_1_basic_systems"><span class="std std-ref"><span class="pre">BasicSystems</span></span></a></code></p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="calculators.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Dealing with calculators</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="index.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">C++ API reference</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2024, Guillaume Fraux, Philip Loche, Sergei Kliavinek, Kevin Kazuki Huguenin-Dumittan, Davide Tisi, Alexander Goscinski
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            <div class="icons">
+              <a class="muted-link fa-brands fa-github fa-2x" href="https://github.com/Luthaf/rascaline" aria-label="GitHub"></a>
+              
+            </div>
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Defining systems</a><ul>
+<li><a class="reference internal" href="#_CPPv4N9rascaline6SystemE"><code class="docutils literal notranslate"><span class="pre">System</span></code></a><ul>
+<li><a class="reference internal" href="#_CPPv4N9rascaline6System10CellMatrixE"><code class="docutils literal notranslate"><span class="pre">System::CellMatrix</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N9rascaline6System6SystemERK6System"><code class="docutils literal notranslate"><span class="pre">System::System()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N9rascaline6System6SystemERR6System"><code class="docutils literal notranslate"><span class="pre">System::System()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N9rascaline6SystemaSERK6System"><code class="docutils literal notranslate"><span class="pre">System::operator=()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N9rascaline6SystemaSERR6System"><code class="docutils literal notranslate"><span class="pre">System::operator=()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4NK9rascaline6System4sizeEv"><code class="docutils literal notranslate"><span class="pre">System::size()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4NK9rascaline6System5typesEv"><code class="docutils literal notranslate"><span class="pre">System::types()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4NK9rascaline6System9positionsEv"><code class="docutils literal notranslate"><span class="pre">System::positions()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4NK9rascaline6System4cellEv"><code class="docutils literal notranslate"><span class="pre">System::cell()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N9rascaline6System17compute_neighborsEd"><code class="docutils literal notranslate"><span class="pre">System::compute_neighbors()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4NK9rascaline6System5pairsEv"><code class="docutils literal notranslate"><span class="pre">System::pairs()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4NK9rascaline6System16pairs_containingE9uintptr_t"><code class="docutils literal notranslate"><span class="pre">System::pairs_containing()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N9rascaline6System18as_rascal_system_tEv"><code class="docutils literal notranslate"><span class="pre">System::as_rascal_system_t()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#_CPPv4N9rascaline12BasicSystemsE"><code class="docutils literal notranslate"><span class="pre">BasicSystems</span></code></a><ul>
+<li><a class="reference internal" href="#_CPPv4N9rascaline12BasicSystems12BasicSystemsERKNSt6stringE"><code class="docutils literal notranslate"><span class="pre">BasicSystems::BasicSystems()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N9rascaline12BasicSystems12BasicSystemsERK12BasicSystems"><code class="docutils literal notranslate"><span class="pre">BasicSystems::BasicSystems()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N9rascaline12BasicSystemsaSERK12BasicSystems"><code class="docutils literal notranslate"><span class="pre">BasicSystems::operator=()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N9rascaline12BasicSystems12BasicSystemsERR12BasicSystems"><code class="docutils literal notranslate"><span class="pre">BasicSystems::BasicSystems()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N9rascaline12BasicSystemsaSERR12BasicSystems"><code class="docutils literal notranslate"><span class="pre">BasicSystems::operator=()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N9rascaline12BasicSystems7systemsEv"><code class="docutils literal notranslate"><span class="pre">BasicSystems::systems()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4NK9rascaline12BasicSystems5countEv"><code class="docutils literal notranslate"><span class="pre">BasicSystems::count()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../../../_static/documentation_options.js?v=01f34227"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/scripts/furo.js?v=5fa4622c"></script>
+    </body>
+</html>
