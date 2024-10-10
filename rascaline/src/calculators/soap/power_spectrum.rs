@@ -533,6 +533,8 @@ impl CalculatorBase for SoapPowerSpectrum {
     #[time_graph::instrument(name = "SoapPowerSpectrum::compute")]
     #[allow(clippy::too_many_lines)]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
+        assert!(descriptor.keys().count() > 0);
+
         let mut gradients = Vec::new();
         if descriptor.block_by_id(0).gradient("positions").is_some() {
             gradients.push("positions");

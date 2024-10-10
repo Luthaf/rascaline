@@ -519,7 +519,9 @@ impl Calculator {
 
         let mut tensor = self.prepare(systems, options)?;
 
-        self.implementation.compute(systems, &mut tensor)?;
+        if tensor.keys().count() > 0 {
+            self.implementation.compute(systems, &mut tensor)?;
+        }
 
         return Ok(tensor);
     }
