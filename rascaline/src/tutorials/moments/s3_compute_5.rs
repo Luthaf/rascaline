@@ -69,7 +69,8 @@ impl CalculatorBase for GeometricMoments {
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
         // ...
 
-        // add this line
+        // add these lines
+        assert!(descriptor.keys().count() > 0);
         let do_positions_gradients = descriptor.block_by_id(0).gradient("positions").is_some();
 
         for (system_i, system) in systems.iter_mut().enumerate() {

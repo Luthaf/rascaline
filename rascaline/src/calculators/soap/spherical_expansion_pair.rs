@@ -708,6 +708,7 @@ impl CalculatorBase for SphericalExpansionByPair {
     #[time_graph::instrument(name = "SphericalExpansionByPair::compute")]
     fn compute(&mut self, systems: &mut [Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
         assert_eq!(descriptor.keys().names(), ["o3_lambda", "o3_sigma", "first_atom_type", "second_atom_type"]);
+        assert!(descriptor.keys().count() > 0);
 
         let do_gradients = GradientsOptions {
             positions: descriptor.block_by_id(0).gradient("positions").is_some(),
