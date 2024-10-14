@@ -4,6 +4,9 @@ Basis functions
 .. autoclass:: rascaline.basis.TensorProduct
     :show-inheritance:
 
+.. autoclass:: rascaline.basis.Explicit
+    :show-inheritance:
+
 .. autoclass:: rascaline.basis.ExpansionBasis
     :members:
 

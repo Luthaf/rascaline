@@ -75,6 +75,53 @@ pub struct SoapRadialIntegralCache {
 }
 
 impl SoapRadialIntegralCache {
+    fn new(
+        o3_lambda: usize,
+        radial: &SoapRadialBasis,
+        density: DensityKind,
+        cutoff: f64,
+        spline_accuracy: Option<f64>,
+    ) -> Result<SoapRadialIntegralCache, Error> {
+        // We only support some specific combinations of density and basis
+        let implementation = match (density, radial) {
+            // Gaussian density + GTO basis
+            (DensityKind::Gaussian {..}, &SoapRadialBasis::Gto { .. }) => {
+                let gto = SoapRadialIntegralGto::new(cutoff, density, radial, o3_lambda)?;
+
+                if let Some(accuracy) = spline_accuracy {
+                    Box::new(SoapRadialIntegralSpline::with_accuracy(
+                        gto, cutoff, accuracy
+                    )?)
+                } else {
+                    Box::new(gto) as Box<dyn SoapRadialIntegral>
+                }
+            },
+            // Dirac density + tabulated basis (also used for
+            // tabulated radial integral with a different density)
+            (DensityKind::DiracDelta, SoapRadialBasis::Tabulated(tabulated)) => {
+                Box::new(SoapRadialIntegralSpline::from_tabulated(
+                    tabulated.clone()
+                )) as Box<dyn SoapRadialIntegral>
+            }
+            // Everything else is an error
+            _ => {
+                return Err(Error::InvalidParameter(
+                    "this combination of basis and density is not supported in SOAP".into()
+                ))
+            }
+        };
+
+        let size = implementation.size();
+        let values = Array1::from_elem(size, 0.0);
+        let gradients = Array1::from_elem(size, 0.0);
+
+        return Ok(SoapRadialIntegralCache {
+            implementation,
+            values,
+            gradients,
+        });
+    }
+
     /// Run the calculation, the results are stored inside `self.values` and
     /// `self.gradients`
     pub fn compute(&mut self, distance: f64, do_gradients: bool) {
@@ -104,47 +151,33 @@ impl SoapRadialIntegralCacheByAngular {
             SphericalExpansionBasis::TensorProduct(basis) => {
                 let mut by_angular = BTreeMap::new();
                 for o3_lambda in 0..=basis.max_angular {
-                    // We only support some specific combinations of density and basis
-                    let implementation = match (density, &basis.radial) {
-                        // Gaussian density + GTO basis
-                        (DensityKind::Gaussian {..}, &SoapRadialBasis::Gto { .. }) => {
-                            let gto = SoapRadialIntegralGto::new(cutoff, density, &basis.radial, o3_lambda)?;
-
-                            if let Some(accuracy) = basis.spline_accuracy {
-                                Box::new(SoapRadialIntegralSpline::with_accuracy(
-                                    gto, cutoff, accuracy
-                                )?)
-                            } else {
-                                Box::new(gto) as Box<dyn SoapRadialIntegral>
-                            }
-                        },
-                        // Dirac density + tabulated basis (also used for
-                        // tabulated radial integral with a different density)
-                        (DensityKind::DiracDelta, SoapRadialBasis::Tabulated(tabulated)) => {
-                            Box::new(SoapRadialIntegralSpline::from_tabulated(
-                                tabulated.clone()
-                            )) as Box<dyn SoapRadialIntegral>
-                        }
-                        // Everything else is an error
-                        _ => {
-                            return Err(Error::InvalidParameter(
-                                "this combination of basis and density is not supported in SOAP".into()
-                            ))
-                        }
-                    };
-
-                    let size = implementation.size();
-                    let values = Array1::from_elem(size, 0.0);
-                    let gradients = Array1::from_elem(size, 0.0);
-
-                    by_angular.insert(o3_lambda, SoapRadialIntegralCache {
-                        implementation,
-                        values,
-                        gradients,
-                    });
+                    let cache = SoapRadialIntegralCache::new(
+                        o3_lambda,
+                        &basis.radial,
+                        density,
+                        cutoff,
+                        basis.spline_accuracy
+                    )?;
+                    by_angular.insert(o3_lambda, cache);
                 }
 
                 return Ok(SoapRadialIntegralCacheByAngular { by_angular });
+            }
+            SphericalExpansionBasis::Explicit(basis) => {
+                let mut by_angular = BTreeMap::new();
+                for (&o3_lambda, radial) in &*basis.by_angular {
+                    let cache = SoapRadialIntegralCache::new(
+                        o3_lambda,
+                        radial,
+                        density,
+                        cutoff,
+                        basis.spline_accuracy
+                    )?;
+                    by_angular.insert(o3_lambda, cache);
+                }
+                return Ok(SoapRadialIntegralCacheByAngular {
+                    by_angular
+                });
             }
         }
     }

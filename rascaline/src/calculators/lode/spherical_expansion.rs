@@ -70,9 +70,9 @@ pub struct LodeSphericalExpansion {
     /// implementation + cached allocation to compute the radial integral
     radial_integral: ThreadLocal<RefCell<LodeRadialIntegralCacheByAngular>>,
     /// Cached allocations for the k-vector to nlm projection coefficients.
-    /// The vector contains different l values, and the Array is indexed by
+    /// The map contains different l values, and the Array is indexed by
     /// `m, n, k`.
-    k_vector_to_m_n: ThreadLocal<RefCell<Vec<Array3<f64>>>>,
+    k_vector_to_m_n: ThreadLocal<RefCell<BTreeMap<usize, Array3<f64>>>>,
     /// Cached allocation for everything that only depends on the k vector
     k_dependent_values: ThreadLocal<RefCell<Array1<f64>>>,
 }
@@ -241,9 +241,9 @@ impl LodeSphericalExpansion {
         }).borrow_mut();
 
         let mut k_vector_to_m_n = self.k_vector_to_m_n.get_or(|| {
-            let mut k_vector_to_m_n = Vec::new();
-            for _ in self.parameters.basis.angular_channels() {
-                k_vector_to_m_n.push(Array3::from_elem((0, 0, 0), 0.0));
+            let mut k_vector_to_m_n = BTreeMap::new();
+            for o3_lambda in self.parameters.basis.angular_channels() {
+                k_vector_to_m_n.insert(o3_lambda, Array3::from_elem((0, 0, 0), 0.0));
             }
 
             return RefCell::new(k_vector_to_m_n);
@@ -252,7 +252,7 @@ impl LodeSphericalExpansion {
         for o3_lambda in self.parameters.basis.angular_channels() {
             let radial_size = radial_integral.get(o3_lambda).expect("missing o3_lambda").size();
             let shape = (2 * o3_lambda + 1, radial_size, k_vectors.len());
-            resize_array3(&mut k_vector_to_m_n[o3_lambda], shape);
+            resize_array3(k_vector_to_m_n.get_mut(&o3_lambda).expect("missing o3_lambda"), shape);
         }
 
         for (ik, k_vector) in k_vectors.iter().enumerate() {
@@ -265,10 +265,11 @@ impl LodeSphericalExpansion {
                 let spherical_harmonics = spherical_harmonics.values.angular_slice(o3_lambda);
                 let radial_integral = radial_integral.get(o3_lambda).expect("missing o3_lambda");
                 let radial_integral = &radial_integral.values;
+                let array = k_vector_to_m_n.get_mut(&o3_lambda).expect("missing o3_lambda");
 
                 for (m, sph_value) in spherical_harmonics.iter().enumerate() {
                     for (n, ri_value) in radial_integral.iter().enumerate() {
-                        k_vector_to_m_n[o3_lambda][[m, n, ik]] = ri_value * sph_value;
+                        array[[m, n, ik]] = ri_value * sph_value;
                     }
                 }
             }
@@ -569,6 +570,8 @@ impl CalculatorBase for LodeSphericalExpansion {
     }
 
     fn properties(&self, keys: &Labels) -> Vec<Labels> {
+        assert_eq!(keys.names(), ["o3_lambda", "o3_sigma", "center_type", "neighbor_type"]);
+
         match self.parameters.basis {
             SphericalExpansionBasis::TensorProduct(ref basis) => {
                 let mut properties = LabelsBuilder::new(self.property_names());
@@ -577,6 +580,20 @@ impl CalculatorBase for LodeSphericalExpansion {
                 }
 
                 return vec![properties.finish(); keys.count()];
+            }
+            SphericalExpansionBasis::Explicit(ref basis) => {
+                let mut result = Vec::new();
+                for [o3_lambda, _, _, _] in keys.iter_fixed_size() {
+                    let mut properties = LabelsBuilder::new(self.property_names());
+
+                    let radial = basis.by_angular.get(&o3_lambda.usize()).expect("missing o3_lambda");
+                    for n in 0..radial.size() {
+                        properties.add(&[n]);
+                    }
+
+                    result.push(properties.finish());
+                }
+                return result;
             }
         }
     }
@@ -700,7 +717,7 @@ impl CalculatorBase for LodeSphericalExpansion {
                         sf_per_center_imag
                     };
 
-                    let k_vector_to_m_n = &k_vector_to_m_n[o3_lambda];
+                    let k_vector_to_m_n = k_vector_to_m_n.get(&o3_lambda).expect("missing o3_lambda");
 
                     let data = block.data_mut();
                     let samples = &*data.samples;
@@ -866,9 +883,10 @@ impl CalculatorBase for LodeSphericalExpansion {
 
 #[cfg(test)]
 mod tests {
+    use crate::calculators::shared::ExplicitBasis;
     use crate::Calculator;
     use crate::calculators::{CalculatorBase, DensityKind, LodeRadialBasis, TensorProductBasis};
-    use crate::systems::test_utils::test_system;
+    use crate::systems::test_utils::{test_system, test_systems};
 
     use Vector3D;
     use approx::assert_relative_eq;
@@ -1061,5 +1079,44 @@ mod tests {
             arr1(&[0.13337, 0.21136, 0.28719, 0.84143, -0.04964, 2.40858]),
             max_relative=1e-4
         );
+    }
+
+    #[test]
+    fn explicit_basis() {
+        let mut by_angular = BTreeMap::new();
+        by_angular.insert(1, LodeRadialBasis::Gto { max_radial: 5, radius: 5.5 });
+        by_angular.insert(12, LodeRadialBasis::Gto { max_radial: 3, radius: 3.4 });
+
+        let mut calculator = Calculator::from(Box::new(LodeSphericalExpansion::new(
+            LodeSphericalExpansionParameters {
+                k_cutoff: None,
+                density: Density {
+                    kind: DensityKind::SmearedPowerLaw {
+                        smearing: 0.8,
+                        exponent: 1,
+                    },
+                    scaling: None,
+                    center_atom_weight: 1.0,
+                },
+                basis: SphericalExpansionBasis::Explicit(ExplicitBasis {
+                    by_angular: by_angular.into(),
+                    spline_accuracy: Some(1e-8),
+                }),
+            }
+        ).unwrap()) as Box<dyn CalculatorBase>);
+
+        let mut systems = test_systems(&["water"]);
+
+        let descriptor = calculator.compute(&mut systems, Default::default()).unwrap();
+
+        for (key, block) in &descriptor {
+            if key[0] == 1 {
+                assert_eq!(block.properties().count(), 6);
+            } else if key[0] == 12 {
+                assert_eq!(block.properties().count(), 4);
+            } else {
+                panic!("unexpected o3_lambda value");
+            }
+        }
     }
 }

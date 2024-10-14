@@ -1,3 +1,5 @@
+from typing import List
+
 import metatensor
 import pytest
 
@@ -97,9 +99,11 @@ def test_hypers_classes():
             },
         },
         "basis": {
-            "type": "TensorProduct",
-            "max_angular": 5,
-            "radial": {"type": "Gto", "max_radial": 5},
+            "type": "Explicit",
+            "by_angular": {
+                3: {"type": "Gto", "max_radial": 5},
+                5: {"type": "Gto", "max_radial": 2},
+            },
         },
     }
 
@@ -115,9 +119,11 @@ def test_hypers_classes():
             scaling=rascaline.density.Willatt2018(exponent=3, rate=2.2, scale=1.1),
             center_atom_weight=0.3,
         ),
-        basis=rascaline.basis.TensorProduct(
-            max_angular=5,
-            radial=rascaline.basis.Gto(max_radial=5),
+        basis=rascaline.basis.Explicit(
+            by_angular={
+                3: rascaline.basis.Gto(max_radial=5),
+                5: rascaline.basis.Gto(max_radial=2),
+            }
         ),
     )
 
@@ -184,7 +190,11 @@ def test_hypers_custom_classes_errors():
         )
 
     class MyCustomExpansionBasis(rascaline.basis.ExpansionBasis):
-        pass
+        def angular_channels(self) -> List[int]:
+            return [0]
+
+        def radial_basis(self, angular) -> rascaline.basis.RadialBasis:
+            return rascaline.basis.Gto(width=0.3)
 
     message = (
         "this basis functions set \\(MyCustomExpansionBasis\\) does not have "

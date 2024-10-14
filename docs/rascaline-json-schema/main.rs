@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use schemars::schema::RootSchema;
+use schemars::Schema;
 
 use rascaline::calculators::AtomicComposition;
 use rascaline::calculators::SortedDistances;
@@ -45,28 +45,38 @@ struct RenameRefInSchema {
     in_docs: &'static str,
 }
 
-impl schemars::visit::Visitor for RenameRefInSchema {
-    fn visit_schema_object(&mut self, schema: &mut schemars::schema::SchemaObject) {
-        schemars::visit::visit_schema_object(self, schema);
-
-        let in_code_reference = format!("#/definitions/{}", self.in_code);
-
-        if let Some(reference) = &schema.reference {
-            if reference == &in_code_reference {
-                schema.reference = Some(format!("#/definitions/{}", self.in_docs));
+impl schemars::transform::Transform for RenameRefInSchema {
+    fn transform(&mut self, schema: &mut Schema) {
+        let in_code_reference = format!("#/$defs/{}", self.in_code);
+        if let Some(schema_object) = schema.as_object_mut() {
+            if let Some(reference) = schema_object.get_mut("$ref") {
+                if reference == &in_code_reference {
+                    *reference = format!("#/$defs/{}", self.in_docs).into();
+                }
             }
         }
+        schemars::transform::transform_subschemas(self, schema);
     }
 }
 
-fn save_schema(name: &str, mut schema: RootSchema) {
-    for transform in REFS_TO_RENAME {
-        if let Some(value) = schema.definitions.remove(transform.in_code) {
-            assert!(!schema.definitions.contains_key(transform.in_docs));
-            schema.definitions.insert(transform.in_docs.into(), value);
+fn save_schema(name: &str, mut schema: Schema) {
+    let schema_object = schema.as_object_mut().expect("schema should be an object");
 
-            schemars::visit::visit_root_schema(&mut transform.clone(), &mut schema);
+    // rename some of the autogenerate names.
+    // Step 1: rename the definitions
+    for transform in REFS_TO_RENAME {
+        if let Some(definitions) = schema_object.get_mut("$defs") {
+            let definitions = definitions.as_object_mut().expect("$defs should be an object");
+            if let Some(value) = definitions.remove(transform.in_code) {
+                assert!(!definitions.contains_key(transform.in_docs));
+                definitions.insert(transform.in_docs.into(), value);
+            }
         }
+    }
+
+    // Step 2: rename the references to these definitions
+    for transform in REFS_TO_RENAME {
+        schemars::transform::transform_subschemas(&mut transform.clone(), &mut schema);
     }
 
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));

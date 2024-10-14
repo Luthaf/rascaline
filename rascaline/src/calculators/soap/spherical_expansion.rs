@@ -32,9 +32,8 @@ pub struct SphericalExpansion {
 impl SphericalExpansion {
     /// Create a new `SphericalExpansion` calculator with the given parameters
     pub fn new(parameters: SphericalExpansionParameters) -> Result<SphericalExpansion, Error> {
-        let m_1_pow_l = parameters.basis.angular_channels()
-            .into_iter()
-            .map(|l| f64::powi(-1.0, l as i32))
+        let max_angular = parameters.basis.angular_channels().into_iter().max().expect("there should be at least one angular channel");
+        let m_1_pow_l = (0..=max_angular).map(|l| f64::powi(-1.0, l as i32))
             .collect::<Vec<f64>>();
 
         return Ok(SphericalExpansion {
@@ -131,6 +130,9 @@ impl SphericalExpansion {
         let radial_sizes = match self.by_pair.parameters.basis {
             SphericalExpansionBasis::TensorProduct(ref basis) => {
                 vec![basis.radial.size(); basis.max_angular + 1]
+            },
+            SphericalExpansionBasis::Explicit(ref basis) => {
+                basis.by_angular.values().map(|radial| radial.size()).collect()
             },
         };
         let angular_channels = self.by_pair.parameters.basis.angular_channels();
@@ -772,6 +774,8 @@ impl CalculatorBase for SphericalExpansion {
     }
 
     fn properties(&self, keys: &Labels) -> Vec<Labels> {
+        assert_eq!(keys.names(), ["o3_lambda", "o3_sigma", "center_type", "neighbor_type"]);
+
         match self.by_pair.parameters.basis {
             SphericalExpansionBasis::TensorProduct(ref basis) => {
                 let mut properties = LabelsBuilder::new(self.property_names());
@@ -780,6 +784,20 @@ impl CalculatorBase for SphericalExpansion {
                 }
 
                 return vec![properties.finish(); keys.count()];
+            }
+            SphericalExpansionBasis::Explicit(ref basis) => {
+                let mut result = Vec::new();
+                for [o3_lambda, _, _, _] in keys.iter_fixed_size() {
+                    let mut properties = LabelsBuilder::new(self.property_names());
+
+                    let radial = basis.by_angular.get(&o3_lambda.usize()).expect("missing o3_lambda");
+                    for n in 0..radial.size() {
+                        properties.add(&[n]);
+                    }
+
+                    result.push(properties.finish());
+                }
+                return result;
             }
         }
     }
@@ -834,6 +852,8 @@ impl CalculatorBase for SphericalExpansion {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+
     use ndarray::ArrayD;
     use metatensor::{Labels, TensorBlock, EmptyArray, LabelsBuilder, TensorMap};
 
@@ -843,7 +863,7 @@ mod tests {
 
     use super::{SphericalExpansion, SphericalExpansionParameters};
     use crate::calculators::soap::{Cutoff, Smoothing};
-    use crate::calculators::shared::{Density, DensityKind, DensityScaling};
+    use crate::calculators::shared::{Density, DensityKind, DensityScaling, ExplicitBasis};
     use crate::calculators::shared::{SoapRadialBasis, SphericalExpansionBasis, TensorProductBasis};
 
 
@@ -1052,5 +1072,37 @@ mod tests {
         assert_eq!(*block.samples, Labels::new(["system", "atom"], &[[0, 0], [0, 1], [0, 2]]));
         let array = block.values.as_array();
         assert_eq!(array.index_axis(ndarray::Axis(0), 0), ArrayD::from_elem(vec![1, 6], 0.0));
+    }
+
+    #[test]
+    fn explicit_basis() {
+        let mut by_angular = BTreeMap::new();
+        by_angular.insert(1, SoapRadialBasis::Gto { max_radial: 5 });
+        by_angular.insert(12, SoapRadialBasis::Gto { max_radial: 3 });
+
+        let mut calculator = Calculator::from(Box::new(SphericalExpansion::new(
+            SphericalExpansionParameters {
+                basis: SphericalExpansionBasis::Explicit(ExplicitBasis {
+                    by_angular: by_angular.into(),
+                    spline_accuracy: None,
+
+                }),
+                ..parameters()
+            }
+        ).unwrap()) as Box<dyn CalculatorBase>);
+
+        let mut systems = test_systems(&["water"]);
+
+        let descriptor = calculator.compute(&mut systems, Default::default()).unwrap();
+
+        for (key, block) in &descriptor {
+            if key[0] == 1 {
+                assert_eq!(block.properties().count(), 6);
+            } else if key[0] == 12 {
+                assert_eq!(block.properties().count(), 4);
+            } else {
+                panic!("unexpected o3_lambda value");
+            }
+        }
     }
 }

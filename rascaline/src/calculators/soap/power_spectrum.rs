@@ -509,6 +509,18 @@ impl CalculatorBase for SoapPowerSpectrum {
 
                 return vec![properties.finish(); keys.count()];
             }
+            SphericalExpansionBasis::Explicit(ref basis) => {
+                let mut properties = LabelsBuilder::new(self.property_names());
+                for (&l, radial) in &*basis.by_angular {
+                    for n1 in 0..radial.size() {
+                        for n2 in 0..radial.size() {
+                            properties.add(&[l, n1, n2]);
+                        }
+                    }
+                }
+
+                return vec![properties.finish(); keys.count()];
+            },
         }
     }
 
