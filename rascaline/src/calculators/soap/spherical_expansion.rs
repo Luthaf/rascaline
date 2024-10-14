@@ -33,6 +33,7 @@ impl SphericalExpansion {
     /// Create a new `SphericalExpansion` calculator with the given parameters
     pub fn new(parameters: SphericalExpansionParameters) -> Result<SphericalExpansion, Error> {
         let m_1_pow_l = parameters.basis.angular_channels()
+            .into_iter()
             .map(|l| f64::powi(-1.0, l as i32))
             .collect::<Vec<f64>>();
 
@@ -48,6 +49,10 @@ impl SphericalExpansion {
     fn do_self_contributions(&mut self, systems: &[Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
         debug_assert_eq!(descriptor.keys().names(), ["o3_lambda", "o3_sigma", "center_type", "neighbor_type"]);
 
+        if !self.by_pair.parameters.basis.angular_channels().contains(&0) {
+            // o3_lambda is not part of the output, skip self contributions
+            return Ok(());
+        }
         let self_contribution = self.by_pair.self_contribution();
 
         for (key, mut block) in descriptor {
@@ -83,7 +88,7 @@ impl SphericalExpansion {
                 }
 
                 for (property_i, &[n]) in block.properties.iter_fixed_size().enumerate() {
-                    array[[sample_i, 0, property_i]] += self_contribution.values[[0, n.usize()]];
+                    array[[sample_i, 0, property_i]] += self_contribution[n.usize()];
                 }
             }
         }
@@ -123,46 +128,53 @@ impl SphericalExpansion {
         }).collect::<Vec<_>>();
 
 
-
-        let (radial_size, max_angular) = match self.by_pair.parameters.basis {
+        let radial_sizes = match self.by_pair.parameters.basis {
             SphericalExpansionBasis::TensorProduct(ref basis) => {
-                (basis.radial.size(), basis.max_angular)
-            }
+                vec![basis.radial.size(); basis.max_angular + 1]
+            },
         };
-        let mut contribution = PairContribution::new(radial_size, max_angular, do_gradients.any());
+        let angular_channels = self.by_pair.parameters.basis.angular_channels();
 
-        // total number of joined (l, m) indices
-        let lm_shape = (max_angular + 1) * (max_angular + 1);
+        let mut contribution = PairContribution::new(
+            &angular_channels,
+            &radial_sizes,
+            do_gradients.any(),
+        );
+
         let mut result = PairAccumulationResult {
-            values: ndarray::Array4::from_elem(
-                (types_mapping.len(), requested_atoms.len(), lm_shape, radial_size),
-                0.0
-            ),
+            values: angular_channels.iter().zip(&radial_sizes).map(|(&o3_lambda, &radial_size)| {
+                let shape = (types_mapping.len(), requested_atoms.len(), 2 * o3_lambda + 1, radial_size);
+                (o3_lambda, ndarray::Array4::from_elem(shape, 0.0))
+            }).collect(),
             positions_gradient_by_pair: if do_gradients.positions {
-                let shape = (pairs_count, 3, lm_shape, radial_size);
-                Some(ndarray::Array4::from_elem(shape, 0.0))
+                Some(angular_channels.iter().zip(&radial_sizes).map(|(&o3_lambda, &radial_size)| {
+                    let shape = (pairs_count, 3, 2 * o3_lambda + 1, radial_size);
+                    (o3_lambda, ndarray::Array4::from_elem(shape, 0.0))
+                }).collect())
             } else {
                 None
             },
             self_positions_gradients: if do_gradients.positions {
-                let shape = (types_mapping.len(), requested_atoms.len(), 3, lm_shape, radial_size);
-                Some(ndarray::Array5::from_elem(shape, 0.0))
+                Some(angular_channels.iter().zip(&radial_sizes).map(|(&o3_lambda, &radial_size)| {
+                    let shape = (types_mapping.len(), requested_atoms.len(), 3, 2 * o3_lambda + 1, radial_size);
+                    (o3_lambda, ndarray::Array5::from_elem(shape, 0.0))
+                }).collect())
             } else {
                 None
             },
             cell_gradients: if do_gradients.cell {
-                Some(ndarray::Array6::from_elem(
-                    (types_mapping.len(), requested_atoms.len(), 3, 3, lm_shape, radial_size),
-                    0.0)
-                )
+                Some(angular_channels.iter().zip(&radial_sizes).map(|(&o3_lambda, &radial_size)| {
+                    let shape = (types_mapping.len(), requested_atoms.len(), 3, 3, 2 * o3_lambda + 1, radial_size);
+                    (o3_lambda, ndarray::Array6::from_elem(shape, 0.0))
+                }).collect())
             } else {
                 None
             },
             strain_gradients: if do_gradients.strain {
-                Some(ndarray::Array6::from_elem(
-                    (types_mapping.len(), requested_atoms.len(), 3, 3, lm_shape, radial_size),
-                    0.0)
-                )
+                Some(angular_channels.iter().zip(&radial_sizes).map(|(&o3_lambda, &radial_size)| {
+                    let shape = (types_mapping.len(), requested_atoms.len(), 3, 3, 2 * o3_lambda + 1, radial_size);
+                    (o3_lambda, ndarray::Array6::from_elem(shape, 0.0))
+                }).collect())
             } else {
                 None
             },
@@ -188,68 +200,69 @@ impl SphericalExpansion {
                     .push(pair_id);
 
                 let neighbor_type_i = result.types_mapping[&types[neighbor_i]];
-                let mut values = result.values.slice_mut(s![neighbor_type_i, mapped_center, .., ..]);
-                values += &contribution.values;
+                for (o3_lambda, &radial_size) in angular_channels.iter().zip(&radial_sizes) {
+                    let values = result.values.get_mut(o3_lambda).expect("missing o3_lambda");
+                    let mut values = values.slice_mut(s![neighbor_type_i, mapped_center, .., ..]);
+                    values += contribution.values.get(o3_lambda).expect("missing o3_lambda");
 
 
-                if let Some(ref contribution_gradients) = contribution.gradients {
-                    if let Some(ref mut positions_gradients) = result.positions_gradient_by_pair {
-                        let gradients = &mut positions_gradients.slice_mut(s![pair_id, .., .., ..]);
-                        gradients.assign(contribution_gradients);
-                    }
+                    if let Some(ref contribution_gradients) = contribution.gradients {
+                        let contribution_gradients = contribution_gradients.get(o3_lambda).expect("missing o3_lambda");
 
-                    if pair.first != pair.second {
-                        if let Some(ref mut positions_gradients) = result.self_positions_gradients {
-                            let mut gradients = positions_gradients.slice_mut(s![neighbor_type_i, mapped_center, .., .., ..]);
-                            gradients -= contribution_gradients;
+                        if let Some(ref mut positions_gradients) = result.positions_gradient_by_pair {
+                            let positions_gradients = positions_gradients.get_mut(o3_lambda).expect("missing o3_lambda");
+                            let gradients = &mut positions_gradients.slice_mut(s![pair_id, .., .., ..]);
+                            gradients.assign(contribution_gradients);
                         }
-                    }
 
-                    if let Some(ref mut cell_gradients) = result.cell_gradients {
-                        let mut cell_gradients = cell_gradients.slice_mut(
-                            s![neighbor_type_i, mapped_center, .., .., .., ..]
-                        );
+                        if pair.first != pair.second {
+                            if let Some(ref mut positions_gradients) = result.self_positions_gradients {
+                                let positions_gradients = positions_gradients.get_mut(o3_lambda).expect("missing o3_lambda");
+                                let mut gradients = positions_gradients.slice_mut(s![neighbor_type_i, mapped_center, .., .., ..]);
+                                gradients -= contribution_gradients;
+                            }
+                        }
 
-                        for abc in 0..3 {
-                            let shift = pair.cell_shift_indices[abc] as f64;
-                            for xyz in 0..3 {
-                                let mut lm_index = 0;
-                                for o3_lambda in 0..=max_angular {
-                                    for _m in 0..(2 * o3_lambda + 1) {
+                        if let Some(ref mut cell_gradients) = result.cell_gradients {
+                            let cell_gradients = cell_gradients.get_mut(o3_lambda).expect("missing o3_lambda");
+                            let mut cell_gradients = cell_gradients.slice_mut(
+                                s![neighbor_type_i, mapped_center, .., .., .., ..]
+                            );
+
+                            for abc in 0..3 {
+                                let shift = pair.cell_shift_indices[abc] as f64;
+                                for xyz in 0..3 {
+                                    for m in 0..(2 * o3_lambda + 1) {
                                         for n in 0..radial_size {
                                             // SAFETY: we are doing in-bounds access, and removing the bounds
                                             // checks is a significant speed-up for this code. The bounds are
                                             // still checked in debug mode
                                             unsafe {
-                                                let out = cell_gradients.uget_mut([abc, xyz, lm_index, n]);
-                                                *out += shift * contribution_gradients.uget([xyz, lm_index, n]);
+                                                let out = cell_gradients.uget_mut([abc, xyz, m, n]);
+                                                *out += shift * contribution_gradients.uget([xyz, m, n]);
                                             }
                                         }
-                                        lm_index += 1;
                                     }
                                 }
                             }
                         }
-                    }
 
-                    if let Some(ref mut strain_gradients) = result.strain_gradients {
-                        let mut strain_gradients = strain_gradients.slice_mut(
-                            s![neighbor_type_i, mapped_center, .., .., .., ..]
-                        );
+                        if let Some(ref mut strain_gradients) = result.strain_gradients {
+                            let strain_gradients = strain_gradients.get_mut(o3_lambda).expect("missing o3_lambda");
+                            let mut strain_gradients = strain_gradients.slice_mut(
+                                s![neighbor_type_i, mapped_center, .., .., .., ..]
+                            );
 
-                        for xyz_1 in 0..3 {
-                            for xyz_2 in 0..3 {
-                                let mut lm_index = 0;
-                                for o3_lambda in 0..=max_angular {
-                                    for _m in 0..(2 * o3_lambda + 1) {
+                            for xyz_1 in 0..3 {
+                                for xyz_2 in 0..3 {
+                                    for m in 0..(2 * o3_lambda + 1) {
                                         for n in 0..radial_size {
                                             // SAFETY: same as above
                                             unsafe {
-                                                let out = strain_gradients.uget_mut([xyz_1, xyz_2, lm_index, n]);
-                                                *out += pair.vector[xyz_1] * contribution_gradients.uget([xyz_2, lm_index, n]);
+                                                let out = strain_gradients.uget_mut([xyz_1, xyz_2, m, n]);
+                                                *out += pair.vector[xyz_1] * contribution_gradients.uget([xyz_2, m, n]);
                                             }
                                         }
-                                        lm_index += 1;
                                     }
                                 }
                             }
@@ -271,65 +284,65 @@ impl SphericalExpansion {
 
                 let neighbor_type_i = result.types_mapping[&types[neighbor_i]];
 
-                let mut values = result.values.slice_mut(s![neighbor_type_i, mapped_center, .., ..]);
-                values += &contribution.values;
+                for (o3_lambda, &radial_size) in angular_channels.iter().zip(&radial_sizes) {
+                    let values = result.values.get_mut(o3_lambda).expect("missing o3_lambda");
+                    let mut values = values.slice_mut(s![neighbor_type_i, mapped_center, .., ..]);
+                    values += contribution.values.get(o3_lambda).expect("missing o3_lambda");
 
-                if let Some(ref contribution_gradients) = contribution.gradients {
-                    // we don't add second->first pair to positions_gradient_by_pair,
-                    // instead handling this in position_gradients_to_metatensor
 
-                    if pair.first != pair.second {
-                        if let Some(ref mut positions_gradients) = result.self_positions_gradients {
-                            let mut gradients = positions_gradients.slice_mut(s![neighbor_type_i, mapped_center, .., .., ..]);
-                            gradients -= contribution_gradients;
+                    if let Some(ref contribution_gradients) = contribution.gradients {
+                        let contribution_gradients = contribution_gradients.get(o3_lambda).expect("missing o3_lambda");
+                        // we don't add second->first pair to positions_gradient_by_pair,
+                        // instead handling this in position_gradients_to_metatensor
+
+                        if pair.first != pair.second {
+                            if let Some(ref mut positions_gradients) = result.self_positions_gradients {
+                                let positions_gradients = positions_gradients.get_mut(o3_lambda).expect("missing o3_lambda");
+                                let mut gradients = positions_gradients.slice_mut(s![neighbor_type_i, mapped_center, .., .., ..]);
+                                gradients -= contribution_gradients;
+                            }
                         }
-                    }
 
-                    if let Some(ref mut cell_gradients) = result.cell_gradients {
-                        let mut cell_gradients = cell_gradients.slice_mut(
-                            s![neighbor_type_i, mapped_center, .., .., .., ..]
-                        );
+                        if let Some(ref mut cell_gradients) = result.cell_gradients {
+                            let cell_gradients = cell_gradients.get_mut(o3_lambda).expect("missing o3_lambda");
+                            let mut cell_gradients = cell_gradients.slice_mut(
+                                s![neighbor_type_i, mapped_center, .., .., .., ..]
+                            );
 
-                        for abc in 0..3 {
-                            let shift = pair.cell_shift_indices[abc] as f64;
-                            for xyz in 0..3 {
-                                let mut lm_index = 0;
-                                for o3_lambda in 0..=max_angular {
-                                    for _m in 0..(2 * o3_lambda + 1) {
+                            for abc in 0..3 {
+                                let shift = pair.cell_shift_indices[abc] as f64;
+                                for xyz in 0..3 {
+                                    for m in 0..(2 * o3_lambda + 1) {
                                         for n in 0..radial_size {
                                             // SAFETY: we are doing in-bounds access, and removing the bounds
                                             // checks is a significant speed-up for this code. The bounds are
                                             // still checked in debug mode
                                             unsafe {
-                                                let out = cell_gradients.uget_mut([abc, xyz, lm_index, n]);
-                                                *out += -shift * contribution_gradients.uget([xyz, lm_index, n]);
+                                                let out = cell_gradients.uget_mut([abc, xyz, m, n]);
+                                                *out += -shift * contribution_gradients.uget([xyz, m, n]);
                                             }
                                         }
-                                        lm_index += 1;
                                     }
                                 }
                             }
                         }
-                    }
 
-                    if let Some(ref mut strain_gradients) = result.strain_gradients {
-                        let mut strain_gradients = strain_gradients.slice_mut(
-                            s![neighbor_type_i, mapped_center, .., .., .., ..]
-                        );
+                        if let Some(ref mut strain_gradients) = result.strain_gradients {
+                            let strain_gradients = strain_gradients.get_mut(o3_lambda).expect("missing o3_lambda");
+                            let mut strain_gradients = strain_gradients.slice_mut(
+                                s![neighbor_type_i, mapped_center, .., .., .., ..]
+                            );
 
-                        for xyz_1 in 0..3 {
-                            for xyz_2 in 0..3 {
-                                let mut lm_index = 0;
-                                for o3_lambda in 0..=max_angular {
-                                    for _m in 0..(2 * o3_lambda + 1) {
+                            for xyz_1 in 0..3 {
+                                for xyz_2 in 0..3 {
+                                    for m in 0..(2 * o3_lambda + 1) {
                                         for n in 0..radial_size {
                                             // SAFETY: as above
                                             unsafe {
-                                                let out = strain_gradients.uget_mut([xyz_1, xyz_2, lm_index, n]);
-                                                *out += -pair.vector[xyz_1] * contribution_gradients.uget([xyz_2, lm_index, n]);
+                                                let out = strain_gradients.uget_mut([xyz_1, xyz_2, m, n]);
+                                                *out += -pair.vector[xyz_1] * contribution_gradients.uget([xyz_2, m, n]);
                                             }
                                         }
-                                        lm_index += 1;
                                     }
                                 }
                             }
@@ -359,7 +372,6 @@ impl SphericalExpansion {
         let center_type = key[2];
         let neighbor_type = key[3];
 
-        let lm_start = o3_lambda * o3_lambda;
         let neighbor_type_i = if let Some(s) = result.types_mapping.get(&neighbor_type.i32()) {
             *s
         } else {
@@ -369,6 +381,7 @@ impl SphericalExpansion {
 
         let block = block.data_mut();
         let mut array = array_mut_for_system(block.values);
+        let values = result.values.get(&o3_lambda).expect("missing o3_lambda");
 
         for (sample_i, [_, atom_i]) in block.samples.iter_fixed_size().enumerate() {
             // samples might contain entries for atoms that should not be part
@@ -386,7 +399,7 @@ impl SphericalExpansion {
                     // mode.
                     unsafe {
                         let out = array.uget_mut([sample_i, m, property_i]);
-                        *out += *result.values.uget([neighbor_type_i, mapped_center, lm_start + m, n.usize()]);
+                        *out += *values.uget([neighbor_type_i, mapped_center, m, n.usize()]);
                     }
                 }
             }
@@ -421,7 +434,6 @@ impl SphericalExpansion {
             // no positions gradients, return early
             return Ok(());
         };
-
         let self_positions_gradients = result.self_positions_gradients.as_ref().expect("missing self gradients");
 
         let o3_lambda = key[0].usize();
@@ -436,11 +448,13 @@ impl SphericalExpansion {
             return Ok(());
         };
 
+        let self_positions_gradients = self_positions_gradients.get(&o3_lambda).expect("missing o3_lambda");
+        let positions_gradients = positions_gradients.get(&o3_lambda).expect("missing o3_lambda");
+
         let types = system.types()?;
         let pairs = system.pairs()?;
         let system_size = system.size()?;
 
-        let lm_start = o3_lambda * o3_lambda;
         let m_1_pow_l = self.m_1_pow_l[o3_lambda];
 
         let values_samples = block.samples();
@@ -470,7 +484,7 @@ impl SphericalExpansion {
                             unsafe {
                                 let out = array.uget_mut([grad_sample_i, xyz, m, property_i]);
                                 *out = *self_positions_gradients.uget(
-                                    [neighbor_type_i, mapped_center, xyz, lm_start + m, n.usize()]
+                                    [neighbor_type_i, mapped_center, xyz, m, n.usize()]
                                 );
                             }
                         }
@@ -496,7 +510,7 @@ impl SphericalExpansion {
                                 // SAFETY: same as above
                                 unsafe {
                                     let out = array.uget_mut([grad_sample_i, xyz, m, property_i]);
-                                    *out += factor * *positions_gradients.uget([pair_id, xyz, lm_start + m, n.usize()]);
+                                    *out += factor * *positions_gradients.uget([pair_id, xyz, m, n.usize()]);
                                 }
                             }
                         }
@@ -519,7 +533,7 @@ impl SphericalExpansion {
         system: &dyn System,
         result: &PairAccumulationResult,
     ) -> Result<(), Error> {
-        let contributions = if parameter == "strain" {
+        let gradients = if parameter == "strain" {
             if let Some(ref data) = result.strain_gradients {
                 data
             } else {
@@ -544,7 +558,8 @@ impl SphericalExpansion {
         let center_type = key[2];
         let neighbor_type = key[3];
 
-        let lm_start = o3_lambda * o3_lambda;
+        let gradients = gradients.get(&o3_lambda).expect("missing o3_lambda");
+
         let neighbor_type_i = if let Some(s) = result.types_mapping.get(&neighbor_type.i32()) {
             *s
         } else {
@@ -575,7 +590,7 @@ impl SphericalExpansion {
                             // SAFETY: same as above
                             unsafe {
                                 let out = array.uget_mut([grad_sample_i, xyz_1, xyz_2, m, property_i]);
-                                *out += *contributions.uget([neighbor_type_i, mapped_center, xyz_1, xyz_2, lm_start + m, n.usize()]);
+                                *out += *gradients.uget([neighbor_type_i, mapped_center, xyz_1, xyz_2, m, n.usize()]);
                             }
                         }
                     }
@@ -591,29 +606,29 @@ impl SphericalExpansion {
 struct PairAccumulationResult {
     /// values of the spherical expansion
     ///
-    /// the shape is `[neighbor_type, mapped_center, lm_index, n]`
-    values: ndarray::Array4<f64>,
+    /// the shape is `l => [neighbor_type, mapped_center, 2 l + 1, n]`
+    values: BTreeMap<usize, ndarray::Array4<f64>>,
     /// Gradients w.r.t. positions associated with each pair used in the
     /// calculation. This is used for gradients of a given center representation
     /// with respect to one of the neighbors
     ///
-    /// the shape is `[pair_id, xyz, lm_index, n]`
-    positions_gradient_by_pair: Option<ndarray::Array4<f64>>,
+    /// the shape is `l => [pair_id, xyz, 2 l + 1, n]`
+    positions_gradient_by_pair: Option<BTreeMap<usize, ndarray::Array4<f64>>>,
     /// gradient of spherical expansion w.r.t. the position of the central atom
     ///
     /// this is separate from `positions_gradient_by_pair` because it can be
     /// summed while computing each pair contributions.
     ///
-    /// the shape is `[neighbor_types, mapped_center, xyz, lm_index, n]`
-    self_positions_gradients: Option<ndarray::Array5<f64>>,
+    /// the shape is `l => [neighbor_types, mapped_center, xyz, 2 l + 1, n]`
+    self_positions_gradients: Option<BTreeMap<usize, ndarray::Array5<f64>>>,
     /// gradients of the spherical expansion w.r.t. cell
     ///
-    /// the shape is `[neighbor_type, mapped_center, xyz_1, xyz_2, lm_index, n]`
-    cell_gradients: Option<ndarray::Array6<f64>>,
+    /// the shape is `l => [neighbor_type, mapped_center, xyz_1, xyz_2, 2 l + 1, n]`
+    cell_gradients: Option<BTreeMap<usize, ndarray::Array6<f64>>>,
     /// gradients of the spherical expansion w.r.t. strain
     ///
-    /// the shape is `[neighbor_type, mapped_center, xyz_1, xyz_2, lm_index, n]`
-    strain_gradients: Option<ndarray::Array6<f64>>,
+    /// the shape is `l => [neighbor_type, mapped_center, xyz_1, xyz_2, 2 l + 1, n]`
+    strain_gradients: Option<BTreeMap<usize, ndarray::Array6<f64>>>,
 
     /// Mapping from atomic types to the first dimension of values/cell
     /// gradients/strain gradients

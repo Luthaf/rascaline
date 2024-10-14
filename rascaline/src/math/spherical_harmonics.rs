@@ -131,7 +131,8 @@ impl SphericalHarmonicsArray {
     /// size of the resulting view is `2 * l + 1`, and contains value for `m`
     /// from `-l` to `l` in order.
     #[inline]
-    pub fn slice(&self, l: isize) -> ArrayView1<'_, f64> {
+    pub fn angular_slice(&self, l: usize) -> ArrayView1<'_, f64> {
+        let l = l as isize;
         let start = self.linear_index([l, -l]);
         let stop = self.linear_index([l, l]);
         return ArrayView1::from(&self.data[start..=stop]);

@@ -1,4 +1,6 @@
-use ndarray::{Array1, Array2, ArrayViewMut1, Axis};
+use std::collections::BTreeMap;
+
+use ndarray::{Array1, ArrayViewMut1};
 
 use crate::Error;
 use crate::calculators::shared::{DensityKind, LodeRadialBasis, SphericalExpansionBasis};
@@ -41,42 +43,69 @@ pub use self::spline::LodeRadialIntegralSpline;
 /// Store together a Radial integral implementation and cached allocation for
 /// values/gradients.
 pub struct LodeRadialIntegralCache {
-    /// Maximal value for the spherical harmonics angular moment
-    max_angular: usize,
-    /// Implementations of the radial integrals for each `l` in `0..angular_size`
-    implementations: Vec<Box<dyn LodeRadialIntegral>>,
+    /// Implementations of the radial integral
+    implementation: Box<dyn LodeRadialIntegral>,
     /// Cache for the radial integral values
-    pub(crate) values: Array2<f64>,
+    pub(crate) values: Array1<f64>,
     /// Cache for the radial integral gradient
-    pub(crate) gradients: Array2<f64>,
-
-    /// Pre-computed central atom contribution
-    pub(crate) center_contribution: Array1<f64>,
+    pub(crate) gradients: Array1<f64>,
 }
 
 impl LodeRadialIntegralCache {
-    /// Create a new `RadialIntegralCache` for the given radial basis & parameters
-    pub fn new(density: DensityKind, basis: &SphericalExpansionBasis<LodeRadialBasis>, k_cutoff: f64) -> Result<Self, Error> {
+    /// Run the calculation, the results are stored inside `self.values` and
+    /// `self.gradients`
+    pub fn compute(&mut self, k_norm: f64, do_gradients: bool) {
+        let gradient_view = if do_gradients {
+            Some(self.gradients.view_mut())
+        } else {
+            None
+        };
+
+        self.implementation.compute(k_norm, self.values.view_mut(), gradient_view);
+    }
+
+    /// Get the size of this radial integral (i.e. number of radial basis)
+    pub fn size(&self) -> usize {
+        return self.implementation.size()
+    }
+
+    /// Get the size of this radial integral (i.e. number of radial basis)
+    pub fn get_center_contribution(&self, density: DensityKind) -> Result<Array1<f64>, Error> {
+        return self.implementation.get_center_contribution(density);
+    }
+}
+
+/// Store all `LodeRadialIntegralCache` for different angular channels
+pub struct LodeRadialIntegralCacheByAngular {
+    pub(crate) by_angular: BTreeMap<usize, LodeRadialIntegralCache>,
+}
+
+impl LodeRadialIntegralCacheByAngular {
+    /// Create a new `LodeRadialIntegralCacheByAngular` for the given radial basis & parameters
+    pub fn new(
+        density: DensityKind,
+        basis: &SphericalExpansionBasis<LodeRadialBasis>,
+        k_cutoff: f64
+    ) -> Result<Self, Error> {
         match basis {
             SphericalExpansionBasis::TensorProduct(basis) => {
-                let mut implementations = Vec::new();
-                let mut radial_size = 0;
-
-                for l in 0..=basis.max_angular {
+                let mut by_angular = BTreeMap::new();
+                for o3_lambda in 0..=basis.max_angular {
                     // We only support some specific radial basis
-                    let implementation = match &basis.radial {
-                        &LodeRadialBasis::Gto { .. } => {
-                            let gto = LodeRadialIntegralGto::new(&basis.radial, l)?;
+                    let implementation = match basis.radial {
+                        LodeRadialBasis::Gto { .. } => {
+                            let gto = LodeRadialIntegralGto::new(&basis.radial, o3_lambda)?;
 
                             if let Some(accuracy) = basis.spline_accuracy {
+                                let do_center_contribution = o3_lambda == 0;
                                 Box::new(LodeRadialIntegralSpline::with_accuracy(
-                                    gto, density, k_cutoff, accuracy
+                                    gto, density, k_cutoff, accuracy, do_center_contribution
                                 )?)
                             } else {
                                 Box::new(gto) as Box<dyn LodeRadialIntegral>
                             }
                         },
-                        LodeRadialBasis::Tabulated(tabulated) => {
+                        LodeRadialBasis::Tabulated(ref tabulated) => {
                             Box::new(LodeRadialIntegralSpline::from_tabulated(
                                 tabulated.clone(),
                                 density,
@@ -84,54 +113,36 @@ impl LodeRadialIntegralCache {
                         }
                     };
 
-                    radial_size = implementation.size();
-                    implementations.push(implementation);
+                    let size = implementation.size();
+                    let values = Array1::from_elem(size, 0.0);
+                    let gradients = Array1::from_elem(size, 0.0);
+
+                    by_angular.insert(o3_lambda, LodeRadialIntegralCache {
+                        implementation,
+                        values,
+                        gradients,
+                    });
                 }
 
-                let shape = [basis.max_angular + 1, radial_size];
-                let values = Array2::from_elem(shape, 0.0);
-                let gradients = Array2::from_elem(shape, 0.0);
-
-                // the center contribution should use the same implementation
-                // as the lambda=0 "radial" integral
-                let center_contribution = implementations[0].get_center_contribution(density)?;
-
-                return Ok(LodeRadialIntegralCache {
-                    max_angular: basis.max_angular,
-                    implementations,
-                    values,
-                    gradients,
-                    center_contribution,
+                return Ok(LodeRadialIntegralCacheByAngular {
+                    by_angular
                 });
             }
         }
     }
 
-    /// Run the calculation, the results are stored inside `self.values` and
-    /// `self.gradients`
-    pub fn compute(&mut self, k_norm: f64, gradients: bool) {
-        if gradients {
-            for l in 0..=self.max_angular {
-                self.implementations[l].compute(
-                    k_norm,
-                    self.values.index_axis_mut(Axis(0), l),
-                    Some(self.gradients.index_axis_mut(Axis(0), l)),
-                );
-            }
-        } else {
-            for l in 0..=self.max_angular {
-                self.implementations[l].compute(
-                    k_norm,
-                    self.values.index_axis_mut(Axis(0), l),
-                    None,
-                );
-            }
-        }
+    /// Run the calculation, the results are accessible with `get`
+    pub fn compute(&mut self, distance: f64, do_gradients: bool) {
+        self.by_angular.iter_mut().for_each(|(_, cache)| cache.compute(distance, do_gradients));
     }
 
-    /// Get the number of radial basis function for the radial integral
-    /// associated with a given `o3_lambda`
-    pub fn radial_size(&self, o3_lambda: usize) -> usize {
-        self.implementations[o3_lambda].size()
+    /// Get one of the individual cache, corresponding to the `o3_lambda`
+    /// angular channel
+    pub fn get(&self, o3_lambda: usize) -> Option<&LodeRadialIntegralCache> {
+        self.by_angular.get(&o3_lambda)
+    }
+
+    pub(crate) fn get_mut(&mut self, o3_lambda: usize) -> Option<&mut LodeRadialIntegralCache> {
+        self.by_angular.get_mut(&o3_lambda)
     }
 }

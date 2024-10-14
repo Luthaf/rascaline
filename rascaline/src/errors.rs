@@ -38,7 +38,7 @@ impl std::fmt::Display for Error {
             Error::BufferSize(e) => write!(f, "buffer is not big enough: {}", e),
             Error::External{status, message} => write!(f, "error from external code (status {}): {}", status, message),
             Error::Internal(e) => {
-                write!(f, "internal error")?;
+                write!(f, "internal rascaline error")?;
                 if e.contains("assertion failed") {
                     write!(f, " (this is likely a bug, please report it)")?;
                 }

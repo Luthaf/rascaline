@@ -22,7 +22,7 @@ use crate::math::SphericalHarmonicsCache;
 use crate::math::{KVector, compute_k_vectors};
 use crate::math::{expi, erfc, gamma};
 
-use super::radial_integral::LodeRadialIntegralCache;
+use super::radial_integral::LodeRadialIntegralCacheByAngular;
 
 use super::super::shared::descriptors_by_systems::{split_tensor_map_by_system, array_mut_for_system};
 use super::super::shared::LodeRadialBasis;
@@ -68,7 +68,7 @@ pub struct LodeSphericalExpansion {
     /// implementation + cached allocation to compute spherical harmonics
     spherical_harmonics: ThreadLocal<RefCell<SphericalHarmonicsCache>>,
     /// implementation + cached allocation to compute the radial integral
-    radial_integral: ThreadLocal<RefCell<LodeRadialIntegralCache>>,
+    radial_integral: ThreadLocal<RefCell<LodeRadialIntegralCacheByAngular>>,
     /// Cached allocations for the k-vector to nlm projection coefficients.
     /// The vector contains different l values, and the Array is indexed by
     /// `m, n, k`.
@@ -209,7 +209,7 @@ impl LodeSphericalExpansion {
 
         // validate the parameters once here, so we are sure we can construct
         // more radial integrals later
-        LodeRadialIntegralCache::new(
+        LodeRadialIntegralCacheByAngular::new(
             parameters.density.kind,
             &parameters.basis,
             parameters.get_k_cutoff()
@@ -226,7 +226,7 @@ impl LodeSphericalExpansion {
 
     fn project_k_to_nlm(&self, k_vectors: &[KVector]) {
         let mut radial_integral = self.radial_integral.get_or(|| {
-            let radial_integral = LodeRadialIntegralCache::new(
+            let radial_integral = LodeRadialIntegralCacheByAngular::new(
                 self.parameters.density.kind,
                 &self.parameters.basis,
                 self.parameters.get_k_cutoff()
@@ -236,7 +236,7 @@ impl LodeSphericalExpansion {
         }).borrow_mut();
 
         let mut spherical_harmonics = self.spherical_harmonics.get_or(|| {
-            let max_angular = self.parameters.basis.angular_channels().max().unwrap_or(0);
+            let max_angular = self.parameters.basis.angular_channels().into_iter().max().unwrap_or(0);
             RefCell::new(SphericalHarmonicsCache::new(max_angular))
         }).borrow_mut();
 
@@ -250,7 +250,7 @@ impl LodeSphericalExpansion {
         }).borrow_mut();
 
         for o3_lambda in self.parameters.basis.angular_channels() {
-            let radial_size = radial_integral.radial_size(o3_lambda);
+            let radial_size = radial_integral.get(o3_lambda).expect("missing o3_lambda").size();
             let shape = (2 * o3_lambda + 1, radial_size, k_vectors.len());
             resize_array3(&mut k_vector_to_m_n[o3_lambda], shape);
         }
@@ -262,8 +262,9 @@ impl LodeSphericalExpansion {
             spherical_harmonics.compute(k_vector.direction, false);
 
             for o3_lambda in self.parameters.basis.angular_channels() {
-                let spherical_harmonics = spherical_harmonics.values.slice(o3_lambda as isize);
-                let radial_integral = radial_integral.values.slice(s![o3_lambda, ..]);
+                let spherical_harmonics = spherical_harmonics.values.angular_slice(o3_lambda);
+                let radial_integral = radial_integral.get(o3_lambda).expect("missing o3_lambda");
+                let radial_integral = &radial_integral.values;
 
                 for (m, sph_value) in spherical_harmonics.iter().enumerate() {
                     for (n, ri_value) in radial_integral.iter().enumerate() {
@@ -350,17 +351,6 @@ impl LodeSphericalExpansion {
             _ => unreachable!()
         };
 
-        let mut radial_integral = self.radial_integral.get_or(|| {
-            let radial_integral = LodeRadialIntegralCache::new(
-                self.parameters.density.kind,
-                &self.parameters.basis,
-                self.parameters.get_k_cutoff()
-            ).expect("could not create a radial integral");
-
-            return RefCell::new(radial_integral);
-        }).borrow_mut();
-
-        let mut k0_contrib = Vec::with_capacity(radial_integral.radial_size(0));
         let factor = if exponent == 0 {
             let smearing_squared = smearing * smearing;
 
@@ -380,12 +370,22 @@ impl LodeSphericalExpansion {
             0.0
         };
 
-        radial_integral.compute(0.0, false);
-        for n in 0..radial_integral.radial_size(0) {
-            k0_contrib.push(factor * radial_integral.values[[0, n]]);
-        }
+         let mut radial_integral = self.radial_integral.get_or(|| {
+            let radial_integral = LodeRadialIntegralCacheByAngular::new(
+                self.parameters.density.kind,
+                &self.parameters.basis,
+                self.parameters.get_k_cutoff()
+            ).expect("could not create a radial integral");
 
-        return k0_contrib.into();
+            return RefCell::new(radial_integral);
+        }).borrow_mut();
+
+        let radial_integral = radial_integral.get_mut(0)
+            .expect("k0 contributions can't be done when o3_lambda=0 is missing");
+
+        radial_integral.compute(0.0, false);
+
+        return factor * radial_integral.values.clone();
     }
 
     /// Compute center atom contribution.
@@ -394,15 +394,22 @@ impl LodeSphericalExpansion {
     /// projection coefficients and only the neighbor type blocks that agrees
     /// with the center atom.
     fn do_center_contribution(&mut self, systems: &mut[Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
+        if !self.parameters.basis.angular_channels().contains(&0) {
+            // o3_lambda is not part of the output, skip self contributions
+            return Ok(());
+        }
+
         let radial_integral = self.radial_integral.get_or(|| {
-            let radial_integral = LodeRadialIntegralCache::new(
+            let radial_integral = LodeRadialIntegralCacheByAngular::new(
                 self.parameters.density.kind, &self.parameters.basis, self.parameters.get_k_cutoff()
             ).expect("could not create a radial integral");
 
             return RefCell::new(radial_integral);
         }).borrow_mut();
 
-        let central_atom_contrib = &radial_integral.center_contribution;
+        let central_atom_contrib = &radial_integral.get(0)
+            .expect("missing o3_lambda")
+            .get_center_contribution(self.parameters.density.kind)?;
 
         for (system_i, system) in systems.iter_mut().enumerate() {
             let types = system.types()?;
@@ -632,7 +639,8 @@ impl CalculatorBase for LodeSphericalExpansion {
                 let global_factor = 4.0 * std::f64::consts::PI / cell.volume();
 
                 // Add k = 0 contributions for (m, l) = (0, 0)
-                if potential_exponent == 0 || potential_exponent > 3 {
+                let has_lambda_0 = self.parameters.basis.angular_channels().contains(&0);
+                if has_lambda_0 && (potential_exponent == 0 || potential_exponent > 3) {
                     let k0_contrib = &self.compute_k0_contributions();
                     for &neighbor_type in types {
                         for center_i in 0..system.size()? {

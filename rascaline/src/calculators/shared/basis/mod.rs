@@ -13,21 +13,21 @@ pub use self::radial::{SoapRadialBasis, LodeRadialBasis};
 pub enum SphericalExpansionBasis<RadialBasis> {
     /// A Tensor product basis, combining all possible radial basis functions
     /// with all possible angular basis functions.
-    TensorProduct(TensorProductBasis<RadialBasis>)
+    TensorProduct(TensorProductBasis<RadialBasis>),
 }
 
 impl<RadialBasis> SphericalExpansionBasis<RadialBasis> {
-    pub fn angular_channels(&self) -> impl Iterator<Item=usize> {
+    pub fn angular_channels(&self) -> Vec<usize> {
         match self {
             SphericalExpansionBasis::TensorProduct(basis) => {
-                return 0..=basis.max_angular;
+                return (0..=basis.max_angular).collect();
             }
         }
     }
 }
 
 
-/// Information about tensor product bases
+/// Information about "tensor product" spherical expansion basis functions
 #[derive(Debug, Clone)]
 #[derive(serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
