@@ -1,4 +1,6 @@
-use ndarray::{Array2, ArrayViewMut1, Axis};
+use std::collections::BTreeMap;
+
+use ndarray::{Array1, ArrayViewMut1};
 
 use crate::calculators::shared::DensityKind;
 use crate::calculators::shared::{SphericalExpansionBasis, SoapRadialBasis};
@@ -64,30 +66,49 @@ pub use self::spline::SoapRadialIntegralSpline;
 /// Store together a radial integral implementation and cached allocation for
 /// values/gradients.
 pub struct SoapRadialIntegralCache {
-    /// Largest angular function to consider
-    max_angular: usize,
-    /// Implementations of the radial integrals for each `l` in `0..=max_angular`
-    implementations: Vec<Box<dyn SoapRadialIntegral>>,
+    /// Implementation of the radial integral
+    implementation: Box<dyn SoapRadialIntegral>,
     /// Cache for the radial integral values
-    pub(crate) values: Array2<f64>,
+    pub(crate) values: Array1<f64>,
     /// Cache for the radial integral gradient
-    pub(crate) gradients: Array2<f64>,
+    pub(crate) gradients: Array1<f64>,
 }
 
 impl SoapRadialIntegralCache {
-    /// Create a new `RadialIntegralCache` for the given radial basis & density
-    pub fn new(cutoff: f64, density: DensityKind, basis: &SphericalExpansionBasis<SoapRadialBasis>) -> Result<Self, Error> {
+    /// Run the calculation, the results are stored inside `self.values` and
+    /// `self.gradients`
+    pub fn compute(&mut self, distance: f64, do_gradients: bool) {
+        let gradient_view = if do_gradients {
+            Some(self.gradients.view_mut())
+        } else {
+            None
+        };
+
+        self.implementation.compute(distance, self.values.view_mut(), gradient_view);
+    }
+}
+
+/// Store all `SoapRadialIntegralCache` for different angular channels
+pub struct SoapRadialIntegralCacheByAngular {
+    pub(crate) by_angular: BTreeMap<usize, SoapRadialIntegralCache>,
+}
+
+impl SoapRadialIntegralCacheByAngular {
+    /// Create a new `SoapRadialIntegralCacheByAngular` for the given radial basis & density
+    pub fn new(
+        cutoff: f64,
+        density: DensityKind,
+        basis: &SphericalExpansionBasis<SoapRadialBasis>
+    ) -> Result<SoapRadialIntegralCacheByAngular, Error> {
         match basis {
             SphericalExpansionBasis::TensorProduct(basis) => {
-                let mut implementations = Vec::new();
-                let mut radial_size = 0;
-
-                for l in 0..=basis.max_angular {
+                let mut by_angular = BTreeMap::new();
+                for o3_lambda in 0..=basis.max_angular {
                     // We only support some specific combinations of density and basis
                     let implementation = match (density, &basis.radial) {
                         // Gaussian density + GTO basis
                         (DensityKind::Gaussian {..}, &SoapRadialBasis::Gto { .. }) => {
-                            let gto = SoapRadialIntegralGto::new(cutoff, density, &basis.radial, l)?;
+                            let gto = SoapRadialIntegralGto::new(cutoff, density, &basis.radial, o3_lambda)?;
 
                             if let Some(accuracy) = basis.spline_accuracy {
                                 Box::new(SoapRadialIntegralSpline::with_accuracy(
@@ -112,43 +133,34 @@ impl SoapRadialIntegralCache {
                         }
                     };
 
-                    radial_size = implementation.size();
-                    implementations.push(implementation);
+                    let size = implementation.size();
+                    let values = Array1::from_elem(size, 0.0);
+                    let gradients = Array1::from_elem(size, 0.0);
+
+                    by_angular.insert(o3_lambda, SoapRadialIntegralCache {
+                        implementation,
+                        values,
+                        gradients,
+                    });
                 }
 
-                let shape = [basis.max_angular + 1, radial_size];
-                let values = Array2::from_elem(shape, 0.0);
-                let gradients = Array2::from_elem(shape, 0.0);
-
-                return Ok(SoapRadialIntegralCache {
-                    max_angular: basis.max_angular,
-                    implementations,
-                    values,
-                    gradients,
-                });
+                return Ok(SoapRadialIntegralCacheByAngular { by_angular });
             }
         }
     }
 
-    /// Run the calculation, the results are stored inside `self.values` and
-    /// `self.gradients`
-    pub fn compute(&mut self, distance: f64, gradients: bool) {
-        if gradients {
-            for l in 0..=self.max_angular {
-                self.implementations[l].compute(
-                    distance,
-                    self.values.index_axis_mut(Axis(0), l),
-                    Some(self.gradients.index_axis_mut(Axis(0), l)),
-                );
-            }
-        } else {
-            for l in 0..=self.max_angular {
-                self.implementations[l].compute(
-                    distance,
-                    self.values.index_axis_mut(Axis(0), l),
-                    None,
-                );
-            }
-        }
+    /// Run the calculation, the results are accessible with `get`
+    pub fn compute(&mut self, distance: f64, do_gradients: bool) {
+        self.by_angular.iter_mut().for_each(|(_, cache)| cache.compute(distance, do_gradients));
+    }
+
+    /// Get one of the individual cache, corresponding to the `o3_lambda`
+    /// angular channel
+    pub fn get(&self, o3_lambda: usize) -> Option<&SoapRadialIntegralCache> {
+        self.by_angular.get(&o3_lambda)
+    }
+
+    pub(crate) fn get_mut(&mut self, o3_lambda: usize) -> Option<&mut SoapRadialIntegralCache> {
+        self.by_angular.get_mut(&o3_lambda)
     }
 }

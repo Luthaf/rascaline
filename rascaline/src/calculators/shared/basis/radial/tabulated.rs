@@ -29,7 +29,7 @@ impl Tabulated {
 #[serde(into = "LodeTabulatedSerde")]
 pub struct LodeTabulated {
     pub(crate) spline: Arc<HermitCubicSpline<ndarray::Ix1>>,
-    pub(crate) center_contribution: Array1<f64>,
+    pub(crate) center_contribution: Option<Array1<f64>>,
 }
 
 impl LodeTabulated {
@@ -61,8 +61,9 @@ pub struct LodeTabulatedSerde {
     /// `R_n(r)` the radial basis function and `n` the current radial channel.
     ///
     /// It is required for using tabulated basis with LODE, since we can not
-    /// compute it using only the spline.
-    pub center_contribution: Vec<f64>,
+    /// compute it using only the spline. This should be defined for the
+    /// `lambda=0` angular channel.
+    pub center_contribution: Option<Vec<f64>>,
 }
 
 /// A single point entering a spline used for the tabulated radial integrals.
@@ -111,20 +112,20 @@ impl TryFrom<LodeTabulatedSerde> for LodeTabulated {
     fn try_from(tabulated: LodeTabulatedSerde) -> Result<Self, Self::Error> {
         let spline = spline_from_tabulated(tabulated.points)?;
 
-        if tabulated.center_contribution.len() != spline.shape()[0] {
-            return Err(Error::InvalidParameter(format!(
-                "expected the 'center_contribution' in 'Tabulated' \
-                radial basis to have the same number of basis function as \
-                the spline, got {} and {}",
-                tabulated.center_contribution.len(), spline.shape()[0]
-            )));
+        let mut center_contribution = None;
+        if let Some(vector) = tabulated.center_contribution {
+            if vector.len() != spline.shape()[0] {
+                return Err(Error::InvalidParameter(format!(
+                    "expected the 'center_contribution' in 'Tabulated' \
+                    radial basis to have the same number of basis function as \
+                    the spline, got {} and {}",
+                    vector.len(), spline.shape()[0]
+                )));
+            }
+            center_contribution = Some(Array1::from(vector));
         }
-        let center_contribution = Array1::from(tabulated.center_contribution);
 
-        return Ok(LodeTabulated {
-            spline: spline,
-            center_contribution: center_contribution,
-        });
+        return Ok(LodeTabulated { spline, center_contribution });
     }
 }
 
@@ -141,7 +142,7 @@ impl From<LodeTabulated> for LodeTabulatedSerde {
             });
         }
 
-        let center_contribution = tabulated.center_contribution.to_vec();
+        let center_contribution = tabulated.center_contribution.as_ref().map(Array1::to_vec);
         return LodeTabulatedSerde { points, center_contribution };
     }
 }

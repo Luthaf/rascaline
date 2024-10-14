@@ -18,7 +18,7 @@ use crate::Error;
 pub struct LodeRadialIntegralSpline {
     spline: Arc<HermitCubicSpline<ndarray::Ix1>>,
     density: DensityKind,
-    center_contribution: Array1<f64>,
+    center_contribution: Option<Array1<f64>>,
 }
 
 impl LodeRadialIntegralSpline {
@@ -33,6 +33,7 @@ impl LodeRadialIntegralSpline {
         density: DensityKind,
         k_cutoff: f64,
         accuracy: f64,
+        with_center_contribution: bool,
     ) -> Result<LodeRadialIntegralSpline, Error> {
         let size = radial_integral.size();
         let spline_parameters = SplineParameters {
@@ -52,7 +53,11 @@ impl LodeRadialIntegralSpline {
             },
         )?;
 
-        let center_contribution = radial_integral.get_center_contribution(density)?;
+        let mut center_contribution = None;
+        if with_center_contribution {
+            center_contribution = Some(radial_integral.get_center_contribution(density)?);
+        }
+
         return Ok(LodeRadialIntegralSpline {
             spline: Arc::new(spline),
             density: density,
@@ -88,7 +93,11 @@ impl LodeRadialIntegral for LodeRadialIntegralSpline {
             return Err(Error::InvalidParameter("mismatched atomic density in splined LODE radial integral".into()));
         }
 
-        return Ok(self.center_contribution.clone());
+        if self.center_contribution.is_none() {
+            return Err(Error::InvalidParameter("TODO".into()));
+        }
+
+        return Ok(self.center_contribution.clone().expect("just checked"));
     }
 }
 
@@ -112,7 +121,7 @@ mod tests {
         let density = DensityKind::SmearedPowerLaw { smearing: 0.5, exponent: 1 };
 
         // this test only check that this code runs without crashing
-        LodeRadialIntegralSpline::with_accuracy(gto, density, k_cutoff, accuracy).unwrap();
+        LodeRadialIntegralSpline::with_accuracy(gto, density, k_cutoff, accuracy, true).unwrap();
     }
 
     #[test]
@@ -127,7 +136,7 @@ mod tests {
 
         // even with very bad accuracy, we want the gradients of the spline to match the
         // values produces by the spline, and not necessarily the actual GTO gradients.
-        let spline = LodeRadialIntegralSpline::with_accuracy(gto, density, k_cutoff, accuracy).unwrap();
+        let spline = LodeRadialIntegralSpline::with_accuracy(gto, density, k_cutoff, accuracy, false).unwrap();
 
         let rij = 3.4;
         let delta = 1e-9;

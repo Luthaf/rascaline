@@ -2,7 +2,6 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::collections::btree_map::Entry;
 use std::cell::RefCell;
 
-use ndarray::s;
 use thread_local::ThreadLocal;
 
 use metatensor::{Labels, LabelsBuilder, LabelValue, TensorMap, TensorBlockRefMut};
@@ -17,7 +16,7 @@ use crate::math::SphericalHarmonicsCache;
 use super::super::CalculatorBase;
 use super::super::neighbor_list::FullNeighborList;
 
-use super::SoapRadialIntegralCache;
+use super::SoapRadialIntegralCacheByAngular;
 
 /// Parameters for spherical expansion calculator.
 ///
@@ -53,8 +52,8 @@ impl SphericalExpansionParameters {
             scaling.validate()?;
         }
 
-        // try constructing a radial integral to catch errors here
-        SoapRadialIntegralCache::new(self.cutoff.radius, self.density.kind, &self.basis)?;
+        // try constructing a radial integral cache to catch any errors early
+        SoapRadialIntegralCacheByAngular::new(self.cutoff.radius, self.density.kind, &self.basis)?;
 
         return Ok(());
     }
@@ -65,7 +64,7 @@ pub struct SphericalExpansionByPair {
     pub(crate) parameters: SphericalExpansionParameters,
     /// implementation + cached allocation to compute the radial integral for a
     /// single pair
-    radial_integral: ThreadLocal<RefCell<SoapRadialIntegralCache>>,
+    radial_integral: ThreadLocal<RefCell<SoapRadialIntegralCacheByAngular>>,
     /// implementation + cached allocation to compute the spherical harmonics
     /// for a single pair
     spherical_harmonics: ThreadLocal<RefCell<SphericalHarmonicsCache>>,
@@ -97,25 +96,31 @@ impl GradientsOptions {
 
 /// Contribution of a single pair to the spherical expansion
 pub(super) struct PairContribution {
-    /// Values of the contribution. The shape is (lm, n), where the lm index
-    /// runs over both l and m
-    pub values: ndarray::Array2<f64>,
+    /// Values of the contribution. The `BTreeMap` contains one array for each
+    /// angular channel, and the shape of the arrays is (2 * L + 1, N)
+    pub values: BTreeMap<usize, ndarray::Array2<f64>>,
     /// Gradients of the contribution w.r.t. the distance between the atoms in
-    /// the pair. The shape is (x/y/z, lm, n).
-    pub gradients: Option<ndarray::Array3<f64>>,
+    /// the pair. shape of the arrays is (3, 2 * L + 1, N)
+    pub gradients: Option<BTreeMap<usize, ndarray::Array3<f64>>>,
 }
 
 impl PairContribution {
-    pub fn new(radial_size: usize, max_angular: usize, do_gradients: bool) -> PairContribution {
-        let lm_shape = (max_angular + 1) * (max_angular + 1);
-        PairContribution {
-            values: ndarray::Array2::from_elem((lm_shape, radial_size), 0.0),
-            gradients: if do_gradients {
-                Some(ndarray::Array3::from_elem((3, lm_shape, radial_size), 0.0))
-            } else {
-                None
-            }
-        }
+    pub fn new(angular_channels: &[usize], radial_sizes: &[usize], do_gradients: bool) -> PairContribution {
+        let values = angular_channels.iter().zip(radial_sizes).map(|(&o3_lambda, &radial_size)| {
+            let array = ndarray::Array2::from_elem((2 * o3_lambda + 1, radial_size), 0.0);
+            (o3_lambda, array)
+        }).collect();
+
+        let gradients = if do_gradients {
+            Some(angular_channels.iter().zip(radial_sizes).map(|(&o3_lambda, &radial_size)| {
+                let array = ndarray::Array3::from_elem((3, 2 * o3_lambda + 1, radial_size), 0.0);
+                (o3_lambda, array)
+            }).collect())
+        } else {
+            None
+        };
+
+        return PairContribution { values, gradients }
     }
 
     /// Modify the values/gradients as required to construct the
@@ -123,33 +128,34 @@ impl PairContribution {
     ///
     /// `m_1_pow_l` should contain the values of `(-1)^l` up to `max_angular`
     pub fn inverse_pair(&mut self, m_1_pow_l: &[f64]) {
-        let angular_size = m_1_pow_l.len();
-        let radial_size = self.values.shape()[1];
-        debug_assert_eq!(self.values.shape()[0], angular_size * angular_size);
-
         // inverting the pair is equivalent to adding a (-1)^l factor to the
         // pair contribution values, and -(-1)^l to the gradients
-        let mut lm_index = 0;
-        for o3_lambda in 0..angular_size {
+        for (&o3_lambda, values) in &mut self.values {
+            let shape = values.shape();
+            debug_assert_eq!(shape[0], 2 * o3_lambda + 1);
+            let shape_n = shape[1];
+
             let factor = m_1_pow_l[o3_lambda];
-            for _m in 0..(2 * o3_lambda + 1) {
-                for n in 0..radial_size {
-                    self.values[[lm_index, n]] *= factor;
+            for m in 0..2 * o3_lambda + 1 {
+                for n in 0..shape_n {
+                    values[[m, n]] *= factor;
                 }
-                lm_index += 1;
             }
         }
 
         if let Some(ref mut gradients) = self.gradients {
-            for xyz in 0..3 {
-                let mut lm_index = 0;
-                for o3_lambda in 0..angular_size {
-                    let factor = -m_1_pow_l[o3_lambda];
-                    for _m in 0..(2 * o3_lambda + 1) {
-                        for n in 0..radial_size {
-                            gradients[[xyz, lm_index, n]] *= factor;
+            for (&o3_lambda, gradients) in gradients.iter_mut() {
+                let shape = gradients.shape();
+                debug_assert_eq!(shape[0], 3);
+                debug_assert_eq!(shape[1], 2 * o3_lambda + 1);
+                let shape_n = shape[2];
+
+                let factor = -m_1_pow_l[o3_lambda];
+                for xyz in 0..3 {
+                    for m in 0..(2 * o3_lambda + 1) {
+                        for n in 0..shape_n {
+                            gradients[[xyz, m, n]] *= factor;
                         }
-                        lm_index += 1;
                     }
                 }
             }
@@ -163,6 +169,7 @@ impl SphericalExpansionByPair {
         parameters.validate()?;
 
         let m_1_pow_l = parameters.basis.angular_channels()
+            .into_iter()
             .map(|l| f64::powi(-1.0, l as i32))
             .collect::<Vec<f64>>();
 
@@ -213,9 +220,9 @@ impl SphericalExpansionByPair {
     ///
     /// By symmetry, the self-contribution is only non-zero for `L=0`, and does
     /// not contributes to the gradients.
-    pub(super) fn self_contribution(&self) -> PairContribution {
+    pub(super) fn self_contribution(&self) -> ndarray::Array1<f64> {
         let mut radial_integral = self.radial_integral.get_or(|| {
-            RefCell::new(SoapRadialIntegralCache::new(
+            RefCell::new(SoapRadialIntegralCacheByAngular::new(
                     self.parameters.cutoff.radius,
                     self.parameters.density.kind,
                     &self.parameters.basis
@@ -224,14 +231,17 @@ impl SphericalExpansionByPair {
         }).borrow_mut();
 
         let mut spherical_harmonics = self.spherical_harmonics.get_or(|| {
-            let max_angular = self.parameters.basis.angular_channels().max().unwrap_or(0);
+            let max_angular = self.parameters.basis.angular_channels().into_iter().max().unwrap_or(0);
             RefCell::new(SphericalHarmonicsCache::new(max_angular))
         }).borrow_mut();
 
         // Compute the three factors that appear in the center contribution.
         // Note that this is simply the pair contribution for the special
         // case where the pair distance is zero.
+        let radial_integral = radial_integral.get_mut(0)
+            .expect("self_contribution can't be done when o3_lambda=0 is missing");
         radial_integral.compute(0.0, false);
+
         spherical_harmonics.compute(Vector3D::new(0.0, 0.0, 1.0), false);
         let f_scaling = self.scaling_functions(0.0);
 
@@ -239,12 +249,7 @@ impl SphericalExpansionByPair {
             * f_scaling
             * spherical_harmonics.values[[0, 0]];
 
-        radial_integral.values *= factor;
-
-        return PairContribution {
-            values: radial_integral.values.clone(),
-            gradients: None
-        };
+        return factor * radial_integral.values.clone();
     }
 
     /// Accumulate the self contribution to the spherical expansion
@@ -254,6 +259,12 @@ impl SphericalExpansionByPair {
     /// (-1) to store the data associated with self-pairs.
     fn do_self_contributions(&self, systems: &[Box<dyn System>], descriptor: &mut TensorMap) -> Result<(), Error> {
         debug_assert_eq!(descriptor.keys().names(), ["o3_lambda", "o3_sigma", "first_atom_type", "second_atom_type"]);
+
+        if !self.parameters.basis.angular_channels().contains(&0) {
+            // o3_lambda is not part of the output, skip self contributions
+            return Ok(());
+        }
+
         let self_contribution = self.self_contribution();
 
         for (key, mut block) in descriptor {
@@ -295,7 +306,7 @@ impl SphericalExpansionByPair {
                 }
 
                 for (property_i, &[n]) in data.properties.iter_fixed_size().enumerate() {
-                    array[[sample_i, 0, property_i]] = self_contribution.values[[0, n.usize()]];
+                    array[[sample_i, 0, property_i]] = self_contribution[n.usize()];
                 }
             }
         }
@@ -329,7 +340,7 @@ impl SphericalExpansionByPair {
         }
 
         let mut radial_integral = self.radial_integral.get_or(|| {
-            RefCell::new(SoapRadialIntegralCache::new(
+            RefCell::new(SoapRadialIntegralCacheByAngular::new(
                     self.parameters.cutoff.radius,
                     self.parameters.density.kind,
                     &self.parameters.basis
@@ -338,7 +349,7 @@ impl SphericalExpansionByPair {
         }).borrow_mut();
 
         let mut spherical_harmonics = self.spherical_harmonics.get_or(|| {
-            let max_angular = self.parameters.basis.angular_channels().max().unwrap_or(0);
+            let max_angular = self.parameters.basis.angular_channels().into_iter().max().unwrap_or(0);
             RefCell::new(SphericalHarmonicsCache::new(max_angular))
         }).borrow_mut();
 
@@ -352,28 +363,31 @@ impl SphericalExpansionByPair {
         let f_scaling = self.scaling_functions(distance);
         let f_scaling_grad = self.scaling_functions_gradient(distance);
 
-        let mut lm_index = 0;
-        let mut lm_index_grad = 0;
         for o3_lambda in self.parameters.basis.angular_channels() {
-            let spherical_harmonics_grad = [
-                spherical_harmonics.gradients[0].slice(o3_lambda as isize),
-                spherical_harmonics.gradients[1].slice(o3_lambda as isize),
-                spherical_harmonics.gradients[2].slice(o3_lambda as isize),
-            ];
-            let spherical_harmonics = spherical_harmonics.values.slice(o3_lambda as isize);
 
-            let radial_integral_grad = radial_integral.gradients.slice(s![o3_lambda, ..]);
-            let radial_integral = radial_integral.values.slice(s![o3_lambda, ..]);
+            let spherical_harmonics_grad = [
+                spherical_harmonics.gradients[0].angular_slice(o3_lambda),
+                spherical_harmonics.gradients[1].angular_slice(o3_lambda),
+                spherical_harmonics.gradients[2].angular_slice(o3_lambda),
+            ];
+            let spherical_harmonics = spherical_harmonics.values.angular_slice(o3_lambda);
+
+            let radial_integral_grad = &radial_integral.get(o3_lambda).expect("missing o3_lambda").gradients;
+            let radial_integral = &radial_integral.get(o3_lambda).expect("missing o3_lambda").values;
+
+            let values = contribution.values.get_mut(&o3_lambda).expect("missing o3_lambda");
 
             // compute the full spherical expansion coefficients & gradients
-            for sph_value in spherical_harmonics {
+            for m in 0..(2 * o3_lambda + 1) {
+                let sph_value = spherical_harmonics[m];
                 for (n, ri_value) in radial_integral.iter().enumerate() {
-                    contribution.values[[lm_index, n]] = f_scaling * sph_value * ri_value;
+                    values[[m, n]] = f_scaling * sph_value * ri_value;
                 }
-                lm_index += 1;
             }
 
-            if let Some(ref mut gradient) = contribution.gradients {
+            if let Some(ref mut gradients) = contribution.gradients {
+                let gradients = gradients.get_mut(&o3_lambda).expect("missing o3_lambda");
+
                 let dr_d_spatial = direction;
 
                 for m in 0..(2 * o3_lambda + 1) {
@@ -386,23 +400,21 @@ impl SphericalExpansionByPair {
                         let ri_value = radial_integral[n];
                         let ri_grad = radial_integral_grad[n];
 
-                        gradient[[0, lm_index_grad, n]] =
+                        gradients[[0, m, n]] =
                             f_scaling_grad * dr_d_spatial[0] * ri_value * sph_value
                             + f_scaling * ri_grad * dr_d_spatial[0] * sph_value
                             + f_scaling * ri_value * sph_grad_x / distance;
 
-                        gradient[[1, lm_index_grad, n]] =
+                        gradients[[1, m, n]] =
                             f_scaling_grad * dr_d_spatial[1] * ri_value * sph_value
                             + f_scaling * ri_grad * dr_d_spatial[1] * sph_value
                             + f_scaling * ri_value * sph_grad_y / distance;
 
-                        gradient[[2, lm_index_grad, n]] =
+                        gradients[[2, m, n]] =
                             f_scaling_grad * dr_d_spatial[2] * ri_value * sph_value
                             + f_scaling * ri_grad * dr_d_spatial[2] * sph_value
                             + f_scaling * ri_value * sph_grad_z / distance;
                     }
-
-                    lm_index_grad += 1;
                 }
             }
         }
@@ -413,27 +425,27 @@ impl SphericalExpansionByPair {
         o3_lambda: usize,
         mut block: TensorBlockRefMut,
         sample: &[LabelValue],
-        contribution: &PairContribution,
+        contributions: &PairContribution,
         do_gradients: GradientsOptions,
         pair_vector: Vector3D,
     ) {
         let data = block.data_mut();
         let array = data.values.to_array_mut();
 
+        let contribution_values = contributions.values.get(&o3_lambda).expect("missing o3_lambda");
         let sample_i = data.samples.position(sample);
         if let Some(sample_i) = sample_i {
-            let lm_start = o3_lambda * o3_lambda;
-
             for m in 0..(2 * o3_lambda + 1) {
                 for (property_i, [n]) in data.properties.iter_fixed_size().enumerate() {
                     unsafe {
                         let out = array.uget_mut([sample_i, m, property_i]);
-                        *out += *contribution.values.uget([lm_start + m, n.usize()]);
+                        *out += *contribution_values.uget([m, n.usize()]);
                     }
                 }
             }
 
-            if let Some(ref contribution_gradients) = contribution.gradients {
+            if let Some(ref contribution_gradients) = contributions.gradients {
+                let contribution_gradients = contribution_gradients.get(&o3_lambda).expect("missing o3_lambda");
                 if do_gradients.positions {
                     let mut gradient = block.gradient_mut("positions").expect("missing positions gradients");
                     let gradient = gradient.data_mut();
@@ -452,7 +464,7 @@ impl SphericalExpansionByPair {
                             for (property_i, [n]) in gradient.properties.iter_fixed_size().enumerate() {
                                 unsafe {
                                     let out = array.uget_mut([first_grad_sample_i, xyz, m, property_i]);
-                                    *out -= contribution_gradients.uget([xyz, lm_start + m, n.usize()]);
+                                    *out -= contribution_gradients.uget([xyz, m, n.usize()]);
                                 }
                             }
                         }
@@ -469,7 +481,7 @@ impl SphericalExpansionByPair {
                             for (property_i, [n]) in gradient.properties.iter_fixed_size().enumerate() {
                                 unsafe {
                                     let out = array.uget_mut([second_grad_sample_i, xyz, m, property_i]);
-                                    *out += contribution_gradients.uget([xyz, lm_start + m, n.usize()]);
+                                    *out += contribution_gradients.uget([xyz, m, n.usize()]);
                                 }
                             }
                         }
@@ -490,7 +502,7 @@ impl SphericalExpansionByPair {
                                 for (property_i, [n]) in gradient.properties.iter_fixed_size().enumerate() {
                                     unsafe {
                                         let out = array.uget_mut([sample_i, xyz_1, xyz_2, m, property_i]);
-                                        *out += pair_vector[xyz_1] * contribution_gradients.uget([xyz_2, lm_start + m, n.usize()]);
+                                        *out += pair_vector[xyz_1] * contribution_gradients.uget([xyz_2, m, n.usize()]);
                                     }
                                 }
                             }
@@ -518,7 +530,7 @@ impl SphericalExpansionByPair {
                                 for (property_i, [n]) in gradient.properties.iter_fixed_size().enumerate() {
                                     unsafe {
                                         let out = array.uget_mut([sample_i, abc, xyz, m, property_i]);
-                                        *out += shifts[abc] * contribution_gradients.uget([xyz, lm_start + m, n.usize()]);
+                                        *out += shifts[abc] * contribution_gradients.uget([xyz, m, n.usize()]);
                                     }
                                 }
                             }
@@ -714,11 +726,17 @@ impl CalculatorBase for SphericalExpansionByPair {
 
         let keys = descriptor.keys().clone();
 
-        let mut contribution = match self.parameters.basis {
+        let radial_sizes = match self.parameters.basis {
             SphericalExpansionBasis::TensorProduct(ref basis) => {
-                PairContribution::new(basis.radial.size(), basis.max_angular, do_gradients.any())
-            }
+                vec![basis.radial.size(); basis.max_angular + 1]
+            },
         };
+
+        let mut contribution = PairContribution::new(
+            &self.parameters.basis.angular_channels(),
+            &radial_sizes,
+            do_gradients.any(),
+        );
 
         for (system_i, system) in systems.iter_mut().enumerate() {
             system.compute_neighbors(self.parameters.cutoff.radius)?;
@@ -821,7 +839,7 @@ mod tests {
 
     fn basis() -> TensorProductBasis<SoapRadialBasis> {
         TensorProductBasis {
-            max_angular: 5,
+            max_angular: 2,
             radial: SoapRadialBasis::Gto { max_radial: 5 },
             spline_accuracy: Some(1e-8),
         }

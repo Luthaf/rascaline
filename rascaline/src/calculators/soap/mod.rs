@@ -4,7 +4,7 @@ pub use self::cutoff::Smoothing;
 
 
 mod radial_integral;
-pub use self::radial_integral::{SoapRadialIntegral, SoapRadialIntegralCache};
+pub use self::radial_integral::{SoapRadialIntegral, SoapRadialIntegralCacheByAngular};
 
 mod spherical_expansion_pair;
 pub use self::spherical_expansion_pair::{SphericalExpansionByPair, SphericalExpansionParameters};
