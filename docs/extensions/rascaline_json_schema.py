@@ -42,11 +42,11 @@ class JsonSchemaDirective(Directive):
         section.insert(1, schema_node)
 
         # add missing entries to  self._definitions
-        for name in schema.get("definitions", {}).keys():
+        for name in schema.get("$defs", {}).keys():
             self._definition_used(name)
 
         for name in self._definitions.keys():
-            definition = schema["definitions"][name]
+            definition = schema["$defs"][name]
             target, subsection = self._transform(definition, name)
 
             section += target
@@ -112,7 +112,7 @@ class JsonSchemaDirective(Directive):
             assert "allOf" not in schema
 
             ref = schema["$ref"]
-            assert ref.startswith("#/definitions/")
+            assert ref.startswith("#/$defs/")
             type_name = ref.split("/")[-1]
 
             self._definition_used(type_name)
@@ -228,6 +228,10 @@ class JsonSchemaDirective(Directive):
 
                             field_list += body
 
+                    additional = schema.get("additionalProperties")
+                    if additional is not None:
+                        pass
+
                     return field_list
                 else:
                     object_node = nodes.inline()
@@ -261,6 +265,25 @@ class JsonSchemaDirective(Directive):
 
                         object_node += field
 
+                    additional = schema.get("additionalProperties")
+                    if isinstance(additional, dict):
+                        # JSON Schema does not have a concept of key type being anything
+                        # else than string. In rascaline, we annotate `HashMap` with a
+                        # custom `x-key-type` to carry this information all the way to
+                        # here
+                        key_type = schema.get("x-key-type")
+                        if key_type is None:
+                            key_type = "string"
+
+                        field = nodes.inline()
+                        field += nodes.Text("[key: ")
+                        field += nodes.literal(text=key_type)
+                        field += nodes.Text("]: ")
+
+                        field += self._json_schema_to_nodes(additional)
+
+                        object_node += field
+
                     object_node += nodes.Text("}")
 
                     return object_node
@@ -285,6 +308,8 @@ class JsonSchemaDirective(Directive):
                 if "enum" in schema:
                     values = [f'"{v}"' for v in schema["enum"]]
                     return nodes.literal(text=" | ".join(values))
+                elif "const" in schema:
+                    return nodes.Text('"' + schema["const"] + '"')
                 else:
                     return nodes.literal(text="string")
 

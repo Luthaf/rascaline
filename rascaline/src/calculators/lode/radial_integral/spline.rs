@@ -94,7 +94,10 @@ impl LodeRadialIntegral for LodeRadialIntegralSpline {
         }
 
         if self.center_contribution.is_none() {
-            return Err(Error::InvalidParameter("TODO".into()));
+            return Err(Error::InvalidParameter(
+                "`center_contribution` must be defined for the Tabulated radial \
+                basis used with the L=0 angular channel".into()
+            ));
         }
 
         return Ok(self.center_contribution.clone().expect("just checked"));

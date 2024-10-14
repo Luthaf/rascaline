@@ -1,5 +1,5 @@
 import abc
-from typing import Optional
+from typing import Dict, List, Optional
 
 import numpy as np
 
@@ -383,7 +383,7 @@ class SphericalBessel(RadialBasis):
 ########################################################################################
 
 
-class ExpansionBasis:
+class ExpansionBasis(metaclass=abc.ABCMeta):
     """
     Base class representing a set of basis functions used by spherical expansions.
 
@@ -393,7 +393,8 @@ class ExpansionBasis:
 
     You can inherit from this class to define new sets of basis functions, implementing
     :py:meth:`get_hypers` to create the right hyper parameters for the underlying native
-    calculator.
+    calculator, as well as :py:meth:`angular_channels` and :py:meth:`radial_basis` to
+    define the set of basis functions to use.
     """
 
     def _rascaline_hypers(self):
@@ -407,6 +408,14 @@ class ExpansionBasis:
             f"this basis functions set ({self.__class__.__name__}) does not have "
             "matching hyper parameters in the native calculators"
         )
+
+    @abc.abstractmethod
+    def angular_channels(self) -> List[int]:
+        """Get the list of angular channels that are included in the expansion basis."""
+
+    @abc.abstractmethod
+    def radial_basis(self, angular: int) -> RadialBasis:
+        """Get the radial basis used for a given ``angular`` channel"""
 
 
 class TensorProduct(ExpansionBasis):
@@ -448,3 +457,52 @@ class TensorProduct(ExpansionBasis):
             "radial": self.radial,
             "spline_accuracy": self.spline_accuracy,
         }
+
+    def angular_channels(self) -> List[int]:
+        return list(range(self.max_angular + 1))
+
+    def radial_basis(self, angular: int) -> RadialBasis:
+        return self.radial
+
+
+class Explicit(ExpansionBasis):
+    r"""
+    An expansion basis where combinations of radial and angular functions is picked
+    explicitly.
+
+    The angular basis functions are still spherical harmonics, but only the degrees
+    included as keys in ``by_angular`` will be part of the output. Each of these angular
+    basis function can then be associated with a set of different radial basis function,
+    potentially of different sizes.
+    """
+
+    def __init__(
+        self,
+        *,
+        by_angular: Dict[int, RadialBasis],
+        spline_accuracy: Optional[float] = 1e-8,
+    ):
+        self.by_angular = by_angular
+
+        if spline_accuracy is None:
+            self.spline_accuracy = None
+        else:
+            self.spline_accuracy = float(spline_accuracy)
+            assert self.spline_accuracy > 0
+
+        for angular, radial in self.by_angular.items():
+            assert angular >= 0
+            assert isinstance(radial, RadialBasis)
+
+    def get_hypers(self):
+        return {
+            "type": "Explicit",
+            "by_angular": self.by_angular,
+            "spline_accuracy": self.spline_accuracy,
+        }
+
+    def angular_channels(self) -> List[int]:
+        return list(self.by_angular.keys())
+
+    def radial_basis(self, angular: int) -> RadialBasis:
+        return self.by_angular[angular]

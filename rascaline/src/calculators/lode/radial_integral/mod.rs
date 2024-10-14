@@ -52,6 +52,45 @@ pub struct LodeRadialIntegralCache {
 }
 
 impl LodeRadialIntegralCache {
+    fn new(
+        o3_lambda: usize,
+        radial: &LodeRadialBasis,
+        density: DensityKind,
+        k_cutoff: f64,
+        spline_accuracy: Option<f64>,
+    ) -> Result<LodeRadialIntegralCache, Error> {
+        let implementation = match radial {
+            LodeRadialBasis::Gto { .. } => {
+                let gto = LodeRadialIntegralGto::new(radial, o3_lambda)?;
+
+                if let Some(accuracy) = spline_accuracy {
+                    let do_center_contribution = o3_lambda == 0;
+                    Box::new(LodeRadialIntegralSpline::with_accuracy(
+                        gto, density, k_cutoff, accuracy, do_center_contribution
+                    )?)
+                } else {
+                    Box::new(gto) as Box<dyn LodeRadialIntegral>
+                }
+            },
+            LodeRadialBasis::Tabulated(ref tabulated) => {
+                Box::new(LodeRadialIntegralSpline::from_tabulated(
+                    tabulated.clone(),
+                    density,
+                )) as Box<dyn LodeRadialIntegral>
+            }
+        };
+
+        let size = implementation.size();
+        let values = Array1::from_elem(size, 0.0);
+        let gradients = Array1::from_elem(size, 0.0);
+
+        return Ok(LodeRadialIntegralCache {
+            implementation,
+            values,
+            gradients,
+        });
+    }
+
     /// Run the calculation, the results are stored inside `self.values` and
     /// `self.gradients`
     pub fn compute(&mut self, k_norm: f64, do_gradients: bool) {
@@ -91,39 +130,32 @@ impl LodeRadialIntegralCacheByAngular {
             SphericalExpansionBasis::TensorProduct(basis) => {
                 let mut by_angular = BTreeMap::new();
                 for o3_lambda in 0..=basis.max_angular {
-                    // We only support some specific radial basis
-                    let implementation = match basis.radial {
-                        LodeRadialBasis::Gto { .. } => {
-                            let gto = LodeRadialIntegralGto::new(&basis.radial, o3_lambda)?;
-
-                            if let Some(accuracy) = basis.spline_accuracy {
-                                let do_center_contribution = o3_lambda == 0;
-                                Box::new(LodeRadialIntegralSpline::with_accuracy(
-                                    gto, density, k_cutoff, accuracy, do_center_contribution
-                                )?)
-                            } else {
-                                Box::new(gto) as Box<dyn LodeRadialIntegral>
-                            }
-                        },
-                        LodeRadialBasis::Tabulated(ref tabulated) => {
-                            Box::new(LodeRadialIntegralSpline::from_tabulated(
-                                tabulated.clone(),
-                                density,
-                            )) as Box<dyn LodeRadialIntegral>
-                        }
-                    };
-
-                    let size = implementation.size();
-                    let values = Array1::from_elem(size, 0.0);
-                    let gradients = Array1::from_elem(size, 0.0);
-
-                    by_angular.insert(o3_lambda, LodeRadialIntegralCache {
-                        implementation,
-                        values,
-                        gradients,
-                    });
+                    let cache = LodeRadialIntegralCache::new(
+                        o3_lambda,
+                        &basis.radial,
+                        density,
+                        k_cutoff,
+                        basis.spline_accuracy
+                    )?;
+                    by_angular.insert(o3_lambda, cache);
                 }
 
+                return Ok(LodeRadialIntegralCacheByAngular {
+                    by_angular
+                });
+            }
+            SphericalExpansionBasis::Explicit(basis) => {
+                let mut by_angular = BTreeMap::new();
+                for (&o3_lambda, radial) in &*basis.by_angular {
+                    let cache = LodeRadialIntegralCache::new(
+                        o3_lambda,
+                        radial,
+                        density,
+                        k_cutoff,
+                        basis.spline_accuracy
+                    )?;
+                    by_angular.insert(o3_lambda, cache);
+                }
                 return Ok(LodeRadialIntegralCacheByAngular {
                     by_angular
                 });

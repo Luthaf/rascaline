@@ -168,9 +168,8 @@ impl SphericalExpansionByPair {
     pub fn new(mut parameters: SphericalExpansionParameters) -> Result<SphericalExpansionByPair, Error> {
         parameters.validate()?;
 
-        let m_1_pow_l = parameters.basis.angular_channels()
-            .into_iter()
-            .map(|l| f64::powi(-1.0, l as i32))
+        let max_angular = parameters.basis.angular_channels().into_iter().max().expect("there should be at least one angular channel");
+        let m_1_pow_l = (0..=max_angular).map(|l| f64::powi(-1.0, l as i32))
             .collect::<Vec<f64>>();
 
         Ok(SphericalExpansionByPair {
@@ -353,10 +352,6 @@ impl SphericalExpansionByPair {
             RefCell::new(SphericalHarmonicsCache::new(max_angular))
         }).borrow_mut();
 
-        let radial_basis = match self.parameters.basis {
-            SphericalExpansionBasis::TensorProduct(ref basis) => &basis.radial,
-        };
-
         radial_integral.compute(distance, do_gradients.any());
         spherical_harmonics.compute(direction, do_gradients.any());
 
@@ -364,6 +359,12 @@ impl SphericalExpansionByPair {
         let f_scaling_grad = self.scaling_functions_gradient(distance);
 
         for o3_lambda in self.parameters.basis.angular_channels() {
+            let radial_basis_size = match self.parameters.basis {
+                SphericalExpansionBasis::TensorProduct(ref basis) => basis.radial.size(),
+                SphericalExpansionBasis::Explicit(ref basis) => {
+                    basis.by_angular.get(&o3_lambda).expect("missing o3_lambda").size()
+                },
+            };
 
             let spherical_harmonics_grad = [
                 spherical_harmonics.gradients[0].angular_slice(o3_lambda),
@@ -396,7 +397,7 @@ impl SphericalExpansionByPair {
                     let sph_grad_y = spherical_harmonics_grad[1][m];
                     let sph_grad_z = spherical_harmonics_grad[2][m];
 
-                    for n in 0..radial_basis.size() {
+                    for n in 0..radial_basis_size {
                         let ri_value = radial_integral[n];
                         let ri_grad = radial_integral_grad[n];
 
@@ -699,6 +700,8 @@ impl CalculatorBase for SphericalExpansionByPair {
     }
 
     fn properties(&self, keys: &Labels) -> Vec<Labels> {
+        assert_eq!(keys.names(), ["o3_lambda", "o3_sigma", "first_atom_type", "second_atom_type"]);
+
         match self.parameters.basis {
             SphericalExpansionBasis::TensorProduct(ref basis) => {
                 let mut properties = LabelsBuilder::new(self.property_names());
@@ -707,6 +710,20 @@ impl CalculatorBase for SphericalExpansionByPair {
                 }
 
                 return vec![properties.finish(); keys.count()];
+            }
+            SphericalExpansionBasis::Explicit(ref basis) => {
+                let mut result = Vec::new();
+                for [o3_lambda, _, _, _] in keys.iter_fixed_size() {
+                    let mut properties = LabelsBuilder::new(self.property_names());
+
+                    let radial = basis.by_angular.get(&o3_lambda.usize()).expect("missing o3_lambda");
+                    for n in 0..radial.size() {
+                        properties.add(&[n]);
+                    }
+
+                    result.push(properties.finish());
+                }
+                return result;
             }
         }
     }
@@ -729,6 +746,9 @@ impl CalculatorBase for SphericalExpansionByPair {
         let radial_sizes = match self.parameters.basis {
             SphericalExpansionBasis::TensorProduct(ref basis) => {
                 vec![basis.radial.size(); basis.max_angular + 1]
+            },
+            SphericalExpansionBasis::Explicit(ref basis) => {
+                basis.by_angular.values().map(|radial| radial.size()).collect()
             },
         };
 
@@ -823,6 +843,8 @@ impl CalculatorBase for SphericalExpansionByPair {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+
     use metatensor::Labels;
     use ndarray::{s, Axis};
     use approx::assert_ulps_eq;
@@ -834,7 +856,7 @@ mod tests {
 
     use super::{SphericalExpansionByPair, SphericalExpansionParameters};
     use crate::calculators::soap::{Cutoff, Smoothing};
-    use crate::calculators::shared::{Density, DensityKind, DensityScaling};
+    use crate::calculators::shared::{Density, DensityKind, DensityScaling, ExplicitBasis};
     use crate::calculators::shared::{SoapRadialBasis, SphericalExpansionBasis, TensorProductBasis};
 
     fn basis() -> TensorProductBasis<SoapRadialBasis> {
@@ -994,6 +1016,38 @@ mod tests {
                 }
 
                 assert_ulps_eq!(sum, expected);
+            }
+        }
+    }
+
+    #[test]
+    fn explicit_basis() {
+        let mut by_angular = BTreeMap::new();
+        by_angular.insert(1, SoapRadialBasis::Gto { max_radial: 5 });
+        by_angular.insert(12, SoapRadialBasis::Gto { max_radial: 3 });
+
+        let mut calculator = Calculator::from(Box::new(SphericalExpansionByPair::new(
+            SphericalExpansionParameters {
+                basis: SphericalExpansionBasis::Explicit(ExplicitBasis {
+                    by_angular: by_angular.into(),
+                    spline_accuracy: None,
+
+                }),
+                ..parameters()
+            }
+        ).unwrap()) as Box<dyn CalculatorBase>);
+
+        let mut systems = test_systems(&["water"]);
+
+        let descriptor = calculator.compute(&mut systems, Default::default()).unwrap();
+
+        for (key, block) in &descriptor {
+            if key[0] == 1 {
+                assert_eq!(block.properties().count(), 6);
+            } else if key[0] == 12 {
+                assert_eq!(block.properties().count(), 4);
+            } else {
+                panic!("unexpected o3_lambda value");
             }
         }
     }

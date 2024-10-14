@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use metatensor::{EmptyArray, TensorBlock, TensorMap};
 use metatensor::{LabelValue, Labels, LabelsBuilder};
 
@@ -10,7 +12,7 @@ use crate::calculators::shared::{
     Density,
     SoapRadialBasis,
     SphericalExpansionBasis,
-    TensorProductBasis,
+    ExplicitBasis
 };
 
 
@@ -74,12 +76,15 @@ impl std::fmt::Debug for SoapRadialSpectrum {
 
 impl SoapRadialSpectrum {
     pub fn new(parameters: RadialSpectrumParameters) -> Result<SoapRadialSpectrum, Error> {
+        // radial spectrum only needs a single angular basis function
+        let mut by_angular = BTreeMap::new();
+        by_angular.insert(0, parameters.basis.radial.clone());
+
         let expansion_parameters = SphericalExpansionParameters {
             cutoff: parameters.cutoff,
             density: parameters.density,
-            basis: SphericalExpansionBasis::TensorProduct(TensorProductBasis {
-                max_angular: 0,
-                radial: parameters.basis.radial.clone(),
+            basis: SphericalExpansionBasis::Explicit(ExplicitBasis {
+                by_angular: by_angular.into(),
                 spline_accuracy: parameters.basis.spline_accuracy,
             })
         };
