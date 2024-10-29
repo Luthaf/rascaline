@@ -862,7 +862,7 @@ mod tests {
     fn basis() -> TensorProductBasis<SoapRadialBasis> {
         TensorProductBasis {
             max_angular: 2,
-            radial: SoapRadialBasis::Gto { max_radial: 5 },
+            radial: SoapRadialBasis::Gto { max_radial: 5, radius: None },
             spline_accuracy: Some(1e-8),
         }
     }
@@ -1023,8 +1023,8 @@ mod tests {
     #[test]
     fn explicit_basis() {
         let mut by_angular = BTreeMap::new();
-        by_angular.insert(1, SoapRadialBasis::Gto { max_radial: 5 });
-        by_angular.insert(12, SoapRadialBasis::Gto { max_radial: 3 });
+        by_angular.insert(1, SoapRadialBasis::Gto { max_radial: 5, radius: None });
+        by_angular.insert(12, SoapRadialBasis::Gto { max_radial: 3, radius: None });
 
         let mut calculator = Calculator::from(Box::new(SphericalExpansionByPair::new(
             SphericalExpansionParameters {

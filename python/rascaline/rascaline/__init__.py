@@ -1,6 +1,7 @@
 from . import basis  # noqa
 from . import cutoff  # noqa
 from . import density  # noqa
+from . import splines  # noqa
 from . import utils  # noqa
 from .calculator_base import CalculatorBase  # noqa
 

@@ -20,6 +20,10 @@ pub enum SoapRadialBasis {
         /// definition. The overall basis will have `max_radial + 1` basis
         /// functions, indexed from `0` to `max_radial` (inclusive).
         max_radial: usize,
+
+        #[doc(hidden)]
+        ///
+        radius: Option<f64>,
     },
     /// Use pre-tabulated radial basis.
     ///
@@ -36,7 +40,7 @@ impl SoapRadialBasis {
     /// Get the size (number of basis function) for the current basis
     pub fn size(&self) -> usize {
         match self {
-            SoapRadialBasis::Gto { max_radial } => max_radial + 1,
+            SoapRadialBasis::Gto { max_radial, .. } => max_radial + 1,
             SoapRadialBasis::Tabulated(tabulated) => tabulated.size(),
         }
     }

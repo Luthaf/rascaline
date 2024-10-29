@@ -786,7 +786,7 @@ mod tests {
     fn basis() -> TensorProductBasis<SoapRadialBasis> {
         TensorProductBasis {
             max_angular: 6,
-            radial: SoapRadialBasis::Gto { max_radial: 6 },
+            radial: SoapRadialBasis::Gto { max_radial: 6, radius: None },
             spline_accuracy: Some(1e-8),
         }
     }
@@ -1005,7 +1005,7 @@ mod tests {
             },
             basis: SphericalExpansionBasis::TensorProduct( TensorProductBasis {
                 max_angular: 6,
-                radial: SoapRadialBasis::Gto { max_radial: 6 },
+                radial: SoapRadialBasis::Gto { max_radial: 6, radius: None },
                 spline_accuracy: Some(1e-8),
             }),
         };
