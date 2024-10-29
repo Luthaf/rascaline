@@ -496,9 +496,9 @@ def _cg_couple_sparse(
     cg_l1l2lam_samples = cg_l1l2lam.samples
     for i in range(len(cg_l1l2lam_samples)):
         m1m2mu = cg_l1l2lam_samples.entry(i)
-        m1 = m1m2mu[0]
-        m2 = m1m2mu[1]
-        mu = m1m2mu[2]
+        m1 = int(m1m2mu[0])
+        m2 = int(m1m2mu[1])
+        mu = int(m1m2mu[2])
         # Broadcast arrays, multiply together and with CG coeff
         output[mu, :, :] += arrays[str((m1, m2))] * cg_l1l2lam.values[i, 0]
 
@@ -651,8 +651,8 @@ def _cg_tensor_product_sparse(
         cg_l1l2lam = cg_coefficients.block({"l1": l1, "l2": l2, "lambda": o3_lambda})
         for i in range(len(cg_l1l2lam.samples)):
             m1m2mu = cg_l1l2lam.samples.entry(i)
-            m1 = m1m2mu[0]
-            m2 = m1m2mu[1]
+            m1 = int(m1m2mu[0])
+            m2 = int(m1m2mu[1])
 
             # We use a string as dict key since TorchScript does not support (int, int)
             dict_key = str((m1, m2))
