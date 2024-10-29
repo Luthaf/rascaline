@@ -84,7 +84,7 @@ mod tests {
         // Check that even with high accuracy and large domain MAX_SPLINE_SIZE
         // is enough
         let density = DensityKind::Gaussian { width: 0.5 };
-        let basis = SoapRadialBasis::Gto { max_radial: 15 };
+        let basis = SoapRadialBasis::Gto { max_radial: 15, radius: None };
         let gto_ri = SoapRadialIntegralGto::new(12.0, density, &basis, 0).unwrap();
 
         // this test only check that this code runs without crashing
@@ -94,7 +94,7 @@ mod tests {
     #[test]
     fn finite_difference() {
         let density = DensityKind::Gaussian { width: 0.5 };
-        let basis = SoapRadialBasis::Gto { max_radial: 8 };
+        let basis = SoapRadialBasis::Gto { max_radial: 8, radius: None };
         let gto_ri = SoapRadialIntegralGto::new(5.0, density, &basis, 0).unwrap();
 
         // even with very bad accuracy, we want the gradients of the spline to

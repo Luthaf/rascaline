@@ -18,4 +18,6 @@ independently <install-python-lib>`. The functions and classes provided in
     cutoff
     density
     basis
+    splines
+
     utils/index

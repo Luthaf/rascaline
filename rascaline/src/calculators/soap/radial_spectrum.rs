@@ -334,7 +334,7 @@ mod tests {
 
     fn basis() -> RadialSpectrumBasis {
         RadialSpectrumBasis {
-            radial: SoapRadialBasis::Gto { max_radial: 5 },
+            radial: SoapRadialBasis::Gto { max_radial: 5, radius: None },
             spline_accuracy: Some(1e-8),
         }
     }

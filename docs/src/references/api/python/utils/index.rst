@@ -8,5 +8,4 @@ Utility functions and classes that extend the core usage of rascaline.
     :maxdepth: 1
 
     power-spectrum
-    splines
     clebsch-gordan

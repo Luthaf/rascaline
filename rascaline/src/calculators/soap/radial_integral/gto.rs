@@ -36,7 +36,16 @@ impl SoapRadialIntegralGto {
             return Err(Error::Internal("density must be Gaussian for the GTO radial integral".into()));
         };
 
-        let &max_radial = if let SoapRadialBasis::Gto { max_radial } = basis {
+        let &max_radial = if let SoapRadialBasis::Gto { max_radial, radius } = basis {
+            if let Some(radius) = radius {
+                #[allow(clippy::float_cmp)]
+                if *radius != cutoff {
+                    return Err(Error::Internal(
+                        "GTO radius must be the same as the cutoff radius in SOAP, \
+                        or should not provided".into()
+                    ));
+                }
+            }
             max_radial
         } else {
             return Err(Error::Internal("radial basis must be GTO for the GTO radial integral".into()));
@@ -208,7 +217,7 @@ mod tests {
     #[should_panic = "radial overlap matrix is singular, try with a lower max_radial (current value is 30)"]
     fn ill_conditioned_orthonormalization() {
         let density = DensityKind::Gaussian { width: 0.4 };
-        let basis = SoapRadialBasis::Gto { max_radial: 30 };
+        let basis = SoapRadialBasis::Gto { max_radial: 30, radius: None };
         SoapRadialIntegralGto::new(5.0, density, &basis, 0).unwrap();
     }
 
@@ -216,7 +225,7 @@ mod tests {
     #[should_panic = "wrong size for values array, expected [4] but got [3]"]
     fn values_array_size() {
         let density = DensityKind::Gaussian { width: 0.4 };
-        let basis = SoapRadialBasis::Gto { max_radial: 3 };
+        let basis = SoapRadialBasis::Gto { max_radial: 3, radius: None };
         let gto = SoapRadialIntegralGto::new(5.0, density, &basis, 0).unwrap();
         let mut values = Array1::from_elem(3, 0.0);
 
@@ -227,7 +236,7 @@ mod tests {
     #[should_panic = "wrong size for gradients array, expected [4] but got [3]"]
     fn gradient_array_size() {
         let density = DensityKind::Gaussian { width: 0.5 };
-        let basis = SoapRadialBasis::Gto { max_radial: 3 };
+        let basis = SoapRadialBasis::Gto { max_radial: 3, radius: None };
         let gto = SoapRadialIntegralGto::new(5.0, density, &basis, 0).unwrap();
 
         let mut values = Array1::from_elem(4, 0.0);
@@ -239,7 +248,7 @@ mod tests {
     #[test]
     fn gradients_near_zero() {
         let density = DensityKind::Gaussian { width: 0.5 };
-        let basis = SoapRadialBasis::Gto { max_radial: 7 };
+        let basis = SoapRadialBasis::Gto { max_radial: 7, radius: None };
 
         for l in 0..4 {
             let gto_ri = SoapRadialIntegralGto::new(3.4, density, &basis, l).unwrap();
@@ -259,7 +268,7 @@ mod tests {
     #[test]
     fn finite_differences() {
         let density = DensityKind::Gaussian { width: 0.5 };
-        let basis = SoapRadialBasis::Gto { max_radial: 7 };
+        let basis = SoapRadialBasis::Gto { max_radial: 7, radius: None };
 
         let x = 3.4;
         let delta = 1e-9;
