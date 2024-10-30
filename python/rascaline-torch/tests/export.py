@@ -87,9 +87,10 @@ def test_export_as_metatensor_model(tmpdir):
     model = Model(types=[1, 6, 8])
     model.eval()
 
-    energy_output = ModelOutput()
+    energy_output = ModelOutput(quantity="energy", unit="eV")
     capabilities = ModelCapabilities(
         supported_devices=["cpu"],
+        length_unit="A",
         interaction_range=HYPERS["cutoff"],
         atomic_types=[1, 6, 8],
         dtype="float64",

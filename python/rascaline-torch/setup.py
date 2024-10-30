@@ -243,7 +243,7 @@ if __name__ == "__main__":
 
     install_requires = [
         "torch >= 1.12",
-        "metatensor-torch >=0.5.0,<0.6.0",
+        "metatensor-torch >=0.6.0,<0.7.0",
     ]
     if os.path.exists(RASCALINE_C_API):
         # we are building from a git checkout

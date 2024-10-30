@@ -58,8 +58,8 @@ find_package(Torch 1.12 REQUIRED)
 # ============================================================================ #
 # Setup metatensor_torch
 
-set(METATENSOR_FETCH_VERSION "0.5.5")
-set(REQUIRED_METATENSOR_TORCH_VERSION "0.5")
+set(METATENSOR_FETCH_VERSION "0.6.0")
+set(REQUIRED_METATENSOR_TORCH_VERSION "0.6")
 if (RASCALINE_TORCH_FETCH_METATENSOR_TORCH)
     message(STATUS "Fetching metatensor-torch @ ${METATENSOR_FETCH_VERSION} from github")
 
@@ -68,7 +68,7 @@ if (RASCALINE_TORCH_FETCH_METATENSOR_TORCH)
     FetchContent_Declare(
         metatensor_torch
         URL      ${URL_ROOT}/metatensor-torch-v${METATENSOR_FETCH_VERSION}/metatensor-torch-cxx-${METATENSOR_FETCH_VERSION}.tar.gz
-        URL_HASH SHA256=dac306ab59ac8b59167827405f468397dbf0d4a69988fce7b9f4285f2816a57c
+        URL_HASH SHA256=f050743662ece38948b2087dd025d60110645716840dbfc5370c059e1275d0cf
     )
 
     if (CMAKE_VERSION VERSION_GREATER 3.18)

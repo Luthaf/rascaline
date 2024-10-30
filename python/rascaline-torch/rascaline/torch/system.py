@@ -1,5 +1,6 @@
 from typing import List, Optional, Sequence, overload
 
+import numpy as np
 import torch
 from metatensor.torch.atomistic import System
 from packaging import version
@@ -65,6 +66,11 @@ def _system_to_torch(system, positions_requires_grad, cell_requires_grad):
             types=torch.tensor(system.types()),
             positions=torch.tensor(system.positions()),
             cell=torch.tensor(system.cell()),
+            pbc=(
+                torch.tensor([False, False, False])
+                if np.all(system.cell() == 0.0)
+                else torch.tensor([True, True, True])
+            ),
         )
 
     if positions_requires_grad is not None:

@@ -30,7 +30,7 @@ def get_requires_for_build_wheel(config_settings=None):
     defaults = build_meta.get_requires_for_build_wheel(config_settings)
     return defaults + [
         "torch >= 1.12",
-        "metatensor-torch >=0.5.0,<0.6.0",
+        "metatensor-torch >=0.6.0,<0.7.0",
         RASCALINE_DEP,
     ]
 
