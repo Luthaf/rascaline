@@ -35,6 +35,7 @@ def system():
             ]
         ),
         cell=torch.zeros((3, 3)),
+        pbc=torch.tensor([False, False, False]),
     )
 
 

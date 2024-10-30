@@ -299,5 +299,7 @@ metatensor_torch::System test_system(bool positions_grad, bool cell_grad) {
     auto cell = 10 * torch::eye(3);
     cell.requires_grad_(cell_grad);
 
-    return torch::make_intrusive<metatensor_torch::SystemHolder>(types, positions, cell);
+    auto pbc = torch::ones(3, torch::TensorOptions().dtype(torch::kBool));
+
+    return torch::make_intrusive<metatensor_torch::SystemHolder>(types, positions, cell, pbc);
 }

@@ -90,6 +90,9 @@ class CalculatorModule(torch.nn.Module):
                 NeighborListOptions(
                     cutoff=cutoff,
                     full_list=False,
+                    # we will re-filter the NL when converting to rascaline internal
+                    # type, so we don't need the engine to pre-filter it for us
+                    strict=False,
                     requestor="rascaline",
                 )
             )

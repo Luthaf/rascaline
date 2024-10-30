@@ -11,6 +11,7 @@ def system():
         types=torch.tensor([1, 1, 8, 8]),
         positions=torch.tensor([[0.0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 0, 3]]),
         cell=torch.tensor([[10.0, 0, 0], [0, 10, 0], [0, 0, 10]]),
+        pbc=torch.tensor([True, True, True]),
     )
 
 

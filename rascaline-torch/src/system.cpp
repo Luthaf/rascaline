@@ -14,6 +14,7 @@ SystemAdapter::SystemAdapter(metatensor_torch::System system): system_(std::move
     for (const auto& options: system_->known_neighbor_lists()) {
         for (const auto& requestor: options->requestors()) {
             if (requestor == "rascaline") {
+                auto cutoff = options->cutoff();
                 auto neighbors = system_->get_neighbor_list(options);
                 auto samples_values = neighbors->samples()->values().to(torch::kCPU).contiguous();
                 auto samples = samples_values.accessor<int32_t, 2>();
@@ -24,7 +25,6 @@ SystemAdapter::SystemAdapter(metatensor_torch::System system): system_(std::move
                 auto n_pairs = samples.size(0);
 
                 auto pairs = std::vector<rascal_pair_t>();
-                pairs.reserve(static_cast<size_t>(n_pairs));
                 for (int64_t i=0; i<n_pairs; i++) {
                     auto x = distances[i][0];
                     auto y = distances[i][1];
@@ -38,18 +38,21 @@ SystemAdapter::SystemAdapter(metatensor_torch::System system): system_(std::move
                     assert(pair.second < this->size());
 
                     pair.distance = std::sqrt(x*x + y*y + z*z);
-                    pair.vector[0] = x;
-                    pair.vector[1] = y;
-                    pair.vector[2] = z;
 
-                    pair.cell_shift_indices[0] = samples[i][2];
-                    pair.cell_shift_indices[1] = samples[i][3];
-                    pair.cell_shift_indices[2] = samples[i][4];
+                    if (pair.distance < cutoff) {
+                        pair.vector[0] = x;
+                        pair.vector[1] = y;
+                        pair.vector[2] = z;
 
-                    pairs.emplace_back(pair);
+                        pair.cell_shift_indices[0] = samples[i][2];
+                        pair.cell_shift_indices[1] = samples[i][3];
+                        pair.cell_shift_indices[2] = samples[i][4];
+
+                        pairs.emplace_back(pair);
+                    }
                 }
 
-                this->set_precomputed_pairs(options->cutoff(), std::move(pairs));
+                this->set_precomputed_pairs(cutoff, std::move(pairs));
                 continue;
             }
         }

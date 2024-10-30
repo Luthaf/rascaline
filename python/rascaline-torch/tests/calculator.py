@@ -16,6 +16,7 @@ def system():
         types=torch.tensor([1, 1, 8, 8]),
         positions=torch.tensor([[0.0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 0, 3]]),
         cell=torch.tensor([[10.0, 0, 0], [0, 10, 0], [0, 0, 10]]),
+        pbc=torch.tensor([True, True, True]),
     )
 
 
@@ -188,7 +189,6 @@ def test_different_device_dtype_errors(system):
         custom_device = torch.device("cuda:0")
 
     if custom_device is not None:
-
         device_system = system.to(device=custom_device)
 
         torch.set_warn_always(True)

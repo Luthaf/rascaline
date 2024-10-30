@@ -9,7 +9,8 @@ int main() {
     auto system = torch::make_intrusive<metatensor_torch::SystemHolder>(
         torch::zeros({5}, torch::kI32),
         torch::rand({5, 3}, torch::kF64),
-        torch::zeros({3, 3}, torch::kF64)
+        torch::zeros({3, 3}, torch::kF64),
+        torch::zeros({3}, torch::kBool)
     );
 
     const auto* HYPERS_JSON = R"({

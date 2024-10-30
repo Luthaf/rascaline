@@ -97,7 +97,6 @@ def h2o_isolated():
 
 
 def h2o_periodic():
-
     return [
         ase.Atoms(
             symbols=["O", "H", "H"],
@@ -353,7 +352,7 @@ def test_correlate_density_norm():
     unique_samples = metatensor.unique_metadata(
         ps, "samples", names=["system", "atom", "center_type"]
     )
-    grouped_labels = [
+    selections = [
         Labels(names=ps.sample_names, values=unique_samples.values[i].reshape(1, 3))
         for i in range(len(unique_samples))
     ]
@@ -362,11 +361,11 @@ def test_correlate_density_norm():
     norm_nu1 = 0.0
     norm_ps = 0.0
     norm_ps_sorted = 0.0
-    for sample in grouped_labels:
+    for selection in selections:
         # Slice the TensorMaps
-        nu1_sliced = metatensor.slice(density, "samples", labels=sample)
-        ps_sliced = metatensor.slice(ps, "samples", labels=sample)
-        ps_sorted_sliced = metatensor.slice(ps_sorted, "samples", labels=sample)
+        nu1_sliced = metatensor.slice(density, "samples", selection=selection)
+        ps_sliced = metatensor.slice(ps, "samples", selection=selection)
+        ps_sorted_sliced = metatensor.slice(ps_sorted, "samples", selection=selection)
 
         # Calculate norms
         norm_nu1 += get_norm(nu1_sliced) ** (n_correlations + 1)
