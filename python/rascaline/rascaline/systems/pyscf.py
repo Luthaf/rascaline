@@ -80,7 +80,10 @@ class PyscfSystem(SystemBase):
                 symb = self._frame.atom_symbol(atm_i)
                 chg = pyscf.data.elements.index(symb)
                 self._types[atm_i] = -chg
-        self.is_periodic = isinstance(self._frame, pyscf.pbc.gto.cell.Cell)
+        if hasattr(pyscf, "pbc"):
+            self.is_periodic = isinstance(self._frame, pyscf.pbc.gto.cell.Cell)
+        else:
+            self.is_periodic = False
 
     def size(self):
         return self._frame.natm
