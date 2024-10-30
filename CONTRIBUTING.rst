@@ -41,7 +41,7 @@ Getting involved
 
 Contribution via merge requests are always welcome. Source code is
 available from `Github`_. Before submitting a merge request, please
-open an issue to discuss your changes. Use the only `master` branch
+open an issue to discuss your changes. Use the only `main` branch
 for submitting your requests.
 
 .. _`Github` : https://github.com/Luthaf/rascaline
@@ -84,11 +84,11 @@ repository on github, and then clone it locally:
     git clone <insert/your/fork/url/here>
     cd rascaline
 
-    # setup the local repository so that the master branch tracks changes in
-    # the main repository
+    # setup the local repository so that the main branch tracks changes in
+    # the original repository
     git remote add upstream https://github.com/Luthaf/rascaline/
     git fetch upstream
-    git branch master --set-upstream-to=upstream/master
+    git branch main --set-upstream-to=upstream/main
 
 Once you get the code locally, you will want to run the tests to check
 everything is working as intended. See the next section on this subject.
