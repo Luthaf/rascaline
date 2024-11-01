@@ -85,7 +85,7 @@ One can also write the inverse of :ref:`(2) <eq:cg_coupling>`:
 .. math::
     :name: eq:cg_decoupling
 
-    \ket{l_1 m_1} \ket{l_2 m_2} = \sum_{l m} C_{m_1 m_2 m}^{l_1 l_2 l m} \ket{l_1 l_2 l m}
+    \ket{l_1 m_1} \ket{l_2 m_2} = \sum_{l m} C_{m_1 m_2 m}^{l_1 l_2 l} \ket{l_1 l_2 l m}
 
 that express the product of two rotation eigenstates in terms of one. This
 process is known as decoupling.
