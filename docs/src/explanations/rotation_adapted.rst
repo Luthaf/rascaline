@@ -111,4 +111,4 @@ density, and combining them with a CG iteration to a coupled basis, as in
     \frac{\delta_{\sigma, (-1)^{l_1 + l_2 + \lambda}}}{\sqrt{2 \lambda + 1}}
     \sum_{m} C_{m (\mu-m) \mu}^{l_1 l_2 \lambda} c_{n_1 l_1 m}^{i} c_{n_2 l_2 (\mu - m)}^{i}
 
-where we have assumed real spherical harmonics coefficients.
+where we have assumed complex spherical harmonics coefficients.
