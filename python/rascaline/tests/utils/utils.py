@@ -7,15 +7,8 @@ import rascaline
 
 # Try to import some modules
 ase = pytest.importorskip("ase")
-import ase.io  # noqa: E402
+import ase.io  # noqa: E402,F811
 
-
-try:
-    import torch  # noqa: F401
-
-    HAS_TORCH = True
-except ImportError:
-    HAS_TORCH = False
 
 try:
     import metatensor.operations

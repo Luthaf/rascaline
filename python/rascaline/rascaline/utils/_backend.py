@@ -37,7 +37,6 @@ except ImportError:
         pass
 
     class TorchModule:
-
         def __call__(self, *arg, **kwargs):
             return self.forward(*arg, **kwargs)
 

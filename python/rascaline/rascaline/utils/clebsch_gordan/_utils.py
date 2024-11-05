@@ -112,7 +112,6 @@ def _compute_output_keys(
     combinations: List[Tuple[int, int]] = []
     for key_1_i in range(len(keys_1)):
         for key_2_i in range(len(keys_2)):
-
             # Get the keys
             key_1 = keys_1.entry(key_1_i)
             key_2 = keys_2.entry(key_2_i)
@@ -131,7 +130,6 @@ def _compute_output_keys(
             for o3_lambda in range(
                 abs(o3_lambda_1 - o3_lambda_2), abs(o3_lambda_1 + o3_lambda_2) + 1
             ):
-
                 # Calculate new sigma
                 o3_sigma = int(
                     o3_sigma_1
