@@ -396,7 +396,6 @@ class RadialIntegralFromFunction(RadialIntegralSplinerBase):
 
     >>> def radial_integral(n, ell, r):
     ...     return np.sin(r)
-    ...
 
     and provide this as input to the spline generator
 
@@ -686,7 +685,6 @@ class SoapSpliner(RadialIntegralSplinerBase):
     def _radial_integral_custom(
         self, n: int, ell: int, positions: np.ndarray, derivative: bool = False
     ) -> np.ndarray:
-
         P_ell = legendre(ell)
 
         if derivative:

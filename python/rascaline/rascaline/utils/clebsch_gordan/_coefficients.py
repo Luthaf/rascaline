@@ -191,7 +191,6 @@ def _build_dense_cg_coeff_dict(
             for o3_lambda in range(
                 max(l1, l2) - min(l1, l2), min(lambda_max, (l1 + l2)) + 1
             ):
-
                 complex_cg = _dispatch.to(
                     wigners.clebsch_gordan_array(l1, l2, o3_lambda),
                     backend=arrays_backend,

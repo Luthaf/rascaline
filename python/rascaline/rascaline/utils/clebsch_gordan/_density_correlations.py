@@ -175,7 +175,6 @@ class DensityCorrelations(TorchModule):
         # Perform iterative CG tensor products
         new_lambda_names: List[str] = []
         for i_correlation in range(self._n_correlations):
-
             # Increment the density property dimension names
             density = _increment_property_names(density, 1)
 

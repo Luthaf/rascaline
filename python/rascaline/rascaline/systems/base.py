@@ -86,7 +86,6 @@ class SystemBase:
     ...
     ...     def pairs_containing(self, atom):
     ...         raise NotImplementedError("this system does not have a neighbors list")
-    ...
     >>> system = SimpleSystem(
     ...     types=np.random.randint(2, size=25, dtype=np.int32),
     ...     positions=6 * np.random.uniform(size=(25, 3)),
@@ -112,7 +111,6 @@ class SystemBase:
     ...     calculator.compute(system, use_native_system=False)
     ... except rascaline.RascalError as e:
     ...     raise e.__cause__
-    ...
     Traceback (most recent call last):
         ...
     NotImplementedError: this system does not have a neighbors list

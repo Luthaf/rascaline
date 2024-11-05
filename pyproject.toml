@@ -57,18 +57,18 @@ namespaces = false
 
 ### ======================================================================== ###
 
-[tool.black]
-extend-exclude = """
-    /python/rascaline/rascaline/_c_api\\.py
-"""
 
-[tool.isort]
-profile = "black"
-line_length = 88
-indent = 4
-include_trailing_comma = true
-lines_after_imports = 2
-known_first_party = ["rascaline", "save_data"]
+[tool.ruff.lint]
+select = ["E", "F", "B", "I"]
+ignore = ["B018", "B904"]
+
+[tool.ruff.lint.isort]
+lines-after-imports = 2
+known-first-party = ["rascaline"]
+known-third-party = ["torch"]
+
+[tool.ruff.format]
+docstring-code-format = true
 
 ### ======================================================================== ###
 
