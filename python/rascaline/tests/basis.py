@@ -1,7 +1,14 @@
-import numpy as np
+import numpy as np  # noqa: I001
 import pytest
 
-from rascaline.basis import Gto, Monomials, RadialBasis, SphericalBessel
+from rascaline.utils import hypers_to_json
+from rascaline.basis import (
+    Gto,
+    LaplacianEigenstate,
+    Monomials,
+    RadialBasis,
+    SphericalBessel,
+)
 
 
 pytest.importorskip("scipy")
@@ -86,3 +93,25 @@ def test_derivative(analytical_basis):
             analytical_basis.compute_primitive(positions, n, derivative=True),
             atol=1e-6,
         )
+
+
+def test_le_basis():
+    basis = LaplacianEigenstate(max_radial=4, radius=3.4)
+    assert basis.max_angular == 10
+    assert basis.angular_channels() == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+    for angular in basis.angular_channels():
+        radial = basis.radial_basis(angular)
+        assert radial.max_radial <= 4
+
+    basis = LaplacianEigenstate(max_radial=4, max_angular=4, radius=3.4)
+    assert basis.max_angular == 4
+    assert basis.angular_channels() == [0, 1, 2, 3, 4]
+
+    message = (
+        "This radial basis function \\(SphericalBessel\\) does not have matching "
+        "hyper parameters in the native calculators. It should be used through one of "
+        "the spliner class instead of directly"
+    )
+    with pytest.raises(NotImplementedError, match=message):
+        hypers_to_json(basis.get_hypers())
