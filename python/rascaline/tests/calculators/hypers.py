@@ -176,8 +176,9 @@ def test_hypers_custom_classes_errors():
             pass
 
     message = (
-        "this density \\(MyCustomDensity\\) does not have matching hyper "
-        "parameters in the native calculators"
+        "This density \\(MyCustomDensity\\) does not have matching hyper "
+        "parameters in the native calculators. It should be used "
+        "through one of the spliner class instead of directly"
     )
     with pytest.raises(NotImplementedError, match=message):
         SphericalExpansion(
@@ -197,8 +198,9 @@ def test_hypers_custom_classes_errors():
             return rascaline.basis.Gto(width=0.3)
 
     message = (
-        "this basis functions set \\(MyCustomExpansionBasis\\) does not have "
-        "matching hyper parameters in the native calculators"
+        "This basis functions set \\(MyCustomExpansionBasis\\) does not have "
+        "matching hyper parameters in the native calculators. It should be used "
+        "through one of the spliner class instead of directly"
     )
     with pytest.raises(NotImplementedError, match=message):
         SphericalExpansion(
@@ -215,8 +217,9 @@ def test_hypers_custom_classes_errors():
             pass
 
     message = (
-        "this radial basis function \\(MyCustomRadialBasis\\) does not have "
-        "matching hyper parameters in the native calculators"
+        "This radial basis function \\(MyCustomRadialBasis\\) does not have "
+        "matching hyper parameters in the native calculators. It should be used "
+        "through one of the spliner class instead of directly"
     )
     with pytest.raises(NotImplementedError, match=message):
         SphericalExpansion(

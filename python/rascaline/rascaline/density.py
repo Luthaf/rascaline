@@ -166,8 +166,9 @@ class AtomicDensity(metaclass=abc.ABCMeta):
         Return the native hyper parameters corresponding to this atomic density
         """
         raise NotImplementedError(
-            f"this density ({self.__class__.__name__}) does not have matching "
-            "hyper parameters in the native calculators"
+            f"This density ({self.__class__.__name__}) does not have matching "
+            "hyper parameters in the native calculators. It should be used "
+            "through one of the spliner class instead of directly."
         )
 
     def _rascaline_hypers(self):

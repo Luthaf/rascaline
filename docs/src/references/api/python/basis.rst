@@ -7,6 +7,9 @@ Basis functions
 .. autoclass:: rascaline.basis.Explicit
     :show-inheritance:
 
+.. autoclass:: rascaline.basis.LaplacianEigenstate
+    :show-inheritance:
+
 .. autoclass:: rascaline.basis.ExpansionBasis
     :members:
 

@@ -54,8 +54,9 @@ class RadialBasis(metaclass=abc.ABCMeta):
         Return the native hyper parameters corresponding to this set of basis functions
         """
         raise NotImplementedError(
-            f"this radial basis function ({self.__class__.__name__}) does not have "
-            "matching hyper parameters in the native calculators"
+            f"This radial basis function ({self.__class__.__name__}) does not have "
+            "matching hyper parameters in the native calculators. It should be used "
+            "through one of the spliner class instead of directly."
         )
 
     @property
@@ -406,8 +407,9 @@ class ExpansionBasis(metaclass=abc.ABCMeta):
         Return the native hyper parameters corresponding to this set of basis functions
         """
         raise NotImplementedError(
-            f"this basis functions set ({self.__class__.__name__}) does not have "
-            "matching hyper parameters in the native calculators"
+            f"This basis functions set ({self.__class__.__name__}) does not have "
+            "matching hyper parameters in the native calculators. It should be used "
+            "through one of the spliner class instead of directly."
         )
 
     @abc.abstractmethod
@@ -439,6 +441,12 @@ class TensorProduct(ExpansionBasis):
         radial: RadialBasis,
         spline_accuracy: Optional[float] = 1e-8,
     ):
+        """
+        :param max_angular: Largest angular channel to include in the basis
+        :param radial: radial basis to use for all angular channels
+        :param spline_accuracy: requested accuracy of the splined radial integrals,
+            defaults to 1e-8
+        """
         self.max_angular = int(max_angular)
         self.radial = radial
 
@@ -467,7 +475,7 @@ class TensorProduct(ExpansionBasis):
 
 
 class Explicit(ExpansionBasis):
-    r"""
+    """
     An expansion basis where combinations of radial and angular functions is picked
     explicitly.
 
@@ -483,6 +491,12 @@ class Explicit(ExpansionBasis):
         by_angular: Dict[int, RadialBasis],
         spline_accuracy: Optional[float] = 1e-8,
     ):
+        """
+        :param by_angular: definition of the radial basis for each angular channel to
+            include.
+        :param spline_accuracy: requested accuracy of the splined radial integrals,
+            defaults to 1e-8
+        """
         self.by_angular = by_angular
 
         if spline_accuracy is None:
@@ -507,3 +521,101 @@ class Explicit(ExpansionBasis):
 
     def radial_basis(self, angular: int) -> RadialBasis:
         return self.by_angular[angular]
+
+
+class LaplacianEigenstate(ExpansionBasis):
+    """
+    The Laplacian eigenstate basis, introduced in https://doi.org/10.1063/5.0124363, is
+    a set of basis functions for spherical expansion which is both *smooth* (in the same
+    sense as the smoothness of a low-pass-truncated Fourier expansion) and *ragged*,
+    using a different number of radial function for each angular channel. This is
+    intended to obtain a more balanced smoothness level in the radial and angular
+    direction for a given total number of basis functions.
+
+    This expansion basis is not directly implemented in the native calculators, but is
+    intended to be used with the :py:class:`rascaline.splines.SoapSpliner` to create
+    splines of the radial integrals.
+    """
+
+    def __init__(
+        self,
+        *,
+        radius: float,
+        max_radial: int,
+        max_angular: Optional[int] = None,
+        spline_accuracy: Optional[float] = 1e-8,
+    ):
+        """
+        :param radius: radius of the basis functions
+        :param max_radial: number of radial basis function for the ``L=0`` angular
+            channel. All other angular channels will have fewer radial basis functions.
+        :param max_angular: Truncate the set of radial functions at this angular
+            channel. If ``None``, this will be set to a high enough value to include all
+            basis functions with an Laplacian eigenvalue below the one for ``l=0,
+            n=max_radial``.
+        :param spline_accuracy: requested accuracy of the splined radial integrals,
+            defaults to 1e-8
+        """
+        self.radius = float(radius)
+        assert self.radius >= 0
+
+        self.max_radial = int(max_radial)
+        assert self.max_radial >= 0
+
+        if max_angular is None:
+            self.max_angular = self.max_radial
+        else:
+            self.max_angular = int(max_angular)
+            assert self.max_angular >= 0
+
+        if spline_accuracy is None:
+            self.spline_accuracy = None
+        else:
+            self.spline_accuracy = float(spline_accuracy)
+            assert self.spline_accuracy > 0
+
+        # compute the zeros of the spherical Bessel functions
+        zeros_ln = SphericalBessel._compute_zeros(
+            self.max_angular + 1, self.max_radial + 1
+        )
+
+        # determine the eigenvalue cutoff
+        eigenvalues = zeros_ln**2 / self.radius**2
+        max_eigenvalue = eigenvalues[0, max_radial]
+
+        # find the actual `max_angular` if the user did not specify one by repeatedly
+        # increasing the size of `eigenvalues`, until we find an angular channel where
+        # all eigenvalues are above the cutoff.
+        if max_angular is None:
+            while eigenvalues[-1, 0] < max_eigenvalue:
+                self.max_angular += self.max_radial
+                zeros_ln = SphericalBessel._compute_zeros(
+                    self.max_angular + 1, self.max_radial + 1
+                )
+                eigenvalues = zeros_ln**2 / self.radius**2
+
+            self.max_angular = len(np.where(eigenvalues[:, 0] <= max_eigenvalue)[0]) - 1
+            assert self.max_angular >= 0
+
+        by_angular = {}
+        for angular in range(self.max_angular + 1):
+            max_radial = len(np.where(eigenvalues[angular, :] <= max_eigenvalue)[0]) - 1
+            by_angular[angular] = SphericalBessel(
+                angular_channel=angular,
+                max_radial=max_radial,
+                radius=self.radius,
+            )
+
+        self._explicit = Explicit(
+            by_angular=by_angular,
+            spline_accuracy=self.spline_accuracy,
+        )
+
+    def get_hypers(self):
+        return self._explicit.get_hypers()
+
+    def angular_channels(self) -> List[int]:
+        return self._explicit.angular_channels()
+
+    def radial_basis(self, angular: int) -> RadialBasis:
+        return self._explicit.radial_basis(angular)
