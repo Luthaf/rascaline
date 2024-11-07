@@ -1,168 +1,201 @@
 """
 Splined radial integrals
 ========================
+
+.. start-body
+
+This example illustrates how to generate splines and use custom basis function and
+density when computing density-based representations, such as SOAP or LODE.
 """
 
-# .. start-body
+# %%
 
-# This example illustrates how to generate splined radial basis functions/integrals,
-# using a "rectangular" Laplacian eigenstate (LE) basis
-# (https://doi.org/10.1063/5.0124363) as the example, i.e, a LE basis truncated
-#  with ``l_max``, ``n_max`` hyper-parameters.
+import json
 
-# Note that the same basis is also directly available through
-# :class:`rascaline.utils.SphericalBesselBasis` with an how-to guide given in
-# :ref:`userdoc-how-to-le-basis`.
-# """
+import ase.build
+import matplotlib.pyplot as plt
+import numpy as np
+import scipy
 
-# # %%
-
-# import ase
-# import numpy as np
-# import scipy as sp
-# from scipy.special import spherical_jn as j_l
-
-# from rascaline import SphericalExpansion
-# from rascaline.utils import RadialIntegralFromFunction, SphericalBesselBasis
+import rascaline
+from rascaline import SphericalExpansion
+from rascaline.basis import RadialBasis
+from rascaline.splines import SoapSpliner
 
 
-# # %%
-# # Set some hyper-parameters
-
-# max_angular = 6
-# max_radial = 8
-# cutoff = 5.0
-
-# # %%
-# #
-# # where ``cutoff`` is also the radius of the LE sphere. Now we compute the zeros of
-# # the spherical bessel functions.
-
-# z_ln = SphericalBesselBasis.compute_zeros(max_angular, max_radial)
-# z_nl = z_ln.T
-
-# # %%
-# # and define the radial basis functions
+# %%
+#
+# For this example, we will define a new custom radial basis for the SOAP spherical
+# expansion, based on Chebyshev polynomials of the first kind. This basis will then be
+# used in combination with spherical harmonics to expand the density of neighboring
+# atoms around a central atom.
+#
+# In rascaline, defining custom radial basis is done by creating a class inheriting from
+# :py:class:`rascaline.basis.RadialBasis`, and implementing the required method. The
+# main one is ``compute_primitive``, which evaluates the radial basis on a set of
+# points. This function should also be able to evaluate the derivative of the radial
+# basis. If needed :py:meth:`rascaline.basis.RadialBasis.finite_differences_derivative`
+# can be used to compute the derivative with finite differences.
 
 
-# def R_nl(n, el, r):
-#     # Un-normalized LE radial basis functions
-#     return j_l(el, z_nl[n, el] * r / cutoff)
+class Chebyshev(RadialBasis):
+    def __init__(self, max_radial, radius):
+        # initialize `RadialBasis`
+        super().__init__(max_radial=max_radial, radius=radius)
+
+    def compute_primitive(self, positions, n, *, derivative=False):
+        # map argument from [0, cutoff] to [-1, 1]
+        z = 2 * positions / self.radius - 1
+        if derivative:
+            return -2 * n / self.radius * scipy.special.chebyu(n)(z)
+        else:
+            return scipy.special.chebyt(n + 1)(z)
+
+    @property
+    def integration_radius(self):
+        return self.radius
 
 
-# def N_nl(n, el):
-#     # Normalization factor for LE basis functions, excluding the a**(-1.5) factor
-#     def function_to_integrate_to_get_normalization_factor(x):
-#         return j_l(el, x) ** 2 * x**2
+# %%
+#
+# We can now look at the basis functions and their derivatives
+radius = 4.5
+basis = Chebyshev(max_radial=4, radius=radius)
 
-#     integral, _ = sp.integrate.quadrature(
-#         function_to_integrate_to_get_normalization_factor, 0.0, z_nl[n, el]
-#     )
-#     return (1.0 / z_nl[n, el] ** 3 * integral) ** (-0.5)
+r = np.linspace(0, radius)
+for n in range(basis.size):
+    plt.plot(r, basis.compute_primitive(r, n, derivative=False))
 
+plt.title("Chebyshev radial basis functions")
+plt.show()
 
-# def laplacian_eigenstate_basis(n, el, r):
-#     R = np.zeros_like(r)
-#     for i in range(r.shape[0]):
-#         R[i] = R_nl(n, el, r[i])
-#     return N_nl(n, el) * R * cutoff ** (-1.5)
+# %%
+for n in range(basis.size):
+    plt.plot(r, basis.compute_primitive(r, n, derivative=True))
+plt.title("Chebyshev radial basis functions' derivatives")
+plt.show()
 
+# %%
+#
+# Before being used by rascaline, the basis functions we implemented will be
+# orthogonalized and normalized, to improve conditioning of the produced features. This
+# is done automatically, and one can access the orthonormalized basis functions with the
+# :py:meth:`rascaline.basis.RadialBasis.compute` method.
 
-# # %%
-# # Quick normalization check:
+basis_orthonormal = basis.compute(r, derivative=False)
+for n in range(basis.size):
+    plt.plot(r, basis_orthonormal[:, n])
 
-# normalization_check_integral, _ = sp.integrate.quadrature(
-#     lambda x: laplacian_eigenstate_basis(1, 1, x) ** 2 * x**2,
-#     0.0,
-#     cutoff,
-# )
-# print(f"Normalization check (needs to be close to 1): {normalization_check_integral}")
-
-
-# # %%
-# # Now the derivatives (by finite differences):
-
-
-# def laplacian_eigenstate_basis_derivative(n, el, r):
-#     delta = 1e-6
-#     all_derivatives_except_at_zero = (
-#         laplacian_eigenstate_basis(n, el, r[1:] + delta)
-#         - laplacian_eigenstate_basis(n, el, r[1:] - delta)
-#     ) / (2.0 * delta)
-#     derivative_at_zero = (
-#         laplacian_eigenstate_basis(n, el, np.array([delta / 10.0]))
-#         - laplacian_eigenstate_basis(n, el, np.array([0.0]))
-#     ) / (delta / 10.0)
-#     return np.concatenate([derivative_at_zero, all_derivatives_except_at_zero])
+plt.title("Orthonormalized Chebyshev radial basis functions")
+plt.show()
 
 
-# # %%
-# # The radial basis functions and their derivatives can be input into a spline
-# # generator class. This will output the positions of the spline points, the values
-# # of the basis functions evaluated at the spline points, and the corresponding
-# # derivatives.
+# %%
+#
+# With this, our new radial basis definition is ready to be used with
+# :py:class:`rascaline.splines.SoapSpliner`. This class will take the whole set of hyper
+# parameters, use them to compute a spline of the radial integral, and give us back new
+# hypers that can be used with the native calculators to compute the expansion with our
+# custom basis.
+#
 
-# spliner = RadialIntegralFromFunction(
-#     radial_integral=laplacian_eigenstate_basis,
-#     radial_integral_derivative=laplacian_eigenstate_basis_derivative,
-#     spline_cutoff=cutoff,
-#     max_radial=max_radial,
-#     max_angular=max_angular,
-#     accuracy=1e-5,
-# )
+spliner = SoapSpliner(
+    cutoff=rascaline.cutoff.Cutoff(
+        radius=radius,
+        smoothing=rascaline.cutoff.ShiftedCosine(width=0.3),
+    ),
+    density=rascaline.density.Gaussian(width=0.5),
+    basis=rascaline.basis.TensorProduct(
+        max_angular=4,
+        radial=Chebyshev(max_radial=4, radius=radius),
+        spline_accuracy=1e-4,
+    ),
+)
 
-# # %%
-# # The, we feed the splines to the Rust calculator: Note that the
-# # ``atomic_gaussian_width`` will be ignored since we are not uisng a Gaussian basis.
+hypers = spliner.get_hypers()
 
-# hypers_spherical_expansion = {
-#     "cutoff": cutoff,
-#     "max_radial": max_radial,
-#     "max_angular": max_angular,
-#     "center_atom_weight": 0.0,
-#     "radial_basis": spliner.compute(),
-#     "atomic_gaussian_width": 1.0,  # ignored
-#     "cutoff_function": {"Step": {}},
-# }
-# calculator = SphericalExpansion(**hypers_spherical_expansion)
+# %%
+#
+# The hyper parameters have been transformed from what we gave to the
+# :py:class:`rascaline.splines.SoapSpliner`:
 
-# # %%
-# #
-# # Create dummy systems to test if the calculator outputs correct radial functions:
+print("hypers['basis'] is", type(hypers["basis"]))
+print("hypers['density'] is", type(hypers["density"]))
+
+# %%
+#
+# And the new hypers can be used directly with the calculators:
+
+calculator_splined = SphericalExpansion(**hypers)
+
+# %%
+#
+# As a comparison, let's look at the expansion coefficient for formic acid, using both
+# our splined radial basis and the classic GTO radial basis:
+
+atoms = ase.build.molecule("HCOOH", vacuum=4, pbc=True)
+
+calculator_gto = SphericalExpansion(
+    # same parameters, only the radial basis changed
+    cutoff=rascaline.cutoff.Cutoff(
+        radius=radius,
+        smoothing=rascaline.cutoff.ShiftedCosine(width=0.3),
+    ),
+    density=rascaline.density.Gaussian(width=0.5),
+    basis=rascaline.basis.TensorProduct(
+        max_angular=4,
+        radial=rascaline.basis.Gto(max_radial=4, radius=radius),
+        spline_accuracy=1e-4,
+    ),
+)
+
+expansion_splined = calculator_splined.compute(atoms)
+expansion_gto = calculator_gto.compute(atoms)
+
+# %%
+#
+# As you can see, the coefficients ends up different, with values assigned to different
+# basis functions. In practice, which basis function will be the best will depend on the
+# use case and exact dataset, so you should try a couple and check how they performe for
+# you!
+
+selection = dict(o3_lambda=0, center_type=8, neighbor_type=1)
+
+plt.matshow(expansion_splined.block(selection).values.reshape(2, 5))
+plt.matshow(expansion_gto.block(selection).values.reshape(2, 5))
 
 
-# def get_dummy_systems(r_array):
-#     dummy_systems = []
-#     for r in r_array:
-#         dummy_systems.append(ase.Atoms("CH", positions=[(0, 0, 0), (0, 0, r)]))
-#     return dummy_systems
+# %%
+#
+# Since the calculation of the splines requires computing some integral numerically, the
+# creation of the splines might take a while. After an initial calculation, you can save
+# the splines data in JSON files; and then reload them later to re-use:
+
+# convert the hypers from classes to a pure JSON-compatible dictionary
+json_hypers = rascaline.utils.hypers_to_json(hypers)
+
+# save the data to a file
+with open("splined-hypers.json", "w") as fp:
+    json.dump(json_hypers, fp)
 
 
-# r = np.linspace(0.1, 4.9, 20)
-# systems = get_dummy_systems(r)
-# spherical_expansion_coefficients = calculator.compute(systems)
+# load the data from the file
+with open("splined-hypers.json", "r") as fp:
+    json_hypers = json.load(fp)
 
-# # %%
-# # Extract ``l = 0`` features and check that the ``n = 2`` predictions are the same:
-
-# block_C_l0 = spherical_expansion_coefficients.block(
-#     center_type=6, o3_lambda=0, neighbor_type=1
-# )
-# block_C_l0_n2 = block_C_l0.values[:, :, 2].flatten()
-# spherical_harmonics_0 = 1.0 / np.sqrt(4.0 * np.pi)
-
-# # %%
-# # radial function = feature / spherical harmonics function
-# rascaline_output_radial_function = block_C_l0_n2 / spherical_harmonics_0
-
-# assert np.allclose(
-#     rascaline_output_radial_function,
-#     laplacian_eigenstate_basis(2, 0, r),
-#     atol=1e-5,
-# )
-# print("Assertion passed successfully!")
+# the hypers can be used directly with the calculators
+calculator = rascaline.SphericalExpansion(**json_hypers)
 
 
-# # %%
-# #
-# # .. end-body
+# %%
+#
+# Finally, you can use the same method to define custom
+# :py:class:`rascaline.basis.ExpansionBasis` and custom
+# :py:class:`rascaline.density.AtomicDensity`; by creating a new class inheriting from
+# the corresponding base class and implementing the corresponding methods. This allow
+# you to create a fully custom spherical expansion, and evaluate them efficiently
+# through the splines.
+
+# %%
+#
+# .. end-body
