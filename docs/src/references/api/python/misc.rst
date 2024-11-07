@@ -15,3 +15,5 @@ Miscellaneous
     :undoc-members:
 
 .. autofunction:: rascaline.convert_hypers
+
+.. autofunction:: rascaline.utils.hypers_to_json

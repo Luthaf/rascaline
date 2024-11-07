@@ -44,6 +44,7 @@ class RadialBasis(metaclass=abc.ABCMeta):
 
         assert self.max_radial >= 0
         assert self.radius > 0.0
+        self._orthonormalization_matrix = None
 
     def _rascaline_hypers(self):
         return self.get_hypers()

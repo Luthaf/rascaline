@@ -1,5 +1,6 @@
 import json
 import re
+from typing import Any, Dict
 
 from . import _rascaline
 
@@ -47,3 +48,22 @@ def convert_hypers(origin, representation=None, hypers=None):
         return f"{representation}(**{hypers_dict})"
     else:
         raise ValueError(f"no hyper conversion exists for {origin} software")
+
+
+def hypers_to_json(hypers_dict: Dict[str, Any]):
+    """
+    Convert from class version of rascaline hyper-parameters to the JSON version.
+
+    The class version would contain something like ``{"cutoff": Cutoff(radius=3.4)}``,
+    which this function transforms into ``{"cutoff": {"radius": 3.4", "smoothing":
+    {"type": "Step"}}}``.
+    """
+    json = {}
+    for key, value in hypers_dict.items():
+        if hasattr(value, "_rascaline_hypers"):
+            value = value._rascaline_hypers()
+
+        if isinstance(value, dict):
+            value = hypers_to_json(value)
+        json[key] = value
+    return json
