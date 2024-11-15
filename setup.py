@@ -13,12 +13,12 @@ from wheel.bdist_wheel import bdist_wheel
 
 
 ROOT = os.path.realpath(os.path.dirname(__file__))
-RASCALINE_TORCH = os.path.join(ROOT, "python", "rascaline-torch")
+FEATOMIC_TORCH = os.path.join(ROOT, "python", "featomic-torch")
 
-RASCALINE_BUILD_TYPE = os.environ.get("RASCALINE_BUILD_TYPE", "release")
-if RASCALINE_BUILD_TYPE not in ["debug", "release"]:
+FEATOMIC_BUILD_TYPE = os.environ.get("FEATOMIC_BUILD_TYPE", "release")
+if FEATOMIC_BUILD_TYPE not in ["debug", "release"]:
     raise Exception(
-        f"invalid build type passed: '{RASCALINE_BUILD_TYPE}',"
+        f"invalid build type passed: '{FEATOMIC_BUILD_TYPE}',"
         "expected 'debug' or 'release'"
     )
 
@@ -46,9 +46,9 @@ class cmake_ext(build_ext):
 
     def run(self):
         """Run cmake build and install the resulting library."""
-        source_dir = os.path.join(ROOT, "rascaline-c-api")
+        source_dir = os.path.join(ROOT, "featomic-c-api")
         build_dir = os.path.join(ROOT, "build", "cmake-build")
-        install_dir = os.path.join(os.path.realpath(self.build_lib), "rascaline")
+        install_dir = os.path.join(os.path.realpath(self.build_lib), "featomic")
 
         try:
             os.mkdir(build_dir)
@@ -58,12 +58,12 @@ class cmake_ext(build_ext):
         cmake_options = [
             f"-DCMAKE_INSTALL_PREFIX={install_dir}",
             "-DCMAKE_INSTALL_LIBDIR=lib",
-            f"-DCMAKE_BUILD_TYPE={RASCALINE_BUILD_TYPE}",
-            # do not include chemfiles inside rascaline, instead users should
+            f"-DCMAKE_BUILD_TYPE={FEATOMIC_BUILD_TYPE}",
+            # do not include chemfiles inside featomic, instead users should
             # use chemfiles python bindings directly
-            "-DRASCALINE_ENABLE_CHEMFILES=OFF",
-            "-DRASCALINE_FETCH_METATENSOR=ON",
-            "-DRASCALINE_INSTALL_BOTH_STATIC_SHARED=OFF",
+            "-DFEATOMIC_ENABLE_CHEMFILES=OFF",
+            "-DFEATOMIC_FETCH_METATENSOR=ON",
+            "-DFEATOMIC_INSTALL_BOTH_STATIC_SHARED=OFF",
             "-DBUILD_SHARED_LIBS=ON",
             "-DEXTRA_RUST_FLAGS=-Cstrip=symbols",
         ]
@@ -118,7 +118,7 @@ class cmake_ext(build_ext):
         )
 
         # do not include metatensor libraries/headers/cmake config within
-        # rascaline wheel
+        # featomic wheel
         for file in glob.glob(os.path.join(install_dir, "lib", "libmetatensor.*")):
             os.unlink(file)
 
@@ -165,7 +165,7 @@ class sdist_git_version(sdist):
 
 def get_rust_version():
     # read version from Cargo.toml
-    with open(os.path.join(ROOT, "rascaline-c-api", "Cargo.toml")) as fd:
+    with open(os.path.join(ROOT, "featomic-c-api", "Cargo.toml")) as fd:
         for line in fd:
             if line.startswith("version"):
                 _, version = line.split(" = ")
@@ -250,16 +250,16 @@ if __name__ == "__main__":
         authors = fd.read().splitlines()
 
     extras_require = {}
-    if os.path.exists(RASCALINE_TORCH):
+    if os.path.exists(FEATOMIC_TORCH):
         # we are building from a git checkout
 
         # add a random uuid to the file url to prevent pip from using a cached
-        # wheel for rascaline-torch, and force it to re-build from scratch
+        # wheel for featomic-torch, and force it to re-build from scratch
         uuid = uuid.uuid4()
-        extras_require["torch"] = f"rascaline-torch @ file://{RASCALINE_TORCH}?{uuid}"
+        extras_require["torch"] = f"featomic-torch @ file://{FEATOMIC_TORCH}?{uuid}"
     else:
         # we are building from a sdist/installing from a wheel
-        extras_require["torch"] = "rascaline-torch >=0.1.0.dev0,<0.2.0"
+        extras_require["torch"] = "featomic-torch >=0.1.0.dev0,<0.2.0"
 
     setup(
         version=version,
@@ -268,7 +268,7 @@ if __name__ == "__main__":
         ext_modules=[
             # only declare the extension, it is built & copied as required by cmake
             # in the build_ext command
-            Extension(name="rascaline", sources=[]),
+            Extension(name="featomic", sources=[]),
         ],
         cmdclass={
             "build_ext": cmake_ext,
@@ -277,9 +277,9 @@ if __name__ == "__main__":
             "sdist": sdist_git_version,
         },
         package_data={
-            "rascaline": [
-                "rascaline/lib/*",
-                "rascaline/include/*",
+            "featomic": [
+                "featomic/lib/*",
+                "featomic/include/*",
             ]
         },
     )

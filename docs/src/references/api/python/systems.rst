@@ -1,13 +1,13 @@
 Available system implementation
 ===============================
 
-.. autoclass:: rascaline.IntoSystem
+.. autoclass:: featomic.IntoSystem
 
-.. autofunction:: rascaline.systems.wrap_system
+.. autofunction:: featomic.systems.wrap_system
 
-.. autoclass:: rascaline.systems.AseSystem
+.. autoclass:: featomic.systems.AseSystem
 
-.. autoclass:: rascaline.systems.ChemfilesSystem
+.. autoclass:: featomic.systems.ChemfilesSystem
 
-.. autoclass:: rascaline.SystemBase
+.. autoclass:: featomic.SystemBase
     :members:

@@ -3,15 +3,15 @@ global-exclude .DS_Store
 
 prune docs
 
-recursive-include rascaline *
-recursive-include rascaline-c-api *
-recursive-include docs/rascaline-json-schema *
+recursive-include featomic *
+recursive-include featomic-c-api *
+recursive-include docs/featomic-json-schema *
 
 # include the minimal crates from the Cargo workspace
 include python/Cargo.toml
 include python/lib.rs
-include rascaline-torch/Cargo.toml
-include rascaline-torch/lib.rs
+include featomic-torch/Cargo.toml
+include featomic-torch/lib.rs
 
 include Cargo.*
 include pyproject.toml
@@ -21,11 +21,11 @@ include LICENSE
 prune python/tests
 prune python/*.egg-info
 
-prune rascaline/tests
-prune rascaline/benches/data
-prune rascaline/examples
+prune featomic/tests
+prune featomic/benches/data
+prune featomic/examples
 
-prune rascaline-c-api/tests
-prune rascaline-c-api/examples
+prune featomic-c-api/tests
+prune featomic-c-api/examples
 
 exclude tox.ini

@@ -1,7 +1,7 @@
 Keys selection
 ==============
 
-This examples shows how to tell rascaline to compute a set of blocks which
+This examples shows how to tell featomic to compute a set of blocks which
 correspond to predefined keys. This can be used to either reduce the set of
 computed blocks if we are only interested in some of them (skipping the
 calculation of the other blocks); or when we need to explicitly add some blocks

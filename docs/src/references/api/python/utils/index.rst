@@ -1,7 +1,7 @@
 Utils
 =====
 
-Utility functions and classes that extend the core usage of rascaline.
+Utility functions and classes that extend the core usage of featomic.
 
 
 .. toctree::

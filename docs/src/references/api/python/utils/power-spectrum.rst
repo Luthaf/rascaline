@@ -1,6 +1,6 @@
 PowerSpectrum
 =============
 
-.. autoclass:: rascaline.utils.PowerSpectrum
+.. autoclass:: featomic.utils.PowerSpectrum
     :members:
     :show-inheritance:

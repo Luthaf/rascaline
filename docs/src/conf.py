@@ -11,18 +11,18 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 sys.path.append(os.path.join(ROOT, "docs", "extensions"))
 
-os.environ["RASCALINE_IMPORT_FOR_SPHINX"] = "1"
+os.environ["FEATOMIC_IMPORT_FOR_SPHINX"] = "1"
 os.environ["METATENSOR_IMPORT_FOR_SPHINX"] = "1"
 
 # -- Project information -----------------------------------------------------
 
-project = "Rascaline"
+project = "Featomic"
 author = ", ".join(open(os.path.join(ROOT, "AUTHORS")).read().splitlines())
 copyright = f"{datetime.now().date().year}, {author}"
 
 
 def load_version_from_cargo_toml():
-    with open(os.path.join(ROOT, "rascaline", "Cargo.toml")) as fd:
+    with open(os.path.join(ROOT, "featomic", "Cargo.toml")) as fd:
         data = toml.load(fd)
     return data["package"]["version"]
 
@@ -43,7 +43,7 @@ def build_cargo_docs():
             "cargo",
             "doc",
             "--package",
-            "rascaline",
+            "featomic",
             "--package",
             "metatensor",
             "--no-deps",
@@ -68,12 +68,12 @@ def build_cargo_docs():
 
 
 def extract_json_schema():
-    subprocess.run(["cargo", "run", "--package", "rascaline-json-schema"])
+    subprocess.run(["cargo", "run", "--package", "featomic-json-schema"])
 
 
 def build_doxygen_docs():
     # we need to run a build to make sure the header is up to date
-    subprocess.run(["cargo", "build", "--package", "rascaline-c-api"])
+    subprocess.run(["cargo", "build", "--package", "featomic-c-api"])
     subprocess.run(["doxygen", "Doxyfile"], cwd=os.path.join(ROOT, "docs"))
 
 
@@ -83,7 +83,7 @@ build_doxygen_docs()
 
 
 def setup(app):
-    app.add_css_file("rascaline.css")
+    app.add_css_file("featomic.css")
 
 
 # -- General configuration ---------------------------------------------------
@@ -99,7 +99,7 @@ extensions = [
     "breathe",
     "sphinx_gallery.gen_gallery",
     "sphinx_tabs.tabs",
-    "rascaline_json_schema",
+    "featomic_json_schema",
     "html_hidden",
 ]
 
@@ -122,18 +122,18 @@ autodoc_typehints_format = "short"
 
 sphinx_gallery_conf = {
     "filename_pattern": "/*",
-    "examples_dirs": ["../../python/rascaline/examples"],
+    "examples_dirs": ["../../python/featomic/examples"],
     "gallery_dirs": ["examples"],
     "min_reported_time": 5,
-    # Make the code snippet for rascaline functions clickable
-    "reference_url": {"rascaline": None},
-    "prefer_full_module": ["rascaline"],
+    # Make the code snippet for featomic functions clickable
+    "reference_url": {"featomic": None},
+    "prefer_full_module": ["featomic"],
 }
 
 breathe_projects = {
-    "rascaline": os.path.join(ROOT, "docs", "build", "doxygen", "xml"),
+    "featomic": os.path.join(ROOT, "docs", "build", "doxygen", "xml"),
 }
-breathe_default_project = "rascaline"
+breathe_default_project = "featomic"
 breathe_domain_by_extension = {
     "h": "c",
 }
@@ -166,7 +166,7 @@ html_theme_options = {
     "footer_icons": [
         {
             "name": "GitHub",
-            "url": "https://github.com/Luthaf/rascaline",
+            "url": "https://github.com/Luthaf/featomic",
             "html": "",
             "class": "fa-brands fa-github fa-2x",
         },

@@ -2,7 +2,7 @@ API documentation
 -----------------
 
 The API documentation contains all the information about functions and classes
-you'll need to use rascaline in your own code. This section is separated
+you'll need to use featomic in your own code. This section is separated
 by programming languages.
 
 .. toctree::

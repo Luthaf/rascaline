@@ -2,9 +2,9 @@
 resolver = "2"
 
 members = [
-    "rascaline",
-    "rascaline-c-api",
+    "featomic",
+    "featomic-c-api",
     "python",
-    "rascaline-torch",
-    "docs/rascaline-json-schema",
+    "featomic-torch",
+    "docs/featomic-json-schema",
 ]

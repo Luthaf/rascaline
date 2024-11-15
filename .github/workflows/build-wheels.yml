@@ -58,7 +58,7 @@ jobs:
         if: matrix.os == 'ubuntu-22.04'
         run: docker build -t rustc-manylinux2014_x86_64 python/scripts/rustc-manylinux2014_x86_64
 
-      - name: build rascaline wheel
+      - name: build featomic wheel
         run: python -m cibuildwheel .
         env:
           CIBW_BUILD: cp310-*

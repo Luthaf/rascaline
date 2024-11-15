@@ -2,7 +2,7 @@ Profiling calculation
 =====================
 
 It can be interesting to know where a calculation is spending its time. To this
-end, rascaline includes self-profiling code that can record and display which
+end, featomic includes self-profiling code that can record and display which
 part of the calculation takes time, and which function called long-running
 functions. All the example should output something similar to the table below.
 
@@ -64,15 +64,15 @@ You can obtain a dataset for profiling from our :download:`website <../../../sta
 
     .. group-tab:: Rust
 
-        .. literalinclude:: ../../../../rascaline/examples/profiling.rs
+        .. literalinclude:: ../../../../featomic/examples/profiling.rs
             :language: rust
 
     .. group-tab:: C++
 
-        .. literalinclude:: ../../../../rascaline-c-api/examples/profiling.cpp
+        .. literalinclude:: ../../../../featomic-c-api/examples/profiling.cpp
             :language: c++
 
     .. group-tab:: C
 
-        .. literalinclude:: ../../../../rascaline-c-api/examples/profiling.c
+        .. literalinclude:: ../../../../featomic-c-api/examples/profiling.c
             :language: c

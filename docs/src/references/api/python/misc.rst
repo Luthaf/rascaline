@@ -1,19 +1,19 @@
 Miscellaneous
 =============
 
-.. autoclass:: rascaline.RascalError
+.. autoclass:: featomic.FeatomicError
     :members:
     :undoc-members:
 
 
-.. autofunction:: rascaline.set_logging_callback
+.. autofunction:: featomic.set_logging_callback
 
-.. autofunction:: rascaline.log.default_logging_callback
+.. autofunction:: featomic.log.default_logging_callback
 
-.. autoclass:: rascaline.Profiler
+.. autoclass:: featomic.Profiler
     :members:
     :undoc-members:
 
-.. autofunction:: rascaline.convert_hypers
+.. autofunction:: featomic.convert_hypers
 
-.. autofunction:: rascaline.utils.hypers_to_json
+.. autofunction:: featomic.utils.hypers_to_json

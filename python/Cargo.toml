@@ -1,5 +1,5 @@
 [package]
-name = "rascaline-python"
+name = "featomic-python"
 version = "0.0.0"
 edition = "2021"
 publish = false

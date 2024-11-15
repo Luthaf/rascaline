@@ -1,14 +1,14 @@
 Local environments
 ==================
 
-.. autoclass:: rascaline.cutoff.Cutoff
+.. autoclass:: featomic.cutoff.Cutoff
     :members:
 
-.. autoclass:: rascaline.cutoff.ShiftedCosine
+.. autoclass:: featomic.cutoff.ShiftedCosine
     :show-inheritance:
 
-.. autoclass:: rascaline.cutoff.Step
+.. autoclass:: featomic.cutoff.Step
     :show-inheritance:
 
-.. autoclass:: rascaline.cutoff.SmoothingFunction
+.. autoclass:: featomic.cutoff.SmoothingFunction
     :members:

@@ -1,17 +1,17 @@
 Clebsch-Gordan products
 =======================
 
-.. autoclass:: rascaline.utils.DensityCorrelations
+.. autoclass:: featomic.utils.DensityCorrelations
     :members:
 
 
-.. autofunction:: rascaline.utils.cartesian_to_spherical
+.. autofunction:: featomic.utils.cartesian_to_spherical
 
 
 Low-level functionalities
 -------------------------
 
-.. autoclass:: rascaline.utils.ClebschGordanProduct
+.. autoclass:: featomic.utils.ClebschGordanProduct
     :members:
 
-.. autofunction:: rascaline.utils.calculate_cg_coefficients
+.. autofunction:: featomic.utils.calculate_cg_coefficients

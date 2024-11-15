@@ -3,12 +3,12 @@
 TorchScript API reference
 =========================
 
-.. py:currentmodule:: rascaline.torch
+.. py:currentmodule:: featomic.torch
 
-We provide a PyTorch C++ extension to make rascaline compatible with Torch and
+We provide a PyTorch C++ extension to make featomic compatible with Torch and
 TorchScript in three ways:
 
-- registering rascaline calculators as special nodes in Torch's computational
+- registering featomic calculators as special nodes in Torch's computational
   graph, allowing to use backward propagation of derivatives to compute
   gradients of arbitrary quantities with respect to atomic positions and cell
   (e.g. forces and stress when the quantity is the energy of a system);
@@ -20,7 +20,7 @@ TorchScript in three ways:
 
 Please refer to the :ref:`installation instructions <install-torch-script>` to
 know how to install the Python and C++ sides of this library. The core classes
-of rascaline are documented below for an usage from Python:
+of featomic are documented below for an usage from Python:
 
 .. toctree::
     :maxdepth: 1
@@ -31,7 +31,7 @@ of rascaline are documented below for an usage from Python:
 
 --------------------------------------------------------------------------------
 
-If you want to use rascaline's TorchScript API from C++, you might be interested
+If you want to use featomic's TorchScript API from C++, you might be interested
 in the following documentation:
 
 .. toctree::

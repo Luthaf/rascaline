@@ -1,0 +1,18 @@
+[package]
+name = "featomic-json-schema"
+version = "0.1.0"
+authors = ["Luthaf <luthaf@luthaf.fr>"]
+edition = "2021"
+publish = false
+rust-version = "1.74"
+
+[[bin]]
+name = "featomic-json-schema"
+path = "main.rs"
+bench = false
+test = false
+
+[dependencies]
+featomic = {path = "../../featomic"}
+schemars = "=1.0.0-alpha.15"
+serde_json = "1"

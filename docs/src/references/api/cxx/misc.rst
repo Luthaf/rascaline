@@ -3,8 +3,8 @@ Miscellaneous
 
 Logging should be handled using the :ref:`C API <c-api-logging>` functions.
 
-.. doxygenclass:: rascaline::RascalineError
+.. doxygenclass:: featomic::FeatomicError
     :members:
 
-.. doxygenclass:: rascaline::Profiler
+.. doxygenclass:: featomic::Profiler
     :members:

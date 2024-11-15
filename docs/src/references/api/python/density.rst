@@ -3,22 +3,22 @@
 Atomic density
 ==============
 
-.. autoclass:: rascaline.density.DiracDelta
+.. autoclass:: featomic.density.DiracDelta
     :show-inheritance:
 
-.. autoclass:: rascaline.density.Gaussian
+.. autoclass:: featomic.density.Gaussian
     :show-inheritance:
 
-.. autoclass:: rascaline.density.SmearedPowerLaw
+.. autoclass:: featomic.density.SmearedPowerLaw
     :show-inheritance:
 
-.. autoclass:: rascaline.density.AtomicDensity
+.. autoclass:: featomic.density.AtomicDensity
     :members:
 
 ------
 
-.. autoclass:: rascaline.density.Willatt2018
+.. autoclass:: featomic.density.Willatt2018
     :show-inheritance:
 
-.. autoclass:: rascaline.density.RadialScaling
+.. autoclass:: featomic.density.RadialScaling
     :members:

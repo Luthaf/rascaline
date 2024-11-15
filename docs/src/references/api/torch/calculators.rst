@@ -1,48 +1,48 @@
 Calculators
 ===========
 
-.. autoclass:: rascaline.torch.CalculatorModule
+.. autoclass:: featomic.torch.CalculatorModule
     :members:
 
-.. autofunction:: rascaline.torch.register_autograd
+.. autofunction:: featomic.torch.register_autograd
 
 --------------------------------------------------------------------------------
 
-.. autoclass:: rascaline.torch.AtomicComposition
+.. autoclass:: featomic.torch.AtomicComposition
     :members:
     :show-inheritance:
 
 
-.. autoclass:: rascaline.torch.NeighborList
+.. autoclass:: featomic.torch.NeighborList
     :members:
     :show-inheritance:
 
 
-.. autoclass:: rascaline.torch.SortedDistances
+.. autoclass:: featomic.torch.SortedDistances
     :members:
     :show-inheritance:
 
 
-.. autoclass:: rascaline.torch.SphericalExpansion
+.. autoclass:: featomic.torch.SphericalExpansion
     :members:
     :show-inheritance:
 
 
-.. autoclass:: rascaline.torch.SphericalExpansionByPair
+.. autoclass:: featomic.torch.SphericalExpansionByPair
     :members:
     :show-inheritance:
 
 
-.. autoclass:: rascaline.torch.SoapRadialSpectrum
+.. autoclass:: featomic.torch.SoapRadialSpectrum
     :members:
     :show-inheritance:
 
 
-.. autoclass:: rascaline.torch.SoapPowerSpectrum
+.. autoclass:: featomic.torch.SoapPowerSpectrum
     :members:
     :show-inheritance:
 
 
-.. autoclass:: rascaline.torch.LodeSphericalExpansion
+.. autoclass:: featomic.torch.LodeSphericalExpansion
     :members:
     :show-inheritance:

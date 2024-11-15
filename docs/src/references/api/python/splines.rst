@@ -11,10 +11,10 @@ functions and density with the existing calculators. Both classes require
 `scipy`_ to be installed in order to perform the numerical integrals.
 
 
-.. autoclass:: rascaline.splines.SoapSpliner
+.. autoclass:: featomic.splines.SoapSpliner
     :members:
 
-.. autoclass:: rascaline.splines.LodeSpliner
+.. autoclass:: featomic.splines.LodeSpliner
     :members:
 
 

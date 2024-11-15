@@ -143,7 +143,7 @@ Gaussian Densities
 ~~~~~~~~~~~~~~~~~~
 
 Here, we consider another popular use case, where the atomic density function is a
-Gaussian. In rascaline, we use the convention
+Gaussian. In featomic, we use the convention
 
 .. math::
 

@@ -3,26 +3,26 @@ Code organization
 
 The code is organized in three main products, each in a separate directory:
 
-- ``rascaline/`` contains the main Rust implementation of all calculators, and
+- ``featomic/`` contains the main Rust implementation of all calculators, and
   the corresponding unit and regression tests;
-- ``rascaline-c-api/`` is a Rust crate containing the implementation of the
-  rascaline C API;
-- ``python/`` contains the Python interface to rascaline, and the corresponding
+- ``featomic-c-api/`` is a Rust crate containing the implementation of the
+  featomic C API;
+- ``python/`` contains the Python interface to featomic, and the corresponding
   tests
 
 Finally, ``docs/`` contains the documentation for everything related to
-rascaline.
+featomic.
 
-The main rascaline crate
+The main featomic crate
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-Inside the main rascaline crate, the following code organization is used:
+Inside the main featomic crate, the following code organization is used:
 
-- ``rascaline/benches``: benchmarks of the code on some simple systems;
-- ``rascaline/tests``: regression tests for all calculators;
-- ``rascaline/src/system/``: definition of everything related to systems:
+- ``featomic/benches``: benchmarks of the code on some simple systems;
+- ``featomic/tests``: regression tests for all calculators;
+- ``featomic/src/system/``: definition of everything related to systems:
   ``UnitCell``, the ``System`` trait and ``SimpleSystem`` implementation;
-- ``rascaline/src/calculator.rs``: convenience wrapper around implementations of
+- ``featomic/src/calculator.rs``: convenience wrapper around implementations of
   ``CalculatorBase`` that setup everything before a calculation;
-- ``rascaline/src/calculators/``: definition of the ``CalculatorBase`` trait and
+- ``featomic/src/calculators/``: definition of the ``CalculatorBase`` trait and
   various implementations of this trait;

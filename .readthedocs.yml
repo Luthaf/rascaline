@@ -15,15 +15,15 @@ build:
     rust: "1.75"
   jobs:
     post_install:
-      # install rascaline-torch with the CPU version of PyTorch. We can not use
+      # install featomic-torch with the CPU version of PyTorch. We can not use
       # the `python` section below since it does not allow to specify
       # `--extra-index-url`
-      - pip install --extra-index-url https://download.pytorch.org/whl/cpu python/rascaline-torch
+      - pip install --extra-index-url https://download.pytorch.org/whl/cpu python/featomic-torch
     pre_build:
       # Pre-build Rust code here to avoid timeout when building docs
       - cargo build
       - cargo build --release
-      - cargo doc -p rascaline
+      - cargo doc -p featomic
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
