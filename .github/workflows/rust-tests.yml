@@ -27,7 +27,7 @@ jobs:
             build-type: debug
             test-static-lib: true
             extra-name: / static C library
-            working-directory: /home/runner/work/rascaline/rascaline/
+            working-directory: /home/runner/work/featomic/featomic/
 
           - os: ubuntu-22.04
             rust-version: stable
@@ -36,7 +36,7 @@ jobs:
             cargo-build-flags: --release
             do-valgrind: true
             extra-name: / release valgrind
-            working-directory: /home/runner/work/rascaline/rascaline/
+            working-directory: /home/runner/work/featomic/featomic/
 
           # check the build on a stock Ubuntu 20.04, including cmake 3.16
           - os: ubuntu-22.04
@@ -45,19 +45,19 @@ jobs:
             rust-target: x86_64-unknown-linux-gnu
             build-type: debug
             extra-name: / cmake 3.16
-            working-directory: /__w/rascaline/rascaline
+            working-directory: /__w/featomic/featomic
 
           - os: macos-14
             rust-version: stable
             rust-target: aarch64-apple-darwin
             build-type: debug
-            working-directory: /Users/runner/work/rascaline/rascaline/
+            working-directory: /Users/runner/work/featomic/featomic/
 
           - os: windows-2019
             rust-version: stable
             rust-target: x86_64-pc-windows-msvc
             build-type: debug
-            working-directory: C:\\rascaline
+            working-directory: C:\\featomic
 
     steps:
       - name: install dependencies in container
@@ -118,10 +118,10 @@ jobs:
 
       - name: integration tests
         env:
-          RASCALINE_TEST_WITH_STATIC_LIB: ${{ matrix.test-static-lib || 0 }}
+          FEATOMIC_TEST_WITH_STATIC_LIB: ${{ matrix.test-static-lib || 0 }}
         run: |
-          cargo test --test "*" --package rascaline --target ${{ matrix.rust-target }} ${{ matrix.cargo-build-flags }}
-          cargo test --test "*" --package rascaline-c-api --target ${{ matrix.rust-target }} ${{ matrix.cargo-build-flags }}
+          cargo test --test "*" --package featomic --target ${{ matrix.rust-target }} ${{ matrix.cargo-build-flags }}
+          cargo test --test "*" --package featomic-c-api --target ${{ matrix.rust-target }} ${{ matrix.cargo-build-flags }}
 
   # second set of jobs checking that (non-test) code still compiles/run as expected
   prevent-bitrot:
@@ -148,7 +148,7 @@ jobs:
           echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
 
       - name: check that examples compile & run
-        run: cargo run --release --example compute-soap -- rascaline/examples/data/water.xyz
+        run: cargo run --release --example compute-soap -- featomic/examples/data/water.xyz
 
       - name: check that benchmarks compile and run once
         run: cargo bench -- --test

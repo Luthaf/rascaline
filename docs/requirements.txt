@@ -6,7 +6,7 @@ sphinx-gallery  # convert python files into nice documentation
 sphinx-tabs     # tabs for code examples (one tab per language)
 pygments >=2.11 # syntax highligthing
 toml            # to extract version number out of Cargo.toml
-myst-parser     # markdown => rst translation, used in extensions/rascaline_json_schema
+myst-parser     # markdown => rst translation, used in extensions/featomic_json_schema
 
 # dependencies for the tutorials
 --extra-index-url https://download.pytorch.org/whl/cpu

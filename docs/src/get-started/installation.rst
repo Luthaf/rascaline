@@ -1,7 +1,7 @@
 Installation
 ============
 
-You can install rascaline in different ways depending on which language you plan
+You can install featomic in different ways depending on which language you plan
 to use it from. In all cases you will need a Rust compiler, which you can
 install using `rustup <https://rustup.rs/>`_ or your OS package manager.
 
@@ -11,7 +11,7 @@ Installing the Python module
 ----------------------------
 
 For building and using the Python package, clone the repository using `git
-<https://git-scm.com>`_ and install rascaline using `pip
+<https://git-scm.com>`_ and install featomic using `pip
 <https://pip.pypa.io>`_.
 
 From source:
@@ -21,21 +21,21 @@ From source:
     # Make sure you are using the latest version of pip
     pip install --upgrade pip
 
-    git clone https://github.com/Luthaf/rascaline
-    cd rascaline
+    git clone https://github.com/Luthaf/featomic
+    cd featomic
     pip install .
 
     # alternatively, the same thing in a single command
-    pip install git+https://github.com/Luthaf/rascaline
+    pip install git+https://github.com/Luthaf/featomic
 
 
-Rascaline is also provided as prebuilt wheel which avoids the intermediate step
+Featomic is also provided as prebuilt wheel which avoids the intermediate step
 of building the package with a Rust compiler from the source code.
 
 .. code-block:: bash
 
     pip install --upgrade pip
-    pip install --extra-index-url https://luthaf.fr/nightly-wheels/ rascaline
+    pip install --extra-index-url https://luthaf.fr/nightly-wheels/ featomic
 
 
 .. _install-c-lib:
@@ -44,12 +44,12 @@ Installing the C/C++ library
 ----------------------------
 
 This installs a C-compatible shared library that can also be called from C++, as
-well as CMake files that can be used with ``find_package(rascaline)``.
+well as CMake files that can be used with ``find_package(featomic)``.
 
 .. code-block:: bash
 
-    git clone https://github.com/Luthaf/rascaline
-    cd rascaline/rascaline-c-api
+    git clone https://github.com/Luthaf/featomic
+    cd featomic/featomic-c-api
     mkdir build
     cd build
     cmake <CMAKE_OPTIONS_HERE> ..
@@ -75,14 +75,14 @@ The build and installation can be configures with a few cmake options, using
 | BUILD_SHARED_LIBS                    | Default to installing and using a shared      | ON             |
 |                                      | library instead of a static one               |                |
 +--------------------------------------+-----------------------------------------------+----------------+
-| RASCALINE_INSTALL_BOTH_STATIC_SHARED | Install both the shared and static version    | ON             |
+| FEATOMIC_INSTALL_BOTH_STATIC_SHARED  | Install both the shared and static version    | ON             |
 |                                      | of the library                                |                |
 +--------------------------------------+-----------------------------------------------+----------------+
-| RASCALINE_ENABLE_CHEMFILES           | Enable the usage of chemfiles for reading     | ON             |
+| FEATOMIC_ENABLE_CHEMFILES            | Enable the usage of chemfiles for reading     | ON             |
 |                                      | systems from files                            |                |
 +--------------------------------------+-----------------------------------------------+----------------+
-| RASCALINE_FETCH_METATENSOR           | Automatically fetch, build and install        | OFF            |
-|                                      | metatensor (a dependency of rascaline)        |                |
+| FEATOMIC_FETCH_METATENSOR            | Automatically fetch, build and install        | OFF            |
+|                                      | metatensor (a dependency of featomic)         |                |
 +--------------------------------------+-----------------------------------------------+----------------+
 
 Using the Rust library
@@ -93,15 +93,15 @@ Add the following to your project ``Cargo.toml``
 .. code-block:: toml
 
     [dependencies]
-    rascaline = {git = "https://github.com/Luthaf/rascaline"}
+    featomic = {git = "https://github.com/Luthaf/featomic"}
 
-Rascaline has one optional dependency (chemfiles), which is enabled by default.
+Featomic has one optional dependency (chemfiles), which is enabled by default.
 If you want to disable it, you can use:
 
 .. code-block:: toml
 
     [dependencies]
-    rascaline = {git = "https://github.com/Luthaf/rascaline", default-features = false}
+    featomic = {git = "https://github.com/Luthaf/featomic", default-features = false}
 
 
 .. _install-torch-script:
@@ -116,15 +116,15 @@ Building from source:
 
 .. code-block:: bash
 
-    git clone https://github.com/luthaf/rascaline
-    cd rascaline/python/rascaline-torch
+    git clone https://github.com/luthaf/featomic
+    cd featomic/python/featomic-torch
     pip install .
 
     # Make sure you are using the latest version of pip
     pip install --upgrade pip
 
     # alternatively, the same thing in a single command
-    pip install git+https://github.com/luthaf/rascaline#subdirectory=python/rascaline-torch
+    pip install git+https://github.com/luthaf/featomic#subdirectory=python/featomic-torch
 
 
 For usage from C++
@@ -132,8 +132,8 @@ For usage from C++
 
 .. code-block:: bash
 
-    git clone https://github.com/lab-cosmo/rascaline
-    cd rascaline/rascaline-torch
+    git clone https://github.com/lab-cosmo/featomic
+    cd featomic/featomic-torch
     mkdir build && cd build
     cmake ..
     # configure cmake if needed
@@ -151,11 +151,11 @@ dependencies:
 
     python -c "import torch; print(torch.utils.cmake_prefix_path)"
 
-- :ref:`the C++ interface of rascaline <install-c-lib>`, which itself requires
+- :ref:`the C++ interface of featomic <install-c-lib>`, which itself requires
   the `C++ interface of metatensor`_;
 - the `TorchScript interface of metatensor`_. We can download and build an
   appropriate version of it automatically by setting the cmake option
-  ``-DRASCALINE_TORCH_FETCH_METATENSOR_TORCH=ON``
+  ``-DFEATOMIC_TORCH_FETCH_METATENSOR_TORCH=ON``
 
 If any of these dependencies is not in a standard location, you should specify
 the installation directory when configuring cmake with ``CMAKE_PREFIX_PATH``.
@@ -171,7 +171,7 @@ Other useful configuration options are:
 | CMAKE_PREFIX_PATH                      | ``;``-separated list of path where CMake will |                |
 |                                        | search for dependencies.                      |                |
 +----------------------------------------+-----------------------------------------------+----------------+
-| RASCALINE_TORCH_FETCH_METATENSOR_TORCH | Should CMake automatically download and       | OFF            |
+| FEATOMIC_TORCH_FETCH_METATENSOR_TORCH  | Should CMake automatically download and       | OFF            |
 |                                        | install metatensor-torch?                     |                |
 +----------------------------------------+-----------------------------------------------+----------------+
 

@@ -3,11 +3,11 @@
 Getting started
 ===============
 
-The following sections describes how to install and start with using rascaline.
+The following sections describes how to install and start with using featomic.
 
 .. toctree::
     :maxdepth: 2
 
-    rascaline
+    featomic
     installation
     tutorials

@@ -1,0 +1,16 @@
+[package]
+name = "featomic-torch"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[lib]
+path = "lib.rs"
+test = false
+doctest = false
+
+[dev-dependencies]
+which = "5"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin)'] }

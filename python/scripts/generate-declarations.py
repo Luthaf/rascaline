@@ -10,8 +10,8 @@ FAKE_INCLUDES = os.path.join(ROOT, "include")
 METATENSOR_INCLUDE = os.path.join(
     metatensor.utils.cmake_prefix_path, "..", "..", "include"
 )
-RASCALINE_HEADER = os.path.relpath(
-    os.path.join(ROOT, "..", "..", "rascaline-c-api", "include", "rascaline.h")
+FEATOMIC_HEADER = os.path.relpath(
+    os.path.join(ROOT, "..", "..", "featomic-c-api", "include", "featomic.h")
 )
 
 
@@ -52,7 +52,7 @@ class AstVisitor(c_ast.NodeVisitor):
         self.defines = {}
 
     def visit_Decl(self, node):
-        if not node.name.startswith("rascal_"):
+        if not node.name.startswith("featomic_"):
             return
 
         function = Function(node.name, node.type.type)
@@ -61,7 +61,7 @@ class AstVisitor(c_ast.NodeVisitor):
         self.functions.append(function)
 
     def visit_Typedef(self, node):
-        if not node.name.startswith("rascal_"):
+        if not node.name.startswith("featomic_"):
             return
 
         if isinstance(node.type.type, c_ast.Enum):
@@ -94,7 +94,7 @@ def parse(file):
             if "#define" in line:
                 split = line.split()
                 name = split[1]
-                if name == "RASCALINE_H":
+                if name == "FEATOMIC_H":
                     continue
                 value = split[2]
 
@@ -103,9 +103,9 @@ def parse(file):
 
 
 def c_type_name(name):
-    if name.startswith("rascal_"):
+    if name.startswith("featomic_"):
         # enums are represented as int
-        if name == "rascal_indexes_kind":
+        if name == "featomic_indexes_kind":
             return "ctypes.c_int"
         else:
             return name
@@ -213,7 +213,7 @@ def generate_structs(file, structs):
 
 def generate_functions(file, functions):
     file.write("\n\ndef setup_functions(lib):\n")
-    file.write("    from .status import _check_rascal_status_t\n")
+    file.write("    from .status import _check_featomic_status_t\n")
 
     for function in functions:
         file.write(f"\n    lib.{function.name}.argtypes = [\n        ")
@@ -226,16 +226,16 @@ def generate_functions(file, functions):
         file.write("\n    ]\n")
 
         restype = type_to_ctypes(function.restype)
-        if restype == "rascal_status_t":
-            restype = "_check_rascal_status_t"
+        if restype == "featomic_status_t":
+            restype = "_check_featomic_status_t"
 
         file.write(f"    lib.{function.name}.restype = {restype}\n")
 
 
 def generate_declarations():
-    data = parse(RASCALINE_HEADER)
+    data = parse(FEATOMIC_HEADER)
 
-    outpath = os.path.join(ROOT, "..", "rascaline", "rascaline", "_c_api.py")
+    outpath = os.path.join(ROOT, "..", "featomic", "featomic", "_c_api.py")
     with open(outpath, "w") as file:
         file.write(
             """\

@@ -32,18 +32,18 @@ programming languages is assumed. If you are just starting up, you may find the
 official `Rust book <https://doc.rust-lang.org/stable/book/>`_ useful; as well
 as the documentation for the `standard library
 <https://doc.rust-lang.org/stable/std/>`_; and the `API documentation`_ for
-rascaline itself.
+featomic itself.
 
-We will also assume that you have a local copy of the rascaline git repository,
+We will also assume that you have a local copy of the featomic git repository,
 and can build the code and run the tests. If not, please look at the
 :ref:`devdoc-get-started` sections.
 
-.. _API documentation: ../reference/rust/rascaline/index.html
+.. _API documentation: ../reference/rust/featomic/index.html
 
 The traits we'll use
 --------------------
 
-Two of the three :ref:`core concepts <core-concepts>` in rascaline are
+Two of the three :ref:`core concepts <core-concepts>` in featomic are
 represented in the code as Rust traits: systems implements the `System`_ trait,
 and calculators implement the `CalculatorBase`_ trait. Traits (also called
 interfaces in other languages) define contracts that the implementing code must
@@ -57,19 +57,19 @@ In this tutorial, our goal is to write a new struct implementing
 `System`_ trait objects, and using data from those fill up a `TensorMap`_
 (defined in the metatensor crate).
 
-.. _System: ../reference/rust/rascaline/systems/trait.System.html
-.. _CalculatorBase: ../reference/rust/rascaline/calculators/trait.CalculatorBase.html
-.. _Calculator: ../reference/rust/rascaline/struct.Calculator.html
+.. _System: ../reference/rust/featomic/systems/trait.System.html
+.. _CalculatorBase: ../reference/rust/featomic/calculators/trait.CalculatorBase.html
+.. _Calculator: ../reference/rust/featomic/struct.Calculator.html
 .. _TensorMap: ../reference/rust/metatensor/tensor/struct.TensorMap.html
 
 Implementation
 --------------
 
-Let's start by creating a new file in ``rascaline/src/calculators/moments.rs``,
+Let's start by creating a new file in ``featomic/src/calculators/moments.rs``,
 and importing everything we'll need. Everything in here will be explained when
 we get to using it.
 
-.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s1_scaffold.rs
+.. literalinclude:: ../../../../featomic/src/tutorials/moments/s1_scaffold.rs
    :language: rust
    :start-after: [imports]
    :end-before: [imports]
@@ -78,7 +78,7 @@ Then, we can define a struct for our new calculator ``GeometricMoments``. It
 will contain two fields: ``cutoff`` to store the cutoff radius, and
 ``max_moment`` to store the maximal moment to compute.
 
-.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s1_scaffold.rs
+.. literalinclude:: ../../../../featomic/src/tutorials/moments/s1_scaffold.rs
    :language: rust
    :start-after: [struct]
    :end-before: [struct]
@@ -90,7 +90,7 @@ calculator. Users might be more familiar with the concrete struct `Calculator`_,
 which uses a ``Box<dyn CalculatorBase>`` (i.e. a pointer to a
 ``CalculatorBase``) to provide its functionalities.
 
-.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s1_scaffold.rs
+.. literalinclude:: ../../../../featomic/src/tutorials/moments/s1_scaffold.rs
    :language: rust
    :start-after: [impl]
    :end-before: [impl]
@@ -111,7 +111,7 @@ trait.
 
 .. _Into: https://doc.rust-lang.org/std/convert/trait.Into.html
 
-.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s2_metadata.rs
+.. literalinclude:: ../../../../featomic/src/tutorials/moments/s2_metadata.rs
    :language: rust
    :start-after: [CalculatorBase::name]
    :end-before: [CalculatorBase::name]
@@ -119,18 +119,18 @@ trait.
 
 Then, the ``parameters`` function should return the parameters used to
 create the current instance of the calculator in JSON format. To this end, we
-use `serde`_ and ``serde_json`` everywhere in rascaline, so it is a good idea to
+use `serde`_ and ``serde_json`` everywhere in featomic, so it is a good idea to
 do the same here. Let's start by adding the corresponding ``#[derive]`` to the
 definition of ``GeometricMoments``, and use it to implement the function.
 
 .. _serde: https://serde.rs/
 
-.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s2_metadata.rs
+.. literalinclude:: ../../../../featomic/src/tutorials/moments/s2_metadata.rs
    :language: rust
    :start-after: [struct]
    :end-before: [struct]
 
-.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s2_metadata.rs
+.. literalinclude:: ../../../../featomic/src/tutorials/moments/s2_metadata.rs
    :language: rust
    :start-after: [CalculatorBase::parameters]
    :end-before: [CalculatorBase::parameters]
@@ -149,7 +149,7 @@ in neighbors lists. Here, we only have one --- ``self.cutoffs`` --- and we use
 ``std::slice::from_ref`` to construct a list with a single element from a
 scalar.
 
-.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s2_metadata.rs
+.. literalinclude:: ../../../../featomic/src/tutorials/moments/s2_metadata.rs
    :language: rust
    :start-after: [CalculatorBase::cutoffs]
    :end-before: [CalculatorBase::cutoffs]
@@ -184,7 +184,7 @@ whether atoms should be considered to be their own neighbor or not.
 .. _Labels: ../reference/rust/metatensor/labels/struct.Labels.html
 .. _LabelsBuilder: ../reference/rust/metatensor/labels/struct.LabelsBuilder.html
 
-.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s2_metadata.rs
+.. literalinclude:: ../../../../featomic/src/tutorials/moments/s2_metadata.rs
    :language: rust
    :start-after: [CalculatorBase::keys]
    :end-before: [CalculatorBase::keys]
@@ -203,7 +203,7 @@ unpacking: we are returning a `Result`_ since any call to a `System`_ function
 can fail. The non-error case of the result is a ``Vec<Labels>``: we need
 one set of `Labels`_ for each key/block.
 
-.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s2_metadata.rs
+.. literalinclude:: ../../../../featomic/src/tutorials/moments/s2_metadata.rs
    :language: rust
    :start-after: [CalculatorBase::samples]
    :end-before: [CalculatorBase::samples]
@@ -224,7 +224,7 @@ information about symmetry operations or any kind of tensorial components.
 Here, we dont' have any components (the ``GeometricMoments`` representation is
 invariant), so we just return a list (one for each key) of empty vectors.
 
-.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s2_metadata.rs
+.. literalinclude:: ../../../../featomic/src/tutorials/moments/s2_metadata.rs
    :language: rust
    :start-after: [CalculatorBase::components]
    :end-before: [CalculatorBase::components]
@@ -245,7 +245,7 @@ each key in ``CalculatorBase::properties``, we use the fact that the properties
 are the same for each key/block and make copies of the ``Labels`` (since
 ``Labels`` are reference-counted, the copies are actually quite cheap).
 
-.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s2_metadata.rs
+.. literalinclude:: ../../../../featomic/src/tutorials/moments/s2_metadata.rs
    :language: rust
    :start-after: [CalculatorBase::properties]
    :end-before: [CalculatorBase::properties]
@@ -261,7 +261,7 @@ be computed by the current calculator. Typically ``parameter`` is either
 ``"positions"``, ``"cell"```, or ``"strain"``. Here we only support computing
 the gradients with respect to positions.
 
-.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s2_metadata.rs
+.. literalinclude:: ../../../../featomic/src/tutorials/moments/s2_metadata.rs
    :language: rust
    :start-after: [CalculatorBase::supports_gradient]
    :end-before: [CalculatorBase::supports_gradient]
@@ -292,7 +292,7 @@ list of systems on which we want to run the calculation.
 We are again using the ``AtomCenteredSamples`` here to share code between
 multiple calculators all using atom-centered samples.
 
-.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s2_metadata.rs
+.. literalinclude:: ../../../../featomic/src/tutorials/moments/s2_metadata.rs
    :language: rust
    :start-after: [CalculatorBase::positions_gradient_samples]
    :end-before: [CalculatorBase::positions_gradient_samples]
@@ -323,7 +323,7 @@ This being said, let's start writing our ``compute`` function. We'll defensively
 check that the tensor map keys match what we expect from them, and return a unit
 value ``()`` wrapped in ``Ok`` at the end of the function.
 
-.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s3_compute_1.rs
+.. literalinclude:: ../../../../featomic/src/tutorials/moments/s3_compute_1.rs
    :language: rust
    :start-after: [compute]
    :end-before: [compute]
@@ -343,7 +343,7 @@ question mark ``?`` operator does exactly that: if the value returned by the
 called function is ``Err(e)``, ``?`` immediately returns ``Err(e)``; and if the
 result is ``Ok(v)``, ``?`` extract the ``v`` and the execution continues.
 
-.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s3_compute_2.rs
+.. literalinclude:: ../../../../featomic/src/tutorials/moments/s3_compute_2.rs
    :language: rust
    :start-after: [compute]
    :end-before: [compute]
@@ -371,7 +371,7 @@ candidate samples and check for their presence. If neither of the samples was
 requested, then we can skip the calculation for this pair. We also use
 ``system.pairs_containing()`` to get the number of neighbors a given center has.
 
-.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s3_compute_3.rs
+.. literalinclude:: ../../../../featomic/src/tutorials/moments/s3_compute_3.rs
    :language: rust
    :start-after: [compute]
    :end-before: [compute]
@@ -384,7 +384,7 @@ Now, we can check if the samples are present, and if they are, iterate over the
 requested features, compute the moments for the current pair distance, and
 accumulate it in the descriptor values array:
 
-.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s3_compute_4.rs
+.. literalinclude:: ../../../../featomic/src/tutorials/moments/s3_compute_4.rs
    :language: rust
    :start-after: [compute]
    :end-before: [compute]
@@ -415,7 +415,7 @@ gradients of the descriptor centered on :math:`i` with respect to atom
 :math:`j`, we also need to account for the gradient of the descriptor centered
 on atom :math:`i` with respect to its own position.
 
-.. literalinclude:: ../../../../rascaline/src/tutorials/moments/s3_compute_5.rs
+.. literalinclude:: ../../../../featomic/src/tutorials/moments/s3_compute_5.rs
    :language: rust
    :start-after: [compute]
    :end-before: [compute]
@@ -427,7 +427,7 @@ on atom :math:`i` with respect to its own position.
     :toggle: Here is the final implementation for the compute function
     :before-not-html: Here is the final implementation for the compute function
 
-    .. literalinclude:: ../../../../rascaline/src/tutorials/moments/moments.rs
+    .. literalinclude:: ../../../../featomic/src/tutorials/moments/moments.rs
         :language: rust
         :start-after: [compute]
         :end-before: [compute]
@@ -442,12 +442,12 @@ needs to be constructed from a calculator name and hyper-parameters in JSON
 format.
 
 When the user calls ``Calculator::new("calculator_name", "{\"hyper_parameters\":
-1}")``, rascaline looks for ``"calculator_name"`` in the global calculator
+1}")``, featomic looks for ``"calculator_name"`` in the global calculator
 registry, and tries to create an instance using the hyper-parameters. In order
 to make our calculator available to all users, we need to add it to this
-registry, in ``rascaline/src/calculator.rs``. The registry looks like this:
+registry, in ``featomic/src/calculator.rs``. The registry looks like this:
 
-.. literalinclude:: ../../../../rascaline/src/calculator.rs
+.. literalinclude:: ../../../../featomic/src/calculator.rs
    :language: rust
    :start-after: [calculator-registration]
    :end-before: [calculator-registration]
@@ -461,7 +461,7 @@ You'll need to make sure to bring your new calculator in scope with a `use` item
 
 Additionally, you may want to add a convenience class in Python for our new
 calculator. For this, you can add a class like this to
-``python/rascaline/calculators.py``:
+``python/featomic/calculators.py``:
 
 .. code-block:: python
 
@@ -480,11 +480,11 @@ calculator. For this, you can add a class like this to
    #############################################################################
 
    # this allows using the calculator like this
-   from rascaline import GeometricMoments
+   from featomic import GeometricMoments
    calculator = GeometricMoments(cutoff=3.5, max_moment=6, gradients=False)
 
    # instead of
-   from rascaline.calculators import CalculatorBase
+   from featomic.calculators import CalculatorBase
    calculator = CalculatorBase(
       "geometric_moments",
       {"cutoff": 3.5, "max_moment": 6, "gradients": False},
@@ -499,7 +499,7 @@ Testing the new calculator
 
 Before we can release our new calculator in the world, we need to make sure it
 currently behaves as intended, and that we have a way to ensure it continues to
-behave as intended as the code changes. To achieve both goals, rascaline uses
+behave as intended as the code changes. To achieve both goals, featomic uses
 unit tests and regression tests. Unit tests are written in the same file as the
 main part of the code, in a ``tests`` module, and are expected to test high
 level properties of the code. For example, unit tests allow to check that the
@@ -508,13 +508,13 @@ right values are computed when the users requests a subset of samples &
 features. On the other hand, regression tests check the exact values produced by
 a given calculator on a specific system; and that these values stay the same as
 we modify the code, for example when trying to optimize it. These regression
-tests live in the ``rascaline/tests`` folder, with one file per test.
+tests live in the ``featomic/tests`` folder, with one file per test.
 
 This tutorial will focus on unit tests and introduce some utilities for tests
 that should apply to all calculators. To write regression tests, you should take
 inspiration from existing tests such as ``spherical-expansion`` test. Each Rust
-file in ``rascaline/tests`` is associated with a Python file in
-``rascaline/tests/data`` used to generate the values the regression test is
+file in ``featomic/tests`` is associated with a Python file in
+``featomic/tests/data`` used to generate the values the regression test is
 checking, so you'll need one of these as well.
 
 Testing properties
@@ -531,12 +531,12 @@ our geometric moments representation, the first moment (with order 0) should
 always be the number of neighbor of the current atomic type over the total
 number of neighbors. A test checking this property would look like this:
 
-.. literalinclude:: ../../../../rascaline/src/tutorials/moments/moments.rs
+.. literalinclude:: ../../../../featomic/src/tutorials/moments/moments.rs
    :language: rust
    :start-after: [property-test]
    :end-before: [property-test]
 
-The ``rascaline::systems::test_utils::test_systems`` function provides a couple
+The ``featomic::systems::test_utils::test_systems`` function provides a couple
 of very simple systems to be used for testing.
 
 Testing partial calculations
@@ -544,11 +544,11 @@ Testing partial calculations
 
 One properties that all calculators must respect is that computing only a subset
 of samples or feature should give the same values as computing everything.
-Rascaline provides a function (``calculators::tests_utils::compute_partial``) to
+Featomic provides a function (``calculators::tests_utils::compute_partial``) to
 check this for you, simplifying the tests a bit. Here is how one can use it with
 the ``GeometricMoments`` calculator:
 
-.. literalinclude:: ../../../../rascaline/src/tutorials/moments/moments.rs
+.. literalinclude:: ../../../../featomic/src/tutorials/moments/moments.rs
    :language: rust
    :start-after: [partial-test]
    :end-before: [partial-test]
@@ -558,10 +558,10 @@ Testing gradients
 ^^^^^^^^^^^^^^^^^
 
 If a calculator can compute gradients, it is a good idea to check if the
-gradient does match the finite differences definition of derivatives. Rascaline
+gradient does match the finite differences definition of derivatives. Featomic
 provides ``calculators::tests_utils::finite_difference`` to help check this.
 
-.. literalinclude:: ../../../../rascaline/src/tutorials/moments/moments.rs
+.. literalinclude:: ../../../../featomic/src/tutorials/moments/moments.rs
    :language: rust
    :start-after: [finite-differences-test]
    :end-before: [finite-differences-test]

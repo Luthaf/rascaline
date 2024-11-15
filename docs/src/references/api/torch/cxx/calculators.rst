@@ -1,10 +1,10 @@
 Calculators
 ===========
 
-.. doxygentypedef:: rascaline_torch::TorchCalculator
+.. doxygentypedef:: featomic_torch::TorchCalculator
 
-.. doxygenclass:: rascaline_torch::CalculatorHolder
+.. doxygenclass:: featomic_torch::CalculatorHolder
     :members:
 
 
-.. doxygenfunction:: rascaline_torch::register_autograd
+.. doxygenfunction:: featomic_torch::register_autograd

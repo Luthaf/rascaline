@@ -1,9 +1,9 @@
-Rascaline
+Featomic
 =========
 
 |test| |docs| |cov|
 
-Rascaline is a library for the efficient computing of representations for atomistic
+Featomic is a library for the efficient computing of representations for atomistic
 machine learning also called "descriptors" or "fingerprints". These representations
 can be used for atomistic machine learning (ml) models including ml potentials,
 visualization or similarity analysis.
@@ -13,7 +13,7 @@ APIs for C/C++ and Python as well.
 
 .. warning::
 
-    **Rascaline is still as the proof of concept stage. You should not use it for
+    **Featomic is still as the proof of concept stage. You should not use it for
     anything important.**
 
 List of implemented representations
@@ -59,16 +59,16 @@ List of implemented representations
 
 For details, tutorials, and examples, please have a look at our `documentation`_.
 
-.. _`documentation`: https://luthaf.fr/rascaline/index.html
+.. _`documentation`: https://luthaf.fr/featomic/index.html
 
-.. |test| image:: https://img.shields.io/github/check-runs/Luthaf/rascaline/main?logo=github&label=tests
+.. |test| image:: https://img.shields.io/github/check-runs/Luthaf/featomic/main?logo=github&label=tests
     :alt: Tests status
-    :target: https://github.com/Luthaf/rascaline/actions?query=branch%3Amain
+    :target: https://github.com/Luthaf/featomic/actions?query=branch%3Amain
 
 .. |docs| image:: https://img.shields.io/badge/documentation-latest-sucess
     :alt: Documentation
     :target: `documentation`_
 
-.. |cov| image:: https://codecov.io/gh/Luthaf/rascaline/branch/main/graph/badge.svg
+.. |cov| image:: https://codecov.io/gh/Luthaf/featomic/branch/main/graph/badge.svg
     :alt: Coverage Status
-    :target: https://codecov.io/gh/Luthaf/rascaline
+    :target: https://codecov.io/gh/Luthaf/featomic

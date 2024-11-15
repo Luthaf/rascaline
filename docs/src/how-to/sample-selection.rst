@@ -10,7 +10,7 @@ argument.
 This can be useful if we are only interested in certain systems in a large
 dataset, or if we need to determine the effect of a certain type of atoms on
 some system properties. In the following, we will look at the tools with which
-sample selection can be done in rascaline.
+sample selection can be done in featomic.
 
 The first part of this example repeats the :ref:`userdoc-how-to-computing-soap`, so we
 suggest that you read it initially.

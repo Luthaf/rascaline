@@ -1,5 +1,5 @@
 [project]
-name = "rascaline"
+name = "featomic"
 dynamic = ["version", "authors", "optional-dependencies"]
 requires-python = ">=3.9"
 
@@ -32,9 +32,9 @@ dependencies = [
 ]
 
 [project.urls]
-homepage = "https://luthaf.fr/rascaline/latest/"
-documentation = "https://luthaf.fr/rascaline/latest/"
-repository = "https://github.com/Luthaf/rascaline"
+homepage = "https://luthaf.fr/featomic/latest/"
+documentation = "https://luthaf.fr/featomic/latest/"
+repository = "https://github.com/Luthaf/featomic"
 # changelog = "TODO"
 
 ### ======================================================================== ###
@@ -51,8 +51,8 @@ build-backend = "setuptools.build_meta"
 zip-safe = true
 
 [tool.setuptools.packages.find]
-where = ["python/rascaline"]
-include = ["rascaline*"]
+where = ["python/featomic"]
+include = ["featomic*"]
 namespaces = false
 
 ### ======================================================================== ###
@@ -64,7 +64,7 @@ ignore = ["B018", "B904"]
 
 [tool.ruff.lint.isort]
 lines-after-imports = 2
-known-first-party = ["rascaline"]
+known-first-party = ["featomic"]
 known-third-party = ["torch"]
 
 [tool.ruff.format]
@@ -74,4 +74,4 @@ docstring-code-format = true
 
 [tool.pytest.ini_options]
 python_files = ["*.py"]
-testpaths = ["python/rascaline/tests"]
+testpaths = ["python/featomic/tests"]

@@ -1,16 +1,16 @@
 Basis functions
 ===============
 
-.. autoclass:: rascaline.basis.TensorProduct
+.. autoclass:: featomic.basis.TensorProduct
     :show-inheritance:
 
-.. autoclass:: rascaline.basis.Explicit
+.. autoclass:: featomic.basis.Explicit
     :show-inheritance:
 
-.. autoclass:: rascaline.basis.LaplacianEigenstate
+.. autoclass:: featomic.basis.LaplacianEigenstate
     :show-inheritance:
 
-.. autoclass:: rascaline.basis.ExpansionBasis
+.. autoclass:: featomic.basis.ExpansionBasis
     :members:
 
 .. _python-radial-basis:
@@ -18,14 +18,14 @@ Basis functions
 Radial basis functions
 ----------------------
 
-.. autoclass:: rascaline.basis.Gto
+.. autoclass:: featomic.basis.Gto
     :show-inheritance:
 
-.. autoclass:: rascaline.basis.Monomials
+.. autoclass:: featomic.basis.Monomials
     :show-inheritance:
 
-.. autoclass:: rascaline.basis.SphericalBessel
+.. autoclass:: featomic.basis.SphericalBessel
     :show-inheritance:
 
-.. autoclass:: rascaline.basis.RadialBasis
+.. autoclass:: featomic.basis.RadialBasis
     :members:

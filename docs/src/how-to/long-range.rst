@@ -3,7 +3,7 @@
 Long-range only LODE descriptor
 ===============================
 
-The :py:class:`LodeSphericalExpansion <rascaline.LodeSphericalExpansion>` allows
+The :py:class:`LodeSphericalExpansion <featomic.LodeSphericalExpansion>` allows
 the calculation of a descriptor that includes all atoms within the system and
 projects them onto a spherical expansion/ fingerprint within a given ``cutoff``.
 This is very useful if long-range interactions between atoms are important to
@@ -18,14 +18,14 @@ good descriptor for the short-range density like (SOAP) and the long-range
 descriptor (far field) should contain different information from what the
 short-range descriptor already offers.
 
-Such descriptor can be constructed within `rascaline` as sketched by the image
+Such descriptor can be constructed within `featomic` as sketched by the image
 below.
 
 .. figure:: ../../static/images/long-range-descriptor.*
     :align: center
 
 In this example will construct such a descriptor using the :ref:`radial integral
-splining <python-utils-splines>` tools of `rascaline`.
+splining <python-utils-splines>` tools of `featomic`.
 
 .. tabs::
 

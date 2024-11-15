@@ -1,46 +1,46 @@
 Available Calculators
 =====================
 
-.. autoclass:: rascaline.calculators.CalculatorBase
+.. autoclass:: featomic.calculators.CalculatorBase
     :members:
 
 --------------------------------------------------------------------------------
 
-.. autoclass:: rascaline.AtomicComposition
+.. autoclass:: featomic.AtomicComposition
     :members:
     :show-inheritance:
 
 
-.. autoclass:: rascaline.NeighborList
+.. autoclass:: featomic.NeighborList
     :members:
     :show-inheritance:
 
 
-.. autoclass:: rascaline.SortedDistances
+.. autoclass:: featomic.SortedDistances
     :members:
     :show-inheritance:
 
 
-.. autoclass:: rascaline.SphericalExpansion
+.. autoclass:: featomic.SphericalExpansion
     :members:
     :show-inheritance:
 
 
-.. autoclass:: rascaline.SphericalExpansionByPair
+.. autoclass:: featomic.SphericalExpansionByPair
     :members:
     :show-inheritance:
 
 
-.. autoclass:: rascaline.SoapRadialSpectrum
+.. autoclass:: featomic.SoapRadialSpectrum
     :members:
     :show-inheritance:
 
 
-.. autoclass:: rascaline.SoapPowerSpectrum
+.. autoclass:: featomic.SoapPowerSpectrum
     :members:
     :show-inheritance:
 
 
-.. autoclass:: rascaline.LodeSphericalExpansion
+.. autoclass:: featomic.LodeSphericalExpansion
     :members:
     :show-inheritance:

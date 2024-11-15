@@ -57,12 +57,12 @@ jobs:
 
       - name: collect rust and C/C++ coverage
         env:
-          RASCALINE_TEST_WITH_STATIC_LIB: "1"
+          FEATOMIC_TEST_WITH_STATIC_LIB: "1"
         run: |
-          cargo tarpaulin --all-features --workspace --engine=llvm --out=xml --output-dir=target/tarpaulin --objects target/debug/librascaline.so
+          cargo tarpaulin --all-features --workspace --engine=llvm --out=xml --output-dir=target/tarpaulin --objects target/debug/libfeatomic.so
           # cleanup C/C++ coverage
           lcov --directory . --capture --output-file coverage.info
-          lcov --remove coverage.info '/usr/*' "$(pwd)/rascaline-c-api/tests/*" "$(pwd)/rascaline-c-api/examples/*" --output-file coverage.info
+          lcov --remove coverage.info '/usr/*' "$(pwd)/featomic-c-api/tests/*" "$(pwd)/featomic-c-api/examples/*" --output-file coverage.info
 
       - name: collect Python coverage
         run: |
@@ -76,7 +76,7 @@ jobs:
         run: |
             coverage combine --append \
               ./.coverage \
-              ./python/rascaline-torch/.coverage
+              ./python/featomic-torch/.coverage
             coverage xml
 
       - name: upload to codecov.io

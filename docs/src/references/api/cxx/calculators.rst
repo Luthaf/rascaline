@@ -1,11 +1,11 @@
 Dealing with calculators
 ========================
 
-.. doxygenclass:: rascaline::Calculator
+.. doxygenclass:: featomic::Calculator
     :members:
 
-.. doxygenclass:: rascaline::CalculationOptions
+.. doxygenclass:: featomic::CalculationOptions
     :members:
 
-.. doxygenclass:: rascaline::LabelsSelection
+.. doxygenclass:: featomic::LabelsSelection
     :members:

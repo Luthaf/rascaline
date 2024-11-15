@@ -5,4 +5,4 @@ Atomic Composition
 
 This calculator is registered with the ``atomic_composition`` name.
 
-.. rascaline-json-schema:: build/json-schemas/AtomicComposition.json
+.. featomic-json-schema:: build/json-schemas/AtomicComposition.json

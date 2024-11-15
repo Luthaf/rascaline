@@ -7,4 +7,4 @@ Sorted distance vector
 
 This calculator is registered with the ``sorted_distances`` name.
 
-.. rascaline-json-schema:: build/json-schemas/SortedDistances.json
+.. featomic-json-schema:: build/json-schemas/SortedDistances.json

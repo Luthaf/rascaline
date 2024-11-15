@@ -4,7 +4,7 @@ Property Selection
 ==================
 
 This examples shows how to only compute a subset of properties for each sample
-with a given rascaline representation. In particular, we will use the SOAP power
+with a given featomic representation. In particular, we will use the SOAP power
 spectrum representation, and select the most significant features within a
 single block using farthest point sampling (FPS). We will run the calculation
 for all atomic systems stored in a file, the path to which should be given as

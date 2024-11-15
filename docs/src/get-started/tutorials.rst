@@ -1,9 +1,9 @@
 .. _userdoc-tutorials:
 
-Tutorials: using rascaline from Python
+Tutorials: using featomic from Python
 ======================================
 
-The presented tutorial allow you to perform basic calculations in rascaline
+The presented tutorial allow you to perform basic calculations in featomic
 
 .. toctree::
     :maxdepth: 2

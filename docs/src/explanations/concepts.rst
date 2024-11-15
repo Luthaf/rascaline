@@ -1,21 +1,21 @@
 .. _core-concepts:
 
-Core concepts of rascaline
+Core concepts of featomic
 ==========================
 
-Rascaline is a library computing representations of atomic systems for machine
+Featomic is a library computing representations of atomic systems for machine
 learning applications. These representations encode fundamental symmetries of
 the systems to ensure that the machine learning algorithm is as efficient as
 possible. Examples of representations include the `Smooth Overlap of Atomic
 Positions <SOAP_>`_ (SOAP), `Behler-Parrinello symmetry functions <BPSF_>`_,
 `Coulomb matrices`_, and many others. This documentation does not describe each
 method in details, delegating instead to many other good resources on the
-subject. This section in particular explains the three core objects rascaline is
+subject. This section in particular explains the three core objects featomic is
 built upon: systems, calculators and descriptors.
 
 .. figure:: ../../static/images/core-concepts.*
 
-    Schematic representations of the three core concepts in rascaline: systems,
+    Schematic representations of the three core concepts in featomic: systems,
     calculators and descriptors. The core operation provided by this library to
     compute the representation (associated with a given calculator) of one or
     multiple systems, getting the corresponding data in a descriptor.
@@ -27,31 +27,31 @@ built upon: systems, calculators and descriptors.
 Systems: atoms and molecules
 ----------------------------
 
-Systems describe the input data rascaline uses to compute various
+Systems describe the input data featomic uses to compute various
 representations. They contains information about the atomic positions, different
 atomic types, unit cell and periodicity, and are responsible for computing the
 neighbors of each atomic center.
 
-Rascaline uses systems in a generic manner, and while it provides a default
+Featomic uses systems in a generic manner, and while it provides a default
 implementation called ``SimpleSystem`` it is able to use data from any source by
 going through a few lines of adaptor code. This enables using it directly inside
 molecular simulation engines, re-using the neighbors list calculation done by
 the engine, when using machine learning force-fields in simulations.
 
 Both implementation and data related to systems are thus provided by users of
-the rascaline library.
+the featomic library.
 
 Calculators: computing representations
 --------------------------------------
 
-Calculators are provided by rascaline, and compute a single representations.
+Calculators are provided by featomic, and compute a single representations.
 There is a calculator
 for the :ref:`sorted distances vector <sorted-distances>` representation,
 one for the :ref:`spherical expansion <spherical-expansion>` representation,
 one for the :ref:`LODE spherical expansion <lode-spherical-expansion>` representation,
 and hopefully soon many others.
 
-All calculators are registered globally in rascaline, and can be constructed
+All calculators are registered globally in featomic, and can be constructed
 with a name and a set of parameters (often called hyper-parameters). These
 parameters control the features of the final representation: how many are they,
 and what do they represent. All :ref:`available calculators <userdoc-references>`
@@ -65,7 +65,7 @@ Descriptors: data storage for atomistic machine learning
 
 After using a calculator on one or multiple systems, users will get the
 numerical representation of their atomic systems in a ``descriptor`` object.
-Rascaline uses `metatensor`_ ``TensorMap`` type when returning descriptors.
+Featomic uses `metatensor`_ ``TensorMap`` type when returning descriptors.
 
 .. _metatensor: https://lab-cosmo.github.io/metatensor/
 

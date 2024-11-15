@@ -4,7 +4,7 @@ How-to guides
 =============
 
 How-to guides are like recipes when you are cooking. Equipped with basic
-knowledge about rascaline, you can find key problems and use-cases here. If you
+knowledge about featomic, you can find key problems and use-cases here. If you
 are a total beginner, you can go to :ref:`userdoc-get-started` section.
 
 .. toctree::

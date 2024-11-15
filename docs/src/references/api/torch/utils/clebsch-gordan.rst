@@ -1,5 +1,5 @@
 Clebsch-Gordan products
 =======================
 
-.. autoclass:: rascaline.torch.utils.DensityCorrelations
+.. autoclass:: featomic.torch.utils.DensityCorrelations
     :members:
