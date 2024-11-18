@@ -4,8 +4,11 @@ coverage:
       default:
         target: 80%
     patch: off
+
   ignore:
-    - "tests/.*"
-    - "examples/.*"
+    - "**/tests/**/*"
+    - "**/tests/*"
+    - "**/examples/**/*"
+    - "**/examples/*"
 
 comment: false
