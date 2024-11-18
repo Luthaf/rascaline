@@ -59,16 +59,16 @@ List of implemented representations
 
 For details, tutorials, and examples, please have a look at our `documentation`_.
 
-.. _`documentation`: https://luthaf.fr/featomic/index.html
+.. _`documentation`: https://metatensor.github.io/featomic/index.html
 
-.. |test| image:: https://img.shields.io/github/check-runs/Luthaf/featomic/main?logo=github&label=tests
+.. |test| image:: https://img.shields.io/github/check-runs/metatensor/featomic/main?logo=github&label=tests
     :alt: Tests status
-    :target: https://github.com/Luthaf/featomic/actions?query=branch%3Amain
+    :target: https://github.com/metatensor/featomic/actions?query=branch%3Amain
 
 .. |docs| image:: https://img.shields.io/badge/documentation-latest-sucess
     :alt: Documentation
     :target: `documentation`_
 
-.. |cov| image:: https://codecov.io/gh/Luthaf/featomic/branch/main/graph/badge.svg
+.. |cov| image:: https://codecov.io/gh/metatensor/featomic/branch/main/graph/badge.svg
     :alt: Coverage Status
-    :target: https://codecov.io/gh/Luthaf/featomic
+    :target: https://codecov.io/gh/metatensor/featomic

@@ -44,7 +44,7 @@ available from `Github`_. Before submitting a merge request, please
 open an issue to discuss your changes. Use the only `main` branch
 for submitting your requests.
 
-.. _`Github` : https://github.com/Luthaf/featomic
+.. _`Github` : https://github.com/metatensor/featomic
 
 Required tools
 --------------
@@ -86,7 +86,7 @@ repository on github, and then clone it locally:
 
     # setup the local repository so that the main branch tracks changes in
     # the original repository
-    git remote add upstream https://github.com/Luthaf/featomic/
+    git remote add upstream https://github.com/metatensor/featomic/
     git fetch upstream
     git branch main --set-upstream-to=upstream/main
 
@@ -200,7 +200,7 @@ Writing your own calculator
 For adding a new calculator take a look at the tutorial for
 `adding a new calculator`_.
 
-.. _adding a new calculator: https://luthaf.fr/featomic/latest/devdoc/how-to/new-calculator.html
+.. _adding a new calculator: https://metatensor.github.io/featomic/latest/devdoc/how-to/new-calculator.html
 
 Contributing to the documentation
 ---------------------------------

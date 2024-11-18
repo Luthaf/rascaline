@@ -469,7 +469,7 @@ class SoapSpliner:
         distances: np.ndarray,
     ) -> np.ndarray:
         # This code is derived in
-        # https://luthaf.fr/featomic/latest/devdoc/explanations/radial-integral.html,
+        # https://metatensor.github.io/featomic/latest/devdoc/explanations/radial-integral.html,
         # and follows the same naming convention as the documentation.
         sigma_sq = self.density.width**2
 
@@ -504,7 +504,7 @@ class SoapSpliner:
         distances: np.ndarray,
     ) -> np.ndarray:
         # This code is derived in
-        # https://luthaf.fr/featomic/latest/devdoc/explanations/radial-integral.html,
+        # https://metatensor.github.io/featomic/latest/devdoc/explanations/radial-integral.html,
         # and follows the same naming convention as the documentation.
         sigma_sq = self.density.width**2
 
@@ -551,7 +551,7 @@ class SoapSpliner:
         derivative: bool,
     ) -> np.ndarray:
         # This code is derived in
-        # https://luthaf.fr/featomic/latest/devdoc/explanations/radial-integral.html,
+        # https://metatensor.github.io/featomic/latest/devdoc/explanations/radial-integral.html,
         # and follows the same naming convention as the documentation.
 
         P_ell = scipy.special.legendre(angular)
