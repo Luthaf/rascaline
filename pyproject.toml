@@ -32,9 +32,9 @@ dependencies = [
 ]
 
 [project.urls]
-homepage = "https://luthaf.fr/featomic/latest/"
-documentation = "https://luthaf.fr/featomic/latest/"
-repository = "https://github.com/Luthaf/featomic"
+homepage = "https://metatensor.github.io/featomic/latest/"
+documentation = "https://metatensor.github.io/featomic/latest/"
+repository = "https://github.com/metatensor/featomic"
 # changelog = "TODO"
 
 ### ======================================================================== ###

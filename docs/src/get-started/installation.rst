@@ -21,12 +21,12 @@ From source:
     # Make sure you are using the latest version of pip
     pip install --upgrade pip
 
-    git clone https://github.com/Luthaf/featomic
+    git clone https://github.com/metatensor/featomic
     cd featomic
     pip install .
 
     # alternatively, the same thing in a single command
-    pip install git+https://github.com/Luthaf/featomic
+    pip install git+https://github.com/metatensor/featomic
 
 
 Featomic is also provided as prebuilt wheel which avoids the intermediate step
@@ -48,7 +48,7 @@ well as CMake files that can be used with ``find_package(featomic)``.
 
 .. code-block:: bash
 
-    git clone https://github.com/Luthaf/featomic
+    git clone https://github.com/metatensor/featomic
     cd featomic/featomic-c-api
     mkdir build
     cd build
@@ -93,7 +93,7 @@ Add the following to your project ``Cargo.toml``
 .. code-block:: toml
 
     [dependencies]
-    featomic = {git = "https://github.com/Luthaf/featomic"}
+    featomic = {git = "https://github.com/metatensor/featomic"}
 
 Featomic has one optional dependency (chemfiles), which is enabled by default.
 If you want to disable it, you can use:
@@ -101,7 +101,7 @@ If you want to disable it, you can use:
 .. code-block:: toml
 
     [dependencies]
-    featomic = {git = "https://github.com/Luthaf/featomic", default-features = false}
+    featomic = {git = "https://github.com/metatensor/featomic", default-features = false}
 
 
 .. _install-torch-script:
@@ -116,7 +116,7 @@ Building from source:
 
 .. code-block:: bash
 
-    git clone https://github.com/luthaf/featomic
+    git clone https://github.com/metatensor/featomic
     cd featomic/python/featomic-torch
     pip install .
 
@@ -124,7 +124,7 @@ Building from source:
     pip install --upgrade pip
 
     # alternatively, the same thing in a single command
-    pip install git+https://github.com/luthaf/featomic#subdirectory=python/featomic-torch
+    pip install git+https://github.com/metatensor/featomic#subdirectory=python/featomic-torch
 
 
 For usage from C++

@@ -364,7 +364,7 @@ mod tests {
 
     #[test]
     fn negative_determinant_cell() {
-        // https://github.com/Luthaf/featomic/issues/215
+        // https://github.com/metatensor/featomic/issues/215
         let cell = UnitCell::from(Matrix3::new([
             [3.83835964, 0.01566142, 0.0],
             [-0.04761064, 5.55603676, 0.0],
