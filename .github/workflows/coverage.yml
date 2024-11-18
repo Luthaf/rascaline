@@ -56,8 +56,8 @@ jobs:
           echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
 
       - name: collect rust and C/C++ coverage
-        env:
-          FEATOMIC_TEST_WITH_STATIC_LIB: "1"
+        # env:
+        #   FEATOMIC_TEST_WITH_STATIC_LIB: "1"
         run: |
           cargo tarpaulin --all-features --workspace --engine=llvm --out=xml --output-dir=target/tarpaulin --objects target/debug/libfeatomic.so
           # cleanup C/C++ coverage
