@@ -44,9 +44,9 @@ jobs:
         run: sudo apt install -y lcov
 
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.3
+        uses: mozilla-actions/sccache-action@v0.0.6
         with:
-          version: "v0.5.4"
+          version: "v0.8.2"
 
       - name: Setup sccache environnement variables
         run: |
@@ -80,8 +80,7 @@ jobs:
             coverage xml
 
       - name: upload to codecov.io
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           fail_ci_if_error: true
           files: target/tarpaulin/cobertura.xml,coverage.xml,coverage.info
-          token: ${{ secrets.CODECOV_TOKEN }}
