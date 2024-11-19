@@ -36,6 +36,7 @@ repository = "https://github.com/metatensor/featomic"
 requires = [
     "setuptools >=61",
     "wheel >=0.38",
+    "packaging",
     "cmake",
 ]
 
@@ -51,6 +52,12 @@ include = ["featomic*"]
 namespaces = true
 
 ### ======================================================================== ###
+
 [tool.pytest.ini_options]
 python_files = ["*.py"]
 testpaths = ["tests"]
+
+### ======================================================================== ###
+
+[tool.uv.pip]
+reinstall-package = ["featomic", "featomic-torch"]

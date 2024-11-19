@@ -1,6 +1,6 @@
 [package]
 name = "featomic"
-version = "0.1.0"
+version = "0.0.0"
 authors = ["Guillaume Fraux <guillaume.fraux@epfl.ch>"]
 edition = "2021"
 rust-version = "1.74"

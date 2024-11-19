@@ -74,6 +74,12 @@ jobs:
         run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android || true
 
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git safe directory
+        if: matrix.container == 'ubuntu:20.04'
+        run: git config --global --add safe.directory /__w/featomic/featomic
 
       - name: "copy the code to C: drive"
         if: matrix.os == 'windows-2019'

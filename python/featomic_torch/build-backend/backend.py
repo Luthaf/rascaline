@@ -2,7 +2,6 @@
 # dependencies to featomic, using the local version if it exists, and otherwise
 # falling back to the one on PyPI.
 import os
-import uuid
 
 from setuptools import build_meta
 
@@ -19,11 +18,7 @@ if FORCED_FEATOMIC_VERSION is not None:
 
 elif os.path.exists(FEATOMIC_SRC):
     # we are building from a git checkout
-
-    # add a random uuid to the file url to prevent pip from using a cached
-    # wheel for metatensor-core, and force it to re-build from scratch
-    uuid = uuid.uuid4()
-    FEATOMIC_DEP = f"featomic @ file://{FEATOMIC_SRC}?{uuid}"
+    FEATOMIC_DEP = f"featomic @ file://{FEATOMIC_SRC}"
 else:
     # we are building from a sdist
     FEATOMIC_DEP = "featomic >=0.1.0.dev0,<0.2.0"

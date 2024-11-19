@@ -14,6 +14,7 @@ jobs:
   tests:
     runs-on: ${{ matrix.os }}
     name: ${{ matrix.os }} / Torch ${{ matrix.torch-version }}
+    container: ${{ matrix.container }}
     strategy:
       matrix:
         include:
@@ -28,6 +29,14 @@ jobs:
             cargo-test-flags: --release
             do-valgrind: true
 
+          - os: ubuntu-20.04
+            container: ubuntu:20.04
+            extra-name: ", cmake 3.16"
+            torch-version: 2.5.*
+            python-version: "3.12"
+            cargo-test-flags: ""
+            cxx-flags: -fsanitize=undefined -fsanitize=address -fno-omit-frame-pointer -g
+
           - os: macos-14
             torch-version: 2.3.*
             python-version: "3.12"
@@ -40,7 +49,20 @@ jobs:
             cargo-test-flags: --release
 
     steps:
+      - name: install dependencies in container
+        if: matrix.container == 'ubuntu:20.04'
+        run: |
+          apt update
+          apt install -y software-properties-common
+          apt install -y cmake make gcc g++ git curl
+
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git safe directory
+        if: matrix.container == 'ubuntu:20.04'
+        run: git config --global --add safe.directory /__w/featomic/featomic
 
       - name: setup rust
         uses: dtolnay/rust-toolchain@master
@@ -77,3 +99,4 @@ jobs:
           # Use the CPU only version of torch when building/running the code
           PIP_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
           FEATOMIC_TORCH_TEST_VERSION: ${{ matrix.torch-version }}
+          CXXFLAGS: ${{ matrix.cxx-flags }}

@@ -17,7 +17,7 @@ setup(
     ],
     extras_require={
         "torch": [
-            f"featomic-torch @ file://{ROOT}/python/featomic-torch",
+            f"featomic[torch] @ file://{ROOT}/python/featomic",
         ]
     },
     packages=[],

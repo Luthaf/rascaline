@@ -32,6 +32,11 @@ cp "$ROOT_DIR/LICENSE" "$TMP_DIR/$ARCHIVE_NAME"
 cp "$ROOT_DIR/AUTHORS" "$TMP_DIR/$ARCHIVE_NAME"
 cp "$ROOT_DIR/README.rst" "$TMP_DIR/$ARCHIVE_NAME"
 
+# Get the git version information, this is used when building the
+# code to change the version for development builds
+cd "$ROOT_DIR"
+./scripts/git-version-info.py "featomic-v" > "$TMP_DIR/$ARCHIVE_NAME/cmake/git_version_info"
+
 cd "$TMP_DIR"
 # Compile featomic as it's own Cargo workspace
 echo "[workspace]" >> "$ARCHIVE_NAME/Cargo.toml"

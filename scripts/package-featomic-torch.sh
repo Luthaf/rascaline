@@ -21,6 +21,10 @@ cp -r "$ROOT_DIR"/featomic-torch/* "$TMP_DIR/$ARCHIVE_NAME/"
 cp "$ROOT_DIR/LICENSE" "$TMP_DIR/$ARCHIVE_NAME"
 cp "$ROOT_DIR/AUTHORS" "$TMP_DIR/$ARCHIVE_NAME"
 
+# Get the git version information, this is used when building the
+# code to change the version for development builds
+cd "$ROOT_DIR"
+./scripts/git-version-info.py "featomic-torch-v" > "$TMP_DIR/$ARCHIVE_NAME/cmake/git_version_info"
 
 cd "$TMP_DIR"
 tar cf "$ARCHIVE_NAME".tar "$ARCHIVE_NAME"
