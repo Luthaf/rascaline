@@ -20,10 +20,18 @@ endif()
 file(READ ${CMAKE_CURRENT_SOURCE_DIR}/VERSION FEATOMIC_TORCH_VERSION)
 string(STRIP ${FEATOMIC_TORCH_VERSION} FEATOMIC_TORCH_VERSION)
 
+include(cmake/dev-versions.cmake)
+create_development_version("${FEATOMIC_TORCH_VERSION}" FEATOMIC_TORCH_FULL_VERSION)
+message(STATUS "Building featomic-torch v${FEATOMIC_TORCH_FULL_VERSION}")
+
+# strip any -dev/-rc suffix on the version since project(VERSION) does not support it
+string(REGEX REPLACE "([0-9]*)\\.([0-9]*)\\.([0-9]*).*" "\\1.\\2.\\3" FEATOMIC_TORCH_VERSION ${FEATOMIC_TORCH_FULL_VERSION})
 project(featomic_torch
     VERSION ${FEATOMIC_TORCH_VERSION}
     LANGUAGES CXX
 )
+set(PROJECT_VERSION ${FEATOMIC_TORCH_FULL_VERSION})
+
 
 option(FEATOMIC_TORCH_TESTS "Build featomic-torch C++ tests" OFF)
 option(FEATOMIC_TORCH_FETCH_METATENSOR_TORCH "Download and build the metatensor_torch library before building featomic_torch" OFF)
@@ -46,8 +54,56 @@ if (${CMAKE_CURRENT_SOURCE_DIR} STREQUAL ${CMAKE_SOURCE_DIR})
     endif()
 endif()
 
-set(REQUIRED_FEATOMIC_VERSION "0.1")
-find_package(featomic ${REQUIRED_FEATOMIC_VERSION} CONFIG REQUIRED)
+function(check_compatible_versions _dependency_ _actual_ _requested_)
+    if(${_actual_} MATCHES "^([0-9]+)\\.([0-9]+)")
+        set(_actual_major_ "${CMAKE_MATCH_1}")
+        set(_actual_minor_ "${CMAKE_MATCH_2}")
+    else()
+        message(FATAL_ERROR "Failed to parse actual version: ${_actual_}")
+    endif()
+
+    if(${_requested_} MATCHES "^([0-9]+)\\.([0-9]+)")
+        set(_requested_major_ "${CMAKE_MATCH_1}")
+        set(_requested_minor_ "${CMAKE_MATCH_2}")
+    else()
+        message(FATAL_ERROR "Failed to parse requested version: ${_requested_}")
+    endif()
+
+    if (${_requested_major_} EQUAL 0 AND ${_actual_minor_} EQUAL ${_requested_minor_})
+        # major version is 0 and same minor version, everything is fine
+    elseif (${_actual_major_} EQUAL ${_requested_major_})
+        # same major version, everything is fine
+    else()
+        # not compatible
+        message(FATAL_ERROR "Incompatible versions for ${_dependency_}: we need v${_requested_}, but we got v${_actual_}")
+    endif()
+endfunction()
+
+
+set(REQUIRED_FEATOMIC_VERSION "0.0.0")
+if (NOT "$ENV{FEATOMIC_NO_LOCAL_DEPS}" STREQUAL "1")
+    # If building a dev version, we also need to update the
+    # REQUIRED_FEATOMIC_VERSION in the same way we update the
+    # featomic-torch version
+    create_development_version("${REQUIRED_FEATOMIC_VERSION}" FEATOMIC_FULL_VERSION)
+else()
+    set(FEATOMIC_FULL_VERSION ${REQUIRED_FEATOMIC_VERSION})
+endif()
+string(REGEX REPLACE "([0-9]*)\\.([0-9]*).*" "\\1.\\2" REQUIRED_FEATOMIC_VERSION ${FEATOMIC_FULL_VERSION})
+
+# Either featomic is built as part of the same CMake project, or we try to
+# find the corresponding CMake package
+if (TARGET featomic)
+    get_target_property(FEATOMIC_BUILD_VERSION featomic BUILD_VERSION)
+    check_compatible_versions("featomic" ${FEATOMIC_BUILD_VERSION} ${REQUIRED_FEATOMIC_VERSION})
+else()
+    find_package(featomic ${REQUIRED_FEATOMIC_VERSION} CONFIG REQUIRED)
+
+    get_target_property(FEATOMIC_LOCATION featomic IMPORTED_LOCATION)
+    get_filename_component(FEATOMIC_LOCATION ${FEATOMIC_LOCATION} DIRECTORY)
+    message(STATUS "Using local featomic from ${FEATOMIC_LOCATION}")
+endif()
+
 
 # FindCUDNN.cmake distributed with PyTorch is a bit broken, so we have a
 # fixed version in `cmake/FindCUDNN.cmake`
@@ -58,17 +114,17 @@ find_package(Torch 1.12 REQUIRED)
 # ============================================================================ #
 # Setup metatensor_torch
 
-set(METATENSOR_FETCH_VERSION "0.6.0")
+set(METATENSOR_FETCH_VERSION "0.6.1")
 set(REQUIRED_METATENSOR_TORCH_VERSION "0.6")
 if (FEATOMIC_TORCH_FETCH_METATENSOR_TORCH)
-    message(STATUS "Fetching metatensor-torch @ ${METATENSOR_FETCH_VERSION} from github")
+    message(STATUS "Fetching metatensor-torch from github")
 
     set(URL_ROOT "https://github.com/lab-cosmo/metatensor/releases/download")
     include(FetchContent)
     FetchContent_Declare(
         metatensor_torch
         URL      ${URL_ROOT}/metatensor-torch-v${METATENSOR_FETCH_VERSION}/metatensor-torch-cxx-${METATENSOR_FETCH_VERSION}.tar.gz
-        URL_HASH SHA256=f050743662ece38948b2087dd025d60110645716840dbfc5370c059e1275d0cf
+        URL_HASH SHA256=0941da4bc6d25ee73b597774d3c8c6edf6a44f134139bd93b33834eae52ac4dd
     )
 
     if (CMAKE_VERSION VERSION_GREATER 3.18)
@@ -82,6 +138,9 @@ if (FEATOMIC_TORCH_FETCH_METATENSOR_TORCH)
     endif()
 else()
     find_package(metatensor_torch ${REQUIRED_METATENSOR_TORCH_VERSION} REQUIRED CONFIG)
+    get_target_property(METATENSOR_TORCH_LOCATION metatensor_torch IMPORTED_LOCATION)
+    get_filename_component(METATENSOR_TORCH_LOCATION ${METATENSOR_TORCH_LOCATION} DIRECTORY)
+    message(STATUS "Using local metatensor-torch from ${METATENSOR_TORCH_LOCATION}")
 endif()
 
 

@@ -2,8 +2,8 @@ import glob
 import os
 import subprocess
 import sys
-import uuid
 
+import packaging
 from setuptools import Extension, setup
 from setuptools.command.bdist_egg import bdist_egg
 from setuptools.command.build_ext import build_ext
@@ -132,20 +132,21 @@ class bdist_egg_disabled(bdist_egg):
 class sdist_generate_data(sdist):
     """
     Create a sdist with an additional generated files:
-        - `git_extra_version`
+        - `git_version_info`
         - `featomic-torch-cxx-*.tar.gz`
     """
 
     def run(self):
-        with open("git_extra_version", "w") as fd:
-            fd.write(git_extra_version())
+        n_commits, git_hash = git_version_info()
+        with open("git_version_info", "w") as fd:
+            fd.write(f"{n_commits}\n{git_hash}\n")
 
         generate_cxx_tar()
 
         # run original sdist
         super().run()
 
-        os.unlink("git_extra_version")
+        os.unlink("git_version_info")
         for path in glob.glob("featomic-torch-cxx-*.tar.gz"):
             os.unlink(path)
 
@@ -179,61 +180,75 @@ def generate_cxx_tar():
         )
 
 
-def git_extra_version():
+def git_version_info():
     """
-    If git is available, it is used to check if we are installing a development
-    version or a released version (by checking how many commits happened since
-    the last tag).
+    If git is available and we are building from a checkout, get the number of commits
+    since the last tag & full hash of the code. Otherwise, this always returns (0, "").
     """
+    TAG_PREFIX = "featomic-torch-v"
 
-    # Add pre-release info the version
-    try:
-        tags_list = subprocess.run(
-            ["git", "tag"],
-            stderr=subprocess.DEVNULL,
+    if os.path.exists("git_version_info"):
+        # we are building from a sdist, without git available, but the git
+        # version was recorded in the `git_version_info` file
+        with open("git_version_info") as fd:
+            n_commits = int(fd.readline().strip())
+            git_hash = fd.readline().strip()
+    else:
+        script = os.path.join(ROOT, "..", "..", "scripts", "git-version-info.py")
+        assert os.path.exists(script)
+
+        output = subprocess.run(
+            [sys.executable, script, TAG_PREFIX],
+            stderr=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            check=True,
+            encoding="utf8",
         )
-        tags_list = tags_list.stdout.decode("utf8").strip()
 
-        if tags_list == "":
-            first_commit = subprocess.run(
-                ["git", "rev-list", "--max-parents=0", "HEAD"],
-                stderr=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                check=True,
+        if output.returncode != 0:
+            raise Exception(
+                "failed to get git version info.\n"
+                f"stdout: {output.stdout}\n"
+                f"stderr: {output.stderr}\n"
             )
-            reference = first_commit.stdout.decode("utf8").strip()
-
+        elif output.stderr:
+            print(output.stderr, file=sys.stderr)
+            n_commits = 0
+            git_hash = ""
         else:
-            last_tag = subprocess.run(
-                ["git", "describe", "--tags", "--abbrev=0"],
-                stderr=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                check=True,
-            )
+            lines = output.stdout.splitlines()
+            n_commits = int(lines[0].strip())
+            git_hash = lines[1].strip()
 
-            reference = last_tag.stdout.decode("utf8").strip()
+    return n_commits, git_hash
 
-    except Exception:
-        reference = ""
-        pass
 
-    try:
-        n_commits_since_tag = subprocess.run(
-            ["git", "rev-list", f"{reference}..HEAD", "--count"],
-            stderr=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            check=True,
-        )
-        n_commits_since_tag = n_commits_since_tag.stdout.decode("utf8").strip()
+def create_version_number(version):
+    version = packaging.version.parse(version)
 
-        if n_commits_since_tag != 0:
-            return ".dev" + n_commits_since_tag
-    except Exception:
-        pass
+    n_commits, git_hash = git_version_info()
+    if n_commits != 0:
+        # `n_commits` will be non zero only if we have commits since the last tag. This
+        # mean we are in a pre-release of the next version. So we increase either the
+        # minor version number or the release candidate number (if we are closing up on
+        # a release)
+        if version.pre is not None:
+            assert version.pre[0] == "rc"
+            pre = ("rc", version.pre[1] + 1)
+            release = version.release
+        else:
+            major, minor, patch = version.release
+            release = (major, minor + 1, 0)
+            pre = None
 
-    return ""
+        # this is using a private API which is intended to become public soon:
+        # https://github.com/pypa/packaging/pull/698. In the mean time we'll
+        # use this
+        version._version = version._version._replace(release=release)
+        version._version = version._version._replace(pre=pre)
+        version._version = version._version._replace(dev=("dev", n_commits))
+        version._version = version._version._replace(local=(git_hash,))
+
+    return str(version)
 
 
 if __name__ == "__main__":
@@ -257,17 +272,8 @@ if __name__ == "__main__":
 
         FEATOMIC_TORCH_SRC = ".".join(FEATOMIC_TORCH_SRC.split(".")[:-2])
 
-    if os.path.exists("git_extra_version"):
-        # we are building from a sdist, without git available, but the git
-        # version was recorded in a git_extra_version file
-        with open("git_extra_version") as fd:
-            extra_version = fd.read()
-    else:
-        extra_version = git_extra_version()
-
     with open(os.path.join(FEATOMIC_TORCH_SRC, "VERSION")) as fd:
-        version = fd.read().strip()
-    version += extra_version
+        version = create_version_number(fd.read().strip())
 
     with open(os.path.join(ROOT, "AUTHORS")) as fd:
         authors = fd.read().splitlines()
@@ -283,11 +289,7 @@ if __name__ == "__main__":
     ]
     if os.path.exists(FEATOMIC_PYTHON_SRC):
         # we are building from a git checkout
-
-        # add a random uuid to the file url to prevent pip from using a cached
-        # wheel for featomic, and force it to re-build from scratch
-        uuid = uuid.uuid4()
-        install_requires.append(f"featomic @ file://{FEATOMIC_PYTHON_SRC}?{uuid}")
+        install_requires.append(f"featomic @ file://{FEATOMIC_PYTHON_SRC}")
     else:
         # we are building from a sdist/installing from a wheel
         install_requires.append("featomic >=0.1.0.dev0,<0.2.0")
