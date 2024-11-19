@@ -549,6 +549,7 @@ use crate::calculators::{SphericalExpansionByPair, SphericalExpansionParameters}
 use crate::calculators::SphericalExpansion;
 use crate::calculators::{SoapPowerSpectrum, PowerSpectrumParameters};
 use crate::calculators::{SoapRadialSpectrum, RadialSpectrumParameters};
+use crate::calculators::{SphericalExpansionForBonds, SphericalExpansionForBondsParameters};
 use crate::calculators::{LodeSphericalExpansion, LodeSphericalExpansionParameters};
 type CalculatorCreator = fn(&str) -> Result<Box<dyn CalculatorBase>, Error>;
 
@@ -581,6 +582,7 @@ static REGISTERED_CALCULATORS: Lazy<BTreeMap<&'static str, CalculatorCreator>> =
     add_calculator!(map, "spherical_expansion", SphericalExpansion, SphericalExpansionParameters);
     add_calculator!(map, "soap_radial_spectrum", SoapRadialSpectrum, RadialSpectrumParameters);
     add_calculator!(map, "soap_power_spectrum", SoapPowerSpectrum, PowerSpectrumParameters);
+    add_calculator!(map, "spherical_expansion_for_bonds", SphericalExpansionForBonds, SphericalExpansionForBondsParameters);
 
     add_calculator!(map, "lode_spherical_expansion", LodeSphericalExpansion, LodeSphericalExpansionParameters);
     return map;

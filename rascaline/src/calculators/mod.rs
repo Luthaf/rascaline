@@ -114,3 +114,6 @@ pub use self::soap::{SoapRadialSpectrum, RadialSpectrumParameters};
 
 pub mod lode;
 pub use self::lode::{LodeSphericalExpansion, LodeSphericalExpansionParameters};
+
+mod bondatom;
+pub use self::bondatom::{SphericalExpansionForBondsParameters, SphericalExpansionForBonds};
