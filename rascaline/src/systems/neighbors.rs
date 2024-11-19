@@ -79,14 +79,14 @@ pub struct AtomData {
     shift: CellShift,
 }
 
-/// The cell list is used to sort atoms inside bins/cells.
+/// The cell list is used to sort atoms inside bins/subcells. (of the unit cell or of infinite space)
 ///
 /// The list of potential pairs is then constructed by looking through all
 /// neighboring cells (the number of cells to search depends on the cutoff and
 /// the size of the cells) for each atom to create pair candidates.
 #[derive(Debug, Clone)]
 pub struct CellList {
-    /// How many cells do we need to look at when searching neighbors to include
+    /// How many subcells do we need to look at when searching neighbors to include
     /// all neighbors below cutoff
     n_search: [i32; 3],
     /// the cells themselves
@@ -107,6 +107,7 @@ impl CellList {
             unit_cell.distances_between_faces()
         };
 
+        // number of subcells per unit cell
         let mut n_cells = [
             f64::clamp(f64::trunc(distances_between_faces[0] / cutoff), 1.0, f64::INFINITY),
             f64::clamp(f64::trunc(distances_between_faces[1] / cutoff), 1.0, f64::INFINITY),
@@ -129,7 +130,7 @@ impl CellList {
             n_cells[0] = f64::trunc(ratio_x_y * n_cells[1]);
         }
 
-        // number of cells to search in each direction to make sure all possible
+        // number of subcells to search in each direction to make sure all possible
         // pairs below the cutoff are accounted for.
         let mut n_search = [
             f64::ceil(cutoff * n_cells[0] / distances_between_faces[0]) as i32,
@@ -156,14 +157,14 @@ impl CellList {
         }
 
         CellList {
-            n_search: n_search,
+            n_search,
             cells: Array3::from_elem(n_cells, Default::default()),
-            unit_cell: unit_cell,
+            unit_cell,
         }
     }
 
-    /// Add a single atom to the cell list at the given `position`. The atom is
-    /// uniquely identified by its `index`.
+    /// Add a single atom to the cell list at the given `position`.
+    /// ASSUMPTION: The atom is *uniquely* identified by its `index`.
     pub fn add_atom(&mut self, index: usize, position: Vector3D) {
         let fractional = if self.unit_cell.is_infinite() {
             position
@@ -195,7 +196,7 @@ impl CellList {
         };
 
         self.cells[cell_index].push(AtomData {
-            index: index,
+            index,
             shift: CellShift(shift),
         });
     }
@@ -294,7 +295,7 @@ impl CellList {
                                 pairs.push(CellPair {
                                     first: atom_i.index,
                                     second: atom_j.index,
-                                    shift: shift,
+                                    shift,
                                 });
                             }
                         } // loop over atoms in current neighbor cells
@@ -378,7 +379,7 @@ impl NeighborsList {
                     first: pair.first,
                     second: pair.second,
                     distance: distance2.sqrt(),
-                    vector: vector,
+                    vector,
                     cell_shift_indices: pair.shift.0
                 };
 
@@ -391,13 +392,16 @@ impl NeighborsList {
         // sort the pairs to make sure the final output of rascaline is ordered
         // naturally
         pairs.sort_unstable_by_key(|pair| (pair.first, pair.second));
-        for pairs in &mut pairs_by_center {
-            pairs.sort_unstable_by_key(|pair| (pair.first, pair.second));
+
+        let mut pairs_by_center = vec![Vec::new(); positions.len()];
+        for pair in pairs.iter() {
+            pairs_by_center[pair.first].push(pair.clone());
+            pairs_by_center[pair.second].push(pair.clone());
         }
 
         return NeighborsList {
-            cutoff: cutoff,
-            pairs: pairs,
+            cutoff,
+            pairs,
             pairs_by_atom: pairs_by_center,
         };
     }

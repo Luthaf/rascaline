@@ -2,6 +2,21 @@ use metatensor::{TensorMap, Labels};
 
 use crate::{Error, System};
 
+
+/// Which gradients are we computing
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(self) struct GradientsOptions {
+    pub positions: bool,
+    pub cell: bool,
+    pub strain: bool,
+}
+
+impl GradientsOptions {
+    pub fn any(self) -> bool {
+        return self.positions || self.cell || self.strain;
+    }
+}
+
 /// The `CalculatorBase` trait is the interface shared by all calculator
 /// implementations; and used by [`crate::Calculator`] to run the calculation.
 ///
