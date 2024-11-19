@@ -152,6 +152,19 @@ impl std::ops::IndexMut<[isize; 2]> for SphericalHarmonicsArray {
     }
 }
 
+impl std::ops::Index<usize> for SphericalHarmonicsArray {
+    type Output = f64;
+    fn index(&self, index: usize) -> &f64 {
+        &self.data[index]
+    }
+}
+
+impl std::ops::IndexMut<usize> for SphericalHarmonicsArray {
+    fn index_mut(&mut self, index: usize) -> &mut f64 {
+        &mut self.data[index]
+    }
+}
+
 impl std::fmt::Debug for SphericalHarmonicsArray {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "SphericalHarmonicsArray[\n  l \\ m  ")?;

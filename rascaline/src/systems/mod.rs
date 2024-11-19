@@ -8,6 +8,9 @@ pub use self::cell::{UnitCell, CellShape};
 mod neighbors;
 pub use self::neighbors::NeighborsList;
 
+mod bond_atom_neighbors;
+pub use bond_atom_neighbors::{BATripletInfo,BATripletNeighborList};
+
 mod simple_system;
 pub use self::simple_system::SimpleSystem;
 
@@ -60,7 +63,7 @@ pub trait SystemBase: Send + Sync {
     fn positions(&self) -> Result<&[Vector3D], Error>;
 
     /// Compute the neighbor list according to the given cutoff, and store it
-    /// for later access with `pairs` or `pairs_around`.
+    /// for later access with `pairs`, or `pairs_containing`.
     fn compute_neighbors(&mut self, cutoff: f64) -> Result<(), Error>;
 
     /// Get the list of pairs in this system. This list of pair should only
