@@ -14,6 +14,8 @@ concurrency:
 jobs:
   build-and-publish:
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write
     steps:
       - name: free disk space
         run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android || true
@@ -40,6 +42,13 @@ jobs:
         env:
           # Use the CPU only version of torch when building/running the code
           PIP_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
+
+      - name: store documentation as github artifact to be downloaded by users
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs
+          path: docs/build/html/*
+          overwrite: true  # only keep the latest version of the documentation
 
       - name: put documentation in the website
         run: |
