@@ -38,4 +38,8 @@ fn main() {
     } else {
         // if featomic header generation failed, we always re-run the build script
     }
+
+    println!(
+        "cargo:rustc-env=TARGET={}", std::env::var("TARGET").expect("missing TARGET env variable")
+    );
 }

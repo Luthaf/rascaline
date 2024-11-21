@@ -11,7 +11,7 @@ mod utils;
 mod status;
 pub use self::status::{catch_unwind, featomic_status_t};
 pub use self::status::{FEATOMIC_SUCCESS, FEATOMIC_INVALID_PARAMETER_ERROR, FEATOMIC_JSON_ERROR};
-pub use self::status::{FEATOMIC_UTF8_ERROR, FEATOMIC_CHEMFILES_ERROR, FEATOMIC_SYSTEM_ERROR};
+pub use self::status::{FEATOMIC_UTF8_ERROR, FEATOMIC_SYSTEM_ERROR};
 pub use self::status::{FEATOMIC_BUFFER_SIZE_ERROR, FEATOMIC_INTERNAL_ERROR};
 
 mod logging;

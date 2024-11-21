@@ -9,8 +9,8 @@ pub use self::neighbors::NeighborsList;
 mod simple_system;
 pub use self::simple_system::SimpleSystem;
 
+#[cfg(feature = "chemfiles")]
 mod chemfiles;
-pub use self::chemfiles::read_from_file;
 
 #[cfg(test)]
 pub(crate) mod test_utils;

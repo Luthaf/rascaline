@@ -122,7 +122,6 @@ pub fn setup_featomic(build_dir: PathBuf) -> PathBuf {
     let install_prefix = build_dir.join("usr");
     cmake_config.arg(format!("-DCMAKE_INSTALL_PREFIX={}", install_prefix.display()));
     cmake_config.arg("-DFEATOMIC_FETCH_METATENSOR=ON");
-    cmake_config.arg("-DFEATOMIC_ENABLE_CHEMFILES=OFF");
 
     let status = cmake_config.status().expect("could not run cmake");
     assert!(status.success(), "failed to run featomic cmake configuration");

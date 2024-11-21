@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Guillaume Fraux <guillaume.fraux@epfl.ch>"]
 edition = "2021"
 rust-version = "1.74"
+publish = false
 
 [lib]
 # when https://github.com/rust-lang/cargo/pull/8789 lands, use it here!
@@ -11,10 +12,6 @@ rust-version = "1.74"
 name = "featomic"
 crate-type = ["cdylib", "staticlib"]
 bench = false
-
-[features]
-default = ["chemfiles"]
-chemfiles = ["featomic/chemfiles"]
 
 [dependencies]
 featomic = {path = "../featomic", version = "0.1.0", default-features = false}
