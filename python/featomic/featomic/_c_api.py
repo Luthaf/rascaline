@@ -21,7 +21,6 @@ FEATOMIC_SUCCESS = 0
 FEATOMIC_INVALID_PARAMETER_ERROR = 1
 FEATOMIC_JSON_ERROR = 2
 FEATOMIC_UTF8_ERROR = 3
-FEATOMIC_CHEMFILES_ERROR = 4
 FEATOMIC_SYSTEM_ERROR = 128
 FEATOMIC_BUFFER_SIZE_ERROR = 254
 FEATOMIC_INTERNAL_ERROR = 255
@@ -85,7 +84,7 @@ def setup_functions(lib):
     from .status import _check_featomic_status_t
 
     lib.featomic_last_error.argtypes = [
-
+        
     ]
     lib.featomic_last_error.restype = ctypes.c_char_p
 
@@ -93,19 +92,6 @@ def setup_functions(lib):
         featomic_logging_callback_t
     ]
     lib.featomic_set_logging_callback.restype = _check_featomic_status_t
-
-    lib.featomic_basic_systems_read.argtypes = [
-        ctypes.c_char_p,
-        POINTER(POINTER(featomic_system_t)),
-        POINTER(c_uintptr_t)
-    ]
-    lib.featomic_basic_systems_read.restype = _check_featomic_status_t
-
-    lib.featomic_basic_systems_free.argtypes = [
-        POINTER(featomic_system_t),
-        c_uintptr_t
-    ]
-    lib.featomic_basic_systems_free.restype = _check_featomic_status_t
 
     lib.featomic_calculator.argtypes = [
         ctypes.c_char_p,
@@ -149,7 +135,7 @@ def setup_functions(lib):
     lib.featomic_calculator_compute.restype = _check_featomic_status_t
 
     lib.featomic_profiling_clear.argtypes = [
-
+        
     ]
     lib.featomic_profiling_clear.restype = _check_featomic_status_t
 

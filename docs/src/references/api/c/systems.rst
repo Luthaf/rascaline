@@ -14,9 +14,3 @@ all required functions; and then passing one or more systems to
 
 .. doxygenstruct:: featomic_pair_t
     :members:
-
----------------------------------------------------------------------
-
-.. doxygenfunction:: featomic_basic_systems_read
-
-.. doxygenfunction:: featomic_basic_systems_free

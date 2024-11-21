@@ -1,5 +1,6 @@
 use metatensor::{TensorMap, Labels};
 use featomic::{Calculator, System, CalculationOptions};
+use chemfiles::{Trajectory, Frame};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let path = std::env::args().nth(1).expect("expected a command line argument");
@@ -24,14 +25,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+fn read_systems_from_file(path: &str) -> Vec<Box<dyn System>> {
+    let mut trajectory = Trajectory::open(path, 'r').expect("could not open the trajectory");
+    let mut frame = Frame::new();
+    let mut systems = Vec::new();
+    for step in 0..trajectory.nsteps() {
+        trajectory.read_step(step, &mut frame).expect("failed to read single frame");
+        systems.push((&frame).into());
+    }
+
+    systems
+}
+
 
 /// Compute SOAP power spectrum, this is the same code as the 'compute-soap'
 /// example
 fn compute_soap(path: &str) -> Result<TensorMap, Box<dyn std::error::Error>> {
-    let systems = featomic::systems::read_from_file(path)?;
-    let mut systems = systems.into_iter()
-        .map(|s| Box::new(s) as Box<dyn System>)
-        .collect::<Vec<_>>();
+    let mut systems = read_systems_from_file(path);
 
     let parameters = r#"{
     "cutoff": {

@@ -8,29 +8,6 @@ rust-version = "1.74"
 [lib]
 bench = false
 
-[features]
-# We use a static version of metatensor by default since otherwise doctests can
-# not find libmetatensor.so
-default = ["chemfiles", "static-metatensor"]
-
-static-metatensor = ["metatensor/static"]
-
-[[bench]]
-name = "spherical-harmonics"
-harness = false
-
-[[bench]]
-name = "lode-spherical-expansion"
-harness = false
-
-[[bench]]
-name = "soap-spherical-expansion"
-harness = false
-
-[[bench]]
-name = "soap-power-spectrum"
-harness = false
-
 [dependencies]
 metatensor = {version = "0.2", features = ["rayon"]}
 
@@ -59,3 +36,31 @@ glob = "0.3"
 ndarray-npy = "0.9"
 flate2 = "1.0.20"
 time-graph = {version = "0.3.0", features = ["table", "json"]}
+
+
+[[bench]]
+name = "spherical-harmonics"
+harness = false
+
+[[bench]]
+name = "lode-spherical-expansion"
+harness = false
+required-features = ["chemfiles"]
+
+[[bench]]
+name = "soap-spherical-expansion"
+harness = false
+required-features = ["chemfiles"]
+
+[[bench]]
+name = "soap-power-spectrum"
+harness = false
+required-features = ["chemfiles"]
+
+[[example]]
+name = "compute-soap"
+required-features = ["chemfiles"]
+
+[[example]]
+name = "profiling"
+required-features = ["chemfiles"]

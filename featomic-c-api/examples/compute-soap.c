@@ -5,6 +5,8 @@
 #include <featomic.h>
 #include <metatensor.h>
 
+#include "common/systems.h"
+
 static mts_tensormap_t* move_keys_to_samples(mts_tensormap_t* descriptor, const char* keys_to_move[], size_t keys_to_move_len);
 static mts_tensormap_t* move_keys_to_properties(mts_tensormap_t* descriptor, const char* keys_to_move[], size_t keys_to_move_len);
 
@@ -25,6 +27,7 @@ int main(int argc, char* argv[]) {
     const char* gradients_list[] = {"positions"};
     options.gradients = gradients_list;
     options.gradients_count = 1;
+    options.use_native_system = true;
 
     mts_tensormap_t* descriptor = NULL;
     mts_block_t* block = NULL;
@@ -52,9 +55,8 @@ int main(int argc, char* argv[]) {
         printf("error: expected a command line argument");
         goto cleanup;
     }
-    status = featomic_basic_systems_read(argv[1], &systems, &n_systems);
-    if (status != FEATOMIC_SUCCESS) {
-        printf("Error: %s\n", featomic_last_error());
+    status = read_systems_example(argv[1], &systems, &n_systems);
+    if (status != 0) {
         goto cleanup;
     }
 
@@ -128,7 +130,8 @@ int main(int argc, char* argv[]) {
 cleanup:
     mts_tensormap_free(descriptor);
     featomic_calculator_free(calculator);
-    featomic_basic_systems_free(systems, n_systems);
+
+    free_systems_example(systems, n_systems);
 
     if (got_error) {
         return 1;
@@ -168,3 +171,5 @@ mts_tensormap_t* move_keys_to_properties(mts_tensormap_t* descriptor, const char
 
     return moved_descriptor;
 }
+
+#include "common/systems.c"

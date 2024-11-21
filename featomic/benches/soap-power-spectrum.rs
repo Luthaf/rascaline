@@ -1,18 +1,21 @@
 #![allow(clippy::needless_return)]
-
 use featomic::{Calculator, System, CalculationOptions};
+use chemfiles::{Frame, Trajectory};
 
 use criterion::{BenchmarkGroup, Criterion, measurement::WallTime, SamplingMode};
 use criterion::{criterion_group, criterion_main};
 
 
-fn load_systems(path: &str) -> Vec<Box<dyn System>> {
-    let systems = featomic::systems::read_from_file(format!("benches/data/{}", path))
-        .expect("failed to read file");
+fn read_systems_from_file(path: &str) -> Vec<Box<dyn System>> {
+    let mut trajectory = Trajectory::open(path, 'r').expect("could not open the trajectory");
+    let mut frame = Frame::new();
+    let mut systems = Vec::new();
+    for step in 0..trajectory.nsteps() {
+        trajectory.read_step(step, &mut frame).expect("failed to read single frame");
+        systems.push((&frame).into());
+    }
 
-    return systems.into_iter()
-        .map(|s| Box::new(s) as Box<dyn System>)
-        .collect()
+    systems
 }
 
 fn run_soap_power_spectrum(
@@ -21,7 +24,7 @@ fn run_soap_power_spectrum(
     gradients: bool,
     test_mode: bool,
 ) {
-    let mut systems = load_systems(path);
+    let mut systems = read_systems_from_file(&format!("benches/data/{}", path));
 
     if test_mode {
         // Reduce the time/RAM required to test the benchmarks code.

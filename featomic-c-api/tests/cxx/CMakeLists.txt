@@ -21,7 +21,7 @@ foreach(_file_ ${EXAMPLES})
     get_filename_component(_name_ ${_file_} NAME_WE)
     set(_name_ example-cxx-${_name_})
     add_executable(${_name_} ${_file_})
-    target_link_libraries(${_name_} featomic::shared)
+    target_link_libraries(${_name_} featomic::shared chemfiles)
 
     add_test(
         NAME ${_name_}

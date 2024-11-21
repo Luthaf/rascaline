@@ -4,6 +4,8 @@
 #include <metatensor.h>
 #include <featomic.h>
 
+#include "common/systems.h"
+
 /// Compute SOAP power spectrum, this is the same code as the 'compute-soap'
 /// example
 static mts_tensormap_t* compute_soap(const char* path);
@@ -93,6 +95,7 @@ mts_tensormap_t* compute_soap(const char* path) {
     const char* gradients_list[] = {"positions"};
     options.gradients = gradients_list;
     options.gradients_count = 1;
+    options.use_native_system = true;
 
     mts_tensormap_t* descriptor = NULL;
     const mts_block_t* block = NULL;
@@ -116,7 +119,7 @@ mts_tensormap_t* compute_soap(const char* path) {
     "}";
 
 
-    status = featomic_basic_systems_read(path, &systems, &n_systems);
+    status = read_systems_example(path, &systems, &n_systems);
     if (status != FEATOMIC_SUCCESS) {
         printf("Error: %s\n", featomic_last_error());
         goto cleanup;
@@ -150,7 +153,7 @@ mts_tensormap_t* compute_soap(const char* path) {
 
 cleanup:
     featomic_calculator_free(calculator);
-    featomic_basic_systems_free(systems, n_systems);
+    free_systems_example(systems, n_systems);
 
     return descriptor;
 }
@@ -186,3 +189,6 @@ mts_tensormap_t* move_keys_to_properties(mts_tensormap_t* descriptor, const char
 
     return moved_descriptor;
 }
+
+
+#include "common/systems.c"

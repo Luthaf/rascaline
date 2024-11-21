@@ -59,9 +59,6 @@ class cmake_ext(build_ext):
             f"-DCMAKE_INSTALL_PREFIX={install_dir}",
             "-DCMAKE_INSTALL_LIBDIR=lib",
             f"-DCMAKE_BUILD_TYPE={FEATOMIC_BUILD_TYPE}",
-            # do not include chemfiles inside featomic, instead users should
-            # use chemfiles python bindings directly
-            "-DFEATOMIC_ENABLE_CHEMFILES=OFF",
             "-DFEATOMIC_FETCH_METATENSOR=ON",
             "-DFEATOMIC_INSTALL_BOTH_STATIC_SHARED=OFF",
             "-DBUILD_SHARED_LIBS=ON",

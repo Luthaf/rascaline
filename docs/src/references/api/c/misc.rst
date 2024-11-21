@@ -16,8 +16,6 @@ Error handling
 
 .. doxygendefine:: FEATOMIC_UTF8_ERROR
 
-.. doxygendefine:: FEATOMIC_CHEMFILES_ERROR
-
 .. doxygendefine:: FEATOMIC_SYSTEM_ERROR
 
 .. doxygendefine:: FEATOMIC_INTERNAL_ERROR

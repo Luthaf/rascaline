@@ -61,43 +61,42 @@ class PyscfSystem(SystemBase):
         else:
             return isinstance(o, pyscf.gto.mole.Mole)
 
-    def __init__(self, frame):
+    def __init__(self, system):
         """
-        :param frame : `chemfiles.Frame`_ object object to be wrapped
-            in this ``ChemfilesSystem``
+        :param system : PySCF object object to be wrapped in this ``PyscfSystem``
         """
         super().__init__()
-        if not self.can_wrap(frame):
+        if not self.can_wrap(system):
             raise Exception(
                 "this class expects pyscf.gto.mole.Mole"
                 + "or pyscf.pbc.gto.cell.Cell objects"
             )
 
-        self._frame = frame
-        self._types = self._frame.atom_charges().copy()  # dtype=int32
+        self._system = system
+        self._types = self._system.atom_charges().copy()  # dtype=int32
         for atm_i, atomic_type in enumerate(self._types):
             if atomic_type == 0:
-                symb = self._frame.atom_symbol(atm_i)
+                symb = self._system.atom_symbol(atm_i)
                 chg = pyscf.data.elements.index(symb)
                 self._types[atm_i] = -chg
         if hasattr(pyscf, "pbc"):
-            self.is_periodic = isinstance(self._frame, pyscf.pbc.gto.cell.Cell)
+            self.is_periodic = isinstance(self._system, pyscf.pbc.gto.cell.Cell)
         else:
             self.is_periodic = False
 
     def size(self):
-        return self._frame.natm
+        return self._system.natm
 
     def types(self):
         return self._types
 
     def positions(self):
-        return pyscf.data.nist.BOHR * self._frame.atom_coords()
+        return pyscf.data.nist.BOHR * self._system.atom_coords()
 
     def cell(self):
         if self.is_periodic:
-            cell = self._frame.a
-            if self._frame.unit[0].lower() == "a":
+            cell = self._system.a
+            if self._system.unit[0].lower() == "a":
                 # assume angströms, we are good to go
                 return cell
             else:

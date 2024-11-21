@@ -1,5 +1,4 @@
-use std::os::raw::{c_char, c_void};
-use std::ffi::CStr;
+use std::os::raw::c_void;
 
 use featomic::types::{Vector3D, Matrix3};
 use featomic::systems::{SimpleSystem, Pair, UnitCell};
@@ -409,81 +408,4 @@ impl From<SimpleSystem> for featomic_system_t {
             pairs_containing: Some(pairs_containing),
         }
     }
-}
-
-/// Read all structures in the file at the given `path` using
-/// [chemfiles](https://chemfiles.org/), and convert them to an array of
-/// `featomic_system_t`.
-///
-/// This function can read all [formats supported by
-/// chemfiles](https://chemfiles.org/chemfiles/latest/formats.html).
-///
-/// This function allocates memory, which must be released using
-/// `featomic_basic_systems_free`.
-///
-/// If you need more control over the system behavior, consider writing your own
-/// instance of `featomic_system_t`.
-///
-/// @param path path of the file to read from in the local filesystem
-/// @param systems `*systems` will be set to a pointer to the first element of
-///                 the array of `featomic_system_t`
-/// @param count `*count` will be set to the number of systems read from the file
-///
-/// @returns The status code of this operation. If the status is not
-///          `FEATOMIC_SUCCESS`, you can use `featomic_last_error()` to get the full
-///          error message.
-#[no_mangle]
-#[allow(clippy::missing_panics_doc)]
-pub unsafe extern fn featomic_basic_systems_read(
-    path: *const c_char,
-    systems: *mut *mut featomic_system_t,
-    count: *mut usize,
-) -> featomic_status_t {
-    catch_unwind(move || {
-        check_pointers!(path, systems, count);
-        let path = CStr::from_ptr(path).to_str()?;
-        let simple_systems = featomic::systems::read_from_file(path)?;
-
-        let mut c_systems = Vec::with_capacity(simple_systems.len());
-        for system in simple_systems {
-            c_systems.push(system.into());
-        }
-
-        // we rely on this below to drop the vector
-        assert!(c_systems.capacity() == c_systems.len());
-
-        *systems = c_systems.as_mut_ptr();
-        *count = c_systems.len();
-        std::mem::forget(c_systems);
-
-        Ok(())
-    })
-}
-
-/// Release memory allocated by `featomic_basic_systems_read`.
-///
-/// This function is only valid to call with a pointer to systems obtained from
-/// `featomic_basic_systems_read`, and the corresponding `count`. Any other use
-/// will probably result in segmentation faults or double free. If `systems` is
-/// NULL, this function does nothing.
-///
-/// @param systems pointer to the first element of the array of
-/// `featomic_system_t` @param count number of systems in the array
-///
-/// @returns The status code of this operation. If the status is not
-///          `FEATOMIC_SUCCESS`, you can use `featomic_last_error()` to get the full
-///          error message.
-#[no_mangle]
-pub unsafe extern fn featomic_basic_systems_free(systems: *mut featomic_system_t, count: usize) -> featomic_status_t {
-    catch_unwind(|| {
-        if !systems.is_null() {
-            let vec = Vec::from_raw_parts(systems, count, count);
-            for element in vec {
-                let boxed = Box::from_raw(element.user_data.cast::<SimpleSystem>());
-                std::mem::drop(boxed);
-            }
-        }
-
-        Ok(())
-    })
 }

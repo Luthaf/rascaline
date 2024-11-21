@@ -35,11 +35,6 @@
 #define FEATOMIC_UTF8_ERROR 3
 
 /**
- * Status code used for error related to reading files with chemfiles
- */
-#define FEATOMIC_CHEMFILES_ERROR 4
-
-/**
  * Status code used for errors coming from the system implementation if we
  * don't have a more specific status
  */
@@ -372,50 +367,6 @@ const char *featomic_last_error(void);
  * set, it is replaced by the new one.
  */
 featomic_status_t featomic_set_logging_callback(featomic_logging_callback_t callback);
-
-/**
- * Read all structures in the file at the given `path` using
- * [chemfiles](https://chemfiles.org/), and convert them to an array of
- * `featomic_system_t`.
- *
- * This function can read all [formats supported by
- * chemfiles](https://chemfiles.org/chemfiles/latest/formats.html).
- *
- * This function allocates memory, which must be released using
- * `featomic_basic_systems_free`.
- *
- * If you need more control over the system behavior, consider writing your own
- * instance of `featomic_system_t`.
- *
- * @param path path of the file to read from in the local filesystem
- * @param systems `*systems` will be set to a pointer to the first element of
- *                 the array of `featomic_system_t`
- * @param count `*count` will be set to the number of systems read from the file
- *
- * @returns The status code of this operation. If the status is not
- *          `FEATOMIC_SUCCESS`, you can use `featomic_last_error()` to get the full
- *          error message.
- */
-featomic_status_t featomic_basic_systems_read(const char *path,
-                                              struct featomic_system_t **systems,
-                                              uintptr_t *count);
-
-/**
- * Release memory allocated by `featomic_basic_systems_read`.
- *
- * This function is only valid to call with a pointer to systems obtained from
- * `featomic_basic_systems_read`, and the corresponding `count`. Any other use
- * will probably result in segmentation faults or double free. If `systems` is
- * NULL, this function does nothing.
- *
- * @param systems pointer to the first element of the array of
- * `featomic_system_t` @param count number of systems in the array
- *
- * @returns The status code of this operation. If the status is not
- *          `FEATOMIC_SUCCESS`, you can use `featomic_last_error()` to get the full
- *          error message.
- */
-featomic_status_t featomic_basic_systems_free(struct featomic_system_t *systems, uintptr_t count);
 
 /**
  * Create a new calculator with the given `name` and `parameters`.

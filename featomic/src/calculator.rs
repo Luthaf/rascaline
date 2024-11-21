@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::convert::TryFrom;
 
 use log::warn;
 use metatensor::c_api::MTS_INVALID_PARAMETER_ERROR;
@@ -9,8 +8,8 @@ use metatensor::{Labels, LabelsBuilder};
 use metatensor::{TensorBlockRef, TensorBlock, TensorMap};
 use ndarray::ArrayD;
 
-use crate::{SimpleSystem, System, Error};
-
+use crate::{System, Error};
+use crate::systems::SimpleSystem;
 use crate::calculators::CalculatorBase;
 
 pub struct Calculator {

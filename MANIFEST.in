@@ -23,7 +23,7 @@ prune python/*.egg-info
 
 prune featomic/tests
 prune featomic/benches/data
-prune featomic/examples
+prune featomic/examples/data
 
 prune featomic-c-api/tests
 prune featomic-c-api/examples

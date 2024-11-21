@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.16)
 
 message(STATUS "Running CMake version ${CMAKE_VERSION}")
 
+if (POLICY CMP0135)
+    cmake_policy(SET CMP0135 NEW) # Timestamp for FetchContent
+endif()
+
 project(featomic-capi-tests C CXX)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -49,8 +53,28 @@ else()
     string(TOLOWER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE)
 endif()
 
-set(FEATOMIC_ENABLE_CHEMFILES ON)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_CURRENT_BINARY_DIR}/featomic)
+
+
+# We use chemfiles in examples to show how to create System
+set(BUILD_SHARED_LIBS OFF)
+include(FetchContent)
+FetchContent_Declare(
+    chemfiles
+    URL      https://github.com/chemfiles/chemfiles/releases/download/0.10.4/chemfiles-0.10.4.tar.gz
+    URL_HASH SHA256=b8232ddaae2953538274982838aa6c2df87d300f7e2f80e92c171581e06325ba
+)
+
+message(STATUS "Fetching chemfiles from github")
+if (CMAKE_VERSION VERSION_GREATER 3.18)
+    FetchContent_MakeAvailable(chemfiles)
+else()
+    if (NOT metatensor_POPULATED)
+        FetchContent_Populate(chemfiles)
+    endif()
+
+    add_subdirectory(${chemfiles_SOURCE_DIR} ${chemfiles_BINARY_DIR})
+endif()
 
 
 # Add featomic and metatensor to the rpath of tests, so we can load the shared
@@ -75,7 +99,7 @@ if (VALGRIND)
         set(TEST_COMMAND
             "${VALGRIND}" "--tool=memcheck" "--dsymutil=yes" "--error-exitcode=125"
             "--leak-check=full" "--show-leak-kinds=definite,indirect,possible" "--track-origins=yes"
-            "--suppressions=${CMAKE_CURRENT_SOURCE_DIR}/valgrind.supp" "--gen-suppressions=all"
+            "--suppressions=${CMAKE_CURRENT_SOURCE_DIR}/utils/valgrind.supp" "--gen-suppressions=all"
         )
     endif()
 else()
@@ -94,7 +118,7 @@ enable_testing()
 foreach(_file_ ${ALL_TESTS})
     get_filename_component(_name_ ${_file_} NAME_WE)
     add_executable(${_name_} ${_file_})
-    target_link_libraries(${_name_} featomic::shared catch tests_helpers)
+    target_link_libraries(${_name_} featomic::shared catch tests_helpers chemfiles)
     add_test(
         NAME ${_name_}
         COMMAND ${TEST_COMMAND} $<TARGET_FILE:${_name_}>
@@ -114,7 +138,7 @@ foreach(_file_ ${EXAMPLES})
     get_filename_component(_name_ ${_file_} NAME_WE)
     set(_name_ example-c-${_name_})
     add_executable(${_name_} ${_file_})
-    target_link_libraries(${_name_} featomic::shared)
+    target_link_libraries(${_name_} featomic::shared chemfiles)
 
     add_test(
         NAME ${_name_}

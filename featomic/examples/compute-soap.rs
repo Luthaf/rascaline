@@ -1,14 +1,23 @@
 use metatensor::Labels;
 use featomic::{Calculator, System, CalculationOptions};
+use chemfiles::{Trajectory, Frame};
+
+fn read_systems_from_file(path: &str) -> Vec<Box<dyn System>> {
+    let mut trajectory = Trajectory::open(path, 'r').expect("could not open the trajectory");
+    let mut frame = Frame::new();
+    let mut systems = Vec::new();
+    for step in 0..trajectory.nsteps() {
+        trajectory.read_step(step, &mut frame).expect("failed to read single frame");
+        systems.push((&frame).into());
+    }
+
+    systems
+}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // load the systems from command line argument
     let path = std::env::args().nth(1).expect("expected a command line argument");
-    let systems = featomic::systems::read_from_file(path)?;
-    // transform systems into a vector of trait objects (`Vec<Box<dyn System>>`)
-    let mut systems = systems.into_iter()
-        .map(|s| Box::new(s) as Box<dyn System>)
-        .collect::<Vec<_>>();
+    let mut systems = read_systems_from_file(&path);
 
     // pass hyper-parameters as JSON
     let parameters = r#"{

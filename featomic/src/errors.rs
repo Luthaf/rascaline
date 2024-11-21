@@ -9,8 +9,6 @@ pub enum Error {
     Json(serde_json::Error),
     /// Error due to C strings containing non-utf8 data
     Utf8(Utf8Error),
-    /// Error related to reading files with chemfiles
-    Chemfiles(String),
     /// Errors coming from metatensor
     Metatensor(metatensor::Error),
     /// Errors coming from external callbacks, typically inside the System
@@ -33,7 +31,6 @@ impl std::fmt::Display for Error {
             Error::InvalidParameter(e) => write!(f, "invalid parameter: {}", e),
             Error::Json(e) => write!(f, "json error: {}", e),
             Error::Utf8(e) => write!(f, "utf8 decoding error: {}", e),
-            Error::Chemfiles(e) => write!(f, "chemfiles error: {}", e),
             Error::Metatensor(e) => write!(f, "metatensor error: {}", e),
             Error::BufferSize(e) => write!(f, "buffer is not big enough: {}", e),
             Error::External{status, message} => write!(f, "error from external code (status {}): {}", status, message),
@@ -53,7 +50,6 @@ impl std::error::Error for Error {
         match self {
             Error::InvalidParameter(_) |
             Error::Internal(_) |
-            Error::Chemfiles(_) |
             Error::BufferSize(_) |
             Error::External{..} => None,
             Error::Metatensor(e) => Some(e),

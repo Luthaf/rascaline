@@ -21,8 +21,7 @@ if (POLICY CMP0135)
 endif()
 
 if (POLICY CMP0077)
-    # use variables to set OPTIONS
-    cmake_policy(SET CMP0077 NEW)
+    cmake_policy(SET CMP0077 NEW) # use variables to set OPTIONS
 endif()
 
 file(STRINGS "Cargo.toml" CARGO_TOML_CONTENT)
@@ -60,7 +59,6 @@ set(RUST_BUILD_TARGET "" CACHE STRING "Cross-compilation target for rust code. L
 set(EXTRA_RUST_FLAGS "" CACHE STRING "Flags used to build rust code")
 mark_as_advanced(RUST_BUILD_TARGET EXTRA_RUST_FLAGS)
 
-option(FEATOMIC_ENABLE_CHEMFILES "Enable the usage of chemfiles for reading structures from files" OFF)
 option(FEATOMIC_FETCH_METATENSOR "Download and build the metatensor C API before building featomic" OFF)
 
 set(CMAKE_MACOSX_RPATH ON)
@@ -156,10 +154,6 @@ else()
 
     set(CARGO_BUILD_ARG "${CARGO_BUILD_ARG};--target=${RUST_BUILD_TARGET}")
     set(CARGO_OUTPUT_DIR "${CARGO_TARGET_DIR}/${RUST_BUILD_TARGET}/${CARGO_BUILD_TYPE}")
-endif()
-
-if (NOT ${FEATOMIC_ENABLE_CHEMFILES})
-    set(CARGO_BUILD_ARG "${CARGO_BUILD_ARG};--no-default-features")
 endif()
 
 # Get the list of libraries linked by default by cargo/rustc to add when linking
@@ -331,9 +325,6 @@ set(FEATOMIC_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/)
 set_target_properties(featomic::shared PROPERTIES
     IMPORTED_LOCATION ${FEATOMIC_SHARED_LOCATION}
     INTERFACE_INCLUDE_DIRECTORIES ${FEATOMIC_INCLUDE_DIR}
-    # the library will need to be linked as C++ code
-    # since it might contains chemfiles
-    IMPORTED_LINK_INTERFACE_LANGUAGES CXX
 )
 target_compile_features(featomic::shared INTERFACE cxx_std_17)
 
@@ -347,9 +338,6 @@ set_target_properties(featomic::static PROPERTIES
     IMPORTED_LOCATION ${FEATOMIC_STATIC_LOCATION}
     INTERFACE_INCLUDE_DIRECTORIES ${FEATOMIC_INCLUDE_DIR}
     INTERFACE_LINK_LIBRARIES "${CARGO_DEFAULT_LIBRARIES}"
-    # the library will need to be linked as C++ code
-    # since it might contains chemfiles
-    IMPORTED_LINK_INTERFACE_LANGUAGES CXX
 )
 
 if (BUILD_SHARED_LIBS)

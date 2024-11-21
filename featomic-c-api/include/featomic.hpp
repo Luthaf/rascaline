@@ -280,64 +280,54 @@ public:
 #undef FEATOMIC_SYSTEM_CATCH_EXCEPTIONS
 
 
-/// A collection of systems read from a file. This is a convenience class
-/// enabling the common use case of reading systems from a file and runnning a
-/// calculation on the systems. If you need more control or access to advanced
-/// functionalities, you should consider writing a new class extending `System`.
-class BasicSystems {
+/// A very minimal implementation of the System interface, only providing data
+/// and no neighbor list calculation. This class must thus be used with
+/// `use_native_system=true` in the calculation options.
+class SimpleSystem final: public System {
 public:
-    /// Read all structures in the file at the given `path` using
-    /// [chemfiles](https://chemfiles.org/).
-    ///
-    /// This function can read all [formats supported by
-    /// chemfiles](https://chemfiles.org/chemfiles/latest/formats.html).
-    ///
-    /// @throws FeatomicError if chemfiles can not read the file
-    BasicSystems(const std::string& path) {
-        details::check_status(featomic_basic_systems_read(path.c_str(), &systems_, &count_));
+    /// Create a new `SimpleSystem`, with the atoms contained in the give cell
+    SimpleSystem(CellMatrix cell = {{0}}): cell_(cell) {}
+
+    /// Add an atom with the given type and position to this system
+    void add_atom(int32_t type, std::array<double, 3> position) {
+        this->atomic_types_.push_back(type);
+        this->positions_.push_back(position[0]);
+        this->positions_.push_back(position[1]);
+        this->positions_.push_back(position[2]);
     }
 
-    ~BasicSystems() noexcept {
-        featomic_basic_systems_free(systems_, count_);
+    uintptr_t size() const override {
+        return this->atomic_types_.size();
     }
 
-    /// BasicSystems is **NOT** copy-constructible
-    BasicSystems(const BasicSystems&) = delete;
-    /// BasicSystems can **NOT** be copy-assigned
-    BasicSystems& operator=(const BasicSystems&) = delete;
-
-    /// BasicSystems is move-constructible
-    BasicSystems(BasicSystems&& other) noexcept {
-        *this = std::move(other);
+    const int32_t* types() const override {
+        return this->atomic_types_.data();
     }
 
-    /// BasicSystems can be move-assigned
-    BasicSystems& operator=(BasicSystems&& other) noexcept {
-        this->~BasicSystems();
-        this->systems_ = nullptr;
-        this->count_ = 0;
-
-        std::swap(this->systems_, other.systems_);
-        std::swap(this->count_, other.count_);
-
-        return *this;
+    const double* positions() const override {
+        return this->positions_.data();
     }
 
-    /// Get a pointer to the first element of the underlying array of systems
-    ///
-    /// This function is intended for internal use only.
-    featomic_system_t* systems() {
-        return systems_;
+    CellMatrix cell() const override {
+        return cell_;
     }
 
-    /// Get the number of systems managed by this `BasicSystems`
-    uintptr_t count() const {
-        return count_;
+    void compute_neighbors(double /*cutoff*/) override {
+        throw std::runtime_error("SimpleSystem can only be used with `use_native_system=true`");
+    }
+
+    const std::vector<featomic_pair_t>& pairs() const override {
+        throw std::runtime_error("SimpleSystem can only be used with `use_native_system=true`");
+    }
+
+    const std::vector<featomic_pair_t>& pairs_containing(uintptr_t /*atom*/) const override {
+        throw std::runtime_error("SimpleSystem can only be used with `use_native_system=true`");
     }
 
 private:
-    featomic_system_t* systems_ = nullptr;
-    uintptr_t count_ = 0;
+    CellMatrix cell_;
+    std::vector<double> positions_;
+    std::vector<int32_t> atomic_types_;
 };
 
 /// Rules to select labels (either samples or properties) on which the user
@@ -696,25 +686,6 @@ public:
             &descriptor,
             &featomic_system,
             1,
-            options.as_featomic_calculation_options_t()
-        ));
-
-        return metatensor::TensorMap(descriptor);
-    }
-
-    /// Runs a calculation for all the `systems` that where read from a file
-    /// using the `BasicSystems(std::string path)` constructor
-    metatensor::TensorMap compute(
-        BasicSystems& systems,
-        CalculationOptions options = CalculationOptions()
-    ) const {
-        mts_tensormap_t* descriptor = nullptr;
-
-        details::check_status(featomic_calculator_compute(
-            calculator_,
-            &descriptor,
-            systems.systems(),
-            systems.count(),
             options.as_featomic_calculation_options_t()
         ));
 
