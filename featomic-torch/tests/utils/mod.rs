@@ -7,7 +7,7 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-#[path = "../../../featomic-c-api/tests/utils/mod.rs"]
+#[path = "../../../featomic/tests/utils/mod.rs"]
 mod core_utils;
 
 pub use core_utils::cmake_build;
@@ -114,7 +114,7 @@ pub fn setup_pytorch(build_dir: PathBuf) -> PathBuf {
 /// Build featomic in `build_dir`, and return the installation prefix
 pub fn setup_featomic(build_dir: PathBuf) -> PathBuf {
     let mut featomic_source_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
-    featomic_source_dir.extend(["..", "featomic-c-api"]);
+    featomic_source_dir.extend(["..", "featomic"]);
 
     // configure cmake for featomic
     let mut cmake_config = cmake_config(&featomic_source_dir, &build_dir);

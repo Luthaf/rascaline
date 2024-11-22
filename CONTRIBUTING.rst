@@ -123,8 +123,7 @@ Github CI workflows.
 You can also run only a subset of tests with one of these commands:
 
 - ``cargo test`` runs everything
-- ``cargo test --package=featomic`` to run the calculators tests;
-- ``cargo test --package=featomic-c-api`` to run the C/C++ tests only;
+- ``cargo test --package=featomic`` to run the main tests;
 
   - ``cargo test --test=run-cxx-tests`` will run the unit tests for the C/C++
     API. If `valgrind`_ is installed, it will be used to check for memory

@@ -1,10 +1,10 @@
 use std::os::raw::c_char;
 use std::ffi::CStr;
 
-use featomic::Error;
+use crate::Error;
 
-use crate::{catch_unwind, featomic_status_t};
-use crate::utils::copy_str_to_c;
+use super::{catch_unwind, featomic_status_t};
+use super::utils::copy_str_to_c;
 
 /// Clear all collected profiling data
 ///
@@ -14,7 +14,7 @@ use crate::utils::copy_str_to_c;
 ///          `FEATOMIC_SUCCESS`, you can use `featomic_last_error()` to get the full
 ///          error message.
 #[no_mangle]
-pub unsafe extern fn featomic_profiling_clear() -> featomic_status_t {
+pub extern fn featomic_profiling_clear() -> featomic_status_t {
     catch_unwind(|| {
         time_graph::clear_collected_data();
         Ok(())
@@ -39,7 +39,7 @@ pub unsafe extern fn featomic_profiling_clear() -> featomic_status_t {
 ///          `FEATOMIC_SUCCESS`, you can use `featomic_last_error()` to get the full
 ///          error message.
 #[no_mangle]
-pub unsafe extern fn featomic_profiling_enable(enabled: bool) -> featomic_status_t {
+pub extern fn featomic_profiling_enable(enabled: bool) -> featomic_status_t {
     catch_unwind(|| {
         time_graph::enable_data_collection(enabled);
         Ok(())

@@ -1,6 +1,6 @@
 use std::os::raw::c_char;
 
-use featomic::Error;
+use crate::Error;
 
 pub unsafe fn copy_str_to_c(string: &str, buffer: *mut c_char, buflen: usize) -> Result<(), Error> {
     let size = std::cmp::min(string.len(), buflen - 1);

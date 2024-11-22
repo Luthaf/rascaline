@@ -123,7 +123,6 @@ jobs:
           FEATOMIC_TEST_WITH_STATIC_LIB: ${{ matrix.test-static-lib || 0 }}
         run: |
           cargo test --test "*" --package featomic --target ${{ matrix.rust-target }} ${{ matrix.cargo-build-flags }}
-          cargo test --test "*" --package featomic-c-api --target ${{ matrix.rust-target }} ${{ matrix.cargo-build-flags }}
 
   # second set of jobs checking that (non-test) code still compiles/run as expected
   prevent-bitrot:

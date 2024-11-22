@@ -3,7 +3,7 @@ use std::cell::RefCell;
 use std::os::raw::c_char;
 use std::ffi::CString;
 
-use featomic::Error;
+use crate::Error;
 
 // Save the last error message in thread local storage.
 //
@@ -92,7 +92,7 @@ pub fn catch_unwind<F>(function: F) -> featomic_status_t where F: FnOnce() -> Re
 macro_rules! check_pointers {
     ($pointer: ident) => {
         if $pointer.is_null() {
-            return Err(featomic::Error::InvalidParameter(
+            return Err($crate::Error::InvalidParameter(
                 format!(
                     "got invalid NULL pointer for {} at {}:{}",
                     stringify!($pointer), file!(), line!()

@@ -4,7 +4,8 @@ use std::ops::{Deref, DerefMut};
 
 use metatensor::{Labels, TensorMap};
 use metatensor::c_api::{mts_tensormap_t, mts_labels_t};
-use featomic::{Calculator, System, CalculationOptions, LabelsSelection};
+
+use crate::{CalculationOptions, Calculator, Error, LabelsSelection, System};
 
 use super::utils::copy_str_to_c;
 use super::{catch_unwind, featomic_status_t};
@@ -212,7 +213,7 @@ pub struct featomic_labels_selection_t {
     predefined: *const mts_tensormap_t,
 }
 
-fn c_labels_to_rust(mut labels: mts_labels_t) -> Result<mts_labels_t, featomic::Error> {
+fn c_labels_to_rust(mut labels: mts_labels_t) -> Result<mts_labels_t, Error> {
     if labels.internal_ptr_.is_null() {
         // create new metatensor-core labels
         unsafe {
@@ -222,29 +223,29 @@ fn c_labels_to_rust(mut labels: mts_labels_t) -> Result<mts_labels_t, featomic::
         }
 
         return Ok(labels);
-    } else {
-        // increment reference count
-        let mut clone = mts_labels_t {
-            internal_ptr_: std::ptr::null_mut(),
-            names: std::ptr::null(),
-            values: std::ptr::null(),
-            size: 0,
-            count: 0
-        };
-        unsafe {
-            metatensor::errors::check_status(
-                metatensor::c_api::mts_labels_clone(labels, &mut clone)
-            )?;
-        }
-        return Ok(clone);
     }
+
+    // increment reference count
+    let mut clone = mts_labels_t {
+        internal_ptr_: std::ptr::null_mut(),
+        names: std::ptr::null(),
+        values: std::ptr::null(),
+        size: 0,
+        count: 0
+    };
+    unsafe {
+        metatensor::errors::check_status(
+            metatensor::c_api::mts_labels_clone(labels, &mut clone)
+        )?;
+    }
+    return Ok(clone);
 }
 
 fn convert_labels_selection<'a>(
     selection: &'a featomic_labels_selection_t,
     labels: &'a mut Option<Labels>,
     predefined: &'a mut Option<TensorMap>,
-) -> Result<LabelsSelection<'a>, featomic::Error> {
+) -> Result<LabelsSelection<'a>, Error> {
     match (selection.subset.is_null(), selection.predefined.is_null()) {
         (true, true) => Ok(LabelsSelection::All),
         (false, true) => {
@@ -269,21 +270,21 @@ fn convert_labels_selection<'a>(
                 Err(e) => {
                     // same as above
                     let _ = TensorMap::into_raw(tensor);
-                    return Err(featomic::Error::from(e));
+                    return Err(Error::from(e));
                 }
             }
 
             Ok(LabelsSelection::Predefined(predefined.as_ref().expect("just created it")))
         }
         (false, false) => {
-            Err(featomic::Error::InvalidParameter(
+            Err(Error::InvalidParameter(
                 "can not have both global and predefined non-NULL in featomic_labels_selection_t".into()
             ))
         }
     }
 }
 
-fn key_selection(value: *const mts_labels_t, labels: &'_ mut Option<Labels>) -> Result<Option<&'_ Labels>, featomic::Error> {
+fn key_selection(value: *const mts_labels_t, labels: &'_ mut Option<Labels>) -> Result<Option<&'_ Labels>, Error> {
     if value.is_null() {
         return Ok(None);
     }

@@ -46,7 +46,7 @@ class cmake_ext(build_ext):
 
     def run(self):
         """Run cmake build and install the resulting library."""
-        source_dir = os.path.join(ROOT, "featomic-c-api")
+        source_dir = os.path.join(ROOT, "featomic")
         build_dir = os.path.join(ROOT, "build", "cmake-build")
         install_dir = os.path.join(os.path.realpath(self.build_lib), "featomic")
 
@@ -162,7 +162,7 @@ class sdist_git_version(sdist):
 
 def get_rust_version():
     # read version from Cargo.toml
-    with open(os.path.join(ROOT, "featomic-c-api", "Cargo.toml")) as fd:
+    with open(os.path.join(ROOT, "featomic", "Cargo.toml")) as fd:
         for line in fd:
             if line.startswith("version"):
                 _, version = line.split(" = ")

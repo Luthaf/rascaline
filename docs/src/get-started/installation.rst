@@ -49,7 +49,7 @@ well as CMake files that can be used with ``find_package(featomic)``.
 .. code-block:: bash
 
     git clone https://github.com/metatensor/featomic
-    cd featomic/featomic-c-api
+    cd featomic/featomic
     mkdir build
     cd build
     cmake <CMAKE_OPTIONS_HERE> ..

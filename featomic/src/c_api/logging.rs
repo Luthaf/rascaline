@@ -4,7 +4,7 @@ use std::sync::Mutex;
 use log::{Record, Metadata};
 use once_cell::sync::Lazy;
 
-use crate::status::{featomic_status_t, catch_unwind};
+use super::status::{featomic_status_t, catch_unwind};
 
 /// The "error" level designates very serious errors
 pub const FEATOMIC_LOG_LEVEL_ERROR: i32 = 1;

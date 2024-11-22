@@ -20,6 +20,9 @@ pub use types::*;
 
 pub mod math;
 
+#[cfg(feature="c-api")]
+pub mod c_api;
+
 mod errors;
 pub use self::errors::Error;
 

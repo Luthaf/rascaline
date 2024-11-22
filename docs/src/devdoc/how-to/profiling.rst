@@ -69,10 +69,10 @@ You can obtain a dataset for profiling from our :download:`website <../../../sta
 
     .. group-tab:: C++
 
-        .. literalinclude:: ../../../../featomic-c-api/examples/profiling.cpp
+        .. literalinclude:: ../../../../featomic/examples/profiling.cpp
             :language: c++
 
     .. group-tab:: C
 
-        .. literalinclude:: ../../../../featomic-c-api/examples/profiling.c
+        .. literalinclude:: ../../../../featomic/examples/profiling.c
             :language: c

@@ -4,7 +4,6 @@ global-exclude .DS_Store
 prune docs
 
 recursive-include featomic *
-recursive-include featomic-c-api *
 recursive-include docs/featomic-json-schema *
 
 # include the minimal crates from the Cargo workspace
@@ -24,8 +23,5 @@ prune python/*.egg-info
 prune featomic/tests
 prune featomic/benches/data
 prune featomic/examples/data
-
-prune featomic-c-api/tests
-prune featomic-c-api/examples
 
 exclude tox.ini

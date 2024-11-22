@@ -3,8 +3,7 @@ resolver = "2"
 
 members = [
     "featomic",
-    "featomic-c-api",
-    "python",
     "featomic-torch",
+    "python",
     "docs/featomic-json-schema",
 ]
