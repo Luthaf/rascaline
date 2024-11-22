@@ -11,7 +11,7 @@ METATENSOR_INCLUDE = os.path.join(
     metatensor.utils.cmake_prefix_path, "..", "..", "include"
 )
 FEATOMIC_HEADER = os.path.relpath(
-    os.path.join(ROOT, "..", "..", "featomic-c-api", "include", "featomic.h")
+    os.path.join(ROOT, "..", "..", "featomic", "include", "featomic.h")
 )
 
 

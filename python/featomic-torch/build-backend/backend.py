@@ -8,14 +8,14 @@ from setuptools import build_meta
 
 
 ROOT = os.path.realpath(os.path.dirname(__file__))
-FEATOMIC = os.path.realpath(os.path.join(ROOT, "..", "..", ".."))
-if os.path.exists(os.path.join(FEATOMIC, "featomic-c-api")):
+FEATOMIC_SRC = os.path.realpath(os.path.join(ROOT, "..", "..", ".."))
+if os.path.exists(os.path.join(FEATOMIC_SRC, "featomic")):
     # we are building from a git checkout
 
     # add a random uuid to the file url to prevent pip from using a cached
     # wheel for metatensor-core, and force it to re-build from scratch
     uuid = uuid.uuid4()
-    FEATOMIC_DEP = f"featomic @ file://{FEATOMIC}?{uuid}"
+    FEATOMIC_DEP = f"featomic @ file://{FEATOMIC_SRC}?{uuid}"
 else:
     # we are building from a sdist
     FEATOMIC_DEP = "featomic >=0.1.0.dev0,<0.2.0"

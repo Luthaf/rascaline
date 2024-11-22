@@ -132,6 +132,7 @@ endif()
 
 set(CARGO_TARGET_DIR ${CMAKE_CURRENT_BINARY_DIR}/target)
 set(CARGO_BUILD_ARG "${CARGO_BUILD_ARG};--target-dir=${CARGO_TARGET_DIR}")
+set(CARGO_BUILD_ARG "${CARGO_BUILD_ARG};--features=c-api")
 
 # Handle cross compilation with RUST_BUILD_TARGET
 if ("${RUST_BUILD_TARGET}" STREQUAL "")
@@ -303,13 +304,26 @@ if (NOT "$ENV{RUSTC_WRAPPER}" STREQUAL "")
     list(APPEND CARGO_ENV "RUSTC_WRAPPER=$ENV{RUSTC_WRAPPER}")
 endif()
 
+if (FEATOMIC_INSTALL_BOTH_STATIC_SHARED)
+    set(CARGO_BUILD_ARG "${CARGO_BUILD_ARG};--crate-type=cdylib;--crate-type=staticlib")
+    set(FILES_CREATED_BY_CARGO "${FEATOMIC_SHARED_LIB_NAME} and ${FEATOMIC_STATIC_LIB_NAME}")
+else()
+    if (BUILD_SHARED_LIBS)
+        set(CARGO_BUILD_ARG "${CARGO_BUILD_ARG};--crate-type=cdylib")
+        set(FILES_CREATED_BY_CARGO "${FEATOMIC_SHARED_LIB_NAME}")
+    else()
+        set(CARGO_BUILD_ARG "${CARGO_BUILD_ARG};--crate-type=staticlib")
+        set(FILES_CREATED_BY_CARGO "${FEATOMIC_STATIC_LIB_NAME}")
+    endif()
+endif()
+
 add_custom_target(cargo-build-featomic ALL
     COMMAND
         ${CMAKE_COMMAND} -E env ${CARGO_ENV}
         cargo rustc ${CARGO_BUILD_ARG} -- ${CARGO_RUSTC_ARGS}
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     DEPENDS ${ALL_RUST_SOURCES}
-    COMMENT "Building ${FEATOMIC_SHARED_LIB_NAME} and ${FEATOMIC_STATIC_LIB_NAME} with cargo"
+    COMMENT "Building ${FILES_CREATED_BY_CARGO} with cargo"
     BYPRODUCTS ${FEATOMIC_STATIC_LOCATION} ${FEATOMIC_SHARED_LOCATION} ${FEATOMIC_IMPLIB_LOCATION}
 )
 

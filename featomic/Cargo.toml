@@ -8,6 +8,16 @@ rust-version = "1.74"
 [lib]
 bench = false
 
+[features]
+default = []
+# Include the code for the featomic C API
+c-api = ["time-graph/table", "time-graph/json", "log/std"]
+# use a static library for metatensor instead of a shared one
+metatensor-static = ["metatensor/static"]
+
+[package.metadata."docs.rs"]
+all-features = true
+
 [dependencies]
 metatensor = {version = "0.2", features = ["rayon"]}
 
@@ -29,9 +39,14 @@ chemfiles = {version = "0.10", optional = true}
 
 approx = "0.5"
 
+[build-dependencies]
+cbindgen = { version = "0.27", default-features = false }
+fs_extra = "1"
+metatensor = "0.2"
+
 [dev-dependencies]
 criterion = "0.5"
-
+which = "5"
 glob = "0.3"
 ndarray-npy = "0.9"
 flate2 = "1.0.20"
@@ -64,3 +79,7 @@ required-features = ["chemfiles"]
 [[example]]
 name = "profiling"
 required-features = ["chemfiles"]
+
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin)'] }

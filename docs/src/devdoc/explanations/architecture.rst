@@ -5,10 +5,10 @@ The code is organized in three main products, each in a separate directory:
 
 - ``featomic/`` contains the main Rust implementation of all calculators, and
   the corresponding unit and regression tests;
-- ``featomic-c-api/`` is a Rust crate containing the implementation of the
-  featomic C API;
-- ``python/`` contains the Python interface to featomic, and the corresponding
-  tests
+- ``featomic-torch/`` contains the TorchScript bindings to featomic, written in
+  C++;
+- ``python/`` contains the Python interface to featomic and featomic-torch, and
+  the corresponding tests
 
 Finally, ``docs/`` contains the documentation for everything related to
 featomic.

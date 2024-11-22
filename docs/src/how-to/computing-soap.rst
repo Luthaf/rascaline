@@ -41,10 +41,10 @@ You can obtain a testing dataset from our :download:`website <../../static/datas
 
     .. group-tab:: C++
 
-        .. literalinclude:: ../../../featomic-c-api/examples/compute-soap.cpp
+        .. literalinclude:: ../../../featomic/examples/compute-soap.cpp
             :language: c++
 
     .. group-tab:: C
 
-        .. literalinclude:: ../../../featomic-c-api/examples/compute-soap.c
+        .. literalinclude:: ../../../featomic/examples/compute-soap.c
             :language: c

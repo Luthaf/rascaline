@@ -1,5 +1,5 @@
-# re-use catch from featomic-c-api C++ tests
-add_subdirectory(../../featomic-c-api/tests/catch catch)
+# re-use catch from featomic C++ tests
+add_subdirectory(../../featomic/tests/utils/catch catch)
 
 # make sure we compile catch with the flags that torch requires. In particular,
 # torch sets -D_GLIBCXX_USE_CXX11_ABI=0 on Linux, which changes some of the

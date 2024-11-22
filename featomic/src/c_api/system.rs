@@ -1,10 +1,10 @@
 use std::os::raw::c_void;
 
-use featomic::types::{Vector3D, Matrix3};
-use featomic::systems::{SimpleSystem, Pair, UnitCell};
-use featomic::{Error, System};
+use crate::types::{Vector3D, Matrix3};
+use crate::systems::{SimpleSystem, Pair, UnitCell};
+use crate::{Error, System};
 
-use crate::FEATOMIC_SYSTEM_ERROR;
+use super::FEATOMIC_SYSTEM_ERROR;
 
 use super::{catch_unwind, featomic_status_t};
 
@@ -160,10 +160,10 @@ impl<'a> System for &'a mut featomic_system_t {
 
         if size == 0 {
             return Ok(&[])
-        } else {
-            unsafe {
-                return Ok(std::slice::from_raw_parts(ptr, self.size()?));
-            }
+        }
+
+        unsafe {
+            return Ok(std::slice::from_raw_parts(ptr, self.size()?));
         }
     }
 
@@ -194,10 +194,10 @@ impl<'a> System for &'a mut featomic_system_t {
 
         if size == 0 {
             return Ok(&[])
-        } else {
-            unsafe {
-                return Ok(std::slice::from_raw_parts(ptr.cast(), self.size()?));
-            }
+        }
+
+        unsafe {
+            return Ok(std::slice::from_raw_parts(ptr.cast(), self.size()?));
         }
     }
 
@@ -272,11 +272,11 @@ impl<'a> System for &'a mut featomic_system_t {
 
         if count == 0 {
             return Ok(&[])
-        } else {
-            unsafe {
-                // SAFETY: ptr is non null, and Pair / featomic_pair_t have the same layout
-                return Ok(std::slice::from_raw_parts(ptr.cast(), count));
-            }
+        }
+
+        unsafe {
+            // SAFETY: ptr is non null, and Pair / featomic_pair_t have the same layout
+            return Ok(std::slice::from_raw_parts(ptr.cast(), count));
         }
     }
 
@@ -308,11 +308,11 @@ impl<'a> System for &'a mut featomic_system_t {
 
         if count == 0 {
             return Ok(&[])
-        } else {
-            unsafe {
-                // SAFETY: ptr is non null, and Pair / featomic_pair_t have the same layout
-                return Ok(std::slice::from_raw_parts(ptr.cast(), count));
-            }
+        }
+
+        unsafe {
+            // SAFETY: ptr is non null, and Pair / featomic_pair_t have the same layout
+            return Ok(std::slice::from_raw_parts(ptr.cast(), count));
         }
     }
 }

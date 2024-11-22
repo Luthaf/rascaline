@@ -86,9 +86,10 @@ get_target_property(METATENSOR_LOCATION metatensor::shared IMPORTED_LOCATION)
 get_filename_component(METATENSOR_DIRECTORY "${METATENSOR_LOCATION}" DIRECTORY)
 set(CMAKE_BUILD_RPATH "${FEATOMIC_DIRECTORY};${METATENSOR_DIRECTORY}")
 
-add_subdirectory(catch)
+add_subdirectory(utils/catch)
 
-add_library(tests_helpers STATIC helpers.cpp)
+add_library(tests_helpers STATIC utils/helpers.cpp)
+target_include_directories(tests_helpers PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/utils/)
 target_link_libraries(tests_helpers featomic::shared)
 
 
@@ -106,48 +107,13 @@ else()
     set(TEST_COMMAND "")
 endif()
 
-file(GLOB ALL_TESTS *.cpp)
-list(REMOVE_ITEM ALL_TESTS "${CMAKE_CURRENT_SOURCE_DIR}/helpers.cpp")
-
 # on windows, shared libraries are found in the PATH. This plays a similar role
 # to `CMAKE_BUILD_RPATH` above
 string(REPLACE ";" "\\;" PATH_STRING "$ENV{PATH}")
 set(WINDOWS_TEST_PATH "${PATH_STRING}\;${METATENSOR_DIRECTORY}\;${FEATOMIC_DIRECTORY}")
 
-enable_testing()
-foreach(_file_ ${ALL_TESTS})
-    get_filename_component(_name_ ${_file_} NAME_WE)
-    add_executable(${_name_} ${_file_})
-    target_link_libraries(${_name_} featomic::shared catch tests_helpers chemfiles)
-    add_test(
-        NAME ${_name_}
-        COMMAND ${TEST_COMMAND} $<TARGET_FILE:${_name_}>
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    )
-
-    if(WIN32)
-        set_tests_properties(${_name_} PROPERTIES ENVIRONMENT "PATH=${WINDOWS_TEST_PATH}")
-    endif()
-endforeach()
-
-# make sure example compile and run
 set(XYZ_EXAMPLE_FILE ${CMAKE_CURRENT_SOURCE_DIR}/../../featomic/examples/data/water.xyz)
 
-file(GLOB EXAMPLES ../examples/*.c)
-foreach(_file_ ${EXAMPLES})
-    get_filename_component(_name_ ${_file_} NAME_WE)
-    set(_name_ example-c-${_name_})
-    add_executable(${_name_} ${_file_})
-    target_link_libraries(${_name_} featomic::shared chemfiles)
-
-    add_test(
-        NAME ${_name_}
-        COMMAND ${TEST_COMMAND} $<TARGET_FILE:${_name_}> ${XYZ_EXAMPLE_FILE}
-    )
-
-    if(WIN32)
-        set_tests_properties(${_name_} PROPERTIES ENVIRONMENT "PATH=${WINDOWS_TEST_PATH}")
-    endif()
-endforeach()
-
+enable_testing()
+add_subdirectory(c)
 add_subdirectory(cxx)

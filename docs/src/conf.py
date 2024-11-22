@@ -73,7 +73,7 @@ def extract_json_schema():
 
 def build_doxygen_docs():
     # we need to run a build to make sure the header is up to date
-    subprocess.run(["cargo", "build", "--package", "featomic-c-api"])
+    subprocess.run(["cargo", "build", "--package", "featomic"])
     subprocess.run(["doxygen", "Doxyfile"], cwd=os.path.join(ROOT, "docs"))
 
 
