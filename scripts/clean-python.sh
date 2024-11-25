@@ -10,12 +10,18 @@ cd "$ROOT_DIR"
 
 rm -rf dist
 rm -rf build
-rm -rf .coverage
+
 rm -rf docs/build
 rm -rf docs/src/examples
 
+rm -rf python/featomic/dist
+rm -rf python/featomic/build
+rm -rf python/featomic/featomic-cxx-*.tar.gz
+
 rm -rf python/featomic-torch/dist
 rm -rf python/featomic-torch/build
+rm -rf python/featomic-torch/featomic-torch-cxx-*.tar.gz
 
 find . -name "*.egg-info" -exec rm -rf "{}" +
 find . -name "__pycache__" -exec rm -rf "{}" +
+find . -name ".coverage" -exec rm -rf "{}" +

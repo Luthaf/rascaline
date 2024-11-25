@@ -72,9 +72,7 @@ jobs:
 
       - name: combine Python coverage files
         run: |
-            coverage combine --append \
-              ./.coverage \
-              ./python/featomic-torch/.coverage
+            coverage combine --append ./python/featomic/.coverage ./python/featomic-torch/.coverage
             coverage xml
 
       - name: upload to codecov.io

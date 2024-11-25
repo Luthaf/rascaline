@@ -59,7 +59,7 @@ jobs:
         run: docker build -t rustc-manylinux2014_x86_64 python/scripts/rustc-manylinux2014_x86_64
 
       - name: build featomic wheel
-        run: python -m cibuildwheel .
+        run: python -m cibuildwheel python/featomic
         env:
           CIBW_BUILD: cp310-*
           CIBW_SKIP: "*musllinux*"
@@ -97,7 +97,7 @@ jobs:
       - name: build featomic sdist
         run: |
           pip install build
-          python -m build --sdist .
+          python -m build --sdist python/featomic
 
       - name: create C++ tarballs
         run: |

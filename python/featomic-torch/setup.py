@@ -12,28 +12,8 @@ from setuptools.command.sdist import sdist
 
 ROOT = os.path.realpath(os.path.dirname(__file__))
 
-FEATOMIC_SRC = os.path.join(ROOT, "..", "..", "featomic")
-
-FEATOMIC_TORCH_SRC = os.path.join(ROOT, "..", "..", "featomic-torch")
-if not os.path.exists(FEATOMIC_TORCH_SRC):
-    # we are building from a sdist, which should include featomic-torch
-    # sources as a tarball
-    tarballs = glob.glob(os.path.join(ROOT, "featomic-torch-cxx-*.tar.gz"))
-
-    if not len(tarballs) == 1:
-        raise RuntimeError(
-            "expected a single 'featomic-torch-cxx-*.tar.gz' file containing "
-            "featomic-torch C++ sources"
-        )
-
-    FEATOMIC_TORCH_SRC = os.path.realpath(tarballs[0])
-    subprocess.run(
-        ["cmake", "-E", "tar", "xf", FEATOMIC_TORCH_SRC],
-        cwd=ROOT,
-        check=True,
-    )
-
-    FEATOMIC_TORCH_SRC = ".".join(FEATOMIC_TORCH_SRC.split(".")[:-2])
+FEATOMIC_PYTHON_SRC = os.path.realpath(os.path.join(ROOT, "..", "featomic"))
+FEATOMIC_TORCH_SRC = os.path.realpath(os.path.join(ROOT, "..", "..", "featomic-torch"))
 
 
 class cmake_ext(build_ext):
@@ -149,20 +129,54 @@ class bdist_egg_disabled(bdist_egg):
         )
 
 
-class sdist_git_version(sdist):
+class sdist_generate_data(sdist):
     """
-    Create a sdist with an additional generated file containing the extra
-    version from git.
+    Create a sdist with an additional generated files:
+        - `git_extra_version`
+        - `featomic-torch-cxx-*.tar.gz`
     """
 
     def run(self):
         with open("git_extra_version", "w") as fd:
             fd.write(git_extra_version())
 
+        generate_cxx_tar()
+
         # run original sdist
         super().run()
 
         os.unlink("git_extra_version")
+        for path in glob.glob("featomic-torch-cxx-*.tar.gz"):
+            os.unlink(path)
+
+
+def generate_cxx_tar():
+    script = os.path.join(ROOT, "..", "..", "scripts", "package-featomic-torch.sh")
+    assert os.path.exists(script)
+
+    try:
+        output = subprocess.run(
+            ["bash", "--version"],
+            stderr=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            encoding="utf8",
+        )
+    except Exception as e:
+        raise RuntimeError("could not run `bash`, is it installed?") from e
+
+    output = subprocess.run(
+        ["bash", script, os.getcwd()],
+        stderr=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        encoding="utf8",
+    )
+    if output.returncode != 0:
+        stderr = output.stderr
+        stdout = output.stdout
+        raise RuntimeError(
+            "failed to collect C++ sources for Python sdist\n"
+            f"stdout:\n {stdout}\n\nstderr:\n {stderr}"
+        )
 
 
 def git_extra_version():
@@ -223,6 +237,26 @@ def git_extra_version():
 
 
 if __name__ == "__main__":
+    if not os.path.exists(FEATOMIC_TORCH_SRC):
+        # we are building from a sdist, which should include featomic-torch
+        # sources as a tarball
+        tarballs = glob.glob(os.path.join(ROOT, "featomic-torch-cxx-*.tar.gz"))
+
+        if not len(tarballs) == 1:
+            raise RuntimeError(
+                "expected a single 'featomic-torch-cxx-*.tar.gz' file containing "
+                "featomic-torch C++ sources"
+            )
+
+        FEATOMIC_TORCH_SRC = os.path.realpath(tarballs[0])
+        subprocess.run(
+            ["cmake", "-E", "tar", "xf", FEATOMIC_TORCH_SRC],
+            cwd=ROOT,
+            check=True,
+        )
+
+        FEATOMIC_TORCH_SRC = ".".join(FEATOMIC_TORCH_SRC.split(".")[:-2])
+
     if os.path.exists("git_extra_version"):
         # we are building from a sdist, without git available, but the git
         # version was recorded in a git_extra_version file
@@ -247,14 +281,13 @@ if __name__ == "__main__":
         "torch >= 1.12",
         "metatensor-torch >=0.6.0,<0.7.0",
     ]
-    if os.path.exists(FEATOMIC_SRC):
+    if os.path.exists(FEATOMIC_PYTHON_SRC):
         # we are building from a git checkout
-        featomic_path = os.path.realpath(os.path.join(ROOT, "..", ".."))
 
         # add a random uuid to the file url to prevent pip from using a cached
         # wheel for featomic, and force it to re-build from scratch
         uuid = uuid.uuid4()
-        install_requires.append(f"featomic @ file://{featomic_path}?{uuid}")
+        install_requires.append(f"featomic @ file://{FEATOMIC_PYTHON_SRC}?{uuid}")
     else:
         # we are building from a sdist/installing from a wheel
         install_requires.append("featomic >=0.1.0.dev0,<0.2.0")
@@ -269,7 +302,7 @@ if __name__ == "__main__":
         cmdclass={
             "build_ext": cmake_ext,
             "bdist_egg": bdist_egg if "bdist_egg" in sys.argv else bdist_egg_disabled,
-            "sdist": sdist_git_version,
+            "sdist": sdist_generate_data,
         },
         package_data={
             "featomic-torch": [

@@ -7,9 +7,17 @@ import uuid
 from setuptools import build_meta
 
 
-ROOT = os.path.realpath(os.path.dirname(__file__))
-FEATOMIC_SRC = os.path.realpath(os.path.join(ROOT, "..", "..", ".."))
-if os.path.exists(os.path.join(FEATOMIC_SRC, "featomic")):
+ROOT = os.path.realpath(os.path.join(os.path.dirname(__file__), ".."))
+FEATOMIC_SRC = os.path.realpath(os.path.join(ROOT, "..", "featomic"))
+FORCED_FEATOMIC_VERSION = os.environ.get("FEATOMIC_TORCH_BUILD_WITH_FEATOMIC_VERSION")
+
+
+if FORCED_FEATOMIC_VERSION is not None:
+    # force a specific version for metatensor-core, this is used when checking the build
+    # from a sdist on a non-released version
+    FEATOMIC_DEP = f"featomic =={FORCED_FEATOMIC_VERSION}"
+
+elif os.path.exists(FEATOMIC_SRC):
     # we are building from a git checkout
 
     # add a random uuid to the file url to prevent pip from using a cached
@@ -21,6 +29,7 @@ else:
     FEATOMIC_DEP = "featomic >=0.1.0.dev0,<0.2.0"
 
 
+get_requires_for_build_sdist = build_meta.get_requires_for_build_sdist
 prepare_metadata_for_build_wheel = build_meta.prepare_metadata_for_build_wheel
 build_wheel = build_meta.build_wheel
 build_sdist = build_meta.build_sdist
@@ -33,8 +42,3 @@ def get_requires_for_build_wheel(config_settings=None):
         "metatensor-torch >=0.6.0,<0.7.0",
         FEATOMIC_DEP,
     ]
-
-
-def get_requires_for_build_sdist(config_settings=None):
-    defaults = build_meta.get_requires_for_build_sdist(config_settings)
-    return defaults + [FEATOMIC_DEP]
