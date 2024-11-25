@@ -1,3 +1,4 @@
+import glob
 import os
 import subprocess
 import sys
@@ -15,23 +16,24 @@ FEATOMIC_SRC = os.path.join(ROOT, "..", "..", "featomic")
 
 FEATOMIC_TORCH_SRC = os.path.join(ROOT, "..", "..", "featomic-torch")
 if not os.path.exists(FEATOMIC_TORCH_SRC):
-    # we are building from a sdist, which should include metatensor-torch
+    # we are building from a sdist, which should include featomic-torch
     # sources as a tarball
-    cxx_sources = os.path.join(ROOT, "featomic-torch.tar.gz")
+    tarballs = glob.glob(os.path.join(ROOT, "featomic-torch-cxx-*.tar.gz"))
 
-    if not os.path.exists(cxx_sources):
+    if not len(tarballs) == 1:
         raise RuntimeError(
-            "expected an 'featomic-torch.tar.gz' file containing "
+            "expected a single 'featomic-torch-cxx-*.tar.gz' file containing "
             "featomic-torch C++ sources"
         )
 
+    FEATOMIC_TORCH_SRC = os.path.realpath(tarballs[0])
     subprocess.run(
-        ["cmake", "-E", "tar", "xf", cxx_sources],
+        ["cmake", "-E", "tar", "xf", FEATOMIC_TORCH_SRC],
         cwd=ROOT,
         check=True,
     )
 
-    FEATOMIC_TORCH_SRC = os.path.join(ROOT, "featomic-torch")
+    FEATOMIC_TORCH_SRC = ".".join(FEATOMIC_TORCH_SRC.split(".")[:-2])
 
 
 class cmake_ext(build_ext):
