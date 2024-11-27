@@ -106,14 +106,14 @@ Building from source:
 .. code-block:: bash
 
     git clone https://github.com/metatensor/featomic
-    cd featomic/python/featomic-torch
+    cd featomic/python/featomic_torch
     pip install .
 
     # Make sure you are using the latest version of pip
     pip install --upgrade pip
 
     # alternatively, the same thing in a single command
-    pip install git+https://github.com/metatensor/featomic#subdirectory=python/featomic-torch
+    pip install git+https://github.com/metatensor/featomic#subdirectory=python/featomic_torch
 
 
 For usage from C++

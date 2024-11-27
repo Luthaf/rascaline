@@ -22,8 +22,9 @@ if FEATOMIC_BUILD_TYPE not in ["debug", "release"]:
         "expected 'debug' or 'release'"
     )
 
-
-FEATOMIC_TORCH_SRC = os.path.join(ROOT, "..", "featomic-torch")
+# The code for featomic-torch needs to live in `featomic_torch` directory until
+# https://github.com/pypa/pip/issues/13093 is fixed.
+FEATOMIC_TORCH_SRC = os.path.realpath(os.path.join(ROOT, "..", "featomic_torch"))
 
 
 class universal_wheel(bdist_wheel):
