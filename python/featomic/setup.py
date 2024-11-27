@@ -28,18 +28,13 @@ FEATOMIC_TORCH_SRC = os.path.realpath(os.path.join(ROOT, "..", "featomic_torch")
 
 
 class universal_wheel(bdist_wheel):
-    """Helper class for override wheel tag.
-
-    When building the wheel, the `wheel` package assumes that if we have a
-    binary extension then we are linking to `libpython.so`; and thus the wheel
-    is only usable with a single python version. This is not the case for
-    here, and the wheel will be compatible with any Python >=3.6. This is
-    tracked in https://github.com/pypa/wheel/issues/185, but until then we
-    manually override the wheel tag.
-    """
-
+    # When building the wheel, the `wheel` package assumes that if we have a
+    # binary extension then we are linking to `libpython.so`; and thus the wheel
+    # is only usable with a single python version. This is not the case for
+    # here, and the wheel will be compatible with any Python >=3. This is
+    # tracked in https://github.com/pypa/wheel/issues/185, but until then we
+    # manually override the wheel tag.
     def get_tag(self):
-        """Get the tag for override."""
         tag = bdist_wheel.get_tag(self)
         # tag[2:] contains the os/arch tags, we want to keep them
         return ("py3", "none") + tag[2:]
