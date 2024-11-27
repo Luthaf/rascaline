@@ -18,7 +18,7 @@ build:
       # install featomic-torch with the CPU version of PyTorch. We can not use
       # the `python` section below since it does not allow to specify
       # `--extra-index-url`
-      - pip install --extra-index-url https://download.pytorch.org/whl/cpu python/featomic-torch
+      - pip install --extra-index-url https://download.pytorch.org/whl/cpu python/featomic_torch
     pre_build:
       # Pre-build Rust code here to avoid timeout when building docs
       - cargo build

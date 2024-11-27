@@ -27,5 +27,5 @@ tar cf "$ARCHIVE_NAME".tar "$ARCHIVE_NAME"
 
 gzip -9 "$ARCHIVE_NAME".tar
 
-rm -f "$ROOT_DIR"/python/featomic-torch/featomic-torch-cxx-*.tar.gz
+rm -f "$ROOT_DIR"/python/featomic_torch/featomic-torch-cxx-*.tar.gz
 cp "$ARCHIVE_NAME".tar.gz "$OUTPUT_DIR/"

@@ -42,4 +42,4 @@ export FEATOMIC_TORCH_BUILD_WITH_FEATOMIC_VERSION="$FEATOMIC_VERSION"
 
 # build featomic-torch, using featomic from `PIP_EXTRA_INDEX_URL`
 # for the sdist => wheel build.
-python -m build python/featomic-torch --outdir "$TMP_DIR/dist"
+python -m build python/featomic_torch --outdir "$TMP_DIR/dist"

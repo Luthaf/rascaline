@@ -18,9 +18,9 @@ rm -rf python/featomic/dist
 rm -rf python/featomic/build
 rm -rf python/featomic/featomic-cxx-*.tar.gz
 
-rm -rf python/featomic-torch/dist
-rm -rf python/featomic-torch/build
-rm -rf python/featomic-torch/featomic-torch-cxx-*.tar.gz
+rm -rf python/featomic_torch/dist
+rm -rf python/featomic_torch/build
+rm -rf python/featomic_torch/featomic-torch-cxx-*.tar.gz
 
 find . -name "*.egg-info" -exec rm -rf "{}" +
 find . -name "__pycache__" -exec rm -rf "{}" +

@@ -187,7 +187,7 @@ browser
     tox
     coverage combine --append \
         ./.coverage \
-        ./python/featomic-torch/.coverage
+        ./python/featomic_torch/.coverage
     coverage html
     firefox htmlcov/index.html
 
