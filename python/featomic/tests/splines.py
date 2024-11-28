@@ -8,7 +8,7 @@ from .test_systems import SystemForTests
 
 
 pytest.importorskip("scipy")
-from scipy.special import gamma, hyp1f1  # noqa
+from scipy.special import gamma  # noqa: E402
 
 
 def test_soap_spliner():

@@ -6,14 +6,18 @@ import pytest
 from metatensor import Labels, TensorBlock, TensorMap
 
 import featomic
-from featomic.utils import PowerSpectrum, _dispatch
-from featomic.utils.clebsch_gordan import ClebschGordanProduct, DensityCorrelations
-from featomic.utils.clebsch_gordan._coefficients import calculate_cg_coefficients
+from featomic.clebsch_gordan import (
+    ClebschGordanProduct,
+    DensityCorrelations,
+    PowerSpectrum,
+    _dispatch,
+)
+from featomic.clebsch_gordan._coefficients import calculate_cg_coefficients
 
 
 # Try to import some modules
 ase = pytest.importorskip("ase")
-import ase.io  # noqa: E402, F811
+from ase import io  # noqa: E402, F401
 
 
 try:

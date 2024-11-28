@@ -3,7 +3,7 @@ from metatensor.torch.atomistic import System
 from packaging import version
 
 from featomic.torch.calculators import SphericalExpansion
-from featomic.torch.utils import PowerSpectrum
+from featomic.torch.clebsch_gordan import PowerSpectrum
 
 
 def system():

@@ -7,8 +7,8 @@ from typing import List, Optional
 
 import numpy as np
 
-from .. import _dispatch
-from .._backend import (
+from . import _coefficients, _dispatch
+from ._backend import (
     Array,
     Labels,
     TensorBlock,
@@ -16,7 +16,6 @@ from .._backend import (
     TorchTensor,
     torch_jit_is_scripting,
 )
-from . import _coefficients
 
 
 def cartesian_to_spherical(

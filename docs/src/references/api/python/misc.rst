@@ -16,4 +16,4 @@ Miscellaneous
 
 .. autofunction:: featomic.convert_hypers
 
-.. autofunction:: featomic.utils.hypers_to_json
+.. autofunction:: featomic.hypers_to_json

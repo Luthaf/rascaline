@@ -2,7 +2,7 @@ import os
 
 import ase
 import numpy as np
-from ase import io  # noqa
+from ase import io  # noqa: F401
 
 from featomic import LodeSphericalExpansion
 from save_data import save_calculator_input, save_numpy_array

@@ -18,6 +18,7 @@
 pub mod types;
 pub use types::*;
 
+/// cbindgen:ignore
 pub mod math;
 
 #[cfg(feature="c-api")]

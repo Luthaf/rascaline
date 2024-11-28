@@ -9,8 +9,8 @@ from typing import Dict, List
 import numpy as np
 import wigners
 
-from .. import _dispatch
-from .._backend import (
+from . import _dispatch
+from ._backend import (
     BACKEND_IS_METATENSOR_TORCH,
     Array,
     Device,

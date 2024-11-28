@@ -7,8 +7,8 @@ from typing import Callable, List, Optional
 
 import numpy as np
 
-from .. import _dispatch
-from .._backend import (
+from . import _coefficients, _dispatch, _utils
+from ._backend import (
     Device,
     DType,
     Labels,
@@ -18,7 +18,6 @@ from .._backend import (
     TorchScriptClass,
     torch_jit_is_scripting,
 )
-from . import _coefficients, _utils
 
 
 try:

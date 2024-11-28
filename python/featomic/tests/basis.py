@@ -1,7 +1,7 @@
-import numpy as np  # noqa: I001
+import numpy as np
 import pytest
 
-from featomic.utils import hypers_to_json
+from featomic import hypers_to_json
 from featomic.basis import (
     Gto,
     LaplacianEigenstate,

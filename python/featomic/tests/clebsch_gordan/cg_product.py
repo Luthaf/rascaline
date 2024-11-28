@@ -8,12 +8,12 @@ import pytest
 from metatensor import Labels, TensorBlock, TensorMap
 
 import featomic
-from featomic.utils.clebsch_gordan import ClebschGordanProduct
+from featomic.clebsch_gordan import ClebschGordanProduct
 
 
 # Try to import some modules
 ase = pytest.importorskip("ase")
-import ase.io  # noqa: E402, F811
+from ase import io  # noqa: E402, F401
 
 
 try:

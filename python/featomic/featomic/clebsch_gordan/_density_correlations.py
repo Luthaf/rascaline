@@ -8,8 +8,8 @@ higher-level metadata manipulation to produce the desired output tensors.
 
 from typing import List, Optional
 
-from .. import _dispatch
-from .._backend import Device, DType, Labels, TensorMap, TorchModule, operations
+from . import _dispatch
+from ._backend import Device, DType, Labels, TensorMap, TorchModule, operations
 from ._cg_product import ClebschGordanProduct
 
 
