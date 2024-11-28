@@ -306,7 +306,10 @@ if __name__ == "__main__":
         authors = fd.read().splitlines()
 
     extras_require = {}
-    if os.path.exists(FEATOMIC_TORCH_SRC):
+
+    # when packaging a sdist for release, we should never use local dependencies
+    FEATOMIC_NO_LOCAL_DEPS = os.environ.get("FEATOMIC_NO_LOCAL_DEPS", "0") == "1"
+    if not FEATOMIC_NO_LOCAL_DEPS and os.path.exists(FEATOMIC_TORCH_SRC):
         # we are building from a git checkout
         extras_require["torch"] = f"featomic-torch @ file://{FEATOMIC_TORCH_SRC}"
     else:

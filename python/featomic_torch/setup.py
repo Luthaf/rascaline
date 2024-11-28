@@ -314,7 +314,10 @@ if __name__ == "__main__":
         f"torch {torch_version}",
         "metatensor-torch >=0.6.0,<0.7.0",
     ]
-    if os.path.exists(FEATOMIC_PYTHON_SRC):
+
+    # when packaging a sdist for release, we should never use local dependencies
+    FEATOMIC_NO_LOCAL_DEPS = os.environ.get("FEATOMIC_NO_LOCAL_DEPS", "0") == "1"
+    if not FEATOMIC_NO_LOCAL_DEPS and os.path.exists(FEATOMIC_PYTHON_SRC):
         # we are building from a git checkout
         install_requires.append(f"featomic @ file://{FEATOMIC_PYTHON_SRC}")
     else:

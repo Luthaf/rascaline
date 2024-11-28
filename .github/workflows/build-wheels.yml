@@ -11,6 +11,9 @@ concurrency:
   group: wheels-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
+env:
+  FEATOMIC_NO_LOCAL_DEPS: "1"
+
 jobs:
   build-wheels:
     runs-on: ${{ matrix.os }}
@@ -70,6 +73,7 @@ jobs:
           CIBW_REPAIR_WHEEL_COMMAND_LINUX: "auditwheel repair --exclude libmetatensor.so -w {dest_dir} {wheel}"
           CIBW_ENVIRONMENT: >
             MACOSX_DEPLOYMENT_TARGET=11
+            FEATOMIC_NO_LOCAL_DEPS=1
 
       - uses: actions/upload-artifact@v3
         with:
