@@ -10,13 +10,14 @@ ROOT = os.path.realpath(os.path.join(os.path.dirname(__file__), ".."))
 FEATOMIC_SRC = os.path.realpath(os.path.join(ROOT, "..", "featomic"))
 FORCED_FEATOMIC_VERSION = os.environ.get("FEATOMIC_TORCH_BUILD_WITH_FEATOMIC_VERSION")
 
+FEATOMIC_NO_LOCAL_DEPS = os.environ.get("FEATOMIC_NO_LOCAL_DEPS", "0") == "1"
 
 if FORCED_FEATOMIC_VERSION is not None:
     # force a specific version for metatensor-core, this is used when checking the build
     # from a sdist on a non-released version
     FEATOMIC_DEP = f"featomic =={FORCED_FEATOMIC_VERSION}"
 
-elif os.path.exists(FEATOMIC_SRC):
+elif not FEATOMIC_NO_LOCAL_DEPS and os.path.exists(FEATOMIC_SRC):
     # we are building from a git checkout
     FEATOMIC_DEP = f"featomic @ file://{FEATOMIC_SRC}"
 else:
