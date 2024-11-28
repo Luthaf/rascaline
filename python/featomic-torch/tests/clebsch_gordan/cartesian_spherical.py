@@ -2,7 +2,7 @@ import pytest
 import torch
 from metatensor.torch import Labels, TensorBlock, TensorMap
 
-from featomic.torch.utils.clebsch_gordan import cartesian_to_spherical
+from featomic.torch.clebsch_gordan import cartesian_to_spherical
 
 
 @pytest.fixture

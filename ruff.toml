@@ -4,7 +4,7 @@ ignore = ["B018", "B904"]
 
 [lint.isort]
 lines-after-imports = 2
-known-first-party = ["featomic"]
+known-first-party = ["featomic", "save_data"]
 known-third-party = ["torch"]
 
 [format]

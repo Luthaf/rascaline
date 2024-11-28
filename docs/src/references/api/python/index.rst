@@ -20,4 +20,4 @@ independently <install-python-lib>`. The functions and classes provided in
     basis
     splines
 
-    utils/index
+    clebsch-gordan

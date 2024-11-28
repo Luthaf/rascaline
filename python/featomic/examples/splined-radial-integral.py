@@ -172,7 +172,7 @@ plt.matshow(expansion_gto.block(selection).values.reshape(2, 5))
 # the splines data in JSON files; and then reload them later to re-use:
 
 # convert the hypers from classes to a pure JSON-compatible dictionary
-json_hypers = featomic.utils.hypers_to_json(hypers)
+json_hypers = featomic.hypers_to_json(hypers)
 
 # save the data to a file
 with open("splined-hypers.json", "w") as fp:

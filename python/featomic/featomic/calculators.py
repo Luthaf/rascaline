@@ -1,6 +1,6 @@
 import json
 
-from .utils import BadHyperParameters, convert_hypers, hypers_to_json
+from featomic._hypers import BadHyperParameters, convert_hypers, hypers_to_json
 
 
 try:

@@ -6,9 +6,8 @@ Private module containing helper functions for public module
 
 from typing import List, Tuple
 
-from .. import _dispatch
-from .._backend import Labels, TensorBlock, TensorMap
-from . import _coefficients
+from . import _coefficients, _dispatch
+from ._backend import Labels, TensorBlock, TensorMap
 
 
 # ======================================== #

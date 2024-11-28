@@ -109,7 +109,7 @@ class PowerSpectrum(TorchModule):
 
     Construct the power spectrum calculators and compute the spherical expansion
 
-    >>> calculator = featomic.utils.PowerSpectrum(sr_calculator, lr_calculator)
+    >>> calculator = featomic.clebsch_gordan.PowerSpectrum(sr_calculator, lr_calculator)
     >>> power_spectrum = calculator.compute(atoms)
 
     The resulting invariants are stored as :py:class:`metatensor.TensorMap` as for any

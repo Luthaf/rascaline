@@ -5,7 +5,7 @@ import pytest
 from numpy.testing import assert_allclose, assert_equal
 
 import featomic
-from featomic.utils import PowerSpectrum
+from featomic.clebsch_gordan import PowerSpectrum
 
 from ..test_systems import SystemForTests
 from .test_utils import finite_differences_positions
