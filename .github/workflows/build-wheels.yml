@@ -95,7 +95,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: featomic-wheel-${{ matrix.os }}-${{ matrix.cibw-arch }}
+          name: wheel-${{ matrix.os }}-${{ matrix.cibw-arch }}
           path: ./wheelhouse/*.whl
 
   build-torch-wheels:
@@ -214,13 +214,13 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: featomic-torch-single-version-wheel-${{ matrix.torch-version }}-${{ matrix.os }}-${{ matrix.arch }}
+          name: torch-single-version-wheel-${{ matrix.torch-version }}-${{ matrix.os }}-${{ matrix.arch }}
           path: ./wheelhouse/*.whl
 
   merge-torch-wheels:
     needs: build-torch-wheels
     runs-on: ubuntu-22.04
-    name: merge metatensor-torch ${{ matrix.name }}
+    name: merge featomic-torch ${{ matrix.name }}
     strategy:
       matrix:
         include:
@@ -287,10 +287,10 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: featomic-torch-wheel-${{ matrix.os }}-${{ matrix.arch }}
+          name: torch-wheel-${{ matrix.os }}-${{ matrix.arch }}
           path: ./wheelhouse/*.whl
 
-  build-others:
+  build-sdist:
     runs-on: ubuntu-22.04
     name: sdist
     steps:
@@ -319,7 +319,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: others
+          name: sdist
           path: |
             dist/*.tar.gz
             dist/cxx/*.tar.gz
@@ -336,7 +336,7 @@ jobs:
 
   merge-and-release:
     name: Merge and release wheels/sdists
-    needs: [build-wheels, merge-torch-wheels, build-others]
+    needs: [build-wheels, merge-torch-wheels, build-sdist]
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -345,21 +345,21 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: wheels
-          pattern: featomic-wheel-*
+          pattern: wheel-*
           merge-multiple: true
 
       - name: Download featomic-torch wheels
         uses: actions/download-artifact@v4
         with:
           path: wheels
-          pattern: featomic-torch-wheel-*
+          pattern: torch-wheel-*
           merge-multiple: true
 
       - name: Download sdists
         uses: actions/download-artifact@v4
         with:
           path: wheels
-          name: others
+          name: sdist
 
       - name: Re-upload a single wheels artifact
         uses: actions/upload-artifact@v4
