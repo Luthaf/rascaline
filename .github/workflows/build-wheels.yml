@@ -5,7 +5,17 @@ on:
     branches: [main]
     tags: ["*"]
   pull_request:
-    # Check all PR
+    paths:
+      # build wheels in PR if this file changed
+      - '.github/workflows/build-wheels.yml'
+      # build wheels in PR if any of the build system files changed
+      - '**/VERSION'
+      - '**/setup.py'
+      - '**/pyproject.toml'
+      - '**/MANIFEST.in'
+      - '**/Cargo.toml'
+      - '**/CMakeLists.txt'
+      - '**/build.rs'
 
 concurrency:
   group: wheels-${{ github.ref }}
