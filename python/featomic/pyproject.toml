@@ -44,9 +44,12 @@ requires = [
     "setuptools",
     "wheel",
     "packaging",
-    "cmake",
 ]
-build-backend = "setuptools.build_meta"
+
+# use a custom build backend to add a dependency on metatensor/cmake only when
+# building the wheels
+build-backend = "backend"
+backend-path = ["build-backend"]
 
 [tool.setuptools]
 zip-safe = true

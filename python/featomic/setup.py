@@ -1,6 +1,5 @@
 import glob
 import os
-import shutil
 import subprocess
 import sys
 
@@ -45,6 +44,8 @@ class cmake_ext(build_ext):
 
     def run(self):
         """Run cmake build and install the resulting library."""
+        import metatensor
+
         source_dir = FEATOMIC_SRC
         build_dir = os.path.join(ROOT, "build", "cmake-build")
         install_dir = os.path.join(os.path.realpath(self.build_lib), "featomic")
@@ -58,7 +59,7 @@ class cmake_ext(build_ext):
             f"-DCMAKE_INSTALL_PREFIX={install_dir}",
             "-DCMAKE_INSTALL_LIBDIR=lib",
             f"-DCMAKE_BUILD_TYPE={FEATOMIC_BUILD_TYPE}",
-            "-DFEATOMIC_FETCH_METATENSOR=ON",
+            f"-DCMAKE_PREFIX_PATH={metatensor.utils.cmake_prefix_path}",
             "-DFEATOMIC_INSTALL_BOTH_STATIC_SHARED=OFF",
             "-DBUILD_SHARED_LIBS=ON",
             "-DEXTRA_RUST_FLAGS=-Cstrip=symbols",
@@ -112,19 +113,6 @@ class cmake_ext(build_ext):
             ["cmake", "--build", build_dir, "--parallel", "--target", "install"],
             check=True,
         )
-
-        # do not include metatensor libraries/headers/cmake config within
-        # featomic wheel
-        for file in glob.glob(os.path.join(install_dir, "lib", "libmetatensor.*")):
-            os.unlink(file)
-
-        for file in glob.glob(os.path.join(install_dir, "bin", "metatensor.dll")):
-            os.unlink(file)
-
-        shutil.rmtree(os.path.join(install_dir, "lib", "cmake", "metatensor"))
-
-        for file in glob.glob(os.path.join(install_dir, "include", "metatensor*")):
-            os.unlink(file)
 
 
 class bdist_egg_disabled(bdist_egg):
