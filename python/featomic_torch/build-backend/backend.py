@@ -24,6 +24,12 @@ else:
     # we are building from a sdist
     FEATOMIC_DEP = "featomic >=0.1.0.dev0,<0.2.0"
 
+FORCED_TORCH_VERSION = os.environ.get("FEATOMIC_TORCH_BUILD_WITH_TORCH_VERSION")
+if FORCED_TORCH_VERSION is not None:
+    TORCH_DEP = f"torch =={FORCED_TORCH_VERSION}"
+else:
+    TORCH_DEP = "torch >=1.12"
+
 
 get_requires_for_build_sdist = build_meta.get_requires_for_build_sdist
 prepare_metadata_for_build_wheel = build_meta.prepare_metadata_for_build_wheel
@@ -35,7 +41,7 @@ def get_requires_for_build_wheel(config_settings=None):
     defaults = build_meta.get_requires_for_build_wheel(config_settings)
     return defaults + [
         "cmake",
-        "torch >= 1.12",
+        TORCH_DEP,
         "metatensor-torch >=0.6.0,<0.7.0",
         FEATOMIC_DEP,
     ]
