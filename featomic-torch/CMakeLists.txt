@@ -21,7 +21,7 @@ file(READ ${CMAKE_CURRENT_SOURCE_DIR}/VERSION FEATOMIC_TORCH_VERSION)
 string(STRIP ${FEATOMIC_TORCH_VERSION} FEATOMIC_TORCH_VERSION)
 
 include(cmake/dev-versions.cmake)
-create_development_version("${FEATOMIC_TORCH_VERSION}" FEATOMIC_TORCH_FULL_VERSION)
+create_development_version("${FEATOMIC_TORCH_VERSION}" FEATOMIC_TORCH_FULL_VERSION "featomic-torch-v")
 message(STATUS "Building featomic-torch v${FEATOMIC_TORCH_FULL_VERSION}")
 
 # strip any -dev/-rc suffix on the version since project(VERSION) does not support it
@@ -85,7 +85,7 @@ if (NOT "$ENV{FEATOMIC_NO_LOCAL_DEPS}" STREQUAL "1")
     # If building a dev version, we also need to update the
     # REQUIRED_FEATOMIC_VERSION in the same way we update the
     # featomic-torch version
-    create_development_version("${REQUIRED_FEATOMIC_VERSION}" FEATOMIC_FULL_VERSION)
+    create_development_version("${REQUIRED_FEATOMIC_VERSION}" FEATOMIC_FULL_VERSION "featomic-v")
 else()
     set(FEATOMIC_FULL_VERSION ${REQUIRED_FEATOMIC_VERSION})
 endif()

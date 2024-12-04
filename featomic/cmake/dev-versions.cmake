@@ -23,7 +23,7 @@ endif()
 
 # Get the time of the last modification since the last tag/release, and a hash
 # of the latest commit/full state of a dirty repository
-function(git_version_info _output_n_commits_ _output_git_hash_)
+function(git_version_info _tag_prefix_ _output_n_commits_ _output_git_hash_)
     set(_script_ "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../../scripts/git-version-info.py")
 
     if (EXISTS "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/git_version_info")
@@ -37,7 +37,7 @@ function(git_version_info _output_n_commits_ _output_git_hash_)
         # When building from a checkout, we'll need to run the script
         find_package(Python COMPONENTS Interpreter REQUIRED)
         execute_process(
-            COMMAND "${Python_EXECUTABLE}" "${_script_}" "featomic-v"
+            COMMAND "${Python_EXECUTABLE}" "${_script_}" "${_tag_prefix_}"
             RESULT_VARIABLE _status_
             OUTPUT_VARIABLE _stdout_
             ERROR_VARIABLE _stderr_
@@ -72,8 +72,8 @@ endfunction()
 
 # Take the version declared in the package, and increase the right number if we
 # are actually installing a developement version from after the latest git tag
-function(create_development_version _version_ _output_)
-    git_version_info(_n_commits_ _git_hash_)
+function(create_development_version _version_ _output_ _tag_prefix_)
+    git_version_info(_tag_prefix_ _n_commits_ _git_hash_)
 
     parse_version(${_version_} _major_ _minor_ _patch_ _rc_)
     if(${_n_commits_} STREQUAL "0")

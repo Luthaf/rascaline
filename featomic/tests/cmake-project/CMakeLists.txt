@@ -6,7 +6,7 @@ project(featomic-test-cmake-project C CXX)
 # featomic version for dev builds
 include(../../cmake/dev-versions.cmake)
 set(REQUIRED_FEATOMIC_VERSION "0.0.0")
-create_development_version("${REQUIRED_FEATOMIC_VERSION}" FEATOMIC_FULL_VERSION)
+create_development_version("${REQUIRED_FEATOMIC_VERSION}" FEATOMIC_FULL_VERSION "featomic-v")
 string(REGEX REPLACE "([0-9]*)\\.([0-9]*).*" "\\1.\\2" REQUIRED_FEATOMIC_VERSION ${FEATOMIC_FULL_VERSION})
 find_package(featomic ${REQUIRED_FEATOMIC_VERSION} REQUIRED)
 
