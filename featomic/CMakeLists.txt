@@ -34,7 +34,7 @@ foreach(line ${CARGO_TOML_CONTENT})
 endforeach()
 
 include(cmake/dev-versions.cmake)
-create_development_version("${FEATOMIC_VERSION}" FEATOMIC_FULL_VERSION)
+create_development_version("${FEATOMIC_VERSION}" FEATOMIC_FULL_VERSION "featomic-v")
 message(STATUS "Building featomic v${FEATOMIC_FULL_VERSION}")
 
 # strip any -dev/-rc suffix on the version since project(VERSION) does not support it
