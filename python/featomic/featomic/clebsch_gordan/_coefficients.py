@@ -353,9 +353,9 @@ def _real2complex(o3_lambda: int, like: Array) -> Array:
     for m in range(-o3_lambda, o3_lambda + 1):
         if m < 0:
             # Positive part
-            result[o3_lambda + m, o3_lambda + m] = i_sqrt_2
+            result[o3_lambda + m, o3_lambda + m] = -i_sqrt_2
             # Negative part
-            result[o3_lambda + m, o3_lambda - m] = -i_sqrt_2 * ((-1) ** m)
+            result[o3_lambda + m, o3_lambda - m] = i_sqrt_2 * ((-1) ** m)
 
         if m == 0:
             result[o3_lambda, o3_lambda] = 1.0
