@@ -114,6 +114,12 @@ find_package(Torch 1.12 REQUIRED)
 # ============================================================================ #
 # Setup metatensor_torch
 
+# METATENSOR_FETCH_VERSION is the exact version we will fetch from github if
+# FEATOMIC_TORCH_FETCH_METATENSOR_TORCH=ON, and REQUIRED_METATENSOR_TORCH_VERSION
+# is the minimal version we require when using `find_package` to find the library.
+#
+# When updating METATENSOR_FETCH_VERSION, you will also have to update the
+# SHA256 sum of the file in `FetchContent_Declare`.
 set(METATENSOR_FETCH_VERSION "0.6.1")
 set(REQUIRED_METATENSOR_TORCH_VERSION "0.6")
 if (FEATOMIC_TORCH_FETCH_METATENSOR_TORCH)
