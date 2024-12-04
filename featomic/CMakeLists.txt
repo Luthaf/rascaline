@@ -229,6 +229,12 @@ endif()
 # ============================================================================ #
 # Setup metatensor
 
+# METATENSOR_FETCH_VERSION is the exact version we will fetch from github if
+# FEATOMIC_FETCH_METATENSOR=ON, and METATENSOR_REQUIRED_VERSION is the minimal
+# version we require when using `find_package` to find the library.
+#
+# When updating METATENSOR_FETCH_VERSION, you will also have to update the
+# SHA256 sum of the file in `FetchContent_Declare`.
 set(METATENSOR_FETCH_VERSION "0.1.11")
 set(METATENSOR_REQUIRED_VERSION "0.1")
 if (FEATOMIC_FETCH_METATENSOR)
