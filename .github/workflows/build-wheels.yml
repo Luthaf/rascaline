@@ -324,16 +324,6 @@ jobs:
             dist/*.tar.gz
             dist/cxx/*.tar.gz
 
-      - name: upload sdist to GitHub release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            dist/*.tar.gz
-            dist/cxx/*.tar.gz
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   merge-and-release:
     name: Merge and release wheels/sdists
     needs: [build-wheels, merge-torch-wheels, build-sdist]
