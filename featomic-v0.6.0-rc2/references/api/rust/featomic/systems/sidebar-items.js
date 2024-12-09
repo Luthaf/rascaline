@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["CellShape"],"struct":["NeighborsList","Pair","SimpleSystem","UnitCell"],"trait":["System"]};
