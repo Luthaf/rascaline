@@ -80,7 +80,7 @@ function(check_compatible_versions _dependency_ _actual_ _requested_)
 endfunction()
 
 
-set(REQUIRED_FEATOMIC_VERSION "0.6.0-rc1")
+set(REQUIRED_FEATOMIC_VERSION "0.6.0-rc2")
 if (NOT "$ENV{FEATOMIC_NO_LOCAL_DEPS}" STREQUAL "1")
     # If building a dev version, we also need to update the
     # REQUIRED_FEATOMIC_VERSION in the same way we update the
