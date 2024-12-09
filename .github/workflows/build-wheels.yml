@@ -306,11 +306,11 @@ jobs:
       - name: build featomic sdist
         run: |
           pip install build
-          python -m build --sdist python/featomic
+          python -m build --sdist python/featomic --outdir ./dist/
 
       - name: build featomic-torch sdist
         run: |
-          python -m build --sdist python/featomic_torch
+          python -m build --sdist python/featomic_torch --outdir ./dist/
 
       - name: create C++ tarballs
         run: |
