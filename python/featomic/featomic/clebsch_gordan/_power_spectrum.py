@@ -131,7 +131,9 @@ class PowerSpectrum(TorchModule):
 
     .. seealso::
         If you are interested in the SOAP power spectrum you can the use the
-        faster :py:class:`featomic.SoapPowerSpectrum`.
+        faster :py:class:`featomic.SoapPowerSpectrum`. For an equivariant version of
+        this calculator, computing the power spectrum for covariant as well as
+        invariant blocks, see :py:class:`featomic.EquivariantPowerSpectrum`.
     """
 
     def __init__(
