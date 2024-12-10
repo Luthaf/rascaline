@@ -1,0 +1,717 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../../">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="Miscellaneous" href="misc.html" /><link rel="prev" title="Defining systems" href="systems.html" />
+
+    <!-- Generated with Sphinx 7.2.6 and Furo 2024.08.06 -->
+        <title>Dealing with calculators - Featomic 0.6.0-rc1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=354aac6f" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/featomic.css?v=191cc0c0" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=d2d258e8" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=302659d7" />
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/fontawesome.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/solid.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/brands.min.css" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../../index.html"><div class="brand">Featomic 0.6.0-rc1 documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
+  
+  
+  <span class="sidebar-brand-text">Featomic 0.6.0-rc1 documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../get-started/index.html">Getting started</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of Getting started</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../get-started/featomic.html">What is featomic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../get-started/installation.html">Installation</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../get-started/tutorials.html">Tutorials: using featomic from Python</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of Tutorials: using featomic from Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../examples/first-calculation.html">First descriptor computation</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../how-to/index.html">How-to guides</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of How-to guides</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../how-to/computing-soap.html">Computing SOAP features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../how-to/sample-selection.html">Sample Selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../how-to/property-selection.html">Property Selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../how-to/keys-selection.html">Keys selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../how-to/splined-radial-integral.html">Splined radial integral</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../how-to/long-range.html">Long-range only LODE descriptor</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="../../index.html">Reference guides</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle navigation of Reference guides</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../calculators/index.html">Calculator reference</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation of Calculator reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../calculators/spherical-expansion.html">Spherical expansion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../calculators/spherical-expansion-by-pair.html">Spherical expansion by pair</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../calculators/lode-spherical-expansion.html">LODE spherical expansion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../calculators/soap-radial-spectrum.html">SOAP radial spectrum</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../calculators/soap-power-spectrum.html">SOAP power spectrum</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../calculators/atomic-composition.html">Atomic Composition</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../calculators/neighbor-list.html">Neighbor List</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../calculators/sorted-distances.html">Sorted distance vector</a></li>
+</ul>
+</li>
+<li class="toctree-l2 current has-children"><a class="reference internal" href="../index.html">API documentation</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle navigation of API documentation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l3 has-children"><a class="reference internal" href="../python/index.html">Python</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle navigation of Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../python/systems.html">Available system implementation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../python/calculators.html">Available Calculators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../python/misc.html">Miscellaneous</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../python/cutoff.html">Local environments</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../python/density.html">Atomic density</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../python/basis.html">Basis functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../python/splines.html">Splined radial integrals</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../python/clebsch-gordan.html">Clebsch-Gordan products</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../torch/index.html">TorchScript</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle navigation of TorchScript</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../torch/systems.html">System</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../torch/calculators.html">Calculators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../torch/clebsch-gordan.html">Clebsch-Gordan products</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../torch/cxx/index.html">TorchScript C++ API reference</a><input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><div class="visually-hidden">Toggle navigation of TorchScript C++ API reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="../torch/cxx/calculators.html">Calculators</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../rust.html">Rust</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../c/index.html">C</a><input class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><div class="visually-hidden">Toggle navigation of C</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../c/systems.html">Defining systems</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../c/calculators.html">Dealing with calculators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../c/misc.html">Miscellaneous</a></li>
+</ul>
+</li>
+<li class="toctree-l3 current has-children"><a class="reference internal" href="index.html">C++</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><div class="visually-hidden">Toggle navigation of C++</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="systems.html">Defining systems</a></li>
+<li class="toctree-l4 current current-page"><a class="current reference internal" href="#">Dealing with calculators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="misc.html">Miscellaneous</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../explanations/index.html">Explanations</a><input class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><div class="visually-hidden">Toggle navigation of Explanations</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../explanations/concepts.html">Core concepts of featomic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../explanations/soap.html">What is SOAP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../explanations/rotation_adapted.html">Rotation-Adapted Features</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../devdoc/index.html">Developer documentation</a><input class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><div class="visually-hidden">Toggle navigation of Developer documentation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../devdoc/get-started.html">Getting started</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../devdoc/how-to/index.html">How-to guides</a><input class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><div class="visually-hidden">Toggle navigation of How-to guides</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../devdoc/how-to/new-calculator.html">Adding a new calculator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../devdoc/how-to/profiling.html">Profiling calculation</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../devdoc/explanations/index.html">Explanations</a><input class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><div class="visually-hidden">Toggle navigation of Explanations</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../devdoc/explanations/architecture.html">Code organization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../devdoc/explanations/interfaces.html">Python and C interface</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../devdoc/explanations/radial-integral.html">SOAP and LODE radial integrals</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../../../_sources/references/api/cxx/calculators.rst.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="dealing-with-calculators">
+<h1>Dealing with calculators<a class="headerlink" href="#dealing-with-calculators" title="Link to this heading">¶</a></h1>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4N8featomic10CalculatorE">
+<span id="_CPPv3N8featomic10CalculatorE"></span><span id="_CPPv2N8featomic10CalculatorE"></span><span id="featomic::Calculator"></span><span class="target" id="classfeatomic_1_1_calculator"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Calculator</span></span></span><a class="headerlink" href="#_CPPv4N8featomic10CalculatorE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>The <code class="docutils literal notranslate"><a class="reference internal" href="#classfeatomic_1_1_calculator"><span class="std std-ref"><span class="pre">Calculator</span></span></a></code> class implements the calculation of a given atomic scale representation. Specific implementation are registered globally, and requested at construction. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8featomic10Calculator10CalculatorENSt6stringENSt6stringE">
+<span id="_CPPv3N8featomic10Calculator10CalculatorENSt6stringENSt6stringE"></span><span id="_CPPv2N8featomic10Calculator10CalculatorENSt6stringENSt6stringE"></span><span id="featomic::Calculator::Calculator__ss.ss"></span><span class="target" id="classfeatomic_1_1_calculator_1ab55c31e91b7750bd121f43ac90ee5025"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Calculator</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">name</span></span>, <span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">parameters</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8featomic10Calculator10CalculatorENSt6stringENSt6stringE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Create a new calculator with the given <code class="docutils literal notranslate"><span class="pre">name</span></code> and <code class="docutils literal notranslate"><span class="pre">parameters</span></code>.</p>
+<p><p>The list of available calculators and the corresponding parameters are
+in the <a class="reference internal" href="../../index.html#userdoc-references"><span class="std std-ref">main documentation</span></a>. The <code class="docutils literal notranslate"><span class="pre">parameters</span></code>
+should be formatted as JSON, according to the requested calculator
+schema.</p>
+ </p>
+<dl class="field-list simple">
+<dt class="field-odd">Throws<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span><span class="cpp-expr sig sig-inline cpp"><a class="reference internal" href="misc.html#_CPPv4N8featomic13FeatomicErrorE" title="featomic::FeatomicError"><span class="n">FeatomicError</span></a></span></span> – if <code class="docutils literal notranslate"><span class="pre">name</span></code> is not associated with a known calculator, if <code class="docutils literal notranslate"><span class="pre">parameters</span></code> is not valid JSON, or if <code class="docutils literal notranslate"><span class="pre">parameters</span></code> do not contains the expected values for the requested calculator.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8featomic10Calculator10CalculatorERK10Calculator">
+<span id="_CPPv3N8featomic10Calculator10CalculatorERK10Calculator"></span><span id="_CPPv2N8featomic10Calculator10CalculatorERK10Calculator"></span><span id="featomic::Calculator::Calculator__CalculatorCR"></span><span class="target" id="classfeatomic_1_1_calculator_1a10c3acf5c94ee5d520cdfac56d60fe72"></span><span class="sig-name descname"><span class="n"><span class="pre">Calculator</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8featomic10Calculator10CalculatorERK10Calculator" title="featomic::Calculator::Calculator"><span class="n"><span class="pre">Calculator</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">delete</span></span><a class="headerlink" href="#_CPPv4N8featomic10Calculator10CalculatorERK10Calculator" title="Link to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classfeatomic_1_1_calculator"><span class="std std-ref">Calculator</span></a> is <strong>NOT</strong> copy-constructible. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8featomic10CalculatoraSERK10Calculator">
+<span id="_CPPv3N8featomic10CalculatoraSERK10Calculator"></span><span id="_CPPv2N8featomic10CalculatoraSERK10Calculator"></span><span id="featomic::Calculator::assign-operator__CalculatorCR"></span><span class="target" id="classfeatomic_1_1_calculator_1a208c03b8f83c401a37159392a91d0e7e"></span><a class="reference internal" href="#_CPPv4N8featomic10CalculatorE" title="featomic::Calculator"><span class="n"><span class="pre">Calculator</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8featomic10CalculatorE" title="featomic::Calculator"><span class="n"><span class="pre">Calculator</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">delete</span></span><a class="headerlink" href="#_CPPv4N8featomic10CalculatoraSERK10Calculator" title="Link to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classfeatomic_1_1_calculator"><span class="std std-ref">Calculator</span></a> can <strong>NOT</strong> be copy-assigned. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8featomic10Calculator10CalculatorERR10Calculator">
+<span id="_CPPv3N8featomic10Calculator10CalculatorERR10Calculator"></span><span id="_CPPv2N8featomic10Calculator10CalculatorERR10Calculator"></span><span id="featomic::Calculator::Calculator__CalculatorRR"></span><span class="target" id="classfeatomic_1_1_calculator_1ae7668928d3aa42153a508d6dd5c72502"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Calculator</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N8featomic10Calculator10CalculatorERR10Calculator" title="featomic::Calculator::Calculator"><span class="n"><span class="pre">Calculator</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4N8featomic10Calculator10CalculatorERR10Calculator" title="Link to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classfeatomic_1_1_calculator"><span class="std std-ref">Calculator</span></a> is move-constructible. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8featomic10CalculatoraSERR10Calculator">
+<span id="_CPPv3N8featomic10CalculatoraSERR10Calculator"></span><span id="_CPPv2N8featomic10CalculatoraSERR10Calculator"></span><span id="featomic::Calculator::assign-operator__CalculatorRR"></span><span class="target" id="classfeatomic_1_1_calculator_1aed2f94b019b8855258d3f12421f92f66"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8featomic10CalculatorE" title="featomic::Calculator"><span class="n"><span class="pre">Calculator</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N8featomic10CalculatorE" title="featomic::Calculator"><span class="n"><span class="pre">Calculator</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4N8featomic10CalculatoraSERR10Calculator" title="Link to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classfeatomic_1_1_calculator"><span class="std std-ref">Calculator</span></a> can be move-assigned. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8featomic10Calculator4nameEv">
+<span id="_CPPv3NK8featomic10Calculator4nameEv"></span><span id="_CPPv2NK8featomic10Calculator4nameEv"></span><span id="featomic::Calculator::nameC"></span><span class="target" id="classfeatomic_1_1_calculator_1ac26e39da99673b5f7d0e966889f5e0ac"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">name</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8featomic10Calculator4nameEv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Get the name used to create this <code class="docutils literal notranslate"><a class="reference internal" href="#classfeatomic_1_1_calculator"><span class="std std-ref"><span class="pre">Calculator</span></span></a></code></p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8featomic10Calculator10parametersEv">
+<span id="_CPPv3NK8featomic10Calculator10parametersEv"></span><span id="_CPPv2NK8featomic10Calculator10parametersEv"></span><span id="featomic::Calculator::parametersC"></span><span class="target" id="classfeatomic_1_1_calculator_1a7efc6b61ddeee3a68425ad7307ee7f9a"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">parameters</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8featomic10Calculator10parametersEv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Get the parameters used to create this <code class="docutils literal notranslate"><a class="reference internal" href="#classfeatomic_1_1_calculator"><span class="std std-ref"><span class="pre">Calculator</span></span></a></code></p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8featomic10Calculator7cutoffsEv">
+<span id="_CPPv3NK8featomic10Calculator7cutoffsEv"></span><span id="_CPPv2NK8featomic10Calculator7cutoffsEv"></span><span id="featomic::Calculator::cutoffsC"></span><span class="target" id="classfeatomic_1_1_calculator_1acd1bb5fbae84d8055000c714b8c0e44d"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">double</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">cutoffs</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8featomic10Calculator7cutoffsEv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Get all radial cutoffs used by this <code class="docutils literal notranslate"><a class="reference internal" href="#classfeatomic_1_1_calculator"><span class="std std-ref"><span class="pre">Calculator</span></span></a></code>’s neighbors lists. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8featomic10Calculator7computeERNSt6vectorI17featomic_system_tEE18CalculationOptions">
+<span id="_CPPv3NK8featomic10Calculator7computeERNSt6vectorI17featomic_system_tEE18CalculationOptions"></span><span id="_CPPv2NK8featomic10Calculator7computeERNSt6vectorI17featomic_system_tEE18CalculationOptions"></span><span id="featomic::Calculator::compute__std::vector:featomic_system_t:R.CalculationOptionsC"></span><span class="target" id="classfeatomic_1_1_calculator_1aa1d14df3de47e65a5eecc0d949eaacbe"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">metatensor</span></span><span class="p"><span class="pre">::</span></span><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/cxx/tensor.html#_CPPv4N10metatensor9TensorMapE" title="(in metatensor)"><span class="n"><span class="pre">TensorMap</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">compute</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">featomic_system_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">systems</span></span>, <a class="reference internal" href="#_CPPv4N8featomic18CalculationOptionsE" title="featomic::CalculationOptions"><span class="n"><span class="pre">CalculationOptions</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">options</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8featomic18CalculationOptionsE" title="featomic::CalculationOptions"><span class="n"><span class="pre">CalculationOptions</span></span></a><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">)</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8featomic10Calculator7computeERNSt6vectorI17featomic_system_tEE18CalculationOptions" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Runs a calculation with this calculator on the given <code class="docutils literal notranslate"><span class="pre">systems</span></code></p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4I0_NSt9enable_ifINSt10is_base_ofI6System10SystemImplE5valueEbE4typeEENK8featomic10Calculator7computeEN10metatensor9TensorMapERNSt6vectorI10SystemImplEE18CalculationOptions">
+<span id="_CPPv3I0_NSt9enable_ifINSt10is_base_ofI6System10SystemImplE5valueEbE4typeEENK8featomic10Calculator7computeERNSt6vectorI10SystemImplEE18CalculationOptions"></span><span id="_CPPv2I0_NSt9enable_ifINSt10is_base_ofI6System10SystemImplE5valueEbE4typeEENK8featomic10Calculator7computeERNSt6vectorI10SystemImplEE18CalculationOptions"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">SystemImpl</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">enable_if</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">is_base_of</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="systems.html#_CPPv4N8featomic6SystemE" title="featomic::System"><span class="n"><span class="pre">System</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0_NSt9enable_ifINSt10is_base_ofI6System10SystemImplE5valueEbE4typeEENK8featomic10Calculator7computeEN10metatensor9TensorMapERNSt6vectorI10SystemImplEE18CalculationOptions" title="featomic::Calculator::compute::SystemImpl"><span class="n"><span class="pre">SystemImpl</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">type</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">true</span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classfeatomic_1_1_calculator_1a3df8c458a5417e6b33eb474e0497920f"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">metatensor</span></span><span class="p"><span class="pre">::</span></span><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/cxx/tensor.html#_CPPv4N10metatensor9TensorMapE" title="(in metatensor)"><span class="n"><span class="pre">TensorMap</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">compute</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0_NSt9enable_ifINSt10is_base_ofI6System10SystemImplE5valueEbE4typeEENK8featomic10Calculator7computeEN10metatensor9TensorMapERNSt6vectorI10SystemImplEE18CalculationOptions" title="featomic::Calculator::compute::SystemImpl"><span class="n"><span class="pre">SystemImpl</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">systems</span></span>, <a class="reference internal" href="#_CPPv4N8featomic18CalculationOptionsE" title="featomic::CalculationOptions"><span class="n"><span class="pre">CalculationOptions</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">options</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8featomic18CalculationOptionsE" title="featomic::CalculationOptions"><span class="n"><span class="pre">CalculationOptions</span></span></a><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">)</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4I0_NSt9enable_ifINSt10is_base_ofI6System10SystemImplE5valueEbE4typeEENK8featomic10Calculator7computeEN10metatensor9TensorMapERNSt6vectorI10SystemImplEE18CalculationOptions" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Runs a calculation for multiple <code class="docutils literal notranslate"><span class="pre">systems</span></code></p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4I0_NSt9enable_ifINSt10is_base_ofI6System10SystemImplE5valueEbE4typeEENK8featomic10Calculator7computeEN10metatensor9TensorMapER10SystemImpl18CalculationOptions">
+<span id="_CPPv3I0_NSt9enable_ifINSt10is_base_ofI6System10SystemImplE5valueEbE4typeEENK8featomic10Calculator7computeER10SystemImpl18CalculationOptions"></span><span id="_CPPv2I0_NSt9enable_ifINSt10is_base_ofI6System10SystemImplE5valueEbE4typeEENK8featomic10Calculator7computeER10SystemImpl18CalculationOptions"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">SystemImpl</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">enable_if</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">is_base_of</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="systems.html#_CPPv4N8featomic6SystemE" title="featomic::System"><span class="n"><span class="pre">System</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0_NSt9enable_ifINSt10is_base_ofI6System10SystemImplE5valueEbE4typeEENK8featomic10Calculator7computeEN10metatensor9TensorMapER10SystemImpl18CalculationOptions" title="featomic::Calculator::compute::SystemImpl"><span class="n"><span class="pre">SystemImpl</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">type</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">true</span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classfeatomic_1_1_calculator_1a828b01052fbce0723ac417be705ea7c0"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">metatensor</span></span><span class="p"><span class="pre">::</span></span><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/cxx/tensor.html#_CPPv4N10metatensor9TensorMapE" title="(in metatensor)"><span class="n"><span class="pre">TensorMap</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">compute</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0_NSt9enable_ifINSt10is_base_ofI6System10SystemImplE5valueEbE4typeEENK8featomic10Calculator7computeEN10metatensor9TensorMapER10SystemImpl18CalculationOptions" title="featomic::Calculator::compute::SystemImpl"><span class="n"><span class="pre">SystemImpl</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">system</span></span>, <a class="reference internal" href="#_CPPv4N8featomic18CalculationOptionsE" title="featomic::CalculationOptions"><span class="n"><span class="pre">CalculationOptions</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">options</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8featomic18CalculationOptionsE" title="featomic::CalculationOptions"><span class="n"><span class="pre">CalculationOptions</span></span></a><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">)</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4I0_NSt9enable_ifINSt10is_base_ofI6System10SystemImplE5valueEbE4typeEENK8featomic10Calculator7computeEN10metatensor9TensorMapER10SystemImpl18CalculationOptions" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Runs a calculation for a single <code class="docutils literal notranslate"><span class="pre">system</span></code></p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8featomic10Calculator24as_featomic_calculator_tEv">
+<span id="_CPPv3N8featomic10Calculator24as_featomic_calculator_tEv"></span><span id="_CPPv2N8featomic10Calculator24as_featomic_calculator_tEv"></span><span id="featomic::Calculator::as_featomic_calculator_t"></span><span class="target" id="classfeatomic_1_1_calculator_1a97249ade228908b8b7f4970e09866ae0"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">featomic_calculator_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">as_featomic_calculator_t</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8featomic10Calculator24as_featomic_calculator_tEv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Get the underlying pointer to a <code class="docutils literal notranslate"><span class="pre">featomic_calculator_t</span></code>.</p>
+<p>This is an advanced function that most users don’t need to call directly. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8featomic10Calculator24as_featomic_calculator_tEv">
+<span id="_CPPv3NK8featomic10Calculator24as_featomic_calculator_tEv"></span><span id="_CPPv2NK8featomic10Calculator24as_featomic_calculator_tEv"></span><span id="featomic::Calculator::as_featomic_calculator_tC"></span><span class="target" id="classfeatomic_1_1_calculator_1a50b9af6cd623ee96ad41aa771728ca69"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">featomic_calculator_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">as_featomic_calculator_t</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8featomic10Calculator24as_featomic_calculator_tEv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Get the underlying const pointer to a <code class="docutils literal notranslate"><span class="pre">featomic_calculator_t</span></code>.</p>
+<p>This is an advanced function that most users don’t need to call directly. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4N8featomic18CalculationOptionsE">
+<span id="_CPPv3N8featomic18CalculationOptionsE"></span><span id="_CPPv2N8featomic18CalculationOptionsE"></span><span id="featomic::CalculationOptions"></span><span class="target" id="classfeatomic_1_1_calculation_options"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">CalculationOptions</span></span></span><a class="headerlink" href="#_CPPv4N8featomic18CalculationOptionsE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Options that can be set to change how a calculator operates. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8featomic18CalculationOptions33as_featomic_calculation_options_tEv">
+<span id="_CPPv3N8featomic18CalculationOptions33as_featomic_calculation_options_tEv"></span><span id="_CPPv2N8featomic18CalculationOptions33as_featomic_calculation_options_tEv"></span><span id="featomic::CalculationOptions::as_featomic_calculation_options_t"></span><span class="target" id="classfeatomic_1_1_calculation_options_1a2a88b2eb78429d29f0b690e8f3919ab8"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">featomic_calculation_options_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">as_featomic_calculation_options_t</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8featomic18CalculationOptions33as_featomic_calculation_options_tEv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Convert this instance of <code class="docutils literal notranslate"><a class="reference internal" href="#classfeatomic_1_1_calculation_options"><span class="std std-ref"><span class="pre">CalculationOptions</span></span></a></code> to a <code class="docutils literal notranslate"><a class="reference internal" href="../c/calculators.html#structfeatomic__calculation__options__t"><span class="std std-ref"><span class="pre">featomic_calculation_options_t</span></span></a></code>.</p>
+<p>This is an advanced function that most users don’t need to call directly. </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8featomic18CalculationOptions17use_native_systemE">
+<span id="_CPPv3N8featomic18CalculationOptions17use_native_systemE"></span><span id="_CPPv2N8featomic18CalculationOptions17use_native_systemE"></span><span id="featomic::CalculationOptions::use_native_system__b"></span><span class="target" id="classfeatomic_1_1_calculation_options_1a3605614ed9a29dd48998bbbc1b8c0484"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">use_native_system</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">false</span></span><a class="headerlink" href="#_CPPv4N8featomic18CalculationOptions17use_native_systemE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Copy the data from systems into native <code class="docutils literal notranslate"><a class="reference internal" href="systems.html#classfeatomic_1_1_simple_system"><span class="std std-ref"><span class="pre">SimpleSystem</span></span></a></code>. This can be faster than having to cross the FFI boundary too often. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8featomic18CalculationOptions16selected_samplesE">
+<span id="_CPPv3N8featomic18CalculationOptions16selected_samplesE"></span><span id="_CPPv2N8featomic18CalculationOptions16selected_samplesE"></span><span id="featomic::CalculationOptions::selected_samples__LabelsSelection"></span><span class="target" id="classfeatomic_1_1_calculation_options_1a3140adca57c76857153b3c4c4874a440"></span><a class="reference internal" href="#_CPPv4N8featomic15LabelsSelectionE" title="featomic::LabelsSelection"><span class="n"><span class="pre">LabelsSelection</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">selected_samples</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8featomic15LabelsSelectionE" title="featomic::LabelsSelection"><span class="n"><span class="pre">LabelsSelection</span></span></a><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N8featomic15LabelsSelection3allEv" title="featomic::LabelsSelection::all"><span class="n"><span class="pre">all</span></span></a><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">)</span></span><a class="headerlink" href="#_CPPv4N8featomic18CalculationOptions16selected_samplesE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Selection of samples on which to run the computation. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8featomic18CalculationOptions19selected_propertiesE">
+<span id="_CPPv3N8featomic18CalculationOptions19selected_propertiesE"></span><span id="_CPPv2N8featomic18CalculationOptions19selected_propertiesE"></span><span id="featomic::CalculationOptions::selected_properties__LabelsSelection"></span><span class="target" id="classfeatomic_1_1_calculation_options_1a670bedfec550d2ba4b9f8289e217b944"></span><a class="reference internal" href="#_CPPv4N8featomic15LabelsSelectionE" title="featomic::LabelsSelection"><span class="n"><span class="pre">LabelsSelection</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">selected_properties</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8featomic15LabelsSelectionE" title="featomic::LabelsSelection"><span class="n"><span class="pre">LabelsSelection</span></span></a><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N8featomic15LabelsSelection3allEv" title="featomic::LabelsSelection::all"><span class="n"><span class="pre">all</span></span></a><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">)</span></span><a class="headerlink" href="#_CPPv4N8featomic18CalculationOptions19selected_propertiesE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Selection of properties to compute for the samples. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8featomic18CalculationOptions13selected_keysE">
+<span id="_CPPv3N8featomic18CalculationOptions13selected_keysE"></span><span id="_CPPv2N8featomic18CalculationOptions13selected_keysE"></span><span id="featomic::CalculationOptions::selected_keys__std::optional:metatensor::Labels:"></span><span class="target" id="classfeatomic_1_1_calculation_options_1a9f3d190023b4a2f44088451eb7002694"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">optional</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">metatensor</span></span><span class="p"><span class="pre">::</span></span><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/cxx/labels.html#_CPPv4N10metatensor6LabelsE" title="(in metatensor)"><span class="n"><span class="pre">Labels</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">selected_keys</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">nullopt</span></span><a class="headerlink" href="#_CPPv4N8featomic18CalculationOptions13selected_keysE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Selection for the keys to include in the output. Set this to <code class="docutils literal notranslate"><span class="pre">std::nullopt</span></code> to use the default set of keys, as determined by the calculator. Note that this default set of keys can depend on which systems we are running the calculation on. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8featomic18CalculationOptions9gradientsE">
+<span id="_CPPv3N8featomic18CalculationOptions9gradientsE"></span><span id="_CPPv2N8featomic18CalculationOptions9gradientsE"></span><span id="featomic::CalculationOptions::gradients__std::vector:cCP:"></span><span class="target" id="classfeatomic_1_1_calculation_options_1a731ec20cfd49bf57405b4f35c05f8cc4"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">char</span></span><span class="p"><span class="pre">*</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">gradients</span></span></span><a class="headerlink" href="#_CPPv4N8featomic18CalculationOptions9gradientsE" title="Link to this definition">¶</a><br /></dt>
+<dd><p><p>List of gradients that should be computed. If this list is empty no
+gradients are computed.</p>
+<p>The following gradients are available:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;positions&quot;</span></code>, for gradients of the representation with respect to
+atomic positions, with fixed cell matrix parameters. Positions
+gradients are computed as</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[\frac{\partial \langle q \vert A_i \rangle}
+     {\partial \mathbf{r_j}}\]</div>
+</div>
+<p>where <span class="math notranslate nohighlight">\(\langle q \vert A_i \rangle\)</span> is the representation around
+atom <span class="math notranslate nohighlight">\(i\)</span> and <span class="math notranslate nohighlight">\(\mathbf{r_j}\)</span> is the position vector of the
+atom <span class="math notranslate nohighlight">\(j\)</span>.</p>
+<p><strong>Note</strong>: Position gradients of an atom are computed with respect to all
+other atoms within the representation. To recover the force one has to
+accumulate all pairs associated with atom <span class="math notranslate nohighlight">\(i\)</span>.</p>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;strain&quot;</span></code>, for gradients of the representation with respect to
+strain. These gradients are typically used to compute the virial, and
+from there the pressure acting on a system. To compute them, we
+pretend that all the positions <span class="math notranslate nohighlight">\(\mathbf r\)</span> and unit cell
+<span class="math notranslate nohighlight">\(\mathbf H\)</span> have been scaled by a strain matrix
+<span class="math notranslate nohighlight">\(\epsilon\)</span>:</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[\begin{split}\mathbf r &amp;\rightarrow \mathbf r \left(\mathbb{1} + \epsilon \right)\\
+\mathbf H &amp;\rightarrow \mathbf H \left(\mathbb{1} + \epsilon \right)\end{split}\]</div>
+</div>
+<p>and then take the gradients of the representation with respect to this
+matrix:</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[\frac{\partial \langle q \vert A_i \rangle} {\partial \mathbf{\epsilon}}\]</div>
+</div>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;cell&quot;</span></code>, for gradients of the representation with respect to the
+system’s cell parameters. These gradients are computed at fixed
+positions, and often not what you want when computing gradients
+explicitly (they are mainly used in <code class="docutils literal notranslate"><span class="pre">featomic.torch</span></code> to integrate
+with backward propagation). If you are trying to compute the virial
+or the stress, you should use <code class="docutils literal notranslate"><span class="pre">&quot;strain&quot;</span></code> gradients instead.</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[\left. \frac{\partial \langle q \vert A_i \rangle}
+     {\partial \mathbf{H}} \right |_\mathbf{r}\]</div>
+</div>
+</li>
+</ul>
+</p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4N8featomic15LabelsSelectionE">
+<span id="_CPPv3N8featomic15LabelsSelectionE"></span><span id="_CPPv2N8featomic15LabelsSelectionE"></span><span id="featomic::LabelsSelection"></span><span class="target" id="classfeatomic_1_1_labels_selection"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">LabelsSelection</span></span></span><a class="headerlink" href="#_CPPv4N8featomic15LabelsSelectionE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Rules to select labels (either samples or properties) on which the user wants to run a calculation </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8featomic15LabelsSelection15LabelsSelectionERK15LabelsSelection">
+<span id="_CPPv3N8featomic15LabelsSelection15LabelsSelectionERK15LabelsSelection"></span><span id="_CPPv2N8featomic15LabelsSelection15LabelsSelectionERK15LabelsSelection"></span><span id="featomic::LabelsSelection::LabelsSelection__LabelsSelectionCR"></span><span class="target" id="classfeatomic_1_1_labels_selection_1a7af1be04749053cacaac5708c04a367b"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">LabelsSelection</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8featomic15LabelsSelection15LabelsSelectionERK15LabelsSelection" title="featomic::LabelsSelection::LabelsSelection"><span class="n"><span class="pre">LabelsSelection</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8featomic15LabelsSelection15LabelsSelectionERK15LabelsSelection" title="Link to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classfeatomic_1_1_labels_selection"><span class="std std-ref">LabelsSelection</span></a> can be copy-constructed. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8featomic15LabelsSelectionaSERK15LabelsSelection">
+<span id="_CPPv3N8featomic15LabelsSelectionaSERK15LabelsSelection"></span><span id="_CPPv2N8featomic15LabelsSelectionaSERK15LabelsSelection"></span><span id="featomic::LabelsSelection::assign-operator__LabelsSelectionCR"></span><span class="target" id="classfeatomic_1_1_labels_selection_1a548ca66ad9b0ed9baed40a50bd360041"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8featomic15LabelsSelectionE" title="featomic::LabelsSelection"><span class="n"><span class="pre">LabelsSelection</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8featomic15LabelsSelectionE" title="featomic::LabelsSelection"><span class="n"><span class="pre">LabelsSelection</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8featomic15LabelsSelectionaSERK15LabelsSelection" title="Link to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classfeatomic_1_1_labels_selection"><span class="std std-ref">LabelsSelection</span></a> can be copy-assigned. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8featomic15LabelsSelection15LabelsSelectionERR15LabelsSelection">
+<span id="_CPPv3N8featomic15LabelsSelection15LabelsSelectionERR15LabelsSelection"></span><span id="_CPPv2N8featomic15LabelsSelection15LabelsSelectionERR15LabelsSelection"></span><span id="featomic::LabelsSelection::LabelsSelection__LabelsSelectionRR"></span><span class="target" id="classfeatomic_1_1_labels_selection_1ac0cf6946ceb60b48aceefdbae2815c14"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">LabelsSelection</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N8featomic15LabelsSelection15LabelsSelectionERR15LabelsSelection" title="featomic::LabelsSelection::LabelsSelection"><span class="n"><span class="pre">LabelsSelection</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4N8featomic15LabelsSelection15LabelsSelectionERR15LabelsSelection" title="Link to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classfeatomic_1_1_labels_selection"><span class="std std-ref">LabelsSelection</span></a> can be move-constructed. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8featomic15LabelsSelectionaSERR15LabelsSelection">
+<span id="_CPPv3N8featomic15LabelsSelectionaSERR15LabelsSelection"></span><span id="_CPPv2N8featomic15LabelsSelectionaSERR15LabelsSelection"></span><span id="featomic::LabelsSelection::assign-operator__LabelsSelectionRR"></span><span class="target" id="classfeatomic_1_1_labels_selection_1ac0ae8357de2f35f8283f06b29155dce0"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8featomic15LabelsSelectionE" title="featomic::LabelsSelection"><span class="n"><span class="pre">LabelsSelection</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N8featomic15LabelsSelectionE" title="featomic::LabelsSelection"><span class="n"><span class="pre">LabelsSelection</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4N8featomic15LabelsSelectionaSERR15LabelsSelection" title="Link to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classfeatomic_1_1_labels_selection"><span class="std std-ref">LabelsSelection</span></a> can be move-assigned. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8featomic15LabelsSelection30as_featomic_labels_selection_tEv">
+<span id="_CPPv3NK8featomic15LabelsSelection30as_featomic_labels_selection_tEv"></span><span id="_CPPv2NK8featomic15LabelsSelection30as_featomic_labels_selection_tEv"></span><span id="featomic::LabelsSelection::as_featomic_labels_selection_tC"></span><span class="target" id="classfeatomic_1_1_labels_selection_1ad91fddc23bce2dcd4fff3bc4594d8d88"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">featomic_labels_selection_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">as_featomic_labels_selection_t</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8featomic15LabelsSelection30as_featomic_labels_selection_tEv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Get the <code class="docutils literal notranslate"><a class="reference internal" href="../c/calculators.html#structfeatomic__labels__selection__t"><span class="std std-ref"><span class="pre">featomic_labels_selection_t</span></span></a></code> corresponding to this <a class="reference internal" href="#classfeatomic_1_1_labels_selection"><span class="std std-ref">LabelsSelection</span></a>. </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-static-functions">Public Static Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8featomic15LabelsSelection3allEv">
+<span id="_CPPv3N8featomic15LabelsSelection3allEv"></span><span id="_CPPv2N8featomic15LabelsSelection3allEv"></span><span id="featomic::LabelsSelection::all"></span><span class="target" id="classfeatomic_1_1_labels_selection_1a0653c424a98ade8ec58f7aec4ae994a7"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8featomic15LabelsSelectionE" title="featomic::LabelsSelection"><span class="n"><span class="pre">LabelsSelection</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">all</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8featomic15LabelsSelection3allEv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Use all possible labels for this calculation. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8featomic15LabelsSelection6subsetEN10metatensor6LabelsE">
+<span id="_CPPv3N8featomic15LabelsSelection6subsetEN10metatensor6LabelsE"></span><span id="_CPPv2N8featomic15LabelsSelection6subsetEN10metatensor6LabelsE"></span><span id="featomic::LabelsSelection::subset__metatensor::Labels"></span><span class="target" id="classfeatomic_1_1_labels_selection_1a8cf0377caa46e96fd66ade7b3c4a805b"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8featomic15LabelsSelectionE" title="featomic::LabelsSelection"><span class="n"><span class="pre">LabelsSelection</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">subset</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">metatensor</span></span><span class="p"><span class="pre">::</span></span><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/cxx/labels.html#_CPPv4N10metatensor6LabelsE" title="(in metatensor)"><span class="n"><span class="pre">Labels</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">selection</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8featomic15LabelsSelection6subsetEN10metatensor6LabelsE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Select a subset of labels, using the same selection criterion for all keys in the final <code class="docutils literal notranslate"><span class="pre">TensorMap</span></code>.</p>
+<p>If the <code class="docutils literal notranslate"><span class="pre">selection</span></code> contains the same variables as the full set of labels, then only entries from the full set that also appear in this selection will be used.</p>
+<p>If the <code class="docutils literal notranslate"><span class="pre">selection</span></code> contains a subset of the variables of the full set of labels, then only entries from the full set which match one of the entry in this selection for all of the selection variable will be used. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8featomic15LabelsSelection10predefinedERKN10metatensor9TensorMapE">
+<span id="_CPPv3N8featomic15LabelsSelection10predefinedERKN10metatensor9TensorMapE"></span><span id="_CPPv2N8featomic15LabelsSelection10predefinedERKN10metatensor9TensorMapE"></span><span id="featomic::LabelsSelection::predefined__metatensor::TensorMapCR"></span><span class="target" id="classfeatomic_1_1_labels_selection_1ab78c51c1c1c8f5df3da798a16cd971cf"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8featomic15LabelsSelectionE" title="featomic::LabelsSelection"><span class="n"><span class="pre">LabelsSelection</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">predefined</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">metatensor</span></span><span class="p"><span class="pre">::</span></span><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/cxx/tensor.html#_CPPv4N10metatensor9TensorMapE" title="(in metatensor)"><span class="n"><span class="pre">TensorMap</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">selection</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8featomic15LabelsSelection10predefinedERKN10metatensor9TensorMapE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Use a predefined subset of labels, with different entries for different keys of the final <code class="docutils literal notranslate"><span class="pre">TensorMap</span></code>.</p>
+<p>For each key, the corresponding labels are fetched out of the <code class="docutils literal notranslate"><span class="pre">selection</span></code>, which must have the same set of keys as the full calculation. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="misc.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Miscellaneous</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="systems.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Defining systems</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2024, Guillaume Fraux, Philip Loche, Sergei Kliavinek, Kevin Kazuki Huguenin-Dumittan, Davide Tisi, Alexander Goscinski
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            <div class="icons">
+              <a class="muted-link fa-brands fa-github fa-2x" href="https://github.com/metatensor/featomic" aria-label="GitHub"></a>
+              
+            </div>
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Dealing with calculators</a><ul>
+<li><a class="reference internal" href="#_CPPv4N8featomic10CalculatorE"><code class="docutils literal notranslate"><span class="pre">Calculator</span></code></a><ul>
+<li><a class="reference internal" href="#_CPPv4N8featomic10Calculator10CalculatorENSt6stringENSt6stringE"><code class="docutils literal notranslate"><span class="pre">Calculator::Calculator()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8featomic10Calculator10CalculatorERK10Calculator"><code class="docutils literal notranslate"><span class="pre">Calculator::Calculator()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8featomic10CalculatoraSERK10Calculator"><code class="docutils literal notranslate"><span class="pre">Calculator::operator=()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8featomic10Calculator10CalculatorERR10Calculator"><code class="docutils literal notranslate"><span class="pre">Calculator::Calculator()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8featomic10CalculatoraSERR10Calculator"><code class="docutils literal notranslate"><span class="pre">Calculator::operator=()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4NK8featomic10Calculator4nameEv"><code class="docutils literal notranslate"><span class="pre">Calculator::name()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4NK8featomic10Calculator10parametersEv"><code class="docutils literal notranslate"><span class="pre">Calculator::parameters()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4NK8featomic10Calculator7cutoffsEv"><code class="docutils literal notranslate"><span class="pre">Calculator::cutoffs()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4NK8featomic10Calculator7computeERNSt6vectorI17featomic_system_tEE18CalculationOptions"><code class="docutils literal notranslate"><span class="pre">Calculator::compute()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4I0_NSt9enable_ifINSt10is_base_ofI6System10SystemImplE5valueEbE4typeEENK8featomic10Calculator7computeEN10metatensor9TensorMapERNSt6vectorI10SystemImplEE18CalculationOptions"><code class="docutils literal notranslate"><span class="pre">Calculator::compute()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4I0_NSt9enable_ifINSt10is_base_ofI6System10SystemImplE5valueEbE4typeEENK8featomic10Calculator7computeEN10metatensor9TensorMapER10SystemImpl18CalculationOptions"><code class="docutils literal notranslate"><span class="pre">Calculator::compute()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8featomic10Calculator24as_featomic_calculator_tEv"><code class="docutils literal notranslate"><span class="pre">Calculator::as_featomic_calculator_t()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4NK8featomic10Calculator24as_featomic_calculator_tEv"><code class="docutils literal notranslate"><span class="pre">Calculator::as_featomic_calculator_t()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#_CPPv4N8featomic18CalculationOptionsE"><code class="docutils literal notranslate"><span class="pre">CalculationOptions</span></code></a><ul>
+<li><a class="reference internal" href="#_CPPv4N8featomic18CalculationOptions33as_featomic_calculation_options_tEv"><code class="docutils literal notranslate"><span class="pre">CalculationOptions::as_featomic_calculation_options_t()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8featomic18CalculationOptions17use_native_systemE"><code class="docutils literal notranslate"><span class="pre">CalculationOptions::use_native_system</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8featomic18CalculationOptions16selected_samplesE"><code class="docutils literal notranslate"><span class="pre">CalculationOptions::selected_samples</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8featomic18CalculationOptions19selected_propertiesE"><code class="docutils literal notranslate"><span class="pre">CalculationOptions::selected_properties</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8featomic18CalculationOptions13selected_keysE"><code class="docutils literal notranslate"><span class="pre">CalculationOptions::selected_keys</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8featomic18CalculationOptions9gradientsE"><code class="docutils literal notranslate"><span class="pre">CalculationOptions::gradients</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#_CPPv4N8featomic15LabelsSelectionE"><code class="docutils literal notranslate"><span class="pre">LabelsSelection</span></code></a><ul>
+<li><a class="reference internal" href="#_CPPv4N8featomic15LabelsSelection15LabelsSelectionERK15LabelsSelection"><code class="docutils literal notranslate"><span class="pre">LabelsSelection::LabelsSelection()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8featomic15LabelsSelectionaSERK15LabelsSelection"><code class="docutils literal notranslate"><span class="pre">LabelsSelection::operator=()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8featomic15LabelsSelection15LabelsSelectionERR15LabelsSelection"><code class="docutils literal notranslate"><span class="pre">LabelsSelection::LabelsSelection()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8featomic15LabelsSelectionaSERR15LabelsSelection"><code class="docutils literal notranslate"><span class="pre">LabelsSelection::operator=()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4NK8featomic15LabelsSelection30as_featomic_labels_selection_tEv"><code class="docutils literal notranslate"><span class="pre">LabelsSelection::as_featomic_labels_selection_t()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8featomic15LabelsSelection3allEv"><code class="docutils literal notranslate"><span class="pre">LabelsSelection::all()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8featomic15LabelsSelection6subsetEN10metatensor6LabelsE"><code class="docutils literal notranslate"><span class="pre">LabelsSelection::subset()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8featomic15LabelsSelection10predefinedERKN10metatensor9TensorMapE"><code class="docutils literal notranslate"><span class="pre">LabelsSelection::predefined()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../../../_static/documentation_options.js?v=9d584dea"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/scripts/furo.js?v=5fa4622c"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    </body>
+</html>

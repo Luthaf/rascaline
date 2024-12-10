@@ -1,0 +1,515 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Developer documentation" href="../devdoc/index.html" /><link rel="prev" title="What is SOAP" href="soap.html" />
+
+    <!-- Generated with Sphinx 7.2.6 and Furo 2024.08.06 -->
+        <title>Rotation-Adapted Features - Featomic 0.6.0-rc1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=354aac6f" />
+    <link rel="stylesheet" type="text/css" href="../_static/featomic.css?v=191cc0c0" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=d2d258e8" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=302659d7" />
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/fontawesome.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/solid.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/brands.min.css" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">Featomic 0.6.0-rc1 documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  
+  <span class="sidebar-brand-text">Featomic 0.6.0-rc1 documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../get-started/index.html">Getting started</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of Getting started</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../get-started/featomic.html">What is featomic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../get-started/installation.html">Installation</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../get-started/tutorials.html">Tutorials: using featomic from Python</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of Tutorials: using featomic from Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../examples/first-calculation.html">First descriptor computation</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../how-to/index.html">How-to guides</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of How-to guides</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/computing-soap.html">Computing SOAP features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/sample-selection.html">Sample Selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/property-selection.html">Property Selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/keys-selection.html">Keys selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/splined-radial-integral.html">Splined radial integral</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/long-range.html">Long-range only LODE descriptor</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../references/index.html">Reference guides</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle navigation of Reference guides</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../references/calculators/index.html">Calculator reference</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation of Calculator reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../references/calculators/spherical-expansion.html">Spherical expansion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../references/calculators/spherical-expansion-by-pair.html">Spherical expansion by pair</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../references/calculators/lode-spherical-expansion.html">LODE spherical expansion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../references/calculators/soap-radial-spectrum.html">SOAP radial spectrum</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../references/calculators/soap-power-spectrum.html">SOAP power spectrum</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../references/calculators/atomic-composition.html">Atomic Composition</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../references/calculators/neighbor-list.html">Neighbor List</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../references/calculators/sorted-distances.html">Sorted distance vector</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../references/api/index.html">API documentation</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle navigation of API documentation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../references/api/python/index.html">Python</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle navigation of Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/python/systems.html">Available system implementation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/python/calculators.html">Available Calculators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/python/misc.html">Miscellaneous</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/python/cutoff.html">Local environments</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/python/density.html">Atomic density</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/python/basis.html">Basis functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/python/splines.html">Splined radial integrals</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/python/clebsch-gordan.html">Clebsch-Gordan products</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../references/api/torch/index.html">TorchScript</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle navigation of TorchScript</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/torch/systems.html">System</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/torch/calculators.html">Calculators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/torch/clebsch-gordan.html">Clebsch-Gordan products</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../references/api/torch/cxx/index.html">TorchScript C++ API reference</a><input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><div class="visually-hidden">Toggle navigation of TorchScript C++ API reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="../references/api/torch/cxx/calculators.html">Calculators</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../references/api/rust.html">Rust</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../references/api/c/index.html">C</a><input class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><div class="visually-hidden">Toggle navigation of C</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/c/systems.html">Defining systems</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/c/calculators.html">Dealing with calculators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/c/misc.html">Miscellaneous</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../references/api/cxx/index.html">C++</a><input class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><div class="visually-hidden">Toggle navigation of C++</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/cxx/systems.html">Defining systems</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/cxx/calculators.html">Dealing with calculators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/cxx/misc.html">Miscellaneous</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Explanations</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><div class="visually-hidden">Toggle navigation of Explanations</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="concepts.html">Core concepts of featomic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="soap.html">What is SOAP</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Rotation-Adapted Features</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../devdoc/index.html">Developer documentation</a><input class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><div class="visually-hidden">Toggle navigation of Developer documentation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../devdoc/get-started.html">Getting started</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../devdoc/how-to/index.html">How-to guides</a><input class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><div class="visually-hidden">Toggle navigation of How-to guides</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../devdoc/how-to/new-calculator.html">Adding a new calculator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../devdoc/how-to/profiling.html">Profiling calculation</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../devdoc/explanations/index.html">Explanations</a><input class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><div class="visually-hidden">Toggle navigation of Explanations</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../devdoc/explanations/architecture.html">Code organization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../devdoc/explanations/interfaces.html">Python and C interface</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../devdoc/explanations/radial-integral.html">SOAP and LODE radial integrals</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../_sources/explanations/rotation_adapted.rst.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="rotation-adapted-features">
+<h1>Rotation-Adapted Features<a class="headerlink" href="#rotation-adapted-features" title="Link to this heading">¶</a></h1>
+<section id="equivariance">
+<h2>Equivariance<a class="headerlink" href="#equivariance" title="Link to this heading">¶</a></h2>
+<p>Descriptors like SOAP are translation, rotation, and permutation invariant.
+Indeed, such invariances are extremely useful if one wants to learn an invariant
+target (e.g., the energy). Being already encoded in the descriptor, the learning
+algorithm does not have to learn such a physical requirement.</p>
+<p>The situation is different if the target is not invariant. For example, one may
+want to learn a dipole. The dipole rotates with a rotation of the molecule, and
+as such, invariant descriptors do not have the required symmetries for this
+task.</p>
+<p>Instead, one would need a rotation equivariant descriptor. Rotation equivariance
+means that, if we first rotate the system and compute the descriptor, we obtain
+the same result as first computing the descriptor and then applying the
+rotation, i.e., the descriptor behaves correctly upon rotation operations.
+Denoting a system as <span class="math notranslate nohighlight">\(A\)</span>, the function computing the descriptor as
+<span class="math notranslate nohighlight">\(f(\cdot)\)</span>, and the rotation operator as <span class="math notranslate nohighlight">\(\hat{R}\)</span>, rotation
+equivariance can be expressed as:</p>
+<div class="math-wrapper docutils container" id="eq-equivariance">
+<span id="equation-eq-equivariance"></span><div class="math notranslate nohighlight" id="eq-equivariance">
+<span id="equation-eq-equivariance"></span><span class="eqno">(1)<a class="headerlink" href="#eq-equivariance" title="Link to this equation">¶</a></span>\[f(\hat{R} A) = \hat{R} f(A)\]</div>
+</div>
+<p>Of course, invariance is a special case of equivariance.</p>
+</section>
+<section id="rotation-equivariance-of-the-spherical-expansion">
+<h2>Rotation Equivariance of the Spherical Expansion<a class="headerlink" href="#rotation-equivariance-of-the-spherical-expansion" title="Link to this heading">¶</a></h2>
+<p>The spherical expansion is a rotation equivariant descriptor.
+Let’s consider the expansion coefficients of <span class="math notranslate nohighlight">\(\rho_i(\mathbf{r})\)</span>.
+We have:</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[\begin{split}\hat{R} \rho_i(\mathbf{r}) &amp;= \sum_{nlm} c_{nlm}^{i} R_n(r) \hat{R} Y_l^m(\hat{\mathbf{r}}) \nonumber \\
+&amp;= \sum_{nlmm'} c_{nlm}^{i} R_n(r) D_{m,m'}^{l}(\hat{R}) Y_l^{m'}(\hat{\mathbf{r}}) \nonumber \\
+&amp;= \sum_{nlm} \left( \sum_{m'} D_{m',m}^l(\hat{R}) c_{nlm'}^{i}\right) B_{nlm}(\mathbf{r}) \nonumber\end{split}\]</div>
+</div>
+<p>and noting that <span class="math notranslate nohighlight">\(Y_l^m(\hat{R} \hat{\mathbf{r}}) = \hat{R}
+Y_l^m(\hat{\mathbf{r}})\)</span> and <span class="math notranslate nohighlight">\(\hat{R}r = r\)</span>, equation <a class="reference internal" href="#eq-equivariance"><span class="std std-ref">(1)</span></a> is satisfied and we conclude that the expansion coefficients
+<span class="math notranslate nohighlight">\(c_{nlm}^{i}\)</span> are rotation equivariant. Indeed, each <span class="math notranslate nohighlight">\(c_{nlm}^{i}\)</span>
+transforms under rotation as the spherical harmonics
+<span class="math notranslate nohighlight">\(Y_l^m(\hat{\mathbf{r}})\)</span>.</p>
+<p>Using the Dirac notation, the coefficient <span class="math notranslate nohighlight">\(c_{nlm}^{i}\)</span> can be expressed
+as <span class="math notranslate nohighlight">\(\braket{nlm\vert\rho_i}\)</span>. Equivalently, and to stress the fact that
+this coefficient describes something that transforms under rotation as a
+spherical harmonics <span class="math notranslate nohighlight">\(Y_l^m(\hat{\mathbf{r}})\)</span>, it is sometimes written as
+<span class="math notranslate nohighlight">\(\braket{n\vert\rho_i;lm}\)</span>, i.e., the atomic density is “tagged” with a
+label that tells how it transforms under rotations.</p>
+</section>
+<section id="completeness-relations-of-spherical-harmonics">
+<h2>Completeness Relations of Spherical Harmonics<a class="headerlink" href="#completeness-relations-of-spherical-harmonics" title="Link to this heading">¶</a></h2>
+<p>Spherical harmonics can be combined together using rules coming from standard
+theory of angular momentum:</p>
+<div class="math-wrapper docutils container" id="eq-cg-coupling">
+<span id="equation-eq-cg-coupling"></span><div class="math notranslate nohighlight" id="eq-cg-coupling">
+<span id="equation-eq-cg-coupling"></span><span class="eqno">(2)<a class="headerlink" href="#eq-cg-coupling" title="Link to this equation">¶</a></span>\[\ket{lm} \propto \ket{l_1 l_2 l m} = \sum_{m_1 m_2} C_{m_1 m_2 m}^{l_1 l_2 l} \ket{l_1 m_1} \ket{l_2 m_2}\]</div>
+</div>
+<p>where <span class="math notranslate nohighlight">\(C_{m_1 m_2 m}^{l_1 l_2 l}\)</span> is a Clebsch-Gordan (CG) coefficient.</p>
+<p>Thanks to the one-to-one correspondence (under rotation) between
+<span class="math notranslate nohighlight">\(c_{nlm}^{i}\)</span> and <span class="math notranslate nohighlight">\(Y_l^m\)</span>, <a class="reference internal" href="#eq-cg-coupling"><span class="std std-ref">(2)</span></a> means that
+one can take products of two spherical expansion coefficients (which amounts to
+considering density correlations), and combine them with CG coefficients to get
+new coefficients that transform as a single spherical harmonics. This process is
+known as coupling, from the uncoupled basis of angular momentum (formed by the
+product of rotation eigenstates) to a coupled basis (a single rotation
+eigenstate).</p>
+<p>One can also write the inverse of <a class="reference internal" href="#eq-cg-coupling"><span class="std std-ref">(2)</span></a>:</p>
+<div class="math-wrapper docutils container" id="eq-cg-decoupling">
+<span id="equation-eq-cg-decoupling"></span><div class="math notranslate nohighlight" id="eq-cg-decoupling">
+<span id="equation-eq-cg-decoupling"></span><span class="eqno">(3)<a class="headerlink" href="#eq-cg-decoupling" title="Link to this equation">¶</a></span>\[\ket{l_1 m_1} \ket{l_2 m_2} = \sum_{l m} C_{m_1 m_2 m}^{l_1 l_2 l} \ket{l_1 l_2 l m}\]</div>
+</div>
+<p>that express the product of two rotation eigenstates in terms of one. This
+process is known as decoupling.</p>
+</section>
+<section id="example-lambda-soap">
+<h2>Example: <span class="math notranslate nohighlight">\(\lambda\)</span>-SOAP<a class="headerlink" href="#example-lambda-soap" title="Link to this heading">¶</a></h2>
+<p>A straightforward application of <a class="reference internal" href="#eq-cg-coupling"><span class="std std-ref">(2)</span></a> is the construction
+of <span class="math notranslate nohighlight">\(\lambda\)</span>-SOAP features. Indeed, <span class="math notranslate nohighlight">\(\lambda\)</span>-SOAP was created in
+order to have a rotation and inversion equivariant version of the 3-body density
+correlations. The <span class="math notranslate nohighlight">\(\lambda\)</span> represents the degree of a spherical
+harmonics, <span class="math notranslate nohighlight">\(Y_{\lambda}^{\mu}(\hat{\mathbf{r}})\)</span>, and it indicates that
+this descriptor can transform under rotations as a spherical harmonics, i.e., it
+is rotation equivariant.</p>
+<p>It is then obtained by considering two expansion coefficients of the atomic
+density, and combining them with a CG iteration to a coupled basis, as in
+<a class="reference internal" href="#eq-cg-coupling"><span class="std std-ref">(2)</span></a>. The <span class="math notranslate nohighlight">\(\lambda\)</span>-SOAP descriptor is then:</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[\braket{n_1 l_1 n_2 l_2\vert\overline{\rho_i^{\otimes 2}, \sigma, \lambda \mu}} =
+\frac{\delta_{\sigma, (-1)^{l_1 + l_2 + \lambda}}}{\sqrt{2 \lambda + 1}}
+\sum_{m} C_{m (\mu-m) \mu}^{l_1 l_2 \lambda} c_{n_1 l_1 m}^{i} c_{n_2 l_2 (\mu - m)}^{i}\]</div>
+</div>
+<p>where we have assumed complex spherical harmonics coefficients.</p>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="../devdoc/index.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Developer documentation</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="soap.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">What is SOAP</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2024, Guillaume Fraux, Philip Loche, Sergei Kliavinek, Kevin Kazuki Huguenin-Dumittan, Davide Tisi, Alexander Goscinski
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            <div class="icons">
+              <a class="muted-link fa-brands fa-github fa-2x" href="https://github.com/metatensor/featomic" aria-label="GitHub"></a>
+              
+            </div>
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Rotation-Adapted Features</a><ul>
+<li><a class="reference internal" href="#equivariance">Equivariance</a></li>
+<li><a class="reference internal" href="#rotation-equivariance-of-the-spherical-expansion">Rotation Equivariance of the Spherical Expansion</a></li>
+<li><a class="reference internal" href="#completeness-relations-of-spherical-harmonics">Completeness Relations of Spherical Harmonics</a></li>
+<li><a class="reference internal" href="#example-lambda-soap">Example: <span class="math notranslate nohighlight">\(\lambda\)</span>-SOAP</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=9d584dea"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/furo.js?v=5fa4622c"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    </body>
+</html>

@@ -1,0 +1,1038 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" /><link rel="next" title="Spherical expansion by pair" href="spherical-expansion-by-pair.html" /><link rel="prev" title="Calculator reference" href="index.html" />
+
+    <!-- Generated with Sphinx 7.2.6 and Furo 2024.08.06 -->
+        <title>Spherical expansion - Featomic 0.6.0-rc2 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=354aac6f" />
+    <link rel="stylesheet" type="text/css" href="../../_static/featomic.css?v=191cc0c0" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=d2d258e8" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css?v=302659d7" />
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/fontawesome.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/solid.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/brands.min.css" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../index.html"><div class="brand">Featomic 0.6.0-rc2 documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
+  
+  
+  <span class="sidebar-brand-text">Featomic 0.6.0-rc2 documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../get-started/index.html">Getting started</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of Getting started</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../get-started/featomic.html">What is featomic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../get-started/installation.html">Installation</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../get-started/tutorials.html">Tutorials: using featomic from Python</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of Tutorials: using featomic from Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../examples/first-calculation.html">First descriptor computation</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../how-to/index.html">How-to guides</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of How-to guides</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../how-to/computing-soap.html">Computing SOAP features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-to/sample-selection.html">Sample Selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-to/property-selection.html">Property Selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-to/keys-selection.html">Keys selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-to/splined-radial-integral.html">Splined radial integral</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-to/long-range.html">Long-range only LODE descriptor</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="../index.html">Reference guides</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle navigation of Reference guides</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l2 current has-children"><a class="reference internal" href="index.html">Calculator reference</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation of Calculator reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l3 current current-page"><a class="current reference internal" href="#">Spherical expansion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spherical-expansion-by-pair.html">Spherical expansion by pair</a></li>
+<li class="toctree-l3"><a class="reference internal" href="lode-spherical-expansion.html">LODE spherical expansion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="soap-radial-spectrum.html">SOAP radial spectrum</a></li>
+<li class="toctree-l3"><a class="reference internal" href="soap-power-spectrum.html">SOAP power spectrum</a></li>
+<li class="toctree-l3"><a class="reference internal" href="atomic-composition.html">Atomic Composition</a></li>
+<li class="toctree-l3"><a class="reference internal" href="neighbor-list.html">Neighbor List</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sorted-distances.html">Sorted distance vector</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../api/index.html">API documentation</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle navigation of API documentation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../api/python/index.html">Python</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle navigation of Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/python/systems.html">Available system implementation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/python/calculators.html">Available Calculators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/python/misc.html">Miscellaneous</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/python/cutoff.html">Local environments</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/python/density.html">Atomic density</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/python/basis.html">Basis functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/python/splines.html">Splined radial integrals</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/python/clebsch-gordan.html">Clebsch-Gordan products</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../api/torch/index.html">TorchScript</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle navigation of TorchScript</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/torch/systems.html">System</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/torch/calculators.html">Calculators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/torch/clebsch-gordan.html">Clebsch-Gordan products</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../api/torch/cxx/index.html">TorchScript C++ API reference</a><input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><div class="visually-hidden">Toggle navigation of TorchScript C++ API reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="../api/torch/cxx/calculators.html">Calculators</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api/rust.html">Rust</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../api/c/index.html">C</a><input class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><div class="visually-hidden">Toggle navigation of C</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/c/systems.html">Defining systems</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/c/calculators.html">Dealing with calculators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/c/misc.html">Miscellaneous</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../api/cxx/index.html">C++</a><input class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><div class="visually-hidden">Toggle navigation of C++</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/cxx/systems.html">Defining systems</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/cxx/calculators.html">Dealing with calculators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/cxx/misc.html">Miscellaneous</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../explanations/index.html">Explanations</a><input class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><div class="visually-hidden">Toggle navigation of Explanations</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../explanations/concepts.html">Core concepts of featomic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../explanations/soap.html">What is SOAP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../explanations/rotation_adapted.html">Rotation-Adapted Features</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../devdoc/index.html">Developer documentation</a><input class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><div class="visually-hidden">Toggle navigation of Developer documentation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../devdoc/get-started.html">Getting started</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../devdoc/how-to/index.html">How-to guides</a><input class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><div class="visually-hidden">Toggle navigation of How-to guides</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../devdoc/how-to/new-calculator.html">Adding a new calculator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../devdoc/how-to/profiling.html">Profiling calculation</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../devdoc/explanations/index.html">Explanations</a><input class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><div class="visually-hidden">Toggle navigation of Explanations</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../devdoc/explanations/architecture.html">Code organization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../devdoc/explanations/interfaces.html">Python and C interface</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../devdoc/explanations/radial-integral.html">SOAP and LODE radial integrals</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../../_sources/references/calculators/spherical-expansion.rst.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="spherical-expansion">
+<span id="id1"></span><h1>Spherical expansion<a class="headerlink" href="#spherical-expansion" title="Link to this heading">¶</a></h1>
+<p>This calculator is registered with the <code class="docutils literal notranslate"><span class="pre">spherical_expansion</span></code> name.</p>
+<section id="json-schema-sphericalexpansion-hyper-parameters">
+<h2>SphericalExpansion hyper-parameters<a class="headerlink" href="#json-schema-sphericalexpansion-hyper-parameters" title="Link to this heading">¶</a></h2>
+<details><summary><a>Show full JSON schema</a></summary><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+  <span class="s2">&quot;$schema&quot;</span><span class="p">:</span> <span class="s2">&quot;https://json-schema.org/draft/2020-12/schema&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;SphericalExpansionParameters&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Parameters for spherical expansion calculator.</span><span class="se">\n\n</span><span class="s2"> The spherical expansion is at the core of representations in the SOAP</span><span class="se">\n</span><span class="s2"> (Smooth Overlap of Atomic Positions) family. The core idea is to define</span><span class="se">\n</span><span class="s2"> atom-centered environments using a spherical cutoff; create an atomic</span><span class="se">\n</span><span class="s2"> density according to all neighbors in a given environment; and finally</span><span class="se">\n</span><span class="s2"> expand this density on a given set of basis functions. The parameters for</span><span class="se">\n</span><span class="s2"> each of these steps can be defined separately below.</span><span class="se">\n\n</span><span class="s2"> See [this review article](https://doi.org/10.1063/1.5090481) for more</span><span class="se">\n</span><span class="s2"> information on the SOAP representation, and [this</span><span class="se">\n</span><span class="s2"> paper](https://doi.org/10.1063/5.0044689) for information on how it is</span><span class="se">\n</span><span class="s2"> implemented in featomic.&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+    <span class="s2">&quot;basis&quot;</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Definition of the basis functions used to expand the atomic density&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;$ref&quot;</span><span class="p">:</span> <span class="s2">&quot;#/$defs/SphericalExpansionBasis&quot;</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;cutoff&quot;</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Definition of the atomic environment within a cutoff, and how</span><span class="se">\n</span><span class="s2"> neighboring atoms enter and leave the environment.&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;$ref&quot;</span><span class="p">:</span> <span class="s2">&quot;#/$defs/Cutoff&quot;</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;density&quot;</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Definition of the density arising from atoms in the local environment.&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;$ref&quot;</span><span class="p">:</span> <span class="s2">&quot;#/$defs/Density&quot;</span>
+    <span class="p">}</span>
+  <span class="p">},</span>
+  <span class="s2">&quot;additionalProperties&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+  <span class="s2">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+    <span class="s2">&quot;cutoff&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;density&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;basis&quot;</span>
+  <span class="p">],</span>
+  <span class="s2">&quot;$defs&quot;</span><span class="p">:</span> <span class="p">{</span>
+    <span class="s2">&quot;Cutoff&quot;</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Definition of a local environment for SOAP calculations&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;radius&quot;</span><span class="p">:</span> <span class="p">{</span>
+          <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Radius of the spherical cutoff to use for atomic environments&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;format&quot;</span><span class="p">:</span> <span class="s2">&quot;double&quot;</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;smoothing&quot;</span><span class="p">:</span> <span class="p">{</span>
+          <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Cutoff function used to smooth the behavior around the cutoff radius&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;$ref&quot;</span><span class="p">:</span> <span class="s2">&quot;#/$defs/Smoothing&quot;</span>
+        <span class="p">}</span>
+      <span class="p">},</span>
+      <span class="s2">&quot;additionalProperties&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+      <span class="s2">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">&quot;radius&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;smoothing&quot;</span>
+      <span class="p">]</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;Density&quot;</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Definition of the (atomic) density to expand on a basis&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;center_atom_weight&quot;</span><span class="p">:</span> <span class="p">{</span>
+          <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Weight of the central atom contribution to the density. If `1` the</span><span class="se">\n</span><span class="s2"> center atom contribution is weighted the same as any other contribution.</span><span class="se">\n</span><span class="s2"> If `0` the central atom does not contribute to the density at all.&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;format&quot;</span><span class="p">:</span> <span class="s2">&quot;double&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;default&quot;</span><span class="p">:</span> <span class="mf">1.0</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;scaling&quot;</span><span class="p">:</span> <span class="p">{</span>
+          <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;radial scaling can be used to reduce the importance of neighbor atoms</span><span class="se">\n</span><span class="s2"> further away from the center, usually improving the performance of the</span><span class="se">\n</span><span class="s2"> model&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;anyOf&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="p">{</span>
+              <span class="s2">&quot;$ref&quot;</span><span class="p">:</span> <span class="s2">&quot;#/$defs/DensityScaling&quot;</span>
+            <span class="p">},</span>
+            <span class="p">{</span>
+              <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;null&quot;</span>
+            <span class="p">}</span>
+          <span class="p">],</span>
+          <span class="s2">&quot;default&quot;</span><span class="p">:</span> <span class="n">null</span>
+        <span class="p">}</span>
+      <span class="p">},</span>
+      <span class="s2">&quot;oneOf&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span>
+          <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Dirac delta atomic density&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;const&quot;</span><span class="p">:</span> <span class="s2">&quot;DiracDelta&quot;</span>
+            <span class="p">}</span>
+          <span class="p">},</span>
+          <span class="s2">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="s2">&quot;type&quot;</span>
+          <span class="p">]</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+          <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Gaussian atomic density `exp(-r^2/width^2)`&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;const&quot;</span><span class="p">:</span> <span class="s2">&quot;Gaussian&quot;</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;width&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Width of the gaussian, the same width is used for all atoms&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;format&quot;</span><span class="p">:</span> <span class="s2">&quot;double&quot;</span>
+            <span class="p">}</span>
+          <span class="p">},</span>
+          <span class="s2">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;width&quot;</span>
+          <span class="p">]</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+          <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Smeared power law density, that behaves like `1 / r^p` as `r` goes to</span><span class="se">\n</span><span class="s2"> infinity, while removing any singularity at `r=0` and ensuring the</span><span class="se">\n</span><span class="s2"> density is differentiable everywhere.</span><span class="se">\n\n</span><span class="s2"> The density functional form is `f(r) = 1 / Γ(p/2) * γ(p/2, r^2/(2 σ^2))</span><span class="se">\n</span><span class="s2"> / r^p`, with σ the smearing width, Γ the Gamma function and γ the lower</span><span class="se">\n</span><span class="s2"> incomplete gamma function.</span><span class="se">\n\n</span><span class="s2"> For more information about the derivation of this density, see</span><span class="se">\n</span><span class="s2"> &lt;https://doi.org/10.1021/acs.jpclett.3c02375&gt; and section D of the</span><span class="se">\n</span><span class="s2"> supplementary information.&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;const&quot;</span><span class="p">:</span> <span class="s2">&quot;SmearedPowerLaw&quot;</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;exponent&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Exponent of the density (`p`)&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;format&quot;</span><span class="p">:</span> <span class="s2">&quot;uint&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;smearing&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Smearing width of the density (`σ`)&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;format&quot;</span><span class="p">:</span> <span class="s2">&quot;double&quot;</span>
+            <span class="p">}</span>
+          <span class="p">},</span>
+          <span class="s2">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;smearing&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;exponent&quot;</span>
+          <span class="p">]</span>
+        <span class="p">}</span>
+      <span class="p">]</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;DensityScaling&quot;</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Implemented options for radial scaling of the atomic density around an atom&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;oneOf&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span>
+          <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Use a long-range algebraic decay and smooth behavior at `r → 0` as</span><span class="se">\n</span><span class="s2"> introduced in &lt;https://doi.org/10.1039/C8CP05921G&gt;:</span><span class="se">\n</span><span class="s2"> `f(r) = rate / (rate + (r / scale) ^ exponent)`&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;const&quot;</span><span class="p">:</span> <span class="s2">&quot;Willatt2018&quot;</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;exponent&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;see in the formula&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;format&quot;</span><span class="p">:</span> <span class="s2">&quot;double&quot;</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;rate&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;see in the formula&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;format&quot;</span><span class="p">:</span> <span class="s2">&quot;double&quot;</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;scale&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;see in the formula&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;format&quot;</span><span class="p">:</span> <span class="s2">&quot;double&quot;</span>
+            <span class="p">}</span>
+          <span class="p">},</span>
+          <span class="s2">&quot;additionalProperties&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+          <span class="s2">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;scale&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;rate&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;exponent&quot;</span>
+          <span class="p">]</span>
+        <span class="p">}</span>
+      <span class="p">]</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;RadialBasis&quot;</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;The different kinds of radial basis supported by SOAP calculators&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;oneOf&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span>
+          <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Use a radial basis similar to Gaussian-Type Orbitals.</span><span class="se">\n\n</span><span class="s2"> The basis is defined as `R_n(r) ∝ r^n e^{- r^2 / (2 σ_n^2)}`, where `σ_n</span><span class="se">\n</span><span class="s2"> = cutoff * </span><span class="se">\\</span><span class="s2">sqrt</span><span class="si">{n}</span><span class="s2"> / n_max`&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;const&quot;</span><span class="p">:</span> <span class="s2">&quot;Gto&quot;</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;max_radial&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Maximal value of `n` to include in the radial basis function</span><span class="se">\n</span><span class="s2"> definition. The overall basis will have `max_radial + 1` basis</span><span class="se">\n</span><span class="s2"> functions, indexed from `0` to `max_radial` (inclusive).&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;format&quot;</span><span class="p">:</span> <span class="s2">&quot;uint&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;radius&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="s2">&quot;number&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;null&quot;</span>
+              <span class="p">],</span>
+              <span class="s2">&quot;format&quot;</span><span class="p">:</span> <span class="s2">&quot;double&quot;</span>
+            <span class="p">}</span>
+          <span class="p">},</span>
+          <span class="s2">&quot;additionalProperties&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+          <span class="s2">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;max_radial&quot;</span>
+          <span class="p">]</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+          <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Use pre-tabulated radial basis.</span><span class="se">\n\n</span><span class="s2"> This enables the calculation of the overall radial integral using</span><span class="se">\n</span><span class="s2"> user-defined splines.</span><span class="se">\n\n</span><span class="s2"> The easiest way to create such a tabulated basis is the corresponding</span><span class="se">\n</span><span class="s2"> functions in featomic&#39;s Python API.&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;const&quot;</span><span class="p">:</span> <span class="s2">&quot;Tabulated&quot;</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;points&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Points defining the spline&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;array&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;items&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;$ref&quot;</span><span class="p">:</span> <span class="s2">&quot;#/$defs/SplinePoint&quot;</span>
+              <span class="p">}</span>
+            <span class="p">}</span>
+          <span class="p">},</span>
+          <span class="s2">&quot;additionalProperties&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+          <span class="s2">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;points&quot;</span>
+          <span class="p">]</span>
+        <span class="p">}</span>
+      <span class="p">]</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;Smoothing&quot;</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Possible values for the smoothing cutoff function&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;oneOf&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span>
+          <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Shifted cosine smoothing function</span><span class="se">\n</span><span class="s2"> `f(r) = 1/2 * (1 + cos(π (r - cutoff + width) / width ))`&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;const&quot;</span><span class="p">:</span> <span class="s2">&quot;ShiftedCosine&quot;</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;width&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Width of the switching function&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;format&quot;</span><span class="p">:</span> <span class="s2">&quot;double&quot;</span>
+            <span class="p">}</span>
+          <span class="p">},</span>
+          <span class="s2">&quot;additionalProperties&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+          <span class="s2">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;width&quot;</span>
+          <span class="p">]</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+          <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Step smoothing function (i.e. no smoothing). This is 1 inside the cutoff</span><span class="se">\n</span><span class="s2"> and 0 outside, with a sharp step at the boundary.&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;const&quot;</span><span class="p">:</span> <span class="s2">&quot;Step&quot;</span>
+            <span class="p">}</span>
+          <span class="p">},</span>
+          <span class="s2">&quot;additionalProperties&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+          <span class="s2">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="s2">&quot;type&quot;</span>
+          <span class="p">]</span>
+        <span class="p">}</span>
+      <span class="p">]</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;SphericalExpansionBasis&quot;</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Possible Basis functions to use for the SOAP or LODE spherical expansion.</span><span class="se">\n\n</span><span class="s2"> The basis is made of radial and angular parts, that can be combined in</span><span class="se">\n</span><span class="s2"> various ways.&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;oneOf&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span>
+          <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;This defines a tensor product basis, combining all possible radial basis</span><span class="se">\n</span><span class="s2"> functions with all possible angular basis functions.&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;const&quot;</span><span class="p">:</span> <span class="s2">&quot;TensorProduct&quot;</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;max_angular&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Maximal value (inclusive) of the angular moment (quantum number `l`) to</span><span class="se">\n</span><span class="s2"> use for the spherical harmonics basis functions&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;format&quot;</span><span class="p">:</span> <span class="s2">&quot;uint&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;radial&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Definition of the radial basis functions&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;$ref&quot;</span><span class="p">:</span> <span class="s2">&quot;#/$defs/RadialBasis&quot;</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;spline_accuracy&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Accuracy for splining the radial integral. Using splines is typically</span><span class="se">\n</span><span class="s2"> faster than analytical implementations. If this is None, no splining is</span><span class="se">\n</span><span class="s2"> done.</span><span class="se">\n\n</span><span class="s2"> The number of control points in the spline is automatically determined</span><span class="se">\n</span><span class="s2"> to ensure the average absolute error is close to the requested accuracy.&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="s2">&quot;number&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;null&quot;</span>
+              <span class="p">],</span>
+              <span class="s2">&quot;format&quot;</span><span class="p">:</span> <span class="s2">&quot;double&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;default&quot;</span><span class="p">:</span> <span class="mf">1e-8</span>
+            <span class="p">}</span>
+          <span class="p">},</span>
+          <span class="s2">&quot;additionalProperties&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+          <span class="s2">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;max_angular&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;radial&quot;</span>
+          <span class="p">]</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+          <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;This defines an explicit basis, where only a specific subset of angular</span><span class="se">\n</span><span class="s2"> basis can be used, and every angular basis can use a different radial</span><span class="se">\n</span><span class="s2"> basis.&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;const&quot;</span><span class="p">:</span> <span class="s2">&quot;Explicit&quot;</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;by_angular&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;A map of radial basis to use for the specified angular channels.</span><span class="se">\n\n</span><span class="s2"> Only angular channels included in this map will be included in the</span><span class="se">\n</span><span class="s2"> output. Different angular channels are allowed to use completely</span><span class="se">\n</span><span class="s2"> different radial basis functions.&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;additionalProperties&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;$ref&quot;</span><span class="p">:</span> <span class="s2">&quot;#/$defs/RadialBasis&quot;</span>
+              <span class="p">},</span>
+              <span class="s2">&quot;x-key-type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;spline_accuracy&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Accuracy for splining the radial integral. Using splines is typically</span><span class="se">\n</span><span class="s2"> faster than analytical implementations. If this is None, no splining is</span><span class="se">\n</span><span class="s2"> done.</span><span class="se">\n\n</span><span class="s2"> The number of control points in the spline is automatically determined</span><span class="se">\n</span><span class="s2"> to ensure the average absolute error is close to the requested accuracy.&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="s2">&quot;number&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;null&quot;</span>
+              <span class="p">],</span>
+              <span class="s2">&quot;format&quot;</span><span class="p">:</span> <span class="s2">&quot;double&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;default&quot;</span><span class="p">:</span> <span class="mf">1e-8</span>
+            <span class="p">}</span>
+          <span class="p">},</span>
+          <span class="s2">&quot;additionalProperties&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+          <span class="s2">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;by_angular&quot;</span>
+          <span class="p">]</span>
+        <span class="p">}</span>
+      <span class="p">]</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;SplinePoint&quot;</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;A single point entering a spline used for the tabulated radial integrals.&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;derivatives&quot;</span><span class="p">:</span> <span class="p">{</span>
+          <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Array of derivatives for the tabulated radial integral&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;array&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;items&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;format&quot;</span><span class="p">:</span> <span class="s2">&quot;double&quot;</span>
+          <span class="p">}</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;position&quot;</span><span class="p">:</span> <span class="p">{</span>
+          <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Position of the point&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;format&quot;</span><span class="p">:</span> <span class="s2">&quot;double&quot;</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;values&quot;</span><span class="p">:</span> <span class="p">{</span>
+          <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Array of values for the tabulated radial integral&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;array&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;items&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;format&quot;</span><span class="p">:</span> <span class="s2">&quot;double&quot;</span>
+          <span class="p">}</span>
+        <span class="p">}</span>
+      <span class="p">},</span>
+      <span class="s2">&quot;additionalProperties&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+      <span class="s2">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">&quot;position&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;values&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;derivatives&quot;</span>
+      <span class="p">]</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</details><p>Parameters for spherical expansion calculator.</p>
+<p>The spherical expansion is at the core of representations in the SOAP
+(Smooth Overlap of Atomic Positions) family. The core idea is to define
+atom-centered environments using a spherical cutoff; create an atomic
+density according to all neighbors in a given environment; and finally
+expand this density on a given set of basis functions. The parameters for
+each of these steps can be defined separately below.</p>
+<p>See <a class="reference external" href="https://doi.org/10.1063/1.5090481">this review article</a> for more
+information on the SOAP representation, and <a class="reference external" href="https://doi.org/10.1063/5.0044689">this
+paper</a> for information on how it is
+implemented in featomic.</p>
+<dl class="field-list simple">
+<dt class="field-list simple">basis: <a class="reference internal" href="#json-schema-sphericalexpansionbasis">SphericalExpansionBasis</a><span class="colon">:</span></dt>
+<dd class="field-list simple"><p>Definition of the basis functions used to expand the atomic density</p>
+</dd>
+<dt class="field-list simple">cutoff: <a class="reference internal" href="#json-schema-cutoff">Cutoff</a><span class="colon">:</span></dt>
+<dd class="field-list simple"><p>Definition of the atomic environment within a cutoff, and how
+neighboring atoms enter and leave the environment.</p>
+</dd>
+<dt class="field-list simple">density: <a class="reference internal" href="#json-schema-density">Density</a><span class="colon">:</span></dt>
+<dd class="field-list simple"><p>Definition of the density arising from atoms in the local environment.</p>
+</dd>
+</dl>
+<section id="json-schema-sphericalexpansionbasis">
+<h3>SphericalExpansionBasis<a class="headerlink" href="#json-schema-sphericalexpansionbasis" title="Link to this heading">¶</a></h3>
+<p>Possible Basis functions to use for the SOAP or LODE spherical expansion.</p>
+<p>The basis is made of radial and angular parts, that can be combined in
+various ways.</p>
+<p>Pick one of the following according to its “type”:<ul>
+<li><span>{<span>“type”: “TensorProduct”, </span><span>“max_angular”: <code class="docutils literal notranslate"><span class="pre">positive</span> <span class="pre">integer</span></code>, </span><span>“radial”: <a class="reference internal" href="#json-schema-radialbasis">RadialBasis</a>, </span><span>“spline_accuracy”: <code class="docutils literal notranslate"><span class="pre">number?</span></code></span>}</span><p>This defines a tensor product basis, combining all possible radial basis
+functions with all possible angular basis functions.</p>
+<dl class="field-list">
+<dt class="field-list">max_angular: <code class="docutils literal notranslate"><span class="pre">positive</span> <span class="pre">integer</span></code><span class="colon">:</span></dt>
+<dd class="field-list"><p>Maximal value (inclusive) of the angular moment (quantum number <code class="docutils literal notranslate"><span class="pre">l</span></code>) to
+use for the spherical harmonics basis functions</p>
+</dd>
+<dt class="field-list">radial: <a class="reference internal" href="#json-schema-radialbasis">RadialBasis</a><span class="colon">:</span></dt>
+<dd class="field-list"><p>Definition of the radial basis functions</p>
+</dd>
+<dt class="field-list">spline_accuracy: optional, <code class="docutils literal notranslate"><span class="pre">number</span></code><span class="colon">:</span></dt>
+<dd class="field-list"><p>Accuracy for splining the radial integral. Using splines is typically
+faster than analytical implementations. If this is None, no splining is
+done.</p>
+<p>The number of control points in the spline is automatically determined
+to ensure the average absolute error is close to the requested accuracy.</p>
+</dd>
+</dl>
+</li>
+<li><span>{<span>“type”: “Explicit”, </span><span>“by_angular”: <span>{<span>[key: <code class="docutils literal notranslate"><span class="pre">integer</span></code>]: <a class="reference internal" href="#json-schema-radialbasis">RadialBasis</a></span>}</span>, </span><span>“spline_accuracy”: <code class="docutils literal notranslate"><span class="pre">number?</span></code></span>}</span><p>This defines an explicit basis, where only a specific subset of angular
+basis can be used, and every angular basis can use a different radial
+basis.</p>
+<dl class="field-list">
+<dt class="field-list">by_angular: <span>{<span>[key: <code class="docutils literal notranslate"><span class="pre">integer</span></code>]: <a class="reference internal" href="#json-schema-radialbasis">RadialBasis</a></span>}</span><span class="colon">:</span></dt>
+<dd class="field-list"><p>A map of radial basis to use for the specified angular channels.</p>
+<p>Only angular channels included in this map will be included in the
+output. Different angular channels are allowed to use completely
+different radial basis functions.</p>
+</dd>
+<dt class="field-list">spline_accuracy: optional, <code class="docutils literal notranslate"><span class="pre">number</span></code><span class="colon">:</span></dt>
+<dd class="field-list"><p>Accuracy for splining the radial integral. Using splines is typically
+faster than analytical implementations. If this is None, no splining is
+done.</p>
+<p>The number of control points in the spline is automatically determined
+to ensure the average absolute error is close to the requested accuracy.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</p>
+</section>
+<section id="json-schema-cutoff">
+<h3>Cutoff<a class="headerlink" href="#json-schema-cutoff" title="Link to this heading">¶</a></h3>
+<p>Definition of a local environment for SOAP calculations</p>
+<dl class="field-list simple">
+<dt class="field-list simple">radius: <code class="docutils literal notranslate"><span class="pre">number</span></code><span class="colon">:</span></dt>
+<dd class="field-list simple"><p>Radius of the spherical cutoff to use for atomic environments</p>
+</dd>
+<dt class="field-list simple">smoothing: <a class="reference internal" href="#json-schema-smoothing">Smoothing</a><span class="colon">:</span></dt>
+<dd class="field-list simple"><p>Cutoff function used to smooth the behavior around the cutoff radius</p>
+</dd>
+</dl>
+</section>
+<section id="json-schema-density">
+<h3>Density<a class="headerlink" href="#json-schema-density" title="Link to this heading">¶</a></h3>
+<p>Definition of the (atomic) density to expand on a basis</p>
+<p>Pick one of the following according to its “type”:<ul>
+<li><span>{<span>“type”: “DiracDelta”, </span><span>“center_atom_weight”: <code class="docutils literal notranslate"><span class="pre">number?</span></code>, </span><span>“scaling”: <a class="reference internal" href="#json-schema-densityscaling">DensityScaling?</a></span>}</span><p>Dirac delta atomic density</p>
+<dl class="field-list simple">
+<dt class="field-list simple">center_atom_weight: optional, <code class="docutils literal notranslate"><span class="pre">number</span></code><span class="colon">:</span></dt>
+<dd class="field-list simple"><p>See below.</p>
+</dd>
+<dt class="field-list simple">scaling: optional, <a class="reference internal" href="#json-schema-densityscaling">DensityScaling</a><span class="colon">:</span></dt>
+<dd class="field-list simple"><p>See below.</p>
+</dd>
+</dl>
+</li>
+<li><span>{<span>“type”: “Gaussian”, </span><span>“width”: <code class="docutils literal notranslate"><span class="pre">number</span></code>, </span><span>“center_atom_weight”: <code class="docutils literal notranslate"><span class="pre">number?</span></code>, </span><span>“scaling”: <a class="reference internal" href="#json-schema-densityscaling">DensityScaling?</a></span>}</span><p>Gaussian atomic density <code class="docutils literal notranslate"><span class="pre">exp(-r^2/width^2)</span></code></p>
+<dl class="field-list simple">
+<dt class="field-list simple">width: <code class="docutils literal notranslate"><span class="pre">number</span></code><span class="colon">:</span></dt>
+<dd class="field-list simple"><p>Width of the gaussian, the same width is used for all atoms</p>
+</dd>
+<dt class="field-list simple">center_atom_weight: optional, <code class="docutils literal notranslate"><span class="pre">number</span></code><span class="colon">:</span></dt>
+<dd class="field-list simple"><p>See below.</p>
+</dd>
+<dt class="field-list simple">scaling: optional, <a class="reference internal" href="#json-schema-densityscaling">DensityScaling</a><span class="colon">:</span></dt>
+<dd class="field-list simple"><p>See below.</p>
+</dd>
+</dl>
+</li>
+<li><span>{<span>“type”: “SmearedPowerLaw”, </span><span>“exponent”: <code class="docutils literal notranslate"><span class="pre">positive</span> <span class="pre">integer</span></code>, </span><span>“smearing”: <code class="docutils literal notranslate"><span class="pre">number</span></code>, </span><span>“center_atom_weight”: <code class="docutils literal notranslate"><span class="pre">number?</span></code>, </span><span>“scaling”: <a class="reference internal" href="#json-schema-densityscaling">DensityScaling?</a></span>}</span><p>Smeared power law density, that behaves like <code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">/</span> <span class="pre">r^p</span></code> as <code class="docutils literal notranslate"><span class="pre">r</span></code> goes to
+infinity, while removing any singularity at <code class="docutils literal notranslate"><span class="pre">r=0</span></code> and ensuring the
+density is differentiable everywhere.</p>
+<p>The density functional form is <code class="docutils literal notranslate"><span class="pre">f(r)</span> <span class="pre">=</span> <span class="pre">1</span> <span class="pre">/</span> <span class="pre">Γ(p/2)</span> <span class="pre">*</span> <span class="pre">γ(p/2,</span> <span class="pre">r^2/(2</span> <span class="pre">σ^2))</span>&#160; <span class="pre">/</span> <span class="pre">r^p</span></code>, with σ the smearing width, Γ the Gamma function and γ the lower
+incomplete gamma function.</p>
+<p>For more information about the derivation of this density, see
+<a class="reference external" href="https://doi.org/10.1021/acs.jpclett.3c02375">https://doi.org/10.1021/acs.jpclett.3c02375</a> and section D of the
+supplementary information.</p>
+<dl class="field-list simple">
+<dt class="field-list simple">exponent: <code class="docutils literal notranslate"><span class="pre">positive</span> <span class="pre">integer</span></code><span class="colon">:</span></dt>
+<dd class="field-list simple"><p>Exponent of the density (<code class="docutils literal notranslate"><span class="pre">p</span></code>)</p>
+</dd>
+<dt class="field-list simple">smearing: <code class="docutils literal notranslate"><span class="pre">number</span></code><span class="colon">:</span></dt>
+<dd class="field-list simple"><p>Smearing width of the density (<code class="docutils literal notranslate"><span class="pre">σ</span></code>)</p>
+</dd>
+<dt class="field-list simple">center_atom_weight: optional, <code class="docutils literal notranslate"><span class="pre">number</span></code><span class="colon">:</span></dt>
+<dd class="field-list simple"><p>See below.</p>
+</dd>
+<dt class="field-list simple">scaling: optional, <a class="reference internal" href="#json-schema-densityscaling">DensityScaling</a><span class="colon">:</span></dt>
+<dd class="field-list simple"><p>See below.</p>
+</dd>
+</dl>
+</li>
+</ul>
+<hr class="docutils" />
+<dl class="field-list simple">
+<dt class="field-list simple">center_atom_weight: optional, <code class="docutils literal notranslate"><span class="pre">number</span></code><span class="colon">:</span></dt>
+<dd class="field-list simple"><p>Weight of the central atom contribution to the density. If <code class="docutils literal notranslate"><span class="pre">1</span></code> the
+center atom contribution is weighted the same as any other contribution.
+If <code class="docutils literal notranslate"><span class="pre">0</span></code> the central atom does not contribute to the density at all.</p>
+</dd>
+<dt class="field-list simple">scaling: optional, <a class="reference internal" href="#json-schema-densityscaling">DensityScaling</a><span class="colon">:</span></dt>
+<dd class="field-list simple"><p>radial scaling can be used to reduce the importance of neighbor atoms
+further away from the center, usually improving the performance of the
+model</p>
+</dd>
+</dl>
+</p>
+</section>
+<section id="json-schema-densityscaling">
+<h3>DensityScaling<a class="headerlink" href="#json-schema-densityscaling" title="Link to this heading">¶</a></h3>
+<p>Implemented options for radial scaling of the atomic density around an atom</p>
+<p>Pick one of the following according to its “type”:<ul>
+<li><span>{<span>“type”: “Willatt2018”, </span><span>“exponent”: <code class="docutils literal notranslate"><span class="pre">number</span></code>, </span><span>“rate”: <code class="docutils literal notranslate"><span class="pre">number</span></code>, </span><span>“scale”: <code class="docutils literal notranslate"><span class="pre">number</span></code></span>}</span><p>Use a long-range algebraic decay and smooth behavior at <code class="docutils literal notranslate"><span class="pre">r</span> <span class="pre">→</span> <span class="pre">0</span></code> as
+introduced in <a class="reference external" href="https://doi.org/10.1039/C8CP05921G">https://doi.org/10.1039/C8CP05921G</a>:
+<code class="docutils literal notranslate"><span class="pre">f(r)</span> <span class="pre">=</span> <span class="pre">rate</span> <span class="pre">/</span> <span class="pre">(rate</span> <span class="pre">+</span> <span class="pre">(r</span> <span class="pre">/</span> <span class="pre">scale)</span> <span class="pre">^</span> <span class="pre">exponent)</span></code></p>
+<dl class="field-list simple">
+<dt class="field-list simple">exponent: <code class="docutils literal notranslate"><span class="pre">number</span></code><span class="colon">:</span></dt>
+<dd class="field-list simple"><p>see in the formula</p>
+</dd>
+<dt class="field-list simple">rate: <code class="docutils literal notranslate"><span class="pre">number</span></code><span class="colon">:</span></dt>
+<dd class="field-list simple"><p>see in the formula</p>
+</dd>
+<dt class="field-list simple">scale: <code class="docutils literal notranslate"><span class="pre">number</span></code><span class="colon">:</span></dt>
+<dd class="field-list simple"><p>see in the formula</p>
+</dd>
+</dl>
+</li>
+</ul>
+</p>
+</section>
+<section id="json-schema-radialbasis">
+<h3>RadialBasis<a class="headerlink" href="#json-schema-radialbasis" title="Link to this heading">¶</a></h3>
+<p>The different kinds of radial basis supported by SOAP calculators</p>
+<p>Pick one of the following according to its “type”:<ul>
+<li><span>{<span>“type”: “Gto”, </span><span>“max_radial”: <code class="docutils literal notranslate"><span class="pre">positive</span> <span class="pre">integer</span></code>, </span><span>“radius”: <code class="docutils literal notranslate"><span class="pre">number</span></code></span>}</span><p>Use a radial basis similar to Gaussian-Type Orbitals.</p>
+<p>The basis is defined as <code class="docutils literal notranslate"><span class="pre">R_n(r)</span> <span class="pre">∝</span> <span class="pre">r^n</span> <span class="pre">e^{-</span> <span class="pre">r^2</span> <span class="pre">/</span> <span class="pre">(2</span> <span class="pre">σ_n^2)}</span></code>, where <code class="docutils literal notranslate"><span class="pre">σ_n</span>&#160; <span class="pre">=</span> <span class="pre">cutoff</span> <span class="pre">*</span> <span class="pre">\sqrt{n}</span> <span class="pre">/</span> <span class="pre">n_max</span></code></p>
+<dl class="field-list simple">
+<dt class="field-list simple">max_radial: <code class="docutils literal notranslate"><span class="pre">positive</span> <span class="pre">integer</span></code><span class="colon">:</span></dt>
+<dd class="field-list simple"><p>Maximal value of <code class="docutils literal notranslate"><span class="pre">n</span></code> to include in the radial basis function
+definition. The overall basis will have <code class="docutils literal notranslate"><span class="pre">max_radial</span> <span class="pre">+</span> <span class="pre">1</span></code> basis
+functions, indexed from <code class="docutils literal notranslate"><span class="pre">0</span></code> to <code class="docutils literal notranslate"><span class="pre">max_radial</span></code> (inclusive).</p>
+</dd>
+<dt class="field-list simple">radius: <code class="docutils literal notranslate"><span class="pre">number</span></code><span class="colon">:</span></dt>
+<dd class="field-list simple"><p></p></dd>
+</dl>
+</li>
+<li><span>{<span>“type”: “Tabulated”, </span><span>“points”: <span><a class="reference internal" href="#json-schema-splinepoint">SplinePoint</a>[]</span></span>}</span><p>Use pre-tabulated radial basis.</p>
+<p>This enables the calculation of the overall radial integral using
+user-defined splines.</p>
+<p>The easiest way to create such a tabulated basis is the corresponding
+functions in featomic’s Python API.</p>
+<dl class="field-list simple">
+<dt class="field-list simple">points: <span><a class="reference internal" href="#json-schema-splinepoint">SplinePoint</a>[]</span><span class="colon">:</span></dt>
+<dd class="field-list simple"><p>Points defining the spline</p>
+</dd>
+</dl>
+</li>
+</ul>
+</p>
+</section>
+<section id="json-schema-smoothing">
+<h3>Smoothing<a class="headerlink" href="#json-schema-smoothing" title="Link to this heading">¶</a></h3>
+<p>Possible values for the smoothing cutoff function</p>
+<p>Pick one of the following according to its “type”:<ul>
+<li><span>{<span>“type”: “ShiftedCosine”, </span><span>“width”: <code class="docutils literal notranslate"><span class="pre">number</span></code></span>}</span><p>Shifted cosine smoothing function
+<code class="docutils literal notranslate"><span class="pre">f(r)</span> <span class="pre">=</span> <span class="pre">1/2</span> <span class="pre">*</span> <span class="pre">(1</span> <span class="pre">+</span> <span class="pre">cos(π</span> <span class="pre">(r</span> <span class="pre">-</span> <span class="pre">cutoff</span> <span class="pre">+</span> <span class="pre">width)</span> <span class="pre">/</span> <span class="pre">width</span> <span class="pre">))</span></code></p>
+<dl class="field-list simple">
+<dt class="field-list simple">width: <code class="docutils literal notranslate"><span class="pre">number</span></code><span class="colon">:</span></dt>
+<dd class="field-list simple"><p>Width of the switching function</p>
+</dd>
+</dl>
+</li>
+<li><span>{<span>“type”: “Step”</span>}</span><p>Step smoothing function (i.e. no smoothing). This is 1 inside the cutoff
+and 0 outside, with a sharp step at the boundary.</p>
+<dl class="field-list simple">
+</dl>
+</li>
+</ul>
+</p>
+</section>
+<section id="json-schema-splinepoint">
+<h3>SplinePoint<a class="headerlink" href="#json-schema-splinepoint" title="Link to this heading">¶</a></h3>
+<p>A single point entering a spline used for the tabulated radial integrals.</p>
+<dl class="field-list simple">
+<dt class="field-list simple">derivatives: <span><code class="docutils literal notranslate"><span class="pre">number[]</span></code></span><span class="colon">:</span></dt>
+<dd class="field-list simple"><p>Array of derivatives for the tabulated radial integral</p>
+</dd>
+<dt class="field-list simple">position: <code class="docutils literal notranslate"><span class="pre">number</span></code><span class="colon">:</span></dt>
+<dd class="field-list simple"><p>Position of the point</p>
+</dd>
+<dt class="field-list simple">values: <span><code class="docutils literal notranslate"><span class="pre">number[]</span></code></span><span class="colon">:</span></dt>
+<dd class="field-list simple"><p>Array of values for the tabulated radial integral</p>
+</dd>
+</dl>
+</section>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="spherical-expansion-by-pair.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Spherical expansion by pair</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="index.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Calculator reference</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2024, Guillaume Fraux, Philip Loche, Sergei Kliavinek, Kevin Kazuki Huguenin-Dumittan, Davide Tisi, Alexander Goscinski
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            <div class="icons">
+              <a class="muted-link fa-brands fa-github fa-2x" href="https://github.com/metatensor/featomic" aria-label="GitHub"></a>
+              
+            </div>
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Spherical expansion</a><ul>
+<li><a class="reference internal" href="#json-schema-sphericalexpansion-hyper-parameters">SphericalExpansion hyper-parameters</a><ul>
+<li><a class="reference internal" href="#json-schema-sphericalexpansionbasis">SphericalExpansionBasis</a></li>
+<li><a class="reference internal" href="#json-schema-cutoff">Cutoff</a></li>
+<li><a class="reference internal" href="#json-schema-density">Density</a></li>
+<li><a class="reference internal" href="#json-schema-densityscaling">DensityScaling</a></li>
+<li><a class="reference internal" href="#json-schema-radialbasis">RadialBasis</a></li>
+<li><a class="reference internal" href="#json-schema-smoothing">Smoothing</a></li>
+<li><a class="reference internal" href="#json-schema-splinepoint">SplinePoint</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../../_static/documentation_options.js?v=aaa0c780"></script>
+    <script src="../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/scripts/furo.js?v=5fa4622c"></script>
+    </body>
+</html>

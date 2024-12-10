@@ -1,0 +1,894 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="How-to guides" href="../how-to/index.html" /><link rel="prev" title="Tutorials: using featomic from Python" href="../get-started/tutorials.html" />
+
+    <!-- Generated with Sphinx 7.2.6 and Furo 2024.08.06 -->
+        <title>First descriptor computation - Featomic 0.6.0-rc1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=354aac6f" />
+    <link rel="stylesheet" type="text/css" href="../_static/featomic.css?v=191cc0c0" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=d2d258e8" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=302659d7" />
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/fontawesome.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/solid.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/brands.min.css" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">Featomic 0.6.0-rc1 documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  
+  <span class="sidebar-brand-text">Featomic 0.6.0-rc1 documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1 current has-children"><a class="reference internal" href="../get-started/index.html">Getting started</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of Getting started</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../get-started/featomic.html">What is featomic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../get-started/installation.html">Installation</a></li>
+<li class="toctree-l2 current has-children"><a class="reference internal" href="../get-started/tutorials.html">Tutorials: using featomic from Python</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of Tutorials: using featomic from Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l3 current current-page"><a class="current reference internal" href="#">First descriptor computation</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../how-to/index.html">How-to guides</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of How-to guides</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/computing-soap.html">Computing SOAP features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/sample-selection.html">Sample Selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/property-selection.html">Property Selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/keys-selection.html">Keys selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/splined-radial-integral.html">Splined radial integral</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/long-range.html">Long-range only LODE descriptor</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../references/index.html">Reference guides</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle navigation of Reference guides</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../references/calculators/index.html">Calculator reference</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation of Calculator reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../references/calculators/spherical-expansion.html">Spherical expansion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../references/calculators/spherical-expansion-by-pair.html">Spherical expansion by pair</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../references/calculators/lode-spherical-expansion.html">LODE spherical expansion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../references/calculators/soap-radial-spectrum.html">SOAP radial spectrum</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../references/calculators/soap-power-spectrum.html">SOAP power spectrum</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../references/calculators/atomic-composition.html">Atomic Composition</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../references/calculators/neighbor-list.html">Neighbor List</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../references/calculators/sorted-distances.html">Sorted distance vector</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../references/api/index.html">API documentation</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle navigation of API documentation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../references/api/python/index.html">Python</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle navigation of Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/python/systems.html">Available system implementation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/python/calculators.html">Available Calculators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/python/misc.html">Miscellaneous</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/python/cutoff.html">Local environments</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/python/density.html">Atomic density</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/python/basis.html">Basis functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/python/splines.html">Splined radial integrals</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/python/clebsch-gordan.html">Clebsch-Gordan products</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../references/api/torch/index.html">TorchScript</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle navigation of TorchScript</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/torch/systems.html">System</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/torch/calculators.html">Calculators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/torch/clebsch-gordan.html">Clebsch-Gordan products</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../references/api/torch/cxx/index.html">TorchScript C++ API reference</a><input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><div class="visually-hidden">Toggle navigation of TorchScript C++ API reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="../references/api/torch/cxx/calculators.html">Calculators</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../references/api/rust.html">Rust</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../references/api/c/index.html">C</a><input class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><div class="visually-hidden">Toggle navigation of C</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/c/systems.html">Defining systems</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/c/calculators.html">Dealing with calculators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/c/misc.html">Miscellaneous</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../references/api/cxx/index.html">C++</a><input class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><div class="visually-hidden">Toggle navigation of C++</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/cxx/systems.html">Defining systems</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/cxx/calculators.html">Dealing with calculators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../references/api/cxx/misc.html">Miscellaneous</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../explanations/index.html">Explanations</a><input class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><div class="visually-hidden">Toggle navigation of Explanations</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../explanations/concepts.html">Core concepts of featomic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../explanations/soap.html">What is SOAP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../explanations/rotation_adapted.html">Rotation-Adapted Features</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../devdoc/index.html">Developer documentation</a><input class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><div class="visually-hidden">Toggle navigation of Developer documentation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../devdoc/get-started.html">Getting started</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../devdoc/how-to/index.html">How-to guides</a><input class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><div class="visually-hidden">Toggle navigation of How-to guides</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../devdoc/how-to/new-calculator.html">Adding a new calculator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../devdoc/how-to/profiling.html">Profiling calculation</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../devdoc/explanations/index.html">Explanations</a><input class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><div class="visually-hidden">Toggle navigation of Explanations</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../devdoc/explanations/architecture.html">Code organization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../devdoc/explanations/interfaces.html">Python and C interface</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../devdoc/explanations/radial-integral.html">SOAP and LODE radial integrals</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../_sources/examples/first-calculation.rst.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference internal" href="#sphx-glr-download-examples-first-calculation-py"><span class="std std-ref">Go to the end</span></a>
+to download the full example code.</p>
+</div>
+<section class="sphx-glr-example-title" id="first-descriptor-computation">
+<span id="userdoc-tutorials-get-started"></span><span id="sphx-glr-examples-first-calculation-py"></span><h1>First descriptor computation<a class="headerlink" href="#first-descriptor-computation" title="Link to this heading">¶</a></h1>
+<p>This is an introduction to the featomic interface using a molecular crystals
+dataset using the Python interface. If you are interested in another
+programming language we recommend you first follow this tutorial and afterward
+take a look at the how-to guide on <a class="reference internal" href="../how-to/computing-soap.html#userdoc-how-to-computing-soap"><span class="std std-ref">Computing SOAP features</span></a>.</p>
+<section id="the-dataset">
+<h2>The dataset<a class="headerlink" href="#the-dataset" title="Link to this heading">¶</a></h2>
+<p>The atomic configurations used in our documentation are a small subset of the
+<a class="reference external" href="https://pubs.acs.org/doi/pdf/10.1021/acs.jpcc.2c03854">ShiftML2 dataset</a>
+containing molecular crystals. There are four crystals - one with each of the
+elements [hydrogen, carbon], [hydrogen, carbon, nitrogen, oxygen], [hydrogen,
+carbon, nitrogen], or [hydrogen, carbon, oxygen]. Each crystal has 10 structures,
+also denoted by frames, attributed to it. The first frame of each crystal structure
+is the geometry-optimized frame. The following 9 frames contain atoms that are
+slightly displaced from the geometry-optimized frame. You can obtain the dataset
+from our <a class="reference download internal" download="" href="../_downloads/baed817b984659f054f6dbda1066cc00/dataset.xyz"><code class="xref download docutils literal notranslate"><span class="pre">website</span></code></a>.</p>
+<p>We will start by importing all the required packages: the classic numpy;
+chemfiles to load data, and featomic to compute representations. Afterward
+we will load the dataset using chemfiles.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">chemfiles</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">featomic</span> <span class="kn">import</span> <span class="n">SphericalExpansion</span>
+
+
+<span class="k">with</span> <a href="https://chemfiles.org/chemfiles.py/latest/reference/trajectory.html#chemfiles.Trajectory" title="chemfiles.Trajectory" class="sphx-glr-backref-module-chemfiles sphx-glr-backref-type-py-class"><span class="n">chemfiles</span><span class="o">.</span><span class="n">Trajectory</span></a><span class="p">(</span><span class="s2">&quot;dataset.xyz&quot;</span><span class="p">)</span> <span class="k">as</span> <a href="https://chemfiles.org/chemfiles.py/latest/reference/trajectory.html#chemfiles.Trajectory" title="chemfiles.Trajectory" class="sphx-glr-backref-module-chemfiles sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">trajectory</span></a><span class="p">:</span>
+    <a href="https://docs.python.org/3/library/stdtypes.html#list" title="builtins.list" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">frames</span></a> <span class="o">=</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <a href="https://chemfiles.org/chemfiles.py/latest/reference/trajectory.html#chemfiles.Trajectory" title="chemfiles.Trajectory" class="sphx-glr-backref-module-chemfiles sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">trajectory</span></a><span class="p">]</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;The dataset contains </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><a href="https://docs.python.org/3/library/stdtypes.html#list" title="builtins.list" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">frames</span></a><span class="p">)</span><span class="si">}</span><span class="s2"> frames.&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>The dataset contains 40 frames.
+</pre></div>
+</div>
+<p>We will not explain here how to use chemfiles in detail, as we only use a few
+functions. Briefly, <a class="reference external" href="https://chemfiles.org/chemfiles.py/latest/reference/trajectory.html#chemfiles.Trajectory" title="(in Python interface to chemfiles v0.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">chemfiles.Trajectory</span></code></a> loads structure data in a
+format featomic can use. If you want to learn more about the possibilities
+take a look at the <a class="reference external" href="https://chemfiles.org">chemfiles documentation</a>.</p>
+<p>Let us now take a look at the first frame of the dataset.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><a href="https://chemfiles.org/chemfiles.py/latest/reference/frame.html#chemfiles.Frame" title="chemfiles.Frame" class="sphx-glr-backref-module-chemfiles sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">frame0</span></a> <span class="o">=</span> <a href="https://docs.python.org/3/library/stdtypes.html#list" title="builtins.list" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">frames</span></a><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="nb">print</span><span class="p">(</span><a href="https://chemfiles.org/chemfiles.py/latest/reference/frame.html#chemfiles.Frame" title="chemfiles.Frame" class="sphx-glr-backref-module-chemfiles sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">frame0</span></a><span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Frame with 20 atoms
+</pre></div>
+</div>
+<p>With <code class="docutils literal notranslate"><span class="pre">frame0.atoms</span></code> we get a list of the atoms that make up frame zero.
+The <code class="docutils literal notranslate"><span class="pre">name</span></code> attribute gives us the name of the specified atom.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">elements</span></a><span class="p">,</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">counts</span></a> <span class="o">=</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.unique.html#numpy.unique" title="numpy.unique" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-function"><span class="n">np</span><span class="o">.</span><span class="n">unique</span></a><span class="p">([</span><span class="n">atom</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <a href="https://chemfiles.org/chemfiles.py/latest/reference/frame.html#chemfiles.Frame" title="chemfiles.Frame" class="sphx-glr-backref-module-chemfiles sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">frame0</span></a><span class="o">.</span><span class="n">atoms</span><span class="p">],</span> <span class="n">return_counts</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;The first frame contains &quot;</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">counts</span></a><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">elements</span></a><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">-atoms, &quot;</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">counts</span></a><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">elements</span></a><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">-atoms, &quot;</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">counts</span></a><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">elements</span></a><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="si">}</span><span class="s2">-atoms and &quot;</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">counts</span></a><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">elements</span></a><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="si">}</span><span class="s2">-atoms.&quot;</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>The first frame contains 4 C-atoms, 8 H-atoms, 4 N-atoms and 4 O-atoms.
+</pre></div>
+</div>
+</section>
+<section id="calculate-a-descriptor">
+<h2>Calculate a descriptor<a class="headerlink" href="#calculate-a-descriptor" title="Link to this heading">¶</a></h2>
+<p>We will now calculate an atomic descriptor for this structure using the SOAP
+spherical expansion as introduced by <a class="reference external" href="http://dx.doi.org/10.1103/PhysRevB.87.184115">Bartók, Kondor, and Csányi</a>.</p>
+<p>To do so we define below a set of parameters telling featomic how the
+spherical expansion should be calculated. These parameters are also called
+hyper parameters since they are parameters of the representation, in
+opposition to parameters of machine learning models. Hyper parameters are a
+crucial part of calculating descriptors. Poorly selected hyper parameters will
+lead to a poor description of your dataset as discussed in the <a class="reference external" href="https://arxiv.org/abs/1502.02127">literature</a>.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><a href="https://docs.python.org/3/library/stdtypes.html#dict" title="builtins.dict" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">cutoff</span></a> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;radius&quot;</span><span class="p">:</span> <span class="mf">4.5</span><span class="p">,</span>
+    <span class="s2">&quot;smoothing&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;ShiftedCosine&quot;</span><span class="p">,</span> <span class="s2">&quot;width&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">},</span>
+<span class="p">}</span>
+
+<a href="https://docs.python.org/3/library/stdtypes.html#dict" title="builtins.dict" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">density</span></a> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Gaussian&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;width&quot;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span>
+    <span class="s2">&quot;radial_scaling&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Willatt2018&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;scale&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span>
+        <span class="s2">&quot;rate&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+        <span class="s2">&quot;exponent&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+    <span class="p">},</span>
+<span class="p">}</span>
+
+<a href="https://docs.python.org/3/library/stdtypes.html#dict" title="builtins.dict" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">basis</span></a> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;TensorProduct&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;max_angular&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="s2">&quot;radial&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Gto&quot;</span><span class="p">,</span> <span class="s2">&quot;max_radial&quot;</span><span class="p">:</span> <span class="mi">8</span><span class="p">},</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>After we set the hyper parameters we initialize a
+<a class="reference internal" href="../references/api/python/calculators.html#featomic.SphericalExpansion" title="featomic.calculators.SphericalExpansion"><code class="xref py py-class docutils literal notranslate"><span class="pre">featomic.calculators.SphericalExpansion</span></code></a> object with hyper parameters
+defined above and run the
+<a class="reference internal" href="../references/api/python/calculators.html#featomic.calculators.CalculatorBase.compute" title="featomic.calculators.CalculatorBase.compute"><code class="xref py py-func docutils literal notranslate"><span class="pre">featomic.calculators.CalculatorBase.compute()</span></code></a> method.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">calculator</span> <span class="o">=</span> <span class="n">SphericalExpansion</span><span class="p">(</span><a href="https://docs.python.org/3/library/stdtypes.html#dict" title="builtins.dict" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">cutoff</span></a><span class="o">=</span><a href="https://docs.python.org/3/library/stdtypes.html#dict" title="builtins.dict" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">cutoff</span></a><span class="p">,</span> <a href="https://docs.python.org/3/library/stdtypes.html#dict" title="builtins.dict" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">density</span></a><span class="o">=</span><a href="https://docs.python.org/3/library/stdtypes.html#dict" title="builtins.dict" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">density</span></a><span class="p">,</span> <a href="https://docs.python.org/3/library/stdtypes.html#dict" title="builtins.dict" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">basis</span></a><span class="o">=</span><a href="https://docs.python.org/3/library/stdtypes.html#dict" title="builtins.dict" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">basis</span></a><span class="p">)</span>
+<a href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="metatensor.TensorMap" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">descriptor0</span></a> <span class="o">=</span> <span class="n">calculator</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><a href="https://chemfiles.org/chemfiles.py/latest/reference/frame.html#chemfiles.Frame" title="chemfiles.Frame" class="sphx-glr-backref-module-chemfiles sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">frame0</span></a><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><a href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="metatensor.TensorMap" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">descriptor0</span></a><span class="p">))</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>&lt;class &#39;metatensor.tensor.TensorMap&#39;&gt;
+</pre></div>
+</div>
+<p>The descriptor format is a <a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><code class="xref py py-class docutils literal notranslate"><span class="pre">metatensor.TensorMap</span></code></a> object. Metatensor is
+like numpy for storing representations of atomistic ML data. Extensive details
+on the metatensor are covered in the <a class="reference external" href="https://lab-cosmo.github.io/metatensor/">corresponding documentation</a>.</p>
+<p>We will now have a look at how the data is stored inside
+<a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><code class="xref py py-class docutils literal notranslate"><span class="pre">metatensor.TensorMap</span></code></a> objects.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><a href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="metatensor.TensorMap" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">descriptor0</span></a><span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>TensorMap with 96 blocks
+keys: o3_lambda  o3_sigma  center_type  neighbor_type
+          0         1           1             1
+          1         1           1             1
+          2         1           1             1
+          3         1           1             1
+          4         1           1             1
+          5         1           1             1
+          0         1           1             6
+          1         1           1             6
+          2         1           1             6
+          3         1           1             6
+          4         1           1             6
+          5         1           1             6
+          0         1           1             7
+          1         1           1             7
+          2         1           1             7
+          3         1           1             7
+          4         1           1             7
+          5         1           1             7
+          0         1           1             8
+          1         1           1             8
+          2         1           1             8
+          3         1           1             8
+          4         1           1             8
+          5         1           1             8
+          0         1           6             1
+          1         1           6             1
+          2         1           6             1
+          3         1           6             1
+          4         1           6             1
+          5         1           6             1
+          0         1           6             6
+          1         1           6             6
+          2         1           6             6
+          3         1           6             6
+          4         1           6             6
+          5         1           6             6
+          0         1           6             7
+          1         1           6             7
+          2         1           6             7
+          3         1           6             7
+          4         1           6             7
+          5         1           6             7
+          0         1           6             8
+          1         1           6             8
+          2         1           6             8
+          3         1           6             8
+          4         1           6             8
+          5         1           6             8
+          0         1           7             1
+          1         1           7             1
+          2         1           7             1
+          3         1           7             1
+          4         1           7             1
+          5         1           7             1
+          0         1           7             6
+          1         1           7             6
+          2         1           7             6
+          3         1           7             6
+          4         1           7             6
+          5         1           7             6
+          0         1           7             7
+          1         1           7             7
+          2         1           7             7
+          3         1           7             7
+          4         1           7             7
+          5         1           7             7
+          0         1           7             8
+          1         1           7             8
+          2         1           7             8
+          3         1           7             8
+          4         1           7             8
+          5         1           7             8
+          0         1           8             1
+          1         1           8             1
+          2         1           8             1
+          3         1           8             1
+          4         1           8             1
+          5         1           8             1
+          0         1           8             6
+          1         1           8             6
+          2         1           8             6
+          3         1           8             6
+          4         1           8             6
+          5         1           8             6
+          0         1           8             7
+          1         1           8             7
+          2         1           8             7
+          3         1           8             7
+          4         1           8             7
+          5         1           8             7
+          0         1           8             8
+          1         1           8             8
+          2         1           8             8
+          3         1           8             8
+          4         1           8             8
+          5         1           8             8
+</pre></div>
+</div>
+<p>The <a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><code class="xref py py-class docutils literal notranslate"><span class="pre">metatensor.TensorMap</span></code></a> is structured in several instances of an
+<a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/block.html#metatensor.TensorBlock" title="(in metatensor)"><code class="xref py py-class docutils literal notranslate"><span class="pre">metatensor.TensorBlock</span></code></a>. To distinguish the block each block is associated
+with a unique key. For the current example, we have one block for each angular channel
+labeled by <code class="docutils literal notranslate"><span class="pre">o3_lambda</span></code>, the central atom type <code class="docutils literal notranslate"><span class="pre">center_type</span></code> and
+neighbor atom type labeled by <code class="docutils literal notranslate"><span class="pre">neighbor_type</span></code>. Different atomic types are
+represented using their atomic number, e.g. 1 for hydrogen, 6 for carbon, etc. To
+summarize, this descriptor contains 112 blocks covering all combinations of the
+angular channels of the central and neighbor atom types in our dataset.</p>
+<p>Let us take a look at the second block (at index 1) in detail. This block contains the
+descriptor for the <span class="math notranslate nohighlight">\(l=1\)</span> angular channel for hydrogen-hydrogen pairs.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><a href="https://docs.metatensor.org/latest/core/reference/python/block.html#metatensor.TensorBlock" title="metatensor.TensorBlock" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">block</span></a> <span class="o">=</span> <a href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap.block" title="metatensor.TensorMap.block" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-method"><span class="n">descriptor0</span><span class="o">.</span><span class="n">block</span></a><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><a href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap.keys" title="metatensor.TensorMap.keys" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-property"><span class="n">descriptor0</span><span class="o">.</span><span class="n">keys</span></a><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>LabelsEntry(o3_lambda=1, o3_sigma=1, center_type=1, neighbor_type=1)
+</pre></div>
+</div>
+</section>
+<section id="the-descriptor-values">
+<h2>The descriptor values<a class="headerlink" href="#the-descriptor-values" title="Link to this heading">¶</a></h2>
+<p>The values of the representation are stored as an array. Each entry in this
+array also has associated unique metadata as each block. For the spherical
+expansion calculator used in this tutorial the values have three dimensions
+which we can verify from the <code class="docutils literal notranslate"><span class="pre">.shape</span></code> attribute.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><a href="https://docs.metatensor.org/latest/core/reference/python/block.html#metatensor.TensorBlock.values" title="metatensor.TensorBlock.values" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-property"><span class="n">block</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">shape</span></a><span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>(8, 3, 9)
+</pre></div>
+</div>
+</section>
+<section id="id1">
+<h2>The descriptor values<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h2>
+<p>The first dimension is denoted by the <cite>samples</cite>, the intermediate dimension by
+<cite>components</cite>, and the last dimension by <cite>properties</cite>. The “sample dimension”
+has a length of eight because we have eight hydrogen atoms in the first frame.
+We can reveal more detailed metadata information about the sample-dimension
+printing of the <a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/block.html#metatensor.TensorBlock.samples" title="(in metatensor)"><code class="xref py py-attr docutils literal notranslate"><span class="pre">metatensor.TensorBlock.samples</span></code></a> attribute of the
+block</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><a href="https://docs.metatensor.org/latest/core/reference/python/block.html#metatensor.TensorBlock.samples" title="metatensor.TensorBlock.samples" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-property"><span class="n">block</span><span class="o">.</span><span class="n">samples</span></a><span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Labels(
+    system  atom
+      0      12
+      0      13
+        ...
+      0      18
+      0      19
+)
+</pre></div>
+</div>
+<p>The result is an <a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><code class="xref py py-class docutils literal notranslate"><span class="pre">metatensor.TensorMap</span></code></a> instance. It contains in total
+eight tuples each with two values. The tuple values are named as follows</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><a href="https://docs.metatensor.org/latest/core/reference/python/block.html#metatensor.TensorBlock.samples" title="metatensor.TensorBlock.samples" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-property"><span class="n">block</span><span class="o">.</span><span class="n">samples</span><span class="o">.</span><span class="n">names</span></a><span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>[&#39;system&#39;, &#39;atom&#39;]
+</pre></div>
+</div>
+<p>Meaning that the first entry of each tuple indicates the _structure_, which is
+0 for all because we only computed the representation of a single frame. The
+second entry of each tuple refers to the index of the _center_ atom.</p>
+<p>We can do a similar investigation for the second dimension: the
+<a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/block.html#metatensor.TensorBlock.components" title="(in metatensor)"><code class="xref py py-attr docutils literal notranslate"><span class="pre">metatensor.TensorBlock.components</span></code></a>.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><a href="https://docs.metatensor.org/latest/core/reference/python/block.html#metatensor.TensorBlock.components" title="metatensor.TensorBlock.components" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-property"><span class="n">block</span><span class="o">.</span><span class="n">components</span></a><span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>[Labels(
+    o3_mu
+     -1
+      0
+      1
+)]
+</pre></div>
+</div>
+<p>Here, the components are associated with the angular channels of the
+representation. The size of <code class="docutils literal notranslate"><span class="pre">o3_mu</span></code> is <span class="math notranslate nohighlight">\(2l + 1\)</span>, where
+<span class="math notranslate nohighlight">\(l\)</span> is the current <code class="docutils literal notranslate"><span class="pre">o3_lambda</span></code> of the block. Here, its
+dimension is three because we are looking at the <code class="docutils literal notranslate"><span class="pre">o3_lambda=1</span></code>
+block. You may have noticed that the return value of the last call is a
+<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a> of <a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/labels.html#metatensor.Labels" title="(in metatensor)"><code class="xref py py-class docutils literal notranslate"><span class="pre">metatensor.Labels</span></code></a> and not a single <code class="docutils literal notranslate"><span class="pre">Labels</span></code>
+instance. The reason is that a block can have several component dimensions as
+we will see below for the gradients.</p>
+<p>The last value represents the number of radial channels. For the
+<a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/block.html#metatensor.TensorBlock.properties" title="(in metatensor)"><code class="xref py py-attr docutils literal notranslate"><span class="pre">metatensor.TensorBlock.properties</span></code></a> dimension we find an object</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><a href="https://docs.metatensor.org/latest/core/reference/python/block.html#metatensor.TensorBlock.properties" title="metatensor.TensorBlock.properties" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-property"><span class="n">block</span><span class="o">.</span><span class="n">properties</span></a><span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Labels(
+    n
+    0
+    1
+     ...
+    7
+    8
+)
+</pre></div>
+</div>
+<p>containing a tuple of only one value ranging from 0 to 8. The name of this entry is</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><a href="https://docs.metatensor.org/latest/core/reference/python/block.html#metatensor.TensorBlock.properties" title="metatensor.TensorBlock.properties" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-property"><span class="n">block</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">names</span></a><span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>[&#39;n&#39;]
+</pre></div>
+</div>
+<p>and denoting the radial channels. The range results from our choice of
+<code class="docutils literal notranslate"><span class="pre">max_radial</span> <span class="pre">=</span> <span class="pre">9</span></code> in the hyper parameters above.</p>
+<p>After looking at the metadata we can investigate the actual data of the
+representation in more details</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><a href="https://docs.metatensor.org/latest/core/reference/python/block.html#metatensor.TensorBlock.values" title="metatensor.TensorBlock.values" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-property"><span class="n">block</span><span class="o">.</span><span class="n">values</span></a><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:])</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>[-0.00237693  0.01533393 -0.03954346 -0.20278318 -0.05190685 -0.14738365
+ -0.17762571 -0.05567855 -0.01701108]
+</pre></div>
+</div>
+<p>By using <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">0,</span> <span class="pre">:]</span></code> we selected the first hydrogen and the first <code class="docutils literal notranslate"><span class="pre">m</span></code>
+channel. As you the output shows the values are floating point numbers between
+<code class="docutils literal notranslate"><span class="pre">-1.0</span></code> and <code class="docutils literal notranslate"><span class="pre">1.0</span></code>. Values in this range are reasonable and can be directly
+used as input for a machine learning algorithm.</p>
+<p>Featomic is also able to process more than one structure within one function
+call. You can process a whole dataset with</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><a href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="metatensor.TensorMap" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">descriptor_full</span></a> <span class="o">=</span> <span class="n">calculator</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><a href="https://docs.python.org/3/library/stdtypes.html#list" title="builtins.list" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">frames</span></a><span class="p">)</span>
+
+<a href="https://docs.metatensor.org/latest/core/reference/python/block.html#metatensor.TensorBlock" title="metatensor.TensorBlock" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">block_full</span></a> <span class="o">=</span> <a href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap.block" title="metatensor.TensorMap.block" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-method"><span class="n">descriptor_full</span><span class="o">.</span><span class="n">block</span></a><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><a href="https://docs.metatensor.org/latest/core/reference/python/block.html#metatensor.TensorBlock.values" title="metatensor.TensorBlock.values" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-property"><span class="n">block_full</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">shape</span></a><span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>(420, 1, 9)
+</pre></div>
+</div>
+<p>Now, the 0th block of the <a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><code class="xref py py-class docutils literal notranslate"><span class="pre">metatensor.TensorMap</span></code></a> contains not eight but
+420 entries in the first dimensions. This reflects the fact that in total we
+have 420 hydrogen atoms in the whole dataset.</p>
+<p>If you want to use another calculator instead of
+<a class="reference internal" href="../references/api/python/calculators.html#featomic.SphericalExpansion" title="featomic.calculators.SphericalExpansion"><code class="xref py py-class docutils literal notranslate"><span class="pre">featomic.calculators.SphericalExpansion</span></code></a> shown here check out the
+<a class="reference internal" href="../references/index.html#userdoc-references"><span class="std std-ref">Reference guides</span></a> section.</p>
+</section>
+<section id="computing-gradients">
+<h2>Computing gradients<a class="headerlink" href="#computing-gradients" title="Link to this heading">¶</a></h2>
+<p>Additionally, featomic is also able to calculate gradients on top of the
+values. Gradients are useful for constructing an ML potential and running
+simulations. For example <code class="docutils literal notranslate"><span class="pre">gradients</span></code> of the representation with respect to
+atomic positions can be calculated by setting the <code class="docutils literal notranslate"><span class="pre">gradients</span></code> parameter of
+the <a class="reference internal" href="../references/api/python/calculators.html#featomic.calculators.CalculatorBase.compute" title="featomic.calculators.CalculatorBase.compute"><code class="xref py py-func docutils literal notranslate"><span class="pre">featomic.calculators.CalculatorBase.compute()</span></code></a> method to
+<code class="docutils literal notranslate"><span class="pre">[&quot;positions&quot;]</span></code>.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><a href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="metatensor.TensorMap" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">descriptor_gradients</span></a> <span class="o">=</span> <span class="n">calculator</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><a href="https://chemfiles.org/chemfiles.py/latest/reference/frame.html#chemfiles.Frame" title="chemfiles.Frame" class="sphx-glr-backref-module-chemfiles sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">frame0</span></a><span class="p">,</span> <span class="n">gradients</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;positions&quot;</span><span class="p">])</span>
+
+<a href="https://docs.metatensor.org/latest/core/reference/python/block.html#metatensor.TensorBlock" title="metatensor.TensorBlock" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">block_gradients</span></a> <span class="o">=</span> <a href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap.block" title="metatensor.TensorMap.block" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-method"><span class="n">descriptor_gradients</span><span class="o">.</span><span class="n">block</span></a><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<a href="https://docs.metatensor.org/latest/core/reference/python/block.html#metatensor.TensorBlock" title="metatensor.TensorBlock" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">gradient_position</span></a> <span class="o">=</span> <a href="https://docs.metatensor.org/latest/core/reference/python/block.html#metatensor.TensorBlock.gradient" title="metatensor.TensorBlock.gradient" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-method"><span class="n">block_gradients</span><span class="o">.</span><span class="n">gradient</span></a><span class="p">(</span><span class="s2">&quot;positions&quot;</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><a href="https://docs.metatensor.org/latest/core/reference/python/block.html#metatensor.TensorBlock.values" title="metatensor.TensorBlock.values" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-property"><span class="n">gradient_position</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">shape</span></a><span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>(52, 3, 1, 9)
+</pre></div>
+</div>
+<p>The calculated descriptor contains the values and in each block the associated
+position gradients as an <code class="xref py py-class docutils literal notranslate"><span class="pre">metatensor.block.Gradient</span></code> instance. The
+actual values are stored in the <code class="docutils literal notranslate"><span class="pre">data</span></code> attribute. Similar to the features
+the gradient data also has associated metadata. But, compared to the values
+were we found three dimensions, and gradients have four. Again the first is
+called <cite>samples</cite> and the <cite>properties</cite>. The dimensions between the sample and
+property dimensions are denoted by <cite>components</cite>.</p>
+<p>Looking at the shape in more detail we find that we have 52 samples, which is
+much more compared to features where we only have eight samples. This arises
+from the fact that we calculate the position gradient for each pair in the
+structure. For our selected block these are all hydrogen-hydrogen pairs.
+Naively one would come up with <code class="docutils literal notranslate"><span class="pre">8</span> <span class="pre">*</span> <span class="pre">8</span> <span class="pre">=</span> <span class="pre">64</span></code> samples, but featomic already
+ignores pairs that are outside of the cutoff radius. Their position gradient
+is always zero. The <code class="xref py py-attr docutils literal notranslate"><span class="pre">metatensor.block.Gradient.samples</span></code> attribute shows
+this in detail.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><a href="https://docs.metatensor.org/latest/core/reference/python/block.html#metatensor.TensorBlock.samples" title="metatensor.TensorBlock.samples" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-property"><span class="n">gradient_position</span><span class="o">.</span><span class="n">samples</span></a><span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Labels(
+    sample  system  atom
+      0       0      12
+      0       0      13
+            ...
+      7       0      18
+      7       0      19
+)
+</pre></div>
+</div>
+<p>Note that we have a tuple of three with the names</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><a href="https://docs.metatensor.org/latest/core/reference/python/block.html#metatensor.TensorBlock.samples" title="metatensor.TensorBlock.samples" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-property"><span class="n">gradient_position</span><span class="o">.</span><span class="n">samples</span><span class="o">.</span><span class="n">names</span></a><span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>[&#39;sample&#39;, &#39;system&#39;, &#39;atom&#39;]
+</pre></div>
+</div>
+<p>In the above output of the Labels instance for example the <cite>(2, 0, 17)</cite> entry
+is missing indicating that this pair is outside of the cutoff.</p>
+<p>Now looking at the <code class="xref py py-attr docutils literal notranslate"><span class="pre">metatensor.block.Gradient.components</span></code></p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><a href="https://docs.metatensor.org/latest/core/reference/python/block.html#metatensor.TensorBlock.components" title="metatensor.TensorBlock.components" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-property"><span class="n">gradient_position</span><span class="o">.</span><span class="n">components</span></a><span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>[Labels(
+    xyz
+     0
+     1
+     2
+), Labels(
+    o3_mu
+      0
+)]
+</pre></div>
+</div>
+<p>we find two of them. Besides the <cite>o3_mu</cite> component that is also present in the
+features position gradients also have a component indicating the direction of the
+gradient vector.</p>
+<p>Finally, the <code class="xref py py-attr docutils literal notranslate"><span class="pre">metatensor.block.Gradient.properties</span></code> dimension is the same as for
+the values</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><a href="https://docs.metatensor.org/latest/core/reference/python/block.html#metatensor.TensorBlock.properties" title="metatensor.TensorBlock.properties" class="sphx-glr-backref-module-metatensor sphx-glr-backref-type-py-property"><span class="n">gradient_position</span><span class="o">.</span><span class="n">properties</span></a><span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Labels(
+    n
+    0
+    1
+     ...
+    7
+    8
+)
+</pre></div>
+</div>
+<p>Featomic can also calculate gradients with respect to the strain (i.e. the virial).
+For this, you have to add <code class="docutils literal notranslate"><span class="pre">&quot;strain&quot;</span></code> to the list parsed to the <code class="docutils literal notranslate"><span class="pre">gradients</span></code>
+parameter of the <a class="reference internal" href="../references/api/python/calculators.html#featomic.calculators.CalculatorBase.compute" title="featomic.calculators.CalculatorBase.compute"><code class="xref py py-func docutils literal notranslate"><span class="pre">featomic.calculators.CalculatorBase.compute()</span></code></a> method.
+Strain gradients/virial are useful when computing the stress and the pressure.</p>
+<p>If you want to know about the effect of changing hypers take a look at the next
+tutorial. If you want to solve an explicit problem our <a class="reference internal" href="../how-to/index.html#userdoc-how-to"><span class="std std-ref">How-to guides</span></a> might
+help you.</p>
+<div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-examples-first-calculation-py">
+<div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/33cbf89244c381c85dfb98b83889ff69/first-calculation.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">first-calculation.ipynb</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-python docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/536e92230d631426c3c8630f4db8a141/first-calculation.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">first-calculation.py</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-zip docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/94fe16a4bed8662f3e4bf7df34cf7786/first-calculation.zip"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">zipped:</span> <span class="pre">first-calculation.zip</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="../how-to/index.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">How-to guides</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="../get-started/tutorials.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Tutorials: using featomic from Python</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2024, Guillaume Fraux, Philip Loche, Sergei Kliavinek, Kevin Kazuki Huguenin-Dumittan, Davide Tisi, Alexander Goscinski
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            <div class="icons">
+              <a class="muted-link fa-brands fa-github fa-2x" href="https://github.com/metatensor/featomic" aria-label="GitHub"></a>
+              
+            </div>
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">First descriptor computation</a><ul>
+<li><a class="reference internal" href="#the-dataset">The dataset</a></li>
+<li><a class="reference internal" href="#calculate-a-descriptor">Calculate a descriptor</a></li>
+<li><a class="reference internal" href="#the-descriptor-values">The descriptor values</a></li>
+<li><a class="reference internal" href="#id1">The descriptor values</a></li>
+<li><a class="reference internal" href="#computing-gradients">Computing gradients</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=9d584dea"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/furo.js?v=5fa4622c"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    </body>
+</html>

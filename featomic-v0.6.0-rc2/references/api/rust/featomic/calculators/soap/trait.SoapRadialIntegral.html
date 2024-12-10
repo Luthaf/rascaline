@@ -1,0 +1,71 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="A `SoapRadialIntegral` computes the SOAP radial integral for all radial basis functions and a single spherical harmonic `l` channel"><title>SoapRadialIntegral in featomic::calculators::soap - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-b0742ba02757f159.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="featomic" data-themes="" data-resource-suffix="" data-rustdoc-version="1.83.0 (90b35a623 2024-11-26)" data-channel="1.83.0" data-search-js="search-f0d225181b97f9a4.js" data-settings-js="settings-805db61a62df4bd2.js" ><script src="../../../static.files/storage-1d39b6787ed640ff.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../static.files/main-f070b9041d14864c.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-0111fcff984fae8f.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.2/dist/katex.min.css" integrity="sha384-bYdxxUwYipFNohQlHt0bjN/LCpueqWz13HufFEV1SUatKs1cm4L6fFgCi1jT643X" crossorigin="anonymous">
+
+<!-- The loading of KaTeX is deferred to speed up page rendering -->
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.2/dist/katex.min.js" integrity="sha384-Qsn9KnoKISj6dI8g7p1HBlNpVx0I8p1SvlwOldgi3IorMle61nQy4zEahWYtljaz" crossorigin="anonymous"></script>
+
+<!-- To automatically render math in text elements, include the auto-render extension: -->
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.2/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"
+    onload="renderMathInElement(document.body);"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+          // customised options
+          delimiters: [
+              {left: '$$', right: '$$', display: true},
+              {left: '$', right: '$', display: false},
+              {left: '\\(', right: '\\)', display: false},
+              {left: '\\[', right: '\\]', display: true}
+          ],
+          throwOnError : false
+        });
+    });
+</script>
+
+</head><body class="rustdoc trait"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../featomic/index.html">featomic</a><span class="version">0.6.0-rc2</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Soap<wbr>Radial<wbr>Integral</a></h2><h3><a href="#required-methods">Required Methods</a></h3><ul class="block"><li><a href="#tymethod.compute" title="compute">compute</a></li><li><a href="#tymethod.size" title="size">size</a></li></ul><h3><a href="#implementors">Implementors</a></h3></section><div id="rustdoc-modnav"><h2><a href="index.html">In featomic::<wbr>calculators::<wbr>soap</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../index.html">featomic</a>::<wbr><a href="../index.html">calculators</a>::<wbr><a href="index.html">soap</a></span><h1>Trait <span class="trait">SoapRadialIntegral</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../../src/featomic/calculators/soap/radial_integral/mod.rs.html#19-58">source</a> </span></div><pre class="rust item-decl"><code>pub trait SoapRadialIntegral: <a class="trait" href="https://doc.rust-lang.org/1.83.0/core/panic/unwind_safe/trait.RefUnwindSafe.html" title="trait core::panic::unwind_safe::RefUnwindSafe">RefUnwindSafe</a> + <a class="trait" href="https://doc.rust-lang.org/1.83.0/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> {
+    // Required methods
+    fn <a href="#tymethod.compute" class="fn">compute</a>(
+        &amp;self,
+        distance: <a class="primitive" href="https://doc.rust-lang.org/1.83.0/std/primitive.f64.html">f64</a>,
+        values: <a class="type" href="https://docs.rs/ndarray/0.15/ndarray/aliases/type.ArrayViewMut1.html" title="type ndarray::aliases::ArrayViewMut1">ArrayViewMut1</a>&lt;'_, <a class="primitive" href="https://doc.rust-lang.org/1.83.0/std/primitive.f64.html">f64</a>&gt;,
+        gradients: <a class="enum" href="https://doc.rust-lang.org/1.83.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="type" href="https://docs.rs/ndarray/0.15/ndarray/aliases/type.ArrayViewMut1.html" title="type ndarray::aliases::ArrayViewMut1">ArrayViewMut1</a>&lt;'_, <a class="primitive" href="https://doc.rust-lang.org/1.83.0/std/primitive.f64.html">f64</a>&gt;&gt;,
+    );
+<span class="item-spacer"></span>    fn <a href="#tymethod.size" class="fn">size</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/1.83.0/std/primitive.usize.html">usize</a>;
+}</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>A <code>SoapRadialIntegral</code> computes the SOAP radial integral for all radial
+basis functions and a single spherical harmonic <code>l</code> channel</p>
+<p>See equations 5 to 8 of <a href="https://doi.org/10.1063/5.0044689">this paper</a> for
+mor information on the radial integral.</p>
+<p><code>std::panic::RefUnwindSafe</code> is a required super-trait to enable passing
+radial integrals across the C API. <code>Send</code> is a required super-trait to
+enable passing radial integrals between threads.</p>
+</div></details><h2 id="required-methods" class="section-header">Required Methods<a href="#required-methods" class="anchor">§</a></h2><div class="methods"><details class="toggle method-toggle" open><summary><section id="tymethod.compute" class="method"><a class="src rightside" href="../../../src/featomic/calculators/soap/radial_integral/mod.rs.html#53">source</a><h4 class="code-header">fn <a href="#tymethod.compute" class="fn">compute</a>(
+    &amp;self,
+    distance: <a class="primitive" href="https://doc.rust-lang.org/1.83.0/std/primitive.f64.html">f64</a>,
+    values: <a class="type" href="https://docs.rs/ndarray/0.15/ndarray/aliases/type.ArrayViewMut1.html" title="type ndarray::aliases::ArrayViewMut1">ArrayViewMut1</a>&lt;'_, <a class="primitive" href="https://doc.rust-lang.org/1.83.0/std/primitive.f64.html">f64</a>&gt;,
+    gradients: <a class="enum" href="https://doc.rust-lang.org/1.83.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="type" href="https://docs.rs/ndarray/0.15/ndarray/aliases/type.ArrayViewMut1.html" title="type ndarray::aliases::ArrayViewMut1">ArrayViewMut1</a>&lt;'_, <a class="primitive" href="https://doc.rust-lang.org/1.83.0/std/primitive.f64.html">f64</a>&gt;&gt;,
+)</h4></section></summary><div class="docblock"><p>Compute the radial integral for a single <code>distance</code> between two atoms
+and store the resulting data in the <code>values</code> array. If <code>gradients</code> is
+<code>Some</code>, also compute and store gradients there.</p>
+<p>The radial integral $I_{nl}$ is defined as “the non-spherical harmonics
+part of the spherical expansion”. Depending on the atomic density,
+different expressions can be used.</p>
+<p>For a delta density, the radial integral is simply the radial basis
+function $R_{nl}$ evaluated at the pair distance:</p>
+<p>$$ I_{nl}(r_{ij}) = R_{nl}(r_{ij}) $$</p>
+<p>For a Gaussian atomic density with a width of $\sigma$, the radial
+integral reduces to:</p>
+<p>$$
+I_{nl}(r_{ij}) = \frac{4\pi}{(\pi \sigma^2)^{3/4}} e^{-\frac{r_{ij}^2}{2\sigma^2}}
+\int_0^\infty \mathrm{d}r r^2 R_{nl}(r) e^{-\frac{r^2}{2\sigma^2}} i_l\left(\frac{rr_{ij}}{\sigma^2}\right)
+$$</p>
+<p>where $i_l$ is the modified spherical Bessel function of the first kind
+of order $l$.</p>
+<p>Finally, for an arbitrary spherically symmetric atomic density <code>g(r)</code>,
+the radial integral is</p>
+<p>$$
+I_{nl}(r_{ij}) = 2\pi \int_0^\infty \mathrm{d}r r^2 R_{nl}(r)
+\int_{-1}^1 \mathrm{d}u P_l(u) g(\sqrt{r^2+r_{ij}^2-2rr_{ij}u})
+$$</p>
+<p>where $P_l$ is the l-th Legendre polynomial.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.size" class="method"><a class="src rightside" href="../../../src/featomic/calculators/soap/radial_integral/mod.rs.html#57">source</a><h4 class="code-header">fn <a href="#tymethod.size" class="fn">size</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/1.83.0/std/primitive.usize.html">usize</a></h4></section></summary><div class="docblock"><p>Get how many basis functions are part of this integral. This is the
+shape to use for the <code>values</code> and <code>gradients</code> parameters to <code>compute</code>.</p>
+</div></details></div><h2 id="implementors" class="section-header">Implementors<a href="#implementors" class="anchor">§</a></h2><div id="implementors-list"></div><script src="../../../trait.impl/featomic/calculators/soap/radial_integral/trait.SoapRadialIntegral.js" async></script></section></div></main></body></html>
