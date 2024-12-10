@@ -1,9 +1,10 @@
 """
-This module provides convenience calculators for preforming density correlations, i.e.
-the (iterative) CG tensor products of density (body order 2) tensors.
+This module provides a convenience calculator for performing density auto-
+correlations, i.e. the (iterative) CG tensor products of density (body
+order 2) tensors.
 
-All of these calculators wrap the :py:class:`ClebschGordanProduct` class, handling the
-higher-level metadata manipulation to produce the desired output tensors.
+This wraps the :py:class:`ClebschGordanProduct` class, handling the higher-level
+metadata manipulation to produce the desired output tensors.
 """
 
 from typing import List, Optional
