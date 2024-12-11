@@ -354,7 +354,7 @@ if __name__ == "__main__":
         install_requires.append(f"featomic @ file://{FEATOMIC_PYTHON_SRC}")
     else:
         # we are building from a sdist/installing from a wheel
-        install_requires.append("featomic >=0.1.0.dev0,<0.2.0")
+        install_requires.append("featomic >=0.6.0.rc1,<0.7.0")
 
     setup(
         version=version,
