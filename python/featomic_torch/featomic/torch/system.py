@@ -3,7 +3,6 @@ from typing import List, Optional, Sequence, overload
 import numpy as np
 import torch
 from metatensor.torch.atomistic import System
-from packaging import version
 
 import featomic
 
@@ -86,7 +85,8 @@ def _is_torch_system(system):
     if not isinstance(system, torch.ScriptObject):
         return False
 
-    if version.parse(torch.__version__) >= version.parse("2.1"):
+    torch_version_tuple = tuple(map(int, torch.__version__.split(".")[:2]))
+    if torch_version_tuple >= (2, 1):
         return system._type().name() == "System"
 
     # For older torch version, we check that we have the right properties
