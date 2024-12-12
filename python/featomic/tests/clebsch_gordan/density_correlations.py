@@ -63,8 +63,6 @@ SPHEX_HYPERS = {
     },
     "basis": {
         "type": "TensorProduct",
-        # use a small basis to make the tests faster
-        # FIXME: setting max_angular=1 breaks the tests
         "max_angular": MAX_ANGULAR,
         "radial": {"type": "Gto", "max_radial": 1},
     },

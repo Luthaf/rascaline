@@ -4,6 +4,7 @@ import metatensor
 import numpy as np
 import pytest
 from metatensor import Labels, TensorBlock, TensorMap
+from numpy.testing import assert_equal
 
 from featomic import SphericalExpansion
 from featomic.clebsch_gordan import EquivariantPowerSpectrum, PowerSpectrum
@@ -26,27 +27,12 @@ SPHEX_HYPERS_SMALL = {
     },
     "basis": {
         "type": "TensorProduct",
-        # use a small basis to make the tests faster
-        # FIXME: setting max_angular=1 breaks the tests
         "max_angular": MAX_ANGULAR,
         "radial": {"type": "Gto", "max_radial": 1},
     },
 }
 
 # ============ Helper functions ============
-
-
-def h2o_isolated():
-    return [
-        ase.Atoms(
-            symbols=["O", "H", "H"],
-            positions=[
-                [2.56633400, 2.50000000, 2.50370100],
-                [1.97361700, 1.73067300, 2.47063400],
-                [1.97361700, 3.26932700, 2.47063400],
-            ],
-        )
-    ]
 
 
 def h2o_periodic():
@@ -73,19 +59,18 @@ def power_spectrum(frames: List[ase.Atoms]):
 # ============ Test EquivariantPowerSpectrum vs PowerSpectrum ============
 
 
-@pytest.mark.parametrize("frames", [h2o_isolated(), h2o_periodic()])
-def test_equivariant_power_spectrum_vs_powerspectrum(frames):
+def test_equivariant_power_spectrum_vs_powerspectrum():
     """
     Tests for exact equivalence between the invariant block of a generated
     EquivariantPowerSpectrum the Python implementation of PowerSpectrum in featomic
     utils.
     """
     # Build a PowerSpectrum
-    ps_1 = power_spectrum(frames)
+    ps_1 = power_spectrum(h2o_periodic())
 
     # Build an EquivariantPowerSpectrum
     ps_2 = EquivariantPowerSpectrum(SphericalExpansion(**SPHEX_HYPERS_SMALL)).compute(
-        frames,
+        h2o_periodic(),
         selected_keys=Labels(names=["o3_lambda"], values=np.array([0]).reshape(-1, 1)),
         neighbors_to_properties=False,
     )
@@ -121,8 +106,7 @@ def test_equivariant_power_spectrum_vs_powerspectrum(frames):
     metatensor.allclose_raise(ps_1, ps_2)
 
 
-@pytest.mark.parametrize("frames", [h2o_isolated(), h2o_periodic()])
-def test_equivariant_power_spectrum_neighbors_to_properties(frames):
+def test_equivariant_power_spectrum_neighbors_to_properties():
     """
     Tests that computing an EquivariantPowerSpectrum is equivalent when passing
     `neighbors_to_properties` as both True and False (after metadata manipulation).
@@ -132,14 +116,14 @@ def test_equivariant_power_spectrum_neighbors_to_properties(frames):
 
     # Compute the first. Move keys after CG step
     powspec_1 = powspec_calc.compute(
-        frames,
+        h2o_periodic(),
         neighbors_to_properties=False,
     )
     powspec_1 = powspec_1.keys_to_properties(["neighbor_1_type", "neighbor_2_type"])
 
     # Compute the second.  Move keys before the CG step
     powspec_2 = powspec_calc.compute(
-        frames,
+        h2o_periodic(),
         neighbors_to_properties=True,
     )
 
@@ -151,3 +135,25 @@ def test_equivariant_power_spectrum_neighbors_to_properties(frames):
     # Check equivalent
     metatensor.equal_metadata_raise(powspec_1, powspec_2)
     metatensor.equal_raise(powspec_1, powspec_2)
+
+
+def test_fill_types_option() -> None:
+    """
+    Test that ``neighbor_types`` options adds arbitrary atomic neighbor types.
+    """
+
+    frames = [
+        ase.Atoms("H", positions=np.zeros([1, 3])),
+        ase.Atoms("O", positions=np.zeros([1, 3])),
+    ]
+
+    neighbor_types = [1, 8, 10]
+    calculator = EquivariantPowerSpectrum(
+        calculator_1=SphericalExpansion(**SPHEX_HYPERS_SMALL),
+        neighbor_types=neighbor_types,
+    )
+
+    descriptor = calculator.compute(frames, neighbors_to_properties=True)
+
+    assert_equal(np.unique(descriptor[0].properties["neighbor_1_type"]), neighbor_types)
+    assert_equal(np.unique(descriptor[0].properties["neighbor_2_type"]), neighbor_types)

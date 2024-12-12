@@ -189,20 +189,20 @@ def test_fill_neighbor_type() -> None:
 
 
 def test_fill_types_option() -> None:
-    """Test that ``types`` options adds arbitrary atomic types."""
+    """Test that ``neighbor_types`` options adds arbitrary atomic neighbor types."""
 
     frames = [
         ase.Atoms("H", positions=np.zeros([1, 3])),
         ase.Atoms("O", positions=np.zeros([1, 3])),
     ]
 
-    types = [1, 8, 10]
-    calculator = PowerSpectrum(calculator_1=soap_spx(), types=types)
+    neighbor_types = [1, 8, 10]
+    calculator = PowerSpectrum(calculator_1=soap_spx(), neighbor_types=neighbor_types)
 
     descriptor = calculator.compute(frames)
 
-    assert_equal(np.unique(descriptor[0].properties["neighbor_1_type"]), types)
-    assert_equal(np.unique(descriptor[0].properties["neighbor_2_type"]), types)
+    assert_equal(np.unique(descriptor[0].properties["neighbor_1_type"]), neighbor_types)
+    assert_equal(np.unique(descriptor[0].properties["neighbor_2_type"]), neighbor_types)
 
 
 def _finite_differences_positions(

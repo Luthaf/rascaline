@@ -279,8 +279,6 @@ def _match_samples_of_blocks(
     Assumes that the samples dimensions of the block with fewer dimensions are a subset
     of the dimensions of the other. If the dimensions are not a subset, an error is
     raised.
-
-    TODO: implement for samples dimensions that are not a subset of the other.
     """
     # The number of dimensions are the same
     if len(block_1.samples.names) == len(block_2.samples.names):

@@ -26,21 +26,9 @@ class EquivariantPowerSpectrum(TorchModule):
     Computes a general equivariant power spectrum descriptor of two calculators.
 
     If only ``calculator_1`` is provided, the power spectrum is computed as the density
-    auto-correlation of the first calculator. If both calculators are provided, the
-    power spectrum is computed as the density cross-correlation of the two calculators.
-
-
-    :param calculator_1: first calculator
-    :param calculator_1: second calculator
-    :param types: List of ``"neighbor_type"`` to use in the properties of the output.
-        This option might be useful when running the calculation on subset of a whole
-        dataset and trying to join along the ``sample`` dimension after the calculation.
-        If ``None``, blocks are filled with ``"neighbor_type"`` found in the systems.
-        This parameter is only used if ``neighbors_to_properties=True`` is passed to the
-        :py:meth:`compute` method.
-    :raises ValueError: If other calculators than
-        :py:class:`featomic.SphericalExpansion` or
-        :py:class:`featomic.LodeSphericalExpansion` are used.
+    auto-correlation of the density produced by the first calculator. If
+    ``calculator_2`` is also provided, the power spectrum is computed as the density
+    cross-correlation of the densities produced by the two calculators.
 
     Example
     -------
@@ -106,8 +94,8 @@ class EquivariantPowerSpectrum(TorchModule):
     ... )
     >>> power_spectrum = calculator.compute(atoms, neighbors_to_properties=True)
 
-    The resulting equivariants are stored as :py:class:`metatensor.TensorMap` as
-    for any other calculator. The keys contain the symmetry information:
+    The resulting equivariants are stored as :py:class:`metatensor.TensorMap` as for any
+    other calculator. The keys contain the symmetry information:
 
     >>> power_spectrum.keys
     Labels(
@@ -131,8 +119,8 @@ class EquivariantPowerSpectrum(TorchModule):
     )
 
     The block properties contain the angular order of the combined blocks ("l_1",
-    "l_2"), along with the neighbor types ("neighbor_1_type", "neighbor_2_type")
-    and radial channel indices.
+    "l_2"), along with the neighbor types ("neighbor_1_type", "neighbor_2_type") and
+    radial channel indices.
 
     >>> power_spectrum[0].properties.names
     ['l_1', 'l_2', 'neighbor_1_type', 'n_1', 'neighbor_2_type', 'n_2']
@@ -147,26 +135,36 @@ class EquivariantPowerSpectrum(TorchModule):
         self,
         calculator_1: CalculatorBase,
         calculator_2: Optional[CalculatorBase] = None,
-        types: Optional[List[int]] = None,
+        neighbor_types: Optional[List[int]] = None,
         *,
         dtype: Optional[DType] = None,
         device: Optional[Device] = None,
     ):
         """
-        :param calculator_1:
-        :param atom_types: :py:class:`list` of :py:class:`str`, the global atom types
-            to compute neighbor correlations for. Ensures consistent global properties
-            dimensions.
+        Constructs the equivariant power spectrum calculator.
+
+        :param calculator_1: first calculator that computes a density descriptor, either
+            a :py:class:`featomic.SphericalExpansion` or
+            :py:class:`featomic.LodeSphericalExpansion`.
+        :param calculator_2: optional second calculator that computes a density
+            descriptor, either a :py:class:`featomic.SphericalExpansion` or
+            :py:class:`featomic.LodeSphericalExpansion`. If ``None``, the equivariant
+            power spectrum is computed as the auto-correlation of the first calculator.
+            Defaults to ``None``.
+        :param neighbor_types: List of ``"neighbor_type"`` to use in the properties of
+            the output. This option might be useful when running the calculation on
+            subset of a whole dataset and trying to join along the ``sample`` dimension
+            after the calculation. If ``None``, blocks are filled with
+            ``"neighbor_type"`` found in the systems. This parameter is only used if
+            ``neighbors_to_properties=True`` is passed to the :py:meth:`compute` method.
         :param dtype: the scalar type to use to store coefficients
-        :param device: the computational device to use for calculations. This must be
-            ``"cpu"`` if ``array_backend="numpy"``.
+        :param device: the computational device to use for calculations.
         """
 
         super().__init__()
-        super().__init__()
         self.calculator_1 = calculator_1
         self.calculator_2 = calculator_2
-        self.types = types
+        self.neighbor_types = neighbor_types
         self.dtype = dtype
         self.device = device
 
@@ -222,18 +220,27 @@ class EquivariantPowerSpectrum(TorchModule):
         neighbors_to_properties: bool = False,
     ) -> TensorMap:
         """
-        Computes an equivariant power spectrum, or "lambda-SOAP".
+        Computes an equivariant power spectrum, also called "Lambda-SOAP" when doing a
+        self-correlation of the SOAP density.
 
         First computes a :py:class:`SphericalExpansion` density descriptor of body order
         2.
 
-        The key dimension 'neighbor_type' is then moved to properties so that they are
-        correlated. The global atom types passed in the constructor are taken into
-        account so that a consistent output properties dimension is achieved regardless
-        of the atomic composition of the systems passed in ``systems``.
+        Before performing the Clebsch-Gordan tensor product, the spherical expansion
+        density can be densified by moving the key dimension "neighbor_type" to the
+        block properties. This is controlled by the ``neighbors_to_properties``
+        parameter. Depending on the specific systems descriptors are being computed for,
+        the sparsity or density of the density can affect the computational cost of the
+        Clebsch-Gordan tensor product.
+
+        If ``neighbors_to_properties=True`` and ``neighbor_types`` have been passed to
+        the constructor, property dimensions are created for all of these global atom
+        types when moving the key dimension to properties. This ensures that the output
+        properties dimension is of consistent size across all systems passed in
+        ``systems``.
 
         Finally a single Clebsch-Gordan tensor product is taken to produce a body order
-        3 equivariant power spectrum, or "lambda-SOAP".
+        3 equivariant power spectrum.
 
         :param selected_keys: :py:class:`Labels`, the output keys to computed. If
             ``None``, all keys are computed. Subsets of key dimensions can be passed to
@@ -320,16 +327,16 @@ class EquivariantPowerSpectrum(TorchModule):
         density_2 = operations.rename_dimension(density_2, "properties", "n", "n_2")
 
         if neighbors_to_properties:
-            if self.types is None:  # just move neighbor type
+            if self.neighbor_types is None:  # just move neighbor type
                 keys_to_move_1 = "neighbor_1_type"
                 keys_to_move_2 = "neighbor_2_type"
             else:  # use the user-specified types
                 values = _dispatch.list_to_array(
                     array=density_1.keys.values,
-                    data=[[t] for t in self.types],
+                    data=[[t] for t in self.neighbor_types],
                 )
-                keys_to_move_1 = Labels(names="neighbor_type", values=values)
-                keys_to_move_2 = Labels(names="neighbor_type", values=values)
+                keys_to_move_1 = Labels(names="neighbor_1_type", values=values)
+                keys_to_move_2 = Labels(names="neighbor_2_type", values=values)
 
             density_1 = density_1.keys_to_properties(keys_to_move_1)
             density_2 = density_2.keys_to_properties(keys_to_move_2)
