@@ -6,10 +6,9 @@ from featomic.torch import SphericalExpansion
 from featomic.torch.clebsch_gordan import EquivariantPowerSpectrum
 
 
-MAX_ANGULAR = 2
 SPHEX_HYPERS_SMALL = {
     "cutoff": {
-        "radius": 2.5,
+        "radius": 5.5,
         "smoothing": {"type": "ShiftedCosine", "width": 0.5},
     },
     "density": {
@@ -18,10 +17,8 @@ SPHEX_HYPERS_SMALL = {
     },
     "basis": {
         "type": "TensorProduct",
-        # use a small basis to make the tests faster
-        # FIXME: setting max_angular=1 breaks the tests
-        "max_angular": MAX_ANGULAR,
-        "radial": {"type": "Gto", "max_radial": 1},
+        "max_angular": 6,
+        "radial": {"type": "Gto", "max_radial": 4},
     },
 }
 

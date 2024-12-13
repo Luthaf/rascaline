@@ -15,7 +15,6 @@ ase = pytest.importorskip("ase")
 import ase.io  # noqa: E402, F811
 
 
-MAX_ANGULAR = 2
 SPHEX_HYPERS_SMALL = {
     "cutoff": {
         "radius": 2.5,
@@ -27,7 +26,7 @@ SPHEX_HYPERS_SMALL = {
     },
     "basis": {
         "type": "TensorProduct",
-        "max_angular": MAX_ANGULAR,
+        "max_angular": 2,
         "radial": {"type": "Gto", "max_radial": 1},
     },
 }
