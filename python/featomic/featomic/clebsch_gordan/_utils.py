@@ -279,13 +279,35 @@ def _match_samples_of_blocks(
     Assumes that the samples dimensions of the block with fewer dimensions are a subset
     of the dimensions of the other. If the dimensions are not a subset, an error is
     raised.
-
-    TODO: implement for samples dimensions that are not a subset of the other.
     """
-    # If the number of dimensions are the same, check they are equivalent and return
+    # The number of dimensions are the same
     if len(block_1.samples.names) == len(block_2.samples.names):
-        if not block_1.samples == block_2.samples:
-            raise ValueError("Samples dimensions of the two blocks are not equivalent.")
+        if block_1.samples == block_2.samples:  # nothing needs to be done
+            return block_1, block_2
+
+        # Find the union of samples and broadcast both blocks along samples axis
+        new_blocks: List[TensorBlock] = []
+        union, mapping_1, mapping_2 = block_1.samples.union_and_mapping(block_2.samples)
+        for block, mapping in [(block_1, mapping_1), (block_2, mapping_2)]:
+            new_block_vals = _dispatch.zeros_like(
+                block.values, [len(union)] + [i for i in block.values.shape[1:]]
+            )
+            new_block_vals[mapping] = block.values
+            new_block = TensorBlock(
+                values=new_block_vals,
+                samples=union,
+                components=block.components,
+                properties=block.properties,
+            )
+            new_blocks.append(new_block)
+
+        block_1, block_2 = new_blocks
+
+        return block_1, block_2
+
+    # Otherwise, the samples dimensions of one block is assumed (and checked) to be a
+    # subset of the other.
+    assert len(block_1.samples.names) != len(block_2.samples.names)
 
     # First find the block with fewer dimensions. Reorder to have this block on the
     # 'left' for simplicity, but record the original order for the final output

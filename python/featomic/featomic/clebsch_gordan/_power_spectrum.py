@@ -40,17 +40,6 @@ class PowerSpectrum(TorchModule):
     can only be :py:class:`featomic.SphericalExpansion` or
     :py:class:`featomic.LodeSphericalExpansion`.
 
-    :param calculator_1: first calculator
-    :param calculator_1: second calculator
-    :param types: List of ``"neighbor_type"`` to use in the properties of the output.
-        This option might be useful when running the calculation on subset of a whole
-        dataset and trying to join along the ``sample`` dimension after the calculation.
-        If ``None``, blocks are filled with ``"neighbor_type"`` found in the systems.
-    :raises ValueError: If other calculators than
-        :py:class:`featomic.SphericalExpansion` or
-        :py:class:`featomic.LodeSphericalExpansion` are used.
-    :raises ValueError: If ``"max_angular"`` of both calculators is different.
-
     Example
     -------
     As an example we calculate the power spectrum for a short range (sr) spherical
@@ -131,19 +120,38 @@ class PowerSpectrum(TorchModule):
 
     .. seealso::
         If you are interested in the SOAP power spectrum you can the use the
-        faster :py:class:`featomic.SoapPowerSpectrum`.
+        faster :py:class:`featomic.SoapPowerSpectrum`. For an equivariant version of
+        this calculator, computing the power spectrum for covariant as well as
+        invariant blocks, see :py:class:`featomic.EquivariantPowerSpectrum`.
     """
 
     def __init__(
         self,
         calculator_1: CalculatorBase,
         calculator_2: Optional[CalculatorBase] = None,
-        types: Optional[List[int]] = None,
+        neighbor_types: Optional[List[int]] = None,
     ):
+        """
+        Constructs the power spectrum calculator.
+
+        :param calculator_1: first calculator that computes a density descriptor, either
+            a :py:class:`featomic.SphericalExpansion` or
+            :py:class:`featomic.LodeSphericalExpansion`.
+        :param calculator_2: optional second calculator that computes a density
+            descriptor, either a :py:class:`featomic.SphericalExpansion` or
+            :py:class:`featomic.LodeSphericalExpansion`. If ``None``, the power spectrum
+            is computed as the auto-correlation of the first calculator. Defaults to
+            ``None``.
+        :param neighbor_types: List of ``"neighbor_type"`` to use in the properties of
+            the output. This option might be useful when running the calculation on
+            subset of a whole dataset and trying to join along the ``sample`` dimension
+            after the calculation. If ``None``, blocks are filled with
+            ``"neighbor_type"`` found in the systems.
+        """
         super().__init__()
         self.calculator_1 = calculator_1
         self.calculator_2 = calculator_2
-        self.types = types
+        self.neighbor_types = neighbor_types
 
         supported_calculators = ["lode_spherical_expansion", "spherical_expansion"]
 
@@ -221,7 +229,7 @@ class PowerSpectrum(TorchModule):
         assert spherical_expansion_1.keys.names == expected_key_names
         assert spherical_expansion_1.property_names == ["n"]
 
-        if self.types is None:
+        if self.neighbor_types is None:
             # Fill blocks with `neighbor_type` from ALL blocks. If we don't do this
             # merging blocks along the ``sample`` direction might be not possible.
             array = spherical_expansion_1.keys.column("neighbor_type")
@@ -230,7 +238,7 @@ class PowerSpectrum(TorchModule):
             # Take user provided `neighbor_type` list.
             values = _dispatch.list_to_array(
                 array=spherical_expansion_1.keys.values,
-                data=[[t] for t in self.types],
+                data=[[t] for t in self.neighbor_types],
             )
 
         keys_to_move = Labels(names="neighbor_type", values=values)
@@ -248,13 +256,13 @@ class PowerSpectrum(TorchModule):
             assert spherical_expansion_2.keys.names == expected_key_names
             assert spherical_expansion_2.property_names == ["n"]
 
-            if self.types is None:
+            if self.neighbor_types is None:
                 array = spherical_expansion_2.keys.column("neighbor_type")
                 values = _dispatch.unique(array).reshape(-1, 1)
             else:
                 values = _dispatch.list_to_array(
                     array=spherical_expansion_2.keys.values,
-                    data=[[t] for t in self.types],
+                    data=[[t] for t in self.neighbor_types],
                 )
 
             keys_to_move = Labels(names="neighbor_type", values=values)

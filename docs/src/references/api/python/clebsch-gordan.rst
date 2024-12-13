@@ -1,6 +1,9 @@
 Clebsch-Gordan products
 =======================
 
+.. autoclass:: featomic.clebsch_gordan.EquivariantPowerSpectrum
+    :members:
+
 .. autoclass:: featomic.clebsch_gordan.PowerSpectrum
     :members:
 

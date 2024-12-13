@@ -22,7 +22,7 @@ SPHERICAL_EXPANSION_HYPERS = {
     },
     "basis": {
         "type": "TensorProduct",
-        "max_angular": 3,
+        "max_angular": 2,
         "radial": {"type": "Gto", "max_radial": 3},
     },
 }
