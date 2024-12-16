@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["EULER"],"fn":["compute_k_vectors","erf","erfc","exp1","expi"],"struct":["KVector","SphericalHarmonics","SphericalHarmonicsArray"]};

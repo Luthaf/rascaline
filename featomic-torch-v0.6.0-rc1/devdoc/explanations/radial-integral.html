@@ -1,0 +1,667 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" /><link rel="prev" title="Python and C interface" href="interfaces.html" />
+
+    <!-- Generated with Sphinx 7.2.6 and Furo 2024.08.06 -->
+        <title>SOAP and LODE radial integrals - Featomic 0.6.0-rc2 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=354aac6f" />
+    <link rel="stylesheet" type="text/css" href="../../_static/featomic.css?v=191cc0c0" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=d2d258e8" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css?v=302659d7" />
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/fontawesome.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/solid.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/brands.min.css" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../index.html"><div class="brand">Featomic 0.6.0-rc2 documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
+  
+  
+  <span class="sidebar-brand-text">Featomic 0.6.0-rc2 documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../get-started/index.html">Getting started</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of Getting started</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../get-started/featomic.html">What is featomic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../get-started/installation.html">Installation</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../get-started/tutorials.html">Tutorials: using featomic from Python</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of Tutorials: using featomic from Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../examples/first-calculation.html">First descriptor computation</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../how-to/index.html">How-to guides</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of How-to guides</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../how-to/computing-soap.html">Computing SOAP features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-to/sample-selection.html">Sample Selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-to/property-selection.html">Property Selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-to/keys-selection.html">Keys selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-to/splined-radial-integral.html">Splined radial integral</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-to/long-range.html">Long-range only LODE descriptor</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../references/index.html">Reference guides</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle navigation of Reference guides</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../references/calculators/index.html">Calculator reference</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation of Calculator reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../references/calculators/spherical-expansion.html">Spherical expansion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../references/calculators/spherical-expansion-by-pair.html">Spherical expansion by pair</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../references/calculators/lode-spherical-expansion.html">LODE spherical expansion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../references/calculators/soap-radial-spectrum.html">SOAP radial spectrum</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../references/calculators/soap-power-spectrum.html">SOAP power spectrum</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../references/calculators/atomic-composition.html">Atomic Composition</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../references/calculators/neighbor-list.html">Neighbor List</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../references/calculators/sorted-distances.html">Sorted distance vector</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../references/api/index.html">API documentation</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle navigation of API documentation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../references/api/python/index.html">Python</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle navigation of Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../references/api/python/systems.html">Available system implementation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../references/api/python/calculators.html">Available Calculators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../references/api/python/misc.html">Miscellaneous</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../references/api/python/cutoff.html">Local environments</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../references/api/python/density.html">Atomic density</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../references/api/python/basis.html">Basis functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../references/api/python/splines.html">Splined radial integrals</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../references/api/python/clebsch-gordan.html">Clebsch-Gordan products</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../references/api/torch/index.html">TorchScript</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle navigation of TorchScript</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../references/api/torch/systems.html">System</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../references/api/torch/calculators.html">Calculators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../references/api/torch/clebsch-gordan.html">Clebsch-Gordan products</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../../references/api/torch/cxx/index.html">TorchScript C++ API reference</a><input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><div class="visually-hidden">Toggle navigation of TorchScript C++ API reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="../../references/api/torch/cxx/calculators.html">Calculators</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../references/api/rust.html">Rust</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../references/api/c/index.html">C</a><input class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><div class="visually-hidden">Toggle navigation of C</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../references/api/c/systems.html">Defining systems</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../references/api/c/calculators.html">Dealing with calculators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../references/api/c/misc.html">Miscellaneous</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../references/api/cxx/index.html">C++</a><input class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><div class="visually-hidden">Toggle navigation of C++</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../references/api/cxx/systems.html">Defining systems</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../references/api/cxx/calculators.html">Dealing with calculators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../references/api/cxx/misc.html">Miscellaneous</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../explanations/index.html">Explanations</a><input class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><div class="visually-hidden">Toggle navigation of Explanations</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../explanations/concepts.html">Core concepts of featomic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../explanations/soap.html">What is SOAP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../explanations/rotation_adapted.html">Rotation-Adapted Features</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="../index.html">Developer documentation</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><div class="visually-hidden">Toggle navigation of Developer documentation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../get-started.html">Getting started</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../how-to/index.html">How-to guides</a><input class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><div class="visually-hidden">Toggle navigation of How-to guides</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../how-to/new-calculator.html">Adding a new calculator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../how-to/profiling.html">Profiling calculation</a></li>
+</ul>
+</li>
+<li class="toctree-l2 current has-children"><a class="reference internal" href="index.html">Explanations</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><div class="visually-hidden">Toggle navigation of Explanations</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="architecture.html">Code organization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="interfaces.html">Python and C interface</a></li>
+<li class="toctree-l3 current current-page"><a class="current reference internal" href="#">SOAP and LODE radial integrals</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../../_sources/devdoc/explanations/radial-integral.rst.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="soap-and-lode-radial-integrals">
+<span id="radial-integral"></span><h1>SOAP and LODE radial integrals<a class="headerlink" href="#soap-and-lode-radial-integrals" title="Link to this heading">¶</a></h1>
+<p>On this page, we describe the exact mathematical expression that are implemented
+in the radial integral and the splined radial integral classes i.e.
+<a class="reference internal" href="../../references/api/python/splines.html#python-utils-splines"><span class="std std-ref">Splined radial integrals</span></a>. Note that this page assumes knowledge of spherical
+expansion &amp; friends and currently serves as a reference page for the developers
+to support the implementation.</p>
+<section id="preliminaries">
+<h2>Preliminaries<a class="headerlink" href="#preliminaries" title="Link to this heading">¶</a></h2>
+<p>In this subsection, we briefly provide all the preliminary knowledge that is needed to
+understand what the radial integral class is doing. The actual explanation for what is
+computed in the radial integral class can be found in the next subsection (1.2). The
+spherical expansion coefficients <span class="math notranslate nohighlight">\(\langle anlm | \rho_i \rangle\)</span> are completely
+determined by specifying two ingredients:</p>
+<ul>
+<li><p>the atomic density function <span class="math notranslate nohighlight">\(g(r)\)</span> as implemented in
+<a class="reference internal" href="../../references/api/python/density.html#python-atomic-density"><span class="std std-ref">Atomic density</span></a>, often chosen to be a Gaussian or Delta function, that
+defined the type of density under consideration. For a given central atom <span class="math notranslate nohighlight">\(i\)</span> in
+the system, the total density function <span class="math notranslate nohighlight">\(\rho_i(\boldsymbol{r})\)</span> around is
+then defined as <span class="math notranslate nohighlight">\(\rho_i(\boldsymbol{r}) = \sum_{j} g(\boldsymbol{r} -
+\boldsymbol{r}_{ij})\)</span>.</p></li>
+<li><p>the radial basis functions <span class="math notranslate nohighlight">\(R_{nl}(r)\)</span> as implementated
+<a class="reference internal" href="../../references/api/python/basis.html#python-radial-basis"><span class="std std-ref">Radial basis functions</span></a>, on which the density <span class="math notranslate nohighlight">\(\rho_i\)</span> is projected. To be
+more precise, the actual basis functions are of the form</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[B_{nlm}(\boldsymbol{r}) = R_{nl}(r)Y_{lm}(\hat{r}),\]</div>
+</div>
+<p>where <span class="math notranslate nohighlight">\(Y_{lm}(\hat{r})\)</span> are the real spherical harmonics evaluated at the point
+<span class="math notranslate nohighlight">\(\hat{r}\)</span>, i.e. at the spherical angles <span class="math notranslate nohighlight">\((\theta, \phi)\)</span> that determine
+the orientation of the unit vector <span class="math notranslate nohighlight">\(\hat{r} = \boldsymbol{r}/r\)</span>.</p>
+</li>
+</ul>
+<p>The spherical expansion coefficient <span class="math notranslate nohighlight">\(\langle nlm | \rho_i \rangle\)</span> (we omit the
+atom type index <span class="math notranslate nohighlight">\(a\)</span> for simplicity) is then defined as</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{aligned}
+   \langle nlm | \rho_i \rangle &amp; = \int \mathrm{d}^3\boldsymbol{r}
+   B_{nlm}(\boldsymbol{r}) \rho_i(\boldsymbol{r}) \\ \label{expansion_coeff_def} &amp; =
+   \int \mathrm{d}^3\boldsymbol{r} R_{nl}(r)Y_{lm}(\hat{r})\rho_i(\boldsymbol{r}).
+\end{aligned}\end{split}\]</div>
+</div>
+<p>In practice, the atom centered density <span class="math notranslate nohighlight">\(\rho_i\)</span> is a superposition of the neighbor
+contributions, namely <span class="math notranslate nohighlight">\(\rho_i(\boldsymbol{r}) = \sum_{j} g(\boldsymbol{r} -
+\boldsymbol{r}_{ij})\)</span>. Due to linearity of integration, evaluating the integral can then
+be simplified to</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{aligned}
+   \langle nlm | \rho_i \rangle &amp; = \int \mathrm{d}^3\boldsymbol{r}
+   R_{nl}(r)Y_{lm}(\hat{r})\rho_i(\boldsymbol{r}) \\ &amp; = \int
+   \mathrm{d}^3\boldsymbol{r} R_{nl}(r)Y_{lm}(\hat{r})\left( \sum_{j}
+   g(\boldsymbol{r} - \boldsymbol{r}_{ij})\right) \\ &amp; = \sum_{j} \int
+   \mathrm{d}^3\boldsymbol{r} R_{nl}(r)Y_{lm}(\hat{r}) g(\boldsymbol{r} -
+   \boldsymbol{r}_{ij}) \\ &amp; = \sum_j \langle nlm | g;\boldsymbol{r}_{ij} \rangle.
+\end{aligned}\end{split}\]</div>
+</div>
+<p>Thus, instead of having to compute integrals for arbitrary densities <span class="math notranslate nohighlight">\(\rho_i\)</span>, we
+have reduced our problem to the evaluation of integrals of the form</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[\begin{aligned}
+   \langle nlm | g;\boldsymbol{r}_{ij} \rangle &amp; = \int \mathrm{d}^3\boldsymbol{r}
+   R_{nl}(r)Y_{lm}(\hat{r})g(\boldsymbol{r} - \boldsymbol{r}_{ij}),
+\end{aligned}\]</div>
+</div>
+<p>which are completely specified by</p>
+<ul class="simple">
+<li><p>the density function <span class="math notranslate nohighlight">\(g(\boldsymbol{r})\)</span></p></li>
+<li><p>the radial basis <span class="math notranslate nohighlight">\(R_{nl}(r)\)</span></p></li>
+<li><p>the position of the neighbor atom <span class="math notranslate nohighlight">\(\boldsymbol{r}_{ij}\)</span> relative to the center
+atom</p></li>
+</ul>
+</section>
+<section id="the-radial-integral-class">
+<h2>The radial integral class<a class="headerlink" href="#the-radial-integral-class" title="Link to this heading">¶</a></h2>
+<p>In the previous subsection, we have explained how the computation of the spherical
+expansion coefficients can be reduced to integrals of the form</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[\begin{aligned}
+   \langle nlm | g;\boldsymbol{r}_{ij} \rangle &amp; = \int \mathrm{d}^3\boldsymbol{r}
+   R_{nl}(r)Y_{lm}(\hat{r})g(\boldsymbol{r} - \boldsymbol{r}_{ij}).
+\end{aligned}\]</div>
+</div>
+<p>If the atomic density is spherically symmetric, i.e. if <span class="math notranslate nohighlight">\(g(\boldsymbol{r}) = g(r)\)</span>
+this integral can always be written in the following form:</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[\begin{aligned} \label{expansion_coeff_spherical_symmetric}
+   \langle nlm | g;\boldsymbol{r}_{ij} \rangle &amp; =
+   Y_{lm}(\hat{r}_{ij})I_{nl}(r_{ij}).
+\end{aligned}\]</div>
+</div>
+<p>The key point is that the dependence on the vectorial position
+<span class="math notranslate nohighlight">\(\boldsymbol{r}_{ij}\)</span> is split into a factor that contains information about the
+orientation of this vector, namely <span class="math notranslate nohighlight">\(Y_{lm}(\hat{r}_{ij})\)</span>, which is just the
+spherical harmonic evaluated at <span class="math notranslate nohighlight">\(\hat{r}_{ij}\)</span>, and a remaining part that captures
+the dependence on the distance of atom <span class="math notranslate nohighlight">\(j\)</span> from the central atom <span class="math notranslate nohighlight">\(i\)</span>, namely
+<span class="math notranslate nohighlight">\(I_{nl}(r_{ij})\)</span>, which we shall call the radial integral. The radial integral
+class computes and outputs this radial part <span class="math notranslate nohighlight">\(I_{nl}(r_{ij})\)</span>. Since the angular
+part is just the usual spherical harmonic, this is the part that also depends on the
+choice of atomic density <span class="math notranslate nohighlight">\(g(r)\)</span>, as well as the radial basis <span class="math notranslate nohighlight">\(R_{nl}(r)\)</span>. In
+the following, for users only interested in a specific type of density, we provide the
+explicit expressions of <span class="math notranslate nohighlight">\(I_{nl}(r)\)</span> for the Delta and Gaussian densities, followed
+by the general expression.</p>
+<section id="delta-densities">
+<h3>Delta Densities<a class="headerlink" href="#delta-densities" title="Link to this heading">¶</a></h3>
+<p>Here, we consider the especially simple special case where the atomic density function
+<span class="math notranslate nohighlight">\(g(\boldsymbol{r}) = \delta(\boldsymbol{r})\)</span>. Then:</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{aligned}
+   \langle nlm | g;\boldsymbol{r}_{ij} \rangle &amp; = \int \mathrm{d}^3\boldsymbol{r}
+   R_{nl}(r)Y_{lm}(\hat{r})g(\boldsymbol{r} - \boldsymbol{r}_{ij}) \\ &amp; = \int
+   \mathrm{d}^3\boldsymbol{r} R_{nl}(r)Y_{lm}(\hat{r})\delta(\boldsymbol{r} -
+   \boldsymbol{r}_{ij}) \\ &amp; = R_{nl}(r) Y_{lm}(\hat{r}_{ij}) =
+   B_{nlm}(\boldsymbol{r}_{ij}).
+\end{aligned}\end{split}\]</div>
+</div>
+<p>Thus, in this particularly simple case, the radial integral is simply the radial basis
+function evaluated at the pair distance <span class="math notranslate nohighlight">\(r_{ij}\)</span>, and we see that the integrals
+have indeed the form presented above.</p>
+</section>
+<section id="gaussian-densities">
+<h3>Gaussian Densities<a class="headerlink" href="#gaussian-densities" title="Link to this heading">¶</a></h3>
+<p>Here, we consider another popular use case, where the atomic density function is a
+Gaussian. In featomic, we use the convention</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[g(r) = \frac{1}{(\pi \sigma^2)^{3/4}}e^{-\frac{r^2}{2\sigma^2}}.\]</div>
+</div>
+<p>The prefactor was chosen such that the “L2-norm” of the Gaussian</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[\begin{aligned}
+   \|g\|^2 = \int \mathrm{d}^3\boldsymbol{r} |g(r)|^2 = 1,
+\end{aligned}\]</div>
+</div>
+<p>but does not affect the following calculations in any way. With these conventions, it
+can be shown that the integral has the desired form</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{aligned}
+   \langle nlm | g;\boldsymbol{r}_{ij} \rangle &amp; = \int \mathrm{d}^3\boldsymbol{r}
+   R_{nl}(r)Y_{lm}(\hat{r})g(\boldsymbol{r} - \boldsymbol{r}_{ij}) \\ &amp; =
+   Y_{lm}(\hat{r}_{ij}) \cdot I_{nl}(r_{ij})
+\end{aligned}\end{split}\]</div>
+</div>
+<p>with</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[I_{nl}(r_{ij}) = \frac{1}{(\pi \sigma^2)^{3/4}}4\pi e^{-\frac{r_{ij}^2}{2\sigma^2}}
+\int_0^\infty \mathrm{d}r r^2 R_{nl}(r) e^{-\frac{r^2}{2\sigma^2}}
+i_l\left(\frac{rr_{ij}}{\sigma^2}\right),\]</div>
+</div>
+<p>where <span class="math notranslate nohighlight">\(i_l\)</span> is a modified spherical Bessel function. The first factor, of course,
+is just the normalization factor of the Gaussian density. See the next two subsections
+for a derivation of this formula.</p>
+</section>
+<section id="derivation-of-the-general-case">
+<h3>Derivation of the General Case<a class="headerlink" href="#derivation-of-the-general-case" title="Link to this heading">¶</a></h3>
+<p>We now derive an explicit formula for radial integral that works for any density. Let
+<span class="math notranslate nohighlight">\(g(r)\)</span> be a generic spherically symmetric density function. Our goal will be to
+show that</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[\langle nlm | g;\boldsymbol{r}_{ij} \rangle = Y_{lm}(\hat{r}_{ij}) \left[2\pi
+\int_0^\infty \mathrm{d}r r^2 R_{nl}(r) \int_{-1}^1 \mathrm{d}(\cos\theta)
+P_l(\cos\theta) g(\sqrt{r^2+r_{ij}^2-2rr_{ij}\cos\theta}) \right]\]</div>
+</div>
+<p>and thus we have the desired form <span class="math notranslate nohighlight">\(\langle nlm | g;\boldsymbol{r}_{ij} \rangle =
+Y_{lm}(\hat{r}_{ij}) I_{nl}(r_{ij})\)</span> with</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[\begin{aligned}
+   I_{nl}(r_{ij}) = 2\pi \int_0^\infty \mathrm{d}r r^2 R_{nl}(r) \int_{-1}^1
+   \mathrm{d}u P_l(u) g(\sqrt{r^2+r_{ij}^2-2rr_{ij}u}),
+\end{aligned}\]</div>
+</div>
+<p>where <span class="math notranslate nohighlight">\(P_l(x)\)</span> is the <span class="math notranslate nohighlight">\(l\)</span>-th Legendre polynomial.</p>
+</section>
+</section>
+<section id="derivation-of-the-explicit-radial-integral-for-gaussian-densities">
+<h2>Derivation of the explicit radial integral for Gaussian densities<a class="headerlink" href="#derivation-of-the-explicit-radial-integral-for-gaussian-densities" title="Link to this heading">¶</a></h2>
+<p>Denoting by <span class="math notranslate nohighlight">\(\theta(\boldsymbol{r},\boldsymbol{r}_{ij})\)</span> the angle between a
+generic position vector <span class="math notranslate nohighlight">\(\boldsymbol{r}\)</span> and the vector
+<span class="math notranslate nohighlight">\(\boldsymbol{r}_{ij}\)</span>, we can write</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{aligned}
+   g(\boldsymbol{r}- \boldsymbol{r}_{ij}) &amp; = \frac{1}{(\pi
+   \sigma^2)^{3/4}}e^{-\frac{(\boldsymbol{r}- \boldsymbol{r}_{ij})^2}{2\sigma^2}} \\
+   &amp; = \frac{1}{(\pi
+   \sigma^2)^{3/4}}e^{-\frac{(r_{ij})^2}{2\sigma^2}}e^{-\frac{(\boldsymbol{r}^2-
+   2\boldsymbol{r}\boldsymbol{r}_{ij})}{2\sigma^2}},
+\end{aligned}\end{split}\]</div>
+</div>
+<p>where the first factor no longer depends on the integration variable <span class="math notranslate nohighlight">\(r\)</span>.</p>
+</section>
+<section id="analytical-expressions-for-the-gto-basis">
+<h2>Analytical Expressions for the GTO Basis<a class="headerlink" href="#analytical-expressions-for-the-gto-basis" title="Link to this heading">¶</a></h2>
+<p>While the above integrals are hard to compute in general, the GTO basis is one of the
+few sets of basis functions for which many of the integrals can be evaluated
+analytically. This is also useful to test the correctness of more numerical
+implementations.</p>
+<p>The primitive basis functions are defined as</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[\begin{aligned}
+    R_{nl}(r) = R_n(r) = r^n e^{-\frac{r^2}{2\sigma_n^2}}
+\end{aligned}\]</div>
+</div>
+<p>In this form, the basis functions are not yet orthonormal, which requires an extra
+linear transformation. Since this transformation can also be applied after computing the
+integrals, we simply evaluate the radial integral with respect to these primitive basis
+functions.</p>
+<section id="real-space-integral-for-gaussian-densities">
+<h3>Real Space Integral for Gaussian Densities<a class="headerlink" href="#real-space-integral-for-gaussian-densities" title="Link to this heading">¶</a></h3>
+<p>We now evaluate</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{aligned}
+    I_{nl}(r_{ij}) &amp; = \frac{1}{(\pi \sigma^2)^{3/4}}4\pi
+    e^{-\frac{r_{ij}^2}{2\sigma^2}} \int_0^\infty \mathrm{d}r r^2 R_{nl}(r)
+    e^{-\frac{r^2}{2\sigma^2}} i_l\left(\frac{rr_{ij}}{\sigma^2}\right) \\ &amp; =
+    \frac{1}{(\pi \sigma^2)^{3/4}}4\pi e^{-\frac{r_{ij}^2}{2\sigma^2}} \int_0^\infty
+    \mathrm{d}r r^2 r^n e^{-\frac{r^2}{2\sigma_n^2}} e^{-\frac{r^2}{2\sigma^2}}
+    i_l\left(\frac{rr_{ij}}{\sigma^2}\right),
+\end{aligned}\end{split}\]</div>
+</div>
+<p>the result of which can be conveniently expressed using <span class="math notranslate nohighlight">\(a=\frac{1}{2\sigma^2}\)</span>,
+<span class="math notranslate nohighlight">\(b_n = \frac{1}{2\sigma_n^2}\)</span>, <span class="math notranslate nohighlight">\(n_\mathrm{eff}=\frac{n+l+3}{2}\)</span> and
+<span class="math notranslate nohighlight">\(l_\mathrm{eff}=l+\frac{3}{2}\)</span> as</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[\begin{aligned}
+    I_{nl}(r_{ij}) = \frac{1}{(\pi \sigma^2)^{3/4}} \cdot
+    \pi^{\frac{3}{2}}\frac{\Gamma\left(n_\mathrm{eff}\right)}{\Gamma\left(l_\mathrm{eff}\right)}\frac{(ar_{ij})^l}{(a+b)^{n_\mathrm{eff}}}M\left(n_\mathrm{eff},l_\mathrm{eff},\frac{a^2r_{ij}^2}{a^2+b^2}\right),
+\end{aligned}\]</div>
+</div>
+<p>where <span class="math notranslate nohighlight">\(M(a,b,z)\)</span> is the confluent hypergeometric function (hyp1f1).</p>
+</section>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          <a class="prev-page" href="interfaces.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Python and C interface</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2024, Guillaume Fraux, Philip Loche, Sergei Kliavinek, Kevin Kazuki Huguenin-Dumittan, Davide Tisi, Alexander Goscinski
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            <div class="icons">
+              <a class="muted-link fa-brands fa-github fa-2x" href="https://github.com/metatensor/featomic" aria-label="GitHub"></a>
+              
+            </div>
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">SOAP and LODE radial integrals</a><ul>
+<li><a class="reference internal" href="#preliminaries">Preliminaries</a></li>
+<li><a class="reference internal" href="#the-radial-integral-class">The radial integral class</a><ul>
+<li><a class="reference internal" href="#delta-densities">Delta Densities</a></li>
+<li><a class="reference internal" href="#gaussian-densities">Gaussian Densities</a></li>
+<li><a class="reference internal" href="#derivation-of-the-general-case">Derivation of the General Case</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#derivation-of-the-explicit-radial-integral-for-gaussian-densities">Derivation of the explicit radial integral for Gaussian densities</a></li>
+<li><a class="reference internal" href="#analytical-expressions-for-the-gto-basis">Analytical Expressions for the GTO Basis</a><ul>
+<li><a class="reference internal" href="#real-space-integral-for-gaussian-densities">Real Space Integral for Gaussian Densities</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../../_static/documentation_options.js?v=aaa0c780"></script>
+    <script src="../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/scripts/furo.js?v=5fa4622c"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    </body>
+</html>

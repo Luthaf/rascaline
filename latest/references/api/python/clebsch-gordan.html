@@ -1,0 +1,1131 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../../">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" /><link rel="next" title="TorchScript API reference" href="../torch/index.html" /><link rel="prev" title="Splined radial integrals" href="splines.html" />
+
+    <!-- Generated with Sphinx 7.2.6 and Furo 2024.08.06 -->
+        <title>Clebsch-Gordan products - Featomic 0.6.0-rc2 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=354aac6f" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/featomic.css?v=191cc0c0" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=d2d258e8" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=302659d7" />
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/fontawesome.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/solid.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/brands.min.css" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../../index.html"><div class="brand">Featomic 0.6.0-rc2 documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
+  
+  
+  <span class="sidebar-brand-text">Featomic 0.6.0-rc2 documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../get-started/index.html">Getting started</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of Getting started</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../get-started/featomic.html">What is featomic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../get-started/installation.html">Installation</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../get-started/tutorials.html">Tutorials: using featomic from Python</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of Tutorials: using featomic from Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../examples/first-calculation.html">First descriptor computation</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../how-to/index.html">How-to guides</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of How-to guides</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../how-to/computing-soap.html">Computing SOAP features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../how-to/sample-selection.html">Sample Selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../how-to/property-selection.html">Property Selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../how-to/keys-selection.html">Keys selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../how-to/splined-radial-integral.html">Splined radial integral</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../how-to/long-range.html">Long-range only LODE descriptor</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="../../index.html">Reference guides</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle navigation of Reference guides</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../calculators/index.html">Calculator reference</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation of Calculator reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../calculators/spherical-expansion.html">Spherical expansion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../calculators/spherical-expansion-by-pair.html">Spherical expansion by pair</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../calculators/lode-spherical-expansion.html">LODE spherical expansion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../calculators/soap-radial-spectrum.html">SOAP radial spectrum</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../calculators/soap-power-spectrum.html">SOAP power spectrum</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../calculators/atomic-composition.html">Atomic Composition</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../calculators/neighbor-list.html">Neighbor List</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../calculators/sorted-distances.html">Sorted distance vector</a></li>
+</ul>
+</li>
+<li class="toctree-l2 current has-children"><a class="reference internal" href="../index.html">API documentation</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle navigation of API documentation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l3 current has-children"><a class="reference internal" href="index.html">Python</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle navigation of Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="systems.html">Available system implementation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="calculators.html">Available Calculators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="misc.html">Miscellaneous</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cutoff.html">Local environments</a></li>
+<li class="toctree-l4"><a class="reference internal" href="density.html">Atomic density</a></li>
+<li class="toctree-l4"><a class="reference internal" href="basis.html">Basis functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="splines.html">Splined radial integrals</a></li>
+<li class="toctree-l4 current current-page"><a class="current reference internal" href="#">Clebsch-Gordan products</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../torch/index.html">TorchScript</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle navigation of TorchScript</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../torch/systems.html">System</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../torch/calculators.html">Calculators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../torch/clebsch-gordan.html">Clebsch-Gordan products</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../torch/cxx/index.html">TorchScript C++ API reference</a><input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><div class="visually-hidden">Toggle navigation of TorchScript C++ API reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="../torch/cxx/calculators.html">Calculators</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../rust.html">Rust</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../c/index.html">C</a><input class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><div class="visually-hidden">Toggle navigation of C</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../c/systems.html">Defining systems</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../c/calculators.html">Dealing with calculators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../c/misc.html">Miscellaneous</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../cxx/index.html">C++</a><input class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><div class="visually-hidden">Toggle navigation of C++</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../cxx/systems.html">Defining systems</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../cxx/calculators.html">Dealing with calculators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../cxx/misc.html">Miscellaneous</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../explanations/index.html">Explanations</a><input class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><div class="visually-hidden">Toggle navigation of Explanations</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../explanations/concepts.html">Core concepts of featomic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../explanations/soap.html">What is SOAP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../explanations/rotation_adapted.html">Rotation-Adapted Features</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../devdoc/index.html">Developer documentation</a><input class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><div class="visually-hidden">Toggle navigation of Developer documentation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../devdoc/get-started.html">Getting started</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../devdoc/how-to/index.html">How-to guides</a><input class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><div class="visually-hidden">Toggle navigation of How-to guides</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../devdoc/how-to/new-calculator.html">Adding a new calculator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../devdoc/how-to/profiling.html">Profiling calculation</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../devdoc/explanations/index.html">Explanations</a><input class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><div class="visually-hidden">Toggle navigation of Explanations</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../devdoc/explanations/architecture.html">Code organization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../devdoc/explanations/interfaces.html">Python and C interface</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../devdoc/explanations/radial-integral.html">SOAP and LODE radial integrals</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../../../_sources/references/api/python/clebsch-gordan.rst.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="clebsch-gordan-products">
+<h1>Clebsch-Gordan products<a class="headerlink" href="#clebsch-gordan-products" title="Link to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="featomic.clebsch_gordan.EquivariantPowerSpectrum">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">featomic.clebsch_gordan.</span></span><span class="sig-name descname"><span class="pre">EquivariantPowerSpectrum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">calculator_1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="calculators.html#featomic.calculators.CalculatorBase" title="featomic.calculator_base.CalculatorBase"><span class="pre">CalculatorBase</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">calculator_2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="calculators.html#featomic.calculators.CalculatorBase" title="featomic.calculator_base.CalculatorBase"><span class="pre">CalculatorBase</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">neighbor_types</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.2)"><span class="pre">dtype</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://pytorch.org/docs/stable/tensor_attributes.html#torch.dtype" title="(in PyTorch v2.5)"><span class="pre">dtype</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pytorch.org/docs/stable/tensor_attributes.html#torch.device" title="(in PyTorch v2.5)"><span class="pre">device</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#featomic.clebsch_gordan.EquivariantPowerSpectrum" title="Link to this definition">¶</a></dt>
+<dd><p>Computes a general equivariant power spectrum descriptor of two calculators.</p>
+<p>If only <code class="docutils literal notranslate"><span class="pre">calculator_1</span></code> is provided, the power spectrum is computed as the density
+auto-correlation of the density produced by the first calculator. If
+<code class="docutils literal notranslate"><span class="pre">calculator_2</span></code> is also provided, the power spectrum is computed as the density
+cross-correlation of the densities produced by the two calculators.</p>
+<section id="example">
+<h2>Example<a class="headerlink" href="#example" title="Link to this heading">¶</a></h2>
+<p>As an example we calculate the equivariant power spectrum for a short range (sr)
+spherical expansion and a long-range (lr) LODE spherical expansion for a NaCl
+crystal.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">featomic</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">ase</span>
+</pre></div>
+</div>
+<p>Construct the NaCl crystal</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">atoms</span> <span class="o">=</span> <span class="n">ase</span><span class="o">.</span><span class="n">Atoms</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">symbols</span><span class="o">=</span><span class="s2">&quot;NaCl&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">positions</span><span class="o">=</span><span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">]],</span>
+<span class="gp">... </span>    <span class="n">pbc</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">cell</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Define the hyper parameters for the short-range spherical expansion</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sr_hypers</span> <span class="o">=</span> <span class="p">{</span>
+<span class="gp">... </span>    <span class="s2">&quot;cutoff&quot;</span><span class="p">:</span> <span class="p">{</span>
+<span class="gp">... </span>        <span class="s2">&quot;radius&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;smoothing&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;ShiftedCosine&quot;</span><span class="p">,</span> <span class="s2">&quot;width&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">},</span>
+<span class="gp">... </span>    <span class="p">},</span>
+<span class="gp">... </span>    <span class="s2">&quot;density&quot;</span><span class="p">:</span> <span class="p">{</span>
+<span class="gp">... </span>        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Gaussian&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;width&quot;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">},</span>
+<span class="gp">... </span>    <span class="s2">&quot;basis&quot;</span><span class="p">:</span> <span class="p">{</span>
+<span class="gp">... </span>        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;TensorProduct&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;max_angular&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;radial&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Gto&quot;</span><span class="p">,</span> <span class="s2">&quot;max_radial&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">},</span>
+<span class="gp">... </span>    <span class="p">},</span>
+<span class="gp">... </span><span class="p">}</span>
+</pre></div>
+</div>
+<p>Define the hyper parameters for the long-range LODE spherical expansion from the
+hyper parameters of the short-range spherical expansion</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">lr_hypers</span> <span class="o">=</span> <span class="p">{</span>
+<span class="gp">... </span>    <span class="s2">&quot;density&quot;</span><span class="p">:</span> <span class="p">{</span>
+<span class="gp">... </span>        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;SmearedPowerLaw&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;smearing&quot;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;exponent&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">},</span>
+<span class="gp">... </span>    <span class="s2">&quot;basis&quot;</span><span class="p">:</span> <span class="p">{</span>
+<span class="gp">... </span>        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;TensorProduct&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;max_angular&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;radial&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Gto&quot;</span><span class="p">,</span> <span class="s2">&quot;max_radial&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;radius&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">},</span>
+<span class="gp">... </span>    <span class="p">},</span>
+<span class="gp">... </span><span class="p">}</span>
+</pre></div>
+</div>
+<p>Construct the calculators</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sr_calculator</span> <span class="o">=</span> <span class="n">featomic</span><span class="o">.</span><span class="n">SphericalExpansion</span><span class="p">(</span><span class="o">**</span><span class="n">sr_hypers</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lr_calculator</span> <span class="o">=</span> <span class="n">featomic</span><span class="o">.</span><span class="n">LodeSphericalExpansion</span><span class="p">(</span><span class="o">**</span><span class="n">lr_hypers</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Construct the power spectrum calculators and compute the spherical expansion</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">calculator</span> <span class="o">=</span> <span class="n">featomic</span><span class="o">.</span><span class="n">clebsch_gordan</span><span class="o">.</span><span class="n">EquivariantPowerSpectrum</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">sr_calculator</span><span class="p">,</span> <span class="n">lr_calculator</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">power_spectrum</span> <span class="o">=</span> <span class="n">calculator</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">atoms</span><span class="p">,</span> <span class="n">neighbors_to_properties</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The resulting equivariants are stored as <a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><code class="xref py py-class docutils literal notranslate"><span class="pre">metatensor.TensorMap</span></code></a> as for any
+other calculator. The keys contain the symmetry information:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">power_spectrum</span><span class="o">.</span><span class="n">keys</span>
+<span class="go">Labels(</span>
+<span class="go">    o3_lambda  o3_sigma  center_type</span>
+<span class="go">        0         1          11</span>
+<span class="go">        1         1          11</span>
+<span class="go">        2         1          11</span>
+<span class="go">        1         -1         11</span>
+<span class="go">        2         -1         11</span>
+<span class="go">        3         1          11</span>
+<span class="go">        3         -1         11</span>
+<span class="go">        4         1          11</span>
+<span class="go">        0         1          17</span>
+<span class="go">        1         1          17</span>
+<span class="go">        2         1          17</span>
+<span class="go">        1         -1         17</span>
+<span class="go">        2         -1         17</span>
+<span class="go">        3         1          17</span>
+<span class="go">        3         -1         17</span>
+<span class="go">        4         1          17</span>
+<span class="go">)</span>
+</pre></div>
+</div>
+<p>The block properties contain the angular order of the combined blocks (“l_1”,
+“l_2”), along with the neighbor types (“neighbor_1_type”, “neighbor_2_type”) and
+radial channel indices.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">power_spectrum</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">names</span>
+<span class="go">[&#39;l_1&#39;, &#39;l_2&#39;, &#39;neighbor_1_type&#39;, &#39;n_1&#39;, &#39;neighbor_2_type&#39;, &#39;n_2&#39;]</span>
+</pre></div>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p>Faster power spectrum calculator specifically for invariant descriptors can
+be found at <a class="reference internal" href="calculators.html#featomic.SoapPowerSpectrum" title="featomic.SoapPowerSpectrum"><code class="xref py py-class docutils literal notranslate"><span class="pre">featomic.SoapPowerSpectrum</span></code></a> and
+<a class="reference internal" href="#featomic.clebsch_gordan.PowerSpectrum" title="featomic.clebsch_gordan.PowerSpectrum"><code class="xref py py-class docutils literal notranslate"><span class="pre">featomic.clebsch_gordan.PowerSpectrum</span></code></a>.</p>
+</div>
+<p>Constructs the equivariant power spectrum calculator.</p>
+<dl class="field-list simple">
+<dt class="field-odd">param calculator_1<span class="colon">:</span></dt>
+<dd class="field-odd"><p>first calculator that computes a density descriptor, either
+a <a class="reference internal" href="calculators.html#featomic.SphericalExpansion" title="featomic.SphericalExpansion"><code class="xref py py-class docutils literal notranslate"><span class="pre">featomic.SphericalExpansion</span></code></a> or
+<a class="reference internal" href="calculators.html#featomic.LodeSphericalExpansion" title="featomic.LodeSphericalExpansion"><code class="xref py py-class docutils literal notranslate"><span class="pre">featomic.LodeSphericalExpansion</span></code></a>.</p>
+</dd>
+<dt class="field-even">param calculator_2<span class="colon">:</span></dt>
+<dd class="field-even"><p>optional second calculator that computes a density
+descriptor, either a <a class="reference internal" href="calculators.html#featomic.SphericalExpansion" title="featomic.SphericalExpansion"><code class="xref py py-class docutils literal notranslate"><span class="pre">featomic.SphericalExpansion</span></code></a> or
+<a class="reference internal" href="calculators.html#featomic.LodeSphericalExpansion" title="featomic.LodeSphericalExpansion"><code class="xref py py-class docutils literal notranslate"><span class="pre">featomic.LodeSphericalExpansion</span></code></a>. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the equivariant
+power spectrum is computed as the auto-correlation of the first calculator.
+Defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+</dd>
+<dt class="field-odd">param neighbor_types<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List of <code class="docutils literal notranslate"><span class="pre">&quot;neighbor_type&quot;</span></code> to use in the properties of
+the output. This option might be useful when running the calculation on
+subset of a whole dataset and trying to join along the <code class="docutils literal notranslate"><span class="pre">sample</span></code> dimension
+after the calculation. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, blocks are filled with
+<code class="docutils literal notranslate"><span class="pre">&quot;neighbor_type&quot;</span></code> found in the systems. This parameter is only used if
+<code class="docutils literal notranslate"><span class="pre">neighbors_to_properties=True</span></code> is passed to the <a class="reference internal" href="#featomic.clebsch_gordan.EquivariantPowerSpectrum.compute" title="featomic.clebsch_gordan.EquivariantPowerSpectrum.compute"><code class="xref py py-meth docutils literal notranslate"><span class="pre">compute()</span></code></a> method.</p>
+</dd>
+<dt class="field-even">param dtype<span class="colon">:</span></dt>
+<dd class="field-even"><p>the scalar type to use to store coefficients</p>
+</dd>
+<dt class="field-odd">param device<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the computational device to use for calculations.</p>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="featomic.clebsch_gordan.EquivariantPowerSpectrum.name">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#featomic.clebsch_gordan.EquivariantPowerSpectrum.name" title="Link to this definition">¶</a></dt>
+<dd><p>Name of this calculator.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="featomic.clebsch_gordan.EquivariantPowerSpectrum.compute">
+<span class="sig-name descname"><span class="pre">compute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">systems</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="systems.html#featomic.IntoSystem" title="featomic.systems.IntoSystem"><span class="pre">IntoSystem</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="systems.html#featomic.IntoSystem" title="featomic.systems.IntoSystem"><span class="pre">IntoSystem</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selected_keys</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/labels.html#metatensor.Labels" title="(in metatensor)"><span class="pre">Labels</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">neighbors_to_properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><span class="pre">TensorMap</span></a></span></span><a class="headerlink" href="#featomic.clebsch_gordan.EquivariantPowerSpectrum.compute" title="Link to this definition">¶</a></dt>
+<dd><p>Computes an equivariant power spectrum, also called “Lambda-SOAP” when doing a
+self-correlation of the SOAP density.</p>
+<p>First computes a <code class="xref py py-class docutils literal notranslate"><span class="pre">SphericalExpansion</span></code> density descriptor of body order
+2.</p>
+<p>Before performing the Clebsch-Gordan tensor product, the spherical expansion
+density can be densified by moving the key dimension “neighbor_type” to the
+block properties. This is controlled by the <code class="docutils literal notranslate"><span class="pre">neighbors_to_properties</span></code>
+parameter. Depending on the specific systems descriptors are being computed for,
+the sparsity or density of the density can affect the computational cost of the
+Clebsch-Gordan tensor product.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">neighbors_to_properties=True</span></code> and <code class="docutils literal notranslate"><span class="pre">neighbor_types</span></code> have been passed to
+the constructor, property dimensions are created for all of these global atom
+types when moving the key dimension to properties. This ensures that the output
+properties dimension is of consistent size across all systems passed in
+<code class="docutils literal notranslate"><span class="pre">systems</span></code>.</p>
+<p>Finally a single Clebsch-Gordan tensor product is taken to produce a body order
+3 equivariant power spectrum.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>selected_keys</strong> – <code class="xref py py-class docutils literal notranslate"><span class="pre">Labels</span></code>, the output keys to computed. If
+<code class="docutils literal notranslate"><span class="pre">None</span></code>, all keys are computed. Subsets of key dimensions can be passed to
+compute output blocks that match in these dimensions.</p></li>
+<li><p><strong>neighbors_to_properties</strong> – <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>, if true, densifies the
+spherical expansion by moving key dimension “neighbor_type” to properties
+prior to performing the Clebsch Gordan product step. Defaults to false.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">TensorMap</span></code>, the output equivariant power spectrum.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="featomic.clebsch_gordan.EquivariantPowerSpectrum.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">systems</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="systems.html#featomic.IntoSystem" title="featomic.systems.IntoSystem"><span class="pre">IntoSystem</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="systems.html#featomic.IntoSystem" title="featomic.systems.IntoSystem"><span class="pre">IntoSystem</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selected_keys</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/labels.html#metatensor.Labels" title="(in metatensor)"><span class="pre">Labels</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">neighbors_to_properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><span class="pre">TensorMap</span></a></span></span><a class="headerlink" href="#featomic.clebsch_gordan.EquivariantPowerSpectrum.forward" title="Link to this definition">¶</a></dt>
+<dd><p>Calls the <a class="reference internal" href="#featomic.clebsch_gordan.EquivariantPowerSpectrum.compute" title="featomic.clebsch_gordan.EquivariantPowerSpectrum.compute"><code class="xref py py-meth docutils literal notranslate"><span class="pre">compute()</span></code></a> method.</p>
+<p>This is intended for <a class="reference external" href="https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module" title="(in PyTorch v2.5)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.Module</span></code></a> compatibility, and should be
+ignored in pure Python mode.</p>
+<p>See <a class="reference internal" href="#featomic.clebsch_gordan.EquivariantPowerSpectrum.compute" title="featomic.clebsch_gordan.EquivariantPowerSpectrum.compute"><code class="xref py py-meth docutils literal notranslate"><span class="pre">compute()</span></code></a> for a full description of the parameters.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="featomic.clebsch_gordan.EquivariantPowerSpectrum.compute_metadata">
+<span class="sig-name descname"><span class="pre">compute_metadata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">systems</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="systems.html#featomic.IntoSystem" title="featomic.systems.IntoSystem"><span class="pre">IntoSystem</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="systems.html#featomic.IntoSystem" title="featomic.systems.IntoSystem"><span class="pre">IntoSystem</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selected_keys</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/labels.html#metatensor.Labels" title="(in metatensor)"><span class="pre">Labels</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">neighbors_to_properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><span class="pre">TensorMap</span></a></span></span><a class="headerlink" href="#featomic.clebsch_gordan.EquivariantPowerSpectrum.compute_metadata" title="Link to this definition">¶</a></dt>
+<dd><p>Returns the metadata-only <code class="xref py py-class docutils literal notranslate"><span class="pre">TensorMap</span></code> that would be output by the
+function <a class="reference internal" href="#featomic.clebsch_gordan.EquivariantPowerSpectrum.compute" title="featomic.clebsch_gordan.EquivariantPowerSpectrum.compute"><code class="xref py py-meth docutils literal notranslate"><span class="pre">compute()</span></code></a> for the same calculator under the same settings,
+without performing the actual Clebsch-Gordan tensor products in the second step.</p>
+<p>See <a class="reference internal" href="#featomic.clebsch_gordan.EquivariantPowerSpectrum.compute" title="featomic.clebsch_gordan.EquivariantPowerSpectrum.compute"><code class="xref py py-meth docutils literal notranslate"><span class="pre">compute()</span></code></a> for a full description of the parameters.</p>
+</dd></dl>
+
+</section>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="featomic.clebsch_gordan.PowerSpectrum">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">featomic.clebsch_gordan.</span></span><span class="sig-name descname"><span class="pre">PowerSpectrum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">calculator_1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="calculators.html#featomic.calculators.CalculatorBase" title="featomic.calculator_base.CalculatorBase"><span class="pre">CalculatorBase</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">calculator_2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="calculators.html#featomic.calculators.CalculatorBase" title="featomic.calculator_base.CalculatorBase"><span class="pre">CalculatorBase</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">neighbor_types</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#featomic.clebsch_gordan.PowerSpectrum" title="Link to this definition">¶</a></dt>
+<dd><p>General power spectrum of one or of two calculators.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">calculator_2</span></code> is provided, the invariants <span class="math notranslate nohighlight">\(p_{nl}\)</span> are generated by
+taking quadratic combinations of <code class="docutils literal notranslate"><span class="pre">calculator_1</span></code>’s spherical expansion
+<span class="math notranslate nohighlight">\(\rho_{nlm}\)</span> and <code class="docutils literal notranslate"><span class="pre">calculator_2</span></code>’s spherical expansion <span class="math notranslate nohighlight">\(\nu_{nlm}\)</span>
+according to <a class="reference external" href="https://journals.aps.org/prb/abstract/10.1103/PhysRevB.87.184115">Bartók et. al</a>.</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[p_{nl} = \rho_{nlm}^\dagger \cdot \nu_{nlm}\]</div>
+</div>
+<p>where we use the Einstein summation convention. If gradients are present the
+invariants of those are constructed as</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[\nabla p_{nl} = \nabla \rho_{nlm}^\dagger \cdot \nu_{nlm} +
+                \rho_{nlm}^\dagger \cdot \nabla \nu_{nlm}\]</div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Currently only supports gradients with respect to <code class="docutils literal notranslate"><span class="pre">positions</span></code>.</p>
+</div>
+<p>If <code class="docutils literal notranslate"><span class="pre">calculator_2=None</span></code> invariants are generated by combining the coefficients of
+the spherical expansion of <code class="docutils literal notranslate"><span class="pre">calculator_1</span></code>. The spherical expansions given as input
+can only be <a class="reference internal" href="calculators.html#featomic.SphericalExpansion" title="featomic.SphericalExpansion"><code class="xref py py-class docutils literal notranslate"><span class="pre">featomic.SphericalExpansion</span></code></a> or
+<a class="reference internal" href="calculators.html#featomic.LodeSphericalExpansion" title="featomic.LodeSphericalExpansion"><code class="xref py py-class docutils literal notranslate"><span class="pre">featomic.LodeSphericalExpansion</span></code></a>.</p>
+<section id="id1">
+<h2>Example<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h2>
+<p>As an example we calculate the power spectrum for a short range (sr) spherical
+expansion and a long-range (lr) LODE spherical expansion for a NaCl crystal.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">featomic</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">ase</span>
+</pre></div>
+</div>
+<p>Construct the NaCl crystal</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">atoms</span> <span class="o">=</span> <span class="n">ase</span><span class="o">.</span><span class="n">Atoms</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">symbols</span><span class="o">=</span><span class="s2">&quot;NaCl&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">positions</span><span class="o">=</span><span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">]],</span>
+<span class="gp">... </span>    <span class="n">pbc</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">cell</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Define the hyper parameters for the short-range spherical expansion</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sr_hypers</span> <span class="o">=</span> <span class="p">{</span>
+<span class="gp">... </span>    <span class="s2">&quot;cutoff&quot;</span><span class="p">:</span> <span class="p">{</span>
+<span class="gp">... </span>        <span class="s2">&quot;radius&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;smoothing&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;ShiftedCosine&quot;</span><span class="p">,</span> <span class="s2">&quot;width&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">},</span>
+<span class="gp">... </span>    <span class="p">},</span>
+<span class="gp">... </span>    <span class="s2">&quot;density&quot;</span><span class="p">:</span> <span class="p">{</span>
+<span class="gp">... </span>        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Gaussian&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;width&quot;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">},</span>
+<span class="gp">... </span>    <span class="s2">&quot;basis&quot;</span><span class="p">:</span> <span class="p">{</span>
+<span class="gp">... </span>        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;TensorProduct&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;max_angular&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;radial&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Gto&quot;</span><span class="p">,</span> <span class="s2">&quot;max_radial&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">},</span>
+<span class="gp">... </span>    <span class="p">},</span>
+<span class="gp">... </span><span class="p">}</span>
+</pre></div>
+</div>
+<p>Define the hyper parameters for the long-range LODE spherical expansion from the
+hyper parameters of the short-range spherical expansion</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">lr_hypers</span> <span class="o">=</span> <span class="p">{</span>
+<span class="gp">... </span>    <span class="s2">&quot;density&quot;</span><span class="p">:</span> <span class="p">{</span>
+<span class="gp">... </span>        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;SmearedPowerLaw&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;smearing&quot;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;exponent&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">},</span>
+<span class="gp">... </span>    <span class="s2">&quot;basis&quot;</span><span class="p">:</span> <span class="p">{</span>
+<span class="gp">... </span>        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;TensorProduct&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;max_angular&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;radial&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Gto&quot;</span><span class="p">,</span> <span class="s2">&quot;max_radial&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span> <span class="s2">&quot;radius&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">},</span>
+<span class="gp">... </span>    <span class="p">},</span>
+<span class="gp">... </span><span class="p">}</span>
+</pre></div>
+</div>
+<p>Construct the calculators</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sr_calculator</span> <span class="o">=</span> <span class="n">featomic</span><span class="o">.</span><span class="n">SphericalExpansion</span><span class="p">(</span><span class="o">**</span><span class="n">sr_hypers</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lr_calculator</span> <span class="o">=</span> <span class="n">featomic</span><span class="o">.</span><span class="n">LodeSphericalExpansion</span><span class="p">(</span><span class="o">**</span><span class="n">lr_hypers</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Construct the power spectrum calculators and compute the spherical expansion</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">calculator</span> <span class="o">=</span> <span class="n">featomic</span><span class="o">.</span><span class="n">clebsch_gordan</span><span class="o">.</span><span class="n">PowerSpectrum</span><span class="p">(</span><span class="n">sr_calculator</span><span class="p">,</span> <span class="n">lr_calculator</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">power_spectrum</span> <span class="o">=</span> <span class="n">calculator</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">atoms</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The resulting invariants are stored as <a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><code class="xref py py-class docutils literal notranslate"><span class="pre">metatensor.TensorMap</span></code></a> as for any
+other calculator</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">power_spectrum</span><span class="o">.</span><span class="n">keys</span>
+<span class="go">Labels(</span>
+<span class="go">    center_type</span>
+<span class="go">        11</span>
+<span class="go">        17</span>
+<span class="go">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">power_spectrum</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="go">TensorBlock</span>
+<span class="go">    samples (1): [&#39;system&#39;, &#39;atom&#39;]</span>
+<span class="go">    components (): []</span>
+<span class="go">    properties (432): [&#39;l&#39;, &#39;neighbor_1_type&#39;, &#39;n_1&#39;, &#39;neighbor_2_type&#39;, &#39;n_2&#39;]</span>
+<span class="go">    gradients: None</span>
+</pre></div>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p>If you are interested in the SOAP power spectrum you can the use the
+faster <a class="reference internal" href="calculators.html#featomic.SoapPowerSpectrum" title="featomic.SoapPowerSpectrum"><code class="xref py py-class docutils literal notranslate"><span class="pre">featomic.SoapPowerSpectrum</span></code></a>. For an equivariant version of
+this calculator, computing the power spectrum for covariant as well as
+invariant blocks, see <code class="xref py py-class docutils literal notranslate"><span class="pre">featomic.EquivariantPowerSpectrum</span></code>.</p>
+</div>
+<p>Constructs the power spectrum calculator.</p>
+<dl class="field-list simple">
+<dt class="field-odd">param calculator_1<span class="colon">:</span></dt>
+<dd class="field-odd"><p>first calculator that computes a density descriptor, either
+a <a class="reference internal" href="calculators.html#featomic.SphericalExpansion" title="featomic.SphericalExpansion"><code class="xref py py-class docutils literal notranslate"><span class="pre">featomic.SphericalExpansion</span></code></a> or
+<a class="reference internal" href="calculators.html#featomic.LodeSphericalExpansion" title="featomic.LodeSphericalExpansion"><code class="xref py py-class docutils literal notranslate"><span class="pre">featomic.LodeSphericalExpansion</span></code></a>.</p>
+</dd>
+<dt class="field-even">param calculator_2<span class="colon">:</span></dt>
+<dd class="field-even"><p>optional second calculator that computes a density
+descriptor, either a <a class="reference internal" href="calculators.html#featomic.SphericalExpansion" title="featomic.SphericalExpansion"><code class="xref py py-class docutils literal notranslate"><span class="pre">featomic.SphericalExpansion</span></code></a> or
+<a class="reference internal" href="calculators.html#featomic.LodeSphericalExpansion" title="featomic.LodeSphericalExpansion"><code class="xref py py-class docutils literal notranslate"><span class="pre">featomic.LodeSphericalExpansion</span></code></a>. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the power spectrum
+is computed as the auto-correlation of the first calculator. Defaults to
+<code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+</dd>
+<dt class="field-odd">param neighbor_types<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List of <code class="docutils literal notranslate"><span class="pre">&quot;neighbor_type&quot;</span></code> to use in the properties of
+the output. This option might be useful when running the calculation on
+subset of a whole dataset and trying to join along the <code class="docutils literal notranslate"><span class="pre">sample</span></code> dimension
+after the calculation. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, blocks are filled with
+<code class="docutils literal notranslate"><span class="pre">&quot;neighbor_type&quot;</span></code> found in the systems.</p>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="featomic.clebsch_gordan.PowerSpectrum.name">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#featomic.clebsch_gordan.PowerSpectrum.name" title="Link to this definition">¶</a></dt>
+<dd><p>Name of this calculator.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="featomic.clebsch_gordan.PowerSpectrum.compute">
+<span class="sig-name descname"><span class="pre">compute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">systems</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="systems.html#featomic.IntoSystem" title="featomic.systems.IntoSystem"><span class="pre">IntoSystem</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="systems.html#featomic.IntoSystem" title="featomic.systems.IntoSystem"><span class="pre">IntoSystem</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gradients</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_native_system</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><span class="pre">TensorMap</span></a></span></span><a class="headerlink" href="#featomic.clebsch_gordan.PowerSpectrum.compute" title="Link to this definition">¶</a></dt>
+<dd><p>Runs a calculation with this calculator on the given <code class="docutils literal notranslate"><span class="pre">systems</span></code>.</p>
+<p>See <a class="reference internal" href="calculators.html#featomic.calculators.CalculatorBase.compute" title="featomic.calculators.CalculatorBase.compute"><code class="xref py py-func docutils literal notranslate"><span class="pre">featomic.calculators.CalculatorBase.compute()</span></code></a> for details on the
+parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.13)"><strong>NotImplementedError</strong></a> – If a spherical expansions contains a gradient with
+respect to an unknwon parameter.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="featomic.clebsch_gordan.PowerSpectrum.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">systems</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="systems.html#featomic.IntoSystem" title="featomic.systems.IntoSystem"><span class="pre">IntoSystem</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="systems.html#featomic.IntoSystem" title="featomic.systems.IntoSystem"><span class="pre">IntoSystem</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gradients</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_native_system</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><span class="pre">TensorMap</span></a></span></span><a class="headerlink" href="#featomic.clebsch_gordan.PowerSpectrum.forward" title="Link to this definition">¶</a></dt>
+<dd><p>Calls the <a class="reference internal" href="#featomic.clebsch_gordan.PowerSpectrum.compute" title="featomic.clebsch_gordan.PowerSpectrum.compute"><code class="xref py py-meth docutils literal notranslate"><span class="pre">PowerSpectrum.compute()</span></code></a> function.</p>
+<p>This is intended for <a class="reference external" href="https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module" title="(in PyTorch v2.5)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.Module</span></code></a> compatibility, and should be
+ignored in pure Python mode.</p>
+</dd></dl>
+
+</section>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="featomic.clebsch_gordan.DensityCorrelations">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">featomic.clebsch_gordan.</span></span><span class="sig-name descname"><span class="pre">DensityCorrelations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_correlations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_angular</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_redundant</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cg_backend</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arrays_backend</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.2)"><span class="pre">dtype</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://pytorch.org/docs/stable/tensor_attributes.html#torch.dtype" title="(in PyTorch v2.5)"><span class="pre">dtype</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pytorch.org/docs/stable/tensor_attributes.html#torch.device" title="(in PyTorch v2.5)"><span class="pre">device</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#featomic.clebsch_gordan.DensityCorrelations" title="Link to this definition">¶</a></dt>
+<dd><p>Takes <code class="docutils literal notranslate"><span class="pre">n_correlations</span></code> of iterative CG tensor products of a density with itself to
+produce a density auto-correlation tensor of higher correlation order.</p>
+<p>The constructor computes and stores the CG coefficients. The <a class="reference internal" href="#featomic.clebsch_gordan.DensityCorrelations.compute" title="featomic.clebsch_gordan.DensityCorrelations.compute"><code class="xref py py-meth docutils literal notranslate"><span class="pre">compute()</span></code></a>
+method computes the auto-correlation by CG tensor product of the input density.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n_correlations</strong> – <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>, the number of iterative CG tensor
+products to perform.</p></li>
+<li><p><strong>max_angular</strong> – <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>, the maximum angular momentum to compute CG
+coefficients for. This must be large enough to perform the desired number of
+correlations on the density passed to the <a class="reference internal" href="#featomic.clebsch_gordan.DensityCorrelations.compute" title="featomic.clebsch_gordan.DensityCorrelations.compute"><code class="xref py py-meth docutils literal notranslate"><span class="pre">compute()</span></code></a> method.</p></li>
+<li><p><strong>skip_redundant</strong> – <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>, whether to skip redundant CG
+combination steps without losing information in the output. Setting to
+<code class="docutils literal notranslate"><span class="pre">True</span></code> can save computation time, but does not preserve the norm of the
+output tensors.</p></li>
+<li><p><strong>cg_backend</strong> – <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, the backend to use for the CG tensor
+product. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the backend is automatically selected based on the
+arrays backend.</p></li>
+<li><p><strong>arrays_backend</strong> – <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, the backend to use for array operations.
+If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the backend is automatically selected based on the environment.
+Possible values are “numpy” and “torch”.</p></li>
+<li><p><strong>dtype</strong> – the scalar type to use to store coefficients</p></li>
+<li><p><strong>device</strong> – the computational device to use for calculations. This must be
+<code class="docutils literal notranslate"><span class="pre">&quot;cpu&quot;</span></code> if <code class="docutils literal notranslate"><span class="pre">array_backend=&quot;numpy&quot;</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="featomic.clebsch_gordan.DensityCorrelations.compute">
+<span class="sig-name descname"><span class="pre">compute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">density</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><span class="pre">TensorMap</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">angular_cutoff</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selected_keys</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/labels.html#metatensor.Labels" title="(in metatensor)"><span class="pre">Labels</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><span class="pre">TensorMap</span></a></span></span><a class="headerlink" href="#featomic.clebsch_gordan.DensityCorrelations.compute" title="Link to this definition">¶</a></dt>
+<dd><p>Takes <code class="docutils literal notranslate"><span class="pre">n_correlations</span></code> of iterative CG tensor products of a density with
+itself, to generate density auto-correlations of arbitrary correlation order.</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[\rho^{\nu=n_{corr} + 1} = \rho^{\nu=1}
+                            \otimes \rho^{\nu=1} \ldots \otimes
+                            \rho^{\nu=1}\]</div>
+</div>
+<p>where rho^{nu=1} is the input <code class="docutils literal notranslate"><span class="pre">density</span></code> of correlation order 1 (body order
+2), and rho^{nu=n_{corr} + 1} is the output density of correlation order
+<code class="docutils literal notranslate"><span class="pre">n_correlations</span> <span class="pre">+</span> <span class="pre">1</span></code></p>
+<p>Before performing any correlations, the properties dimensions of <code class="docutils literal notranslate"><span class="pre">density</span></code> are
+modified to carry a “_1” suffix. At each iteration, the dimension names of the
+copy of the density being correlated are incremented by one each time.</p>
+<p><code class="docutils literal notranslate"><span class="pre">selected_keys</span></code> can be passed to select the keys to compute on the final
+iteration. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, all keys are computed. To limit the maximum angular
+momenta to compute on <strong>intermediate</strong> iterations, pass <code class="docutils literal notranslate"><span class="pre">angular_cutoff</span></code>.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">angular_cutoff</span></code> and <code class="docutils literal notranslate"><span class="pre">selected_keys</span></code> are both passed, <code class="docutils literal notranslate"><span class="pre">angular_cutoff</span></code>
+is ignored on the final iteration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>density</strong> – <code class="xref py py-class docutils literal notranslate"><span class="pre">TensorMap</span></code>, the input density tensor of correlation
+order 1.</p></li>
+<li><p><strong>angular_cutoff</strong> – <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>, the maximum angular momentum to compute
+output blocks for at each iteration. If <code class="docutils literal notranslate"><span class="pre">selected_keys</span></code> is passed, this
+parameter is applied to all intermediate (i.e. prior to the final)
+iterations. If <code class="docutils literal notranslate"><span class="pre">selected_keys</span></code> is not passed, this parameter is applied
+globally to all iterations. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, all angular momenta are computed.</p></li>
+<li><p><strong>selected_keys</strong> – <code class="xref py py-class docutils literal notranslate"><span class="pre">Labels</span></code>, the keys to compute on the final
+iteration. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, all keys are computed. Subsets of key dimensions can
+be passed to compute output blocks that match in these dimensions.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">TensorMap</span></code>, the output density auto-correlation tensor of
+correlation order <code class="docutils literal notranslate"><span class="pre">n_correlations</span> <span class="pre">+</span> <span class="pre">1</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="featomic.clebsch_gordan.DensityCorrelations.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">density</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><span class="pre">TensorMap</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">angular_cutoff</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selected_keys</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/labels.html#metatensor.Labels" title="(in metatensor)"><span class="pre">Labels</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><span class="pre">TensorMap</span></a></span></span><a class="headerlink" href="#featomic.clebsch_gordan.DensityCorrelations.forward" title="Link to this definition">¶</a></dt>
+<dd><p>Calls the <a class="reference internal" href="#featomic.clebsch_gordan.DensityCorrelations.compute" title="featomic.clebsch_gordan.DensityCorrelations.compute"><code class="xref py py-meth docutils literal notranslate"><span class="pre">compute()</span></code></a> method.</p>
+<p>This is intended for <a class="reference external" href="https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module" title="(in PyTorch v2.5)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.Module</span></code></a> compatibility, and should be
+ignored in pure Python mode.</p>
+<p>See <a class="reference internal" href="#featomic.clebsch_gordan.DensityCorrelations.compute" title="featomic.clebsch_gordan.DensityCorrelations.compute"><code class="xref py py-meth docutils literal notranslate"><span class="pre">compute()</span></code></a> for a full description of the parameters.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="featomic.clebsch_gordan.DensityCorrelations.compute_metadata">
+<span class="sig-name descname"><span class="pre">compute_metadata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">density</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><span class="pre">TensorMap</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">angular_cutoff</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selected_keys</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/labels.html#metatensor.Labels" title="(in metatensor)"><span class="pre">Labels</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><span class="pre">TensorMap</span></a></span></span><a class="headerlink" href="#featomic.clebsch_gordan.DensityCorrelations.compute_metadata" title="Link to this definition">¶</a></dt>
+<dd><p>Returns the metadata-only <code class="xref py py-class docutils literal notranslate"><span class="pre">TensorMap</span></code> that would be output by the
+function <a class="reference internal" href="#featomic.clebsch_gordan.DensityCorrelations.compute" title="featomic.clebsch_gordan.DensityCorrelations.compute"><code class="xref py py-meth docutils literal notranslate"><span class="pre">compute()</span></code></a> for the same calculator under the same settings,
+without performing the actual Clebsch-Gordan tensor products.</p>
+<p>See <a class="reference internal" href="#featomic.clebsch_gordan.DensityCorrelations.compute" title="featomic.clebsch_gordan.DensityCorrelations.compute"><code class="xref py py-meth docutils literal notranslate"><span class="pre">compute()</span></code></a> for a full description of the parameters.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="featomic.clebsch_gordan.cartesian_to_spherical">
+<span class="sig-prename descclassname"><span class="pre">featomic.clebsch_gordan.</span></span><span class="sig-name descname"><span class="pre">cartesian_to_spherical</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tensor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><span class="pre">TensorMap</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">components</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_l_in_keys</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_blocks_threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1e-09</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cg_backend</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cg_coefficients</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><span class="pre">TensorMap</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><span class="pre">TensorMap</span></a></span></span><a class="headerlink" href="#featomic.clebsch_gordan.cartesian_to_spherical" title="Link to this definition">¶</a></dt>
+<dd><p>Transform a <code class="docutils literal notranslate"><span class="pre">tensor</span></code> of arbitrary rank from cartesian form to a spherical form.</p>
+<p>Starting from a tensor on a basis of product of cartesian coordinates, this function
+computes the same tensor using a basis of spherical harmonics <code class="docutils literal notranslate"><span class="pre">Y^M_L</span></code>. For
+example, a rank 1 tensor with a single “xyz” component would be represented as a
+single L=1 spherical harmonic; while a rank 5 tensor using a product basis <code class="docutils literal notranslate"><span class="pre">ℝ^3</span> <span class="pre">⊗</span>
+<span class="pre">ℝ^3</span> <span class="pre">⊗</span> <span class="pre">ℝ^3</span> <span class="pre">⊗</span> <span class="pre">ℝ^3</span> <span class="pre">⊗</span> <span class="pre">ℝ^3</span></code> would require multiple blocks up to L=5 spherical harmonics.</p>
+<p>A single <code class="xref py py-class docutils literal notranslate"><span class="pre">TensorBlock</span></code> in the input might correspond to multiple
+<code class="xref py py-class docutils literal notranslate"><span class="pre">TensorBlock</span></code> in the output. The output keys will contain all the
+dimensions of the input keys, plus <code class="docutils literal notranslate"><span class="pre">o3_lambda</span></code> (indicating the spherical harmonics
+degree) and <code class="docutils literal notranslate"><span class="pre">o3_sigma</span></code> (indicating that this block is a proper- or improper tensor
+with <code class="docutils literal notranslate"><span class="pre">+1</span></code> and <code class="docutils literal notranslate"><span class="pre">-1</span></code> respectively). If <code class="docutils literal notranslate"><span class="pre">keep_l_in_keys</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code> or if the
+input tensor is a tensor of rank 3 or more, the keys will also contain multiple
+<code class="docutils literal notranslate"><span class="pre">l_{i}</span></code> and  <code class="docutils literal notranslate"><span class="pre">k_{i}</span></code> dimensions, which indicate which angular momenta have been
+coupled together in which order to get this block.</p>
+<p><code class="docutils literal notranslate"><span class="pre">components</span></code> specifies which ones of the components of the input
+<code class="xref py py-class docutils literal notranslate"><span class="pre">TensorMap</span></code> should be transformed from cartesian to spherical. All these
+components will be replaced in the output by a single <code class="docutils literal notranslate"><span class="pre">o3_mu</span></code> component,
+corresponding to the spherical harmonics <code class="docutils literal notranslate"><span class="pre">M</span></code>.</p>
+<p>By default, symmetric tensors will only contain blocks corresponding to
+<code class="docutils literal notranslate"><span class="pre">o3_sigma=1</span></code>. This is achieved by checking the norm of the blocks after the full
+calculation; and dropping any block with a norm below <code class="docutils literal notranslate"><span class="pre">remove_blocks_epsilon</span></code>. To
+keep all blocks regardless of their norm, you can set
+<code class="docutils literal notranslate"><span class="pre">remove_blocks_epsilon=None</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tensor</strong> – input tensor, using a cartesian product basis</p></li>
+<li><p><strong>components</strong> – components of the input tensor to transform into spherical
+components</p></li>
+<li><p><strong>keep_l_in_keys</strong> – <p>should the output contains the values of angular momenta that
+were combined together? This defaults to <code class="docutils literal notranslate"><span class="pre">False</span></code> for rank 1 and 2 tensors,
+and <code class="docutils literal notranslate"><span class="pre">True</span></code> for all other tensors.</p>
+<p>Keys named <code class="docutils literal notranslate"><span class="pre">l_{i}</span></code> correspond to the input <code class="docutils literal notranslate"><span class="pre">components</span></code>, with <code class="docutils literal notranslate"><span class="pre">l_1</span></code> being
+the last entry in <code class="docutils literal notranslate"><span class="pre">components</span></code> and <code class="docutils literal notranslate"><span class="pre">l_N</span></code> the first one. Keys named <code class="docutils literal notranslate"><span class="pre">k_{i}</span></code>
+correspond to intermediary spherical components created during the calculation,
+i.e. a <code class="docutils literal notranslate"><span class="pre">k_{i}</span></code> used to be <code class="docutils literal notranslate"><span class="pre">o3_lambda</span></code>.</p>
+</p></li>
+<li><p><strong>remove_blocks_threshold</strong> – Numerical tolerance to use when determining if a
+block’s norm is zero or not. Blocks with zero norm will be excluded from the
+output. Set this to <code class="docutils literal notranslate"><span class="pre">None</span></code> to keep all blocks in the output.</p></li>
+<li><p><strong>cg_backend</strong> – Backend to use for Clebsch-Gordan calculations. This can be
+<code class="docutils literal notranslate"><span class="pre">&quot;python-dense&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;python-sparse&quot;</span></code> for dense or sparse operations
+respectively. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, this is automatically determined.</p></li>
+<li><p><strong>cg_coefficients</strong> – Cache containing Clebsch-Gordan coefficients. This is
+optional except when using this function from TorchScript. The coefficients
+should be computed with <a class="reference internal" href="#featomic.clebsch_gordan.calculate_cg_coefficients" title="featomic.clebsch_gordan.calculate_cg_coefficients"><code class="xref py py-func docutils literal notranslate"><span class="pre">calculate_cg_coefficients()</span></code></a>, using the same
+<code class="docutils literal notranslate"><span class="pre">cg_backend</span></code> as this function.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">TensorMap</span></code> containing spherical components instead of cartesian
+components.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<section id="low-level-functionalities">
+<h2>Low-level functionalities<a class="headerlink" href="#low-level-functionalities" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="featomic.clebsch_gordan.ClebschGordanProduct">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">featomic.clebsch_gordan.</span></span><span class="sig-name descname"><span class="pre">ClebschGordanProduct</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_angular</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">cg_backend</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keys_filter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.13)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/labels.html#metatensor.Labels" title="(in metatensor)"><span class="pre">Labels</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arrays_backend</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.2)"><span class="pre">dtype</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://pytorch.org/docs/stable/tensor_attributes.html#torch.dtype" title="(in PyTorch v2.5)"><span class="pre">dtype</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pytorch.org/docs/stable/tensor_attributes.html#torch.device" title="(in PyTorch v2.5)"><span class="pre">device</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#featomic.clebsch_gordan.ClebschGordanProduct" title="Link to this definition">¶</a></dt>
+<dd><p>A general class for computing the Clebsch-Gordan (CG) tensor product between two
+arbitrary <code class="xref py py-class docutils literal notranslate"><span class="pre">TensorMap</span></code>.</p>
+<p>The constructor computes and stores the CG coefficients. The <a class="reference internal" href="#featomic.clebsch_gordan.ClebschGordanProduct.compute" title="featomic.clebsch_gordan.ClebschGordanProduct.compute"><code class="xref py py-meth docutils literal notranslate"><span class="pre">compute()</span></code></a>
+method computes the CG tensor product between two tensors.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>max_angular</strong> – <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>, the maximum angular momentum to compute CG
+coefficients for.</p></li>
+<li><p><strong>cg_backend</strong> – <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, the backend to use for the CG tensor
+product. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the backend is automatically selected based on the
+arrays backend (“numpy” when importing this class from <code class="docutils literal notranslate"><span class="pre">featomic.utils</span></code>,
+and “torch” when importing from <code class="docutils literal notranslate"><span class="pre">featomic.torch.utils</span></code>).</p></li>
+<li><p><strong>keys_filter</strong> – A function to remove more keys from the output. This is
+applied after any user-provided <code class="docutils literal notranslate"><span class="pre">key_selection</span></code> in <a class="reference internal" href="#featomic.clebsch_gordan.ClebschGordanProduct.compute" title="featomic.clebsch_gordan.ClebschGordanProduct.compute"><code class="xref py py-meth docutils literal notranslate"><span class="pre">compute()</span></code></a>.
+This function should take one argument <code class="docutils literal notranslate"><span class="pre">keys:</span> <span class="pre">Labels</span></code>, and return the
+indices of keys to keep.</p></li>
+<li><p><strong>arrays_backend</strong> – <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, the backend to use for array operations.
+If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the backend is automatically selected based on the environment.
+Possible values are “numpy” and “torch”.</p></li>
+<li><p><strong>dtype</strong> – the scalar type to use to store coefficients</p></li>
+<li><p><strong>device</strong> – the computational device to use for calculations. This must be
+<code class="docutils literal notranslate"><span class="pre">&quot;cpu&quot;</span></code> if <code class="docutils literal notranslate"><span class="pre">array_backend=&quot;numpy&quot;</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="featomic.clebsch_gordan.ClebschGordanProduct.compute">
+<span class="sig-name descname"><span class="pre">compute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tensor_1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><span class="pre">TensorMap</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">tensor_2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><span class="pre">TensorMap</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">o3_lambda_1_new_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">o3_lambda_2_new_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">selected_keys</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/labels.html#metatensor.Labels" title="(in metatensor)"><span class="pre">Labels</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><span class="pre">TensorMap</span></a></span></span><a class="headerlink" href="#featomic.clebsch_gordan.ClebschGordanProduct.compute" title="Link to this definition">¶</a></dt>
+<dd><p>Computes the Clebsch-Gordan (CG) tensor product between <code class="docutils literal notranslate"><span class="pre">tensor_1</span></code> and
+<code class="docutils literal notranslate"><span class="pre">tensor_2</span></code>.</p>
+<p>This function assumes the metadata of <code class="docutils literal notranslate"><span class="pre">tensor_1</span></code> and <code class="docutils literal notranslate"><span class="pre">tensor_2</span></code> has been
+modified to be compatible for the CG tensor product, according to the following
+rules:</p>
+<ul class="simple">
+<li><p>both <code class="docutils literal notranslate"><span class="pre">tensor_1</span></code> and <code class="docutils literal notranslate"><span class="pre">tensor_2</span></code> must have key dimensions <code class="docutils literal notranslate"><span class="pre">&quot;o3_lambda&quot;</span></code>
+and <code class="docutils literal notranslate"><span class="pre">&quot;o3_sigma&quot;</span></code> as these are used to determine the symmetry of output
+blocks upon combination;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">o3_lambda_1_new_name</span></code> and <code class="docutils literal notranslate"><span class="pre">o3_lambda_2_new_name</span></code> define the output key
+dimension names that store the <code class="docutils literal notranslate"><span class="pre">&quot;o3_lambda&quot;</span></code> values of the blocks combined
+from <code class="docutils literal notranslate"><span class="pre">tensor_1</span></code> and <code class="docutils literal notranslate"><span class="pre">tensor_2</span></code> respectively;</p></li>
+<li><p>any other key dimensions that have equivalent names in both <code class="docutils literal notranslate"><span class="pre">tensor_1</span></code> and
+<code class="docutils literal notranslate"><span class="pre">tensor_2</span></code> will be matched, such that only blocks that have equal values in
+these dimensions will be combined;</p></li>
+<li><dl class="simple">
+<dt>any other named key dimensions that are present in <code class="docutils literal notranslate"><span class="pre">tensor_1</span></code> but not in</dt><dd><p><code class="docutils literal notranslate"><span class="pre">tensor_2</span></code>, and vice versa, will have the full product computed;</p>
+</dd>
+</dl>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tensor_1</span></code> and <code class="docutils literal notranslate"><span class="pre">tensor_2</span></code> must have a single component axis with a single
+key dimension named <code class="docutils literal notranslate"><span class="pre">&quot;o3_mu&quot;</span></code>. <code class="docutils literal notranslate"><span class="pre">tensor_1</span></code> and <code class="docutils literal notranslate"><span class="pre">tensor_2</span></code> may have
+different samples, but all samples in the tensor with fewer samples dimensions
+must be present in the samples of the other tensor.</p></li>
+</ul>
+<p>A <code class="xref py py-class docutils literal notranslate"><span class="pre">Labels</span></code> object can be passed in <code class="docutils literal notranslate"><span class="pre">selected_keys</span></code> to select
+specific keys to compute. The full set of output keys are computed, then are
+filtered to match the key dimensions passed in <code class="docutils literal notranslate"><span class="pre">selected_keys</span></code>.</p>
+<p>This parameter can be used to match the output tensor to a given target basis
+set definition, and/or enhance performance by limiting the combinations
+computed.</p>
+<p>For instance, passing just the <code class="docutils literal notranslate"><span class="pre">&quot;o3_lambda&quot;</span></code> key dimension with a range of
+values <code class="docutils literal notranslate"><span class="pre">0,</span> <span class="pre">...,</span> <span class="pre">max_angular</span></code> can be used to perform angular selection,
+limiting the maximum angular momentum of the output blocks.</p>
+<p>Note that using <code class="docutils literal notranslate"><span class="pre">selected_keys</span></code> to perform any kind of selection will reduce
+the information content of the output tensor. This may be important if the
+returned tensor is used in further CG tensor products.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tensor_1</strong> – The first <code class="xref py py-class docutils literal notranslate"><span class="pre">TensorMap</span></code>, containing data with SO(3)
+character.</p></li>
+<li><p><strong>tensor_2</strong> – The first <code class="xref py py-class docutils literal notranslate"><span class="pre">TensorMap</span></code>, containing data with SO(3)
+character.</p></li>
+<li><p><strong>o3_lambda_1_new_name</strong> – <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, the name of the output key
+dimension that stores the <code class="docutils literal notranslate"><span class="pre">&quot;o3_lambda&quot;</span></code> values of the blocks combined from
+<code class="docutils literal notranslate"><span class="pre">tensor_1</span></code>.</p></li>
+<li><p><strong>o3_lambda_2_new_name</strong> – <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, the name of the output key
+dimension that stores the <code class="docutils literal notranslate"><span class="pre">&quot;o3_lambda&quot;</span></code> values of the blocks combined from
+<code class="docutils literal notranslate"><span class="pre">tensor_2</span></code>.</p></li>
+<li><p><strong>selected_keys</strong> – <code class="xref py py-class docutils literal notranslate"><span class="pre">Labels</span></code>, the keys to compute on the final
+iteration. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, all keys are computed. Subsets of key dimensions can
+be passed to compute output blocks that match in these dimensions.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A <code class="xref py py-class docutils literal notranslate"><span class="pre">TensorMap</span></code> containing the Clebsch-Gordan tensor product of
+<code class="docutils literal notranslate"><span class="pre">tensor_1</span></code> and <code class="docutils literal notranslate"><span class="pre">tensor_2</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="featomic.clebsch_gordan.ClebschGordanProduct.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tensor_1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><span class="pre">TensorMap</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">tensor_2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><span class="pre">TensorMap</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">o3_lambda_1_new_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">o3_lambda_2_new_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">selected_keys</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/labels.html#metatensor.Labels" title="(in metatensor)"><span class="pre">Labels</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><span class="pre">TensorMap</span></a></span></span><a class="headerlink" href="#featomic.clebsch_gordan.ClebschGordanProduct.forward" title="Link to this definition">¶</a></dt>
+<dd><p>Calls the <a class="reference internal" href="#featomic.clebsch_gordan.ClebschGordanProduct.compute" title="featomic.clebsch_gordan.ClebschGordanProduct.compute"><code class="xref py py-meth docutils literal notranslate"><span class="pre">ClebschGordanProduct.compute()</span></code></a> function.</p>
+<p>This is intended for <a class="reference external" href="https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module" title="(in PyTorch v2.5)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.Module</span></code></a> compatibility, and should be
+ignored in pure Python mode.</p>
+<p>See <a class="reference internal" href="#featomic.clebsch_gordan.ClebschGordanProduct.compute" title="featomic.clebsch_gordan.ClebschGordanProduct.compute"><code class="xref py py-meth docutils literal notranslate"><span class="pre">compute()</span></code></a> for a full description of the parameters.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="featomic.clebsch_gordan.ClebschGordanProduct.compute_metadata">
+<span class="sig-name descname"><span class="pre">compute_metadata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tensor_1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><span class="pre">TensorMap</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">tensor_2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><span class="pre">TensorMap</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">o3_lambda_1_new_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">o3_lambda_2_new_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">selected_keys</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/labels.html#metatensor.Labels" title="(in metatensor)"><span class="pre">Labels</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><span class="pre">TensorMap</span></a></span></span><a class="headerlink" href="#featomic.clebsch_gordan.ClebschGordanProduct.compute_metadata" title="Link to this definition">¶</a></dt>
+<dd><p>Returns the metadata-only <code class="xref py py-class docutils literal notranslate"><span class="pre">TensorMap</span></code> that would be output by the
+function <a class="reference internal" href="#featomic.clebsch_gordan.ClebschGordanProduct.compute" title="featomic.clebsch_gordan.ClebschGordanProduct.compute"><code class="xref py py-meth docutils literal notranslate"><span class="pre">compute()</span></code></a> for the same calculator under the same settings,
+without performing the actual Clebsch-Gordan tensor products.</p>
+<p>See <a class="reference internal" href="#featomic.clebsch_gordan.ClebschGordanProduct.compute" title="featomic.clebsch_gordan.ClebschGordanProduct.compute"><code class="xref py py-meth docutils literal notranslate"><span class="pre">compute()</span></code></a> for a full description of the parameters.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="featomic.clebsch_gordan.calculate_cg_coefficients">
+<span class="sig-prename descclassname"><span class="pre">featomic.clebsch_gordan.</span></span><span class="sig-name descname"><span class="pre">calculate_cg_coefficients</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lambda_max</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">cg_backend</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">arrays_backend</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.2)"><span class="pre">dtype</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://pytorch.org/docs/stable/tensor_attributes.html#torch.dtype" title="(in PyTorch v2.5)"><span class="pre">dtype</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://pytorch.org/docs/stable/tensor_attributes.html#torch.device" title="(in PyTorch v2.5)"><span class="pre">device</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.metatensor.org/latest/core/reference/python/tensor.html#metatensor.TensorMap" title="(in metatensor)"><span class="pre">TensorMap</span></a></span></span><a class="headerlink" href="#featomic.clebsch_gordan.calculate_cg_coefficients" title="Link to this definition">¶</a></dt>
+<dd><p>Calculates the Clebsch-Gordan coefficients for all possible combination of angular
+momenta up to <code class="docutils literal notranslate"><span class="pre">lambda_max</span></code>.</p>
+<p>The structure of the returned <code class="xref py py-class docutils literal notranslate"><span class="pre">TensorMap</span></code> depends on whether the backend
+used to perform CG tensor products uses sparse or dense operations.</p>
+<dl class="simple">
+<dt>Dense:</dt><dd><ul class="simple">
+<li><p>samples: <code class="docutils literal notranslate"><span class="pre">_</span></code>, i.e. a dummy sample.</p></li>
+<li><p>components: <code class="docutils literal notranslate"><span class="pre">[m1,</span> <span class="pre">m2,</span> <span class="pre">mu]</span></code> on separate components axes, where <code class="docutils literal notranslate"><span class="pre">m1</span></code> and
+<code class="docutils literal notranslate"><span class="pre">m2</span></code> are the m component values for the two arrays being combined and <code class="docutils literal notranslate"><span class="pre">mu</span></code>
+is the m component value for the resulting array.</p></li>
+<li><p>properties: <code class="docutils literal notranslate"><span class="pre">cg_coefficient</span> <span class="pre">=</span> <span class="pre">[0]</span></code></p></li>
+</ul>
+</dd>
+<dt>Sparse:</dt><dd><ul class="simple">
+<li><p>samples: <code class="docutils literal notranslate"><span class="pre">(m1,</span> <span class="pre">m2,</span> <span class="pre">mu)</span></code>, where <code class="docutils literal notranslate"><span class="pre">m1</span></code> and <code class="docutils literal notranslate"><span class="pre">m2</span></code> are the m component values
+for the two arrays being combined and <code class="docutils literal notranslate"><span class="pre">mu</span></code> is the m component value for the
+resulting array.</p></li>
+<li><p>components: <code class="docutils literal notranslate"><span class="pre">[]</span></code>, i.e. no components axis.</p></li>
+<li><p>properties: <code class="docutils literal notranslate"><span class="pre">cg_coefficient</span> <span class="pre">=</span> <span class="pre">[0]</span></code></p></li>
+</ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>lambda_max</strong> – maximum angular momentum value to compute CG coefficients for.</p></li>
+<li><p><strong>cg_backend</strong> – whether to use <code class="docutils literal notranslate"><span class="pre">&quot;python-spare&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;python-dense&quot;</span></code> format
+for storing the CG coefficients.</p></li>
+<li><p><strong>arrays_backend</strong> – whether to use <code class="docutils literal notranslate"><span class="pre">&quot;numpy&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;torch&quot;</span></code> arrays to store the
+coefficients.</p></li>
+<li><p><strong>dtype</strong> – the scalar type to use to store coefficients</p></li>
+<li><p><strong>device</strong> – the computational device to use for calculations. This must be
+<code class="docutils literal notranslate"><span class="pre">&quot;cpu&quot;</span></code> if <code class="docutils literal notranslate"><span class="pre">array_backend=&quot;numpy&quot;</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">TensorMap</span></code> of the Clebsch-Gordan coefficients.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="../torch/index.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">TorchScript API reference</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="splines.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Splined radial integrals</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2024, Guillaume Fraux, Philip Loche, Sergei Kliavinek, Kevin Kazuki Huguenin-Dumittan, Davide Tisi, Alexander Goscinski
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            <div class="icons">
+              <a class="muted-link fa-brands fa-github fa-2x" href="https://github.com/metatensor/featomic" aria-label="GitHub"></a>
+              
+            </div>
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Clebsch-Gordan products</a><ul>
+<li><a class="reference internal" href="#featomic.clebsch_gordan.EquivariantPowerSpectrum"><code class="docutils literal notranslate"><span class="pre">EquivariantPowerSpectrum</span></code></a><ul>
+<li><a class="reference internal" href="#featomic.clebsch_gordan.EquivariantPowerSpectrum.name"><code class="docutils literal notranslate"><span class="pre">EquivariantPowerSpectrum.name</span></code></a></li>
+<li><a class="reference internal" href="#featomic.clebsch_gordan.EquivariantPowerSpectrum.compute"><code class="docutils literal notranslate"><span class="pre">EquivariantPowerSpectrum.compute()</span></code></a></li>
+<li><a class="reference internal" href="#featomic.clebsch_gordan.EquivariantPowerSpectrum.forward"><code class="docutils literal notranslate"><span class="pre">EquivariantPowerSpectrum.forward()</span></code></a></li>
+<li><a class="reference internal" href="#featomic.clebsch_gordan.EquivariantPowerSpectrum.compute_metadata"><code class="docutils literal notranslate"><span class="pre">EquivariantPowerSpectrum.compute_metadata()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#featomic.clebsch_gordan.PowerSpectrum"><code class="docutils literal notranslate"><span class="pre">PowerSpectrum</span></code></a><ul>
+<li><a class="reference internal" href="#featomic.clebsch_gordan.PowerSpectrum.name"><code class="docutils literal notranslate"><span class="pre">PowerSpectrum.name</span></code></a></li>
+<li><a class="reference internal" href="#featomic.clebsch_gordan.PowerSpectrum.compute"><code class="docutils literal notranslate"><span class="pre">PowerSpectrum.compute()</span></code></a></li>
+<li><a class="reference internal" href="#featomic.clebsch_gordan.PowerSpectrum.forward"><code class="docutils literal notranslate"><span class="pre">PowerSpectrum.forward()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#featomic.clebsch_gordan.DensityCorrelations"><code class="docutils literal notranslate"><span class="pre">DensityCorrelations</span></code></a><ul>
+<li><a class="reference internal" href="#featomic.clebsch_gordan.DensityCorrelations.compute"><code class="docutils literal notranslate"><span class="pre">DensityCorrelations.compute()</span></code></a></li>
+<li><a class="reference internal" href="#featomic.clebsch_gordan.DensityCorrelations.forward"><code class="docutils literal notranslate"><span class="pre">DensityCorrelations.forward()</span></code></a></li>
+<li><a class="reference internal" href="#featomic.clebsch_gordan.DensityCorrelations.compute_metadata"><code class="docutils literal notranslate"><span class="pre">DensityCorrelations.compute_metadata()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#featomic.clebsch_gordan.cartesian_to_spherical"><code class="docutils literal notranslate"><span class="pre">cartesian_to_spherical()</span></code></a></li>
+<li><a class="reference internal" href="#low-level-functionalities">Low-level functionalities</a><ul>
+<li><a class="reference internal" href="#featomic.clebsch_gordan.ClebschGordanProduct"><code class="docutils literal notranslate"><span class="pre">ClebschGordanProduct</span></code></a><ul>
+<li><a class="reference internal" href="#featomic.clebsch_gordan.ClebschGordanProduct.compute"><code class="docutils literal notranslate"><span class="pre">ClebschGordanProduct.compute()</span></code></a></li>
+<li><a class="reference internal" href="#featomic.clebsch_gordan.ClebschGordanProduct.forward"><code class="docutils literal notranslate"><span class="pre">ClebschGordanProduct.forward()</span></code></a></li>
+<li><a class="reference internal" href="#featomic.clebsch_gordan.ClebschGordanProduct.compute_metadata"><code class="docutils literal notranslate"><span class="pre">ClebschGordanProduct.compute_metadata()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#featomic.clebsch_gordan.calculate_cg_coefficients"><code class="docutils literal notranslate"><span class="pre">calculate_cg_coefficients()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../../../_static/documentation_options.js?v=aaa0c780"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/scripts/furo.js?v=5fa4622c"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    </body>
+</html>

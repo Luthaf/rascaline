@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["DensityKind","DensityScaling","LodeRadialBasis","SoapRadialBasis","SphericalExpansionBasis"],"mod":["lode","soap"],"struct":["AtomicComposition","Density","NeighborList","SortedDistances","TensorProductBasis"],"trait":["CalculatorBase"]};

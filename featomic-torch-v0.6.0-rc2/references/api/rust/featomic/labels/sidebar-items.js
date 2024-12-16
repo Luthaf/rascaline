@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["AtomicTypeFilter"],"struct":["AllTypesPairsKeys","AtomCenteredSamples","CenterSingleNeighborsTypesKeys","CenterTwoNeighborsTypesKeys","CenterTypesKeys","LongRangeSamplesPerAtom"],"trait":["KeysBuilder","SamplesBuilder"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Error","LabelsSelection"],"mod":["calculators","labels","math","systems","types"],"struct":["CalculationOptions","Calculator"]};
