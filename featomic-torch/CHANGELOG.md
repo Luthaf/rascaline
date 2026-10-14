@@ -6,6 +6,10 @@ a changelog](https://keepachangelog.com/en/1.1.0/) format. This project follows
 
 ## [Unreleased](https://github.com/metatensor/featomic/)
 
+### Added
+
+- Optional `dtype` in `systems_to_torch` to control positions and cell precision.
+
 <!-- Possible sections for each package:
 
 ### Added
