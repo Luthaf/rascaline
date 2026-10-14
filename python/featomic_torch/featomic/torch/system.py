@@ -12,6 +12,8 @@ def systems_to_torch(
     systems: featomic.systems.IntoSystem,
     positions_requires_grad: Optional[bool] = None,
     cell_requires_grad: Optional[bool] = None,
+    *,
+    dtype: Optional[torch.dtype] = None,
 ) -> System:
     pass
 
@@ -21,6 +23,8 @@ def systems_to_torch(
     systems: Sequence[featomic.systems.IntoSystem],
     positions_requires_grad: Optional[bool] = None,
     cell_requires_grad: Optional[bool] = None,
+    *,
+    dtype: Optional[torch.dtype] = None,
 ) -> List[System]:
     pass
 
@@ -29,6 +33,8 @@ def systems_to_torch(
     systems,
     positions_requires_grad=None,
     cell_requires_grad=None,
+    *,
+    dtype=None,
 ) -> List[System]:
     """
     Convert a arbitrary system to :py:class:`metatomic.torch.System`, putting all the
@@ -46,19 +52,24 @@ def systems_to_torch(
     :param cell_requires_grad: The value of ``requires_grad`` on the output ``cell``. If
         ``None`` and the positions of the input is already a :py:class:`torch.Tensor`,
         ``requires_grad`` is kept the same. Otherwise it is initialized to ``False``.
+
+    :param dtype: Optional floating-point dtype for the converted positions and cell.
+        If ``None``, preserve the input dtype.
     """
 
     try:
-        return _system_to_torch(systems, positions_requires_grad, cell_requires_grad)
+        return _system_to_torch(
+            systems, positions_requires_grad, cell_requires_grad, dtype
+        )
     except TypeError:
         # try iterating over the systems
         return [
-            _system_to_torch(system, positions_requires_grad, cell_requires_grad)
+            _system_to_torch(system, positions_requires_grad, cell_requires_grad, dtype)
             for system in systems
         ]
 
 
-def _system_to_torch(system, positions_requires_grad, cell_requires_grad):
+def _system_to_torch(system, positions_requires_grad, cell_requires_grad, dtype):
     if not _is_torch_system(system):
         system = featomic.systems.wrap_system(system)
         system = System(
@@ -71,6 +82,9 @@ def _system_to_torch(system, positions_requires_grad, cell_requires_grad):
                 else torch.tensor([True, True, True])
             ),
         )
+
+    if dtype is not None:
+        system = system.to(dtype=dtype)
 
     if positions_requires_grad is not None:
         system.positions.requires_grad_(positions_requires_grad)
